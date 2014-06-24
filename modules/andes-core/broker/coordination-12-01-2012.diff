@@ -1,0 +1,1101 @@
+Index: broker.iml
+===================================================================
+--- broker.iml	(revision 11634)
++++ broker.iml	(working copy)
+@@ -24,6 +24,15 @@
+     <orderEntry type="module" module-name="broker-scratch" />
+     <orderEntry type="module" module-name="common-scratch" />
+     <orderEntry type="module" module-name="mina-1.1.7" />
++    <orderEntry type="module-library">
++      <library>
++        <CLASSES>
++          <root url="jar://$USER_HOME$/products/zookeeper-3.4.1/zookeeper-3.4.1.jar!/" />
++        </CLASSES>
++        <JAVADOC />
++        <SOURCES />
++      </library>
++    </orderEntry>
+   </component>
+   <component name="org.twodividedbyzero.idea.findbugs">
+     <option name="_basePreferences">
+Index: src/test/java/org/apache/TestQpidServer.java
+===================================================================
+--- src/test/java/org/apache/TestQpidServer.java	(revision 11634)
++++ src/test/java/org/apache/TestQpidServer.java	(working copy)
+@@ -53,7 +53,8 @@
+         }
+ 
+         VirtualHost virtualHost = ApplicationRegistry.getInstance().getVirtualHostRegistry().getDefaultVirtualHost();
+-        DirectExchange exchange = (DirectExchange) virtualHost.getExchangeRegistry().getDefaultExchange();
++        DirectExchange exchange = (DirectExchange) virtualHost.getExchangeRegistry().
++                getDefaultExchange();
+         MessageStore messageStore = virtualHost.getMessageStore();
+ 
+         AMQQueue queue = AMQQueueFactory.createAMQQueueImpl(new AMQShortString("a"), false, null, false, false, virtualHost, null);
+Index: src/main/java/org/apache/qpid/server/cluster/GlobalQueueWorker.java
+===================================================================
+--- src/main/java/org/apache/qpid/server/cluster/GlobalQueueWorker.java	(revision 0)
++++ src/main/java/org/apache/qpid/server/cluster/GlobalQueueWorker.java	(working copy)
+@@ -15,8 +15,10 @@
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+-package org.apache.qpid.server.cassandra;
++package org.apache.qpid.server.cluster;
+ 
++import org.apache.qpid.server.cassandra.CassandraQueueMessage;
++import org.apache.qpid.server.cassandra.CassendraSubscriptionManager;
+ import org.apache.qpid.server.store.CassandraMessage;
+ import org.apache.qpid.server.store.CassandraMessageStore;
+ 
+@@ -25,21 +27,21 @@
+ import java.util.Random;
+ 
+ /**
+- * <code>CassandraGlobalQueueWorker</code> is responsible for polling global queues
++ * <code>GlobalQueueWorker</code> is responsible for polling global queues
+  * and distribute messages to the subscriber userQueues.
+  */
+-public class CassandraGlobalQueueWorker implements Runnable{
++public class GlobalQueueWorker implements Runnable{
+ 
+ 
+     private String globalQueueName;
+     private boolean running;
+-    private CassendraSubscriptionManager  cassendraSubscriptionManager;
++    private CassendraSubscriptionManager cassendraSubscriptionManager;
+     private int messageCount;
+     private CassandraMessageStore cassandraMessageStore;
+ 
+-    public CassandraGlobalQueueWorker(String queueName ,
+-                                      CassandraMessageStore cassandraMessageStore ,
+-                                      int messageCount) {
++    public GlobalQueueWorker(String queueName,
++                             CassandraMessageStore cassandraMessageStore,
++                             int messageCount) {
+         this.cassandraMessageStore = cassandraMessageStore;
+         this.globalQueueName = queueName;
+         this.cassendraSubscriptionManager = CassendraSubscriptionManager.getInstance();
+Index: src/main/java/org/apache/qpid/server/cluster/GlobalQueueManager.java
+===================================================================
+--- src/main/java/org/apache/qpid/server/cluster/GlobalQueueManager.java	(revision 0)
++++ src/main/java/org/apache/qpid/server/cluster/GlobalQueueManager.java	(working copy)
+@@ -15,29 +15,38 @@
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+-package org.apache.qpid.server.cassandra;
++package org.apache.qpid.server.cluster;
+ 
++import org.apache.commons.logging.Log;
++import org.apache.commons.logging.LogFactory;
+ import org.apache.qpid.server.store.CassandraMessageStore;
+ 
+ import java.util.ArrayList;
+ import java.util.List;
++import java.util.Map;
++import java.util.concurrent.ConcurrentHashMap;
+ import java.util.concurrent.ExecutorService;
+ import java.util.concurrent.Executors;
+ 
+ /**
+- * <code>CassandraGlobalQueueManager</code> Manage the Global queues
++ * <code>GlobalQueueManager</code> Manage the Global queues
+  */
+-public class CassandraGlobalQueueManager {
++public class GlobalQueueManager {
+ 
+     private List<String> queueNameList = new ArrayList<String>();
+     private CassandraMessageStore cassandraMessageStore;
+-    private int syncInterval;
+-    private boolean running = false;
+ 
+-    ExecutorService executorService ;
+-    public CassandraGlobalQueueManager(CassandraMessageStore store , int syncInterval) {
++
++    private Map<String,GlobalQueueWorker> queueWorkerMap =
++            new ConcurrentHashMap<String,GlobalQueueWorker>();
++
++
++    private ExecutorService executorService ;
++
++    private static Log log = LogFactory.getLog(GlobalQueueManager.class);
++
++    public GlobalQueueManager(CassandraMessageStore store) {
+         this.cassandraMessageStore = store;
+-        this.syncInterval = syncInterval;
+         this.executorService = Executors.newCachedThreadPool();
+     }
+ 
+@@ -50,39 +59,11 @@
+     }
+ 
+ 
+-    public void start() {
+-        running = true;
+-        Thread t = new Thread(new GlobalQueueDetailSynchronizingTask());
+-        t.start();
+-    }
+ 
+-    private class GlobalQueueDetailSynchronizingTask implements Runnable{
+-
+-        @Override
+-        public void run() {
+-            while (running) {
+-                List<String> queueNames = cassandraMessageStore.getGlobalQueues();
+-                for(String updatedName : queueNames) {
+-                    if(!queueNameList.contains(updatedName)) {
+-                        queueNameList.add(updatedName);
+-                        scheduleWork(updatedName);
+-                    }
+-                }
+-                try {
+-                    Thread.sleep(syncInterval*1000);
+-                } catch (InterruptedException e) {
+-                    // log this
+-                    e.printStackTrace();
+-                }
+-
+-                //TODO handle queue removal
+-            }
+-        }
+-    }
+-
+     private void scheduleWork(String queueName) {
+-        CassandraGlobalQueueWorker worker = new CassandraGlobalQueueWorker(queueName,cassandraMessageStore,20);
++        GlobalQueueWorker worker = new GlobalQueueWorker(queueName,cassandraMessageStore,20);
+         worker.setRunning(true);
++        queueWorkerMap.put(queueName,worker);
+         executorService.execute(worker);
+     }
+ 
+Index: src/main/java/org/apache/qpid/server/cluster/ClusterNode.java
+===================================================================
+--- src/main/java/org/apache/qpid/server/cluster/ClusterNode.java	(revision 0)
++++ src/main/java/org/apache/qpid/server/cluster/ClusterNode.java	(revision 0)
+@@ -0,0 +1,51 @@
++/*
++*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
++*
++*  WSO2 Inc. licenses this file to you under the Apache License,
++*  Version 2.0 (the "License"); you may not use this file except
++*  in compliance with the License.
++*  You may obtain a copy of the License at
++*
++*    http://www.apache.org/licenses/LICENSE-2.0
++*
++* Unless required by applicable law or agreed to in writing,
++* software distributed under the License is distributed on an
++* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++* KIND, either express or implied.  See the License for the
++* specific language governing permissions and limitations
++* under the License.
++*/
++package org.apache.qpid.server.cluster;
++
++
++import java.util.ArrayList;
++import java.util.List;
++
++/**
++ * Class <code>ClusterNode</code> contains the node information
++ * that is needed by the cluster manager to handle cluster management tasks.
++ */
++public class ClusterNode {
++
++    private int nodeId;
++    private List<String> globalQueueWokers;
++    public ClusterNode(int nodeId) {
++
++        this.nodeId = nodeId;
++        this.globalQueueWokers = new ArrayList<String>();
++    }
++
++
++    public List<String> getGlobalQueueWokers() {
++        return globalQueueWokers;
++    }
++
++
++    public void addGlobalQueueWorker(String queueName) {
++        this.globalQueueWokers.add(queueName);
++    }
++
++    public int getNumberOfQueueWorkers() {
++        return this.globalQueueWokers.size();
++    }
++}
+Index: src/main/java/org/apache/qpid/server/cluster/coordination/ZooKeeperAgent.java
+===================================================================
+--- src/main/java/org/apache/qpid/server/cluster/coordination/ZooKeeperAgent.java	(revision 0)
++++ src/main/java/org/apache/qpid/server/cluster/coordination/ZooKeeperAgent.java	(revision 0)
+@@ -0,0 +1,76 @@
++/*
++*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
++*
++*  WSO2 Inc. licenses this file to you under the Apache License,
++*  Version 2.0 (the "License"); you may not use this file except
++*  in compliance with the License.
++*  You may obtain a copy of the License at
++*
++*    http://www.apache.org/licenses/LICENSE-2.0
++*
++* Unless required by applicable law or agreed to in writing,
++* software distributed under the License is distributed on an
++* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++* KIND, either express or implied.  See the License for the
++* specific language governing permissions and limitations
++* under the License.
++*/
++package org.apache.qpid.server.cluster.coordination;
++
++import org.apache.commons.logging.Log;
++import org.apache.commons.logging.LogFactory;
++import org.apache.zookeeper.*;
++
++import java.io.IOException;
++
++public class ZooKeeperAgent implements Watcher{
++
++
++    private ZooKeeper zk;
++
++    private static Log log = LogFactory.getLog(ZooKeeper.class);
++
++    public ZooKeeperAgent(String address, int port) throws IOException {
++        log.debug("Starting Zookeeper agent for host : " + address + " port : " + port);
++        zk = new ZooKeeper(address,port,this);
++        log.debug("ZooKeeper agent started successfully and connected to  " + address + ":" + port);
++    }
++
++    @Override
++    public void process(WatchedEvent watchedEvent) {
++
++    }
++
++
++    public void initQueueWorkerCoordination() throws CoordinationException {
++
++        try {
++            if (zk.exists(CoordinationConstants.QUEUE_WORKER_COORDINATION_PARENT, false) == null) {
++                zk.create(CoordinationConstants.QUEUE_WORKER_COORDINATION_PARENT, new byte[0],
++                        ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
++            } else {
++
++                if(zk.getChildren(CoordinationConstants.QUEUE_WORKER_COORDINATION_PARENT,false)
++                        == null
++                        || zk.getChildren(CoordinationConstants.QUEUE_WORKER_COORDINATION_PARENT,
++                        false).size() == 0) {
++                        zk.delete(CoordinationConstants.QUEUE_WORKER_COORDINATION_PARENT , -1);
++                        zk.create(CoordinationConstants.QUEUE_WORKER_COORDINATION_PARENT,
++                                new byte[0],
++                        ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
++                }
++
++            }
++        } catch (Exception e) {
++            String msg = "Error while creating Queue worker coordination parent at " +
++                    CoordinationConstants.QUEUE_WORKER_COORDINATION_PARENT;
++            log.error(msg ,e );
++            throw new CoordinationException(msg,e);
++        }
++
++    }
++
++    public ZooKeeper getZooKeeper() {
++        return zk;
++    }
++}
+Index: src/main/java/org/apache/qpid/server/cluster/coordination/CoordinationConstants.java
+===================================================================
+--- src/main/java/org/apache/qpid/server/cluster/coordination/CoordinationConstants.java	(revision 0)
++++ src/main/java/org/apache/qpid/server/cluster/coordination/CoordinationConstants.java	(revision 0)
+@@ -0,0 +1,31 @@
++/*
++*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
++*
++*  WSO2 Inc. licenses this file to you under the Apache License,
++*  Version 2.0 (the "License"); you may not use this file except
++*  in compliance with the License.
++*  You may obtain a copy of the License at
++*
++*    http://www.apache.org/licenses/LICENSE-2.0
++*
++* Unless required by applicable law or agreed to in writing,
++* software distributed under the License is distributed on an
++* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++* KIND, either express or implied.  See the License for the
++* specific language governing permissions and limitations
++* under the License.
++*/
++package org.apache.qpid.server.cluster.coordination;
++
++import java.sql.Savepoint;
++
++public final class CoordinationConstants {
++
++    public static String QUEUE_WORKER_COORDINATION_PARENT = "/queue_workers_parent";
++
++    public static String QUEUE_WORKER_NODE  = "/queue_worker_node";
++
++
++    public static String NODE_SEPARATOR = "/";
++
++}
+Index: src/main/java/org/apache/qpid/server/cluster/coordination/CoordinationException.java
+===================================================================
+--- src/main/java/org/apache/qpid/server/cluster/coordination/CoordinationException.java	(revision 0)
++++ src/main/java/org/apache/qpid/server/cluster/coordination/CoordinationException.java	(revision 0)
+@@ -0,0 +1,40 @@
++/*
++*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
++*
++*  WSO2 Inc. licenses this file to you under the Apache License,
++*  Version 2.0 (the "License"); you may not use this file except
++*  in compliance with the License.
++*  You may obtain a copy of the License at
++*
++*    http://www.apache.org/licenses/LICENSE-2.0
++*
++* Unless required by applicable law or agreed to in writing,
++* software distributed under the License is distributed on an
++* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++* KIND, either express or implied.  See the License for the
++* specific language governing permissions and limitations
++* under the License.
++*/
++package org.apache.qpid.server.cluster.coordination;
++
++
++/**
++ * Class <code>CoordinationException</code> represents the Exceptions
++ * coming when doing coordination operations
++ */
++public class CoordinationException extends Exception {
++
++    public CoordinationException(String msg) {
++        super(msg);
++    }
++
++    public CoordinationException(){
++        super();
++    }
++
++
++    public CoordinationException(String msg , Exception ex) {
++        super(msg,ex);
++    }
++
++}
+Index: src/main/java/org/apache/qpid/server/cluster/ClusterManager.java
+===================================================================
+--- src/main/java/org/apache/qpid/server/cluster/ClusterManager.java	(revision 0)
++++ src/main/java/org/apache/qpid/server/cluster/ClusterManager.java	(revision 0)
+@@ -0,0 +1,341 @@
++/*
++*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
++*
++*  WSO2 Inc. licenses this file to you under the Apache License,
++*  Version 2.0 (the "License"); you may not use this file except
++*  in compliance with the License.
++*  You may obtain a copy of the License at
++*
++*    http://www.apache.org/licenses/LICENSE-2.0
++*
++* Unless required by applicable law or agreed to in writing,
++* software distributed under the License is distributed on an
++* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++* KIND, either express or implied.  See the License for the
++* specific language governing permissions and limitations
++* under the License.
++*/
++package org.apache.qpid.server.cluster;
++
++
++import com.sun.xml.internal.bind.v2.runtime.Coordinator;
++import org.apache.commons.logging.Log;
++import org.apache.commons.logging.LogFactory;
++import org.apache.qpid.qmf.schema.BrokerSchema;
++import org.apache.qpid.server.cluster.coordination.CoordinationConstants;
++import org.apache.qpid.server.cluster.coordination.CoordinationException;
++import org.apache.qpid.server.cluster.coordination.ZooKeeperAgent;
++import org.apache.qpid.server.store.CassandraMessageStore;
++import org.apache.zookeeper.*;
++import org.python.antlr.ast.Str;
++import sun.awt.GlobalCursorManager;
++
++import java.io.IOException;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import java.util.concurrent.ConcurrentHashMap;
++
++/**
++ * Cluster Manager is responsible for Handling the Broker Cluster Management Tasks like
++ * Queue Worker distribution. Fail over handling for cluster nodes. etc.
++ */
++public class ClusterManager {
++
++
++    private Log log = LogFactory.getLog(ClusterManager.class);
++
++
++
++    private int nodeId;
++    private String zkNode;
++
++
++    private GlobalQueueManager globalQueueManager;
++    private CassandraMessageStore cassandraMessageStore;
++    /**
++     * Map that Keeps the node id
++     */
++    private Map<Integer, ClusterNode> nodeMap =
++            new ConcurrentHashMap<Integer, ClusterNode>();
++
++
++    private ZooKeeperAgent zkAgent;
++
++    /**
++     * Host name of the zookeeper instance
++     */
++    private String address;
++
++
++    /**
++     * Port of the zookeeper instance
++     */
++    private int port;
++
++
++    /**
++     * Create a ClusterManager instance
++     * @param messageStore Underlying CassandraMessageStore
++     * @param zkHost host name of zookeeper instance running
++     * @param zkPort zookeeper port
++     */
++    public ClusterManager(CassandraMessageStore messageStore , String zkHost ,
++                          int zkPort) {
++
++
++        globalQueueManager = new GlobalQueueManager(messageStore);
++        this.address = zkHost;
++        this.port = zkPort;
++
++    }
++
++    /**
++     * Handles new Queue addition requests coming for this node
++     * @param queueName Queue to be added
++     * @throws CoordinationException In case of a unexpected Error happening when running
++     * the cluster coordination algorithm
++     */
++    public void handleQueueAddition(String queueName) throws CoordinationException {
++        //get all childs from the qpid worker
++        //Select a leader
++        // Update the node with adding new queue to the list
++
++        //Node data Format broker Id : q1,q2,q3,q4 ...
++
++
++        try {
++            ClusterNode myNode = nodeMap.get(nodeId);
++
++            if(myNode != null && myNode.getGlobalQueueWokers().contains(queueName)) {
++                return;
++            }
++            List<String> nodeList = zkAgent.getZooKeeper().
++                    getChildren(CoordinationConstants.QUEUE_WORKER_COORDINATION_PARENT, false);
++
++            int currentMinQueueCountPerNode = Integer.MAX_VALUE;
++            String currentCandidateNode=zkNode;
++            String currentCandidateNodeData=""+ nodeId+":";
++            for(String node : nodeList) {
++                System.out.println("Checking node : " + node);
++                String path = CoordinationConstants.QUEUE_WORKER_COORDINATION_PARENT +
++                        CoordinationConstants.NODE_SEPARATOR + node;
++                byte[] data = zkAgent.getZooKeeper().getData(path, false, null);
++
++                String dataStr = new String(data);
++                System.out.println("Checking node : " + node + " With data : " + dataStr);
++                String[] parts = dataStr.split(":");
++
++                if(parts.length >= 1 ) {
++
++                    if (parts.length != 1 && parts[1].length() > 0) {
++                        String[] queues = parts[1].split(",");
++                        if (queues.length < currentMinQueueCountPerNode) {
++                            currentMinQueueCountPerNode = queues.length;
++                            currentCandidateNode = node;
++                            currentCandidateNodeData = dataStr;
++                        }
++                    } else {
++                        if(0 < currentMinQueueCountPerNode) {
++                            currentMinQueueCountPerNode =0;
++                            currentCandidateNode = node;
++                            currentCandidateNodeData = dataStr;
++                        }
++                    }
++                }
++
++            }
++
++            System.out.println("SELECTED LEADER : " + currentCandidateNode + " for queue : " + queueName);
++
++            String newData = currentCandidateNodeData + queueName +",";
++
++            String leaderPath =  CoordinationConstants.QUEUE_WORKER_COORDINATION_PARENT +
++                        CoordinationConstants.NODE_SEPARATOR + currentCandidateNode;
++            zkAgent.getZooKeeper().setData(leaderPath,newData.getBytes(),-1);
++
++
++        } catch (Exception e) {
++            String msg = "Error while handling Queue worker Addition";
++            log.error(msg, e);
++            throw new CoordinationException(msg, e);
++        }
++
++
++    }
++
++
++    public void handleQueueRemoval() throws CoordinationException {
++        //get all child from the QPid worker
++        //Find the leader
++        //Update the node with by removing the queue
++
++        //TODO
++        try {
++            List<String> nodeList = zkAgent.getZooKeeper().
++                    getChildren(CoordinationConstants.QUEUE_WORKER_COORDINATION_PARENT, false);
++        } catch (Exception e) {
++
++            String msg = "Error while handling Queue worker removal";
++            log.error(msg, e);
++            throw new CoordinationException(msg, e);
++        }
++
++    }
++
++
++    public void init() throws CoordinationException {
++
++
++        // create a new node with a generated randomId
++        // get the node name and id
++
++
++        try {
++            zkAgent = new ZooKeeperAgent(address,port);
++            zkAgent.initQueueWorkerCoordination();
++            final String nodeName = CoordinationConstants.QUEUE_WORKER_NODE+
++                    (UUID.randomUUID()).toString().replace("-","_");
++            String path = CoordinationConstants.QUEUE_WORKER_COORDINATION_PARENT
++                    + nodeName;
++
++            zkAgent.getZooKeeper().
++                    getChildren(CoordinationConstants.QUEUE_WORKER_COORDINATION_PARENT, new Watcher(){
++
++                        @Override
++                        public void process(WatchedEvent watchedEvent) {
++                            System.out.println("Even received... ");
++                           if(Event.EventType.NodeChildrenChanged == watchedEvent.getType()) {
++                               System.out.println("Even received... ");
++                               try {
++                                   List<String> nodeList =
++                                           zkAgent.getZooKeeper().
++                                                   getChildren(
++                                                           CoordinationConstants.QUEUE_WORKER_COORDINATION_PARENT, false);
++                                   System.out.println("Node List size :" + nodeList.size());
++                                   for (String node : nodeList) {
++                                       System.out.println("Node " + node);
++                                       String id = node.substring(
++                                               nodeName.length());
++
++                                       System.out.println("id: " +id );
++                                       System.out.println("nodename : " + nodeName);
++                                       System.out.println("node contains nodename : " +
++                                               (CoordinationConstants.NODE_SEPARATOR +node).
++                                                       contains(nodeName));
++
++                                       if((CoordinationConstants.NODE_SEPARATOR +node).contains(nodeName)) {
++                                            zkNode = node;
++                                            nodeId = Integer.parseInt(id);
++
++                                            String data = ""+ nodeId + ":";
++                                            zkAgent.getZooKeeper().setData(CoordinationConstants.
++                                                            QUEUE_WORKER_COORDINATION_PARENT +
++                                                            CoordinationConstants.NODE_SEPARATOR +
++                                                            node, data.getBytes(),-1);
++                                            zkAgent.getZooKeeper().
++                                                    getData(CoordinationConstants.
++                                                            QUEUE_WORKER_COORDINATION_PARENT +
++                                                            CoordinationConstants.NODE_SEPARATOR +
++                                                            node,new NodeDataChangeListener(),null);
++
++
++                                       }
++
++                                   }
++
++                               } catch (Exception e) {
++                                   e.printStackTrace();
++                                   log.error(e);
++                               }
++                           }
++                        }
++                    });
++
++            System.out.println("PAth:" + path );
++            zkAgent.getZooKeeper().create(path, new byte[0],
++                    ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
++
++
++        } catch (Exception e) {
++            e.printStackTrace();
++
++            String msg = "Error while initializing the zookeeper coordination ";
++            log.error("Error while initializing the zookeeper coordination " ,e);
++            throw new CoordinationException(msg,e);
++        }
++
++
++    }
++
++
++
++    private class NodeDataChangeListener implements Watcher {
++
++        @Override
++        public void process(WatchedEvent event) {
++                if(Event.EventType.NodeDataChanged == event.getType()) {
++                    try {
++                        byte[] data = zkAgent.getZooKeeper().getData(CoordinationConstants.
++                                                                QUEUE_WORKER_COORDINATION_PARENT +
++                                                                CoordinationConstants.NODE_SEPARATOR
++                                                                                + zkNode,this,null);
++
++
++
++                        String dataStr = new String(data);
++                        String[] parts = dataStr.split(":");
++
++                        System.out.println("Data changed : " + event.getPath() + " Data : " + dataStr);
++
++                        if (parts.length > 1 && parts[1].length() > 0) {
++                            String[] queues = parts[1].split(",");
++
++                            if (queues.length > 0) {
++
++                                int nId = Integer.parseInt(parts[0]);
++                                ClusterNode node = nodeMap.get(nId);
++                                if(node == null) {
++                                    node = new ClusterNode(nId);
++                                    nodeMap.put(nId,node);
++                                }
++
++                                String[] queuesToBescheduled = getQueueWorkersToBeScheduled(node, queues);
++                                for(String q : queuesToBescheduled) {
++                                    System.out.println("adding queue " + q);
++                                    globalQueueManager.addGlobalQueue(q);
++                                }
++                            }
++
++                        }
++
++                    } catch (Exception e) {
++                        log.fatal("Error processing the Node data change : This might cause serious " +
++                                "issues in distributed queue management", e);
++                    }
++                }
++        }
++
++
++        private String[] getQueueWorkersToBeScheduled(ClusterNode node, String[] queues) {
++
++            ArrayList<String> queueList = new ArrayList<String>();
++
++            for(String q : queues) {
++                if(!node.getGlobalQueueWokers().contains(q)) {
++                    queueList.add(q);
++                    node.addGlobalQueueWorker(q);
++                }
++            }
++
++            return queueList.toArray(new String[queueList.size()]);
++        }
++    }
++
++
++    public int getNodeId() {
++
++        return nodeId;
++    }
++}
+Index: src/main/java/org/apache/qpid/server/store/CassandraMessageStore.java
+===================================================================
+--- src/main/java/org/apache/qpid/server/store/CassandraMessageStore.java	(revision 11635)
++++ src/main/java/org/apache/qpid/server/store/CassandraMessageStore.java	(working copy)
+@@ -25,9 +25,10 @@
+ import org.apache.qpid.AMQStoreException;
+ import org.apache.qpid.framing.AMQShortString;
+ import org.apache.qpid.framing.FieldTable;
+-import org.apache.qpid.server.cassandra.CassandraGlobalQueueManager;
+ import org.apache.qpid.server.cassandra.CassandraQueueMessage;
+ import org.apache.qpid.server.cassandra.CassendraSubscriptionManager;
++import org.apache.qpid.server.cluster.ClusterManager;
++import org.apache.qpid.server.cluster.coordination.CoordinationException;
+ import org.apache.qpid.server.exchange.Exchange;
+ import org.apache.qpid.server.logging.LogSubject;
+ import org.apache.qpid.server.message.AMQMessage;
+@@ -50,10 +51,12 @@
+     private final String HOST_KEY = "host";
+     private final String PORT_KEY = "port";
+     private final String CLUSTER_KEY = "cluster";
+-    private final String MASTER = "master";
+-    private final String NODE_ID = "nodeId";
+     private final String CONTENT_REMOVING_INTERVAL = "cleanUpInterval";
++    private final String ZOOKEEPER_HOST = "ZooKeeperHostName";
++    private final String ZOOKEEPER_PORT = "ZooKeeperPort";
+ 
++
++
+     private Keyspace keyspace;
+     private final static String KEYSPACE = "QpidKeySpace";
+     private final static String LONG_TYPE = "LongType";
+@@ -86,14 +89,10 @@
+     private final static String MSG_CONTENT_IDS_ROW = "messageContentIds";
+ 
+     private final AtomicLong _messageId = new AtomicLong(0);
+-    private CassandraGlobalQueueManager cassandraGlobalQueueManager;
+     private VirtualHostConfigSynchronizer virtualHostConfigSynchronizer;
+     private Queue<Long> contentDeletionTasks;
+ 
+     private ContentRemoverTask removerTask;
+-    private int nodeId = 1;
+-    private boolean masterNode = true;
+-
+     private boolean configured = false;
+ 
+     public static CassandraMessageStore self = null;
+@@ -101,8 +100,12 @@
+ 
+     private static StringSerializer stringSerializer = StringSerializer.get();
+ 
+-    private static Log log = org.apache.commons.logging.LogFactory.getLog(CassandraMessageStore.class);
++    private static Log log =
++            org.apache.commons.logging.LogFactory.getLog(CassandraMessageStore.class);
+ 
++
++    private ClusterManager clusterManager;
++
+     public static CassandraMessageStore getInstance() {
+ 
+         return self;
+@@ -191,7 +194,7 @@
+     public List<QueueEntry> getMessagesFromUserQueue(long subscriptionID, AMQQueue queue, AMQProtocolSession session, int messageCount) {
+         List<QueueEntry> messages = null;
+         SimpleQueueEntryList list = new SimpleQueueEntryList(queue);
+-        String key = queue.getName() + "_" + subscriptionID + "_" + nodeId;
++        String key = queue.getName() + "_" + subscriptionID + "_" + clusterManager.getNodeId();
+         try {
+             messages = new ArrayList<QueueEntry>();
+ 
+@@ -277,8 +280,6 @@
+                 if (column instanceof HColumn) {
+                     String messageId = ((HColumn<String, byte[]>) column).getName();
+                     byte[] value = ((HColumn<Long, byte[]>) column).getValue();
+-
+-                    System.out.println("Message Id = " + messageId + " value :" + new String(value));
+                     CassandraQueueMessage msg
+                             = new CassandraQueueMessage(messageId, queueName, value);
+                     messages.add(msg);
+@@ -287,7 +288,6 @@
+         } catch (NumberFormatException e) {
+             e.printStackTrace();
+         } catch (Exception e) {
+-            System.out.println("error in reading from global queue = " + queueName);
+             e.printStackTrace();
+         }
+ 
+@@ -569,7 +569,9 @@
+                     HFactory.createColumn(messageId, message,stringSerializer, bs));
+             mutator.addInsertion(GLOBAL_QUEUE_LIST_ROW, GLOBAL_QUEUE_LIST_COLUMN_FAMILY,
+                     HFactory.createColumn(queue, queue,stringSerializer,stringSerializer));
+-            cassandraGlobalQueueManager.addGlobalQueue(queue);
++
++
++            clusterManager.handleQueueAddition(queue);
+             mutator.execute();
+         } catch (Exception e) {
+             e.printStackTrace();
+@@ -1083,7 +1085,8 @@
+     public void addUserQueueToGlobalQueue(String globalQueueName, String subscriptionId) {
+ 
+         try {
+-            String userQueueName = globalQueueName + "_" + subscriptionId + "_" + nodeId;
++            String userQueueName = globalQueueName + "_" + subscriptionId + "_" +
++                    clusterManager.getNodeId();
+             Mutator<String> qqMutator = HFactory.createMutator(keyspace, stringSerializer);
+             qqMutator.addInsertion(globalQueueName, GLOBAL_QUEUE_TO_USER_QUEUE_COLUMN_FAMILY,
+                     HFactory.createColumn(userQueueName, userQueueName, stringSerializer,
+@@ -1102,7 +1105,8 @@
+ 
+ 
+         try {
+-            String userQueueName = globalQueueName + "_" + subscriptionId + "_" + nodeId;
++            String userQueueName = globalQueueName + "_" + subscriptionId + "_" +
++                    clusterManager.getNodeId();
+             System.out.println("removing subscriptionId " + userQueueName +
+                     " from globalQueueName = " + globalQueueName);
+             Mutator<String> qqMutator = HFactory.createMutator(keyspace, stringSerializer);
+@@ -1129,37 +1133,22 @@
+         recoverMessages(recoveryHandler);
+     }
+ 
+-    private void performCommonConfiguration(Configuration configuration) {
++    private void performCommonConfiguration(Configuration configuration) throws Exception {
+         String userName = (String) configuration.getProperty(USERNAME_KEY);
+         String password = (String) configuration.getProperty(PASSWORD_KEY);
+         String hostName = (String) configuration.getProperty(HOST_KEY);
+         String port = (String) configuration.getProperty(PORT_KEY);
+         String clusterName = (String) configuration.getProperty(CLUSTER_KEY);
+-        String master = (String) configuration.getProperty(MASTER);
+-        String nodeId = (String) configuration.getProperty(NODE_ID);
+         String cleanUpInterval = (String) configuration.getProperty(CONTENT_REMOVING_INTERVAL);
++        String zookeeperPort = (String) configuration.getProperty(ZOOKEEPER_PORT);
++        String zookeeperHost = (String) configuration.getProperty(ZOOKEEPER_HOST);
+ 
+ 
+-        if (master != null) {
+-            masterNode = Boolean.parseBoolean(master);
+-        }
+-
+-        if (nodeId != null) {
+-            this.nodeId = Integer.parseInt(nodeId);
+-        }
+-
+-
+         cluster = createCluster(userName, password, clusterName, hostName, port);
+-        System.out.println("Master Node : " + master);
++        clusterManager = new ClusterManager(this,zookeeperHost,Integer.parseInt(zookeeperPort));
++        clusterManager.init();
+ 
+-        cassandraGlobalQueueManager = new CassandraGlobalQueueManager(this, 10);
+-
+-        if (masterNode) {
+-            cassandraGlobalQueueManager.start();
+-        }
+-
+         contentDeletionTasks = new LinkedList<Long>();
+-
+         int removalInterval = 1000;
+         if (cleanUpInterval != null) {
+             removalInterval = Integer.parseInt(cleanUpInterval);
+@@ -1187,7 +1176,8 @@
+         long timeStamp = ((MessageMetaData) metaData).getArrivalTime();
+ 
+         StringBuffer midStr = new StringBuffer();
+-        midStr.append(timeStamp).append(_messageId.incrementAndGet()).append(nodeId);
++        midStr.append(timeStamp).append(_messageId.incrementAndGet()).
++                append(clusterManager.getNodeId());
+         long mid = Long.parseLong(midStr.toString());
+         return new StoredCassandraMessage(mid, metaData);
+ 
+Index: src/main/java/org/apache/qpid/server/cassandra/CassandraGlobalQueueWorker.java
+===================================================================
+--- src/main/java/org/apache/qpid/server/cassandra/CassandraGlobalQueueWorker.java	(revision 11634)
++++ src/main/java/org/apache/qpid/server/cassandra/CassandraGlobalQueueWorker.java	(working copy)
+@@ -1,97 +0,0 @@
+-/*
+-*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+-*
+-*  WSO2 Inc. licenses this file to you under the Apache License,
+-*  Version 2.0 (the "License"); you may not use this file except
+-*  in compliance with the License.
+-*  You may obtain a copy of the License at
+-*
+-*    http://www.apache.org/licenses/LICENSE-2.0
+-*
+-* Unless required by applicable law or agreed to in writing,
+-* software distributed under the License is distributed on an
+-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+-* KIND, either express or implied.  See the License for the
+-* specific language governing permissions and limitations
+-* under the License.
+-*/
+-package org.apache.qpid.server.cassandra;
+-
+-import org.apache.qpid.server.store.CassandraMessage;
+-import org.apache.qpid.server.store.CassandraMessageStore;
+-
+-import java.util.List;
+-import java.util.Queue;
+-import java.util.Random;
+-
+-/**
+- * <code>CassandraGlobalQueueWorker</code> is responsible for polling global queues
+- * and distribute messages to the subscriber userQueues.
+- */
+-public class CassandraGlobalQueueWorker implements Runnable{
+-
+-
+-    private String globalQueueName;
+-    private boolean running;
+-    private CassendraSubscriptionManager  cassendraSubscriptionManager;
+-    private int messageCount;
+-    private CassandraMessageStore cassandraMessageStore;
+-
+-    public CassandraGlobalQueueWorker(String queueName ,
+-                                      CassandraMessageStore cassandraMessageStore ,
+-                                      int messageCount) {
+-        this.cassandraMessageStore = cassandraMessageStore;
+-        this.globalQueueName = queueName;
+-        this.cassendraSubscriptionManager = CassendraSubscriptionManager.getInstance();
+-        this.messageCount = messageCount;
+-    }
+-
+-    @Override
+-    public void run() {
+-
+-
+-        while (running) {
+-            /**
+-             * Steps
+-             *
+-             * 1)Poll Global queue and get chunk of messages
+-             * 2) Put messages one by one to user queues and delete them
+-             */
+-            Queue<CassandraQueueMessage> cassandraMessages =
+-                    cassandraMessageStore.getMessagesFromGlobalQueue(globalQueueName,messageCount);
+-            int size = cassandraMessages.size();
+-            List<String> subscriptions =
+-                        cassendraSubscriptionManager.getUserQueues(globalQueueName);
+-            if (subscriptions != null && subscriptions.size() > 0) {
+-                for (int i = 0; i < size; i++) {
+-
+-                    CassandraQueueMessage msg = cassandraMessages.poll();
+-                    System.out.println("Message received " + msg.toString());
+-
+-                    int random = new Random().nextInt(subscriptions.size());
+-                    System.out.println("Subscription size : " + subscriptions.size());
+-                    cassandraMessageStore.addMessageToUserQueue(
+-                            subscriptions.get(random),
+-                            msg.getMessageId(),
+-                            msg.getMessage());
+-
+-                    cassandraMessageStore.removeMessageFromGlobalQueue(globalQueueName,
+-                            msg.getMessageId());
+-
+-                }
+-            }
+-
+-
+-
+-        }
+-
+-    }
+-
+-    public boolean isRunning() {
+-        return running;
+-    }
+-
+-    public void setRunning(boolean running) {
+-        this.running = running;
+-    }
+-}
+Index: src/main/java/org/apache/qpid/server/cassandra/CassandraGlobalQueueManager.java
+===================================================================
+--- src/main/java/org/apache/qpid/server/cassandra/CassandraGlobalQueueManager.java	(revision 11634)
++++ src/main/java/org/apache/qpid/server/cassandra/CassandraGlobalQueueManager.java	(working copy)
+@@ -1,89 +0,0 @@
+-/*
+-*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+-*
+-*  WSO2 Inc. licenses this file to you under the Apache License,
+-*  Version 2.0 (the "License"); you may not use this file except
+-*  in compliance with the License.
+-*  You may obtain a copy of the License at
+-*
+-*    http://www.apache.org/licenses/LICENSE-2.0
+-*
+-* Unless required by applicable law or agreed to in writing,
+-* software distributed under the License is distributed on an
+-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+-* KIND, either express or implied.  See the License for the
+-* specific language governing permissions and limitations
+-* under the License.
+-*/
+-package org.apache.qpid.server.cassandra;
+-
+-import org.apache.qpid.server.store.CassandraMessageStore;
+-
+-import java.util.ArrayList;
+-import java.util.List;
+-import java.util.concurrent.ExecutorService;
+-import java.util.concurrent.Executors;
+-
+-/**
+- * <code>CassandraGlobalQueueManager</code> Manage the Global queues
+- */
+-public class CassandraGlobalQueueManager {
+-
+-    private List<String> queueNameList = new ArrayList<String>();
+-    private CassandraMessageStore cassandraMessageStore;
+-    private int syncInterval;
+-    private boolean running = false;
+-
+-    ExecutorService executorService ;
+-    public CassandraGlobalQueueManager(CassandraMessageStore store , int syncInterval) {
+-        this.cassandraMessageStore = store;
+-        this.syncInterval = syncInterval;
+-        this.executorService = Executors.newCachedThreadPool();
+-    }
+-
+-
+-    public void addGlobalQueue(String queueName) {
+-        if(!queueNameList.contains(queueName)) {
+-            queueNameList.add(queueName);
+-            scheduleWork(queueName);
+-        }
+-    }
+-
+-
+-    public void start() {
+-        running = true;
+-        Thread t = new Thread(new GlobalQueueDetailSynchronizingTask());
+-        t.start();
+-    }
+-
+-    private class GlobalQueueDetailSynchronizingTask implements Runnable{
+-
+-        @Override
+-        public void run() {
+-            while (running) {
+-                List<String> queueNames = cassandraMessageStore.getGlobalQueues();
+-                for(String updatedName : queueNames) {
+-                    if(!queueNameList.contains(updatedName)) {
+-                        queueNameList.add(updatedName);
+-                        scheduleWork(updatedName);
+-                    }
+-                }
+-                try {
+-                    Thread.sleep(syncInterval*1000);
+-                } catch (InterruptedException e) {
+-                    // log this
+-                    e.printStackTrace();
+-                }
+-
+-                //TODO handle queue removal
+-            }
+-        }
+-    }
+-
+-    private void scheduleWork(String queueName) {
+-        CassandraGlobalQueueWorker worker = new CassandraGlobalQueueWorker(queueName,cassandraMessageStore,20);
+-        worker.setRunning(true);
+-        executorService.execute(worker);
+-    }
+-
+-}

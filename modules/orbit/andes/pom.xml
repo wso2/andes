@@ -1,0 +1,196 @@
+<!--
+ ~ Copyright (c) 2005-2011, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ ~
+ ~ WSO2 Inc. licenses this file to you under the Apache License,
+ ~ Version 2.0 (the "License"); you may not use this file except
+ ~ in compliance with the License.
+ ~ You may obtain a copy of the License at
+ ~
+ ~    http://www.apache.org/licenses/LICENSE-2.0
+ ~
+ ~ Unless required by applicable law or agreed to in writing,
+ ~ software distributed under the License is distributed on an
+ ~ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ ~ KIND, either express or implied.  See the License for the
+ ~ specific language governing permissions and limitations
+ ~ under the License.
+ -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+  <parent>
+          <groupId>org.wso2.andes</groupId>
+          <artifactId>andes-parent</artifactId>
+          <version>3.0.0-SNAPSHOT</version>
+           <relativePath>../../../pom.xml</relativePath>
+    </parent> 
+
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.wso2.andes.wso2</groupId>
+    <artifactId>andes</artifactId>
+    <packaging>bundle</packaging>
+    <name>WSO2 Carbon - Orbit - andes</name>
+    <description>This bundle exports packages from andes jar files</description>
+    <url>http://wso2.org</url>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.wso2.andes</groupId>
+            <artifactId>andes-client</artifactId>
+            <version>${andes.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.andes</groupId>
+            <artifactId>andes-broker</artifactId>
+            <version>${andes.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.andes</groupId>
+            <artifactId>andes-common</artifactId>
+            <version>${andes.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.andes</groupId>
+            <artifactId>andes-management-common</artifactId>
+            <version>${andes.version}</version>
+            <optional>true</optional>
+    	</dependency>
+        <dependency>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+	    <version>${version.commons.logging}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>commons-configuration.wso2</groupId>
+                <artifactId>commons-configuration</artifactId>
+                <version>${commons-configuration.version}.wso2v1</version>
+                <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.geronimo.specs.wso2</groupId>
+            <artifactId>geronimo-jms_1.1_spec</artifactId>
+            <version>${geronimo-jms_1.1_spec.version}.wso2v1</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.mina</groupId>
+            <artifactId>mina-core</artifactId>
+            <version>${mina-core.version}</version>
+            <optional>true</optional>
+            <exclusions>
+                <exclusion>
+                    <groupId>backport-util-concurrent</groupId>
+                    <artifactId>backport-util-concurrent</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+		<dependency>
+			<groupId>org.apache.mina</groupId>
+			<artifactId>mina-filter-ssl</artifactId>
+			<version>${mina-filter-ssl.version}</version>
+		</dependency>
+	<dependency>
+	    <groupId>org.apache.derby</groupId>
+	    <artifactId>derby</artifactId>
+	    <version>${derby.version}</version> 
+	    <optional>true</optional>
+	</dependency>
+        <dependency>
+            <groupId>org.eclipse.osgi</groupId>
+	    <artifactId>org.eclipse.osgi</artifactId>
+	    <version>3.5.0.v20090520</version>
+	    <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.osgi</groupId>
+	    <artifactId>org.eclipse.osgi.services</artifactId>
+	    <version>3.2.0.v20090520-1800</version>
+	    <optional>true</optional>
+        </dependency>
+        <!--MQTT Dependencies -->
+         <dependency>
+            <groupId>org.fusesource.hawtdb</groupId>
+            <artifactId>hawtdb</artifactId>
+            <version>1.6</version>
+        </dependency>        
+        <dependency>
+            <groupId>org.fusesource.hawtbuf</groupId>
+            <artifactId>hawtbuf</artifactId>
+            <version>1.9</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
+                        <Bundle-Name>${project.artifactId}</Bundle-Name>
+                        <Private-Package>org.wso2.andes.wso2.internal.*</Private-Package>
+                        <Export-Package>
+                            !org.wso2.andes.wso2.internal.*,
+                            !org.apache.log4j.xml.*,
+                            org.wso2.andes.wso2.service.*,
+			    org.apache.mina.transport.vmpipe;-split-package:=merge-last,
+			    org.apache.derby.jdbc,
+                            org.wso2.andes.*;-split-package:=merge-last,
+			    org.apache.mina.*;-split-package:=merge-last,
+                            org.dna.mqtt.*;-split-package:=merge-last
+                        </Export-Package>
+                        <Import-Package>
+                            !org.wso2.andes.*,
+			    !org.apache.derby.*,
+                            org.apache.commons.cli.*;version="1.2",
+                            org.apache.commons.configuration.*;version="1.6",
+                            org.apache.commons.lang.*;version="2.3",
+                            org.apache.commons.logging.*,
+			    com.datastax.driver.core.*;version="1.0.5.wso2v1",	
+			    com.google.common.util.concurrent;version="[13.0.1,13.1.0)", 		
+			    org.wso2.carbon.andes.authentication.andes,
+			    *;resolution:=optional	
+                        </Import-Package>
+                        <Embed-Dependency>mina-core|derby|hawtdb|hawtbuf;scope=compile|runtime;inline=false;</Embed-Dependency>                      
+			<Include-Resource>src/main/resources</Include-Resource>
+			<Bundle-Activator>org.wso2.andes.wso2.internal.QpidBundleActivator</Bundle-Activator>
+		    </instructions>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!--<repositories>
+        <repository>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>daily</updatePolicy>
+                <checksumPolicy>ignore</checksumPolicy>
+            </snapshots>
+            <id>wso2-maven2-snapshot-repository</id>
+            <name>WSO2 Maven2 Snapshot Repository</name>
+            <url>http://dist.wso2.org/snapshots/maven2/</url>
+            <layout>default</layout>
+        </repository>
+    </repositories>-->
+
+    <properties>
+        <commons-cli.version>1.2.0</commons-cli.version>
+        <commons-configuration.version>1.6.0</commons-configuration.version>
+        <commons-lang.version>2.3.0</commons-lang.version>
+        <geronimo-jms_1.1_spec.version>1.1.0</geronimo-jms_1.1_spec.version>
+        <mina-core.version>1.1.7</mina-core.version>
+	    <mina-filter-ssl.version>1.1.7</mina-filter-ssl.version>
+        <derby.version>10.4.2.0</derby.version>
+	    <version.commons.logging>1.1.1</version.commons.logging>
+    </properties>
+
+</project>

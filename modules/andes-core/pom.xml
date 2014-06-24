@@ -1,0 +1,686 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Licensed to the Apache Software Foundation (ASF) under one
+  ~ or more contributor license agreements. See the NOTICE file
+  ~ distributed with this work for additional information
+  ~ regarding copyright ownership. The ASF licenses this file
+  ~ to you under the Apache License, Version 2.0 (the
+  ~ "License"); you may not use this file except in compliance
+  ~ with the License. You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing,
+  ~ software distributed under the License is distributed on an
+  ~ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  ~ KIND, either express or implied. See the License for the
+  ~ specific language governing permissions and limitations
+  ~ under the License.
+  -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+
+    <parent>
+	  <groupId>org.wso2.andes</groupId>
+	  <artifactId>andes-parent</artifactId>
+          <version>3.0.0-SNAPSHOT</version>
+           <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.apache.andes</groupId>
+    <artifactId>andes</artifactId>
+    <packaging>pom</packaging>
+    <name>WSO2 Carbon - Dependencies - Andes</name>
+
+    <dependencies>
+    	<dependency>
+          <groupId>biz.aQute</groupId>
+          <artifactId>bnd</artifactId>
+        </dependency>
+
+	<dependency>
+          <groupId>org.apache.cassandra</groupId>
+          <artifactId>cassandra-all</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.apache.cassandra</groupId>
+          <artifactId>cassandra-javautils</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.apache.cassandra</groupId>
+          <artifactId>cassandra-thrift</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>com.ibm.icu</groupId>
+          <artifactId>icu4j</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>commons-beanutils</groupId>
+          <artifactId>commons-beanutils-core</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>commons-cli</groupId>
+          <artifactId>commons-cli</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.directory.studio</groupId>
+            <artifactId>org.apache.commons.codec</artifactId>
+        </dependency>
+
+	<dependency>
+          <groupId>commons-collections</groupId>
+          <artifactId>commons-collections</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>commons-configuration</groupId>
+          <artifactId>commons-configuration</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>commons-digester</groupId>
+          <artifactId>commons-digester</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.directory.studio</groupId>
+            <artifactId>org.apache.commons.lang</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.directory.studio</groupId>
+            <artifactId>org.apache.commons.logging</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>commons-logging</groupId>
+          <artifactId>commons-logging-api</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>commons-pool</groupId>
+          <artifactId>commons-pool</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.apache.derby</groupId>
+          <artifactId>derby</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.sun.xml.fastinfoset</groupId>
+            <artifactId>FastInfoset</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.apache.geronimo.specs</groupId>
+          <artifactId>geronimo-jms_1.1_spec</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </dependency>
+        
+        <dependency>
+	<groupId>org.hectorclient</groupId>
+	<artifactId>hector-core</artifactId>
+	</dependency>
+            
+        <dependency>
+            <groupId>com.github.stephenc.high-scale-lib</groupId>
+            <artifactId>high-scale-lib</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>javacc</groupId>
+            <artifactId>javacc</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mortbay.jetty</groupId>
+            <artifactId>org.mortbay.jetty</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mortbay.jetty</groupId>
+            <artifactId>jetty-servlet-tester</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mortbay.jetty</groupId>
+            <artifactId>jetty-util</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.json</groupId>
+          <artifactId>json</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.slf4j</groupId>
+          <artifactId>jul-to-slf4j</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>junit</groupId>
+          <artifactId>junit</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.apache.thrift</groupId>
+          <artifactId>libthrift</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.apache.maven</groupId>
+          <artifactId>maven-ant-tasks</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.apache.mina</groupId>
+          <artifactId>mina-core</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.apache.mina</groupId>
+          <artifactId>mina-filter-ssl</artifactId>
+        </dependency>
+        <dependency>
+                <groupId>com.googlecode.disruptor</groupId>
+                <artifactId>disruptor</artifactId>
+        </dependency>
+
+        <dependency>
+  		<groupId>com.datastax.cassandra</groupId>
+  		<artifactId>cassandra-driver-core</artifactId>
+	</dependency>	
+
+<!--eclipse set-->
+
+        <dependency>
+          <groupId>org.eclipse.core</groupId>
+          <artifactId>org.eclipse.core.commands</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.eclipse.core</groupId>
+          <artifactId>org.eclipse.core.contenttype</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.eclipse.core.databinding</groupId>
+          <artifactId>beans</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.eclipse.core</groupId>
+          <artifactId>org.eclipse.core.expressions</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse.core</groupId>
+            <artifactId>jobs</artifactId>
+        </dependency>
+
+
+        <dependency>
+          <groupId>org.eclipse.core</groupId>
+          <artifactId>org.eclipse.core.runtime</artifactId>
+        </dependency>
+
+         <dependency>
+           <groupId>org.eclipse.equinox</groupId>
+           <artifactId>app</artifactId>
+        </dependency>
+        <dependency>
+          <groupId>org.eclipse.equinox</groupId>
+          <artifactId>org.eclipse.equinox.app</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.eclipse.equinox</groupId>
+          <artifactId>org.eclipse.equinox.common</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse.equinox</groupId>
+            <artifactId>registry</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse</groupId>
+            <artifactId>help</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse</groupId>
+            <artifactId>jface</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse</groupId>
+            <artifactId>osgi</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.eclipse.swt.carbon</groupId>
+          <artifactId>macosx</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.eclipse.swt.gtk.linux</groupId>
+          <artifactId>x86</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.eclipse.swt.gtk.linux</groupId>
+          <artifactId>x86_64</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.eclipse.swt.gtk.solaris</groupId>
+          <artifactId>sparc</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.eclipse.swt.win32.win32</groupId>
+          <artifactId>x86</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse</groupId>
+            <artifactId>swt</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse.ui</groupId>
+            <artifactId>forms</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse.ui</groupId>
+            <artifactId>workbench</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse</groupId>
+            <artifactId>ui</artifactId>
+        </dependency>
+
+<!-- end of eclipse set-->
+
+
+        <dependency>
+          <groupId>org.perf4j</groupId>
+          <artifactId>perf4j</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-log4j12</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>com.ecyrd.speed4j</groupId>
+          <artifactId>speed4j</artifactId>
+        </dependency>
+
+        <dependency>
+        <groupId>com.eaio.uuid</groupId>
+        <artifactId>uuid</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>velocity</groupId>
+          <artifactId>velocity</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>xalan</groupId>
+          <artifactId>xalan</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.apache.zookeeper</groupId>
+          <artifactId>zookeeper</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>org.apache.ant</groupId>
+          <artifactId>ant</artifactId>
+        </dependency>
+
+        <!--MQTT Dependencies-->
+        <dependency>
+		<groupId>io.netty</groupId>
+		<artifactId>netty-all</artifactId>
+		<optional>true</optional>
+       </dependency>
+
+
+       <dependency>
+            <groupId>org.fusesource.hawtdb</groupId>
+            <artifactId>hawtdb</artifactId>
+        </dependency> 
+       
+        <dependency>
+            <groupId>org.fusesource.hawtbuf</groupId>
+            <artifactId>hawtbuf</artifactId>
+        </dependency>
+     
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.jvnet.maven.incrementalbuild</groupId>
+                <artifactId>incremental-build-plugin</artifactId>
+                <version>1.3</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>incremental-build</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.6</version>
+                <executions>
+                    <execution>
+                        <id>compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <property name="java2.class.path"
+                                          refid="maven.dependency.classpath"/>s
+                                <ant antfile="${basedir}/build.xml">
+                                    <target name="build"/>
+                                </ant>
+                            </target>
+                            <!--target>
+                              <exec
+                                dir="${basedir}/andes-core"
+                                executable="ant"
+                                failonerror="true">
+                        <arg line="clean"/>
+                              </exec>
+                      <exec
+                                dir="${basedir}/andes-core"
+                                executable="ant"
+                                failonerror="true">
+                              </exec>
+                            </target-->
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>2.1</version>
+                <executions>
+                    <execution>
+                        <!-- This copies the dependencies so that they can be located by Qpid -->
+                        <id>copy-dependencies</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>lib</outputDirectory>
+                            <overWriteReleases>false</overWriteReleases>
+                            <overWriteSnapshots>false</overWriteSnapshots>
+                            <overWriteIfNewer>true</overWriteIfNewer>
+                        </configuration>
+                    </execution>
+                    <!--copy javacc_version as javacc-->
+                    <execution>
+                        <id>copy</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                          <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                              <artifactItem>
+                                 <groupId>javacc</groupId>
+                                 <artifactId>javacc</artifactId>
+                                 <version>3.2</version>
+                                 <type>jar</type>
+                                 <overWrite>false</overWrite>
+                                 <outputDirectory>lib</outputDirectory>
+                                 <destFileName>javacc.jar</destFileName>
+                               </artifactItem>
+                             </artifactItems>
+                        </configuration>
+                      </execution>
+
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-install-plugin</artifactId>
+                <version>2.2</version>
+                <executions>
+                    <execution>
+                        <id>install-client</id>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>install-file</goal>
+                        </goals>
+                        <configuration>
+                            <groupId>org.wso2.andes</groupId>
+                            <artifactId>andes-client</artifactId>
+                            <version>${andes.version}</version>
+                            <packaging>jar</packaging>
+                            <file>build/lib/qpid-client-${andes.version}.jar</file>
+                            <generatePom>true</generatePom>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>install-broker</id>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>install-file</goal>
+                        </goals>
+                        <configuration>
+                            <groupId>org.wso2.andes</groupId>
+                            <artifactId>andes-broker</artifactId>
+                            <version>${andes.version}</version>
+                            <packaging>jar</packaging>
+                            <file>build/lib/qpid-broker-${andes.version}.jar</file>
+                            <generatePom>true</generatePom>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>install-common</id>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>install-file</goal>
+                        </goals>
+                        <configuration>
+                            <groupId>org.wso2.andes</groupId>
+                            <artifactId>andes-common</artifactId>
+                            <version>${andes.version}</version>
+                            <packaging>jar</packaging>
+                            <file>build/lib/qpid-common-${andes.version}.jar</file>
+                            <generatePom>true</generatePom>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>install-management-common</id>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>install-file</goal>
+                        </goals>
+                        <configuration>
+                            <groupId>org.wso2.andes</groupId>
+                            <artifactId>andes-management-common</artifactId>
+                            <version>${andes.version}</version>
+                            <packaging>jar</packaging>
+                            <file>build/lib/qpid-management-common-${andes.version}.jar</file>
+                            <generatePom>true</generatePom>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>2.5</version>
+                <executions>
+                    <execution>
+                        <id>deploy-client</id>
+                        <phase>deploy</phase>
+                        <goals>
+                            <goal>deploy-file</goal>
+                        </goals>
+                        <configuration>
+                        <groupId>org.wso2.andes</groupId>
+                        <artifactId>andes-client</artifactId>
+                        <version>${andes.version}</version>
+                        <packaging>jar</packaging>
+                        <file>build/lib/qpid-client-${andes.version}.jar</file>
+                        <generatePom>true</generatePom>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>deploy-broker</id>
+                        <phase>deploy</phase>
+                        <goals>
+                            <goal>deploy-file</goal>
+                        </goals>
+                        <configuration>
+                            <groupId>org.wso2.andes</groupId>
+                            <artifactId>andes-broker</artifactId>
+                            <version>${andes.version}</version>
+                            <packaging>jar</packaging>
+                            <file>build/lib/qpid-broker-${andes.version}.jar</file>
+                            <generatePom>true</generatePom>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>deploy-common</id>
+                        <phase>deploy</phase>
+                        <goals>
+                            <goal>deploy-file</goal>
+                        </goals>
+                        <configuration>
+                            <groupId>org.wso2.andes</groupId>
+                            <artifactId>andes-common</artifactId>
+                            <version>${andes.version}</version>
+                            <packaging>jar</packaging>
+                            <file>build/lib/qpid-common-${andes.version}.jar</file>
+                            <generatePom>true</generatePom>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>deploy-management-common</id>
+                        <phase>deploy</phase>
+                        <goals>
+                            <goal>deploy-file</goal>
+                        </goals>
+                        <configuration>
+                            <groupId>org.wso2.andes</groupId>
+                            <artifactId>andes-management-common</artifactId>
+                            <version>${andes.version}</version>
+                            <packaging>jar</packaging>
+                            <file>build/lib/qpid-management-common-${andes.version}.jar</file>
+                            <generatePom>true</generatePom>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>2.4.1</version>
+                <configuration>
+                    <followSymLinks>false</followSymLinks>
+                    <filesets>
+                        <fileset>
+                            <directory>build</directory>
+                        </fileset>
+                        <fileset>
+                            <directory>release</directory>
+                        </fileset>
+                        <fileset>
+                            <directory>tasks/classes</directory>
+                        </fileset>
+                    </filesets>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+ 
+    <repositories>
+        <repository>
+            <id>wso2-nexus</id>
+            <name>WSO2 internal Repository</name>
+            <url>http://maven.wso2.org/nexus/content/groups/wso2-public/</url>
+            <releases>
+                <enabled>true</enabled>
+                <updatePolicy>daily</updatePolicy>
+                <checksumPolicy>ignore</checksumPolicy>
+            </releases>
+        </repository>
+        <repository>
+            <id>com.springsource.repository.bundles.release</id>
+            <name>SpringSource Enterprise Bundle Repository - SpringSource Bundle Releases</name>
+            <url>http://repository.springsource.com/maven/bundles/release</url>
+        </repository>
+        <repository>
+            <id>com.springsource.repository.bundles.external</id>
+            <name>SpringSource Enterprise Bundle Repository - External Bundle Releases</name>
+            <url>http://repository.springsource.com/maven/bundles/external</url>
+        </repository>
+       <repository>
+            <id>jboss-maven-repository</id>
+            <name>JBoss Maven Repository </name>
+            <url>http://repository.jboss.org/nexus/content/groups/public/</url>
+        </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>repository.dev.java.net-maven2</id>
+            <name>Java.net Repository for Maven</name>
+            <url>http://download.java.net/maven/2/</url>
+            <layout>default</layout>
+        </pluginRepository>
+    </pluginRepositories>
+
+</project>

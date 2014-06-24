@@ -1,0 +1,145 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+backport-util-concurrent=lib/backport-util-concurrent-2.2.jar
+
+commons-beanutils-core=lib/commons-beanutils-core-1.8.0.jar
+commons-cli=lib/commons-cli-1.0.jar
+commons-codec=lib/commons-codec-1.3.jar
+commons-collections=lib/commons-collections-3.2.jar
+commons-configuration=lib/commons-configuration-1.6.jar
+commons-digester=lib/commons-digester-1.8.1.jar
+commons-lang=lib/commons-lang-2.2.jar
+commons-logging=lib/commons-logging-1.0.4.jar
+
+derby-db=lib/derby-10.6.1.0.jar
+
+geronimo-jms=lib/geronimo-jms_1.1_spec-1.0.jar
+
+junit=lib/junit-3.8.1.jar
+
+log4j=lib/log4j-1.2.12.jar
+
+mina-core=lib/mina-core-1.0.1.jar
+mina-filter-ssl=lib/mina-filter-ssl-1.0.1.jar
+
+slf4j-api=lib/slf4j-api-1.6.1.jar
+slf4j-log4j=lib/slf4j-log4j12-1.6.1.jar
+
+xalan=lib/xalan-2.7.0.jar
+
+jetty=lib/jetty-6.1.14.jar
+jetty-util=lib/jetty-util-6.1.14.jar
+jetty-servlet-tester=lib/jetty-servlet-tester-6.1.14.jar
+servlet-api=lib/servlet-api.jar
+
+osgi-core=lib/org.osgi.core-1.0.0.jar
+felix-framework=lib/org.apache.felix.framework-2.0.5.jar
+
+felix.libs=${osgi-core} ${felix-framework}
+
+commons-configuration.libs = ${commons-beanutils-core} ${commons-digester} \
+  ${commons-codec} ${commons-lang} ${commons-collections} ${commons-configuration}
+
+common.libs=${slf4j-api} ${backport-util-concurrent} ${mina-core} ${mina-filter-ssl} 
+client.libs=${geronimo-jms}
+tools.libs=${commons-configuration.libs} ${log4j}
+broker.libs=${commons-cli} ${commons-logging} ${log4j} ${slf4j-log4j} \
+    ${xalan} ${felix.libs} ${derby-db} ${commons-configuration.libs}
+
+broker-plugins.libs=${felix.libs} ${log4j} ${commons-configuration.libs}
+
+junit-toolkit.libs=${log4j} ${junit} ${slf4j-api}
+test.libs=${slf4j-log4j} ${junit-toolkit.libs}
+testkit.libs=${log4j}
+
+ibm-icu=lib/com.ibm.icu_3.8.1.v20080530.jar
+ecl-core-jface=lib/org.eclipse.jface_3.4.1.M20080827-2000.jar
+ecl-core-jface-databinding=lib/org.eclipse.jface.databinding_1.2.1.M20080827-0800a.jar
+ecl-core-commands=lib/org.eclipse.core.commands_3.4.0.I20080509-2000.jar
+ecl-core-contenttype=lib/org.eclipse.core.contenttype_3.3.0.v20080604-1400.jar
+ecl-core-databinding=lib/org.eclipse.core.databinding_1.1.1.M20080827-0800b.jar
+ecl-core-expressions=lib/org.eclipse.core.expressions_3.4.0.v20080603-2000.jar
+ecl-core-jobs=lib/org.eclipse.core.jobs_3.4.0.v20080512.jar
+ecl-core-runtime=lib/org.eclipse.core.runtime_3.4.0.v20080512.jar
+ecl-core-runtime-compat-registry=lib/org.eclipse.core.runtime.compatibility.registry_3.2.200.v20080610/**
+ecl-equinox-app=lib/org.eclipse.equinox.app_1.1.0.v20080421-2006.jar
+ecl-equinox-common=lib/org.eclipse.equinox.common_3.4.0.v20080421-2006.jar
+ecl-equinox-launcher=lib/org.eclipse.equinox.launcher_1.0.101.R34x_v20080819.jar
+ecl-equinox-prefs=lib/org.eclipse.equinox.preferences_3.2.201.R34x_v20080709.jar
+ecl-equinox-registry=lib/org.eclipse.equinox.registry_3.4.0.v20080516-0950.jar
+ecl-help=lib/org.eclipse.help_3.3.101.v20080702_34x.jar
+ecl-osgi=lib/org.eclipse.osgi_3.4.2.R34x_v20080826-1230.jar
+ecl-swt=lib/org.eclipse.swt_3.4.1.v3449c.jar
+ecl-ui=lib/org.eclipse.ui_3.4.1.M20080910-0800.jar
+ecl-ui-forms=lib/org.eclipse.ui.forms_3.3.101.v20080708_34x.jar
+ecl-ui-workbench=lib/org.eclipse.ui.workbench_3.4.1.M20080827-0800a.jar
+apache-commons-codec=lib/org.apache.commons.codec_1.3.0.v20080530-1600.jar
+
+ecl-swt-win32-win32-x86=lib/org.eclipse.swt.win32.win32.x86_3.4.1.v3449c.jar
+ecl-equinox-launcher-win32-win32-x86=lib/org.eclipse.equinox.launcher.win32.win32.x86_1.0.101.R34x_v20080731/**
+ecl-swt-linux-gtk-x86=lib/org.eclipse.swt.gtk.linux.x86_3.4.1.v3449c.jar
+ecl-equinox-launcher-linux-gtk-x86=lib/org.eclipse.equinox.launcher.gtk.linux.x86_1.0.101.R34x_v20080805/**
+ecl-swt-linux-gtk-x86_64=lib/org.eclipse.swt.gtk.linux.x86_64_3.4.1.v3449c.jar
+ecl-equinox-launcher-linux-gtk-x86_64=lib/org.eclipse.equinox.launcher.gtk.linux.x86_64_1.0.101.R34x_v20080731/**
+ecl-swt-macosx-carbon=lib/org.eclipse.swt.carbon.macosx_3.4.1.v3449c.jar
+ecl-equinox-launcher-macosx-carbon=lib/org.eclipse.equinox.launcher.carbon.macosx_1.0.101.R34x_v20080731/**
+ecl-swt-solaris-gtk-sparc=lib/org.eclipse.swt.gtk.solaris.sparc_3.4.1.v3449c.jar
+ecl-equinox-launcher-solaris-gtk-sparc=lib/org.eclipse.equinox.launcher.gtk.solaris.sparc_1.0.101.R34x_v20080731/**
+
+management-common.libs=
+
+management-eclipse-plugin-win32-win32-x86.libs=${management-eclipse-plugin.core-libs} \
+    ${ecl-swt-win32-win32-x86} ${ecl-equinox-launcher-win32-win32-x86}
+management-eclipse-plugin-linux-gtk-x86.libs=${management-eclipse-plugin.core-libs} \
+    ${ecl-swt-linux-gtk-x86} ${ecl-equinox-launcher-linux-gtk-x86}
+management-eclipse-plugin-linux-gtk-x86_64.libs=${management-eclipse-plugin.core-libs} \
+    ${ecl-swt-linux-gtk-x86_64} ${ecl-equinox-launcher-linux-gtk-x86_64}
+management-eclipse-plugin-macosx.libs=${management-eclipse-plugin.core-libs} \
+    ${ecl-swt-macosx-carbon} ${ecl-equinox-launcher-macosx-carbon}
+management-eclipse-plugin-solaris-gtk-sparc.libs=${management-eclipse-plugin.core-libs} \
+    ${ecl-swt-solaris-gtk-sparc} ${ecl-equinox-launcher-solaris-gtk-sparc}
+
+management-eclipse-plugin.core-libs=${ibm-icu} ${ecl-core-jface} ${ecl-core-jface-databinding} \
+    ${ecl-core-commands} ${ecl-core-contenttype} ${ecl-core-databinding} ${ecl-core-expressions} \
+    ${ecl-core-jobs} ${ecl-core-runtime} ${ecl-core-runtime-compat-registry} ${ecl-equinox-app} \
+    ${ecl-equinox-common} ${ecl-equinox-launcher} ${ecl-equinox-prefs} ${ecl-equinox-registry} \
+    ${ecl-help} ${ecl-osgi} ${ecl-swt} ${ecl-ui} ${ecl-ui-forms} ${ecl-ui-workbench} ${apache-commons-codec}
+    
+management-eclipse-plugin.platform-libs=${ecl-equinox-launcher-win32-win32-x86} \
+    ${ecl-equinox-launcher-linux-gtk-x86} ${ecl-equinox-launcher-macosx-carbon} \
+    ${ecl-swt-win32-win32-x86} ${ecl-swt-linux-gtk-x86} ${ecl-swt-macosx-carbon} \
+    ${ecl-swt-linux-gtk-x86_64} ${ecl-equinox-launcher-linux-gtk-x86_64} \
+    ${ecl-swt-solaris-gtk-sparc} ${ecl-equinox-launcher-solaris-gtk-sparc}
+
+management-eclipse-plugin.libs=${management-eclipse-plugin.core-libs} ${management-eclipse-plugin.platform-libs}
+    
+common.test.libs=${test.libs}
+broker.test.libs=${test.libs}
+client.test.libs=${test.libs}
+client-example.test.libs=${test.libs}
+tools.test.libs=
+testkit.test.libs=${test.libs}
+systests.libs=${test.libs}
+
+broker-plugins.test.libs=${test.libs} 
+broker-plugins-experimental-info.test.libs=${test.libs} ${servlet-api} ${jetty} ${jetty-util} ${jetty-servlet-tester}
+
+management-eclipse-plugin.test.libs=${systests.libs}
+management-common.test.libs=${test.libs}

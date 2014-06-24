@@ -1,0 +1,6 @@
+----------------------------------------------------------------
+2011-10-10 09:20:24.750 GMT:
+ Booting Derby version The Apache Software Foundation - Apache Derby - 10.6.1.0 - (938214): instance a816c00e-0132-ed22-0dd6-000005e6c470 
+on database directory /home/charith/development/research/qpid-project/derbyDB/carbon   with class loader sun.misc.Launcher$AppClassLoader@32f4a24a
+
+Database Class Loader started - derby.database.classpath=''
