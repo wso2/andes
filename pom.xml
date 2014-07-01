@@ -235,11 +235,11 @@
                 <version>2.10.4-wso2v2</version>
         </dependency>
 
-        <dependency>
-  		<groupId>com.datastax.cassandra</groupId>
-  		<artifactId>cassandra-driver-core</artifactId>
-  		<version>1.0.7</version>
-	</dependency>	
+       <dependency>
+            <groupId>com.datastax.cassandra.wso2</groupId>
+            <artifactId>cql-driver</artifactId>
+            <version>1.0.5.wso2v1</version>
+        </dependency>
 
 <!--eclipse set-->
 

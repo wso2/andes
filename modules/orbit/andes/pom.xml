@@ -125,8 +125,8 @@
         </dependency>
 	<dependency>
             <groupId>com.datastax.cassandra.wso2</groupId>
-            <artifactId>cassandra-driver-core</artifactId>
-            <version>2.0.1.wso2v1</version>
+            <artifactId>cql-driver</artifactId>
+            <version>1.0.5.wso2v1</version>
         </dependency>
     </dependencies>
 
@@ -159,7 +159,7 @@
                             org.apache.commons.configuration.*;version="1.6",
                             org.apache.commons.lang.*;version="2.3",
                             org.apache.commons.logging.*,
-			    com.datastax.cassandra.*;version="2.0.1.wso2v1",	
+			    com.datastax.cassandra.*;version="1.0.5.wso2v1",	
 			    com.google.common.util.concurrent;version="[13.0.1,13.1.0)", 		
 			    org.wso2.carbon.andes.authentication.andes,
 			    *;resolution:=optional	
