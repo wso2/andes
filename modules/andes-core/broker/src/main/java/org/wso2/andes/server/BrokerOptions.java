@@ -33,9 +33,9 @@ public class BrokerOptions
     /** serialVersionUID */
     private static final long serialVersionUID = 8051825964945442234L;
     public static final String DEFAULT_CONFIG_FILE = "etc/config.xml";
-    public static final String DEFAULT_ANDES_CONFIG_FILE = "qpid-config.xml";
+    public static final String DEFAULT_ANDES_CONFIG_FILE = "andes-config.xml";
     public static final String DEFAULT_LOG_CONFIG_FILE = "etc/log4j.xml";
-    public static final String QPID_HOME = "QPID_HOME";
+    public static final String ANDES_HOME = "ANDES_HOME";
 
     public static final String PORTS = "p";
     public static final String SSL_PORTS = "s";
@@ -110,7 +110,7 @@ public class BrokerOptions
 
     public String getQpidHome()
     {
-        return System.getProperty(QPID_HOME);
+        return System.getProperty(ANDES_HOME);
     }
 
     public Set<Integer> getExcludedPorts(final ProtocolExclusion excludeProtocol)

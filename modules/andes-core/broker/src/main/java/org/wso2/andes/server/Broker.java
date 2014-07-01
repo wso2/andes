@@ -311,7 +311,7 @@ public class Broker
 
             if (qpidHome == null)
             {
-                error = error + "\nNote: " + BrokerOptions.QPID_HOME + " is not set.";
+                error = error + "\nNote: " + BrokerOptions.ANDES_HOME + " is not set.";
             }
 
             throw new InitException(error, null);
