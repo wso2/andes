@@ -213,7 +213,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
     /**
      * The period to wait while flow controlled before declaring a failure
      */
-    public static final long DEFAULT_FLOW_CONTROL_WAIT_FAILURE = Long.parseLong(System.getProperty("qpid.flow_control_wait_failure", "120000"));
+    public static final long DEFAULT_FLOW_CONTROL_WAIT_FAILURE = 120000L;
     protected final long FLOW_CONTROL_WAIT_FAILURE = Long.getLong("qpid.flow_control_wait_failure",
                                                                   DEFAULT_FLOW_CONTROL_WAIT_FAILURE);
 
