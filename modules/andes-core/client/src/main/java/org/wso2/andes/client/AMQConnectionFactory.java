@@ -312,6 +312,18 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
                 {
                     _connectionDetails.setClientName(getUniqueClientID());
                 }
+
+                // if connection needs to be encrypted using SSL, ConnectionURL must have ssl=true enabled. We first check that  option
+                // here and if 'ssl=true' SSLConfiguration is generated.
+                /*if(_connectionDetails.getSslEnabled() != null && Boolean.parseBoolean(_connectionDetails.getSslEnabled())){
+
+                    _sslConfig = new SSLConfiguration();
+                    _sslConfig.setKeystorePath(_connectionDetails.getKeyStore());
+                    _sslConfig.setKeystorePassword(_connectionDetails.getKeyStorePassword());
+                    _sslConfig.setTrustStorePath(_connectionDetails.getTrustStore());
+                    _sslConfig.setTrustStorePassword(_connectionDetails.getTrustStorePassword());
+
+                }*/
                 return new AMQConnection(_connectionDetails, _sslConfig);
             }
             else
@@ -325,6 +337,7 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
             JMSException jmse = new JMSException("Error creating connection: " + e.getMessage());
             jmse.setLinkedException(e);
             jmse.initCause(e);
+            e.printStackTrace();
             throw jmse;
         }
 

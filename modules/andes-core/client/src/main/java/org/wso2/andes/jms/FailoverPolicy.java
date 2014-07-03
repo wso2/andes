@@ -35,7 +35,7 @@ public class FailoverPolicy
 
     private static final long MINUTE = 60000L;
 
-    private static final long DEFAULT_METHOD_TIMEOUT = 1 * MINUTE;
+    private static final long DEFAULT_METHOD_TIMEOUT = 5 * MINUTE;
 
     private FailoverMethod[] _methods = new FailoverMethod[1];
 

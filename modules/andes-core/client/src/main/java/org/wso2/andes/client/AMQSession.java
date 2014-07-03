@@ -213,7 +213,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
     /**
      * The period to wait while flow controlled before declaring a failure
      */
-    public static final long DEFAULT_FLOW_CONTROL_WAIT_FAILURE = 120000L;
+    public static final long DEFAULT_FLOW_CONTROL_WAIT_FAILURE = Long.parseLong(System.getProperty("qpid.flow_control_wait_failure", "120000"));
     protected final long FLOW_CONTROL_WAIT_FAILURE = Long.getLong("qpid.flow_control_wait_failure",
                                                                   DEFAULT_FLOW_CONTROL_WAIT_FAILURE);
 
@@ -306,13 +306,14 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
     protected ConcurrentLinkedQueue<Long> _unacknowledgedMessageTags = new ConcurrentLinkedQueue<Long>();
 
     /** hashMap to keep track of Ack_wait_Timeouts of messages */
-    protected LinkedHashMap<Long,Long> ackWaitTimeOutTrackingMap = new LinkedHashMap<Long, Long>();
+   // protected  LinkedHashMap<Long,Long> ackWaitTimeOutTrackingMap = new LinkedHashMap<Long, Long>();
+    protected  Map<Long,Long> ackWaitTimeOutTrackingMap = Collections.synchronizedMap(new LinkedHashMap<Long, Long>());
 
     /** ack_wait_time_out value */
-    protected long ackWaitTimeOut = 20000;
+    protected long ackWaitTimeOut = 60000;
 
     /** executor to run scheduler task rejecting messages which have passed the ack_wait_time*/
-    private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     /** All the delivered message tags */
     protected ConcurrentLinkedQueue<Long> _deliveredMessageTags = new ConcurrentLinkedQueue<Long>();
@@ -545,18 +546,23 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
             @Override
             public void run() {
                 synchronized (this) {
-                    Iterator<Map.Entry<Long,Long>> iterator = ackWaitTimeOutTrackingMap.entrySet().iterator();
-                    while(iterator.hasNext()){
-                        Map.Entry<Long,Long> entry = iterator.next();
-                        Long deliveryTag = entry.getKey();
-                        Long deliveredTimeStamp = entry.getValue();
-                        if((System.currentTimeMillis() - deliveredTimeStamp) > ackWaitTimeOut){
-                            //reject the message
-                            rejectMessage(deliveryTag,true);
-                            iterator.remove();
-                        } else {
-                            break;
+                    try{
+                        Iterator<Map.Entry<Long,Long>> iterator = ackWaitTimeOutTrackingMap.entrySet().iterator();
+                        while(iterator.hasNext()){
+                            Map.Entry<Long,Long> entry = iterator.next();
+                            Long deliveryTag = entry.getKey();
+                            Long deliveredTimeStamp = entry.getValue();
+                            if((System.currentTimeMillis() - deliveredTimeStamp) > ackWaitTimeOut){
+                                //reject the message
+                                rejectMessage(deliveryTag,true);
+                                iterator.remove();
+                                _logger.info("Reject message sent for deliveryTag = " + deliveryTag);
+                            } else {
+                                break;
+                            }
                         }
+                    }catch (Exception ex){
+                        System.out.println("Exception Occured When Sending the Reject Message to the Server : " + ex);
                     }
                 }
             }
@@ -589,6 +595,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
      */
     public void close() throws JMSException
     {
+        scheduler.shutdown();
         close(-1);
     }
 
@@ -1259,41 +1266,34 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
         return new TopicPublisherAdapter((P) createProducer(topic, false, false), topic);
     }
 
+    /**
+     * Declares and binds the named queue.
+     *
+     * @param queueName       The name of the queue to declare and bind.
+     *
+     * @throws javax.jms.JMSException If the queue cannot be declared or bound for any reason.
+     */
     public Queue createQueue(String queueName) throws JMSException
     {
         checkNotClosed();
-        try
-        {
-            if (queueName.indexOf('/') == -1 && queueName.indexOf(';') == -1)
+        AMQQueue queue = new AMQQueue(getDefaultQueueExchangeName(),
+                new AMQShortString(AMQDestination.stripSyntaxPrefix(queueName)));
+        AMQDestination amqd = (AMQDestination) queue;
+        try {
+            declareAndBind(amqd);
+        } catch (AMQException e) {
+            if (e instanceof AMQChannelClosedException)
             {
-                DestSyntax syntax = AMQDestination.getDestType(queueName);
-                if (syntax == AMQDestination.DestSyntax.BURL)
-                {
-                    // For testing we may want to use the prefix
-                    return new AMQQueue(getDefaultQueueExchangeName(), 
-                                        new AMQShortString(AMQDestination.stripSyntaxPrefix(queueName)));
-                }
-                else
-                {
-                    AMQQueue queue = new AMQQueue(queueName);
-                    return queue;
-                    
-                }
+                close(-1, false);
             }
-            else
-            {
-                return new AMQQueue(queueName);            
-            }
-        }
-        catch (URISyntaxException urlse)
-        {
-            _logger.error("", urlse);
-            JMSException jmse = new JMSException(urlse.getReason());
-            jmse.setLinkedException(urlse);
-            jmse.initCause(urlse);
-            throw jmse;
+
+            JMSException ex = new JMSException("Error creating queue: " + e);
+            ex.setLinkedException(e);
+            ex.initCause(e);
+            throw ex;
         }
 
+        return queue;
     }
 
     /**
@@ -1574,7 +1574,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
             }
             else
             {
-                return new AMQTopic(topicName);            
+                return new AMQTopic(getDefaultTopicExchangeName(), new AMQShortString(topicName));
             }
         
         }
@@ -3118,7 +3118,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
             {
 
                 _flowControl.wait(FLOW_CONTROL_WAIT_PERIOD);
-                _logger.warn("Message send delayed by " + (System.currentTimeMillis() + FLOW_CONTROL_WAIT_FAILURE - expiryTime)/1000 + "s due to broker enforced flow control");
+                _logger.info("Message send delayed by " + (System.currentTimeMillis() + FLOW_CONTROL_WAIT_FAILURE - expiryTime)/1000 + "s due to broker enforced flow control");
             }
             if(!_flowControl.getFlowControl())
             {

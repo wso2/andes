@@ -153,6 +153,7 @@ public class FailoverRoundRobinServers implements FailoverMethod
                 setBroker(_connectionDetails.getBrokerDetails(_currentBrokerIndex));
                 // This is zero rather than -1 as we are already retrieving the details.
                 _currentServerRetry = 0;
+                doDelay= _currentBrokerIndex != 0;
             }
         }
 

@@ -350,7 +350,6 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
             _logger.debug("Connection:" + connectionURL);
         }
 
-        _sslConfiguration = sslConfig;
         _connectionURL = connectionURL;
 
         _clientName = connectionURL.getClientName();

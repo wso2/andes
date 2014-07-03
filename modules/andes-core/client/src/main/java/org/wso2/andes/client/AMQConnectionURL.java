@@ -48,6 +48,12 @@ public class AMQConnectionURL implements ConnectionURL
     private AMQShortString _defaultTopicExchangeName;
     private AMQShortString _temporaryTopicExchangeName;
     private AMQShortString _temporaryQueueExchangeName;
+    private String sslEnabled;
+    private String keyStore;
+    private String keyStorePassword;
+    private String trustStore;
+    private String trustStorePassword;
+    private String sslAliasCert;
 
     public AMQConnectionURL(String fullURL) throws URLSyntaxException
     {
@@ -217,6 +223,54 @@ public class AMQConnectionURL implements ConnectionURL
     public void setTemporaryTopicExchangeName(AMQShortString temporaryTopicExchangeName)
     {
         _temporaryTopicExchangeName = temporaryTopicExchangeName;
+    }
+
+    public String getSslEnabled() {
+        return sslEnabled;
+    }
+
+    public void setSslEnabled(String sslEnabled) {
+        this.sslEnabled = sslEnabled;
+    }
+
+    public String getKeyStore() {
+        return keyStore;
+    }
+
+    public void setKeyStore(String keyStore) {
+        this.keyStore = keyStore;
+    }
+
+    public String getKeyStorePassword() {
+        return keyStorePassword;
+    }
+
+    public void setKeyStorePassword(String keyStorePassword) {
+        this.keyStorePassword = keyStorePassword;
+    }
+
+    public String getTrustStore() {
+        return trustStore;
+    }
+
+    public void setTrustStore(String trustStore) {
+        this.trustStore = trustStore;
+    }
+
+    public String getTrustStorePassword() {
+        return trustStorePassword;
+    }
+
+    public void setTrustStorePassword(String trustStorePassword) {
+        this.trustStorePassword = trustStorePassword;
+    }
+
+    public String getSslAliasCert() {
+        return sslAliasCert;
+    }
+
+    public void setSslAliasCert(String sslAliasCert) {
+        this.sslAliasCert = sslAliasCert;
     }
 
     public String toString()

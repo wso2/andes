@@ -21,7 +21,6 @@
 package org.wso2.andes.jms;
 
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.framing.ProtocolVersion;
 
 import java.util.List;
 
@@ -92,5 +91,17 @@ public interface ConnectionURL
     AMQShortString getTemporaryQueueExchangeName();
 
     AMQShortString getTemporaryTopicExchangeName();
+
+    String getSslEnabled();
+
+    String getKeyStore();
+
+    String getKeyStorePassword();
+
+    String getTrustStore();
+
+    String getTrustStorePassword();
+
+    String getSslAliasCert();
 
 }

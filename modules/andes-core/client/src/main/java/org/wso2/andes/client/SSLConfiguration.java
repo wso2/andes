@@ -26,6 +26,12 @@ public class SSLConfiguration {
 	private String _keystorePath;
 	
 	private String _keystorePassword;
+
+    private String trustStorePath;
+
+    private String trustStorePassword;
+
+    private String sslCertAlias;
 	
 	private String _certType = "SunX509";
 	
@@ -58,4 +64,45 @@ public class SSLConfiguration {
 	{
 		return _certType;
 	}
+
+    public String get_keystorePath() {
+        return _keystorePath;
+    }
+
+    public void set_keystorePath(String _keystorePath) {
+        this._keystorePath = _keystorePath;
+    }
+
+    public String get_keystorePassword() {
+        return _keystorePassword;
+    }
+
+    public void set_keystorePassword(String _keystorePassword) {
+        this._keystorePassword = _keystorePassword;
+    }
+
+    public String getTrustStorePath() {
+        return trustStorePath;
+    }
+
+    public void setTrustStorePath(String trustStorePath) {
+        this.trustStorePath = trustStorePath;
+    }
+
+    public String getTrustStorePassword() {
+        return trustStorePassword;
+    }
+
+    public void setTrustStorePassword(String trustStorePassword) {
+        this.trustStorePassword = trustStorePassword;
+    }
+
+    public String getSslCertAlias() {
+        return sslCertAlias;
+    }
+
+    public void setSslCertAlias(String sslCertAlias) {
+        this.sslCertAlias = sslCertAlias;
+    }
+
 }

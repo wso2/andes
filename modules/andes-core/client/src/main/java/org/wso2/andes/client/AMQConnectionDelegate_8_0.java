@@ -20,6 +20,27 @@
  */
 package org.wso2.andes.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.wso2.andes.AMQException;
+import org.wso2.andes.client.failover.FailoverException;
+import org.wso2.andes.client.failover.FailoverProtectedOperation;
+import org.wso2.andes.client.failover.FailoverRetrySupport;
+import org.wso2.andes.client.protocol.AMQProtocolSession;
+import org.wso2.andes.client.state.AMQState;
+import org.wso2.andes.client.state.StateWaiter;
+import org.wso2.andes.framing.*;
+import org.wso2.andes.jms.BrokerDetails;
+import org.wso2.andes.jms.ChannelLimitReachedException;
+import org.wso2.andes.jms.Session;
+import org.wso2.andes.transport.Connection;
+import org.wso2.andes.transport.ConnectionSettings;
+import org.wso2.andes.transport.network.NetworkConnection;
+import org.wso2.andes.transport.network.OutgoingNetworkTransport;
+import org.wso2.andes.transport.network.Transport;
+
+import javax.jms.JMSException;
+import javax.jms.XASession;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.nio.channels.UnresolvedAddressException;
@@ -29,39 +50,11 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Set;
 
-import javax.jms.JMSException;
-import javax.jms.XASession;
-
-import org.wso2.andes.AMQException;
-import org.wso2.andes.client.failover.FailoverException;
-import org.wso2.andes.client.failover.FailoverProtectedOperation;
-import org.wso2.andes.client.failover.FailoverRetrySupport;
-import org.wso2.andes.client.protocol.AMQProtocolSession;
-import org.wso2.andes.client.state.AMQState;
-import org.wso2.andes.client.state.StateWaiter;
-import org.wso2.andes.framing.BasicQosBody;
-import org.wso2.andes.framing.BasicQosOkBody;
-import org.wso2.andes.framing.ChannelOpenBody;
-import org.wso2.andes.framing.ChannelOpenOkBody;
-import org.wso2.andes.framing.ProtocolVersion;
-import org.wso2.andes.framing.TxSelectBody;
-import org.wso2.andes.framing.TxSelectOkBody;
-import org.wso2.andes.jms.BrokerDetails;
-import org.wso2.andes.jms.ChannelLimitReachedException;
-import org.wso2.andes.jms.Session;
-import org.wso2.andes.ssl.SSLContextFactory;
-import org.wso2.andes.transport.ConnectionSettings;
-import org.wso2.andes.transport.network.NetworkConnection;
-import org.wso2.andes.transport.network.OutgoingNetworkTransport;
-import org.wso2.andes.transport.network.Transport;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class AMQConnectionDelegate_8_0 implements AMQConnectionDelegate
 {
     private static final Logger _logger = LoggerFactory.getLogger(AMQConnectionDelegate_8_0.class);
     private AMQConnection _conn;
-
+    private Connection qpidConnection;
 
     public void closeConnection(long timeout) throws JMSException, AMQException
     {
@@ -86,28 +79,45 @@ public class AMQConnectionDelegate_8_0 implements AMQConnectionDelegate
         return ((cause instanceof ConnectException) || (cause instanceof UnresolvedAddressException));
     }
 
-    public ProtocolVersion makeBrokerConnection(BrokerDetails brokerDetail) throws AMQException, IOException
-    {
+    public ProtocolVersion makeBrokerConnection(BrokerDetails brokerDetail) throws AMQException, IOException{
         final Set<AMQState> openOrClosedStates =
                 EnumSet.of(AMQState.CONNECTION_OPEN, AMQState.CONNECTION_CLOSED);
 
 
         StateWaiter waiter = _conn._protocolHandler.createWaiter(openOrClosedStates);
+        SSLConfiguration sslConfig = null;
 
         ConnectionSettings settings = new ConnectionSettings();
         settings.setHost(brokerDetail.getHost());
         settings.setPort(brokerDetail.getPort());
         settings.setProtocol(brokerDetail.getTransport());
 
-        SSLConfiguration sslConfig = _conn.getSSLConfiguration();
-        SSLContextFactory sslFactory = null;
-        if (sslConfig != null)
-        {
-            sslFactory = new SSLContextFactory(sslConfig.getKeystorePath(), sslConfig.getKeystorePassword(), sslConfig.getCertType());
+        // if there are ssl options mentioned in current broker options SSLConfiguration is genereated with them
+        boolean sslEnabled = Boolean.parseBoolean(brokerDetail.getProperty(AMQBrokerDetails.OPTIONS_SSL));
+        if( sslEnabled) {
+            sslConfig = new SSLConfiguration();
+            sslConfig.setKeystorePath(brokerDetail.getProperty(AMQBrokerDetails.OPTIONS_KEY_STORE));
+            sslConfig.setKeystorePassword(brokerDetail.getProperty(AMQBrokerDetails.OPTIONS_KEY_STORE_PASSWORD));
+            sslConfig.setTrustStorePath(brokerDetail.getProperty(AMQBrokerDetails.OPTIONS_TRUST_STORE));
+            sslConfig.setTrustStorePassword(brokerDetail.getProperty(AMQBrokerDetails.OPTIONS_TRUST_STORE_PASSWORD));
+            sslConfig.setSslCertAlias(brokerDetail.getProperty(AMQBrokerDetails.OPTIONS_SSL_CERT_ALIAS));
+
+        }
+
+        // if ssl is enabled we set additional properties into ConnectionSettings
+        if( sslConfig != null){
+            settings.setTrustStorePath(sslConfig.getTrustStorePath());
+            settings.setTrustStorePassword(sslConfig.getTrustStorePassword());
+            settings.setKeyStorePath(sslConfig.getKeystorePath());
+            settings.setKeyStorePassword(sslConfig.getKeystorePassword());
+            settings.setUseSSL(Boolean.parseBoolean("true"));
+            settings.setCertAlias(sslConfig.getSslCertAlias());
+            settings.setKeyStoreCertType(sslConfig.getCertType());
+            settings.setTrustStoreCertType(sslConfig.getCertType());
         }
 
         OutgoingNetworkTransport transport = Transport.getOutgoingTransportInstance(getProtocolVersion());
-        NetworkConnection network = transport.connect(settings, _conn._protocolHandler, sslFactory);
+        NetworkConnection network = transport.connect(settings,_conn._protocolHandler, null);
         _conn._protocolHandler.setNetworkConnection(network);
         _conn._protocolHandler.getProtocolSession().init();
         // this blocks until the connection has been set up or when an error
