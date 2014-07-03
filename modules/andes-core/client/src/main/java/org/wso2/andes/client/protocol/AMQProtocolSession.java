@@ -118,6 +118,10 @@ public class AMQProtocolSession implements AMQVersionAwareProtocolSession
         _protocolHandler.writeFrame(new ProtocolInitiation(_connection.getProtocolVersion()));
     }
 
+    public boolean isBlocked() {
+        return false;
+    }
+
     public String getClientID()
     {
         try

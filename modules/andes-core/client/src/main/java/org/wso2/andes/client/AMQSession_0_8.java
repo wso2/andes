@@ -139,6 +139,9 @@ public final class AMQSession_0_8 extends AMQSession<BasicMessageConsumer_0_8, B
         getProtocolHandler().writeFrame(ackFrame);
         _unacknowledgedMessageTags.remove(deliveryTag);
         ackWaitTimeOutTrackingMap.remove(deliveryTag);
+         if(_logger.isDebugEnabled()) {
+             _logger.debug("Sending ack for delivery tag " + deliveryTag + " on channel " + _channelId + " remaining unacked count is " +_unacknowledgedMessageTags.size());
+         }
     }
 
     public void sendQueueBind(final AMQShortString queueName, final AMQShortString routingKey, final FieldTable arguments,

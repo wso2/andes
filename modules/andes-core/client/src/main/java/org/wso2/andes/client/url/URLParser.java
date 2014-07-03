@@ -201,8 +201,8 @@ public class URLParser
             while (st.hasMoreTokens())
             {
                 String broker = st.nextToken();
-
-                _url.addBrokerDetails(new AMQBrokerDetails(broker));
+                AMQBrokerDetails brokerDetails = new AMQBrokerDetails(broker);
+                _url.addBrokerDetails(brokerDetails);
             }
 
             _url.getOptions().remove(AMQConnectionURL.OPTIONS_BROKERLIST);
