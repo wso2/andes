@@ -3118,7 +3118,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
             {
 
                 _flowControl.wait(FLOW_CONTROL_WAIT_PERIOD);
-                _logger.warn("Message send delayed by " + (System.currentTimeMillis() + FLOW_CONTROL_WAIT_FAILURE - expiryTime)/1000 + "s due to broker enforced flow control");
+                _logger.info("Message send delayed by " + (System.currentTimeMillis() + FLOW_CONTROL_WAIT_FAILURE - expiryTime)/1000 + "s due to broker enforced flow control");
             }
             if(!_flowControl.getFlowControl())
             {
