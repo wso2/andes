@@ -36,9 +36,11 @@ public class BrokerOptions
     public static final String DEFAULT_ANDES_CONFIG_FILE = "andes-config.xml";
     public static final String DEFAULT_LOG_CONFIG_FILE = "etc/log4j.xml";
     public static final String ANDES_HOME = "ANDES_HOME";
+    public static final Integer DEFAULT_MQTT_PORT = 1883;
 
     public static final String PORTS = "p";
     public static final String SSL_PORTS = "s";
+    public static final String MQTT_PORT = "q";
     public static final String BIND = "b";
     public static final String MANAGEMENT = "m";
     public static final String LOG_CONFIG = "l";
@@ -54,6 +56,7 @@ public class BrokerOptions
     private String _logConfigFile;
     private String _bind;
     private Integer _jmxPort;
+    private Integer _mqttPort = DEFAULT_MQTT_PORT;
     private Integer _cassandraPort;
 
     private Integer _logWatchFrequency = 0;
@@ -161,5 +164,13 @@ public class BrokerOptions
     public void set_cassandraPort(Integer _cassandraPort) {
         this._cassandraPort = _cassandraPort;
         AndesUtils.getInstance().setCassandraPort(_cassandraPort);
+    }
+
+    public void setMQTTPort(Integer _mqttPort) {
+        this._mqttPort = _mqttPort;
+    }
+
+    public Integer getMQTTPort() {
+        return this._mqttPort;
     }
 }
