@@ -356,12 +356,16 @@ public class JMXManagedObjectRegistry implements ManagedObjectRegistry
 
     public void registerObject(ManagedObject managedObject) throws JMException
     {
-        _mbeanServer.registerMBean(managedObject, managedObject.getObjectName());
+        if (!_mbeanServer.isRegistered(managedObject.getObjectName())) {
+            _mbeanServer.registerMBean(managedObject, managedObject.getObjectName());
+        }
     }
 
     public void unregisterObject(ManagedObject managedObject) throws JMException
     {
-        _mbeanServer.unregisterMBean(managedObject.getObjectName());
+        if (_mbeanServer.isRegistered(managedObject.getObjectName())) {
+            _mbeanServer.unregisterMBean(managedObject.getObjectName());
+        }
     }
 
     // checks if the system properties are set which enable the JVM's out-of-the-box JMXAgent.
