@@ -566,6 +566,11 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         return getBooleanValue("clustering.enabled", false);
     }
 
+    public boolean getIsExternalCassandraServerRequired() {
+
+        return  getBooleanValue("clustering.externalCassandraServerRequired", false);
+    }
+
     public String getZookeeperConnection()
     {
         return getStringValue("clustering.coordination.ZooKeeperConnection","127.0.0.1:2180");

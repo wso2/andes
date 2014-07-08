@@ -180,6 +180,10 @@ public class ClusterConfiguration {
         return serverConfig.getMessageBatchSizeForBrowserSubscriptions();
     }
 
+    public boolean getIsExternalCassandraserverRequired() {
+        return serverConfig.getIsExternalCassandraServerRequired();
+    }
+
     public int getNumberOfMaximumDeliveryCount(){
         return serverConfig.getNumberOfMaximumDeliveryCount();
     }
