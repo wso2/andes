@@ -97,6 +97,8 @@ public class ClusterManager {
         return Integer.parseInt(node.substring(node.length() - 5));
     }
 
+
+
     /**
      * Initialize the Cluster manager. This will create ZNodes related to nodes and assign node ids
      *
@@ -116,8 +118,8 @@ public class ClusterManager {
             for (String node : nodeList) {
                 subscriptionStore.deleteNodeData(node);
             }
+            clearAllPersistedStatesOfDissapearedNode(nodeId);
             subscriptionStore.addNodeDetails("" + nodeId, config.getBindIpAddress());
-
             //start all global queue workers on the node
             startAllGlobalQueueWorkers();
             return;
