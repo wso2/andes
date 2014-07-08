@@ -1,7 +1,6 @@
 package org.wso2.andes.messageStore;
 
 import static org.wso2.andes.messageStore.CassandraConstants.GLOBAL_QUEUES_COLUMN_FAMILY;
-import static org.wso2.andes.messageStore.CassandraConstants.INTEGER_TYPE;
 import static org.wso2.andes.messageStore.CassandraConstants.KEYSPACE;
 import static org.wso2.andes.messageStore.CassandraConstants.LONG_TYPE;
 import static org.wso2.andes.messageStore.CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY;
@@ -9,9 +8,6 @@ import static org.wso2.andes.messageStore.CassandraConstants.MESSAGE_COUNTERS_CO
 import static org.wso2.andes.messageStore.CassandraConstants.MESSAGE_COUNTERS_RAW_NAME;
 import static org.wso2.andes.messageStore.CassandraConstants.NODE_QUEUES_COLUMN_FAMILY;
 import static org.wso2.andes.messageStore.CassandraConstants.PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY;
-import static org.wso2.andes.messageStore.CassandraConstants.byteBufferSerializer;
-import static org.wso2.andes.messageStore.CassandraConstants.bytesArraySerializer;
-import static org.wso2.andes.messageStore.CassandraConstants.integerSerializer;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
@@ -20,12 +16,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentSkipListMap;
-
-import me.prettyprint.hector.api.beans.HColumn;
-import me.prettyprint.hector.api.factory.HFactory;
-import me.prettyprint.hector.api.mutation.Mutator;
-import me.prettyprint.hector.api.query.ColumnQuery;
-import me.prettyprint.hector.api.query.QueryResult;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -44,6 +34,7 @@ import org.wso2.andes.server.cassandra.dao.GenericCQLDAO;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
+import org.wso2.andes.server.util.AlreadyProcessedMessageTracker;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
@@ -59,15 +50,17 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
     private ConcurrentSkipListMap<Long, Long> contentDeletionTasks = new ConcurrentSkipListMap<Long, Long>();
     private MessageContentRemoverTask messageContentRemoverTask;
-    private boolean isMessageCoutingAllowed;
+    private AlreadyProcessedMessageTracker alreadyMovedMessageTracker;
+    private boolean isMessageCountingAllowed;
     private Cluster cluster;
 
     public CQLBasedMessageStoreImpl() {
-        isMessageCoutingAllowed = ClusterResourceHolder.getInstance().getClusterConfiguration().getViewMessageCounts();
+        isMessageCountingAllowed = ClusterResourceHolder.getInstance().getClusterConfiguration().getViewMessageCounts();
     }
 
     public void initializeMessageStore(DurableStoreConnection cassandraconnection) throws AndesException {
         initializeCassandraMessageStore(cassandraconnection);
+        alreadyMovedMessageTracker = new AlreadyProcessedMessageTracker("Message-move-tracker", 15000000000L, 10);
         messageContentRemoverTask = new MessageContentRemoverTask(ClusterResourceHolder.getInstance().getClusterConfiguration().
                 getContentRemovalTaskInterval(), contentDeletionTasks, this, cassandraconnection);
         messageContentRemoverTask.start();
@@ -308,7 +301,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                     onflightMessageTracker.updateDeliveredButNotAckedMessages(ackData.messageID);
 
                     //decrement message count
-                    if (isMessageCoutingAllowed) {
+                    if (isMessageCountingAllowed) {
                         decrementQueueCount(ackData.qName, 1);
                     }
 
@@ -373,7 +366,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
             PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency((int) (System.currentTimeMillis() - start));
 
-            if (isMessageCoutingAllowed) {
+            if (isMessageCountingAllowed) {
                 for (AndesMessageMetadata md : messageList) {
                     incrementQueueCount(md.getDestination(), 1);
                 }
@@ -403,22 +396,31 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         /*Mutator<String> messageMutator = HFactory.createMutator(KEYSPACE, stringSerializer);*/
         try {
         	List<Statement> statements = new ArrayList<Statement>();
+            List<Long> messageIDsSuccessfullyMoved = new ArrayList<Long>();
             for (AndesMessageMetadata messageMetaData : messageList) {
                 if (targetAddress == null) {
                     targetAddress = messageMetaData.queueAddress;
                 }
-                Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(KEYSPACE,getColumnFamilyFromQueueAddress(sourceAddress), sourceAddress.queueName, messageMetaData.getMessageID(), false);
-                Insert insert = CQLDataAccessHelper.addMessageToQueue(KEYSPACE,getColumnFamilyFromQueueAddress(targetAddress), targetAddress.queueName,
-                        messageMetaData.getMessageID(), messageMetaData.getMetadata(), false);
-                if (log.isDebugEnabled()) {
-                    log.debug("TRACING>> CMS-Removing messageID-" + messageMetaData.getMessageID() + "-from source Queue-" + sourceAddress.queueName
-                            + "- to target Queue " + targetAddress.queueName);
+                if(msgOKToMove(messageMetaData.getMessageID(), sourceAddress, targetAddress)) {
+                    Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(KEYSPACE,getColumnFamilyFromQueueAddress(sourceAddress), sourceAddress.queueName, messageMetaData.getMessageID(), false);
+                    Insert insert = CQLDataAccessHelper.addMessageToQueue(KEYSPACE,getColumnFamilyFromQueueAddress(targetAddress), targetAddress.queueName,
+                            messageMetaData.getMessageID(), messageMetaData.getMetadata(), false);
+                    if (log.isDebugEnabled()) {
+                        log.debug("TRACING>> CMS-Removing messageID-" + messageMetaData.getMessageID() + "-from source Queue-" + sourceAddress.queueName
+                                + "- to target Queue " + targetAddress.queueName);
+                    }
+                    statements.add(insert);
+                    statements.add(delete);
+                    messageIDsSuccessfullyMoved.add(messageMetaData.getMessageID());
                 }
-                statements.add(insert);
-                statements.add(delete);
             }
            // messageMutator.execute();
             GenericCQLDAO.batchExecute(KEYSPACE, statements.toArray(new Statement[statements.size()]));
+
+            for(Long msgID : messageIDsSuccessfullyMoved) {
+                alreadyMovedMessageTracker.addTaskToRemoveMessageFromTracking(msgID);
+            }
+
         } catch (CassandraDataAccessException e) {
             log.error("Error in moving messages ", e);
             throw new AndesException("Error in moving messages from source -" + getColumnFamilyFromQueueAddress(sourceAddress) + " - to target -" + getColumnFamilyFromQueueAddress(targetAddress), e);
@@ -436,20 +438,26 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             List<Statement> statements = new ArrayList<Statement>();
             while (messageList.size() != 0) {
                 int numberOfMessagesMovedInIteration = 0;
+                List<Long> messageIDsSuccessfullyMoved = new ArrayList<Long>();
                 for (AndesMessageMetadata messageMetaData : messageList) {
                     if (messageMetaData.getDestination().equals(destinationQueue)) {
                         if (targetAddress == null) {
                             targetAddress = messageMetaData.queueAddress;
                         }
-                        Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(KEYSPACE, getColumnFamilyFromQueueAddress(sourceAddress),
-                                sourceAddress.queueName, messageMetaData.getMessageID(), false);
+                        if(msgOKToMove(messageMetaData.getMessageID(), sourceAddress, targetAddress)) {
+                            Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(KEYSPACE, getColumnFamilyFromQueueAddress(sourceAddress),
+                                    sourceAddress.queueName, messageMetaData.getMessageID(), false);
 
-                        Insert insert = CQLDataAccessHelper.addMessageToQueue(KEYSPACE, getColumnFamilyFromQueueAddress(targetAddress), targetAddress.queueName,
-                                messageMetaData.getMessageID(), messageMetaData.getMetadata(), false);
-                        
-                        statements.add(insert);
-                        statements.add(delete);
-                        numberOfMessagesMovedInIteration++;
+                            Insert insert = CQLDataAccessHelper.addMessageToQueue(KEYSPACE, getColumnFamilyFromQueueAddress(targetAddress), targetAddress.queueName,
+                                    messageMetaData.getMessageID(), messageMetaData.getMetadata(), false);
+
+                            statements.add(insert);
+                            statements.add(delete);
+
+                            messageIDsSuccessfullyMoved.add(messageMetaData.getMessageID());
+                            numberOfMessagesMovedInIteration++;
+                        }
+
                         if (log.isDebugEnabled()) {
                             log.debug("TRACING>> CMS-Removed messageID-" + messageMetaData.getMessageID() + "-from Node Queue-" + sourceAddress.queueName
                                     + "- to GlobalQueue " + targetAddress.queueName);
@@ -461,6 +469,10 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                     }
                 }
                 GenericCQLDAO.batchExecute(KEYSPACE, statements.toArray(new Statement[statements.size()]));
+                for(Long msgID : messageIDsSuccessfullyMoved) {
+                    alreadyMovedMessageTracker.addTaskToRemoveMessageFromTracking(msgID);
+                }
+
                 //messageMutator.execute();
                 numberOfMessagesMoved = numberOfMessagesMoved + numberOfMessagesMovedInIteration;
                 messageList = getNextNMessageMetadataFromQueue(sourceAddress, lastProcessedMessageID, 40);
@@ -527,7 +539,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             }
             //mutator.execute();
             GenericCQLDAO.batchExecute(KEYSPACE, statements.toArray(new Statement[statements.size()]));
-            if (isMessageCoutingAllowed) {
+            if (isMessageCountingAllowed) {
                 for (AndesRemovableMetadata message : messagesToRemove) {
                     decrementQueueCount(message.destination, message.messageID);
                 }
@@ -602,10 +614,36 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
 
-    public void close() {
-        if (messageContentRemoverTask != null && messageContentRemoverTask.isRunning())
-            this.messageContentRemoverTask.setRunning(false);
+    private boolean msgOKToMove(long msgID, QueueAddress sourceAddress, QueueAddress targetAddress) throws CassandraDataAccessException {
+        if (alreadyMovedMessageTracker.checkIfAlreadyTracked(msgID)) {
+            List<Statement> statements = new ArrayList<Statement>();
+            Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(KEYSPACE,getColumnFamilyFromQueueAddress(sourceAddress), sourceAddress.queueName, msgID, false);
+            statements.add(delete);
+            GenericCQLDAO.batchExecute(KEYSPACE, statements.toArray(new Statement[statements.size()]));
+            if (log.isTraceEnabled()) {
+                log.trace("Rejecting moving message id =" + msgID + " as it is already read from " + sourceAddress.queueName);
+            }
+            return false;
+        } else {
+            alreadyMovedMessageTracker.insertMessageForTracking(msgID, msgID);
+            if (log.isTraceEnabled()) {
+                log.trace("allowing to move message id - " + msgID + " from " + sourceAddress.queueName);
+            }
+            return true;
+        }
     }
+
+
+
+    public void close() {
+        if (messageContentRemoverTask != null && messageContentRemoverTask.isRunning()) {
+            this.messageContentRemoverTask.setRunning(false);
+        }
+        alreadyMovedMessageTracker.shutDownMessageTracker();
+    }
+
+
+
 
 /*    public int removeMessaesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch) throws AndesException {
         long lastProcessedMessageID = 0;
