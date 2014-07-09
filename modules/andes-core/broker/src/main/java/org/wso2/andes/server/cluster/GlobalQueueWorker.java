@@ -85,7 +85,7 @@ public class GlobalQueueWorker implements Runnable {
                                 metadata.queueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueue);
                                 //if (log.isDebugEnabled()) {
                                 String msgID = (String) metadata.getMessageHeader("msgID");
-                                log.info("TRACING>> GQW " + globalQueueName + ">> copying message-" + msgID == null ? "" : msgID +
+                                log.info("TRACING>> GQW " + globalQueueName + ">> copying message-" + (msgID == null ? "" : msgID ) +
                                         " to " + nodeQueue + " message ID: " + metadata.getMessageID());
                                 // }
                             } else {
