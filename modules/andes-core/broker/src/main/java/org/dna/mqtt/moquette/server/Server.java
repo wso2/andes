@@ -37,8 +37,19 @@ public class Server {
         });
         
     }*/
+
+    public void startServer(int port) throws IOException {
+        Properties configProps = loadConfigurations();
+        configProps.put("port",Integer.toString(port));
+        serverInit(configProps);
+    }
     
     public void startServer() throws IOException {
+        Properties configProps = loadConfigurations();
+        serverInit(configProps);
+    }
+
+    private Properties loadConfigurations() {
         ConfigurationParser confParser = new ConfigurationParser();
         try {
             String configPath = System.getProperty("moquette.path", "");
@@ -46,15 +57,18 @@ public class Server {
         } catch (ParseException pex) {
             LOG.warn("An error occured in parsing configuration, fallback on default configuration", pex);
         }
-        Properties configProps = confParser.getProperties();
 
+        return confParser.getProperties();
+    }
+
+    private void serverInit(Properties configProps) throws IOException {
         messaging = SimpleMessaging.getInstance();
         messaging.init(configProps);
-        
+
         m_acceptor = new NettyAcceptor();
         m_acceptor.initialize(messaging, configProps);
     }
-    
+
     public void stopServer() {
         System.out.println("Server stopping...");
         messaging.stop();

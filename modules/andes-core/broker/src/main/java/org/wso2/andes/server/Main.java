@@ -144,6 +144,11 @@ public class Main
                         .withDescription("SSL port. Overrides any value in the config file")
                         .withLongOpt("sslport").create(BrokerOptions.SSL_PORTS);
 
+        Option mqttPort =
+                OptionBuilder.withArgName("mqttport").hasArg()
+                        .withDescription("MQTT port. Overrides any value in the config file")
+                        .withLongOpt("mqttport").create(BrokerOptions.MQTT_PORT);
+
         Option cassandraPort =
                 OptionBuilder.withArgName("cassandraPort").hasArg()
                         .withDescription("Cassandra port. Overrides any value in the config file")
@@ -162,6 +167,7 @@ public class Main
         options.addOption(mport);
         options.addOption(bind);
         options.addOption(sslport);
+        options.addOption(mqttPort);
         options.addOption(cassandraPort);
     }
 
@@ -217,6 +223,13 @@ public class Main
                 parsePortArray(options, commandLine.getOptionValues(pe.getExcludeName()), pe);
             }
         }
+
+        String mqttPortStr = commandLine.getOptionValue(BrokerOptions.MQTT_PORT);
+        if(mqttPortStr != null)
+        {
+            parseMQTTPort(options, mqttPortStr);
+        }
+
         String cassandraPort = commandLine.getOptionValue(BrokerOptions.CASSANDRA_PORT);
         if(cassandraPort != null){
             options.set_cassandraPort(Integer.parseInt(cassandraPort));
@@ -225,13 +238,13 @@ public class Main
         startBroker(options);
     }
 
-    protected void startMQTTBroker() throws Exception{
+    protected void startMQTTBroker(final BrokerOptions options) throws Exception{
         //Setting the system path manually
         //todo need to link this qpid-config
         //todo need to discuss
         System.setProperty("moquette.path","./repository/conf/advanced/");
         Server server = new Server();
-        server.startServer();
+        server.startServer(options.getMQTTPort());
     }
 
     protected void startBroker(final BrokerOptions options) throws Exception
@@ -242,7 +255,7 @@ public class Main
 
         //Will start the MQTT Broker
         //todo need to startup with the broker options inclusive
-        startMQTTBroker();
+        startMQTTBroker(options);
     }
 
     protected void shutdown(final int status)
@@ -275,6 +288,21 @@ public class Main
                     throw new InitException("Invalid port: " + ports[i], e);
                 }
             }
+        }
+    }
+
+    private static void parseMQTTPort(final BrokerOptions options,final String port) throws InitException
+    {
+        if(port != null)
+        {
+                try
+                {
+                    options.setMQTTPort(Integer.parseInt(String.valueOf(port)));
+                }
+                catch (NumberFormatException e)
+                {
+                    throw new InitException("Invalid port: " + port, e);
+                }
         }
     }
 
