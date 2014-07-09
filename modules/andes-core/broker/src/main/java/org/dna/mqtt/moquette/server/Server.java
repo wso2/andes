@@ -14,7 +14,8 @@ import java.util.Properties;
  * @author andrea
  */
 public class Server {
-    
+
+    public static final int DEFAULT_MQTT_PORT = 1833;
     private static final Logger LOG = LoggerFactory.getLogger(Server.class);
     
     public static final String STORAGE_FILE_PATH = System.getProperty("user.home") + 
