@@ -65,26 +65,40 @@ public class CQLConnection implements DurableStoreConnection {
             String strategyClass = configuration.getString(STRATERGY_CLASS);
             String readConsistancyLevel = configuration.getString(READ_CONSISTENCY_LEVEL);
             String writeConsistancyLevel = configuration.getString(WRITE_CONSISTENCY_LEVEL);
-            String connectionString = "";
-            int port = AndesUtils.getInstance().getCqlPort();          
-            
-            List<String> cons = new ArrayList<String>();
-            if (connections instanceof ArrayList) {
-                cons = (ArrayList<String>) connections;
 
-            } else if (connections instanceof String) {
-                connectionString = (String) connections;
-                if (connectionString.indexOf(":") > 0) {
-                    String host = connectionString.substring(0, connectionString.indexOf(":"));
-                    port = Integer.parseInt(connectionString.substring(connectionString.indexOf(":")+1).trim());
-                    connectionString = host;
-                    cons.add(connectionString);
+            int port = 9042;
+            boolean isExternalCassandraServerRequired = ClusterResourceHolder.getInstance().
+                    getClusterConfiguration().getIsExternalCassandraserverRequired();
+            
+            List<String> hosts = new ArrayList<String>();
+
+            if (connections instanceof ArrayList && isExternalCassandraServerRequired) {
+                List<String> cons = (ArrayList<String>) connections;
+                for(String connection : cons) {
+                   String host = connection.split(":")[0];
+                    port = Integer.parseInt(connection.split(":")[1]);
+                    hosts.add(host);
                 }
+
+            } else if (connections instanceof String && isExternalCassandraServerRequired) {
+                String connectionString = (String) connections;
+                if (connectionString.indexOf(":") > 0) {
+                    String host = connectionString.split(":")[0];
+                    hosts.add(host);
+                    port = Integer.parseInt(connectionString.split(":")[1]);
+                }
+            }  else {
+                String defaultHost = "localhost";
+                int defaultPort = AndesUtils.getInstance().getCassandraPort();
+                port = defaultPort;
+                hosts.add(defaultHost);
             }
-    
-            strategyClass = "SimpleStrategy";
+
             String clusterName = (String) configuration.getProperty(CLUSTER_KEY);
-            ClusterConfiguration clusterConfig = new ClusterConfiguration(userName, password, clusterName, cons, port);
+            ClusterConfiguration clusterConfig = new ClusterConfiguration(userName, password, clusterName, hosts , port);
+
+            log.info("Initializing Cassandra Message Store: HOSTS=" + hosts + " PORT=" + port);
+
             cluster = CQLDataAccessHelper.createCluster(clusterConfig);
             GenericCQLDAO.setCluster(cluster);
             createKeySpace(replicationFactor, strategyClass);
