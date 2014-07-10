@@ -358,8 +358,11 @@ public class QueueDeliveryWorker extends Thread {
                         }
                         totMsgRead = totMsgRead + messagesFromMessageStore.size();
                         msgReadThisTime = messagesFromMessageStore.size();
+                    } else {
+                        if (log.isDebugEnabled()) {
+                            log.debug("QDW >> Total ReadButUndeliveredMessages count " + totalReadButUndeliveredMessages + " is over the accepted limit ");
+                        }
                     }
-
 
                     /**
                      * Now messages are read to the memory. Send the read messages to subscriptions
