@@ -25,6 +25,10 @@ import static org.wso2.andes.transport.ConnectionSettings.WILDCARD_ADDRESS;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryPoolMXBean;
+import java.lang.management.MemoryType;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.EnumSet;
@@ -36,6 +40,7 @@ import java.util.Set;
 import org.apache.commons.logging.Log;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.log4j.xml.QpidLog4JConfigurator;
+import org.wso2.andes.AMQException;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.wso2.andes.server.configuration.ServerConfiguration;
@@ -56,9 +61,15 @@ import org.wso2.andes.server.registry.ConfigurationFileApplicationRegistry;
 import org.wso2.andes.server.transport.QpidAcceptor;
 import org.wso2.andes.ssl.SSLContextFactory;
 import org.wso2.andes.transport.NetworkTransportConfiguration;
+import org.wso2.andes.transport.flow.control.EventDispatcher;
+import org.wso2.andes.transport.flow.control.EventDispatcherFactory;
+import org.wso2.andes.transport.flow.control.MemoryMonitor;
+import org.wso2.andes.transport.flow.control.MemoryMonitorNotificationFilter;
 import org.wso2.andes.transport.network.IncomingNetworkTransport;
 import org.wso2.andes.transport.network.Transport;
 import org.wso2.andes.transport.network.mina.MinaNetworkTransport;
+
+import javax.management.*;
 
 public class Broker
 {
@@ -68,6 +79,7 @@ public class Broker
     private static Log log =
             org.apache.commons.logging.LogFactory.getLog(Broker.class);
 
+    private static EventDispatcher dispatcher = EventDispatcherFactory.createEventDispatcher();
 
 
     protected static class InitException extends RuntimeException
@@ -138,6 +150,15 @@ public class Broker
         }
         ClusterResourceHolder.getInstance().setClusterConfiguration(clusterConfiguration);
 
+
+         /* Registering the memory threshold ratio configured in the qpid-config.xml */
+        double memoryThresholdRatio = clusterConfiguration.getGlobalMemoryThresholdRatio();
+        this.registerFlowControlMemoryThreshold(memoryThresholdRatio);
+
+        /* Registering the memory monitor */
+        double recoveryThresholdRatio = clusterConfiguration.getGlobalMemoryRecoveryThresholdRatio();
+        long memoryCheckInterval = clusterConfiguration.getMemoryCheckInterval();
+        this.registerMemoryMonitor(recoveryThresholdRatio, memoryCheckInterval);
 
         ApplicationRegistry.initialise(config);
 
@@ -450,4 +471,63 @@ public class Broker
 
         blm.register();
     }
+
+    /**
+     * Registers memory threshold upon all available managed memory pools
+     *
+     * @param threshold Memory threshold value
+     */
+    private void registerFlowControlMemoryThreshold(double threshold) throws AMQException {
+        if (threshold > 1 || threshold < 0) {
+            throw new AMQException("Global memory threshold ratio should be in between 0 and 1");
+        }
+
+        if (threshold == 1) {
+            log.debug("Global memory threshold ratio is set to 1. Memory based flow controlling " +
+                    "is disabled");
+        }
+
+        List<MemoryPoolMXBean> pools = ManagementFactory.getMemoryPoolMXBeans();
+        for (MemoryPoolMXBean poolMXBean : pools) {
+            if (MemoryType.HEAP.equals(poolMXBean.getType())) {
+                if (!poolMXBean.isUsageThresholdSupported()) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("UsageThreshold is not supported by the MemoryPool MXBean. " +
+                                "Continuing without setting the UsageThreshold");
+                    }
+                    continue;
+                }
+                long thresholdInBytes = (long)Math.floor(poolMXBean.getUsage().getMax() * threshold);
+                poolMXBean.setUsageThreshold(thresholdInBytes);
+                poolMXBean.setCollectionUsageThreshold(thresholdInBytes);
+            }
+        }
+
+        MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+        NotificationEmitter emitter = (NotificationEmitter) memoryMXBean;
+        emitter.addNotificationListener(dispatcher, null, null);
+    }
+
+    private void registerMemoryMonitor(
+            double recoveryThresholdRatio, long memoryCheckInterval) throws AMQException {
+        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+        MemoryMonitor monitor = new MemoryMonitor(recoveryThresholdRatio, memoryCheckInterval);
+        try {
+            ObjectName name = new ObjectName("org.wso2.andes.transport.flow.control:type=MemoryMonitorMBean");
+            mbs.registerMBean(monitor, name);
+
+            NotificationFilter filter = new MemoryMonitorNotificationFilter();
+            mbs.addNotificationListener(name, getEventDispatcher(), filter, name);
+            monitor.start();
+        } catch (Exception e) {
+            String msg = "Error occurred while registering MemoryMonitorMBean";
+            log.error(msg, e);
+            throw new AMQException(msg, e);
+        }
+    }
+
+    public static EventDispatcher getEventDispatcher() {
+        return dispatcher;
+    }
+
 }

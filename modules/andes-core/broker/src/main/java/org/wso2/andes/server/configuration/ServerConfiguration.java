@@ -643,6 +643,22 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         return getIntValue("clustering.tuning.threading.subscriptionPoolSize",20);
     }
 
+    public double getFlowControlGlobalMemoryThresholdRatio() {
+        return getDoubleValue("clustering.tuning.flowControl.memoryBased.globalMemoryThresholdRatio", 1);
+    }
+
+    public double getGlobalMemoryRecoveryThresholdRatio() {
+        return getDoubleValue("clustering.tuning.flowControl.memoryBased.globalMemoryRecoveryThresholdRatio", 1);
+    }
+
+    public long getMemoryCheckInterval() {
+        return getLongValue("clustering.tuning.flowControl.memoryBased.memoryCheckInterval", 20000L);
+    }
+
+    public int getFlowControlPerConnectionMessageThreshold() {
+        return getIntValue("clustering.tuning.flowControl.connectionBased.perConnectionMessageThreshold", 2000);
+    }
+
     public int getInternalSequentialThreadPoolSize() {
         return getIntValue("clustering.tuning.threading.internalSequentialThreadPoolSize", 5);
     }

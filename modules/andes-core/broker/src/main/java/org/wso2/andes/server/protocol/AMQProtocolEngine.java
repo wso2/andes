@@ -65,6 +65,7 @@ import org.wso2.andes.framing.MethodDispatcher;
 import org.wso2.andes.framing.MethodRegistry;
 import org.wso2.andes.framing.ProtocolInitiation;
 import org.wso2.andes.framing.ProtocolVersion;
+import org.wso2.andes.framing.amqp_0_91.BasicPublishBodyImpl;
 import org.wso2.andes.pool.Job;
 import org.wso2.andes.pool.ReferenceCountingExecutorService;
 import org.wso2.andes.protocol.AMQConstant;
@@ -72,6 +73,7 @@ import org.wso2.andes.protocol.AMQMethodEvent;
 import org.wso2.andes.protocol.AMQMethodListener;
 import org.wso2.andes.protocol.ProtocolEngine;
 import org.wso2.andes.server.AMQChannel;
+import org.wso2.andes.server.Broker;
 import org.wso2.andes.server.configuration.ConfigStore;
 import org.wso2.andes.server.configuration.ConfiguredObject;
 import org.wso2.andes.server.configuration.ConnectionConfig;
@@ -88,6 +90,7 @@ import org.wso2.andes.server.management.Managable;
 import org.wso2.andes.server.management.ManagedObject;
 import org.wso2.andes.server.output.ProtocolOutputConverter;
 import org.wso2.andes.server.output.ProtocolOutputConverterRegistry;
+import org.wso2.andes.server.queue.SimpleAMQQueue;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.security.auth.sasl.UsernamePrincipal;
 import org.wso2.andes.server.state.AMQState;
@@ -96,9 +99,26 @@ import org.wso2.andes.server.stats.StatisticsCounter;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostRegistry;
 import org.wso2.andes.transport.Sender;
+import org.wso2.andes.transport.flow.control.EventDispatcher;
+import org.wso2.andes.transport.flow.control.FlowControlEventObserver;
 import org.wso2.andes.transport.network.NetworkConnection;
 
-public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocolSession, ConnectionConfig
+import javax.management.JMException;
+import javax.security.auth.Subject;
+import javax.security.sasl.SaslServer;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.nio.ByteBuffer;
+import java.security.Principal;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+
+public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocolSession, ConnectionConfig, FlowControlEventObserver
 {
     private static final Logger _logger = Logger.getLogger(AMQProtocolEngine.class);
 
@@ -179,6 +199,8 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
     private final NetworkConnection _network;
     private final Sender<ByteBuffer> _sender;
 
+    private AtomicBoolean isFlowControlled = new AtomicBoolean(false);
+
     public ManagedObject getManagedObject()
     {
         return _managedObject;
@@ -205,6 +227,11 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
 
         _registry = virtualHostRegistry.getApplicationRegistry();
         initialiseStatistics();
+
+        /* Register the AMQChannel as a flow control event listener to be able to receive flow
+        control related flags */
+        //EventDispatcher.getInstance().addObserver(this);
+        Broker.getEventDispatcher().addObserver(this);
     }
 
     private AMQProtocolSessionMBean createMBean() throws JMException
@@ -239,38 +266,38 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
 
     public void received(final ByteBuffer msg)
     {
-        _lastIoTime = System.currentTimeMillis();
-        try
-        {
-            final ArrayList<AMQDataBlock> dataBlocks = _codecFactory.getDecoder().decodeBuffer(msg);
-            Job.fireAsynchEvent(_poolReference.getPool(), _readJob, new Runnable()
+            _lastIoTime = System.currentTimeMillis();
+            try
             {
-                public void run()
+                final ArrayList<AMQDataBlock> dataBlocks = _codecFactory.getDecoder().decodeBuffer(msg);
+                Job.fireAsynchEvent(_poolReference.getPool(), _readJob, new Runnable()
                 {
-                    // Decode buffer
-
-                    for (AMQDataBlock dataBlock : dataBlocks)
+                    public void run()
                     {
-                        try
+                        // Decode buffer
+
+                        for (AMQDataBlock dataBlock : dataBlocks)
                         {
-                            dataBlockReceived(dataBlock);
+                            try
+                            {
+                                dataBlockReceived(dataBlock);
+                            }
+                            catch (Exception e)
+                            {
+                                _logger.error("Unexpected exception when processing datablock", e);
+                                e.printStackTrace();
+                                closeProtocolSession();
+                            }
                         }
-                        catch (Exception e)
-                        {
-                            _logger.error("Unexpected exception when processing datablock", e);
-                            e.printStackTrace();
-                            closeProtocolSession();
-                        }
+                        dataBlocks.clear();
                     }
-                    dataBlocks.clear();
-                }
-            });
-        }
-        catch (Exception e)
-        {
-            _logger.error("Unexpected exception when processing datablock", e);
-            closeProtocolSession();
-        }
+                });
+            }
+            catch (Exception e)
+            {
+                _logger.error("Unexpected exception when processing datablock", e);
+                closeProtocolSession();
+            }
     }
 
     public void dataBlockReceived(AMQDataBlock message) throws Exception
@@ -355,7 +382,7 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
         ((AMQDecoder) _codecFactory.getDecoder()).setExpectProtocolInitiation(false);
         try
         {
-            // Log incomming protocol negotiation request
+            // Log incoming protocol negotiation request
             _actor.message(ConnectionMessages.OPEN(null, pi._protocolMajor + "-" + pi._protocolMinor, false, true));
 
             ProtocolVersion pv = pi.checkVersion(); // Fails if not correct
@@ -386,7 +413,6 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
     public void methodFrameReceived(int channelId, AMQMethodBody methodBody)
     {
         final AMQMethodEvent<AMQMethodBody> evt = new AMQMethodEvent<AMQMethodBody>(channelId, methodBody);
-
         try
         {
             try
@@ -415,8 +441,11 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
                         _logger.info("Closing channel due to: " + e.getMessage());
                     }
 
-                    writeFrame(e.getCloseFrame(channelId));
-                    closeChannel(channelId);
+//                    writeFrame(e.getCloseFrame(channelId));
+//                    closeChannel(channelId);
+                    AMQConnectionException ce = evt.getMethod().getConnectionException(AMQConstant.ACCESS_REFUSED, e.getMessage());
+                    _logger.info(e.getMessage() + " whilst processing:" + methodBody);
+                    closeConnection(channelId, ce, false);
                 }
                 else
                 {
@@ -471,6 +500,8 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
         AMQChannel channel = getAndAssertChannel(channelId);
 
         channel.publishContentHeader(body);
+
+        //if blockingStarted = true has started set the blocking parameter to true
 
     }
 
@@ -539,6 +570,12 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
                 ((channelId & CHANNEL_CACHE_SIZE) == channelId) ? _cachedChannels[channelId] : _channelMap.get(channelId);
         if ((channel == null) || channel.isClosing())
         {
+            if (channel == null) {
+                _logger.debug(" channel with id "+ channelId + " is null");
+            }
+            if(channel != null && channel.isClosing()) {
+                _logger.debug("Channel with id "+ channelId +" is closing");
+            }
             return null;
         }
         else
@@ -790,9 +827,9 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
         }
 
         markChannelAwaitingCloseOk(channelId);
-        closeSession();
-        _stateManager.changeState(AMQState.CONNECTION_CLOSING);
         writeFrame(e.getCloseFrame(channelId));
+        _stateManager.changeState(AMQState.CONNECTION_CLOSING);
+        closeSession();
 
         if (closeProtocolSession)
         {
@@ -1053,6 +1090,11 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
     public void init()
     {
         // Do nothing
+    }
+
+    @Override
+    public boolean isBlocked() {
+        return _network.isBlocked();
     }
 
     public void setSender(Sender<ByteBuffer> sender)
@@ -1359,5 +1401,68 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
     public void setStatisticsEnabled(boolean enabled)
     {
         _statisticsEnabled = enabled;
+    }
+
+    @Override
+    public void update(FlowControlState state) throws Exception {
+        switch (state) {
+            case MEMORY_THRESHOLD_EXCEEDED:
+                if (isFlowControlled.compareAndSet(Boolean.FALSE, Boolean.TRUE)) {
+
+                    for (Map.Entry<Integer, AMQChannel> entry : _channelMap.entrySet()) {
+                        AMQChannel channel = entry.getValue();
+                        if (channel != null) {
+                            if(channel.isSubscriptionChannel()) {
+                                return;
+                            }
+                            channel.blockChannel();
+
+                        }
+                    }
+                    _network.block();
+                    _logger.warn("Memory Threshold Exceeded. Session '" + getId().toString() +
+                                "' Will Be Flow Controlled" );
+                }
+            case PER_CONNECTION_MESSAGE_THRESHOLD_EXCEEDED:
+                if (isFlowControlled.compareAndSet(Boolean.FALSE, Boolean.TRUE)) {
+                    for (Map.Entry<Integer, AMQChannel> entry : _channelMap.entrySet()) {
+                        AMQChannel channel = entry.getValue();
+                        if (channel != null) {
+                            channel.blockChannel();
+                        }
+                    }
+                }
+                break;
+            case MEMORY_THRESHOLD_RECOVERED:
+                if (isFlowControlled.compareAndSet(Boolean.TRUE, Boolean.FALSE)) {
+                    if (_logger.isDebugEnabled()) {
+                        _logger.debug("Memory Threshold Is Recovered. Session '" +
+                                getId().toString() + "' Is Continued");
+                    }
+                    _network.unblock();
+                    for (Map.Entry<Integer, AMQChannel> entry : _channelMap.entrySet()) {
+                        AMQChannel channel = entry.getValue();
+                        if (channel != null) {
+                            channel.unblockChannel();
+                        }
+                    }
+                }
+                break;
+            case PER_CONNECTION_MESSAGE_THRESHOLD_RECOVERED:
+                if (isFlowControlled.compareAndSet(Boolean.TRUE, Boolean.FALSE)) {
+                    for (Map.Entry<Integer, AMQChannel> entry : _channelMap.entrySet()) {
+                        AMQChannel channel = entry.getValue();
+                        if (channel != null) {
+                            channel.unblockChannel();
+                        }
+                    }
+                }
+                break;
+            default:
+                if (_logger.isDebugEnabled()) {
+                    _logger.debug("Unknown Flow Control State Received. Session '" +
+                            getId().toString() + "' continues uninterrupted");
+                }
+        }
     }
 }

@@ -34,7 +34,7 @@ public class MinaNetworkConnection implements NetworkConnection
     private IoSession _session;
     private Sender<ByteBuffer> _sender;
     private volatile boolean _blocked = false;
-    
+
     public MinaNetworkConnection(IoSession session)
     {
         _session = session;
