@@ -397,7 +397,7 @@ public synchronized boolean testAndAddMessage(AndesMessageMetadata andesMetaData
     public void removeNodeQueueMessageFromStorePermanentlyAndDecrementMsgCount(long messageId, String destinationQueueName) {
 
         try {
-            MessageStore messageStore = MessagingEngine.getInstance().getCassandraBasedMessageStore();
+            MessageStore messageStore = MessagingEngine.getInstance().getDurableMessageStore();
             //we need to remove message from the store. At this moment message is at node queue space, not at global space
             //remove message from node queue instantly (prevent redelivery)
             String nodeQueueName = MessagingEngine.getMyNodeQueueName();

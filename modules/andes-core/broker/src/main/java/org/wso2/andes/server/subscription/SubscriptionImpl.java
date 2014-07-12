@@ -292,7 +292,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
 
                         if (ackHandler == null) {
                             QueueSubscriptionAcknowledgementHandler handler = new QueueSubscriptionAcknowledgementHandler(
-                                    MessagingEngine.getInstance().getCassandraBasedMessageStore(), entry.getQueue()
+                                    MessagingEngine.getInstance().getDurableMessageStore(), entry.getQueue()
                                             .getResourceName());
                             ClusterResourceHolder.getInstance().getSubscriptionManager().getAcknowledgementHandlerMap()
                                     .put(getChannel(), handler);

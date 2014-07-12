@@ -23,6 +23,8 @@ import java.util.List;
 
 public interface MessageStore {
 
+    public void initializeMessageStore (DurableStoreConnection cassandraconnection) throws AndesException;
+
     public void storeMessagePart(List<AndesMessagePart> part)throws AndesException;
 
     public void deleteMessageParts(List<Long> messageIdList)throws AndesException;
@@ -48,6 +50,4 @@ public interface MessageStore {
     public AndesMessageMetadata getMetaData(long messageId);
 
     public void close();
-
-    public void initializeMessageStore (DurableStoreConnection cassandraconnection) throws AndesException;
 }

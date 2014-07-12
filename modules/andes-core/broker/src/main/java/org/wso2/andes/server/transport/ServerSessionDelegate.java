@@ -25,6 +25,7 @@ import org.wso2.andes.AMQUnknownExchangeType;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.protocol.AMQConstant;
@@ -915,7 +916,7 @@ public class ServerSessionDelegate extends SessionDelegate
                                 }
                                 store.createQueue(queue, ftArgs);
                                 try {
-                                    MessagingEngine.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
+                                    AndesContext.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
                                 } catch (AndesException e) {
                                     throw new AMQException(AMQConstant.INTERNAL_ERROR,"Error while creating queue",e);
                                 }
@@ -925,7 +926,7 @@ public class ServerSessionDelegate extends SessionDelegate
                                 store.createQueue(queue);
                                 //send cluster notification to sync queues
                                 try{
-                                    MessagingEngine.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
+                                    AndesContext.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
                                 } catch (AndesException e) {
                                     throw  new AMQException(AMQConstant.INTERNAL_ERROR,"Cannot create queue. " +
                                             "Error during adding an inactive subscriber",e);
@@ -1080,7 +1081,7 @@ public class ServerSessionDelegate extends SessionDelegate
                             DurableConfigurationStore store = virtualHost.getDurableConfigurationStore();
                             store.removeQueue(queue);
                             try{
-                                MessagingEngine.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
+                                AndesContext.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
                             } catch (AndesException e) {
                                 throw  new AMQException(AMQConstant.INTERNAL_ERROR,"Cannot create queue. " +
                                         "Error during adding an inactive subscribe",e);

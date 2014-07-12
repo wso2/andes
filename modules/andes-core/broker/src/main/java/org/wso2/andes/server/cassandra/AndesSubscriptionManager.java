@@ -27,6 +27,7 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.util.AndesUtils;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 public class AndesSubscriptionManager {
 
@@ -39,11 +40,11 @@ public class AndesSubscriptionManager {
     private Map<AMQChannel,QueueSubscriptionAcknowledgementHandler> acknowledgementHandlerMap =
             new ConcurrentHashMap<AMQChannel,QueueSubscriptionAcknowledgementHandler>();
 
-    private SubscriptionStore subscriptionStore;  
+    private SubscriptionStore subscriptionStore;
 
 
     public void init()  {
-        subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
+        subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         subscriptionStore.reloadSubscriptionsFromStorage();
     }
 
@@ -56,7 +57,7 @@ public class AndesSubscriptionManager {
      */
     public void addSubscription(LocalSubscription localSubscription) throws AndesException {
 
-        SubscriptionStore subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
+        SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
 
         subscriptionStore.addLocalSubscription(localSubscription);
         if (localSubscription.getTargetQueueBoundExchange().equals(AMQPUtils.DIRECT_EXCHANGE_NAME)) {
@@ -76,7 +77,7 @@ public class AndesSubscriptionManager {
      * @throws AndesException
      */
     public void closeSubscription(LocalSubscription subscription) throws AndesException{
-		SubscriptionStore subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
+		SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         subscriptionStore.closeLocalSubscription(subscription);
     }
 

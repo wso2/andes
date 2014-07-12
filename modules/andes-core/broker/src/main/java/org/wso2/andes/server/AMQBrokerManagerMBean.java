@@ -30,8 +30,9 @@ import javax.management.ObjectName;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.management.common.mbeans.ManagedBroker;
 import org.wso2.andes.management.common.mbeans.ManagedQueue;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanConstructor;
@@ -263,7 +264,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
             if (queue.isDurable() && !queue.isAutoDelete())
             {
                 _durableConfig.createQueue(queue);
-                MessagingEngine.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
+                AndesContext.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
             }
             _queueRegistry.registerQueue(queue);
         }
@@ -292,7 +293,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
      */
     public void deleteQueue(String queueName) throws JMException, MBeanException
     {
-    	SubscriptionStore subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
+    	SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
 
         AMQQueue queue = _queueRegistry.getQueue(new AMQShortString(queueName));
         if (queue == null)

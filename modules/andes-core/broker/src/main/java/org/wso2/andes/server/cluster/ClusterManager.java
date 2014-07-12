@@ -31,6 +31,7 @@ import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.apache.zookeeper.*;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.util.AndesUtils;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -55,9 +56,6 @@ public class ClusterManager {
     //Map that Keeps the node id
     private Map<Integer, ClusterNode> nodeMap = new ConcurrentHashMap<Integer, ClusterNode>();
 
-    //in memory map keeping destination Queues active in the cluster
-    private List<String> destinationQueueList = Collections.synchronizedList(new ArrayList<String>());
-
     //in memory map keeping nodeIds assigned for each node in cluster
     private List<Integer> clusterNodeIDList = Collections.synchronizedList(new ArrayList<Integer>());
 
@@ -66,9 +64,7 @@ public class ClusterManager {
 
     private String connectionString;
 
-    private MessageStore messageStore;
-
-    private SubscriptionStore subscriptionStore;
+    private AndesContextStore andesContextStore;
 
     /**
      * Create a ClusterManager instance for clustered environment
@@ -76,9 +72,8 @@ public class ClusterManager {
      * @param zkConnectionString zookeeper port
      */
     public ClusterManager(String zkConnectionString) {
-        this.messageStore = MessagingEngine.getInstance().getCassandraBasedMessageStore();
-        this.subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
-        this.globalQueueManager = new GlobalQueueManager(messageStore);
+        this.andesContextStore = AndesContext.getInstance().getAndesContextStore();
+        this.globalQueueManager = new GlobalQueueManager(MessagingEngine.getInstance().getDurableMessageStore());
         this.connectionString = zkConnectionString;
     }
 
@@ -87,9 +82,8 @@ public class ClusterManager {
      * Then this will handle only standalone operations
      */
     public ClusterManager() {
-        this.messageStore = MessagingEngine.getInstance().getCassandraBasedMessageStore();
-        this.subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
-        this.globalQueueManager = new GlobalQueueManager(messageStore);
+        this.andesContextStore = AndesContext.getInstance().getAndesContextStore();
+        this.globalQueueManager = new GlobalQueueManager(MessagingEngine.getInstance().getDurableMessageStore());
         this.nodeId = 0;
     }
 
@@ -113,16 +107,21 @@ public class ClusterManager {
          */
         if (!config.isClusteringEnabled()) {
 
-            //update node information in durable store
-            List<String> nodeList = subscriptionStore.getStoredNodeIDList();
-            for (String node : nodeList) {
-                subscriptionStore.deleteNodeData(node);
+            try {
+                //update node information in durable store
+                List<String> nodeList = new ArrayList<String>(andesContextStore.getAllStoredNodeData().keySet());
+                for (String node : nodeList) {
+                    andesContextStore.removeNodeData(node);
+                }
+                clearAllPersistedStatesOfDissapearedNode(nodeId);
+                andesContextStore.storeNodeDetails("" + nodeId, config.getBindIpAddress());
+                //start all global queue workers on the node
+                startAllGlobalQueueWorkers();
+                return;
+            }  catch (AndesException e) {
+                log.error("Cannot Initialize cluster manager" , e);
             }
-            clearAllPersistedStatesOfDissapearedNode(nodeId);
-            subscriptionStore.addNodeDetails("" + nodeId, config.getBindIpAddress());
-            //start all global queue workers on the node
-            startAllGlobalQueueWorkers();
-            return;
+
         }
 
 
@@ -162,7 +161,7 @@ public class ClusterManager {
                                             log.info("Initializing Cluster Manager , " + "Selected Node id : " + nodeId);
 
                                             //add node information to durable store
-                                            subscriptionStore.addNodeDetails("" + nodeId, config.getBindIpAddress());
+                                            andesContextStore.storeNodeDetails("" + nodeId, config.getBindIpAddress());
 
                                             //register a listener for changes on my node data only
                                             zkAgent.getZooKeeper().
@@ -182,7 +181,7 @@ public class ClusterManager {
                                         clusterNodeIDList.add(id);
                                     }
 
-                                    List<String> storedNodes = subscriptionStore.getStoredNodeIDList();
+                                    List<String> storedNodes = new ArrayList<String>(andesContextStore.getAllStoredNodeData().keySet());
 
                                     /**
                                      * If nodeList size is one, this is the first node joining to cluster. Here we check if there has been
@@ -417,7 +416,7 @@ public class ClusterManager {
                     int deletedNodeId = getNodeIdFromZkNode(deletedNode);
                     log.info("Handling cluster gossip: Node with ID " + deletedNodeId + " left the cluster");
                     //Update the durable store
-                    subscriptionStore.deleteNodeData("" + deletedNodeId);
+                    andesContextStore.removeNodeData("" + deletedNodeId);
                     //update in memory list
                     clusterNodeIDList.remove(new Integer(deletedNodeId));
                     //refresh global queue sync ID
@@ -486,8 +485,8 @@ public class ClusterManager {
      * @param nodeId id of node assigned by zookeeper
      * @return bind address
      */
-    public String getNodeAddress(int nodeId) {
-        return subscriptionStore.getNodeData("" + nodeId);
+    public String getNodeAddress(int nodeId) throws AndesException {
+        return andesContextStore.getAllStoredNodeData().get(Integer.toString(nodeId));
     }
 
     /**
@@ -495,8 +494,8 @@ public class ClusterManager {
      *
      * @return list of Ids of cluster nodes
      */
-    public List<Integer> getZkNodes() {
-        List<String> storedNodes = subscriptionStore.getStoredNodeIDList();
+    public List<Integer> getZkNodes() throws AndesException {
+        List<String> storedNodes = new ArrayList<String>(andesContextStore.getAllStoredNodeData().keySet());
         ArrayList<Integer> zkNodeIdList = new ArrayList<Integer>();
         for (String storedNode : storedNodes) {
             Integer ZKId = Integer.parseInt(storedNode);
@@ -540,16 +539,6 @@ public class ClusterManager {
         return globalQueueManager.getMessageCountOfGlobalQueue(globalQueue);
     }
 
-    /**
-     * Get all topics in the cluster
-     *
-     * @return list of topics created
-     * @throws AndesException
-     */
-    public List<String> getTopics() throws AndesException {
-        return subscriptionStore.getTopics();
-    }
-
     //TODO:hasitha can we implement moving global queue workers?
     public boolean updateWorkerForQueue(String queueToBeMoved, String newNodeToAssign) {
         boolean successful = false;
@@ -574,19 +563,6 @@ public class ClusterManager {
     public String getMyNodeID() {
         String nodeID = Integer.toString(nodeId);
         return nodeID;
-    }
-
-    /**
-     * get destination queues in broker cluster
-     *
-     * @return
-     */
-    public List<String> getDestinationQueuesInCluster() {
-        List<String> queueList = new ArrayList<String>();
-        for (AndesQueue queue : subscriptionStore.getDurableQueues()) {
-            queueList.add(queue.queueName);
-        }
-        return queueList;
     }
 
     /**
@@ -619,7 +595,7 @@ public class ClusterManager {
     public int getNodeQueueMessageCount(int zkId, String destinationQueue) throws AndesException {
         String nodeQueueName = AndesUtils.getNodeQueueNameForNodeId(zkId);
         QueueAddress nodeQueueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueueName);
-        return MessagingEngine.getInstance().getCassandraBasedMessageStore().countMessagesOfQueue(nodeQueueAddress, destinationQueue);
+        return MessagingEngine.getInstance().getDurableMessageStore().countMessagesOfQueue(nodeQueueAddress, destinationQueue);
     }
 
 
@@ -627,11 +603,11 @@ public class ClusterManager {
 
         log.info("Clearing the Persisted State of Node with ID " + nodeID);
 
-        SubscriptionStore subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
+        SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         try {
 
             //remove node from nodes list
-            subscriptionStore.deleteNodeData("" + nodeID);
+            andesContextStore.removeNodeData("" + nodeID);
 
             //if in stand-alone mode close all local queue and topic subscriptions
             if(!ClusterResourceHolder.getInstance().getClusterConfiguration().isClusteringEnabled()) {
@@ -676,7 +652,7 @@ public class ClusterManager {
      */
     private void checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(int IdOfTaskOwningNode, String nodeQueueName) throws AndesException {
         if (this.nodeId == IdOfTaskOwningNode) {
-            MessageStore messageStore = MessagingEngine.getInstance().getCassandraBasedMessageStore();
+            MessageStore messageStore = MessagingEngine.getInstance().getDurableMessageStore();
             QueueAddress nodeQueueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueueName);
             long lastProcessedMessageID = 0;
             int numberOfMessagesMoved = 0;

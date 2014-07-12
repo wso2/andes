@@ -58,7 +58,7 @@ public class MQTTUtils {
     public static ByteBuffer getContentFromMetaInformation(AndesMessageMetadata metadata) {
         //Need to get the value dynamically
         ByteBuffer message = ByteBuffer.allocate(metadata.getMessageContentLength());
-        MessagingEngine.getInstance().getCassandraBasedMessageStore().getContent(Long.toString(metadata.getMessageID()), 0, message);
+        MessagingEngine.getInstance().getDurableMessageStore().getContent(Long.toString(metadata.getMessageID()), 0, message);
         return message;
     }
 

@@ -23,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.util.AndesUtils;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -48,13 +49,13 @@ public class TopicDeliveryWorker extends Thread {
 
     public TopicDeliveryWorker() {
 
-        this.subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
+        this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         this.topicNodeQueueName = AndesUtils.getTopicNodeQueueName();
         this.id = topicNodeQueueName;
         if (ClusterResourceHolder.getInstance().getClusterConfiguration().isInMemoryMode()) {
             messageStore = MessagingEngine.getInstance().getInMemoryMessageStore();
         } else {
-            messageStore = MessagingEngine.getInstance().getCassandraBasedMessageStore();
+            messageStore = MessagingEngine.getInstance().getDurableMessageStore();
         }
         messagePublishingExecutor = new SequentialThreadPoolExecutor((ClusterResourceHolder.getInstance().getClusterConfiguration().
                 getPublisherPoolSize()), "TopicMessagePublishingExecutor");

@@ -66,7 +66,7 @@ public class MQTTChannel {
 
         //Shold indicate the record in the cluster
         try {
-            MessagingEngine.getInstance().getSubscriptionStore().addLocalSubscription(localSubscription);
+            AndesContext.getInstance().getSubscriptionStore().addLocalSubscription(localSubscription);
         } catch (AndesException e) {
             e.printStackTrace();
         }
@@ -75,10 +75,10 @@ public class MQTTChannel {
     /*Will handle subscriber disconnection*/
     public void disconnectSubscriber(String subscribedTopic, String clientID) {
         try {
-            Collection<LocalSubscription> subscriptions = MessagingEngine.getInstance().getSubscriptionStore().getLocalSubscribersForTopic(subscribedTopic);
+            Collection<LocalSubscription> subscriptions = AndesContext.getInstance().getSubscriptionStore().getLocalSubscribersForTopic(subscribedTopic);
             for (LocalSubscription local_sub : subscriptions) {
                 if (local_sub.getSubscriptionID().equals(clientID)) {
-                    MessagingEngine.getInstance().getSubscriptionStore().closeLocalSubscription(local_sub);
+                    AndesContext.getInstance().getSubscriptionStore().closeLocalSubscription(local_sub);
                 }
             }
         } catch (AndesException e) {

@@ -22,7 +22,6 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.messageStore.CassandraConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
@@ -31,6 +30,7 @@ import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
 import org.wso2.andes.server.util.AndesUtils;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -87,7 +87,7 @@ public class QueueBrowserDeliveryWorker {
         if(isInMemoryMode) {
             messageStore = MessagingEngine.getInstance().getInMemoryMessageStore();
         } else {
-            messageStore = MessagingEngine.getInstance().getCassandraBasedMessageStore();
+            messageStore = MessagingEngine.getInstance().getDurableMessageStore();
         }
 
     }
@@ -186,7 +186,7 @@ public class QueueBrowserDeliveryWorker {
     }
 
     private List<AndesMessageMetadata> readMessages(List<AndesMessageMetadata> messageMetadataList, int messageBatchSize) throws Exception {
-        SubscriptionStore subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
+        SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         List<String> nodeQueuesHavingSubscriptionsForQueue = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForQueue(queue.getName()));
         if (nodeQueuesHavingSubscriptionsForQueue != null &&
                 nodeQueuesHavingSubscriptionsForQueue.size() > 0) {

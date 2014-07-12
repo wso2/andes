@@ -16,6 +16,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 /**
  * <code>QueueDeliveryWorker</code> Handles the task of polling the user queues and flushing
@@ -81,13 +82,13 @@ public class QueueDeliveryWorker extends Thread {
         this.maxNumberOfUnAckedMessages = clusterConfiguration.getMaxNumberOfUnackedMessages();
         this.maxNumberOfReadButUndeliveredMessages = clusterConfiguration.getMaxNumberOfReadButUndeliveredMessages();
         this.queueMsgDeliveryCurserResetTimeInterval = clusterConfiguration.getQueueMsgDeliveryCurserResetTimeInterval();
-        this.subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
+        this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         this.onflightMessageTracker = OnflightMessageTracker.getInstance();
 
         if (isInMemoryMode) {
             this.messageStore = MessagingEngine.getInstance().getInMemoryMessageStore();
         } else {
-            this.messageStore = MessagingEngine.getInstance().getCassandraBasedMessageStore();
+            this.messageStore = MessagingEngine.getInstance().getDurableMessageStore();
         }
 
         this.start();

@@ -1,10 +1,13 @@
 package org.wso2.andes.kernel;
 
+import org.wso2.andes.subscription.SubscriptionStore;
+
 import java.util.Map;
 
 public class AndesContext {
 	private MessageStore messageStore; 
 	private SubscriptionStore subscriptionStore;
+    private AndesContextStore andesContextStore;
 	private Map<String, Subscrption> dataSenderMap;
 	public MessageStore getMessageStore() {
 		return messageStore;
@@ -17,7 +20,15 @@ public class AndesContext {
 	}
 	public void setSubscriptionStore(SubscriptionStore subscriptionStore) {
 		this.subscriptionStore = subscriptionStore;
-	} 
+	}
+
+    public void setAndesContextStore(AndesContextStore andesContextStore) {
+        this.andesContextStore = andesContextStore;
+    }
+
+    public AndesContextStore getAndesContextStore() {
+        return this.andesContextStore;
+    }
 	
 	public void addDataSender(String key, Subscrption dataSender){
 		dataSenderMap.put(key, dataSender);

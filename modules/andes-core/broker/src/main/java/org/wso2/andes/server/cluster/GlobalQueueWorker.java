@@ -22,6 +22,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.stats.PerformanceCounter;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.*;
 
@@ -49,7 +50,7 @@ public class GlobalQueueWorker implements Runnable {
     }
 
     public void run() {
-        SubscriptionStore subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
+        SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         int queueWorkerWaitTime = ClusterResourceHolder.getInstance().getClusterConfiguration()
                 .getQueueWorkerInterval();
         int repeatedSleepingCounter = 0;

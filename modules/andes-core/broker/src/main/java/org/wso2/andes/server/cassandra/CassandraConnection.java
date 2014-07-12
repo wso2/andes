@@ -26,6 +26,7 @@ import me.prettyprint.hector.api.exceptions.HectorException;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessagingEngine;
@@ -138,8 +139,8 @@ public class CassandraConnection implements DurableStoreConnection {
     private void startTasks() {
         //TODO: Hasitha - review what to start
         try {
-            if (MessagingEngine.getInstance().getCassandraBasedMessageStore() != null
-                    && MessagingEngine.getInstance().getSubscriptionStore() != null) {
+            if (MessagingEngine.getInstance().getDurableMessageStore() != null
+                    && AndesContext.getInstance().getSubscriptionStore() != null) {
 
                 MessagingEngine.getInstance().startMessageDelivey();
 

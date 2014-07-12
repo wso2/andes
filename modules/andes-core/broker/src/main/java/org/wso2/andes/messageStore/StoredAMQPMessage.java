@@ -46,9 +46,9 @@ public class StoredAMQPMessage implements StoredMessage {
 
         //we switch the store according to persistance parameter
         if (metaData.isPersistent()) {
-            this.messageStore = MessagingEngine.getInstance().getCassandraBasedMessageStore();
+            this.messageStore = MessagingEngine.getInstance().getDurableMessageStore();
         } else {
-            this.messageStore = MessagingEngine.getInstance().getCassandraBasedMessageStore();
+            this.messageStore = MessagingEngine.getInstance().getDurableMessageStore();
         }
 
     }

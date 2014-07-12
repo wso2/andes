@@ -24,7 +24,7 @@ public class AndesBinding {
     public String routingKey;
     public AndesQueue boundQueue;
 
-    AndesBinding(String boundExchangeName, AndesQueue boundQueue, String routingKey) {
+    public AndesBinding(String boundExchangeName, AndesQueue boundQueue, String routingKey) {
         this.boundExchangeName = boundExchangeName;
         this.boundQueue = boundQueue;
         this.routingKey = routingKey;
