@@ -44,4 +44,11 @@ public interface NetworkConnection
     void setMaxWriteIdle(int sec);
 
     void setMaxReadIdle(int sec);
+
+    void block();
+
+    boolean isBlocked();
+
+    void unblock();
+
 }

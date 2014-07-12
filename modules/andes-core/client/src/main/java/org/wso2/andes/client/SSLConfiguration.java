@@ -34,7 +34,7 @@ public class SSLConfiguration {
     private String sslCertAlias;
 	
 	private String _certType = "SunX509";
-	
+
 	public void setKeystorePath(String path) 
 	{
 		_keystorePath = path;

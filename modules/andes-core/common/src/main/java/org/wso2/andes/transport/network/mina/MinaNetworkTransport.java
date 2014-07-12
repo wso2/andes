@@ -24,6 +24,7 @@ import org.apache.mina.common.ConnectFuture;
 import org.apache.mina.common.ExecutorThreadModel;
 import org.apache.mina.common.IoConnector;
 import org.apache.mina.common.IoSession;
+import org.apache.mina.filter.SSLFilter;
 import org.apache.mina.transport.socket.nio.*;
 import org.apache.mina.util.NewThreadExecutor;
 import org.slf4j.Logger;
@@ -36,7 +37,9 @@ import org.wso2.andes.transport.network.IncomingNetworkTransport;
 import org.wso2.andes.transport.network.NetworkConnection;
 import org.wso2.andes.transport.network.OutgoingNetworkTransport;
 import org.wso2.andes.transport.network.Transport;
+import org.wso2.andes.transport.network.security.ssl.SSLUtil;
 
+import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -194,7 +197,19 @@ public class MinaNetworkTransport implements OutgoingNetworkTransport, IncomingN
                 ((SocketConnector) ioConnector).setWorkerTimeout(0);
             }
 
-            ConnectFuture future = ioConnector.connect(address, new MinaNetworkHandler(sslFactory), ioConnector.getDefaultConfig());
+            if (settings.isUseSSL()){
+                try {
+                    SSLContext sslContext = SSLUtil.createSSLContext(settings);
+                    SSLFilter sslFilter = new SSLFilter(sslContext);
+                    sslFilter.setUseClientMode(true);
+                    ioConnector.getFilterChain().addFirst("sslFilter", sslFilter);
+                } catch (Exception e) {
+                    Exception ex = new Exception("An exception occurred in creating SSLContext: ", e);
+                    ex.printStackTrace();
+                }
+            }
+
+            ConnectFuture future = ioConnector.connect(address, new MinaNetworkHandler(null), ioConnector.getDefaultConfig());
             future.join();
             if (!future.isConnected())
             {

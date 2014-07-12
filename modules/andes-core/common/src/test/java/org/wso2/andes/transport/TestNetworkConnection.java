@@ -135,4 +135,20 @@ public class TestNetworkConnection implements NetworkConnection
     {
         return _sender;
     }
+
+    @Override
+    public void block() {
+        //Do nothing
+    }
+
+    @Override
+    public void unblock() {
+        //Do nothing
+    }
+
+    @Override
+    public boolean isBlocked() {
+        return false;
+    }
+
 }
