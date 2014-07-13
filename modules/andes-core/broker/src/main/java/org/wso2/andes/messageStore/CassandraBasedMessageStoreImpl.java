@@ -54,7 +54,6 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
         messageContentRemoverTask.start();
     }
 
-
     private void initializeCassandraMessageStore(DurableStoreConnection cassandraconnection) throws AndesException {
         try {
             cluster = ((CassandraConnection) cassandraconnection).getCluster();
@@ -585,4 +584,30 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
         }
         return messageCount;
     } */
+
+    @Override
+    public void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public void addMessageToExpiryQueue(Long messageId, Long expirationTime, boolean isMessageForTopic, String destination) throws CassandraDataAccessException {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public void moveToDeadLetterChannel(List<AndesRemovableMetadata> messageList) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public List<AndesRemovableMetadata> getExpiredMessages(Long limit, String columnFamilyName, String keyspace) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
 }

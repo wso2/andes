@@ -407,6 +407,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
                     QpidAMQPBridge.getInstance().messageMetaDataReceived(incomingMessage, _channelId);
 
+                    AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
+                    AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message);
+                    metadata.setExpirationTime(incomingMessage.getExpiration());
+
                 } catch (Throwable e) {
                     _logger.error("Error processing completed messages, we will close this session", e);
                     // We mark the session as closed due to error

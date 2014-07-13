@@ -76,6 +76,10 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
     public static final String STATUS_UPDATES = "status-updates";
     public static final String ADVANCED_LOCALE = "advanced.locale";
 
+    public static final int DEFAULT_JMS_EXPIRATION_CHECK_INTERVAL = 10000;
+    public static final boolean DEFAULT_SAVE_EXPIRED_TO_DLC = false;
+    public static final int DEFAULT_EXPIRATION_MESSAGE_BATCH_SIZE =1000;
+
     {
         envVarMap.put("QPID_ENABLEDIRECTBUFFERS", "advanced.enableDirectBuffers");
         envVarMap.put("QPID_SSLPORT", "connector.ssl.port");
@@ -100,6 +104,9 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         envVarMap.put("QPID_TCPNODELAY", "connector.tcpNoDelay");
         envVarMap.put("QPID_ENABLEPOOLEDALLOCATOR", "advanced.enablePooledAllocator");
         envVarMap.put("QPID_STATUS-UPDATES", "status-updates");
+        envVarMap.put("JMS_EXPIRATION_CHECK_INTERVAL","advanced.expiration.checkInterval");
+        envVarMap.put("SAVE_EXPIRED_TO_DLC","advanced.dlc.sendExpiredMessagesToDLC");
+        envVarMap.put("EXPIRATION_MESSAGE_BATCH_SIZE","advanced.expiration.messageBatchSize");
     }
 
     /**
@@ -919,6 +926,26 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
 
     public String getMessageIdGeneratorClass() {
         return getStringValue("broker.store.idGenerator", "org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator");
+    }
+
+    /**
+     * configuration property to specify time interval between checking expired messages within the broker. (milliseconds)
+     * @return int
+     */
+    public int getJMSExpirationCheckInterval() {
+        return getIntValue("advanced.expiration.checkInterval",DEFAULT_JMS_EXPIRATION_CHECK_INTERVAL);
+    }
+
+    /**
+     * configuration property to decide whether to save expired messages to DLC or not
+     * @return boolean
+     */
+    public boolean getSaveExpiredToDLC() {
+        return getBooleanValue("advanced.dlc.sendExpiredMessagesToDLC", DEFAULT_SAVE_EXPIRED_TO_DLC);
+    }
+
+    public int getExpirationMessageBatchSize() {
+        return getIntValue("advanced.expiration.messageBatchSize", DEFAULT_EXPIRATION_MESSAGE_BATCH_SIZE);
     }
 }
 

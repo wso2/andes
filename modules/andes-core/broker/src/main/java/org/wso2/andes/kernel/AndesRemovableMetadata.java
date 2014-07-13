@@ -22,6 +22,7 @@ public class AndesRemovableMetadata {
 
     public long messageID;
     public String destination;
+    public boolean isForTopic;
 
     public AndesRemovableMetadata(long messageID, String destination){
         this.messageID = messageID;

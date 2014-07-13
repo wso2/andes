@@ -18,6 +18,8 @@
 
 package org.wso2.andes.kernel;
 
+import org.wso2.andes.server.store.util.CassandraDataAccessException;
+
 import java.nio.ByteBuffer;
 import java.util.List;
 
@@ -50,4 +52,45 @@ public interface MessageStore {
     public AndesMessageMetadata getMetaData(long messageId);
 
     public void close();
+
+    /**
+     * interface to delete messages from expired messages collection
+     * @param messagesToRemove
+     * @throws AndesException
+     */
+    void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException;
+
+    /**
+     * Adds the received JMS Message ID along with its expiration time to MESSAGES_FOR_EXPIRY_COLUMN_FAMILY queue
+     * @param messageId
+     * @param expirationTime
+     * @param isMessageForTopic,
+     * @param destination
+     * @throws org.wso2.andes.server.store.util.CassandraDataAccessException
+     */
+    void addMessageToExpiryQueue(Long messageId, Long expirationTime, boolean isMessageForTopic, String destination) throws CassandraDataAccessException;
+
+    /**
+     * Generic interface to delete all references to a message - to be used when deleting messages not in ackrecieved state
+     * @param messagesToRemove
+     * @param moveToDeadLetterChannel
+     * @throws AndesException
+     */
+    void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException;
+
+    /**
+     *
+     * @param messageList
+     */
+    void moveToDeadLetterChannel(List<AndesRemovableMetadata> messageList);
+
+    /**
+     * Get Top @param limit messages having expiration times < current timestamp
+     * if limit <= 0, fetches all entries matching criteria.
+     * @param limit
+     * @param columnFamilyName
+     * @param keyspace
+     * @return
+     */
+    List<AndesRemovableMetadata> getExpiredMessages(Long limit,String columnFamilyName, String keyspace);
 }

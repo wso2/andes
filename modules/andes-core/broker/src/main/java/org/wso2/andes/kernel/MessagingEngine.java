@@ -29,6 +29,7 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.messageStore.CQLBasedMessageStoreImpl;
 import org.wso2.andes.messageStore.InMemoryMessageStore;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cassandra.TopicDeliveryWorker;
@@ -79,6 +80,10 @@ public class MessagingEngine {
 
     public MessageStore getInMemoryMessageStore() {
         return inMemoryMessageStore;
+    }
+
+    public SubscriptionStore getSubscriptionStore() {
+        return subscriptionStore;
     }
 
     public void initializeMessageStore(DurableStoreConnection connection, String messageStoreClassName) throws AndesException {
@@ -136,6 +141,12 @@ public class MessagingEngine {
 
     public void messageReceived(AndesMessageMetadata message, long channelID) throws AndesException {
         try {
+
+            if (message.getExpirationTime() > 0l)  {
+                //store message in MESSAGES_FOR_EXPIRY_COLUMN_FAMILY Queue
+                        durableMessageStore.addMessageToExpiryQueue(message.getMessageID(), message.getExpirationTime(), message.isTopic(), message.getDestination());
+            }
+
             if (message.isTopic) {
                 List<Subscrption> subscriptionList = subscriptionStore.getClusterSubscribersForTopic(message.getDestination());
                 if (subscriptionList.size() == 0) {
@@ -388,6 +399,44 @@ public class MessagingEngine {
         //todo: hasitha - we need to wait all jobs are finished, all executors have no future tasks
         durableMessageStore.close();
 
+        stopMessageExpirationWorker();
+
+    }
+
+    /**
+     * Start Checking for Expired Messages (JMS Expiration)
+     */
+    public void startMessageExpirationWorker() {
+        log.info("Starting Message Expiration Checker");
+
+        MessageExpirationWorker mew =
+                ClusterResourceHolder.getInstance().getMessageExpirationWorker();
+
+        if(mew == null) {
+
+            MessageExpirationWorker messageExpirationWorker = new MessageExpirationWorker();
+            ClusterResourceHolder.getInstance().setMessageExpirationWorker(messageExpirationWorker);
+
+        }  else {
+            if (!mew.isWorking()) {
+                mew.setWorking();
+            }
+        }
+
+        log.info("Message Expiration Checker has started.");
+    }
+
+    /**
+     * Stop Checking for Expired Messages (JMS Expiration)
+     */
+    public void stopMessageExpirationWorker() {
+
+        log.info("Stopping Message Expiration Checker");
+
+        MessageExpirationWorker mew = ClusterResourceHolder.getInstance().getMessageExpirationWorker();
+        if(mew != null && mew.isWorking()) {
+            mew.stopWorking();
+        }
     }
     
 }

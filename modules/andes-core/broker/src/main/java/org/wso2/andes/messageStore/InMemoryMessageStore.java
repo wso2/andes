@@ -9,6 +9,7 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.stats.PerformanceCounter;
+import org.wso2.andes.server.store.util.CassandraDataAccessException;
 import org.wso2.andes.server.util.AndesUtils;
 
 public class InMemoryMessageStore implements MessageStore {
@@ -248,6 +249,31 @@ public class InMemoryMessageStore implements MessageStore {
     private void decrementQueueCount(String destinationQueueName, long decrementBy) {
         long count = messageCountTable.get(destinationQueueName) - decrementBy;
         messageCountTable.put(destinationQueueName, count);
+    }
+
+    @Override
+    public void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public void addMessageToExpiryQueue(Long messageId, Long expirationTime, boolean isMessageForTopic, String destination) throws CassandraDataAccessException {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public void moveToDeadLetterChannel(List<AndesRemovableMetadata> messageList) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public List<AndesRemovableMetadata> getExpiredMessages(Long limit, String columnFamilyName, String keyspace) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
 }
