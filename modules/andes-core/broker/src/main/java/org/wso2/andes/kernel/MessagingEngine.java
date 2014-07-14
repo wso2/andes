@@ -78,7 +78,7 @@ public class MessagingEngine {
 		return cassandraBasedMessageStore;
 	}
 
-    public InMemoryMessageStore getInMemoryMessageStore() {
+    public MessageStore getInMemoryMessageStore() {
         return inMemoryMessageStore;
     }
 
@@ -191,8 +191,14 @@ public class MessagingEngine {
         }
     }
 
-    public void ackReceived(AndesAckData ack) {
-    	disruptorBasedExecutor.ackReceived(ack);
+    public void ackReceived(AndesAckData ack) throws AndesException {
+        if(config.isInMemoryMode()) {
+            List<AndesAckData> ackData = new ArrayList<AndesAckData>();
+            ackData.add(ack);
+            inMemoryMessageStore.ackReceived(ackData);
+        } else {
+            disruptorBasedExecutor.ackReceived(ack);
+        }
     }
 
     public void messageReturned(List<AndesAckData> ackList) {

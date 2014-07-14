@@ -78,8 +78,7 @@ public class GlobalQueueWorker implements Runnable {
                             Random random = new Random();
                             //TODO remove this list to set conversion
                             List<String> nodeQueuesHavingSubscriptionsForQueue = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForQueue(destinationQueue));
-                            if (nodeQueuesHavingSubscriptionsForQueue != null &&
-                                    nodeQueuesHavingSubscriptionsForQueue.size() > 0) {
+                            if (nodeQueuesHavingSubscriptionsForQueue.size() > 0) {
                                 int index = random.nextInt(nodeQueuesHavingSubscriptionsForQueue.size());
                                 String nodeQueue = nodeQueuesHavingSubscriptionsForQueue.get(index);
                                 metadata.queueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueue);

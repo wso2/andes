@@ -479,7 +479,6 @@ public class QueueDeliveryWorker extends Thread {
         while (iterator.hasNext()) {
             AndesMessageMetadata message = iterator.next();
             boolean messageSent = false;
-            //Map<String, CassandraSubscription> subscriptions4Queue = subscriptionMap.get(targetQueue);
             Collection<LocalSubscription> subscriptions4Queue = subscriptionStore.getActiveLocalSubscribersForQueue(targetQueue);
             if (subscriptions4Queue != null) {
                 /*

@@ -671,8 +671,12 @@ public class Subscription_0_10 implements Subscription, FlowCreditManager.FlowCr
       * When the message is acknowledged, this method adds an entry to db indicating that
       * content of this message can be removed after a particular time interval
      */
-        MessagingEngine.getInstance().ackReceived(new AndesAckData(queueEntry.getMessage().getMessageNumber(),
-                queueEntry.getQueue().getName(),queueEntry.getQueue().checkIfBoundToTopicExchange()));
+        try {
+            MessagingEngine.getInstance().ackReceived(new AndesAckData(queueEntry.getMessage().getMessageNumber(),
+                    queueEntry.getQueue().getName(),queueEntry.getQueue().checkIfBoundToTopicExchange()));
+        } catch (AndesException e) {
+            e.printStackTrace();
+        }
     }
 
     public void setStateListener(StateListener listener)
