@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 
 import org.apache.mina.common.IdleStatus;
 import org.apache.mina.common.IoSession;
+import org.apache.mina.common.TrafficMask;
 import org.wso2.andes.transport.Sender;
 import org.wso2.andes.transport.network.NetworkConnection;
 
@@ -32,6 +33,7 @@ public class MinaNetworkConnection implements NetworkConnection
 {
     private IoSession _session;
     private Sender<ByteBuffer> _sender;
+    private volatile boolean _blocked = false;
     
     public MinaNetworkConnection(IoSession session)
     {
@@ -78,4 +80,22 @@ public class MinaNetworkConnection implements NetworkConnection
     {
         _session.setIdleTime(IdleStatus.READER_IDLE, sec);
     }
+
+    @Override
+    public void block() {
+        _blocked = true;
+        _session.suspendRead();
+    }
+
+    @Override
+    public boolean isBlocked() {
+        return _blocked;
+    }
+
+    @Override
+    public void unblock() {
+        _blocked = false;
+        _session.resumeRead();
+    }
+
 }

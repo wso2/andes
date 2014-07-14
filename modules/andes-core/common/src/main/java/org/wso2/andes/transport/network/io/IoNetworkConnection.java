@@ -90,4 +90,19 @@ public class IoNetworkConnection implements NetworkConnection
         // TODO implement support for setting heartbeating config in this way
         // Currently a socket timeout is used in IoSender
     }
+
+    @Override
+    public void block() {
+        //Do nothing
+    }
+
+    @Override
+    public boolean isBlocked() {
+        return false;
+    }
+
+    @Override
+    public void unblock() {
+        //Do nothing
+    }
 }

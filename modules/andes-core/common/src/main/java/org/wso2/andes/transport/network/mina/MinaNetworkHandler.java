@@ -21,19 +21,15 @@
 
 package org.wso2.andes.transport.network.mina;
 
-import org.apache.mina.common.ByteBuffer;
-import org.apache.mina.common.IdleStatus;
-import org.apache.mina.common.IoHandlerAdapter;
-import org.apache.mina.common.IoSession;
-import org.apache.mina.common.SimpleByteBufferAllocator;
+import org.apache.mina.common.*;
 import org.apache.mina.filter.SSLFilter;
 import org.apache.mina.util.SessionUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wso2.andes.protocol.ProtocolEngine;
 import org.wso2.andes.protocol.ProtocolEngineFactory;
 import org.wso2.andes.ssl.SSLContextFactory;
 import org.wso2.andes.transport.network.NetworkConnection;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class MinaNetworkHandler extends IoHandlerAdapter
 {
@@ -41,6 +37,7 @@ public class MinaNetworkHandler extends IoHandlerAdapter
 
     private ProtocolEngineFactory _factory;
     private SSLContextFactory _sslFactory = null;
+    private SSLFilter sslFilter = null;
 
     static
     {
@@ -99,15 +96,12 @@ public class MinaNetworkHandler extends IoHandlerAdapter
         }
 
         SessionUtil.initialize(ioSession);
+        IoFilterChain chain = ioSession.getFilterChain();
 
-        if (_sslFactory != null) {
-/*            ioSession.getFilterChain().addBefore("protocolFilter", "sslFilter",
-                    new SSLFilter(_sslFactory.buildServerContext()));*/
-
-            // at the time of initializing sslfactory no 'protocolFilter' is created.
-            // Hence we need to add 'sslFilter' as first in filter chain.
-            ioSession.getFilterChain().addFirst("sslFilter",
-                    new SSLFilter(_sslFactory.buildServerContext()));
+      if (_sslFactory != null)
+        {
+            // at the time of initializing sslfactory no 'protocolFilter' is created. Hence we need to add 'sslFilter' as first in filter chain.
+            chain.addFirst("sslFilter", new SSLFilter(_sslFactory.buildServerContext()));
 
         }
 
