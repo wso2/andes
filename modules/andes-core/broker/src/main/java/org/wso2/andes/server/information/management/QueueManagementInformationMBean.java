@@ -24,6 +24,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.GlobalQueueManager;
 import org.wso2.andes.server.management.AMQManagedObject;
 import org.wso2.andes.server.util.AndesUtils;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 import javax.management.NotCompliantMBeanException;
 
@@ -37,7 +38,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     public QueueManagementInformationMBean() throws NotCompliantMBeanException {
         super(QueueManagementInformation.class, QueueManagementInformation.TYPE);
-        this.messageStore = MessagingEngine.getInstance().getCassandraBasedMessageStore();
+        this.messageStore = MessagingEngine.getInstance().getDurableMessageStore();
         this.globalQueueManager = new GlobalQueueManager(messageStore);
     }
 
@@ -61,7 +62,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             queuesList.toArray(queues);
             return queues;*/
 
-            List<String> queuesList = MessagingEngine.getInstance().getSubscriptionStore().listQueues();
+            List<String> queuesList = AndesContext.getInstance().getSubscriptionStore().listQueues();
             String[] queues= new String[queuesList.size()];
             queuesList.toArray(queues);
             return queues;
@@ -74,7 +75,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     public boolean isQueueExists(String queueName) {
         try {
-            List<String> queuesList = MessagingEngine.getInstance().getSubscriptionStore().listQueues();
+            List<String> queuesList = AndesContext.getInstance().getSubscriptionStore().listQueues();
             return queuesList.contains(queueName);
         } catch (Exception e) {
           throw new RuntimeException("Error in accessing destination queues",e);
@@ -91,13 +92,13 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     //TODO:when deleting queues from UI this is not get called. Instead we use AMQBrokerManagerMBean. Why are we keeping this?
     public void deleteQueue(@MBeanOperationParameter(name = "queueName",
             description = "Name of the queue to be deleted") String queueName) {
-    	SubscriptionStore subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
+    	SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         try {
             if(subscriptionStore.getActiveClusterSubscribersForDestination(queueName, false).size() >0) {
                 throw new Exception("Queue" + queueName +" Has Active Subscribers. Please Stop Them First.");
             }
             //remove queue
-            MessagingEngine.getInstance().getSubscriptionStore().removeQueue(queueName,false);
+            AndesContext.getInstance().getSubscriptionStore().removeQueue(queueName,false);
             //caller should remove messages from global queue
             ClusterResourceHolder.getInstance().getSubscriptionManager().handleMessageRemovalFromGlobalQueue(queueName);
         } catch (Exception e) {
@@ -129,7 +130,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
          * Get message count from all node queues having subscriptions
          * plus the number of messages in respective global queue
          */
-        SubscriptionStore subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
+        SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         List<String> nodeQueuesHavingSubscriptionsForQueue = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForQueue(queueName));
         if (nodeQueuesHavingSubscriptionsForQueue.size() > 0) {
             for (String nodeQueue : nodeQueuesHavingSubscriptionsForQueue) {
@@ -150,7 +151,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     public int getSubscriptionCount( String queueName){
         try {
-            return MessagingEngine.getInstance().getSubscriptionStore().numberOfSubscriptionsForQueueInCluster(queueName);
+            return AndesContext.getInstance().getSubscriptionStore().numberOfSubscriptionsForQueueInCluster(queueName);
         } catch (Exception e) {
             throw new RuntimeException("Error in getting subscriber count",e);
         }

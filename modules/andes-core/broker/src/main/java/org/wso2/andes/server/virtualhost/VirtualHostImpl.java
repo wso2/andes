@@ -28,9 +28,7 @@ import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.DurableStoreConnection;
-import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQBrokerManagerMBean;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -65,8 +63,10 @@ import org.wso2.andes.server.security.SecurityManager;
 import org.wso2.andes.server.security.auth.manager.AuthenticationManager;
 import org.wso2.andes.server.stats.StatisticsCounter;
 import org.wso2.andes.server.store.*;
+import org.wso2.andes.server.store.MessageStore;
 import org.wso2.andes.server.virtualhost.plugins.VirtualHostPlugin;
 import org.wso2.andes.server.virtualhost.plugins.VirtualHostPluginFactory;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
@@ -430,18 +430,59 @@ public class VirtualHostImpl implements VirtualHost
      */
     private void initialiseMessageStore(VirtualHostConfiguration hostConfig) throws Exception
     {
-        //initialize message store
+        //initialize context store and message store
         if(ClusterResourceHolder.getInstance().getClusterConfiguration().isInMemoryMode()) {
 
         } else {
-            DurableStoreConnection cassandraConnection = new CQLConnection();
-            cassandraConnection.initialize(hostConfig.getStoreConfiguration());
-            MessagingEngine.getInstance().initializeMessageStore(cassandraConnection);
+
+            String contextStoreConnectionClass = "org.wso2.andes.server.cassandra.CQLConnection";
+            Class clazz1 = Class.forName(contextStoreConnectionClass);
+            Object o1 = clazz1.newInstance();
+
+            if (!(o1 instanceof DurableStoreConnection))
+            {
+                throw new ClassCastException("Message store connection class must implement " + DurableStoreConnection.class + ". Class " + clazz1 +
+                        " does not.");
+            }
+            DurableStoreConnection contextStoreConnection = (DurableStoreConnection) o1;
+            contextStoreConnection.initialize(hostConfig.getStoreConfiguration());
+
+            //create a andes context store and register
+            String contextStoreClassName = "org.wso2.andes.kernel.CassandraBasedAndesContextStore";
+            Class clazz2 = Class.forName(contextStoreClassName);
+            Object o2 = clazz2.newInstance();
+
+            if (!(o2 instanceof AndesContextStore)) {
+                throw new ClassCastException("Message store class must implement " + AndesContextStore.class + ". Class " + clazz2 +
+                        " does not.");
+            }
+            AndesContextStore andesContextStore = (AndesContextStore) o2;
+            andesContextStore.init(contextStoreConnection);
+            AndesContext.getInstance().setAndesContextStore(andesContextStore);
+
+            //create subscription store
+            SubscriptionStore subscriptionStore = new SubscriptionStore();
+            AndesContext.getInstance().setSubscriptionStore(subscriptionStore);
+
+            //create a messaging engine and a message store
+            String messageStoreConnectionClass = "org.wso2.andes.server.cassandra.CQLConnection";
+            Class clazz = Class.forName(messageStoreConnectionClass);
+            Object o = clazz.newInstance();
+
+            if (!(o instanceof DurableStoreConnection))
+            {
+                throw new ClassCastException("Message store connection class must implement " + DurableStoreConnection.class + ". Class " + clazz +
+                        " does not.");
+            }
+            DurableStoreConnection messageStoreConnection = (DurableStoreConnection) o;
+            messageStoreConnection.initialize(hostConfig.getStoreConfiguration());
+            MessagingEngine.getInstance().initializeMessageStore(messageStoreConnection, "org.wso2.andes.messageStore.CQLBasedMessageStoreImpl");
         }
 
-        String messageStoreClass = hostConfig.getMessageStoreClass();
+        //this is considered as an internal impl now, so hard coding
+        String qpidMessageStoreClass = "org.wso2.andes.server.store.CassandraMessageStore";
 
-        Class clazz = Class.forName(messageStoreClass);
+        Class clazz = Class.forName(qpidMessageStoreClass);
         Object o = clazz.newInstance();
 
         if (!(o instanceof MessageStore))
@@ -529,7 +570,7 @@ public class VirtualHostImpl implements VirtualHost
     		getDurableConfigurationStore().createQueue(queue);
 
             try {
-                MessagingEngine.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
+                AndesContext.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
             } catch (AndesException e) {
                 throw new AMQException(AMQConstant.INTERNAL_ERROR,"Error during creating queue - could not add an inactive subscription",e);
             }

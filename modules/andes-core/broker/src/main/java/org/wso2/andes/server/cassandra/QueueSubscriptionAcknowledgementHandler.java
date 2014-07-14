@@ -24,12 +24,6 @@ import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.server.AMQChannel;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker.MsgData;
-import org.wso2.andes.server.queue.QueueEntry;
-import org.wso2.andes.server.stats.PerformanceCounter;
-import org.wso2.andes.server.store.CassandraMessageStore;
-import org.wso2.andes.server.util.AndesUtils;
 
 import java.util.Map;
 import java.util.SortedMap;

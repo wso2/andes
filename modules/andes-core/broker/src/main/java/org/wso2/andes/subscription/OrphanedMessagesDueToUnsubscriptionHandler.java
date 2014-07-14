@@ -6,11 +6,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.messageStore.CassandraConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
-import org.wso2.andes.server.store.CassandraMessageStore;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.server.util.QueueMessageRemovalLock;
 
@@ -42,7 +40,7 @@ public class OrphanedMessagesDueToUnsubscriptionHandler implements
 			case Disconnected:
 				if (!subscription.isBoundToTopic()) {
 					// problem happens only with Queues
-					SubscriptionStore subscriptionStore = MessagingEngine
+					SubscriptionStore subscriptionStore = AndesContext
 							.getInstance().getSubscriptionStore();
 					String destination = subscription
 							.getSubscribedDestination();
@@ -93,7 +91,7 @@ public class OrphanedMessagesDueToUnsubscriptionHandler implements
 					// silently ignore
 				}
 				// move messages from node queue to respective global queues
-                MessageStore messageStore = MessagingEngine.getInstance().getCassandraBasedMessageStore();
+                MessageStore messageStore = MessagingEngine.getInstance().getDurableMessageStore();
                 String nodeQueueName = MessagingEngine.getMyNodeQueueName();
                 long ignoredFirstMessageId = Long.MAX_VALUE;
                 int numberOfMessagesMoved = 0;

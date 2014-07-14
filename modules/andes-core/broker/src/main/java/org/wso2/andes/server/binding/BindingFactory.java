@@ -27,8 +27,9 @@ import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.SubscriptionStore;
+import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.configuration.BindingConfig;
 import org.wso2.andes.server.configuration.BindingConfigType;
@@ -271,7 +272,7 @@ public class BindingFactory
 
     public void removeBinding(final Binding b) throws AMQSecurityException, AMQInternalException
     {
-    	SubscriptionStore subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
+    	SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         removeBinding(b.getBindingKey(), b.getQueue(), b.getExchange(), b.getArguments());
         try {
             if(b.getExchange().getName().equalsIgnoreCase("amq.topic")) {

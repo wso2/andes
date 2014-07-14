@@ -27,6 +27,7 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.MethodRegistry;
 import org.wso2.andes.framing.QueueDeclareBody;
 import org.wso2.andes.framing.QueueDeclareOkBody;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.protocol.AMQConstant;
@@ -116,7 +117,7 @@ public class QueueDeclareHandler implements StateAwareMethodListener<QueueDeclar
                     {
                         store.createQueue(queue, body.getArguments());
                         try {
-                            MessagingEngine.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
+                            AndesContext.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
                         } catch (AndesException e) {
                             throw new AMQException(AMQConstant.INTERNAL_ERROR,"Error while adding inactive subscriber while queue creation",e);
                         }

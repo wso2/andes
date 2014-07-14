@@ -22,6 +22,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.stats.PerformanceCounter;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.*;
 
@@ -49,7 +50,7 @@ public class GlobalQueueWorker implements Runnable {
     }
 
     public void run() {
-        SubscriptionStore subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
+        SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         int queueWorkerWaitTime = ClusterResourceHolder.getInstance().getClusterConfiguration()
                 .getQueueWorkerInterval();
         int repeatedSleepingCounter = 0;
@@ -78,8 +79,7 @@ public class GlobalQueueWorker implements Runnable {
                             Random random = new Random();
                             //TODO remove this list to set conversion
                             List<String> nodeQueuesHavingSubscriptionsForQueue = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForQueue(destinationQueue));
-                            if (nodeQueuesHavingSubscriptionsForQueue != null &&
-                                    nodeQueuesHavingSubscriptionsForQueue.size() > 0) {
+                            if (nodeQueuesHavingSubscriptionsForQueue.size() > 0) {
                                 int index = random.nextInt(nodeQueuesHavingSubscriptionsForQueue.size());
                                 String nodeQueue = nodeQueuesHavingSubscriptionsForQueue.get(index);
                                 metadata.queueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueue);

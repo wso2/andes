@@ -24,10 +24,7 @@ import org.apache.log4j.Logger;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.pool.AndesExecuter;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.configuration.ConfigStore;
 import org.wso2.andes.server.configuration.ConfiguredObject;
 import org.wso2.andes.server.configuration.ExchangeConfigType;
@@ -41,8 +38,6 @@ import org.wso2.andes.server.message.InboundMessage;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.BaseQueue;
 import org.wso2.andes.server.queue.QueueRegistry;
-import org.wso2.andes.server.store.CassandraMessageStore;
-import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 
 import javax.management.JMException;

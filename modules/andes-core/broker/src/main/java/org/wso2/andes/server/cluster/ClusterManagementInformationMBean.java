@@ -17,9 +17,7 @@
 */
 package org.wso2.andes.server.cluster;
 
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.LocalSubscription;
-import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.management.common.mbeans.ClusterManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanConstructor;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
@@ -27,6 +25,7 @@ import org.wso2.andes.server.management.AMQManagedObject;
 
 import javax.management.JMException;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -69,7 +68,11 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
     }
 
     public List<Integer> getZkNodes() {
-        return clusterManager.getZkNodes();
+        try {
+            return clusterManager.getZkNodes();
+        } catch (AndesException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public int getMessageCount(@MBeanOperationParameter(name = "queueName", description = "Name of the queue which message count is required") String queueName) {
@@ -83,11 +86,19 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
     }
 
     public String getIPAddressForNode(@MBeanOperationParameter(name = "nodeID", description = "Zookeeper ID of the node") int ZKID) {
-        return clusterManager.getNodeAddress(ZKID);
+        try {
+            return clusterManager.getNodeAddress(ZKID);
+        } catch (AndesException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public List<String> getDestinationQueuesOfCluster() {
-        return clusterManager.getDestinationQueuesInCluster();
+        List<String> queueList = new ArrayList<String>();
+        for (AndesQueue queue : AndesContext.getInstance().getSubscriptionStore().getDurableQueues()) {
+            queueList.add(queue.queueName);
+        }
+        return queueList;
     }
 
     public int getNodeQueueMessageCount(int zkId, String destinationQueue) {
@@ -105,7 +116,7 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
     public List<String> getTopics() {
         List<String> topics = null;
         try {
-            topics = clusterManager.getTopics();
+            topics = AndesContext.getInstance().getSubscriptionStore().getTopics();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -119,11 +130,5 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
     public int getSubscriberCount(@MBeanOperationParameter(name = "Topic", description = "Topic name") String topic) {
     	throw new UnsupportedOperationException("Check what this should return (subscription IDs?)");
 
-    }
-
-    public String getNodeAddress(@MBeanOperationParameter(name="Node Id",description =
-            "Node id assigned by Cluster manager")
-                                 int nodeId) {
-        return clusterManager.getNodeAddress(nodeId);
     }
 }

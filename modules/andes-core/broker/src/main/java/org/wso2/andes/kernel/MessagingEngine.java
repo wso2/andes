@@ -38,8 +38,7 @@ import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerat
 import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.util.AndesUtils;
-import org.wso2.andes.subscription.ClusterwideSubscriptionChangeNotifier;
-import org.wso2.andes.subscription.OrphanedMessagesDueToUnsubscriptionHandler;
+import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor;
 
 
@@ -49,7 +48,7 @@ import org.wso2.andes.tools.utils.DisruptorBasedExecutor;
 public class MessagingEngine {
     private static final Logger log = Logger.getLogger(MessagingEngine.class);
     private static MessagingEngine messagingEngine = null;
-    private MessageStore cassandraBasedMessageStore;
+    private MessageStore durableMessageStore;
     private InMemoryMessageStore inMemoryMessageStore;
     private DisruptorBasedExecutor disruptorBasedExecutor ;
     private SubscriptionStore subscriptionStore;
@@ -66,37 +65,48 @@ public class MessagingEngine {
     }
 
     private MessagingEngine() {
-        cassandraBasedMessageStore = new CQLBasedMessageStoreImpl();
+        durableMessageStore = new CQLBasedMessageStoreImpl();
         inMemoryMessageStore = new InMemoryMessageStore();
-        disruptorBasedExecutor = new DisruptorBasedExecutor(cassandraBasedMessageStore, null);
+        disruptorBasedExecutor = new DisruptorBasedExecutor(durableMessageStore, null);
         config = ClusterResourceHolder.getInstance().getClusterConfiguration();
         configureMessageIDGenerator();
     }
 
 
-    public MessageStore getCassandraBasedMessageStore() {
-		return cassandraBasedMessageStore;
+    public MessageStore getDurableMessageStore() {
+		return durableMessageStore;
 	}
 
-    public InMemoryMessageStore getInMemoryMessageStore() {
+    public MessageStore getInMemoryMessageStore() {
         return inMemoryMessageStore;
     }
 
-    public void initializeMessageStore(DurableStoreConnection connection) throws AndesException {
-        cassandraBasedMessageStore.initializeMessageStore(connection);
-        subscriptionStore = new SubscriptionStore(connection);
-        //adding subscription listeners
-        subscriptionStore.addSubscriptionListener(new OrphanedMessagesDueToUnsubscriptionHandler());
-        subscriptionStore.addSubscriptionListener(new ClusterwideSubscriptionChangeNotifier());
+    public void initializeMessageStore(DurableStoreConnection connection, String messageStoreClassName) throws AndesException {
+
+        try {
+            Class clazz = Class.forName(messageStoreClassName);
+            Object o = clazz.newInstance();
+
+            if (!(o instanceof org.wso2.andes.kernel.MessageStore)) {
+                throw new ClassCastException("Message store class must implement " + MessageStore.class + ". Class " + clazz +
+                        " does not.");
+            }
+            durableMessageStore = (MessageStore) o;
+            durableMessageStore.initializeMessageStore(connection);
+            subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+        } catch (Exception e) {
+            log.error("Cannot initialize message store", e);
+            throw new AndesException(e);
+        }
     }
 
     public ClusterConfiguration getConfig() {
         return config;
     }
 
-	public void setCassandraBasedMessageStore(
-			MessageStore cassandraBasedMessageStore) {
-		this.cassandraBasedMessageStore = cassandraBasedMessageStore;
+	public void setDurableMessageStore(
+            MessageStore durableMessageStore) {
+		this.durableMessageStore = durableMessageStore;
 	}
 
 	public DisruptorBasedExecutor getDisruptorBasedExecutor() {
@@ -132,7 +142,7 @@ public class MessagingEngine {
                     log.info("Message routing key: " + message.getDestination() + " No routes in cluster.");
                     List<Long> messageIdList =  new ArrayList<Long>();
                     messageIdList.add(message.getMessageID());
-                    cassandraBasedMessageStore.deleteMessageParts(messageIdList);
+                    durableMessageStore.deleteMessageParts(messageIdList);
                 }
 
                 Set<String> targetAndesNodeSet = new HashSet<String>();
@@ -191,8 +201,14 @@ public class MessagingEngine {
         }
     }
 
-    public void ackReceived(AndesAckData ack) {
-    	disruptorBasedExecutor.ackReceived(ack);
+    public void ackReceived(AndesAckData ack) throws AndesException {
+        if(config.isInMemoryMode()) {
+            List<AndesAckData> ackData = new ArrayList<AndesAckData>();
+            ackData.add(ack);
+            inMemoryMessageStore.ackReceived(ackData);
+        } else {
+            disruptorBasedExecutor.ackReceived(ack);
+        }
     }
 
     public void messageReturned(List<AndesAckData> ackList) {
@@ -209,7 +225,7 @@ public class MessagingEngine {
     public int removeMessagesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch) throws AndesException {
         long lastProcessedMessageID = 0;
         int messageCount = 0;
-        List<AndesMessageMetadata> messageList = cassandraBasedMessageStore.getNextNMessageMetadataFromQueue(queueAddress, lastProcessedMessageID, 500);
+        List<AndesMessageMetadata> messageList = durableMessageStore.getNextNMessageMetadataFromQueue(queueAddress, lastProcessedMessageID, 500);
         List<AndesRemovableMetadata> messageMetaDataList = new ArrayList<AndesRemovableMetadata>();
         List<Long> messageIdList = new ArrayList<Long>();
         while (messageList.size() != 0) {
@@ -233,11 +249,11 @@ public class MessagingEngine {
 
             }
             //remove metadata
-            cassandraBasedMessageStore.deleteMessageMetadataFromQueue(queueAddress, messageMetaDataList);
+            durableMessageStore.deleteMessageMetadataFromQueue(queueAddress, messageMetaDataList);
             //remove content
-            cassandraBasedMessageStore.deleteMessageParts(messageIdList);
+            durableMessageStore.deleteMessageParts(messageIdList);
             messageMetaDataList.clear();
-            messageList = cassandraBasedMessageStore.getNextNMessageMetadataFromQueue(queueAddress, lastProcessedMessageID, 500);
+            messageList = durableMessageStore.getNextNMessageMetadataFromQueue(queueAddress, lastProcessedMessageID, 500);
         }
         return messageCount;
     }
@@ -256,14 +272,6 @@ public class MessagingEngine {
         }
         //remove sent but not acked messages
         OnflightMessageTracker.getInstance().getSentButNotAckedMessagesOfQueue(destinationQueueName);
-    }
-
-    public SubscriptionStore getSubscriptionStore() {
-        return subscriptionStore;
-    }
-
-    public void setSubscriptionStore(SubscriptionStore subscriptionStore) {
-        this.subscriptionStore = subscriptionStore;
     }
 
     public long generateNewMessageId() {
@@ -286,7 +294,7 @@ public class MessagingEngine {
     	AndesMessageMetadata clone = message.deepClone(newMessageId);
 
         //duplicate message content
-        ((CQLBasedMessageStoreImpl) cassandraBasedMessageStore).duplicateMessageContent(message.getMessageID(),newMessageId);
+        ((CQLBasedMessageStoreImpl) durableMessageStore).duplicateMessageContent(message.getMessageID(),newMessageId);
 
         return clone;
 
@@ -377,6 +385,8 @@ public class MessagingEngine {
     public void close() {
 
         stopMessageDelivery();
+        //todo: hasitha - we need to wait all jobs are finished, all executors have no future tasks
+        durableMessageStore.close();
 
     }
     

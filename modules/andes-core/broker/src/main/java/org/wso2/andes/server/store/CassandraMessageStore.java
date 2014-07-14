@@ -32,6 +32,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.LogSubject;
 import org.wso2.andes.server.queue.AMQQueue;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 /**
  * Class <code>CassandraMessageStore</code> is the Message Store implemented for cassandra
@@ -80,7 +81,7 @@ public class CassandraMessageStore implements MessageStore {
      * @throws Exception
      */
     private void performCommonConfiguration(Configuration configuration) throws Exception {
-        subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
+        subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         configured = true;
     }
 
@@ -146,7 +147,7 @@ public class CassandraMessageStore implements MessageStore {
     public void loadQueues(ConfigurationRecoveryHandler.QueueRecoveryHandler qrh) throws Exception {
         try {
             if(subscriptionStore == null) {
-                subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
+                subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
             }
             List<AndesQueue> queues = subscriptionStore.getDurableQueues();
             for(AndesQueue queue : queues) {
@@ -300,7 +301,7 @@ public class CassandraMessageStore implements MessageStore {
 
     @Override
     public Transaction newTransaction() {
-        return new CassandraTransaction();
+        return new AndesTransaction();
     }
 
     public boolean isConfigured() {
@@ -308,7 +309,7 @@ public class CassandraMessageStore implements MessageStore {
     }
 
     //inner class handling Cassandra Transactions
-    private class CassandraTransaction implements Transaction {
+    private class AndesTransaction implements Transaction {
 
         public void enqueueMessage(final TransactionLogResource queue, final Long messageId)
                 throws AMQStoreException {

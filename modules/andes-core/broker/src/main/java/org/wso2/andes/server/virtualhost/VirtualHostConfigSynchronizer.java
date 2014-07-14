@@ -15,6 +15,7 @@ import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.AMQQueueFactory;
 import org.wso2.andes.server.store.ConfigurationRecoveryHandler;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -38,7 +39,7 @@ public class VirtualHostConfigSynchronizer implements
     public VirtualHostConfigSynchronizer(VirtualHost _virtualHost, int synchInterval) {
         this._virtualHost = _virtualHost;
         this._syncInterval = synchInterval;
-        this.subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
+        this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
     }
 
     @Override
@@ -147,7 +148,7 @@ public class VirtualHostConfigSynchronizer implements
     }
 
     public void start() {
-        if (!running && MessagingEngine.getInstance().getSubscriptionStore() != null) {
+        if (!running && AndesContext.getInstance().getSubscriptionStore() != null) {
             running = true;
             Thread t = new Thread(new VirtualHostConfigSynchronizingTask(this));
             t.setName(this.getClass().getSimpleName());

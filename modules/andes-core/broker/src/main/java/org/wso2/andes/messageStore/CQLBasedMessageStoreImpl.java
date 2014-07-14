@@ -52,6 +52,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     private MessageContentRemoverTask messageContentRemoverTask;
     private AlreadyProcessedMessageTracker alreadyMovedMessageTracker;
     private boolean isMessageCountingAllowed;
+    private DurableStoreConnection connection;
     private Cluster cluster;
 
     public CQLBasedMessageStoreImpl() {
@@ -60,6 +61,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
     public void initializeMessageStore(DurableStoreConnection cassandraconnection) throws AndesException {
         initializeCassandraMessageStore(cassandraconnection);
+        connection = cassandraconnection;
         alreadyMovedMessageTracker = new AlreadyProcessedMessageTracker("Message-move-tracker", 15000000000L, 10);
         messageContentRemoverTask = new MessageContentRemoverTask(ClusterResourceHolder.getInstance().getClusterConfiguration().
                 getContentRemovalTaskInterval(), contentDeletionTasks, this, cassandraconnection);
@@ -640,6 +642,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             this.messageContentRemoverTask.setRunning(false);
         }
         alreadyMovedMessageTracker.shutDownMessageTracker();
+        connection.close();
     }
 
 

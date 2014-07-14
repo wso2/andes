@@ -1,15 +1,4 @@
-package org.wso2.andes.kernel;
-
-
-import static org.wso2.andes.messageStore.CassandraConstants.EXCHANGE_COLUMN_FAMILY;
-import static org.wso2.andes.messageStore.CassandraConstants.EXCHANGE_ROW;
-import static org.wso2.andes.messageStore.CassandraConstants.KEYSPACE;
-import static org.wso2.andes.messageStore.CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY;
-import static org.wso2.andes.messageStore.CassandraConstants.MESSAGE_COUNTERS_RAW_NAME;
-import static org.wso2.andes.messageStore.CassandraConstants.NODE_DETAIL_COLUMN_FAMILY;
-import static org.wso2.andes.messageStore.CassandraConstants.NODE_DETAIL_ROW;
-import static org.wso2.andes.messageStore.CassandraConstants.SUBSCRIPTIONS_COLUMN_FAMILY;
-import static org.wso2.andes.messageStore.CassandraConstants.UTF8_TYPE;
+package org.wso2.andes.subscription;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,26 +11,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
-/*import me.prettyprint.hector.api.Keyspace;*/
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
-import org.wso2.andes.messageStore.CassandraConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cassandra.CQLConnection;
-import org.wso2.andes.server.cassandra.dao.CQLQueryBuilder;
-import org.wso2.andes.server.store.util.CQLDataAccessHelper;
-import org.wso2.andes.server.store.util.CassandraDataAccessException;
 import org.wso2.andes.server.util.AndesUtils;
-import org.wso2.andes.subscription.BasicSubscription;
-
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.Row;
-/*import me.prettyprint.hector.api.Cluster;*/
 
 import org.wso2.andes.pool.AndesExecuter;
 
@@ -63,23 +39,16 @@ public class SubscriptionStore {
 	private Map<String, Map<String, LocalSubscription>> localQueueSubscriptionMap = new ConcurrentHashMap<String, Map<String, LocalSubscription>>();
 
 	private List<SubscriptionListener> subscriptionListeners = new ArrayList<SubscriptionListener>();
-	/*private Keyspace keyspace;*/
-    private Cluster cluster;
+
+    private AndesContextStore andesContextStore;
+
 	
-	public SubscriptionStore(DurableStoreConnection connection) throws AndesException {
+	public SubscriptionStore() throws AndesException {
 
-        try {
-        //this.keyspace = ((CQLConnection)connection).getKeySpace();
-        this.cluster =  ((CQLConnection)connection).getCluster();
-
-        //create needed column families
-        CQLDataAccessHelper.createColumnFamily(SUBSCRIPTIONS_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text());
-        CQLDataAccessHelper.createColumnFamily(EXCHANGE_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text());
-        CQLDataAccessHelper.createColumnFamily(NODE_DETAIL_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text());
-        } catch (CassandraDataAccessException e) {
-            log.error("Error while creating column spaces during subscription store init. ", e);
-        }
-
+        andesContextStore = AndesContext.getInstance().getAndesContextStore();
+        //adding subscription listeners
+        addSubscriptionListener(new OrphanedMessagesDueToUnsubscriptionHandler());
+        addSubscriptionListener(new ClusterwideSubscriptionChangeNotifier());
 	}
 
     /**
@@ -132,7 +101,7 @@ public class SubscriptionStore {
     
     public void reloadSubscriptionsFromStorage(){
     	try{
-    		Map<String, List<String>> results = CQLDataAccessHelper.listAllStringRows(SUBSCRIPTIONS_COLUMN_FAMILY, KEYSPACE);
+    		Map<String, List<String>> results = andesContextStore.getAllStoredDurableSubscriptions();
         	for(Entry<String, List<String>> entry: results.entrySet()){
         		String destination = entry.getKey(); 
         		List<Subscrption> subscriptionList = new ArrayList<Subscrption>();
@@ -275,7 +244,6 @@ public class SubscriptionStore {
     }
 
     private void createDisconnectOrRemoveLocalSubscription(LocalSubscription subscrption, SubscriptionChange type) throws AndesException {
-        try {
             Map<String, LocalSubscription> subscriptionList = getSubscriptionList(subscrption.getSubscribedDestination(),
                     subscrption.isBoundToTopic());
             //TODO:hasitha- review this
@@ -312,11 +280,11 @@ public class SubscriptionStore {
                 //add or update subscription to local map
                 subscriptionList.put(subscrption.getSubscriptionID(), subscrption);
                 String destinationQueue = subscrption.getSubscribedDestination();
-                //Write to cassandra
-                String destinationStringForCassandra = new StringBuffer().append((subscrption.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX))
+                //Store the subscription
+                String destinationIdentifier = new StringBuffer().append((subscrption.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX))
                         .append(destinationQueue).toString();
                 String subscriptionID = subscrption.getSubscriptionID();
-                CQLDataAccessHelper.addMappingToRaw(KEYSPACE, SUBSCRIPTIONS_COLUMN_FAMILY, destinationStringForCassandra, subscriptionID, subscrption.encodeAsStr(),true);
+                andesContextStore.storeDurableSubscription(destinationIdentifier, subscriptionID, subscrption.encodeAsStr());
 
                 if(type == SubscriptionChange.Added) {
                     log.info("New Local Subscription Added " + subscrption);
@@ -329,7 +297,7 @@ public class SubscriptionStore {
                     Map<String, LocalSubscription> localSubscriptions = localQueueSubscriptionMap.get(destinationQueue);
                     if (localSubscriptions == null) {
                         localSubscriptions = new ConcurrentHashMap<String, LocalSubscription>();
-                        addMessageCounterForQueue(destinationQueue);
+                        andesContextStore.addMessageCounterForQueue(destinationQueue);
                     }
                     localSubscriptions.put(subscriptionID, subscrption);
                     localQueueSubscriptionMap.put(destinationQueue, localSubscriptions);
@@ -346,14 +314,11 @@ public class SubscriptionStore {
             } else if(type == SubscriptionChange.Deleted){
                 removeLocalSubscriptionAndNotify(subscrption.getSubscribedDestination(), subscrption.getSubscriptionID());
             }
-        } catch (CassandraDataAccessException e) {
-            throw new AndesException(e);
-        }
+
     }
     
     private LocalSubscription removeLocalSubscriptionAndNotify(String destination, String subscriptionID) throws AndesException{
     	long start = System.currentTimeMillis();
-    	try {
             //check queue local subscriptions
     		Map<String, LocalSubscription> subscriptionList = getSubscriptionList(destination, false);
 			Iterator<LocalSubscription> iterator = subscriptionList.values().iterator();
@@ -382,9 +347,9 @@ public class SubscriptionStore {
 			}
 			
 			if(subscriptionToRemove != null){
-				String destinationAtCassandra = new StringBuffer().append((subscriptionToRemove.isBoundToTopic()? TOPIC_PREFIX:QUEUE_PREFIX))
+				String destinationIdentifier = new StringBuffer().append((subscriptionToRemove.isBoundToTopic()? TOPIC_PREFIX:QUEUE_PREFIX))
 						.append(destination).toString();
-				CQLDataAccessHelper.deleteStringColumnFromRaw(SUBSCRIPTIONS_COLUMN_FAMILY, destinationAtCassandra, subscriptionID, KEYSPACE);
+                andesContextStore.removeDurableSubscription(destinationIdentifier,subscriptionID);
 				log.info("Subscription Removed Locally for  "+ destination + "@" +  subscriptionID + " "+ subscriptionToRemove);
 				notifyListeners(subscriptionToRemove, true, SubscriptionChange.Deleted);
 			}else{
@@ -392,10 +357,7 @@ public class SubscriptionStore {
 						+ " topic=" + localTopicSubscriptionMap + "\n" + localQueueSubscriptionMap + "\n"); 
 			}
 	    	System.out.println("removing Local Subscription done, took "+ (System.currentTimeMillis() - start));
-			return subscriptionToRemove; 
-		} catch (CassandraDataAccessException e) {
-			throw new AndesException(e);
-		}
+			return subscriptionToRemove;
     }
 
     private void notifyListeners(final Subscrption subscrption, final boolean local, final SubscriptionChange change){
@@ -549,7 +511,6 @@ public class SubscriptionStore {
     }
 
     public void removeQueue(String destinationQueueName, boolean isExclusive) throws AndesException{
-        try {
             //check if there are active subscribers in cluster
             if(!isExclusive && getNodeQueuesHavingSubscriptionsForQueue(destinationQueueName).size() > 0) {
                 throw new AndesException("There are Subscriptions for This Queue in Cluster. Stop Them First");
@@ -567,7 +528,7 @@ public class SubscriptionStore {
                 }
             }
             //remove message counter
-            removeMessageCounterForQueue(destinationQueueName);
+            andesContextStore.removeMessageCounterForQueue(destinationQueueName);
 
             //remove topic local subscriptions and notify
             Set<String> destinations = localTopicSubscriptionMap.keySet();
@@ -584,131 +545,22 @@ public class SubscriptionStore {
             }
 
             ClusterResourceHolder.getInstance().getSubscriptionManager().handleMessageRemovalFromNodeQueue(destinationQueueName);
-
-        } catch (CassandraDataAccessException e) {
-            log.error("Error while removing queue");
-            throw new AndesException(e);
-        }
-    }
-
-    public void addNodeDetails(String nodeId, String data) {
-        try {
-            CQLDataAccessHelper.addMappingToRaw(KEYSPACE, NODE_DETAIL_COLUMN_FAMILY, NODE_DETAIL_ROW, nodeId, data, true);
-        } catch (CassandraDataAccessException e) {
-            throw new RuntimeException("Error writing Node details to cassandra database", e);
-        }
-    }
-
-    public String getNodeData(String nodeId) {
-        try {
-
-        	List<Row> values = CQLDataAccessHelper.getStringTypeColumnsInARow(NODE_DETAIL_ROW,nodeId, NODE_DETAIL_COLUMN_FAMILY,
-                    KEYSPACE, Long.MAX_VALUE);
-
-          /* Object column = values.getColumnByName(nodeId);
-
-            String columnName = ((HColumn<String, String>) column).getName();
-            String value = ((HColumn<String, String>) column).getValue();*/
-        	String columnName = null;
-        	String value = null;
-        	for(Row row : values){
-        		if(row.getString(CQLDataAccessHelper.MSG_KEY).equalsIgnoreCase(nodeId)){
-        			columnName = row.getString(CQLDataAccessHelper.MSG_KEY);
-        			value = row.getString(CQLDataAccessHelper.MSG_VALUE);
-        		}
-        	}
-        	
-        	
-            return value;
-
-        } catch (CassandraDataAccessException e) {
-            throw new RuntimeException("Error accessing Node details to cassandra database");
-        }
-    }
-
-    public List<String> getStoredNodeIDList() {
-        try {
-            List<Row> values = CQLDataAccessHelper.getStringTypeColumnsInARow(NODE_DETAIL_ROW,null, NODE_DETAIL_COLUMN_FAMILY,
-                    KEYSPACE, Long.MAX_VALUE);
-           /* List<HColumn<String, String>> columns = values.getColumns();*/
-            List<String> nodes = new ArrayList<String>();
-            /*for (HColumn<String, String> column : columns) {
-                nodes.add(column.getName());
-            }*/
-            
-            for(Row row : values){
-            	nodes.add(row.getString(CQLDataAccessHelper.MSG_KEY));
-            }
-
-            return nodes;
-
-        } catch (CassandraDataAccessException e) {
-            throw new RuntimeException("Error accessing Node details to cassandra database");
-        }
-    }
-
-    public void deleteNodeData(String nodeId) {
-
-        try {
-            CQLDataAccessHelper.deleteStringColumnFromRaw(NODE_DETAIL_COLUMN_FAMILY, NODE_DETAIL_ROW, nodeId, KEYSPACE);
-        } catch (CassandraDataAccessException e) {
-            throw new RuntimeException("Error accessing Node details to cassandra database");
-        }
-    }
-
-    private void addMessageCounterForQueue(String destinationQueueName) throws CassandraDataAccessException {
-        CQLDataAccessHelper.insertCounterColumn(MESSAGE_COUNTERS_COLUMN_FAMILY, MESSAGE_COUNTERS_RAW_NAME,destinationQueueName,KEYSPACE);
-    }
-
-    private void removeMessageCounterForQueue(String destinationQueueName) throws CassandraDataAccessException {
-        CQLDataAccessHelper.removeCounterColumn(MESSAGE_COUNTERS_COLUMN_FAMILY, MESSAGE_COUNTERS_RAW_NAME, destinationQueueName, KEYSPACE);
     }
 
     public void createExchange(AndesExchange exchange) throws AndesException{
         try {
             String value = exchange.exchangeName + "|" + exchange.type + "|" + exchange.autoDelete;
-            CQLDataAccessHelper.addMappingToRaw(KEYSPACE, EXCHANGE_COLUMN_FAMILY, EXCHANGE_ROW, exchange.exchangeName, value, true);
+            andesContextStore.storeExchangeInformation(exchange.exchangeName, value);
         } catch (Exception e) {
             throw new AndesException("Error in creating exchange " + exchange.exchangeName, e);
         }
     }
 
     public List<AndesExchange> getExchanges() throws AndesException {
-        List<AndesExchange> exchanges = new ArrayList<AndesExchange>();
-        try {
-            /*ColumnSlice<String, String> columnSlice = CQLDataAccessHelper.
-                    getStringTypeColumnsInARow(EXCHANGE_ROW,null, EXCHANGE_COLUMN_FAMILY, keyspace, Long.MAX_VALUE);
-            for (Object column : columnSlice.getColumns()) {
-                if (column instanceof HColumn) {
-                    String columnName = ((HColumn<String, String>) column).getName();
-                    String value = ((HColumn<String, String>) column).getValue();
-                    String[] valuesFields = value.split("|");
-                    String type = valuesFields[1];
-                    short autoDelete = Short.parseShort(valuesFields[2]);
-                    exchanges.add(new AndesExchange(columnName, type, autoDelete));
-                }
-            }*/
-        	List<Row> rows = CQLDataAccessHelper.
-                    getStringTypeColumnsInARow(EXCHANGE_ROW,null, EXCHANGE_COLUMN_FAMILY, KEYSPACE, Long.MAX_VALUE);
-        	for(Row row : rows){
-        		String columnName = row.getString(CQLDataAccessHelper.MSG_KEY);
-                String value = row.getString(CQLDataAccessHelper.MSG_VALUE);
-                String[] valuesFields = value.split("|");
-                String type = valuesFields[1];
-                short autoDelete = Short.parseShort(valuesFields[2]);
-                exchanges.add(new AndesExchange(columnName, type, autoDelete));
-        	}
-            return exchanges;
-        } catch (Exception e) {
-            throw new AndesException("Error in loading exchanges", e);
-        }
+         return andesContextStore.getAllExchangesStored();
     }
 
-    public void deleteExchage(AndesExchange exchange) throws AndesException{
-        try {
-            CQLDataAccessHelper.deleteStringColumnFromRaw(EXCHANGE_COLUMN_FAMILY, EXCHANGE_ROW, exchange.exchangeName, KEYSPACE);
-        } catch (Exception e) {
-            throw new AndesException("Error in deleting exchange " + exchange.exchangeName, e);
-        }
+    public void deleteExchage(AndesExchange exchange) throws AndesException {
+        andesContextStore.deleteExchangeInformation(exchange.exchangeName);
     }
 }

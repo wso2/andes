@@ -34,6 +34,7 @@ import java.util.List;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessagingEngine;
@@ -52,7 +53,7 @@ public class CQLConnection implements DurableStoreConnection {
 
     private Cluster cluster;
     private static Log log = LogFactory.getLog(CQLConnection.class);
-    private boolean isCassandraConnectionLive;
+    private boolean isCassandraConnectionLive = false;
 
     @Override
     public void initialize(Configuration configuration) throws AndesException {
@@ -118,6 +119,7 @@ public class CQLConnection implements DurableStoreConnection {
             keyspace.setConsistencyLevelPolicy(configurableConsistencyLevel);
 */
             //start Cassandra connection live check
+            isCassandraConnectionLive = true;
             checkCassandraConnection();
 
         } catch (CassandraDataAccessException e) {
@@ -129,6 +131,12 @@ public class CQLConnection implements DurableStoreConnection {
     @Override
     public void close() {
         stopTasks();
+        //TODO: hasitha - this is not logical. Need to fix
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            //silently ignore
+        }
         cluster.shutdown();
     }
 
@@ -159,8 +167,8 @@ public class CQLConnection implements DurableStoreConnection {
     private void startTasks() {
         //TODO: Hasitha - review what to start
         try {
-            if (MessagingEngine.getInstance().getCassandraBasedMessageStore() != null
-                    && MessagingEngine.getInstance().getSubscriptionStore() != null) {
+            if (MessagingEngine.getInstance().getDurableMessageStore() != null
+                    && AndesContext.getInstance().getSubscriptionStore() != null) {
 
                 MessagingEngine.getInstance().startMessageDelivey();
 
