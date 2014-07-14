@@ -202,4 +202,21 @@ public class ClusterConfiguration {
     public String getMessageIdGeneratorClass() {
         return serverConfig.getMessageIdGeneratorClass();
     }
+
+
+    public double getGlobalMemoryThresholdRatio() {
+        return serverConfig.getFlowControlGlobalMemoryThresholdRatio();
+    }
+
+    public double getGlobalMemoryRecoveryThresholdRatio() {
+        return serverConfig.getGlobalMemoryRecoveryThresholdRatio();
+    }
+
+    public long getMemoryCheckInterval() {
+        return serverConfig.getMemoryCheckInterval();
+    }
+
+    public int getPerConnectionMessageRateThreshold() {
+        return serverConfig.getFlowControlPerConnectionMessageThreshold();
+    }
 }

@@ -95,8 +95,11 @@ import org.wso2.andes.server.subscription.SubscriptionFactoryImpl;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
 import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
+import org.wso2.andes.server.virtualhost.AMQChannelMBean;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor;
+
+import javax.management.JMException;
 
 public class AMQChannel implements SessionConfig, AMQSessionModel
 {
@@ -181,6 +184,8 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
     private static SequentialThreadPoolExecutor messageRoutingExecutor = null;
 
+    private AMQChannelMBean _managedObject;
+
     public AMQChannel(AMQProtocolSession session, int channelId, MessageStore messageStore)
             throws AMQException
     {
@@ -202,6 +207,13 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         if(messageRoutingExecutor == null){
             messageRoutingExecutor = new SequentialThreadPoolExecutor((ClusterResourceHolder.getInstance().
                     getClusterConfiguration().getInternalSequentialThreadPoolSize()),"messageRoutingExecutor");
+        }
+
+        try {
+            _managedObject = new AMQChannelMBean(this);
+            _managedObject.register();
+        } catch (JMException e) {
+            _logger.error("Error in creating AMQChannelMBean", e);
         }
     }
 
@@ -373,7 +385,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                     else
                     {
                         /**
-                         * 
+                         *
                          * Following code keep messages in memory, which is useless to Andes. So we are removing this. Keeping the commented line so we know
                          * we might need to add these back when we do the transactions properly.
                          * _transaction.enqueue(destinationQueues, _currentMessage, new MessageDeliveryAction(_currentMessage, destinationQueues, isTransactional()));
@@ -558,6 +570,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         return tag;
     }
 
+    public boolean isSubscriptionChannel (){
+        return (_tag2SubscriptionMap.size()) > 0 ? true : false;
+    }
+
 
     /**
      * Unsubscribe a consumer from a queue.
@@ -636,6 +652,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
         //here we will wait for  all jobs from this channel to end
         DisruptorBasedExecutor.wait4JobsfromThisChannel2End(this._channelId);
+
+        if (_managedObject != null) {
+            _managedObject.unregister();
+        }
     }
 
     private void unsubscribeAllConsumers() throws AMQException
@@ -1466,32 +1486,49 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
     public void block(AMQQueue queue)
     {
-        if(_blockingQueues.putIfAbsent(queue, Boolean.TRUE) == null)
-        {
-
-            if(_blocking.compareAndSet(false,true))
+        //if(_blockingQueues.putIfAbsent(queue, Boolean.TRUE) == null)
+        //{
+            if(_blocking.compareAndSet(false, true))
             {
                 _actor.message(_logSubject, ChannelMessages.FLOW_ENFORCED(queue.getNameShortString().toString()));
                 flow(false);
             }
+        //}
+    }
+
+    public void blockChannel() {
+        if(_blocking.compareAndSet(Boolean.FALSE, Boolean.TRUE))
+        {
+            //_actor.message(_logSubject, ChannelMessages.FLOW_ENFORCED(_defaultQueue.getNameShortString().asString()));
+            flow(false);
         }
     }
 
     public void unblock(AMQQueue queue)
     {
-        if(_blockingQueues.remove(queue))
-        {
+        //if(_blockingQueues.remove(queue))
+        //{
             if(_blocking.compareAndSet(true,false))
             {
                 _actor.message(_logSubject, ChannelMessages.FLOW_REMOVED());
-
                 flow(true);
             }
+        //}
+    }
+
+    public void unblockChannel() {
+        if(_blocking.compareAndSet(Boolean.TRUE, Boolean.FALSE))
+        {
+            _actor.message(_logSubject, ChannelMessages.FLOW_REMOVED());
+            flow(true);
         }
     }
 
     private void flow(boolean flow)
     {
+        if (_logger.isDebugEnabled()) {
+            _logger.debug("Communicating the Server Side Flow Control Ack To The Client");
+        }
         MethodRegistry methodRegistry = _session.getMethodRegistry();
         AMQMethodBody responseBody = methodRegistry.createChannelFlowBody(flow);
         _session.writeFrame(responseBody.generateFrame(_channelId));
@@ -1624,14 +1661,14 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     public void decrementNonAckedMessageCount(){
         int msgCount = inflightMessageCount.decrementAndGet();
         if(_logger.isDebugEnabled()){
-            _logger.debug("message sent channel="+ this + " pneding Count" + msgCount);    
+            _logger.debug("message sent channel="+ this + " pending Count" + msgCount);
         }
     }
     
     public void incrementNonAckedMessageCount(){
         int intCount = inflightMessageCount.incrementAndGet();
         if(_logger.isDebugEnabled()){
-            _logger.debug("ack received channel="+ this + " pneding Count" + intCount);
+            _logger.debug("ack received channel="+ this + " pending Count" + intCount);
         }
     }
 

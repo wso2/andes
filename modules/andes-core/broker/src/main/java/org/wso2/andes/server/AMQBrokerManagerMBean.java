@@ -139,14 +139,10 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
 
             List<Object> attributeValues = new ArrayList<Object>(attributesLength);
 
-            for(int i=0; i < attributesLength; i++)
-            {
-                try
-                {
-                    attributeValues.add(mbean.getAttribute(attributes[i]));
-                }
-                catch (Exception e)
-                {
+            for (String attribute : attributes) {
+                try {
+                    attributeValues.add(mbean.getAttribute(attribute));
+                } catch (Exception e) {
                     attributeValues.add("-");
                 }
             }

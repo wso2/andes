@@ -102,4 +102,9 @@ public class MockAMQVersionAwareProtocolSession implements AMQVersionAwareProtoc
         return null;
     }
 
+    public boolean isBlocked() {
+       return false;
+    }
+
+
 }
