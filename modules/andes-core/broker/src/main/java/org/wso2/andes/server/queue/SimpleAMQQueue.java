@@ -22,6 +22,7 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.LocalSubscription;
@@ -964,7 +965,8 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
             try {
                 if (newState == Subscription.State.CLOSED) {
 
-                    AMQPUtils.closeLocalSubscriptionsForAllBindingsOfQueue(sub.getQueue(), sub);
+                    //Tell Andes Kernel to close the subscription
+                    QpidAMQPBridge.getInstance().closeAMQPSubscription(sub.getQueue(), sub);
                 }
 
             } catch (AndesException e) {

@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
+import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.server.queue.IncomingMessage;
 import org.wso2.andes.server.store.DurableConfigurationStore;
@@ -102,6 +103,9 @@ public class DefaultExchangeRegistry implements ExchangeRegistry
             if (e.isDurable())
             {
                 getDurableConfigurationStore().removeExchange(e);
+
+                //tell Andes Kernel to remove exchange
+                QpidAMQPBridge.getInstance().deleteExchange(e);
             }
             e.close();
         }

@@ -23,6 +23,7 @@ package org.wso2.andes.server.handler;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.MethodRegistry;
 import org.wso2.andes.framing.QueueDeclareBody;
@@ -116,11 +117,9 @@ public class QueueDeclareHandler implements StateAwareMethodListener<QueueDeclar
                     if (queue.isDurable() && !queue.isAutoDelete())
                     {
                         store.createQueue(queue, body.getArguments());
-                        try {
-                            AndesContext.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
-                        } catch (AndesException e) {
-                            throw new AMQException(AMQConstant.INTERNAL_ERROR,"Error while adding inactive subscriber while queue creation",e);
-                        }
+
+                        //Tell Andes kernel to create queue
+                        QpidAMQPBridge.getInstance().createQueue(queue);
                     }
                     if(body.getAutoDelete())
                     {

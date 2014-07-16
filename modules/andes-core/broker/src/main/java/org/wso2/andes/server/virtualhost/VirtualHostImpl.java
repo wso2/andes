@@ -26,6 +26,7 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
@@ -297,6 +298,9 @@ public class VirtualHostImpl implements VirtualHost
                 registerSubscriptionListener(_VirtualHostConfigSynchronizer);
 
         MessagingEngine.getInstance().startMessageDelivey();
+
+        //reload exchanges/queues/bindings and subscriptions
+        _VirtualHostConfigSynchronizer.syncExchangesQueuesAndBindings();
     }
 
 	private void initialiseHouseKeeping(long period)
@@ -557,6 +561,9 @@ public class VirtualHostImpl implements VirtualHost
             if (newExchange.isDurable())
             {
                 _durableConfigurationStore.createExchange(newExchange);
+
+                //tell Andes kernel to create Exchange
+                QpidAMQPBridge.getInstance().createExchange(newExchange);
             }
         }
     }
@@ -569,11 +576,8 @@ public class VirtualHostImpl implements VirtualHost
     	{
     		getDurableConfigurationStore().createQueue(queue);
 
-            try {
-                AndesContext.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
-            } catch (AndesException e) {
-                throw new AMQException(AMQConstant.INTERNAL_ERROR,"Error during creating queue - could not add an inactive subscription",e);
-            }
+            //tell Andes kernel to create queue
+            QpidAMQPBridge.getInstance().createQueue(queue);
     	}
 
     	String exchangeName = queueConfiguration.getExchange();

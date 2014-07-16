@@ -51,10 +51,22 @@ public interface Subscrption {
     public String getTargetQueueOwner();
 
     /**
-     * exchange subscribed queue is bound (for each binding we will be adding a subription entry)
+     * exchange subscribed queue is bound (for each binding we will be adding a subscription entry)
      * @return  exchange name subscribed queue is bound
      */
-    public String getTargetQueueBoundExchange();
+    public String getTargetQueueBoundExchangeName();
+
+    /**
+     *  exchange type subscribed queue is bound (for each binding we will be adding a subscription entry)
+     * @return  exchange type subscribed queue is bound
+     */
+    public String getTargetQueueBoundExchangeType();
+
+    /**
+     * whether exchange is auto-deletable where subscribed queue is bound (for each binding we will be adding a subscription entry)
+     * @return  whether exchange of the binding is auto-deletable
+     */
+    public Short ifTargetQueueBoundExchangeAutoDeletable();
 
     /**
      * @return  whether subscribed queue external subscription

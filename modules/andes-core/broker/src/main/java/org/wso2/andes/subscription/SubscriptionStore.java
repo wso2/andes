@@ -293,7 +293,7 @@ public class SubscriptionStore {
                 }
 
                 //add or update local subscription map
-                if (subscrption.getTargetQueueBoundExchange().equals(AMQPUtils.DIRECT_EXCHANGE_NAME)) {
+                if (subscrption.getTargetQueueBoundExchangeName().equals(AMQPUtils.DIRECT_EXCHANGE_NAME)) {
                     Map<String, LocalSubscription> localSubscriptions = localQueueSubscriptionMap.get(destinationQueue);
                     if (localSubscriptions == null) {
                         localSubscriptions = new ConcurrentHashMap<String, LocalSubscription>();
@@ -302,7 +302,7 @@ public class SubscriptionStore {
                     localSubscriptions.put(subscriptionID, subscrption);
                     localQueueSubscriptionMap.put(destinationQueue, localSubscriptions);
 
-                } else if (subscrption.getTargetQueueBoundExchange().equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
+                } else if (subscrption.getTargetQueueBoundExchangeName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
                     Map<String, LocalSubscription> localSubscriptions = localTopicSubscriptionMap.get(destinationQueue);
                     if (localSubscriptions == null) {
                         localSubscriptions = new ConcurrentHashMap<String, LocalSubscription>();
@@ -465,7 +465,7 @@ public class SubscriptionStore {
                  String bindingIdentifier = new StringBuffer(subscription.getTargetQueue()).append("&").append(subscription.getSubscribedDestination()).toString();
                  if(subscription.isDurable() && bindings.get(bindingIdentifier) == null) {
                        AndesQueue andesQueue = new AndesQueue(subscription.getTargetQueue(),subscription.getTargetQueueOwner(),subscription.isExclusive(),subscription.isDurable());
-                       AndesBinding andesBinding = new AndesBinding(subscription.getTargetQueueBoundExchange(),andesQueue,subscription.getSubscribedDestination());
+                       AndesBinding andesBinding = new AndesBinding(subscription.getTargetQueueBoundExchangeName(),andesQueue,subscription.getSubscribedDestination());
                      bindings.put(bindingIdentifier, andesBinding);
                  }
              }
@@ -476,7 +476,7 @@ public class SubscriptionStore {
                 String bindingIdentifier = new StringBuffer(subscription.getTargetQueue()).append("&").append(subscription.getSubscribedDestination()).toString();
                 if(subscription.isDurable() && bindings.get(bindingIdentifier) == null) {
                     AndesQueue andesQueue = new AndesQueue(subscription.getTargetQueue(),subscription.getTargetQueueOwner(),subscription.isExclusive(),subscription.isDurable());
-                    AndesBinding andesBinding = new AndesBinding(subscription.getTargetQueueBoundExchange(),andesQueue,subscription.getSubscribedDestination());
+                    AndesBinding andesBinding = new AndesBinding(subscription.getTargetQueueBoundExchangeName(),andesQueue,subscription.getSubscribedDestination());
                     bindings.put(bindingIdentifier, andesBinding);
                 }
             }
@@ -548,19 +548,42 @@ public class SubscriptionStore {
     }
 
     public void createExchange(AndesExchange exchange) throws AndesException{
-        try {
+/*        try {
             String value = exchange.exchangeName + "|" + exchange.type + "|" + exchange.autoDelete;
             andesContextStore.storeExchangeInformation(exchange.exchangeName, value);
         } catch (Exception e) {
             throw new AndesException("Error in creating exchange " + exchange.exchangeName, e);
-        }
+        }*/
+        //todo:we do not currently create exchanges.
     }
 
     public List<AndesExchange> getExchanges() throws AndesException {
-         return andesContextStore.getAllExchangesStored();
+        //return andesContextStore.getAllExchangesStored();
+        HashMap<String,AndesExchange> exchanges = new HashMap<String, AndesExchange>();
+        for(String destination : clusterQueueSubscriptionMap.keySet()) {
+            for(Subscrption subscription : clusterQueueSubscriptionMap.get(destination)) {
+                String exchangeIdentifier = new StringBuffer(subscription.getTargetQueueBoundExchangeName()).append("&").append(subscription.getTargetQueueBoundExchangeType()).append("&").append(subscription.ifTargetQueueBoundExchangeAutoDeletable()).toString();
+                if(subscription.isDurable() && exchanges.get(exchangeIdentifier) == null) {
+                    AndesExchange andesexchange = new AndesExchange(subscription.getTargetQueueBoundExchangeName(),subscription.getTargetQueueBoundExchangeType(),subscription.ifTargetQueueBoundExchangeAutoDeletable());
+                    exchanges.put(exchangeIdentifier, andesexchange);
+                }
+            }
+        }
+
+        for(String destination : clusterTopicSubscriptionMap.keySet()) {
+            for(Subscrption subscription : clusterTopicSubscriptionMap.get(destination)) {
+                String exchangeIdentifier = new StringBuffer(subscription.getTargetQueueBoundExchangeName()).append("&").append(subscription.getTargetQueueBoundExchangeType()).append("&").append(subscription.ifTargetQueueBoundExchangeAutoDeletable()).toString();
+                if(subscription.isDurable() && exchanges.get(exchangeIdentifier) == null) {
+                    AndesExchange andesexchange = new AndesExchange(subscription.getTargetQueueBoundExchangeName(),subscription.getTargetQueueBoundExchangeType(),subscription.ifTargetQueueBoundExchangeAutoDeletable());
+                    exchanges.put(exchangeIdentifier, andesexchange);
+                }
+            }
+        }
+        return new ArrayList<AndesExchange>(exchanges.values());
     }
 
-    public void deleteExchage(AndesExchange exchange) throws AndesException {
-        andesContextStore.deleteExchangeInformation(exchange.exchangeName);
+    public void deleteExchange(AndesExchange exchange) throws AndesException {
+        //andesContextStore.deleteExchangeInformation(exchange.exchangeName);
+        //todo: we do not currently delete exchanges. We have only direct and topic
     }
 }

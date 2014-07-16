@@ -29,6 +29,7 @@ import javax.management.ObjectName;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.MessagingEngine;
@@ -179,6 +180,9 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                     if (durable)
                     {
                         _durableConfig.createExchange(exchange);
+
+                        //tell Andes kernel to create Exchange
+                        QpidAMQPBridge.getInstance().createExchange(exchange);
                     }
                 }
                 else
@@ -260,7 +264,9 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
             if (queue.isDurable() && !queue.isAutoDelete())
             {
                 _durableConfig.createQueue(queue);
-                AndesContext.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
+
+                //tell Andes kernel to create queue
+                QpidAMQPBridge.getInstance().createQueue(queue);
             }
             _queueRegistry.registerQueue(queue);
         }
@@ -308,8 +314,9 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
             {
                 _durableConfig.removeQueue(queue);
             }
-            //caller should remove messages from global queue
-            ClusterResourceHolder.getInstance().getSubscriptionManager().handleMessageRemovalFromGlobalQueue(queue.getName());
+
+            //tell Andes kernel to remove queue
+            QpidAMQPBridge.getInstance().deleteQueue(queue);
         }
         catch (AMQException ex)
         {

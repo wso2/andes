@@ -39,6 +39,7 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQMethodBody;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.BasicContentHeaderProperties;
@@ -106,12 +107,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     public static final int DEFAULT_PREFETCH = 5000;
 
     private static final Logger _logger = Logger.getLogger(AMQChannel.class);
-    
-    /**
-     * Following used by a performance counter
-     */
-    private static AtomicLong receivedMessageCounter = new AtomicLong(); 
-    private static long last10kMessageReceivedTimestamp = System.currentTimeMillis(); 
 
     private static final boolean MSG_AUTH =
         ApplicationRegistry.getInstance().getConfiguration().getMsgAuth();
@@ -410,26 +405,8 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                      * happen here
                      */
 
-                    AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
-                    AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message);
+                    QpidAMQPBridge.getInstance().messageMetaDataReceived(incomingMessage, _channelId);
 
-                    String queue = incomingMessage.getRoutingKey();
-
-                    MessagingEngine.getInstance().messageReceived(metadata, _channelId);
-
-                    if(queue == null){
-                        _logger.error("Queue cannot be null, for "+ incomingMessage.getMessageNumber());
-                    }
-
-//                    if(ClusterResourceHolder.getInstance().getCassandraMessageStore().isInMemoryMode()){
-//                        messageQueue.enqueueMessage(incomingMessage, destinationQueues);
-//                    }
-
-                    if (_logger.isDebugEnabled()) {
-                        _logger.debug("metadata and message written to global queue "
-                                + incomingMessage.getStoredMessage().getMessageNumber() + ", channel ID "
-                                + getChannelId());
-                    }
                 } catch (Throwable e) {
                     _logger.error("Error processing completed messages, we will close this session", e);
                     // We mark the session as closed due to error
@@ -437,20 +414,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                         ((AMQProtocolEngine) _session).closeProtocolSession();
                     }
                 }
-                PerformanceCounter.recordMessageReceived(incomingMessage.getRoutingKey(), incomingMessage.getReceivedChunkCount());
 
-                /*
-                 * Following code is only a performance counter
-                 */
-                Long localCount = receivedMessageCounter.incrementAndGet();
-                if(localCount%10000 == 0){
-                    long timetook = System.currentTimeMillis() - last10kMessageReceivedTimestamp;
-                    _logger.info("Received " + localCount + ", throughput = " + (10000*1000/timetook) + " msg/sec, " + timetook);
-                    last10kMessageReceivedTimestamp = System.currentTimeMillis();
-                }
-                /*
-                 * End of performance counter
-                 */
             } finally {
                 long bodySize = _currentMessage.getSize();
                 long timestamp = ((BasicContentHeaderProperties) _currentMessage.getContentHeader().getProperties()).getTimestamp();
@@ -551,14 +515,12 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                 SubscriptionFactoryImpl.INSTANCE.createSubscription(_channelId, _session, tag, acks, filters, noLocal, _creditManager);
 
         try {
-            AMQPUtils.addLocalSubscriptionsForAllBindingsOfQueue(queue,subscription);
+            //tell Andes Kernel to register a subscription
+            QpidAMQPBridge.getInstance().createAMQPSubscription(subscription, queue);
             queue.registerSubscription(subscription, exclusive);
         } catch (AMQException e) {
             _tag2SubscriptionMap.remove(tag);
             throw e;
-        } catch (AndesException e) {
-            _logger.error("Error while adding the subscription", e);
-            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while registering subscription", e);
         }
 
         // So to keep things straight we put before the call and catch all exceptions from the register and tidy up.

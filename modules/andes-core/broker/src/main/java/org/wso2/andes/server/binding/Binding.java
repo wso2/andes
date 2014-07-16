@@ -81,7 +81,7 @@ public class Binding
         return _matches.get();
     }
 
-    boolean isDurable()
+    public boolean isDurable()
     {
         return _queue.isDurable() && _exchange.isDurable();
     }

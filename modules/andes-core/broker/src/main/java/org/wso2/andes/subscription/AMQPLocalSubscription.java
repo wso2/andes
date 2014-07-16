@@ -10,6 +10,7 @@ import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.binding.Binding;
+import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -30,8 +31,12 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
 	public AMQPLocalSubscription(AMQQueue amqQueue, Subscription amqpSubscription, String subscriptionID, String destination,
 			boolean isBoundToTopic, boolean isExclusive, boolean isDurable,
 			String subscribedNode, String targetQueue, String targetQueueOwner,
-            String targetQueueBoundExchange, boolean hasExternalSubscriptions) {
-		super(subscriptionID, destination, isBoundToTopic, isExclusive, isDurable, subscribedNode, targetQueue, targetQueueOwner, targetQueueBoundExchange, hasExternalSubscriptions);
+            String targetQueueBoundExchange, String targetQueueBoundExchangeType,
+            Short isTargetQueueBoundExchangeAutoDeletable, boolean hasExternalSubscriptions) {
+
+		super(subscriptionID, destination, isBoundToTopic, isExclusive, isDurable, subscribedNode, targetQueue, targetQueueOwner,
+                targetQueueBoundExchange, targetQueueBoundExchangeType, isTargetQueueBoundExchangeAutoDeletable,hasExternalSubscriptions);
+
 		this.amqQueue = amqQueue;
 		this.amqpSubscription = amqpSubscription;
 
@@ -122,6 +127,7 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
 	public LocalSubscription createQueueToListentoTopic(){
         //todo:hasitha:verify passing null values
 		return new AMQPLocalSubscription(amqQueue, 
-        		amqpSubscription, subscriptionID, targetQueue, false, isExclusive, true, MessagingEngine.getMyNodeQueueName(),amqQueue.getName(),amqQueue.getOwner().toString(), AMQPUtils.DIRECT_EXCHANGE_NAME,true);
+        		amqpSubscription, subscriptionID, targetQueue, false, isExclusive, true, MessagingEngine.getMyNodeQueueName(),amqQueue.getName(),
+                amqQueue.getOwner().toString(), AMQPUtils.DIRECT_EXCHANGE_NAME, DirectExchange.TYPE.toString(), Short.parseShort("0"),true);
 	}
 }
