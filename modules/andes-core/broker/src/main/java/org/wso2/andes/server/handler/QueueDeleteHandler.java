@@ -23,6 +23,7 @@ package org.wso2.andes.server.handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.QueueDeleteBody;
 import org.wso2.andes.framing.QueueDeleteOkBody;
 import org.wso2.andes.framing.MethodRegistry;
@@ -124,21 +125,9 @@ public class QueueDeleteHandler implements StateAwareMethodListener<QueueDeleteB
                 if (queue.isDurable())
                 {
                     store.removeQueue(queue);
-                    
-                    AndesExecuter.runAsync(new Runnable() {
-						
-						@Override
-						public void run() {
-		                    //ClusterResourceHolder.getInstance().getCassandraMessageStore().removeMessageCounterForQueue(queue.getName());
-		                    //we have to send cluster notification to sync the queues if clustering is enabled
-		                    try {
-                                //caller should remove messages from global queue
-                                ClusterResourceHolder.getInstance().getSubscriptionManager().handleMessageRemovalFromGlobalQueue(queue.getName());
-		                    } catch (AndesException e) {
-		                        _logger.error("Error during removing messages from removed queue" + queue.getName(), e);
-		                    }
-						}
-					});
+
+                    //tell Andes Kernel to remove queue
+                    QpidAMQPBridge.getInstance().deleteQueue(queue);
                 }
 
                 MethodRegistry methodRegistry = protocolConnection.getMethodRegistry();

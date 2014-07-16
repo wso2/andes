@@ -18,6 +18,7 @@
 package org.wso2.andes.messageStore;
 
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.store.StoredMessage;
@@ -87,18 +88,7 @@ public class StoredAMQPMessage implements StoredMessage {
      */
     private void addContentInPersistentMode(final int offsetInMessage, ByteBuffer src) {
 
-        AndesMessagePart part = new AndesMessagePart();
-        src = src.slice();
-        final byte[] chunkData = new byte[src.limit()];
-
-        src.duplicate().get(chunkData);
-
-        part.setData(chunkData);
-        part.setMessageID(_messageId);
-        part.setOffSet(offsetInMessage);
-        part.setDataLength(chunkData.length);
-
-        MessagingEngine.getInstance().messageContentReceived(part);
+        QpidAMQPBridge.getInstance().messageContentChunkReceived(_messageId,offsetInMessage,src);
     }
 
     @Override

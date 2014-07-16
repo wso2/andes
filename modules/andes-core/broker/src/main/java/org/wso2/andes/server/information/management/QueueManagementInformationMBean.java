@@ -92,7 +92,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     //TODO:when deleting queues from UI this is not get called. Instead we use AMQBrokerManagerMBean. Why are we keeping this?
     public void deleteQueue(@MBeanOperationParameter(name = "queueName",
             description = "Name of the queue to be deleted") String queueName) {
-    	SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+/*    	SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         try {
             if(subscriptionStore.getActiveClusterSubscribersForDestination(queueName, false).size() >0) {
                 throw new Exception("Queue" + queueName +" Has Active Subscribers. Please Stop Them First.");
@@ -103,7 +103,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             ClusterResourceHolder.getInstance().getSubscriptionManager().handleMessageRemovalFromGlobalQueue(queueName);
         } catch (Exception e) {
             throw new RuntimeException(e);
-        }
+        }*/
     }
     /**
      * We are returning message count to the UI from this method.

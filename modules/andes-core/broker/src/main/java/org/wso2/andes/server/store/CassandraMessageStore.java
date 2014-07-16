@@ -93,7 +93,7 @@ public class CassandraMessageStore implements MessageStore {
     public void recover(ConfigurationRecoveryHandler recoveryHandler) throws AMQException {
 
 
-        boolean readyOrTimeOut = false;
+/*        boolean readyOrTimeOut = false;
         boolean error = false;
 
         int initTimeOut = 10;
@@ -134,7 +134,7 @@ public class CassandraMessageStore implements MessageStore {
                 }
             }
 
-        }
+        }*/
 
 
     }
@@ -145,7 +145,7 @@ public class CassandraMessageStore implements MessageStore {
      * @throws Exception
      */
     public void loadQueues(ConfigurationRecoveryHandler.QueueRecoveryHandler qrh) throws Exception {
-        try {
+/*        try {
             if(subscriptionStore == null) {
                 subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
             }
@@ -156,17 +156,17 @@ public class CassandraMessageStore implements MessageStore {
 
         } catch (Exception e) {
             throw new AMQStoreException("Error in loading queues", e);
-        }
+        }*/
 
 
     }
 
     public void recoverBindings(ConfigurationRecoveryHandler.BindingRecoveryHandler brh,
                                 List<String> exchanges) throws Exception {
-        List<AndesBinding> bindings = subscriptionStore.getDurableBindings();
+/*        List<AndesBinding> bindings = subscriptionStore.getDurableBindings();
         for(AndesBinding b : bindings) {
             brh.binding(b.boundExchangeName, b.boundQueue.queueName, b.routingKey, null);
-        }
+        }*/
 
     }
 
@@ -203,14 +203,7 @@ public class CassandraMessageStore implements MessageStore {
      */
     public void createExchange(Exchange exchange) throws AMQStoreException {
 
-        try {
-            String name = exchange.getName();
-            String type = exchange.getTypeShortString().asString();
-            Short autoDelete = exchange.isAutoDelete() ? (short) 1 : (short) 0;
-            subscriptionStore.createExchange(new AndesExchange(name,type,autoDelete));
-        } catch (Exception e) {
-            throw new AMQStoreException("Error in creating exchange " + exchange.getName(), e);
-        }
+       //we do nothing here now
     }
 
     /**
@@ -233,12 +226,12 @@ public class CassandraMessageStore implements MessageStore {
 
     @Override
     public void removeExchange(Exchange exchange) throws AMQStoreException {
-        try {
-            subscriptionStore.deleteExchage(new AndesExchange(exchange.getName(), exchange.getTypeShortString().asString(),
-                exchange.isAutoDelete() ? (short) 1 : (short) 0));
+/*        try {
+            subscriptionStore.deleteExchange(new AndesExchange(exchange.getName(), exchange.getTypeShortString().asString(),
+                    exchange.isAutoDelete() ? (short) 1 : (short) 0));
         } catch (AndesException e) {
             throw new AMQStoreException("Error while removing exchage", e);
-        }
+        }*/
     }
 
     @Override
@@ -277,11 +270,11 @@ public class CassandraMessageStore implements MessageStore {
      * Remove destination queue detail from cassandra
      */
     public void removeQueue(AMQQueue queue) throws AMQStoreException {
-        try {
+/*        try {
         subscriptionStore.removeQueue(queue.getName(), queue.isExclusive());
         } catch (AndesException e) {
             throw new AMQStoreException("Error while deleting queue : " + queue, e);
-        }
+        }*/
 
     }
 

@@ -2,6 +2,7 @@ package org.wso2.andes.mqtt;
 
 import org.dna.mqtt.wso2.AndesBridge;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.nio.ByteBuffer;
 import java.util.Collection;
@@ -66,7 +67,7 @@ public class MQTTChannel {
 
         //Shold indicate the record in the cluster
         try {
-            AndesContext.getInstance().getSubscriptionStore().addLocalSubscription(localSubscription);
+            ClusterResourceHolder.getInstance().getSubscriptionManager().addSubscription(localSubscription);
         } catch (AndesException e) {
             e.printStackTrace();
         }

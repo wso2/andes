@@ -57,13 +57,14 @@ public class AndesSubscriptionManager {
      */
     public void addSubscription(LocalSubscription localSubscription) throws AndesException {
 
+        log.info("Added subscription: " + localSubscription.toString());
         SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
 
         subscriptionStore.addLocalSubscription(localSubscription);
-        if (localSubscription.getTargetQueueBoundExchange().equals(AMQPUtils.DIRECT_EXCHANGE_NAME)) {
+        if (localSubscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.DIRECT_EXCHANGE_NAME)) {
             String globalQueueName = AndesUtils.getGlobalQueueNameForDestinationQueue(localSubscription.getTargetQueue());
             ClusterResourceHolder.getInstance().getClusterManager().getGlobalQueueManager().resetGlobalQueueWorkerIfRunning(globalQueueName);
-        } else if (localSubscription.getTargetQueueBoundExchange().equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
+        } else if (localSubscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
             //now we have a subscription on this node. Start a topicDeliveryWorker if one has not started
             if (!ClusterResourceHolder.getInstance().getTopicDeliveryWorker().isWorking()) {
                 ClusterResourceHolder.getInstance().getTopicDeliveryWorker().setWorking();
@@ -77,6 +78,7 @@ public class AndesSubscriptionManager {
      * @throws AndesException
      */
     public void closeSubscription(LocalSubscription subscription) throws AndesException{
+        log.info("Closed subscription: " + subscription.toString());
 		SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         subscriptionStore.closeLocalSubscription(subscription);
     }

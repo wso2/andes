@@ -91,7 +91,17 @@ public class SimplyfiedDataSender implements Subscrption {
     }
 
     @Override
-    public String getTargetQueueBoundExchange() {
+    public String getTargetQueueBoundExchangeName() {
+        return null;
+    }
+
+    @Override
+    public String getTargetQueueBoundExchangeType() {
+        return null;
+    }
+
+    @Override
+    public Short ifTargetQueueBoundExchangeAutoDeletable() {
         return null;
     }
 

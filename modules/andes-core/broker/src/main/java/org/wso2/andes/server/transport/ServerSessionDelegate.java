@@ -23,6 +23,7 @@ package org.wso2.andes.server.transport;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQUnknownExchangeType;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.AndesContext;
@@ -459,6 +460,9 @@ public class ServerSessionDelegate extends SessionDelegate
                     {
                         DurableConfigurationStore store = virtualHost.getDurableConfigurationStore();
                         store.createExchange(exchange);
+
+                        //tell Andes kernel to create Exchange
+                        QpidAMQPBridge.getInstance().createExchange(exchange);
                     }
 
                     exchangeRegistry.registerExchange(exchange);
@@ -571,6 +575,9 @@ public class ServerSessionDelegate extends SessionDelegate
                 {
                     DurableConfigurationStore store = virtualHost.getDurableConfigurationStore();
                     store.removeExchange(exchange);
+
+                    //tell Andes Kernel to remove exchange
+                    QpidAMQPBridge.getInstance().deleteExchange(exchange);
                 }
             }
         }
@@ -915,22 +922,17 @@ public class ServerSessionDelegate extends SessionDelegate
                                     ftArgs.put(new AMQShortString(entry.getKey()), entry.getValue());
                                 }
                                 store.createQueue(queue, ftArgs);
-                                try {
-                                    AndesContext.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
-                                } catch (AndesException e) {
-                                    throw new AMQException(AMQConstant.INTERNAL_ERROR,"Error while creating queue",e);
-                                }
+
+                                //Tell Andes kernel to create queue
+                                QpidAMQPBridge.getInstance().createQueue(queue);
                             }
                             else
                             {
                                 store.createQueue(queue);
-                                //send cluster notification to sync queues
-                                try{
-                                    AndesContext.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
-                                } catch (AndesException e) {
-                                    throw  new AMQException(AMQConstant.INTERNAL_ERROR,"Cannot create queue. " +
-                                            "Error during adding an inactive subscriber",e);
-                                }
+
+                                //tell andes kernel to create queue
+                                QpidAMQPBridge.getInstance().createQueue(queue);
+
                             }
                         }
                         queueRegistry.registerQueue(queue);
@@ -1080,12 +1082,9 @@ public class ServerSessionDelegate extends SessionDelegate
                         {
                             DurableConfigurationStore store = virtualHost.getDurableConfigurationStore();
                             store.removeQueue(queue);
-                            try{
-                                AndesContext.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriber(queue));
-                            } catch (AndesException e) {
-                                throw  new AMQException(AMQConstant.INTERNAL_ERROR,"Cannot create queue. " +
-                                        "Error during adding an inactive subscribe",e);
-                            }
+
+                            //tell Andes Kernel to remove queue
+                            QpidAMQPBridge.getInstance().deleteQueue(queue);
 
                         }
                     }

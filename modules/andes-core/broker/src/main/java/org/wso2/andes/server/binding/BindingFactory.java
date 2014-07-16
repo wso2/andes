@@ -24,6 +24,7 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInternalException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
@@ -230,6 +231,9 @@ public class BindingFactory
                      _configSource.getDurableConfigurationStore().bindQueue
                              (exchange,new AMQShortString(bindingKey),queue,FieldTable.convertToFieldTable(arguments));
 
+                     //tell Andes kernel to create binding
+                     QpidAMQPBridge.getInstance().createBinding(exchange,new AMQShortString(bindingKey),queue,FieldTable.convertToFieldTable(arguments));
+
             }
 
             queue.addQueueDeleteTask(b);
@@ -272,31 +276,13 @@ public class BindingFactory
 
     public void removeBinding(final Binding b) throws AMQSecurityException, AMQInternalException
     {
-    	SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+
         removeBinding(b.getBindingKey(), b.getQueue(), b.getExchange(), b.getArguments());
         try {
-            if(b.getExchange().getName().equalsIgnoreCase("amq.topic")) {
 
-                //we remove bindings irrespective of temp or durable
-                subscriptionStore.removeAllSubscriptionsRepresentingBinding(b.getBindingKey(), b.getQueue().getName());
+            //inform andes kernel to remove binding
+            QpidAMQPBridge.getInstance().removeBinding(b, getVirtualHost());
 
-                //stop Topic Delivery Worker If Having No actual normal (not durable) topic subscriptions on this node
-                if(ClusterResourceHolder.getInstance().getTopicDeliveryWorker() != null) {
-                    ExchangeRegistry exchangeRegistry = getVirtualHost().getExchangeRegistry();
-                    Exchange exchange = exchangeRegistry.getExchange(ExchangeDefaults.TOPIC_EXCHANGE_NAME);
-                    boolean havingNormalTopicSubscriptions = false;
-                    for(Binding binding: exchange.getBindings()){
-                          if(!binding.isDurable()) {
-                              havingNormalTopicSubscriptions = true;
-                              break;
-                          }
-                    }
-                    if(!havingNormalTopicSubscriptions) {
-                        ClusterResourceHolder.getInstance().getTopicDeliveryWorker().stopWorking();
-                    }
-                }
-            }
-            System.out.println("Removed Local Binding:  binding key: " + b.getBindingKey() + " queue:" + b.getQueue().getName());
         } catch (Exception e) {
             throw new AMQInternalException("Error while reamove Binding:"+ e.getMessage(),e);
         }

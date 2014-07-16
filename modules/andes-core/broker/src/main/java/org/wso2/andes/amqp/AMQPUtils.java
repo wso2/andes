@@ -20,6 +20,7 @@ package org.wso2.andes.amqp;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.messageStore.StoredAMQPMessage;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -122,125 +123,80 @@ public  class AMQPUtils {
         metadata.setMetadata(underlying);
         metadata.setDestination(queue);
         metadata.setPersistent(amqMetadata.isPersistent());
-        metadata.setTopic(amqMetadata.getMessagePublishInfo().getExchange().equals("amq.topic")?true:false );
+        metadata.setTopic(amqMetadata.getMessagePublishInfo().getExchange().equals("amq.topic"));
 
         return metadata;
     }
 
-    /**
-     * create local subscriptions and add for every binding of the queue
-     * @param queue AMQ queue
-     * @param subscription subscription
-     * @throws AndesException
-     * @throws AMQQueue.ExistingExclusiveSubscription
-     */
-    public static void addLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) throws AndesException {
-        AndesSubscriptionManager subscriptionManager = ClusterResourceHolder.
-                getInstance().getSubscriptionManager();
-        List<Binding> bindingList = queue.getBindings();
-        if (bindingList != null && !bindingList.isEmpty())
 
-        /**
-         * Iterate bindings of the queue and add subscription entries. We need to do this because of the flat
-         * subscription model we have
-         */
-        for (Binding b : bindingList) {
-            Exchange exchange = b.getExchange();
+    public static LocalSubscription createAMQPLocalSubscription(AMQQueue queue, Subscription subscription, Binding b) throws AndesException{
 
-            //register subscription
-            String subscriptionID = String.valueOf(subscription.getSubscriptionID());
-            String destination = b.getBindingKey();
-            String queueOwner = (queue.getOwner() == null) ? null : queue.getOwner().toString();
-            String nodeQueueName = "";
-            boolean isBoundToTopic = false;
+        Exchange exchange = b.getExchange();
 
-            //we sync and track only durable queues
-            //when a topic subscription is created (Even for a durable topic) a non durable queue will be created. We do not track them
-            if (exchange.getType().equals(DirectExchange.TYPE) && queue.isDurable()) {
-                nodeQueueName = MessagingEngine.getMyNodeQueueName();
-                isBoundToTopic = false;
+        String subscriptionID = String.valueOf(subscription.getSubscriptionID());
+        String destination = b.getBindingKey();
+        String queueOwner = (queue.getOwner() == null) ? null : queue.getOwner().toString();
+        String nodeQueueName = "";
+        String queueBoundExchangeName = "";
+        String queueBoundExchangeType = exchange.getType().toString();
+        Short isqueueBoundExchangeAutoDeletable = Short.parseShort(exchange.isAutoDelete() ? Integer.toString(1) : Integer.toString(0));
+        boolean isBoundToTopic = false;
 
-                AMQPLocalSubscription localSubscription = new AMQPLocalSubscription(queue,
-                        subscription, subscriptionID, destination, isBoundToTopic, queue.isExclusive(), queue.isDurable(),
-                        nodeQueueName, queue.getName(), queueOwner, DirectExchange.TYPE.getDefaultExchangeName().toString(), true);
-
-                subscriptionManager.addSubscription(localSubscription);
-
-            //we track durable/non-durable queues for topics
-            //durable ones for durable topics and non-durable ones for just statistics
-            } else if(exchange.getType().equals(TopicExchange.TYPE)) {
-                nodeQueueName = AndesUtils.getTopicNodeQueueName();
-                isBoundToTopic = true;
-
-                AMQPLocalSubscription localSubscription = new AMQPLocalSubscription(queue,
-                        subscription, subscriptionID, destination, isBoundToTopic, queue.isExclusive(), queue.isDurable(),
-                        nodeQueueName, queue.getName(), queueOwner, TopicExchange.TYPE.getDefaultExchangeName().toString(), true);
-
-                subscriptionManager.addSubscription(localSubscription);
-            }
-
+        if (exchange.getType().equals(DirectExchange.TYPE) && queue.isDurable()) {
+            queueBoundExchangeName = DirectExchange.TYPE.getDefaultExchangeName().toString();
+            nodeQueueName = MessagingEngine.getMyNodeQueueName();
+            isBoundToTopic = false;
+        } else if(exchange.getType().equals(TopicExchange.TYPE)) {
+            nodeQueueName = AndesUtils.getTopicNodeQueueName();
+            queueBoundExchangeName = TopicExchange.TYPE.getDefaultExchangeName().toString();
+            isBoundToTopic = true;
         }
 
-        if (subscription instanceof SubscriptionImpl.BrowserSubscription) {
-            boolean isInMemoryMode = ClusterResourceHolder.getInstance().getClusterConfiguration().isInMemoryMode();
-            QueueBrowserDeliveryWorker deliveryWorker = new QueueBrowserDeliveryWorker(subscription,queue,((SubscriptionImpl.BrowserSubscription) subscription).getProtocolSession(),isInMemoryMode);
-            deliveryWorker.send();
-        } else {
-            log.info("Binding Subscription "+subscription.getSubscriptionID()+" to queue "+queue.getName());
-        }
+        AMQPLocalSubscription localSubscription = new AMQPLocalSubscription(queue,
+                subscription, subscriptionID, destination, isBoundToTopic, queue.isExclusive(), queue.isDurable(),
+                nodeQueueName, queue.getName(), queueOwner, queueBoundExchangeName, queueBoundExchangeType, isqueueBoundExchangeAutoDeletable,true);
+
+        return localSubscription;
     }
 
-    public static void closeLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) throws AndesException {
-        AndesSubscriptionManager subscriptionManager = ClusterResourceHolder.
-                getInstance().getSubscriptionManager();
-        List<Binding> bindingList = queue.getBindings();
-        if (bindingList != null && !bindingList.isEmpty())
-
-        /**
-         * Iterate bindings of the queue and add subscription entries. We need to do this because of the flat
-         * subscription model we have
-         */
-        for (Binding b : bindingList) {
-            Exchange exchange = b.getExchange();
-
-            //register subscription
-            String subscriptionID = String.valueOf(subscription.getSubscriptionID());
-            String destination = b.getBindingKey();
-            String queueOwner = (queue.getOwner() == null) ? null : queue.getOwner().toString();
-            String nodeQueueName = "";
-            boolean isBoundToTopic = false;
-
-            //we sync and track only durable queues
-            //when a topic subscription is created (Even for a durable topic) a non durable queue will be created. We do not track them
-            if (exchange.getType().equals(DirectExchange.TYPE) && queue.isDurable()) {
-                nodeQueueName = MessagingEngine.getMyNodeQueueName();
-                isBoundToTopic = false;
-
-                AMQPLocalSubscription localSubscription = new AMQPLocalSubscription(queue,
-                        subscription, subscriptionID, destination, isBoundToTopic, queue.isExclusive(), queue.isDurable(),
-                        nodeQueueName, queue.getName(), queueOwner, DirectExchange.TYPE.getDefaultExchangeName().toString(), false);
-
-                subscriptionManager.closeSubscription(localSubscription);
-
-                //we track durable/non-durable queues for topics
-                //durable ones for durable topics and non-durable ones for just statistics
-            } else if(exchange.getType().equals(TopicExchange.TYPE)) {
-                nodeQueueName = AndesUtils.getTopicNodeQueueName();
-                isBoundToTopic = true;
-
-                AMQPLocalSubscription localSubscription = new AMQPLocalSubscription(queue,
-                        subscription, subscriptionID, destination, isBoundToTopic, queue.isExclusive(), queue.isDurable(),
-                        nodeQueueName, queue.getName(), queueOwner, TopicExchange.TYPE.getDefaultExchangeName().toString(), false);
-
-                subscriptionManager.closeSubscription(localSubscription);
-            }
-
-        }
-    }
-
-    public static LocalSubscription createInactiveLocalSubscriber(AMQQueue queue) {
+    public static LocalSubscription createInactiveLocalSubscriberRepresentingQueue(AMQQueue queue) {
            return new AMQPLocalSubscription(queue,null,"0", queue.getName(), false,queue.isExclusive(), queue.isDurable(),
                    MessagingEngine.getMyNodeQueueName(), queue.getName(), (queue.getOwner() == null) ? null : queue.getOwner().toString(),
-                   AMQPUtils.DIRECT_EXCHANGE_NAME, false);
+                   AMQPUtils.DIRECT_EXCHANGE_NAME, DirectExchange.TYPE.toString(), Short.parseShort("0"),false);
+    }
+
+    public static LocalSubscription createInactiveLocalSubscriberRepresentingExchange(Exchange exchange) {
+        return new AMQPLocalSubscription(null,null,"0", null, false,false,true,
+                null, null, null,
+                exchange.getName(), exchange.getType().toString(), exchange.isAutoDelete() ? Short.parseShort("1") : Short.parseShort("0"), false);
+    }
+
+    public static LocalSubscription createAMQPLocalSubscriptionRepresentingBinding(Exchange exchange, AMQQueue queue, AMQShortString routingKey) {
+
+
+        String subscriptionID = "0";
+        String destination = routingKey.toString();
+        String queueOwner = (queue.getOwner() == null) ? null : queue.getOwner().toString();
+        String nodeQueueName = "";
+        String queueBoundExchangeName = "";
+        String queueBoundExchangeType = exchange.getType().toString();
+        Short isqueueBoundExchangeAutoDeletable = Short.parseShort(exchange.isAutoDelete() ? Integer.toString(1) : Integer.toString(0));
+        boolean isBoundToTopic = false;
+
+        if (exchange.getType().equals(DirectExchange.TYPE) && queue.isDurable()) {
+            queueBoundExchangeName = DirectExchange.TYPE.getDefaultExchangeName().toString();
+            nodeQueueName = MessagingEngine.getMyNodeQueueName();
+            isBoundToTopic = false;
+        } else if(exchange.getType().equals(TopicExchange.TYPE)) {
+            nodeQueueName = AndesUtils.getTopicNodeQueueName();
+            queueBoundExchangeName = TopicExchange.TYPE.getDefaultExchangeName().toString();
+            isBoundToTopic = true;
+        }
+
+        AMQPLocalSubscription localSubscription = new AMQPLocalSubscription(queue,
+                null , subscriptionID, destination, isBoundToTopic, queue.isExclusive(), queue.isDurable(),
+                nodeQueueName, queue.getName(), queueOwner, queueBoundExchangeName, queueBoundExchangeType, isqueueBoundExchangeAutoDeletable,true);
+
+        return localSubscription;
     }
 }

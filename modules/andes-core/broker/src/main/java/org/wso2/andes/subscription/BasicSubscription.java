@@ -14,6 +14,8 @@ public class BasicSubscription implements Subscrption{
 	protected String targetQueue;
     protected String targetQueueOwner;
     protected String targetQueueBoundExchange;
+    protected String targetQueueBoundExchangeType;
+    protected Short isTargetQueueBoundExchangeAutoDeletable;
     protected boolean hasExternalSubscriptions;
 	
 
@@ -39,6 +41,10 @@ public class BasicSubscription implements Subscrption{
                 this.targetQueueOwner = tokens[1].equals("null") ? null : tokens[1] ;
             }else if(tokens[0].equals("targetQueueBoundExchange")){
                 this.targetQueueBoundExchange = tokens[1];
+            }else if(tokens[0].equals("targetQueueBoundExchangeType")){
+                this.targetQueueBoundExchangeType = tokens[1];
+            }else if(tokens[0].equals("isTargetQueueBoundExchangeAutoDeletable")){
+                this.isTargetQueueBoundExchangeAutoDeletable = Short.parseShort(tokens[1]);
             }else if(tokens[0].equals("hasExternalSubscriptions")){
                 this.hasExternalSubscriptions = Boolean.parseBoolean(tokens[1]);
 			}else{
@@ -51,7 +57,9 @@ public class BasicSubscription implements Subscrption{
 	
 	public BasicSubscription(String subscriptionID, String destination,
 			boolean isBoundToTopic, boolean isExclusive, boolean isDurable,
-			String subscribedNode, String targetQueue, String targetQueueOwner, String targetQueueBoundExchange, boolean hasExternalSubscriptions) {
+			String subscribedNode, String targetQueue, String targetQueueOwner, String targetQueueBoundExchange,
+            String targetQueueBoundExchangeType, Short isTargetQueueBoundExchangeAutoDeletable, boolean hasExternalSubscriptions) {
+
 		super();
 		this.subscriptionID = subscriptionID;
 		if(subscriptionID == null){
@@ -66,6 +74,8 @@ public class BasicSubscription implements Subscrption{
 		this.targetQueue = targetQueue;
         this.targetQueueOwner = targetQueueOwner;
         this.targetQueueBoundExchange = targetQueueBoundExchange;
+        this.targetQueueBoundExchangeType = targetQueueBoundExchangeType;
+        this.isTargetQueueBoundExchangeAutoDeletable = isTargetQueueBoundExchangeAutoDeletable;
         this.hasExternalSubscriptions = hasExternalSubscriptions;
 	}
 
@@ -112,8 +122,18 @@ public class BasicSubscription implements Subscrption{
     }
 
     @Override
-    public String getTargetQueueBoundExchange() {
+    public String getTargetQueueBoundExchangeName() {
         return targetQueueBoundExchange;
+    }
+
+    @Override
+    public String getTargetQueueBoundExchangeType() {
+        return targetQueueBoundExchangeType;
+    }
+
+    @Override
+    public Short ifTargetQueueBoundExchangeAutoDeletable() {
+        return isTargetQueueBoundExchangeAutoDeletable;
     }
 
     @Override
@@ -132,6 +152,8 @@ public class BasicSubscription implements Subscrption{
         .append("/X=").append(isExclusive)
         .append("/O=").append(targetQueueOwner)
         .append("/E=").append(targetQueueBoundExchange)
+        .append("/ET=").append(targetQueueBoundExchangeType)
+        .append("/EUD=").append(isTargetQueueBoundExchangeAutoDeletable)
         .append("/S=").append(hasExternalSubscriptions);
 		return buf.toString();
 	}
@@ -147,6 +169,8 @@ public class BasicSubscription implements Subscrption{
 		.append(",targetQueue=").append(targetQueue)
         .append(",targetQueueOwner=").append(targetQueueOwner)
         .append(",targetQueueBoundExchange=").append(targetQueueBoundExchange)
+        .append(",targetQueueBoundExchangeType=").append(targetQueueBoundExchangeType)
+        .append(",isTargetQueueBoundExchangeAutoDeletable=").append(isTargetQueueBoundExchangeAutoDeletable)
 		.append(",subscribedNode=").append(subscribedNode)
         .append(",hasExternalSubscriptions=").append(hasExternalSubscriptions);
 		return buf.toString();
