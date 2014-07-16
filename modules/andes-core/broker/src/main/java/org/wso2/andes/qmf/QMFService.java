@@ -38,7 +38,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class QMFService implements ConfigStore.ConfigEventListener, Closeable
 {
 
-
     private IApplicationRegistry _applicationRegistry;
     private ConfigStore _configStore;
 

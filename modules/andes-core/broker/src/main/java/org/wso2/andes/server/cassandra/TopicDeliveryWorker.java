@@ -82,11 +82,13 @@ public class TopicDeliveryWorker extends Thread {
                         List<AndesAckData> publishedMessages = new ArrayList<AndesAckData>();
                         for (AndesMessageMetadata message : messages) {
                             try {
-                                enqueueMessage(message);
-                                publishedMessages.add(new AndesAckData(message.getMessageID(),message.getDestination(),true));
-                                lastDeliveredMessageID = message.getMessageID();
-                                if (log.isDebugEnabled()) {
-                                    log.debug("Sending message  " + lastDeliveredMessageID + "from cassandra topic publisher");
+                                if (!MessageExpirationWorker.isExpired(message.getExpirationTime())) {
+                                    enqueueMessage(message);
+                                    publishedMessages.add(new AndesAckData(message.getMessageID(),message.getDestination(),true));
+                                    lastDeliveredMessageID = message.getMessageID();
+                                    if (log.isDebugEnabled()) {
+                                        log.debug("Sending message  " + lastDeliveredMessageID + "from cassandra topic publisher");
+                                    }
                                 }
                             } catch (Exception e) {
                                 log.error("Error on enqueue messages to relevant queue:" + e.getMessage(), e);
@@ -146,6 +148,9 @@ public class TopicDeliveryWorker extends Thread {
             public void run() {
                 try {
                     if (subscription.isActive()) {
+                        if (MessageExpirationWorker.isExpired(message.getExpirationTime()))  {
+                            return;
+                        }
                         (subscription).sendMessageToSubscriber(message);
                     }
                 } catch (Throwable e) {

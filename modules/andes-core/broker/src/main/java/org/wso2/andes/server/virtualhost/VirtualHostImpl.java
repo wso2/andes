@@ -298,6 +298,7 @@ public class VirtualHostImpl implements VirtualHost
                 registerSubscriptionListener(_VirtualHostConfigSynchronizer);
 
         MessagingEngine.getInstance().startMessageDelivey();
+        MessagingEngine.getInstance().startMessageExpirationWorker();
 
         //reload exchanges/queues/bindings and subscriptions
         _VirtualHostConfigSynchronizer.syncExchangesQueuesAndBindings();

@@ -479,6 +479,11 @@ public class QueueDeliveryWorker extends Thread {
         Iterator<AndesMessageMetadata> iterator = messages.iterator();
         while (iterator.hasNext()) {
             AndesMessageMetadata message = iterator.next();
+
+            if (MessageExpirationWorker.isExpired(message.getExpirationTime())) {
+                 continue;
+            }
+
             boolean messageSent = false;
             Collection<LocalSubscription> subscriptions4Queue = subscriptionStore.getActiveLocalSubscribersForQueue(targetQueue);
             if (subscriptions4Queue != null) {
@@ -519,6 +524,9 @@ public class QueueDeliveryWorker extends Thread {
                 public void run() {
                     try {
                         if (subscription.isActive()) {
+                            if (MessageExpirationWorker.isExpired(message.getExpirationTime())) {
+                                return;
+                            }
                             (subscription).sendMessageToSubscriber(message);
                         } else {
                             storeUndeliveredMessagesDueToInactiveSubscriptions(message);

@@ -56,4 +56,6 @@ public class CassandraConstants {
     public final static String MESSAGE_COUNTERS_COLUMN_FAMILY = "MessageCountDetails";
     public final static String MESSAGE_COUNTERS_RAW_NAME = "QueueMessageCountRow";
 
+    public final static String MESSAGES_FOR_EXPIRY_COLUMN_FAMILY="MessagesForExpiration";
+
 }

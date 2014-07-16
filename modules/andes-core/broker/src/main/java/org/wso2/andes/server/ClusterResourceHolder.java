@@ -18,6 +18,7 @@
 package org.wso2.andes.server;
 
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
+import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cassandra.TopicDeliveryWorker;
 import org.wso2.andes.server.cluster.ClusterManager;
@@ -77,6 +78,7 @@ public class ClusterResourceHolder {
      */
     private TopicDeliveryWorker topicDeliveryWorker;
     private QueueDeliveryWorker queueDeliveryWorker;
+    private MessageExpirationWorker messageExpirationWorker;
 
     private ClusterResourceHolder() {
 
@@ -171,5 +173,13 @@ public class ClusterResourceHolder {
 
     public QueueDeliveryWorker getQueueDeliveryWorker() {
         return queueDeliveryWorker;
+    }
+
+    public MessageExpirationWorker getMessageExpirationWorker() {
+        return messageExpirationWorker;
+    }
+
+        public void setMessageExpirationWorker(MessageExpirationWorker messageExpirationWorker) {
+        this.messageExpirationWorker = messageExpirationWorker;
     }
 }

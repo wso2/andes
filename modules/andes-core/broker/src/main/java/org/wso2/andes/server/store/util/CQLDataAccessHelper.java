@@ -50,6 +50,8 @@ import me.prettyprint.hector.api.query.SliceQuery;*/
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesRemovableMetadata;
+import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cassandra.dao.CQLQueryBuilder;
 import org.wso2.andes.server.cassandra.dao.CQLQueryBuilder.Table;
 import org.wso2.andes.server.cassandra.dao.CassandraHelper.WHERE_OPERATORS;
@@ -91,6 +93,16 @@ public class CQLDataAccessHelper {
     public static final String MSG_KEY="message_key";//cql table column which store slice column key (compound primary key)
     public static final String MSG_VALUE="message_value";// cql table column which store slice column value
     public static final String MSG_ROW_ID = "message_row_id";//cql table column which store row id (compound primary key)
+
+    //Columns needed for MESSAGES_FOR_EXPIRY_COLUMN_FAMILY Queue
+    public static final String MESSAGE_ID = "message_id";
+    public static final String MESSAGE_EXPIRATION_TIME = "expiration_time";
+    public static final String MESSAGE_DESTINATION = "destination";
+    public static final String MESSAGE_IS_FOR_TOPIC = "is_for_topic";
+
+    //Default Row for Expired Message Entries
+    public static final String MESSAGES_TO_EXPIRE_ROW_KEY = "ROW_KEY";
+    public static final String MESSAGES_TO_EXPIRE_ROW_KEY_DEFAULT_VALUE = "messages_to_expire";
 
 
     /**
@@ -788,7 +800,10 @@ public class CQLDataAccessHelper {
 				byte[] value = CQLQueryBuilder.convertToByteArray(row, MSG_VALUE);
 				long msgId = row.getLong(MSG_KEY);
 				if(value != null && value.length > 0){
-					metadataList.add(new AndesMessageMetadata(msgId, value, parse));
+                    AndesMessageMetadata tmpEntry = new AndesMessageMetadata(msgId, value, parse);
+                    if (!MessageExpirationWorker.isExpired(tmpEntry.getExpirationTime())) {
+                        metadataList.add(tmpEntry);
+                    }
 				}
 				
 			}
@@ -1841,7 +1856,94 @@ public class CQLDataAccessHelper {
     	
         return results;
     }
-    
-    
-   
+
+    /**
+     * Get Top @param limit messages having expiration times < current timestamp
+     * if limit <= 0, fetches all entries matching criteria.
+     * @param limit
+     * @param columnFamilyName
+     * @param keyspace
+     * @return
+     */
+    public static List<AndesRemovableMetadata> getExpiredMessages(int limit,String columnFamilyName, String keyspace) throws CassandraDataAccessException {
+
+        if (keyspace == null) {
+            throw new CassandraDataAccessException("Can't access Data , no keyspace provided ");
+        }
+
+        if(columnFamilyName == null) {
+            throw new CassandraDataAccessException("Can't access data with queueType = " + columnFamilyName );
+        }
+
+        try {
+
+            List<AndesRemovableMetadata> expiredMessages = new ArrayList<AndesRemovableMetadata>();
+
+            Long currentTimestamp = System.currentTimeMillis();
+
+            CQLQueryBuilder.CqlSelect cqlSelect = new CQLQueryBuilder.CqlSelect(columnFamilyName, limit, true);
+            cqlSelect.addColumn(MESSAGE_ID);
+            cqlSelect.addColumn(MESSAGE_DESTINATION);
+            cqlSelect.addColumn(MESSAGE_IS_FOR_TOPIC);
+            cqlSelect.addColumn(MESSAGE_EXPIRATION_TIME);
+
+            cqlSelect.addCondition(MESSAGE_EXPIRATION_TIME, currentTimestamp, WHERE_OPERATORS.LTE);
+
+            Select select = CQLQueryBuilder.buildSelect(cqlSelect);
+
+            if(log.isDebugEnabled()){
+                log.debug(" getExpiredMessages : "+ select.toString());
+            }
+
+            ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
+            List<Row> rows = result.all();
+            Iterator<Row> iter = rows.iterator();
+
+            while(iter.hasNext()){
+                Row row = iter.next();
+
+                AndesRemovableMetadata arm = new AndesRemovableMetadata(row.getLong(MESSAGE_ID),row.getString(MESSAGE_DESTINATION));
+                arm.isForTopic = row.getBool(MESSAGE_IS_FOR_TOPIC);
+
+                if(arm.messageID > 0){
+                    expiredMessages.add(arm);
+                }
+            }
+
+            return expiredMessages;
+        } catch (Exception e) {
+            throw new CassandraDataAccessException("Error while getting data from " + columnFamilyName,e);
+        }
+
+    }
+
+    /**
+     * Method to initialize the MESSAGES_FOR_EXPIRY_COLUMN_FAMILY Column Family in cql style
+     * @param name
+     * @param keySpace
+     * @param cluster
+     * @throws CassandraDataAccessException
+     */
+    public static void createMessageExpiryColumnFamily(String name,String keySpace,Cluster cluster) throws CassandraDataAccessException {
+
+        if (!isKeySpaceExist(keySpace)) {
+            throw new CassandraDataAccessException("Can't create Column family, keyspace " + keySpace +
+                    " does not exist");
+        }
+        boolean isTableExist = isTableExist(keySpace, name);
+        if (!isTableExist) {
+            Table table = new Table(null, name, keySpace);
+            //table.getColumnType().put(MESSAGES_TO_EXPIRE_ROW_KEY,DataType.varchar());
+            table.getColumnType().put(MESSAGE_ID, DataType.bigint());
+            table.getColumnType().put(MESSAGE_EXPIRATION_TIME, DataType.bigint());
+            table.getColumnType().put(MESSAGE_IS_FOR_TOPIC, DataType.cboolean());
+            table.getColumnType().put(MESSAGE_DESTINATION,DataType.varchar());
+
+            //TODO add a default row as the first primary key so it becomes the row id
+            table.getPrimaryKeys().add(MESSAGE_ID);
+            table.getPrimaryKeys().add(MESSAGE_EXPIRATION_TIME);
+            String query = CQLQueryBuilder.buildTableQuery(table);
+            GenericCQLDAO.execute(keySpace, query);
+        }
+    }
 }

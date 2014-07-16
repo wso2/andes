@@ -219,4 +219,16 @@ public class ClusterConfiguration {
     public int getPerConnectionMessageRateThreshold() {
         return serverConfig.getFlowControlPerConnectionMessageThreshold();
     }
+
+    public int getJMSExpirationCheckInterval() {
+        return serverConfig.getJMSExpirationCheckInterval();
+    }
+
+    public int getExpirationMessageBatchSize() {
+        return serverConfig.getExpirationMessageBatchSize();
+    }
+
+    public Boolean getSaveExpiredToDLC() {
+        return serverConfig.getSaveExpiredToDLC();
+    }
 }
