@@ -394,6 +394,12 @@
             <groupId>org.fusesource.hawtbuf</groupId>
             <artifactId>hawtbuf</artifactId>
         </dependency>
+
+        <!--Hzelcast Dependencies-->
+        <dependency>
+             <groupId>com.hazelcast.wso2</groupId>
+             <artifactId>hazelcast</artifactId>
+        </dependency>
      
     </dependencies>
 

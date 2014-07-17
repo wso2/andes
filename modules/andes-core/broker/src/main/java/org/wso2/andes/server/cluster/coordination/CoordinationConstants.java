@@ -42,4 +42,8 @@ public final class CoordinationConstants {
 
     public static String NODE_SEPARATOR = "/";
 
+    public static String SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME = "SUBSCRIPTION";
+
+    public static String QUEUE_CHANGED_NOTIFIER_TOPIC_NAME = "QUEUE";
+
 }

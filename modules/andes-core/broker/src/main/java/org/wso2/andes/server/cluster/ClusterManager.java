@@ -27,6 +27,7 @@ import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.CoordinationException;
 import org.wso2.andes.server.cluster.coordination.ZooKeeperAgent;
+import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.apache.zookeeper.*;
 import org.wso2.andes.server.util.AndesConstants;
@@ -43,6 +44,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class ClusterManager {
     private Log log = LogFactory.getLog(ClusterManager.class);
+
+    private HazelcastAgent hazelcastAgent;
 
     private ZooKeeperAgent zkAgent;
     private int nodeId;
@@ -78,13 +81,17 @@ public class ClusterManager {
     }
 
     /**
-     * Create a ClusterManager instance for standalone environment.
-     * Then this will handle only standalone operations
+     * Create a ClusterManager instance
      */
     public ClusterManager() {
         this.andesContextStore = AndesContext.getInstance().getAndesContextStore();
         this.globalQueueManager = new GlobalQueueManager(MessagingEngine.getInstance().getDurableMessageStore());
-        this.nodeId = 0;
+
+        if(AndesContext.getInstance().isClusteringEnabled()){
+            hazelcastAgent= HazelcastAgent.getInstance();
+        } else {
+            this.nodeId = 0;
+        }
     }
 
     private static int getNodeIdFromZkNode(String node) {
@@ -105,7 +112,7 @@ public class ClusterManager {
          * do following if clustering is disabled. Here no Zookeeper is involved
          * so nodeID will be always 0
          */
-        if (!config.isClusteringEnabled()) {
+        if (!AndesContext.getInstance().isClusteringEnabled()) {
 
             try {
                 //update node information in durable store
