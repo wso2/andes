@@ -46,6 +46,7 @@ import org.wso2.andes.server.connection.IConnectionRegistry;
 import org.wso2.andes.server.exchange.*;
 import org.wso2.andes.server.federation.BrokerLink;
 import org.wso2.andes.server.information.management.QueueManagementInformationMBean;
+import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
 import org.wso2.andes.server.logging.LogSubject;
 import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.server.logging.messages.VirtualHostMessages;
@@ -279,6 +280,9 @@ public class VirtualHostImpl implements VirtualHost
 
         QueueManagementInformationMBean queueManagementMBean = new QueueManagementInformationMBean();
         queueManagementMBean.register();
+
+        SubscriptionManagementInformationMBean subscriptionManagementInformationMBean = new SubscriptionManagementInformationMBean();
+        subscriptionManagementInformationMBean.register();
 
 
         _logger.info("Starting syncing exchanges, queues and bindings");

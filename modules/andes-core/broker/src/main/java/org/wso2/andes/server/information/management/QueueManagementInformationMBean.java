@@ -23,6 +23,7 @@ import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParamet
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.GlobalQueueManager;
 import org.wso2.andes.server.management.AMQManagedObject;
+import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.SubscriptionStore;
 
@@ -156,4 +157,5 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             throw new RuntimeException("Error in getting subscriber count",e);
         }
     }
+
 }

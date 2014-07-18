@@ -48,4 +48,5 @@ public interface QueueManagementInformation {
     @MBeanAttribute(name = " Delete All Messages In Queue ", description = "Delete all the messages in the queue without removing queue bindings.")
     void deleteAllMessagesInQueue(@MBeanOperationParameter(name = "queueName" ,
             description = "Name of the queue to delete messages from") String queueName);
+
 }
