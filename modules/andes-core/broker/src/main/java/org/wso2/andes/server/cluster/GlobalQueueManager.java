@@ -23,7 +23,6 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.QueueAddress;
-import org.wso2.andes.messageStore.CassandraConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.util.ArrayList;
@@ -135,9 +134,9 @@ public class GlobalQueueManager {
         return messageStore.countMessagesOfQueue(queueAddress, null);
     }
 
-    public int getSubscriberCount(String queueName) throws Exception{
-        return ClusterResourceHolder.getInstance().getClusterManager().getZkNodes().size();
-    }
+//    public int getSubscriberCount(String queueName) throws Exception{
+//        return ClusterResourceHolder.getInstance().getClusterManager().getZkNodes().size();
+//    }
 
     public void removeAllQueueWorkersLocally() throws Exception {
 

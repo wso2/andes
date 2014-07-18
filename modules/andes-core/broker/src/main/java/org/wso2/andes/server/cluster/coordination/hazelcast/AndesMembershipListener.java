@@ -17,21 +17,40 @@
 */
 package org.wso2.andes.server.cluster.coordination.hazelcast;
 
+import com.hazelcast.core.Member;
 import com.hazelcast.core.MembershipEvent;
 import com.hazelcast.core.MembershipListener;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.cluster.ClusterManager;
 
 public class AndesMembershipListener implements MembershipListener {
     private static Log log = LogFactory.getLog(AndesMembershipListener.class);
 
     @Override
     public void memberAdded(MembershipEvent membershipEvent) {
-        log.info("=================================Membership added triggered");
+        Member member = membershipEvent.getMember();
+        log.info("==== New member joined to the cluster. Member Socket Address:"
+                + member.getInetSocketAddress()
+                + " UUID:"
+                + member.getUuid());
+        ClusterResourceHolder.getInstance().getClusterManager().handleNewNodeJoiningToCluster(member);
     }
 
     @Override
     public void memberRemoved(MembershipEvent membershipEvent) {
-        log.info("=================================Membership removed triggered");
+        Member member = membershipEvent.getMember();
+        log.info("==== A member left the cluster. Member Socket Address:"
+                + member.getInetSocketAddress()
+                + " UUID:"
+                + member.getUuid());
+        ClusterManager clusterManager = ClusterResourceHolder.getInstance().getClusterManager();
+        try {
+            clusterManager.handleNodeLeavingCluster(member);
+        } catch (Exception e) {
+            log.error("Error while handling node removal, NodeID:" + clusterManager.getNodeId(member), e);
+            e.printStackTrace();
+        }
     }
 }

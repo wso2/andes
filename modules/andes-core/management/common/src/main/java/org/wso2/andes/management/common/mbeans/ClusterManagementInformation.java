@@ -29,10 +29,6 @@ public interface ClusterManagementInformation {
                                      ATTR_ADDRESS,
                                      ATTR_PORT))));
 
-
-    @MBeanAttribute(name = "getZkServer", description = "zookeeper Server")
-    String getZkServer();
-
     @MBeanAttribute(name = "isClusteringEnabled", description = "is in clustering mode")
     boolean isClusteringEnabled();
 
@@ -40,14 +36,11 @@ public interface ClusterManagementInformation {
     String getMyNodeID();
 
     @MBeanAttribute(name = "getGlobalQueuesAssigned", description = "Existing global queues currently assigned to the node")
-    String[] getGlobalQueuesAssigned(int nodeId);
+    String[] getGlobalQueuesAssigned(String nodeId);
 
     @MBeanAttribute(name = "updateWorkerForQueue", description = "Move the given global queue Worker Handler to a new node")
     boolean updateWorkerForQueue(@MBeanOperationParameter(name="queueToMove",description = "name of queue whose queue worker to move") String queueToBeMoved,
                                  @MBeanOperationParameter(name="newNode",description = "name of new node to assign queue worker") String newNodeToAssign);
-
-    @MBeanAttribute(name = "getZkNodes" , description = "Existing zookeeper nodes")
-    List<Integer> getZkNodes();
 
     @MBeanAttribute(name = "getMessageCount" , description = "Message Count in the queue")
     int getMessageCount(@MBeanOperationParameter(name = "queueName",description = "Name of the queue which message count is required")String queueName);
@@ -62,17 +55,17 @@ public interface ClusterManagementInformation {
     int getSubscriberCount(@MBeanOperationParameter(name="Topic",description = "Topic name") String topic);
 
     @MBeanAttribute(name = "getIPAddressForNode" , description = "get IP address for given node")
-    String getIPAddressForNode(@MBeanOperationParameter(name = "nodeID", description = "Zookeeper ID of the node") int ZKID);
+    String getIPAddressForNode(@MBeanOperationParameter(name = "nodeID", description = "Node ID") String nodeId);
 
     @MBeanAttribute(name = "getDestinationQueuesOfCluster", description = "get destination queues in cluster")
     List<String> getDestinationQueuesOfCluster();
 
     @MBeanAttribute(name = "getNodeQueueMessageCount", description = "get message count of node addressed to given destination queue")
-    int getNodeQueueMessageCount(@MBeanOperationParameter(name = "nodeId", description = "node id") int nodeId,
+    int getNodeQueueMessageCount(@MBeanOperationParameter(name = "nodeId", description = "node id") String nodeId,
                                  @MBeanOperationParameter(name = "destinationQueue" , description = "destination queue name") String destinationQueue);
 
     @MBeanAttribute(name = "getNodeQueueSubscriberCount", description = "get subscriber count of node subscribed to given destination queue")
-    int getNodeQueueSubscriberCount(@MBeanOperationParameter(name = "nodeId", description = "node id") int nodeId,
+    int getNodeQueueSubscriberCount(@MBeanOperationParameter(name = "nodeId", description = "node id") String nodeId,
                                  @MBeanOperationParameter(name = "destinationQueue" , description = "destination queue name") String destinationQueue);
 
 }

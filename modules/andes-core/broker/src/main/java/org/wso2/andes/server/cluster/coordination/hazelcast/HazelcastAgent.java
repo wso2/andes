@@ -19,10 +19,17 @@ package org.wso2.andes.server.cluster.coordination.hazelcast;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ITopic;
+import com.hazelcast.core.IdGenerator;
+import com.hazelcast.core.Member;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 /**
  * This is a singleton class, which contains all Hazelcast related operations.
@@ -35,9 +42,10 @@ public class HazelcastAgent {
     private HazelcastInstance hazelcastInstance;
     private ITopic subscriptionChangedNotifierChannel;
     private ITopic queueChangedNotifierChannel;
+    private int uniqueIdOfLocalMember;
 
     private HazelcastAgent(){
-        log.info("====================================Initializing Hazelcast Instance");
+        log.info("Initializing Hazelcast Agent");
         this.hazelcastInstance = AndesContext.getInstance().getHazelcastInstance();
         this.hazelcastInstance.getCluster().addMembershipListener(new AndesMembershipListener());
 
@@ -48,12 +56,14 @@ public class HazelcastAgent {
         this.queueChangedNotifierChannel = this.hazelcastInstance.getTopic(
                 CoordinationConstants.QUEUE_CHANGED_NOTIFIER_TOPIC_NAME);
         this.queueChangedNotifierChannel.addMessageListener(new QueueChangedListener());
-        log.info("====================================Successfully Initialized Hazelcast Instance");
+
+        IdGenerator idGenerator =hazelcastInstance.getIdGenerator(CoordinationConstants.UNIQUE_ID_FOR_NODE);
+        this.uniqueIdOfLocalMember = (int) idGenerator.newId();
+        log.info("Successfully initialized Hazelcast Agent");
     }
 
     public static HazelcastAgent getInstance() {
         if (hazelcastAgent == null) {
-
             synchronized (HazelcastAgent.class) {
                 if(hazelcastAgent == null)  {
                     hazelcastAgent = new HazelcastAgent();
@@ -64,5 +74,71 @@ public class HazelcastAgent {
         return hazelcastAgent;
     }
 
+    /**
+     * Node ID is generated in the format of "NODE_<host IP>_<Node UUID>"
+     * @return NodeId
+     */
+    public String getNodeId(){
+        Member localMember = hazelcastInstance.getCluster().getLocalMember();
+        return CoordinationConstants.NODE_NAME_PREFIX
+                + localMember.getInetSocketAddress().getAddress()
+                + "_"
+                + localMember.getUuid() ;
+    }
 
+    /**
+     * All members of the cluster are returned as a Set
+     * @return Set of Member
+     */
+    public Set<Member> getAllClusterMembers(){
+        return hazelcastInstance.getCluster().getMembers();
+    }
+
+
+    public List<String> getMembersNodeIDs(){
+        Set<Member> members = this.getAllClusterMembers();
+        List<String> nodeIDList = new ArrayList<String>();
+        for(Member member: members){
+            nodeIDList.add(CoordinationConstants.NODE_NAME_PREFIX
+                    + member.getInetSocketAddress().getAddress()
+                    + "_"
+                    + member.getUuid());
+        }
+
+        return nodeIDList;
+    }
+
+    public Member getLocalMember(){
+        return hazelcastInstance.getCluster().getLocalMember();
+    }
+
+    public int getClusterSize(){
+        return hazelcastInstance.getCluster().getMembers().size();
+    }
+
+    public int getUniqueIdForTheNode(){
+        return uniqueIdOfLocalMember;
+    }
+
+    public String getIdOfNode(Member node){
+        return CoordinationConstants.NODE_NAME_PREFIX
+                + node.getInetSocketAddress().getAddress()
+                + "_"
+                + node.getUuid() ;
+    }
+
+    public int getIndexOfNode(Member node){
+        List<String> membersUniqueRepresentations = new ArrayList<String>();
+        for(Member member: this.getAllClusterMembers()){
+            membersUniqueRepresentations.add(member.getUuid());
+        }
+        Collections.sort(membersUniqueRepresentations);
+        int indexOfMyId = membersUniqueRepresentations.indexOf(node.getUuid());
+        log.info("===========================SORTED ID" + indexOfMyId);
+        return indexOfMyId;
+    }
+
+    public int getIndexOfLocalNode(){
+        return this.getIndexOfNode(this.getLocalMember());
+    }
 }

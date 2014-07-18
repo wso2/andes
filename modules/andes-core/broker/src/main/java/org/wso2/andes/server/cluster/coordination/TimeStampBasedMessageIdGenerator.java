@@ -17,9 +17,9 @@
 */
 package org.wso2.andes.server.cluster.coordination;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.wso2.andes.server.ClusterResourceHolder;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
@@ -38,7 +38,8 @@ import org.wso2.andes.server.ClusterResourceHolder;
  * We can go up to 100,000 msg/s
  */
 public class TimeStampBasedMessageIdGenerator implements MessageIdGenerator {
-    int nodeID = 0; 
+    //String nodeID = "";
+    int uniqueIdForNode = 0;
     long lastTimestamp = 0; 
     long lastID = 0;
     private AtomicInteger offsetOnthisslot = new AtomicInteger();
@@ -52,7 +53,8 @@ public class TimeStampBasedMessageIdGenerator implements MessageIdGenerator {
      */
     
     public synchronized long getNextId() {
-        nodeID = ClusterResourceHolder.getInstance().getClusterManager().getNodeId();
+        //nodeID = ClusterResourceHolder.getInstance().getClusterManager().getNodeId();
+        uniqueIdForNode = ClusterResourceHolder.getInstance().getClusterManager().getUniqueIdForTheNode();
         long ts = System.currentTimeMillis();
         int offset = 0; 
         if(ts == lastTimestamp){
@@ -61,7 +63,7 @@ public class TimeStampBasedMessageIdGenerator implements MessageIdGenerator {
             offsetOnthisslot.set(0);
         }
         lastTimestamp = ts;
-        long id = (ts - referenaceStart) * 256* 1024 + nodeID * 1024 + offset;
+        long id = (ts - referenaceStart) * 256* 1024 + uniqueIdForNode * 1024 + offset;
         if(lastID == id){
             throw new RuntimeException("duplicate ids detected. This should never happen"); 
         }

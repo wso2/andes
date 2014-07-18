@@ -46,4 +46,8 @@ public final class CoordinationConstants {
 
     public static String QUEUE_CHANGED_NOTIFIER_TOPIC_NAME = "QUEUE";
 
+    public static String NODE_NAME_PREFIX = "NODE_";
+
+    public static String UNIQUE_ID_FOR_NODE = "UNIQUE_ID";
+
 }

@@ -1,12 +1,5 @@
 package org.wso2.andes.server.cassandra;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
@@ -15,6 +8,13 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.stats.PerformanceCounter;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class OnflightMessageTracker {
 
@@ -258,7 +258,7 @@ public synchronized boolean testAndAddMessage(AndesMessageMetadata andesMetaData
 
         String queue = andesMetaDataEntry.getDestination();
 
-        String nodeSpecificQueueName = queue + "_" + ClusterResourceHolder.getInstance().getClusterManager().getNodeId();
+        String nodeSpecificQueueName = queue + "_" + ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
 
         String deliveryID = new StringBuffer(channel.getId().toString()).append("/").append(deliveryTag).toString();
 

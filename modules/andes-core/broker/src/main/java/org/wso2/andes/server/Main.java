@@ -61,6 +61,10 @@ public class Main
             System.out.println("========================In Main : Hazelcast is null");
         }
 
+        System.out.println("===================================== clustering " + AndesContext.getInstance().isClusteringEnabled());
+        System.out.println("===================================== Hz cluster size " + AndesContext.getInstance().getHazelcastInstance().getCluster().getMembers().size());
+
+
         setOptions(options);
         if (parseCommandline(args))
         {

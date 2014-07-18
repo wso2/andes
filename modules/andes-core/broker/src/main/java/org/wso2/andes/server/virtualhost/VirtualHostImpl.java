@@ -25,12 +25,13 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQStoreException;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.*;
-import org.wso2.andes.protocol.AMQConstant;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesContextStore;
+import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.AMQBrokerManagerMBean;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.BindingFactory;
@@ -265,21 +266,6 @@ public class VirtualHostImpl implements VirtualHost
         }
 
         ClusterManager clusterManager = new ClusterManager();
-        /*
-        ClusterManager clusterManager = null;
-        if (clusterConfiguration.isClusteringEnabled()) {
-            clusterManager = new ClusterManager(clusterConfiguration.getZookeeperConnection());
-        } else {
-        	try{
-        		clusterManager = new ClusterManager();
-        	}catch(Throwable ex){
-        		_logger.error(ex);
-        		throw new Exception(ex);
-        	}
-            
-        }
-        */
-
         clusterManager.init();
         ClusterResourceHolder.getInstance().setClusterManager(clusterManager);
 
