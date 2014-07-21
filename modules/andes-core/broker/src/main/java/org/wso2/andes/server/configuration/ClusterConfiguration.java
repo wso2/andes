@@ -45,14 +45,6 @@ public class ClusterConfiguration {
     }
 
     /**
-     *
-     * @return  whether clustering is enabled
-     */
-    public Boolean isClusteringEnabled() {
-         return  serverConfig.getClusteringEnabled();
-    }
-
-    /**
      * @return   Zookeeper connection String
      */
     public String getZookeeperConnection() {

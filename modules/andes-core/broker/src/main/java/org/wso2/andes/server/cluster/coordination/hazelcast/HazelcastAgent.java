@@ -25,11 +25,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
+import org.wso2.andes.server.cluster.coordination.SubscriptionNotification;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * This is a singleton class, which contains all Hazelcast related operations.
@@ -50,15 +48,16 @@ public class HazelcastAgent {
         this.hazelcastInstance.getCluster().addMembershipListener(new AndesMembershipListener());
 
         this.subscriptionChangedNotifierChannel = this.hazelcastInstance.getTopic(
-                CoordinationConstants.SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME);
+                CoordinationConstants.HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME);
         this.subscriptionChangedNotifierChannel.addMessageListener(new SubscriptionChangedListener());
 
         this.queueChangedNotifierChannel = this.hazelcastInstance.getTopic(
-                CoordinationConstants.QUEUE_CHANGED_NOTIFIER_TOPIC_NAME);
+                CoordinationConstants.HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME);
         this.queueChangedNotifierChannel.addMessageListener(new QueueChangedListener());
 
-        IdGenerator idGenerator =hazelcastInstance.getIdGenerator(CoordinationConstants.UNIQUE_ID_FOR_NODE);
+        IdGenerator idGenerator =hazelcastInstance.getIdGenerator(CoordinationConstants.HAZELCAST_ID_GENERATOR_NAME);
         this.uniqueIdOfLocalMember = (int) idGenerator.newId();
+        log.info("==================================================Gerenated ID:" + uniqueIdOfLocalMember);
         log.info("Successfully initialized Hazelcast Agent");
     }
 
@@ -75,7 +74,7 @@ public class HazelcastAgent {
     }
 
     /**
-     * Node ID is generated in the format of "NODE_<host IP>_<Node UUID>"
+     * Node ID is generated in the format of "NODE/<host IP>_<Node UUID>"
      * @return NodeId
      */
     public String getNodeId(){
@@ -134,11 +133,18 @@ public class HazelcastAgent {
         }
         Collections.sort(membersUniqueRepresentations);
         int indexOfMyId = membersUniqueRepresentations.indexOf(node.getUuid());
-        log.info("===========================SORTED ID" + indexOfMyId);
         return indexOfMyId;
     }
 
     public int getIndexOfLocalNode(){
         return this.getIndexOfNode(this.getLocalMember());
+    }
+
+    public void notifySubscriberChanged(SubscriptionNotification subscriptionNotification){
+        log.info("=================================================came to notifySubscriberChanged");
+        log.info("==========" + subscriptionNotification.getAndesQueue().queueName);
+        log.info("==========" + subscriptionNotification.getAndesBinding().boundQueue.queueOwner);
+        log.info("==========");
+        this.subscriptionChangedNotifierChannel.publish(subscriptionNotification);
     }
 }

@@ -20,36 +20,15 @@
  */
 package org.wso2.andes.server;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.SortedSet;
-import java.util.TreeSet;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAMQPBridge;
-import org.wso2.andes.framing.AMQMethodBody;
-import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.framing.BasicContentHeaderProperties;
-import org.wso2.andes.framing.ContentBody;
-import org.wso2.andes.framing.ContentHeaderBody;
-import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.framing.MethodRegistry;
+import org.wso2.andes.framing.*;
 import org.wso2.andes.framing.abstraction.ContentChunk;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
-import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.messageStore.StoredAMQPMessage;
@@ -59,11 +38,7 @@ import org.wso2.andes.server.ack.UnacknowledgedMessageMapImpl;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cassandra.QueueSubscriptionAcknowledgementHandler;
 import org.wso2.andes.server.cassandra.SequentialThreadPoolExecutor;
-import org.wso2.andes.server.configuration.ConfigStore;
-import org.wso2.andes.server.configuration.ConfiguredObject;
-import org.wso2.andes.server.configuration.ConnectionConfig;
-import org.wso2.andes.server.configuration.SessionConfig;
-import org.wso2.andes.server.configuration.SessionConfigType;
+import org.wso2.andes.server.configuration.*;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.flow.FlowCreditManager;
 import org.wso2.andes.server.flow.Pre0_10CreditManager;
@@ -87,8 +62,9 @@ import org.wso2.andes.server.queue.BaseQueue;
 import org.wso2.andes.server.queue.IncomingMessage;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.registry.ApplicationRegistry;
-import org.wso2.andes.server.stats.PerformanceCounter;
-import org.wso2.andes.server.store.*;
+import org.wso2.andes.server.store.MessageStore;
+import org.wso2.andes.server.store.StorableMessageMetaData;
+import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.server.subscription.ClientDeliveryMethod;
 import org.wso2.andes.server.subscription.RecordDeliveryMethod;
 import org.wso2.andes.server.subscription.Subscription;
@@ -101,6 +77,12 @@ import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor;
 
 import javax.management.JMException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class AMQChannel implements SessionConfig, AMQSessionModel
 {
@@ -364,14 +346,14 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                     {
                         if (_currentMessage.isMandatory() || _currentMessage.isImmediate())
                         {
-                            if(!ClusterResourceHolder.getInstance().getClusterConfiguration().isClusteringEnabled()) {
+                            if(!AndesContext.getInstance().isClusteringEnabled()) {
                                 _transaction.addPostTransactionAction(new WriteReturnAction(AMQConstant.NO_ROUTE, "No Route for message", _currentMessage));
                             }
                         }
                         else
                         {
                              //no need to sync whole topic bindings across cluster. Thus this log has no sense in clustered mode
-                             if(!ClusterResourceHolder.getInstance().getClusterConfiguration().isClusteringEnabled()) {
+                             if(!AndesContext.getInstance().isClusteringEnabled()) {
                                  _logger.warn("MESSAGE DISCARDED: No routes for message - " + createAMQMessage(_currentMessage));
                              }
                         }
@@ -391,7 +373,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                 }
                 
                 //TODO
-                //check queue size from here and reject the request 
+                //check queue size from here and reject the request
                 
                 //need to bind this to the inner class, as _currentMessage
                 final IncomingMessage incomingMessage = _currentMessage;

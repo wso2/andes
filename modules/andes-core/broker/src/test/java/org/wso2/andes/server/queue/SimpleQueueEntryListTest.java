@@ -84,7 +84,7 @@ public class SimpleQueueEntryListTest extends TestCase
         
         QueueEntryImpl head = ((QueueEntryImpl) sqel.getHead());
         
-        //We shall now delete some specific messages mid-queue that will lead to 
+        //We shall now delete some specific messages mid-queue that will lead to
         //requiring a scavenge once the requested threshold of 9 deletes is passed
         
         //Delete the 2nd message only

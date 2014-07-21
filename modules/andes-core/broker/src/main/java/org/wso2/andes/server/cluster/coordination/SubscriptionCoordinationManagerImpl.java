@@ -19,12 +19,9 @@ package org.wso2.andes.server.cluster.coordination;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.pool.AndesExecuter;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.configuration.ClusterConfiguration;
+import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,45 +31,33 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
 
     private static Log log = LogFactory.getLog(SubscriptionCoordinationManagerImpl.class);
 
-
-    private ZooKeeperAgent zooKeeperAgent;
-
-    private SubscriptionParentDataChangeListener subscriptionParentDataChangeListener;
+    private HazelcastAgent hazelcastAgent;
 
     private List<SubscriptionListener> subscriptionListeners = new ArrayList<SubscriptionListener>();
 
-
-
     @Override
-    public void init() throws CoordinationException {
-        try {
-            ClusterConfiguration clusterConfiguration = ClusterResourceHolder.getInstance().getClusterConfiguration();
-            if(clusterConfiguration.isClusteringEnabled()) {
-                String zkServer = clusterConfiguration.getZookeeperConnection();
-                this.zooKeeperAgent  = new ZooKeeperAgent(zkServer);
-                this.zooKeeperAgent.initSubscriptionCoordination();
-                ZooKeeper zk = zooKeeperAgent.getZooKeeper();
-                this.subscriptionParentDataChangeListener = new SubscriptionParentDataChangeListener();
-                zk.getData(CoordinationConstants.SUBSCRIPTION_COORDINATION_PARENT,subscriptionParentDataChangeListener,null);
-            }
-        } catch (Exception e) {
-            throw new CoordinationException("Error while initializing " +
-                    "SubscriptionCoordinationManagerImpl" ,e);
+    public void init() {
+        if(AndesContext.getInstance().isClusteringEnabled()) {
+            hazelcastAgent = HazelcastAgent.getInstance();
         }
     }
 
     @Override
-    public void notifySubscriptionChange()  {
+    public void notifySubscriptionChange(final SubscriptionNotification subscriptionNotification)  {
         if(log.isDebugEnabled()){
             log.debug("Notifying subscribers on Subscription changes ");
         }
         Runnable r = new Runnable() {
             @Override
             public void run() {
+                /**
+                 *TODO:Currently only the listener implemented for QPID (VirtualHostConfigSynchronizer) is available.
+                 *TODO:Other listeners should be implemented for MQTT etc.
+                 */
                 for (SubscriptionListener listener : subscriptionListeners) {
 
                     try {
-                        listener.subscriptionsChanged();
+                        listener.subscriptionsChanged(subscriptionNotification);
                     } catch (Exception e) {
                         log.error("Error handling the subscription change " ,e);
                     }
@@ -85,26 +70,21 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
     }
 
     @Override
-    public void handleSubscriptionChange() throws CoordinationException {
-            if (ClusterResourceHolder.getInstance().getClusterConfiguration().isClusteringEnabled()) {
-                // Notify global listeners
-                ZooKeeper zooKeeper = zooKeeperAgent.getZooKeeper();
-                if (zooKeeper != null) {
-                    try {
-                        zooKeeper.setData(CoordinationConstants.SUBSCRIPTION_COORDINATION_PARENT, new byte[]{(byte) 1}, -1);
+    public void handleLocalSubscriptionChange(SubscriptionNotification subscriptionNotification) {
+        if (AndesContext.getInstance().isClusteringEnabled()) {
+            // Notify global listeners
+            log.info("=====================Sending Hazelcast notification================");
+            hazelcastAgent.notifySubscriberChanged(subscriptionNotification);
+        } else {
+            //notify local listeners
+            log.info("=====================notifySubscriptionChange================");
+            notifySubscriptionChange(subscriptionNotification);
+        }
+    }
 
-                    } catch (Exception e) {
-                        throw new CoordinationException("Error while handling subscription change");
-
-                    }
-
-                } else {
-                    throw new CoordinationException("Subscription Coordination Manager not initialized yet");
-                }
-            } else {
-                //notify local listeners
-                notifySubscriptionChange();
-            }
+    public void handleClusterSubscriptionChange(SubscriptionNotification subscriptionNotification) {
+        log.info("=====================handleClusterSubscriptionChange================");
+        notifySubscriptionChange(subscriptionNotification);
     }
 
     @Override
@@ -122,26 +102,4 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
             this.subscriptionListeners.remove(listener);
         }
     }
-
-    private class SubscriptionParentDataChangeListener implements Watcher {
-
-        @Override
-        public void process(WatchedEvent watchedEvent) {
-
-            log.debug("Subscription data change event received : " + watchedEvent);
-            if(Event.EventType.NodeDataChanged == watchedEvent.getType()) {
-                try {
-
-
-                    zooKeeperAgent.getZooKeeper().getData(CoordinationConstants.SUBSCRIPTION_COORDINATION_PARENT,
-                            subscriptionParentDataChangeListener, null);
-                    notifySubscriptionChange();
-                } catch (Exception e) {
-                    log.error("Error while processing subscription Data Change event");
-                }
-            }
-        }
-    }
-
-
 }

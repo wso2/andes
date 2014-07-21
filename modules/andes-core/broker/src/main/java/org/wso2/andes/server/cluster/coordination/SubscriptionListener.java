@@ -30,6 +30,6 @@ public interface SubscriptionListener {
      * Note : Do not to any assumptions about number of times this get invoked = the number of subscription changes
      * This can be changed in some scenarios
      */
-    public void subscriptionsChanged();
+    public void subscriptionsChanged(SubscriptionNotification subscriptionNotification);
 
 }

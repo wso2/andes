@@ -27,7 +27,7 @@ import org.wso2.andes.common.AMQPFilterTypes;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.topic.TopicExchangeResult;
 import org.wso2.andes.server.exchange.topic.TopicMatcherResult;
@@ -215,7 +215,7 @@ public class TopicExchange extends AbstractExchange
         if(queues == null || queues.isEmpty())
         {
             //no need to sync whole topic bindings across cluster. Thus this log has no sense in clustered mode
-            if(!ClusterResourceHolder.getInstance().getClusterConfiguration().isClusteringEnabled()) {
+            if(!AndesContext.getInstance().isClusteringEnabled()) {
                 _logger.info("Message routing key: " + payload.getRoutingKey() + " No routes.");
             }
         }

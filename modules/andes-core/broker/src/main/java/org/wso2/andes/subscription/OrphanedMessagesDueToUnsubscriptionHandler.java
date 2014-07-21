@@ -1,7 +1,5 @@
 package org.wso2.andes.subscription;
 
-import java.util.*;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQStoreException;
@@ -11,6 +9,10 @@ import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.server.util.QueueMessageRemovalLock;
+
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
 
 
 public class OrphanedMessagesDueToUnsubscriptionHandler implements
@@ -75,8 +77,7 @@ public class OrphanedMessagesDueToUnsubscriptionHandler implements
 				.resetGlobalQueueWorkerIfRunning(globalQueueName);
 		// if in clustered mode copy messages addressed to that queue back to
 		// global queue
-		if (ClusterResourceHolder.getInstance().getClusterConfiguration()
-				.isClusteringEnabled()) {
+		if (AndesContext.getInstance().isClusteringEnabled()) {
 			handleMessageRemoval(destinationQueue);
 		}
 	}

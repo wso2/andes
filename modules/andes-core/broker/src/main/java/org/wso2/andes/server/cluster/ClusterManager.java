@@ -192,8 +192,7 @@ public class ClusterManager {
      * @return
      */
     public boolean isClusteringEnabled() {
-        ClusterConfiguration config = ClusterResourceHolder.getInstance().getClusterConfiguration();
-        return config.isClusteringEnabled();
+        return AndesContext.getInstance().isClusteringEnabled();
     }
 
     /**
@@ -237,7 +236,7 @@ public class ClusterManager {
         return MessagingEngine.getInstance().getDurableMessageStore().countMessagesOfQueue(nodeQueueAddress, destinationQueue);
     }
 
-    public int getUniqueIdForTheNode(){
+    public int getUniqueIdForLocalNode(){
         if(isClusteringEnabled){
             return hazelcastAgent.getUniqueIdForTheNode();
         }

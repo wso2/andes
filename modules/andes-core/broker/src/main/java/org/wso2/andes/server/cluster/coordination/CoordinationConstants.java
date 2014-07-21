@@ -20,34 +20,11 @@ package org.wso2.andes.server.cluster.coordination;
 
 public final class CoordinationConstants {
 
-    public static String QUEUE_WORKER_COORDINATION_PARENT = "/queue_workers_parent";
+    public static String HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME = "SUBSCRIPTION";
 
-    public static String QUEUE_WORKER_NODE = "/queue_worker_node";
+    public static String HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME = "QUEUE_CHANGED";
 
-    public static String QUEUE_FAIL_OVER_HANDLING_PARENT = "/queue_fail_over_handling_parent";
+    public static String NODE_NAME_PREFIX = "NODE";
 
-    public static String QUEUE_FAIL_OVER_HANDLING_NODE = "/queue_fail_over_handling_node";
-
-    public static String QUEUE_RESOURCE_LOCK_PARENT = "/queue_resource_lock_parent";
-
-    public static String QUEUE_RESOURCE_LOCK_NODE = "/queue_resource_lock_node";
-
-    public static final String SUBSCRIPTION_COORDINATION_PARENT = "/subscription_coordination_parent";
-    
-    public static final String TOPIC_SUBSCRIPTION_COORDINATION_PARENT = "/topic_subscription_coordination_parent";
-
-    public static final String NODE_CHANGED_PREFIX = "NODE:";
-
-    public static final String QUEUES_CHANGED_PREFIX = "QUEUE:";
-
-    public static String NODE_SEPARATOR = "/";
-
-    public static String SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME = "SUBSCRIPTION";
-
-    public static String QUEUE_CHANGED_NOTIFIER_TOPIC_NAME = "QUEUE";
-
-    public static String NODE_NAME_PREFIX = "NODE_";
-
-    public static String UNIQUE_ID_FOR_NODE = "UNIQUE_ID";
-
+    public static String HAZELCAST_ID_GENERATOR_NAME = "UNIQUE_ID";
 }

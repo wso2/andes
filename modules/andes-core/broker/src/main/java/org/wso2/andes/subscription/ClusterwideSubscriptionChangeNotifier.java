@@ -6,7 +6,7 @@ import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.SubscriptionListener;
 import org.wso2.andes.kernel.Subscrption;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.CoordinationException;
+import org.wso2.andes.server.cluster.coordination.SubscriptionNotification;
 
 public class ClusterwideSubscriptionChangeNotifier implements SubscriptionListener{
 	private static Log log = LogFactory.getLog(OrphanedMessagesDueToUnsubscriptionHandler.class);
@@ -20,10 +20,17 @@ public class ClusterwideSubscriptionChangeNotifier implements SubscriptionListen
 	@Override
 	public void notifyLocalSubscriptionHasChanged(
 			LocalSubscription subscription, SubscriptionChange changeType) {
-		try {
-			ClusterResourceHolder.getInstance().getSubscriptionCoordinationManager().handleSubscriptionChange();
-		} catch (CoordinationException e) {
-			log.error(e);
-		}
-	}
+        SubscriptionNotification subscriptionNotification = new SubscriptionNotification(
+                subscription.getTargetQueueBoundExchangeName(),
+                subscription.getTargetQueueBoundExchangeType(),
+                subscription.ifTargetQueueBoundExchangeAutoDeletable(),
+                changeType,
+                subscription.getTargetQueue(),
+                subscription.getTargetQueueOwner(),
+                subscription.isExclusive(),
+                subscription.isDurable(),
+                subscription.getSubscribedDestination());
+
+        ClusterResourceHolder.getInstance().getSubscriptionCoordinationManager().handleLocalSubscriptionChange(subscriptionNotification);
+    }
 }

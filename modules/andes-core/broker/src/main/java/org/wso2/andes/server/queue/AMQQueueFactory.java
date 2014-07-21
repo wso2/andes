@@ -191,6 +191,8 @@ public class AMQQueueFactory
         }
         else
         {
+            System.out.println("==========================================name:"+queueName + " durable:" + durable + " owner" + owner + " autodelete"+ autoDelete
+                    + " exclusive:"+exclusive + " virtualhost:" +virtualHost);
             q = new SimpleAMQQueue(queueName, durable, owner, autoDelete, exclusive, virtualHost, arguments);
         }
 

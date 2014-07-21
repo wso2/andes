@@ -18,7 +18,9 @@
 
 package org.wso2.andes.kernel;
 
-public class AndesQueue {
+import java.io.Serializable;
+
+public class AndesQueue implements Serializable {
      public String queueName;
      public String queueOwner;
      public boolean isExclusive;

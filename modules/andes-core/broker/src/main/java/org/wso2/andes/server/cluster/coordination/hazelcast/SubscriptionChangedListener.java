@@ -22,6 +22,8 @@ import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.cluster.coordination.SubscriptionNotification;
 
 public class SubscriptionChangedListener implements MessageListener {
     private static Log log = LogFactory.getLog(SubscriptionChangedListener.class);
@@ -29,5 +31,7 @@ public class SubscriptionChangedListener implements MessageListener {
     @Override
     public void onMessage(Message message) {
         log.info("======================================On message triggered in SubscriptionChangedListener");
+        ClusterResourceHolder.getInstance().getSubscriptionCoordinationManager().handleClusterSubscriptionChange(
+                (SubscriptionNotification)message.getMessageObject());
     }
 }

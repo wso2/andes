@@ -21,18 +21,13 @@ package org.wso2.andes.server.queue;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.LocalSubscription;
-import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.pool.ReadWriteRunnable;
 import org.wso2.andes.pool.ReferenceCountingExecutorService;
 import org.wso2.andes.server.AMQChannel;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
 import org.wso2.andes.server.configuration.*;
 import org.wso2.andes.server.configuration.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.exchange.Exchange;
@@ -52,12 +47,9 @@ import org.wso2.andes.server.subscription.SubscriptionList;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
 import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
-import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.server.virtualhost.VirtualHost;
-import org.wso2.andes.subscription.AMQPLocalSubscription;
 
 import javax.management.JMException;
-
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -197,6 +189,9 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
     public SimpleAMQQueue(String queueName, boolean durable, String owner, boolean autoDelete, boolean exclusive, VirtualHost virtualHost, Map<String, Object> arguments)
     {
         this(queueName, durable, owner, autoDelete, exclusive, virtualHost, new SimpleQueueEntryList.Factory(), arguments);
+
+        System.out.println("==========================================name:"+queueName + " durable:" + durable + " owner" + owner + " autodelete"+ autoDelete
+                + " exclusive:"+exclusive + " virtualhost:" +virtualHost);
     }
 
     public SimpleAMQQueue(String queueName, boolean durable, String owner, boolean autoDelete, boolean exclusive, VirtualHost virtualHost, QueueEntryListFactory entryListFactory, Map<String, Object> arguments)

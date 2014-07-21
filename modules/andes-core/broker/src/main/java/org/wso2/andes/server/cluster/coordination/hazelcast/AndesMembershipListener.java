@@ -31,7 +31,7 @@ public class AndesMembershipListener implements MembershipListener {
     @Override
     public void memberAdded(MembershipEvent membershipEvent) {
         Member member = membershipEvent.getMember();
-        log.info("==== New member joined to the cluster. Member Socket Address:"
+        log.info("New member joined to the cluster. Member Socket Address:"
                 + member.getInetSocketAddress()
                 + " UUID:"
                 + member.getUuid());
@@ -41,7 +41,7 @@ public class AndesMembershipListener implements MembershipListener {
     @Override
     public void memberRemoved(MembershipEvent membershipEvent) {
         Member member = membershipEvent.getMember();
-        log.info("==== A member left the cluster. Member Socket Address:"
+        log.info("A member left the cluster. Member Socket Address:"
                 + member.getInetSocketAddress()
                 + " UUID:"
                 + member.getUuid());
