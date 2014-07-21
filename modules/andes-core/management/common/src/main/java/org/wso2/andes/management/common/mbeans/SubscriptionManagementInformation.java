@@ -24,20 +24,40 @@ public interface SubscriptionManagementInformation {
 
     static final String TYPE = "SubscriptionManagementInformation";
 
+    /**
+     * MBean service to get filtered queue subscriptions
+     * @param isDurable of type String (acceptable values => * | true | false)
+     * @param isActive of type String (acceptable values => * | true | false)
+     * @return
+     */
     @MBeanAttribute(name="AllQueueSubscriptions",description = "All queue subscriptions")
     String[] getAllQueueSubscriptions(
-            @MBeanOperationParameter(name = "isDurable" ,description = "get durable ?") boolean isDurable,
-            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") boolean isActive,
-            @MBeanOperationParameter(name = "isLocal" ,description = "get local ?") boolean isLocal);
+            @MBeanOperationParameter(name = "isDurable" ,description = "get durable ?") String isDurable,
+            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") String isActive);
 
+    /**
+     * MBean service to get filtered topic subscriptions
+     * @param isDurable of type String (acceptable values => * | true | false)
+     * @param isActive of type String (acceptable values => * | true | false)
+     * @return
+     */
     @MBeanAttribute(name="TopicSubscriptions",description = "All topic subscriptions")
     String[] getAllTopicSubscriptions(
-            @MBeanOperationParameter(name = "isDurable" ,description = "get durable ?") boolean isDurable,
-            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") boolean isActive,
-            @MBeanOperationParameter(name = "isLocal" ,description = "get local ?") boolean isLocal);
+            @MBeanOperationParameter(name = "isDurable" ,description = "get durable ?") String isDurable,
+            @MBeanOperationParameter(name = "isActive" ,description = "get active ?") String isActive);
 
-    @MBeanAttribute(name="SubscriptionCount", description = "Number of subscriptions for the destination")
-    int getSubscriptionCount(
-            @MBeanOperationParameter(name = "destinationName" ,description = "destination name") boolean destinationName);
+
+    /**
+     * MBean service to get Pending Message count for a given destination
+     * @param subscribedNode
+     * @param msgPattern
+     * @param destinationName
+     * @return
+     */
+    @MBeanAttribute(name="MessageCount", description = "Number of messages pending for the destination")
+    int getMessageCount(
+            @MBeanOperationParameter(name = "subscribedNode" ,description = "Subscribed node address") String subscribedNode,
+            @MBeanOperationParameter(name = "msgPattern" ,description = "queue or topic or any other pattern") String msgPattern,
+            @MBeanOperationParameter(name = "destinationName" ,description = "destination name") String destinationName);
 
 }
