@@ -15,6 +15,7 @@ public class CassandraConstants {
     public static final String READ_CONSISTENCY_LEVEL = "advanced.readConsistencyLevel";
     public static final String WRITE_CONSISTENCY_LEVEL = "advanced.writeConsistencyLevel";
     public static final String STRATERGY_CLASS = "advanced.strategyClass";
+    public static final String GC_GRACE_SECONDS = "advanced.GCGraceSeconds";
     public static final String CLUSTER_KEY = "cluster";
     public static final String ID_GENENRATOR = "idGenerator";
 

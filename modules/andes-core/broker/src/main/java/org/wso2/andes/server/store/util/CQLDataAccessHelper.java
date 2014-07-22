@@ -339,7 +339,7 @@ public class CQLDataAccessHelper {
      * @param cluster   Cluster instance
      * @throws CassandraDataAccessException  In case of an Error accessing database or data error
      */
-    public static void createCounterColumnFamily(String name, String keySpace, Cluster cluster) throws CassandraDataAccessException{
+    public static void createCounterColumnFamily(String name, String keySpace, Cluster cluster, int gcGraceSeconds) throws CassandraDataAccessException{
     	boolean isKeysapceExist = isKeySpaceExist(keySpace);
     	if (!isKeysapceExist) {
             throw new CassandraDataAccessException("Can't create Column family, keyspace " + keySpace +
@@ -347,7 +347,7 @@ public class CQLDataAccessHelper {
         }
     	boolean isTableExist = isTableExist(keySpace, name);
     	if (!isTableExist) {
-    		Table table = new Table(null, name, keySpace);    		
+    		Table table = new Table(null, name, keySpace,gcGraceSeconds);
     		table.getColumnType().put(MSG_COUNTER_QUEUE, DataType.text());
     		table.getColumnType().put(MSG_COUNTER_ROW, DataType.text());
     		table.getColumnType().put(MSG_COUNTER_COLUMN, DataType.counter());
@@ -509,7 +509,7 @@ public class CQLDataAccessHelper {
      * @return List<String> column names
      * @throws CassandraDataAccessException
      */
-    public static void createColumnFamily(String name, String keySpace, Cluster cluster, String comparatorType, DataType valueType) throws CassandraDataAccessException {
+    public static void createColumnFamily(String name, String keySpace, Cluster cluster, String comparatorType, DataType valueType, int gcGraceSeconds) throws CassandraDataAccessException {
 
         /*KeyspaceDefinition ksDef = cluster.describeKeyspace(keySpace);
 
@@ -549,7 +549,7 @@ public class CQLDataAccessHelper {
         }
     	boolean isTableExist = isTableExist(keySpace, name);
     	if (!isTableExist) {
-    		Table table = new Table(null, name, keySpace);    		
+    		Table table = new Table(null, name, keySpace,gcGraceSeconds);
     		table.getColumnType().put(MSG_ROW_ID, DataType.text());
     		table.getColumnType().put(MSG_KEY, keyType);
     		table.getColumnType().put(MSG_VALUE, valueType);
@@ -1924,7 +1924,7 @@ public class CQLDataAccessHelper {
      * @param cluster
      * @throws CassandraDataAccessException
      */
-    public static void createMessageExpiryColumnFamily(String name,String keySpace,Cluster cluster) throws CassandraDataAccessException {
+    public static void createMessageExpiryColumnFamily(String name,String keySpace,Cluster cluster,int gcGraceSeconds) throws CassandraDataAccessException {
 
         if (!isKeySpaceExist(keySpace)) {
             throw new CassandraDataAccessException("Can't create Column family, keyspace " + keySpace +
@@ -1932,7 +1932,7 @@ public class CQLDataAccessHelper {
         }
         boolean isTableExist = isTableExist(keySpace, name);
         if (!isTableExist) {
-            Table table = new Table(null, name, keySpace);
+            Table table = new Table(null, name, keySpace,gcGraceSeconds);
             //table.getColumnType().put(MESSAGES_TO_EXPIRE_ROW_KEY,DataType.varchar());
             table.getColumnType().put(MESSAGE_ID, DataType.bigint());
             table.getColumnType().put(MESSAGE_EXPIRATION_TIME, DataType.bigint());

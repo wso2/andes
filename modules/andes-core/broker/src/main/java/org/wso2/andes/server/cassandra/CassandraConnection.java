@@ -60,6 +60,7 @@ public class CassandraConnection implements DurableStoreConnection {
             String strategyClass = configuration.getString(STRATERGY_CLASS);
             String readConsistancyLevel = configuration.getString(READ_CONSISTENCY_LEVEL);
             String writeConsistancyLevel = configuration.getString(WRITE_CONSISTENCY_LEVEL);
+
             String connectionString = "";
 
             if (connections instanceof ArrayList) {
@@ -244,6 +245,5 @@ public class CassandraConnection implements DurableStoreConnection {
         });
         cassandraConnectionCheckerThread.start();
     }
-
 
 }

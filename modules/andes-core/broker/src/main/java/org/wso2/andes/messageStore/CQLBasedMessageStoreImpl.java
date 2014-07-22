@@ -21,6 +21,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.CQLConnection;
+import org.wso2.andes.server.cassandra.CassandraConnection;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cassandra.dao.CQLQueryBuilder;
 import org.wso2.andes.server.cassandra.dao.CassandraHelper;
@@ -52,8 +53,8 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     public void initializeMessageStore(DurableStoreConnection cassandraconnection) throws AndesException {
-        initializeCassandraMessageStore(cassandraconnection);
         connection = cassandraconnection;
+        initializeCassandraMessageStore(cassandraconnection);
         alreadyMovedMessageTracker = new AlreadyProcessedMessageTracker("Message-move-tracker", 15000000000L, 10);
         messageContentRemoverTask = new MessageContentRemoverTask(ClusterResourceHolder.getInstance().getClusterConfiguration().
                 getContentRemovalTaskInterval(), contentDeletionTasks, this, cassandraconnection);
@@ -78,12 +79,13 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
      * @throws CassandraDataAccessException
      */
     private void createColumnFamilies() throws CassandraDataAccessException {
-        CQLDataAccessHelper.createColumnFamily(MESSAGE_CONTENT_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob());
-        CQLDataAccessHelper.createColumnFamily(NODE_QUEUES_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob());
-        CQLDataAccessHelper.createColumnFamily(GLOBAL_QUEUES_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob());
-        CQLDataAccessHelper.createColumnFamily(PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob());
-        CQLDataAccessHelper.createCounterColumnFamily(MESSAGE_COUNTERS_COLUMN_FAMILY, KEYSPACE, this.cluster);
-        CQLDataAccessHelper.createMessageExpiryColumnFamily(CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY, KEYSPACE, this.cluster);
+        int gcGraceSeconds = ((CQLConnection) connection.getConnection()).getGcGraceSeconds();
+        CQLDataAccessHelper.createColumnFamily(MESSAGE_CONTENT_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob(),gcGraceSeconds);
+        CQLDataAccessHelper.createColumnFamily(NODE_QUEUES_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob(),gcGraceSeconds);
+        CQLDataAccessHelper.createColumnFamily(GLOBAL_QUEUES_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob(),gcGraceSeconds);
+        CQLDataAccessHelper.createColumnFamily(PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob(),gcGraceSeconds);
+        CQLDataAccessHelper.createCounterColumnFamily(MESSAGE_COUNTERS_COLUMN_FAMILY, KEYSPACE, this.cluster,gcGraceSeconds);
+        CQLDataAccessHelper.createMessageExpiryColumnFamily(CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY, KEYSPACE, this.cluster,gcGraceSeconds);
     }
 
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException {
