@@ -427,12 +427,6 @@
         </dependency>
 
         <dependency>
-          <groupId>org.apache.zookeeper</groupId>
-          <artifactId>zookeeper</artifactId>
-          <version>3.4.1</version>
-        </dependency>
-
-        <dependency>
           <groupId>org.apache.ant</groupId>
           <artifactId>ant</artifactId>
           <version>1.8.1</version>
