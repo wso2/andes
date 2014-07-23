@@ -20,23 +20,6 @@
  */
 package org.wso2.andes.server;
 
-import static org.wso2.andes.transport.ConnectionSettings.WILDCARD_ADDRESS;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryMXBean;
-import java.lang.management.MemoryPoolMXBean;
-import java.lang.management.MemoryType;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Properties;
-import java.util.Set;
-
 import org.apache.commons.logging.Log;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.log4j.xml.QpidLog4JConfigurator;
@@ -69,7 +52,22 @@ import org.wso2.andes.transport.network.IncomingNetworkTransport;
 import org.wso2.andes.transport.network.Transport;
 import org.wso2.andes.transport.network.mina.MinaNetworkTransport;
 
-import javax.management.*;
+import javax.management.MBeanServer;
+import javax.management.NotificationEmitter;
+import javax.management.NotificationFilter;
+import javax.management.ObjectName;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryPoolMXBean;
+import java.lang.management.MemoryType;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.*;
+
+import static org.wso2.andes.transport.ConnectionSettings.WILDCARD_ADDRESS;
 
 public class Broker
 {
@@ -141,7 +139,6 @@ public class Broker
         updateManagementPort(serverConfig, options.getJmxPort());
 
         ClusterConfiguration clusterConfiguration = new ClusterConfiguration(serverConfig);
-
         if("*".equals(serverConfig.getBind())) {
             InetAddress host = InetAddress.getLocalHost();
             clusterConfiguration.setBindIpAddress(host.getHostAddress());
@@ -175,7 +172,7 @@ public class Broker
 
         try
         {
-//            configureLoggingManagementMBean(logConfigFile, options.getLogWatchFrequency());
+        // configureLoggingManagementMBean(logConfigFile, options.getLogWatchFrequency());
 
             ConfigurationManagementMBean configMBean = new ConfigurationManagementMBean();
             configMBean.register();

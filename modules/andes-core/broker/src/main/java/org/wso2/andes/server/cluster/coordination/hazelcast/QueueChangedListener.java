@@ -16,22 +16,20 @@
 * under the License.
 */
 
-package org.wso2.andes.kernel;
+package org.wso2.andes.server.cluster.coordination.hazelcast;
 
-import java.io.Serializable;
+import com.hazelcast.core.Message;
+import com.hazelcast.core.MessageListener;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
-public class AndesQueue implements Serializable {
-     public String queueName;
-     public String queueOwner;
-     public boolean isExclusive;
-     public boolean isDurable;
-     public int subscriptionCount;
+public class QueueChangedListener implements MessageListener {
+    private static Log log = LogFactory.getLog(QueueChangedListener.class);
 
-    public AndesQueue(String queueName, String queueOwner, boolean isExclusive, boolean isDurable) {
-        this.queueName = queueName;
-        this.queueOwner = queueOwner;
-        this.isExclusive = isExclusive;
-        this.isDurable = isDurable;
-        this.subscriptionCount =1;
+    @Override
+    //TODO Implement this
+    //This should be called only for queue purge operations
+    public void onMessage(Message message) {
+        log.info("Handling cluster gossip: On message triggered in QueueChangedListener");
     }
 }

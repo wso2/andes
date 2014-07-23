@@ -32,7 +32,7 @@ public interface AndesContextStore {
     public void init(DurableStoreConnection connection) throws AndesException;
 
     /**
-     * gett all durable encoded subscriptions as strings
+     * get all durable encoded subscriptions as strings
      * @return list of <id,subscriptions>
      */
     public Map<String, List<String>> getAllStoredDurableSubscriptions() throws AndesException;

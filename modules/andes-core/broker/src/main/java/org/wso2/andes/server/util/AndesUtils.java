@@ -55,17 +55,17 @@ public class AndesUtils {
     }
 
     public static String getTopicNodeQueueName(){
-        int nodeId = ClusterResourceHolder.getInstance().getClusterManager().getNodeId();
+        String nodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         String topicNodeQueueName = AndesConstants.TOPIC_NODE_QUEUE_NAME_PREFIX + nodeId;
         return topicNodeQueueName;
     }
 
-    public static String getNodeQueueNameForNodeId(int nodeId) {
+    public static String getNodeQueueNameForNodeId(String nodeId) {
         String nodeQueueName = AndesConstants.NODE_QUEUE_NAME_PREFIX + nodeId;
         return nodeQueueName;
     }
 
-    public static String getTopicNodeQueueNameForNodeId(int nodeId) {
+    public static String getTopicNodeQueueNameForNodeId(String nodeId) {
         String topicNodeQueueName = AndesConstants.TOPIC_NODE_QUEUE_NAME_PREFIX + nodeId;
         return topicNodeQueueName;
     }

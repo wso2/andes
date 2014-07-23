@@ -458,6 +458,13 @@
             <artifactId>hawtbuf</artifactId>
             <version>1.9</version>
         </dependency>
+
+        <!--Hzelcast Dependencies-->
+        <dependency>
+             <groupId>com.hazelcast.wso2</groupId>
+             <artifactId>hazelcast</artifactId>
+            <version>3.0.1.wso2v1</version>
+        </dependency>
            
         </dependencies>
     </dependencyManagement>

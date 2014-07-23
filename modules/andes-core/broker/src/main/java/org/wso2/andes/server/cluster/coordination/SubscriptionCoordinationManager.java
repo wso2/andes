@@ -18,32 +18,33 @@
 package org.wso2.andes.server.cluster.coordination;
 
 /**
- * Is the Listner Manager which manage the Subscription changes in Cluster node
+ * Is the Listener Manager which manage the Subscription changes in Cluster node
  * It mainly take care of Managing Subscription Listeners and notify them in case of subscription changes in nodes
  * Subscription change : Subscription addition and removal
  */
 public interface SubscriptionCoordinationManager {
 
-
     /**
      * Initialize the Subscription Coordination Manager
-     * @throws CoordinationException in case of an Error in the initializing
      */
-    public void init() throws CoordinationException;
-
+    public void init();
 
     /**
      *Notify Subscription Listeners on subscription changes
      */
-    public void notifySubscriptionChange();
+    public void notifySubscriptionChange(SubscriptionNotification subscriptionNotification);
 
     /**
-     * Handle the subscription change event. Main Task of this method is to notify Subscription
+     * Handle the local subscription change event. Main Task of this method is to notify Subscription
      * listeners registered in all nodes about the subscription change in this node
-     * @throws CoordinationException
      */
-    public void handleSubscriptionChange() throws CoordinationException;
+    public void handleLocalSubscriptionChange(SubscriptionNotification subscriptionNotification);
 
+    /**
+     * Handle the cluster subscription change event.
+     * This method handles the Hazelcast notification about Subscription change.
+     */
+    public void handleClusterSubscriptionChange(SubscriptionNotification subscriptionNotification);
 
     /**
      * Register a Subscription Listener for Subscription changes. This is not a one time subscription

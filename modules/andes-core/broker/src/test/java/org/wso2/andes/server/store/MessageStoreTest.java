@@ -254,13 +254,13 @@ public class MessageStoreTest extends InternalBrokerBaseCase
                 6,  queueRegistry.getQueues().size());
 
         //Validate the non-Durable Queues were not recovered.
-        assertNull("Non-Durable queue still registered:" + priorityQueueName, 
+        assertNull("Non-Durable queue still registered:" + priorityQueueName,
                 queueRegistry.getQueue(priorityQueueName));
-        assertNull("Non-Durable queue still registered:" + queueName, 
+        assertNull("Non-Durable queue still registered:" + queueName,
                 queueRegistry.getQueue(queueName));
-        assertNull("Non-Durable queue still registered:" + priorityTopicQueueName, 
+        assertNull("Non-Durable queue still registered:" + priorityTopicQueueName,
                 queueRegistry.getQueue(priorityTopicQueueName));
-        assertNull("Non-Durable queue still registered:" + topicQueueName, 
+        assertNull("Non-Durable queue still registered:" + topicQueueName,
                 queueRegistry.getQueue(topicQueueName));
 
         //Validate normally expected properties of Queues/Topics
@@ -305,7 +305,7 @@ public class MessageStoreTest extends InternalBrokerBaseCase
         queueRegistry = getVirtualHost().getQueueRegistry();
         assertEquals("Incorrect number of queues registered after second recovery",
                 0,  queueRegistry.getQueues().size());
-        assertNull("Durable queue was not removed:" + durableQueueName, 
+        assertNull("Durable queue was not removed:" + durableQueueName,
                 queueRegistry.getQueue(durableQueueName));
     }
 

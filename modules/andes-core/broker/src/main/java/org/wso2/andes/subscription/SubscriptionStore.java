@@ -1,25 +1,17 @@
 package org.wso2.andes.subscription;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
+import org.wso2.andes.pool.AndesExecuter;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.util.AndesUtils;
 
-import org.wso2.andes.pool.AndesExecuter;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SubscriptionStore {
     private static final String TOPIC_PREFIX = "topic.";
@@ -80,7 +72,7 @@ public class SubscriptionStore {
         return subscriptionsHavingExternalsubscriber;
     }
 
-    public int numberOfSubscriptionsForQueueAtNode(String queueName, int nodeID) throws AndesException {
+    public int numberOfSubscriptionsForQueueAtNode(String queueName, String nodeID) throws AndesException {
         String requestedNodeQueue = AndesUtils.getNodeQueueNameForNodeId(nodeID);
         List<Subscrption> subscriptions = getActiveClusterSubscribersForDestination(queueName, false);
         int count = 0;
@@ -97,7 +89,37 @@ public class SubscriptionStore {
     public int numberOfSubscriptionsForQueueInCluster(String queueName) throws AndesException {
          return getActiveClusterSubscribersForDestination(queueName, false).size();
     }
-    
+
+    public void updateSubscriptionMaps(Subscrption subscription, SubscriptionChange type){
+        if(type == SubscriptionChange.Added){
+            if(subscription.isBoundToTopic()){
+                addSubscriptionToMap(subscription,clusterTopicSubscriptionMap);
+            }else{
+                addSubscriptionToMap(subscription, clusterQueueSubscriptionMap);
+            }
+            log.info("Added Subscription to map. queue name:" + subscription.getTargetQueue() + ", Type: " + subscription.getTargetQueueBoundExchangeType());
+        }
+        else if(type == SubscriptionChange.Deleted){
+            if(subscription.isBoundToTopic()){
+                removeSubscriptionFromMap(subscription, clusterTopicSubscriptionMap);
+            }else{
+                removeSubscriptionFromMap(subscription, clusterQueueSubscriptionMap);
+            }
+            log.info("Deleted Subscription from map. queue name:" + subscription.getTargetQueue() + ", Type: " + subscription.getTargetQueueBoundExchangeType());
+        }
+        else if(type == SubscriptionChange.Disconnected){
+            log.info("Encoded string: " + subscription.encodeAsStr());
+            if(subscription.isBoundToTopic()){
+                SubscriptionMap(subscription, clusterTopicSubscriptionMap);
+            }else{
+                SubscriptionMap(subscription, clusterQueueSubscriptionMap);
+            }
+        }
+        log.info("===============Updated subscription maps================");
+        this.printSubscriptionMap(clusterQueueSubscriptionMap);
+        this.printSubscriptionMap(clusterTopicSubscriptionMap);
+        log.info("========================================================");
+    }
     
     public void reloadSubscriptionsFromStorage(){
     	try{
@@ -132,6 +154,11 @@ public class SubscriptionStore {
     					notifyListeners(subscrption, false, SubscriptionChange.Deleted);
     				}
         		}
+
+                log.info("===============Updated subscription maps================");
+                this.printSubscriptionMap(clusterQueueSubscriptionMap);
+                this.printSubscriptionMap(clusterTopicSubscriptionMap);
+                log.info("========================================================");
         	}
     	}catch(Exception ex){
     		log.error(ex);
@@ -208,7 +235,7 @@ public class SubscriptionStore {
      * @param isTopic is to close topic subscriptions or queue subscriptions
      * @throws AndesException
      */
-    public void closeAllClusterSubscriptionsOfNode(int nodeID, boolean isTopic) throws AndesException {
+    public void closeAllClusterSubscriptionsOfNode(String nodeID, boolean isTopic) throws AndesException {
         Set<String> destinations = isTopic? clusterTopicSubscriptionMap.keySet(): clusterQueueSubscriptionMap.keySet();
         for(String destination : destinations) {
             List<Subscrption> subscriptionsOfDestination = isTopic? clusterTopicSubscriptionMap.get(destination):
@@ -310,7 +337,13 @@ public class SubscriptionStore {
                     localSubscriptions.put(subscriptionID, subscrption);
                     localTopicSubscriptionMap.put(destinationQueue, localSubscriptions);
                 }
-                notifyListeners(subscrption, true, SubscriptionChange.Added);
+
+                if(type == SubscriptionChange.Added) {
+                    notifyListeners(subscrption, true, SubscriptionChange.Added);
+                } else {
+                    notifyListeners(subscrption, true, SubscriptionChange.Disconnected);
+                }
+
             } else if(type == SubscriptionChange.Deleted){
                 removeLocalSubscriptionAndNotify(subscrption.getSubscribedDestination(), subscrption.getSubscriptionID());
             }
@@ -585,5 +618,68 @@ public class SubscriptionStore {
     public void deleteExchange(AndesExchange exchange) throws AndesException {
         //andesContextStore.deleteExchangeInformation(exchange.exchangeName);
         //todo: we do not currently delete exchanges. We have only direct and topic
+    }
+
+    private void SubscriptionMap(Subscrption subscription, Map<String, List<Subscrption>> map){
+        String destinationIdentifier = subscription.getSubscribedDestination();
+        List<Subscrption> subscriptionList = map.get(destinationIdentifier);
+        if(subscriptionList == null){
+            subscriptionList = new ArrayList<Subscrption>();
+        }
+
+        for(Subscrption s:subscriptionList){
+            if(s.getSubscriptionID().equals(subscription.getSubscriptionID())){
+                subscriptionList.remove(s);
+                subscriptionList.add(subscription);
+                break;
+            }
+        }
+        map.put(destinationIdentifier, subscriptionList);
+    }
+
+    private void addSubscriptionToMap(Subscrption subscription, Map<String, List<Subscrption>> map){
+        String destinationIdentifier = subscription.getSubscribedDestination();
+        List<Subscrption> subscriptionList = map.get(destinationIdentifier);
+        if(subscriptionList == null){
+            subscriptionList = new ArrayList<Subscrption>();
+        }
+
+        boolean duplicate = false;
+        for(Subscrption s:subscriptionList){
+            if(s.getSubscriptionID().equals(subscription.getSubscriptionID())){
+                duplicate = true;
+                subscriptionList.remove(s);
+                subscriptionList.add(subscription);
+                break;
+            }
+        }
+        if(!duplicate){
+            subscriptionList.add(subscription);
+        }
+        map.put(destinationIdentifier, subscriptionList);
+    }
+
+    private void removeSubscriptionFromMap(Subscrption subscription, Map<String, List<Subscrption>> map) {
+        String destinationIdentifier = subscription.getSubscribedDestination();
+        List<Subscrption> subscriptionList = map.get(destinationIdentifier);
+        for(Subscrption s: subscriptionList){
+            if(s.getSubscriptionID().equals(subscription.getSubscriptionID())){
+                subscriptionList.remove(s);
+            }
+        }
+        if(subscriptionList == null || subscriptionList.size() == 0){
+            map.remove(destinationIdentifier);
+        } else {
+            map.put(destinationIdentifier, subscriptionList);
+        }
+    }
+
+    private void printSubscriptionMap(Map<String, List<Subscrption>> map){
+        for(Entry<String, List<Subscrption>> entry: map.entrySet()){
+            log.info("Key: " + entry.getKey());
+            for (Subscrption s:entry.getValue()){
+                log.info("---" + s.encodeAsStr());
+            }
+        }
     }
 }

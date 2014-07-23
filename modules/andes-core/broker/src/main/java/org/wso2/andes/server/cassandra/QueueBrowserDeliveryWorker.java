@@ -51,7 +51,7 @@ import java.util.List;
  * require the content of an enumeration to be a static snapshot of queue content.
  * Whether these changes are visible or not depends on the JMS provider.
  * 
- * When someone made a QueueBroswer Subscription, we read messages for that queue and 
+ * When someone made a QueueBroswer Subscription, we read messages for that queue and
  * send them to that subscription. 
  */
 

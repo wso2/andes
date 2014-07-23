@@ -25,19 +25,19 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQStoreException;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.*;
-import org.wso2.andes.protocol.AMQConstant;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesContextStore;
+import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.AMQBrokerManagerMBean;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.BindingFactory;
-import org.wso2.andes.server.cassandra.*;
+import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
-import org.wso2.andes.server.cluster.coordination.CoordinationException;
 import org.wso2.andes.server.cluster.coordination.SubscriptionCoordinationManager;
 import org.wso2.andes.server.cluster.coordination.SubscriptionCoordinationManagerImpl;
 import org.wso2.andes.server.configuration.*;
@@ -63,8 +63,10 @@ import org.wso2.andes.server.registry.IApplicationRegistry;
 import org.wso2.andes.server.security.SecurityManager;
 import org.wso2.andes.server.security.auth.manager.AuthenticationManager;
 import org.wso2.andes.server.stats.StatisticsCounter;
-import org.wso2.andes.server.store.*;
+import org.wso2.andes.server.store.ConfigurationRecoveryHandler;
+import org.wso2.andes.server.store.DurableConfigurationStore;
 import org.wso2.andes.server.store.MessageStore;
+import org.wso2.andes.server.store.TransactionLog;
 import org.wso2.andes.server.virtualhost.plugins.VirtualHostPlugin;
 import org.wso2.andes.server.virtualhost.plugins.VirtualHostPluginFactory;
 import org.wso2.andes.subscription.SubscriptionStore;
@@ -263,18 +265,7 @@ public class VirtualHostImpl implements VirtualHost
             ClusterResourceHolder.getInstance().setSubscriptionCoordinationManager(subscriptionCoordinationManager);
         }
 
-        ClusterManager clusterManager = null;
-        if (clusterConfiguration.isClusteringEnabled()) {
-            clusterManager = new ClusterManager(clusterConfiguration.getZookeeperConnection());
-        } else {
-        	try{
-        		clusterManager = new ClusterManager();
-        	}catch(Throwable ex){
-        		_logger.error(ex);
-        		throw new Exception(ex);
-        	}
-            
-        }
+        ClusterManager clusterManager = new ClusterManager();
         clusterManager.init();
         ClusterResourceHolder.getInstance().setClusterManager(clusterManager);
 

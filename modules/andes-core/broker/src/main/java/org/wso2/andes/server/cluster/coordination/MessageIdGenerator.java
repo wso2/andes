@@ -32,5 +32,4 @@ public interface MessageIdGenerator {
      */
     public long getNextId();
 
-
 }

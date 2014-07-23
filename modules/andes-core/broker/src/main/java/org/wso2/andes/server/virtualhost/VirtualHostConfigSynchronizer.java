@@ -9,12 +9,15 @@ import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
 import org.wso2.andes.server.binding.BindingFactory;
 import org.wso2.andes.server.cluster.coordination.SubscriptionListener;
+import org.wso2.andes.server.cluster.coordination.SubscriptionNotification;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.AMQQueueFactory;
 import org.wso2.andes.server.store.ConfigurationRecoveryHandler;
+import org.wso2.andes.subscription.BasicSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.nio.ByteBuffer;
@@ -94,7 +97,6 @@ public class VirtualHostConfigSynchronizer implements
 
     @Override
     public void exchange(String exchangeName, String type, boolean autoDelete) {
-
         synchronized( this ) {
             try {
                 Exchange exchange;
@@ -139,7 +141,6 @@ public class VirtualHostConfigSynchronizer implements
                 throw new RuntimeException(e);
             }
         }
-
     }
 
     @Override
@@ -161,9 +162,9 @@ public class VirtualHostConfigSynchronizer implements
     }
 
     @Override
-    public void subscriptionsChanged() {
-        log.info("Handling Cluster Gossip: Synchronizing Exchanges, Queues and Bindings...");
-        syncExchangesQueuesAndBindings();
+    public void subscriptionsChanged(SubscriptionNotification subscriptionNotification) {
+        log.info("Synchronizing Exchanges, Queues and Bindings...");
+        syncExchangesQueuesAndBindings(subscriptionNotification);
     }
 
 
@@ -191,6 +192,39 @@ public class VirtualHostConfigSynchronizer implements
             syncExchanges(this);
             syncQueues(this, olderQueueMap);
             syncBindngs(this, olderBindingMap);
+        }
+    }
+
+    public void syncExchangesQueuesAndBindings(SubscriptionNotification subscriptionNotification) {
+        try {
+            log.info("Updating subscription maps");
+            BasicSubscription subscription = new BasicSubscription(subscriptionNotification.getEncodedString());
+            subscriptionStore.updateSubscriptionMaps(subscription, subscriptionNotification.getStatus());
+
+            if(subscriptionNotification != null && subscriptionNotification.isDurable()){
+
+                AndesExchange exchange =  subscriptionNotification.getAndesExchange();
+                AndesQueue queue = subscriptionNotification.getAndesQueue();
+                AndesBinding binding = subscriptionNotification.getAndesBinding();
+
+                if(subscriptionNotification.getStatus() == SubscriptionChange.Added){
+                    log.info("Handling added subscription");
+                    exchange(exchange.exchangeName, exchange.type, exchange.autoDelete != 0);
+                    queue(queue.queueName, queue.queueOwner, queue.isExclusive, null);
+                    binding(binding.boundExchangeName, binding.boundQueue.queueName, binding.routingKey, null);
+                }
+                else if(subscriptionNotification.getStatus() == SubscriptionChange.Deleted){
+                    // SubscriptionChange.Deleted are triggered only as a result of queue deletion
+                    log.info("Handling deleted subscription");
+                    removeQueue(queue.queueName);
+                    removeBinding(binding.boundExchangeName, queue.queueName, binding.routingKey, null);
+                }else if(subscriptionNotification.getStatus() == SubscriptionChange.Disconnected){
+                    log.info("Handling disconnected subscription");
+                    // Nothing to do
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -259,7 +293,6 @@ public class VirtualHostConfigSynchronizer implements
         } catch (AndesException e) {
             log.error("Error while syncing exchanges");
         }
-
     }
 
     private void removeBinding(String exchangeName, String queueName, String bindingKey, ByteBuffer buf) throws AMQSecurityException, AMQInternalException {

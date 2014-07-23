@@ -18,7 +18,9 @@
 
 package org.wso2.andes.kernel;
 
-public class AndesBinding {
+import java.io.Serializable;
+
+public class AndesBinding implements Serializable {
 
     public String boundExchangeName;
     public String routingKey;

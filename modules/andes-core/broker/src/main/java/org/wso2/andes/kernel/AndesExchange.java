@@ -18,7 +18,9 @@
 
 package org.wso2.andes.kernel;
 
-public class AndesExchange {
+import java.io.Serializable;
+
+public class AndesExchange implements Serializable {
     public String exchangeName;
     public String type;
     public Short autoDelete;

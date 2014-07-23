@@ -42,16 +42,11 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
         this.clusterManager = clusterManager;
     }
 
-    public String getZkServer() {
-        return clusterManager.getZkConnectionString();
-    }
-
-
     public String getObjectInstanceName() {
         return ClusterManagementInformation.TYPE;
     }
 
-    public String[] getGlobalQueuesAssigned(int nodeId) {
+    public String[] getGlobalQueuesAssigned(String nodeId) {
         return clusterManager.getGlobalQueuesAssigned(nodeId);
     }
     
@@ -67,14 +62,6 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
         return clusterManager.getMyNodeID();
     }
 
-    public List<Integer> getZkNodes() {
-        try {
-            return clusterManager.getZkNodes();
-        } catch (AndesException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public int getMessageCount(@MBeanOperationParameter(name = "queueName", description = "Name of the queue which message count is required") String queueName) {
         int count = 0;
         try{
@@ -85,9 +72,9 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
         return count;
     }
 
-    public String getIPAddressForNode(@MBeanOperationParameter(name = "nodeID", description = "Zookeeper ID of the node") int ZKID) {
+    public String getIPAddressForNode(@MBeanOperationParameter(name = "nodeID", description = "Node ID") String nodeId) {
         try {
-            return clusterManager.getNodeAddress(ZKID);
+            return clusterManager.getNodeAddress(nodeId);
         } catch (AndesException e) {
             throw new RuntimeException(e);
         }
@@ -101,15 +88,15 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
         return queueList;
     }
 
-    public int getNodeQueueMessageCount(int zkId, String destinationQueue) {
+    public int getNodeQueueMessageCount(String nodeId, String destinationQueue) {
         try {
-        return clusterManager.getNodeQueueMessageCount(zkId, destinationQueue);
+        return clusterManager.getNodeQueueMessageCount(nodeId, destinationQueue);
         } catch (AndesException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public int getNodeQueueSubscriberCount(int zkId, String destinationQueue) {
+    public int getNodeQueueSubscriberCount(String nodeId, String destinationQueue) {
     	throw new UnsupportedOperationException();
     }
 

@@ -17,9 +17,6 @@
 */
 package org.wso2.andes.server.cassandra;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Semaphore;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
@@ -28,6 +25,10 @@ import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.SubscriptionStore;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 
 public class AndesSubscriptionManager {
 
@@ -45,7 +46,7 @@ public class AndesSubscriptionManager {
 
     public void init()  {
         subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-        subscriptionStore.reloadSubscriptionsFromStorage();
+        //subscriptionStore.reloadSubscriptionsFromStorage();
     }
 
 
