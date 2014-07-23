@@ -18,16 +18,6 @@
 
 package org.wso2.andes.server.cassandra;
 
-import static org.wso2.andes.messageStore.CassandraConstants.CLUSTER_KEY;
-import static org.wso2.andes.messageStore.CassandraConstants.CONNECTION_STRING;
-import static org.wso2.andes.messageStore.CassandraConstants.KEYSPACE;
-import static org.wso2.andes.messageStore.CassandraConstants.PASSWORD_KEY;
-import static org.wso2.andes.messageStore.CassandraConstants.READ_CONSISTENCY_LEVEL;
-import static org.wso2.andes.messageStore.CassandraConstants.REPLICATION_FACTOR;
-import static org.wso2.andes.messageStore.CassandraConstants.STRATERGY_CLASS;
-import static org.wso2.andes.messageStore.CassandraConstants.USERNAME_KEY;
-import static org.wso2.andes.messageStore.CassandraConstants.WRITE_CONSISTENCY_LEVEL;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,11 +39,15 @@ import org.wso2.andes.server.util.AndesUtils;
 
 import com.datastax.driver.core.Cluster;
 
+import static org.wso2.andes.messageStore.CassandraConstants.*;
+
 public class CQLConnection implements DurableStoreConnection {
 
     private Cluster cluster;
     private static Log log = LogFactory.getLog(CQLConnection.class);
     private boolean isCassandraConnectionLive = false;
+    private int gcGraceSeconds;
+
 
     @Override
     public void initialize(Configuration configuration) throws AndesException {
@@ -66,6 +60,8 @@ public class CQLConnection implements DurableStoreConnection {
             String strategyClass = configuration.getString(STRATERGY_CLASS);
             String readConsistancyLevel = configuration.getString(READ_CONSISTENCY_LEVEL);
             String writeConsistancyLevel = configuration.getString(WRITE_CONSISTENCY_LEVEL);
+            String gcGraceSecondsString = (String) configuration.getProperty(GC_GRACE_SECONDS);
+            setGcGraceSeconds(Integer.parseInt(gcGraceSecondsString));
 
             int port = 9042;
             boolean isExternalCassandraServerRequired = ClusterResourceHolder.getInstance().
@@ -274,4 +270,11 @@ public class CQLConnection implements DurableStoreConnection {
     }
 
 
+    public int getGcGraceSeconds() {
+        return gcGraceSeconds;
+    }
+
+    public void setGcGraceSeconds(int gcGraceSeconds) {
+        this.gcGraceSeconds = gcGraceSeconds;
+    }
 }

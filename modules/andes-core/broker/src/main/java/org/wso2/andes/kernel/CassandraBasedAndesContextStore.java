@@ -25,6 +25,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.messageStore.CassandraConstants;
 import org.wso2.andes.server.cassandra.CQLConnection;
+import org.wso2.andes.server.cassandra.CassandraConnection;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 
@@ -51,11 +52,13 @@ public class CassandraBasedAndesContextStore implements AndesContextStore{
 
             connection =  storeConnection;
             this.cluster =  ((CQLConnection)connection).getCluster();
-
             //create needed column families
-            CQLDataAccessHelper.createColumnFamily(SUBSCRIPTIONS_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text());
-            CQLDataAccessHelper.createColumnFamily(EXCHANGE_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text());
-            CQLDataAccessHelper.createColumnFamily(NODE_DETAIL_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text());
+            CQLDataAccessHelper.createColumnFamily(SUBSCRIPTIONS_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
+                    ((CQLConnection)connection.getConnection()).getGcGraceSeconds());
+            CQLDataAccessHelper.createColumnFamily(EXCHANGE_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
+                    ((CQLConnection)connection.getConnection()).getGcGraceSeconds());
+            CQLDataAccessHelper.createColumnFamily(NODE_DETAIL_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
+                    ((CQLConnection)connection.getConnection()).getGcGraceSeconds());
         } catch (CassandraDataAccessException e) {
             log.error("Error while creating column spaces during subscription store init. ", e);
             throw new AndesException(e);

@@ -52,7 +52,6 @@ public class CQLQueryBuilder {
 		boolean hasColumns = columnType.isEmpty() ? false : true;
 		boolean hasPrimaryKeys = primaryKeys.isEmpty() ? false : true;
 		String storageType = table.getStorageType() == null ? "" : WITH + table.getStorageType();
-
 		if (hasColumns) {
 			columns.append(" ( ");
 			Set<Entry<String, DataType>> entries = columnType.entrySet();
@@ -83,9 +82,15 @@ public class CQLQueryBuilder {
 		if (hasColumns) {
 			columns.append(" ) ");
 		}
+        String sql;
+        if(table.getStorageType()==null){
+             sql = "CREATE TABLE " + table.getKeySpace() + "." + table.getName()
+                    + columns.toString() + "WITH gc_grace_seconds = "+table.getGcGraceSeconds() + ";";
+        }else{
+		     sql = "CREATE TABLE " + table.getKeySpace() + "." + table.getName()
+				+ columns.toString() + storageType + " AND gc_grace_seconds = "+table.getGcGraceSeconds()+";";
+        }
 
-		String sql = "CREATE TABLE " + table.getKeySpace() + "." + table.getName()
-				+ columns.toString() + storageType + ";";
 		return sql;
 
 	}
@@ -366,12 +371,14 @@ public class CQLQueryBuilder {
 		private final String storageType;
 		private final String name;
 		private final String keySpace;
+        private final int gcGraceSeconds;
 
-		public Table(String storageType, String name, String keySpace) {
+		public Table(String storageType, String name, String keySpace,int gcGraceSeconds) {
 			super();
 			this.storageType = storageType;
 			this.name = name.toLowerCase();
 			this.keySpace = keySpace.toLowerCase();
+            this.gcGraceSeconds = gcGraceSeconds;
 		}
 
 		public Map<String, DataType> getColumnType() {
@@ -393,6 +400,10 @@ public class CQLQueryBuilder {
 		public String getKeySpace() {
 			return keySpace;
 		}
+
+        public int getGcGraceSeconds(){
+            return gcGraceSeconds;
+        }
 
 	}
 
