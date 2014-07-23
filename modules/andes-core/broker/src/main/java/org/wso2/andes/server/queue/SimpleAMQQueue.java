@@ -189,9 +189,6 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
     public SimpleAMQQueue(String queueName, boolean durable, String owner, boolean autoDelete, boolean exclusive, VirtualHost virtualHost, Map<String, Object> arguments)
     {
         this(queueName, durable, owner, autoDelete, exclusive, virtualHost, new SimpleQueueEntryList.Factory(), arguments);
-
-        System.out.println("==========================================name:"+queueName + " durable:" + durable + " owner" + owner + " autodelete"+ autoDelete
-                + " exclusive:"+exclusive + " virtualhost:" +virtualHost);
     }
 
     public SimpleAMQQueue(String queueName, boolean durable, String owner, boolean autoDelete, boolean exclusive, VirtualHost virtualHost, QueueEntryListFactory entryListFactory, Map<String, Object> arguments)

@@ -29,7 +29,8 @@ public class ClusterwideSubscriptionChangeNotifier implements SubscriptionListen
                 subscription.getTargetQueueOwner(),
                 subscription.isExclusive(),
                 subscription.isDurable(),
-                subscription.getSubscribedDestination());
+                subscription.getSubscribedDestination(),
+                subscription.encodeAsStr());
 
         ClusterResourceHolder.getInstance().getSubscriptionCoordinationManager().handleLocalSubscriptionChange(subscriptionNotification);
     }

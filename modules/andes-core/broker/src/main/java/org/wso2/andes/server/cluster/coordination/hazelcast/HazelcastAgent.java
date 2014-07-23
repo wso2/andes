@@ -57,8 +57,8 @@ public class HazelcastAgent {
 
         IdGenerator idGenerator =hazelcastInstance.getIdGenerator(CoordinationConstants.HAZELCAST_ID_GENERATOR_NAME);
         this.uniqueIdOfLocalMember = (int) idGenerator.newId();
-        log.info("==================================================Gerenated ID:" + uniqueIdOfLocalMember);
         log.info("Successfully initialized Hazelcast Agent");
+        log.info("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
     }
 
     public static HazelcastAgent getInstance() {
@@ -141,10 +141,7 @@ public class HazelcastAgent {
     }
 
     public void notifySubscriberChanged(SubscriptionNotification subscriptionNotification){
-        log.info("=================================================came to notifySubscriberChanged");
-        log.info("==========" + subscriptionNotification.getAndesQueue().queueName);
-        log.info("==========" + subscriptionNotification.getAndesBinding().boundQueue.queueOwner);
-        log.info("==========");
+        log.info("Handling cluster gossip: Sending subscriber changed notification to cluster...");
         this.subscriptionChangedNotifierChannel.publish(subscriptionNotification);
     }
 }

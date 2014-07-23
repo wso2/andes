@@ -54,16 +54,6 @@ public class Main
     public Main(final String[] args)
     {
         hazelcastInstance = AndesContext.getInstance().getHazelcastInstance();
-        if(hazelcastInstance != null){
-            System.out.println("===================In Main : " + hazelcastInstance.getCluster().getMembers().size());
-        } else
-        {
-            System.out.println("========================In Main : Hazelcast is null");
-        }
-
-        System.out.println("===================================== clustering " + AndesContext.getInstance().isClusteringEnabled());
-        System.out.println("===================================== Hz cluster size " + AndesContext.getInstance().getHazelcastInstance().getCluster().getMembers().size());
-
 
         setOptions(options);
         if (parseCommandline(args))

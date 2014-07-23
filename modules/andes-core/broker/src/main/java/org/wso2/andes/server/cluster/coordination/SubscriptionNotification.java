@@ -30,37 +30,48 @@ public class SubscriptionNotification implements Serializable {
     private AndesQueue andesQueue;
     private  SubscriptionChange status;
     private boolean isDurable;
+    private String subscribedDestination;
+    private String encodedString;
 
 
     public SubscriptionNotification(String exchangeName, String exchangeType,
                                     Short exchangeAutoDeletable, SubscriptionChange change, String queue,
                                     String queueOwner, boolean isExclusive, boolean isDurable,
-                                    String destination){
-        andesExchange = new AndesExchange(exchangeName, exchangeType, exchangeAutoDeletable);
-        andesQueue = new AndesQueue(queue, queueOwner, isExclusive, isDurable);
-        andesBinding = new AndesBinding(exchangeName, andesQueue, destination);
+                                    String destination, String encodedString){
+        this.andesExchange = new AndesExchange(exchangeName, exchangeType, exchangeAutoDeletable);
+        this.andesQueue = new AndesQueue(queue, queueOwner, isExclusive, isDurable);
+        this.andesBinding = new AndesBinding(exchangeName, this.andesQueue, destination);
         this.isDurable = isDurable;
-        status = change;
-
+        this.status = change;
+        this.subscribedDestination = destination;
+        this.encodedString = encodedString;
     }
 
     public AndesExchange getAndesExchange() {
-        return andesExchange;
+        return this.andesExchange;
     }
 
     public AndesQueue getAndesQueue() {
-        return  andesQueue;
+        return  this.andesQueue;
     }
 
     public AndesBinding getAndesBinding() {
-        return andesBinding;
+        return this.andesBinding;
     }
 
     public SubscriptionChange getStatus() {
-        return status;
+        return this.status;
     }
 
     public boolean isDurable() {
-        return isDurable;
+        return this.isDurable;
+    }
+
+    public String getSubscribedDestination(){
+        return this.subscribedDestination;
+    }
+
+    public String getEncodedString(){
+        return this.encodedString;
     }
 }

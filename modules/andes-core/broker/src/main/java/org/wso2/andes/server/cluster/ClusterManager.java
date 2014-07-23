@@ -297,7 +297,7 @@ public class ClusterManager {
         }
 
         clearAllPersistedStatesOfDissapearedNode(nodeId);
-        log.info("=== NodeID:" + this.nodeId);
+        log.info("NodeID:" + this.nodeId);
         andesContextStore.storeNodeDetails(nodeId, config.getBindIpAddress());
 
         //start all global queue workers on the node
@@ -309,8 +309,7 @@ public class ClusterManager {
 
         this.hazelcastAgent = HazelcastAgent.getInstance();
         this.nodeId = this.hazelcastAgent.getNodeId();
-
-        log.info("=== Node ID:"+ nodeId);
+        log.info("NodeID:" + this.nodeId);
 
         //add node information to durable store
         andesContextStore.storeNodeDetails(nodeId, config.getBindIpAddress());

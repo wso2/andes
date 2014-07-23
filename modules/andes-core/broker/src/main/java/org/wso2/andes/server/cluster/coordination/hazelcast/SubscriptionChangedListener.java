@@ -30,7 +30,7 @@ public class SubscriptionChangedListener implements MessageListener {
 
     @Override
     public void onMessage(Message message) {
-        log.info("======================================On message triggered in SubscriptionChangedListener");
+        log.info("Handling cluster gossip: received a subscriber changed notification");
         ClusterResourceHolder.getInstance().getSubscriptionCoordinationManager().handleClusterSubscriptionChange(
                 (SubscriptionNotification)message.getMessageObject());
     }

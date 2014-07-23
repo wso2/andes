@@ -1,8 +1,8 @@
 package org.wso2.andes.subscription;
 
-import java.util.UUID;
-
 import org.wso2.andes.kernel.Subscrption;
+
+import java.util.UUID;
 
 public class BasicSubscription implements Subscrption{
 	protected String subscriptionID; 

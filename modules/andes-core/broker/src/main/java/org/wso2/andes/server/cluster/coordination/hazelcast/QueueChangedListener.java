@@ -27,7 +27,9 @@ public class QueueChangedListener implements MessageListener {
     private static Log log = LogFactory.getLog(QueueChangedListener.class);
 
     @Override
+    //TODO Implement this
+    //This should be called only for queue purge operations
     public void onMessage(Message message) {
-        log.info("===================================on message triggered in QueueChangedListener");
+        log.info("Handling cluster gossip: On message triggered in QueueChangedListener");
     }
 }

@@ -32,7 +32,6 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
     private static Log log = LogFactory.getLog(SubscriptionCoordinationManagerImpl.class);
 
     private HazelcastAgent hazelcastAgent;
-
     private List<SubscriptionListener> subscriptionListeners = new ArrayList<SubscriptionListener>();
 
     @Override
@@ -45,7 +44,7 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
     @Override
     public void notifySubscriptionChange(final SubscriptionNotification subscriptionNotification)  {
         if(log.isDebugEnabled()){
-            log.debug("Notifying subscribers on Subscription changes ");
+            log.debug("Handling cluster gossip: Notifying subscribers on Subscription changes ");
         }
         Runnable r = new Runnable() {
             @Override
@@ -55,7 +54,6 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
                  *TODO:Other listeners should be implemented for MQTT etc.
                  */
                 for (SubscriptionListener listener : subscriptionListeners) {
-
                     try {
                         listener.subscriptionsChanged(subscriptionNotification);
                     } catch (Exception e) {
@@ -73,17 +71,14 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
     public void handleLocalSubscriptionChange(SubscriptionNotification subscriptionNotification) {
         if (AndesContext.getInstance().isClusteringEnabled()) {
             // Notify global listeners
-            log.info("=====================Sending Hazelcast notification================");
             hazelcastAgent.notifySubscriberChanged(subscriptionNotification);
         } else {
             //notify local listeners
-            log.info("=====================notifySubscriptionChange================");
             notifySubscriptionChange(subscriptionNotification);
         }
     }
 
     public void handleClusterSubscriptionChange(SubscriptionNotification subscriptionNotification) {
-        log.info("=====================handleClusterSubscriptionChange================");
         notifySubscriptionChange(subscriptionNotification);
     }
 

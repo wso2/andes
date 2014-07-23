@@ -17,6 +17,7 @@ import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.AMQQueueFactory;
 import org.wso2.andes.server.store.ConfigurationRecoveryHandler;
+import org.wso2.andes.subscription.BasicSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.nio.ByteBuffer;
@@ -96,7 +97,6 @@ public class VirtualHostConfigSynchronizer implements
 
     @Override
     public void exchange(String exchangeName, String type, boolean autoDelete) {
-
         synchronized( this ) {
             try {
                 Exchange exchange;
@@ -163,7 +163,7 @@ public class VirtualHostConfigSynchronizer implements
 
     @Override
     public void subscriptionsChanged(SubscriptionNotification subscriptionNotification) {
-        log.info("Handling Cluster Gossip: Synchronizing Exchanges, Queues and Bindings...");
+        log.info("Synchronizing Exchanges, Queues and Bindings...");
         syncExchangesQueuesAndBindings(subscriptionNotification);
     }
 
@@ -197,28 +197,30 @@ public class VirtualHostConfigSynchronizer implements
 
     public void syncExchangesQueuesAndBindings(SubscriptionNotification subscriptionNotification) {
         try {
-            //update cluster subscriptions
-            subscriptionStore.reloadSubscriptionsFromStorage();
+            log.info("Updating subscription maps");
+            BasicSubscription subscription = new BasicSubscription(subscriptionNotification.getEncodedString());
+            subscriptionStore.updateSubscriptionMaps(subscription, subscriptionNotification.getStatus());
 
             if(subscriptionNotification != null && subscriptionNotification.isDurable()){
+
                 AndesExchange exchange =  subscriptionNotification.getAndesExchange();
                 AndesQueue queue = subscriptionNotification.getAndesQueue();
                 AndesBinding binding = subscriptionNotification.getAndesBinding();
-                new Exception().printStackTrace();
-
-                log.info("==================iiiiiiiiiiiiiiii================" + exchange.type);
 
                 if(subscriptionNotification.getStatus() == SubscriptionChange.Added){
+                    log.info("Handling added subscription");
                     exchange(exchange.exchangeName, exchange.type, exchange.autoDelete != 0);
                     queue(queue.queueName, queue.queueOwner, queue.isExclusive, null);
                     binding(binding.boundExchangeName, binding.boundQueue.queueName, binding.routingKey, null);
                 }
                 else if(subscriptionNotification.getStatus() == SubscriptionChange.Deleted){
-                    List<Subscrption> activeSubscriptionList = subscriptionStore.getActiveClusterSubscribersForDestination(queue.queueName, false);
-                    if(activeSubscriptionList!=null && activeSubscriptionList.size() > 0){
-                        removeQueue(queue.queueName);
-                        removeBinding(binding.boundExchangeName, queue.queueName, binding.routingKey, null);
-                    }
+                    // SubscriptionChange.Deleted are triggered only as a result of queue deletion
+                    log.info("Handling deleted subscription");
+                    removeQueue(queue.queueName);
+                    removeBinding(binding.boundExchangeName, queue.queueName, binding.routingKey, null);
+                }else if(subscriptionNotification.getStatus() == SubscriptionChange.Disconnected){
+                    log.info("Handling disconnected subscription");
+                    // Nothing to do
                 }
             }
         } catch (Exception e) {

@@ -19,14 +19,13 @@ package org.wso2.andes.amqp;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.messageStore.StoredAMQPMessage;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
-import org.wso2.andes.server.cassandra.QueueBrowserDeliveryWorker;
 import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.exchange.TopicExchange;
@@ -38,7 +37,6 @@ import org.wso2.andes.server.queue.SimpleQueueEntryList;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.subscription.Subscription;
-import org.wso2.andes.server.subscription.SubscriptionImpl;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
 
@@ -154,7 +152,7 @@ public  class AMQPUtils {
 
         AMQPLocalSubscription localSubscription = new AMQPLocalSubscription(queue,
                 subscription, subscriptionID, destination, isBoundToTopic, queue.isExclusive(), queue.isDurable(),
-                nodeQueueName, queue.getName(), queueOwner, queueBoundExchangeName, queueBoundExchangeType, isqueueBoundExchangeAutoDeletable,true);
+                nodeQueueName, queue.getName(), queueOwner, queueBoundExchangeName, queueBoundExchangeType, isqueueBoundExchangeAutoDeletable,subscription.isActive());
 
         return localSubscription;
     }

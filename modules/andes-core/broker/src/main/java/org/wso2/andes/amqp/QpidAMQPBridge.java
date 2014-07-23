@@ -231,6 +231,7 @@ public class QpidAMQPBridge {
     private void addLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) throws AndesException {
         AndesSubscriptionManager subscriptionManager = ClusterResourceHolder.
                 getInstance().getSubscriptionManager();
+
         List<Binding> bindingList = queue.getBindings();
         if (bindingList != null && !bindingList.isEmpty())
 
