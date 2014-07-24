@@ -1,5 +1,7 @@
 package org.wso2.andes.server.information.management;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.QueueAddress;
@@ -7,6 +9,7 @@ import org.wso2.andes.kernel.Subscrption;
 import org.wso2.andes.management.common.mbeans.SubscriptionManagementInformation;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.management.AMQManagedObject;
+import org.wso2.andes.server.util.AndesUtils;
 
 import javax.management.NotCompliantMBeanException;
 import java.util.ArrayList;
@@ -138,7 +141,13 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         //  subscriptionInfo =  subscriptionIdentifier |  subscribedQueueOrTopicName | subscriberQueueBoundExchange |
         // subscriberQueueName |  isDurable | isActive | numberOfMessagesRemainingForSubscriber | subscriberNodeAddress
 
-        return subscription.getSubscriptionID() + "|" + subscription.getTargetQueue() + "|" + subscription.getTargetQueueBoundExchangeName() +
+        String nodeId = subscription.getSubscribedNode().split("_")[1];
+        String subscriptionIdentifier = "1_"+nodeId+"@"+subscription.getTargetQueue();
+
+        //in case of topic whats in v2 is : topicSubscriber.getQueueName() + "@" + topicSubscriber.boundTopicName; --
+
+
+        return subscriptionIdentifier + "|" + subscription.getTargetQueue() + "|" + subscription.getTargetQueueBoundExchangeName() +
                 "|" + subscription.getTargetQueue() + "|" + subscription.isDurable() + "|" + subscription.isBoundToTopic() +
                 "|" + pendingMessageCount + "|" + subscription.getSubscribedNode();
     }

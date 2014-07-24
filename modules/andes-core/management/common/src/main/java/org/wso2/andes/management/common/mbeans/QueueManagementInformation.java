@@ -36,7 +36,7 @@ public interface QueueManagementInformation {
             description = "Name of the queue to be deleted") String queueName);
 
     @MBeanAttribute(name="MessageCount",description = "Message count of the queue")
-    int getMessageCount(String queueName);
+    int getMessageCount(String queueName,String msgPattern);
 
     @MBeanAttribute(name="SubscriptionCount", description = "Number of subscriptions for the queue")
     int getSubscriptionCount(String queueName);
