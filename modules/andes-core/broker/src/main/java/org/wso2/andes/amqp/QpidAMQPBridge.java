@@ -37,6 +37,7 @@ import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.IncomingMessage;
 import org.wso2.andes.server.stats.PerformanceCounter;
+import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
 import org.wso2.andes.server.virtualhost.VirtualHost;
@@ -65,6 +66,7 @@ public class QpidAMQPBridge {
 
     public void messageMetaDataReceived(IncomingMessage incomingMessage, int channelID) throws AMQException {
         try {
+            //log.info("METADATA RECEIVED ID " + incomingMessage.getMessageNumber());
             AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
             AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message);
             String queue = message.getRoutingKey();
@@ -80,22 +82,31 @@ public class QpidAMQPBridge {
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while storing incoming message metadata", e);
         }
 
-                /*
-                 * Following code is only a performance counter
-                 */
+        //Following code is only a performance counter
         Long localCount = receivedMessageCounter.incrementAndGet();
         if(localCount%10000 == 0){
             long timetook = System.currentTimeMillis() - last10kMessageReceivedTimestamp;
             log.info("Received " + localCount + ", throughput = " + (10000*1000/timetook) + " msg/sec, " + timetook);
             last10kMessageReceivedTimestamp = System.currentTimeMillis();
         }
-                /*
-                 * End of performance counter
-                 */
+
+    }
+
+    public StorableMessageMetaData getMessageMetaData(long messageID) throws AMQException{
+        StorableMessageMetaData metaData = null;
+        try {
+            metaData = AMQPUtils.convertAndesMetadataToAMQMetadata
+                    (MessagingEngine.getInstance().getMessageMetaData(messageID));
+        } catch (AndesException e) {
+            log.error("Error in getting meta data for messageID", e);
+            throw new AMQException(AMQConstant.INTERNAL_ERROR,"Error in getting meta data for messageID " + messageID, e);
+        }
+        return metaData;
     }
 
     public void messageContentChunkReceived(long messageID,  int offsetInMessage, ByteBuffer src) {
 
+        log.debug("CONTENT PART RECEIVED ID " + messageID + " OFFSET " + offsetInMessage);
         AndesMessagePart part = new AndesMessagePart();
         src = src.slice();
         final byte[] chunkData = new byte[src.limit()];
@@ -108,6 +119,17 @@ public class QpidAMQPBridge {
         part.setDataLength(chunkData.length);
 
         MessagingEngine.getInstance().messageContentReceived(part);
+    }
+
+    public int getMessageContentChunk(long messageID, int offsetInMessage, ByteBuffer dst) throws AMQException{
+        int contentLenWritten = 0;
+        try {
+            contentLenWritten = AMQPUtils.getMessageContentChunkConvertedCorrectly(messageID, offsetInMessage, dst);
+        } catch (AndesException e) {
+            log.error("Error in getting message content", e);
+            throw new AMQException(AMQConstant.INTERNAL_ERROR,"Error in getting message content chunk messageID " + messageID + " offset=" + offsetInMessage, e);
+        }
+        return contentLenWritten;
     }
 
     public void createAMQPSubscription(Subscription subscription, AMQQueue queue) throws AMQException {

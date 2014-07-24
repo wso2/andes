@@ -31,7 +31,7 @@ public interface MessageStore {
 
     public void deleteMessageParts(List<Long> messageIdList)throws AndesException;
 
-    public int getContent(String messageId, int offsetValue, ByteBuffer dst);
+    public AndesMessagePart getContent(String messageId, int offsetValue)throws AndesException;
 
     public void deleteMessageMetadataFromQueue(QueueAddress queueAddress,List<AndesRemovableMetadata> messagesToRemove) throws AndesException;
 
@@ -49,7 +49,7 @@ public interface MessageStore {
 
     public long getMessageCountForQueue(String destinationQueueName) throws AndesException;
 
-    public AndesMessageMetadata getMetaData(long messageId);
+    public AndesMessageMetadata getMetaData(long messageId) throws AndesException;
 
     public void close();
 

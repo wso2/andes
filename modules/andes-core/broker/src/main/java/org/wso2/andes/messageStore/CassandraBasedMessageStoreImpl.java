@@ -181,70 +181,39 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
     }
 
 
-    public int getContent(String messageId, int offsetValue, ByteBuffer dst) {
-        System.out.println("GET CONTENT >> id " + messageId + " offset " + offsetValue);
-        int written = 0;
-        int chunkSize = 65534;
-        byte[] content = null;
+    public AndesMessagePart getContent(String messageId, int offsetValue) throws AndesException{
+        log.info("GET CONTENT >> id " + messageId + " offset " + offsetValue);
+        byte[] content;
+        AndesMessagePart messagePart;
         try {
 
             String rowKey = "mid" + messageId;
-            if (offsetValue == 0) {
+            ColumnQuery columnQuery = HFactory.createColumnQuery(keyspace, stringSerializer,
+                    integerSerializer, byteBufferSerializer);
+            columnQuery.setColumnFamily(MESSAGE_CONTENT_COLUMN_FAMILY);
+            columnQuery.setKey(rowKey.trim());
+            columnQuery.setName(offsetValue);
 
-                ColumnQuery columnQuery = HFactory.createColumnQuery(keyspace, stringSerializer,
-                        integerSerializer, byteBufferSerializer);
-                columnQuery.setColumnFamily(MESSAGE_CONTENT_COLUMN_FAMILY);
-                columnQuery.setKey(rowKey.trim());
-                columnQuery.setName(offsetValue);
+            QueryResult<HColumn<Integer, ByteBuffer>> result = columnQuery.execute();
+            HColumn<Integer, ByteBuffer> column = result.get();
+            if (column != null) {
+                int offset = column.getName();
+                content = bytesArraySerializer.fromByteBuffer(column.getValue());
 
-                QueryResult<HColumn<Integer, ByteBuffer>> result = columnQuery.execute();
-                HColumn<Integer, ByteBuffer> column = result.get();
-                if (column != null) {
-                    int offset = column.getName();
-                    content = bytesArraySerializer.fromByteBuffer(column.getValue());
-
-                    final int size = (int) content.length;
-                    int posInArray = offset + written - offset;
-                    int count = size - posInArray;
-                    if (count > dst.remaining()) {
-                        count = dst.remaining();
-                    }
-                    dst.put(content, 0, count);
-                    written = count;
-                } else {
-                    throw new RuntimeException("Unexpected Error , content already deleted for message id :" + messageId);
-                }
+                messagePart = new AndesMessagePart();
+                messagePart.setData(content);
+                messagePart.setMessageID(Long.parseLong(messageId));
+                messagePart.setOffSet(offset);
+                messagePart.setDataLength(content.length);
             } else {
-                ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
-                int k = offsetValue / chunkSize;
-                SliceQuery query = HFactory.createSliceQuery(keyspace, stringSerializer,
-                        integerSerializer, byteBufferSerializer);
-                query.setColumnFamily(MESSAGE_CONTENT_COLUMN_FAMILY);
-                query.setKey(rowKey.trim());
-                query.setRange(k * chunkSize, (k + 1) * chunkSize + 1, false, 10);
-
-                QueryResult<ColumnSlice<Integer, ByteBuffer>> result = query.execute();
-                ColumnSlice<Integer, ByteBuffer> columnSlice = result.get();
-                for (HColumn<Integer, ByteBuffer> column : columnSlice.getColumns()) {
-                    byteOutputStream.write(bytesArraySerializer.fromByteBuffer(column.getValue()));
-                }
-                content = byteOutputStream.toByteArray();
-                final int size = (int) content.length;
-                int posInArray = offsetValue - (k * chunkSize);
-                int count = size - posInArray;
-                if (count > dst.remaining()) {
-                    count = dst.remaining();
-                }
-
-                dst.put(content, posInArray, count);
-
-                written += count;
+                throw new RuntimeException("Unexpected Error , content already deleted for message id :" + messageId);
             }
 
         } catch (Exception e) {
-            log.error("Error in reading content", e);
+            log.error("Error in reading content messageID= " + messageId + " offset=" + offsetValue, e);
+            throw  new AndesException("Error in reading content messageID=" + messageId + " offset="+offsetValue, e);
         }
-        return written;
+        return messagePart;
     }
 
     public void deleteMessageParts(long messageID, byte[] data) {
@@ -433,7 +402,7 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
 
     @Override
     //TODO:hasitha - do we want this method?
-    public AndesMessageMetadata getMetaData(long messageId) {
+    public AndesMessageMetadata getMetaData(long messageId) throws AndesException {
         AndesMessageMetadata metadata = null;
         try {
 
@@ -445,6 +414,7 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
 
         } catch (Exception e) {
             log.error("Error in getting meta data of provided message id", e);
+            throw new AndesException("Error in getting meta data for messageID " + messageId, e);
         }
         return metadata;
     }

@@ -17,7 +17,9 @@
 */
 package org.wso2.andes.messageStore;
 
-import org.wso2.andes.amqp.AMQPUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.store.StorableMessageMetaData;
@@ -27,6 +29,8 @@ import org.wso2.andes.server.store.TransactionLog;
 import java.nio.ByteBuffer;
 
 public class StoredAMQPMessage implements StoredMessage {
+
+    private static Log log = LogFactory.getLog(StoredAMQPMessage.class);
 
     private final long _messageId;
     private StorableMessageMetaData metaData;
@@ -42,6 +46,7 @@ public class StoredAMQPMessage implements StoredMessage {
      */
     //todo; we can generalize this as StoredMessage (based on metada info it will refer relevant store)
     public StoredAMQPMessage(long messageId, StorableMessageMetaData metaData) {
+
         this._messageId = messageId;
         this.metaData = metaData;
 
@@ -57,7 +62,11 @@ public class StoredAMQPMessage implements StoredMessage {
     @Override
     public StorableMessageMetaData getMetaData() {
         if (metaData == null) {
-            metaData = AMQPUtils.convertAndesMetadataToAMQMetadata(messageStore.getMetaData(_messageId));
+            try {
+                QpidAMQPBridge.getInstance().getMessageMetaData(_messageId);
+            } catch (AMQException e) {
+                log.error("Error while getting message metaData for message ID " + _messageId);
+            }
         }
         return metaData;
     }
@@ -96,8 +105,12 @@ public class StoredAMQPMessage implements StoredMessage {
      * get content for offset in a message
      */
     public int getContent(int offsetInMessage, ByteBuffer dst) {
-        int c;
-        c = messageStore.getContent(_messageId + "", offsetInMessage, dst);
+        int c = 0;
+        try {
+            c = QpidAMQPBridge.getInstance().getMessageContentChunk(_messageId, offsetInMessage, dst);
+        } catch (AMQException e) {
+           log.error("Error while getting message content chunk messageID=" + _messageId + " offset=" + offsetInMessage,e);
+        }
         return c;
     }
 
