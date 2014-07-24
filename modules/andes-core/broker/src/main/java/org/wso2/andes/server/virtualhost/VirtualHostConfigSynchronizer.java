@@ -218,9 +218,6 @@ public class VirtualHostConfigSynchronizer implements
                     log.info("Handling deleted subscription");
                     removeQueue(queue.queueName);
                     removeBinding(binding.boundExchangeName, queue.queueName, binding.routingKey, null);
-                }else if(subscriptionNotification.getStatus() == SubscriptionChange.Disconnected){
-                    log.info("Handling disconnected subscription");
-                    // Nothing to do
                 }
             }
         } catch (Exception e) {

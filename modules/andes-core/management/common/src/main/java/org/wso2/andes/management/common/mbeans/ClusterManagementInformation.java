@@ -32,7 +32,7 @@ public interface ClusterManagementInformation {
     @MBeanAttribute(name = "isClusteringEnabled", description = "is in clustering mode")
     boolean isClusteringEnabled();
 
-    @MBeanAttribute(name = "getMyNodeID", description = "Zookeeper Node Id assigned for the node")
+    @MBeanAttribute(name = "getMyNodeID", description = "Node Id assigned for the node")
     String getMyNodeID();
 
     @MBeanAttribute(name = "getGlobalQueuesAssigned", description = "Existing global queues currently assigned to the node")

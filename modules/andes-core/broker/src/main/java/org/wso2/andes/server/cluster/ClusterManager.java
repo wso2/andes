@@ -85,7 +85,7 @@ public class ClusterManager {
             initClusterMode();
 
         } catch (Exception e) {
-            log.error("Error while initializing the zookeeper coordination ", e);
+            log.error("Error while initializing the Hazelcast coordination ", e);
             e.printStackTrace();
             throw e;
         }
@@ -139,7 +139,7 @@ public class ClusterManager {
     /**
      * get binding address of the node
      *
-     * @param nodeId id of node assigned by zookeeper
+     * @param nodeId id of node assigned by Hazelcast
      * @return bind address
      */
     public String getNodeAddress(String nodeId) throws AndesException {

@@ -29,9 +29,6 @@ public class ClusterConfiguration {
      */
     private final ServerConfiguration serverConfig;
 
-
-    private final String zookeeperConnection;
-
     private String bindIpAddress;
 
 
@@ -41,14 +38,6 @@ public class ClusterConfiguration {
      */
     public ClusterConfiguration (final ServerConfiguration serverConfig) {
          this.serverConfig = serverConfig;
-         this.zookeeperConnection = serverConfig.getZookeeperConnection();
-    }
-
-    /**
-     * @return   Zookeeper connection String
-     */
-    public String getZookeeperConnection() {
-         return zookeeperConnection;
     }
 
 //    public boolean isOnceInOrderSupportEnabled() {
