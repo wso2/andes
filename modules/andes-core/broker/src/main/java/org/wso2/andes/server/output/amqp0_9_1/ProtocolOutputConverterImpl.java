@@ -145,7 +145,9 @@ public class ProtocolOutputConverterImpl implements ProtocolOutputConverter
 
                     if( writtenSize <= oldWrittenSize && writtenSize < bodySize) {
                         throw new AMQException("Unexpected Error while getting message content : " +
-                                "This might leads to an infinite loop so exiting the loop forcefully");
+                                "This might leads to an infinite loop so exiting the loop forcefully. " +
+                                "writtenSize= " + writtenSize + " oldWrittenSize= " + oldWrittenSize + " bodySize= " + bodySize +
+                        " Thus writtenSize <= oldWrittenSize && writtenSize < bodySize evaluates to TRUE");
                     }
                     buf.flip();
                     writeFrame(new AMQFrame(channelId, PROTOCOL_CONVERTER.convertToBody(buf)));

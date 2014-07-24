@@ -36,9 +36,9 @@ public class InMemoryMessageStore implements MessageStore {
     }
 
     @Override
-    public int getContent(String messageId, int offsetValue, ByteBuffer dst) {
+    public AndesMessagePart getContent(String messageId, int offsetValue) throws AndesException{
         //todo:implement this
-        return 0;
+        return null;
     }
 
     @Override
@@ -205,7 +205,7 @@ public class InMemoryMessageStore implements MessageStore {
     }
 
     @Override
-    public AndesMessageMetadata getMetaData(long messageId) {
+    public AndesMessageMetadata getMetaData(long messageId) throws AndesException{
         //todo: implement this
         return null;
     }

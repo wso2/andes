@@ -336,7 +336,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                             }
                         } catch (Exception e) {
                             //undo any changes in the message tracker
-                            log.warn("Exception occurred while sending message out",e);
+                            log.warn("SEND FAILED >> Exception occurred while sending message out. Retrying " + retryCount + " times. Current " + i ,e);
                             OnflightMessageTracker.getInstance().removeMessage(getChannel(), deliveryTag, entry.getMessage().getMessageNumber());
                             if(i < retryCount -1){
                                 //will try again

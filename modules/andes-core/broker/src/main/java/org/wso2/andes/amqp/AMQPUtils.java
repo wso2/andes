@@ -40,6 +40,7 @@ import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +50,8 @@ public  class AMQPUtils {
     public static String DIRECT_EXCHANGE_NAME = "amq.direct";
 
     public static String TOPIC_EXCHANGE_NAME = "amq.topic";
+
+    public static final int DEFAULT_CONTENT_CHUNK_SIZE = 65534;
 
     private static Log log = LogFactory.getLog(AMQPUtils.class);
 
@@ -96,11 +99,6 @@ public  class AMQPUtils {
         MessageMetaDataType type = MessageMetaDataType.values()[dataAsBytes[0]];
         StorableMessageMetaData metaData = type.getFactory().createMetaData(buf);
         return metaData;
-    }
-
-    public static AndesMessageMetadata convertAMQMetaDataToAndesMetadata(StorableMessageMetaData amqMetadata) {
-        MessageMetaData mmd = (MessageMetaData) amqMetadata;
-        return convertAMQMetaDataToAndesMetadata(amqMetadata);
     }
 
     public static AndesMessageMetadata convertAMQMessageToAndesMetadata(AMQMessage amqMessage) throws AndesException{
@@ -196,5 +194,63 @@ public  class AMQPUtils {
                 nodeQueueName, queue.getName(), queueOwner, queueBoundExchangeName, queueBoundExchangeType, isqueueBoundExchangeAutoDeletable,true);
 
         return localSubscription;
+    }
+
+    public static int getMessageContentChunkConvertedCorrectly(long messageId, int offsetValue, ByteBuffer dst) throws AndesException {
+        int written = 0;
+        int initialBufferSize = dst.remaining();
+
+        double chunkIndex = (float)offsetValue / DEFAULT_CONTENT_CHUNK_SIZE;
+        int firstChunkIndex = (int) Math.floor(chunkIndex);
+        int secondChunkIndex = (int) Math.ceil(chunkIndex);
+
+        int firstIndexToQuery = firstChunkIndex * DEFAULT_CONTENT_CHUNK_SIZE;
+        int secondIndexToQuery = secondChunkIndex * DEFAULT_CONTENT_CHUNK_SIZE;
+
+        int positionToReadFromFirstChunk = offsetValue - (firstChunkIndex * DEFAULT_CONTENT_CHUNK_SIZE);
+
+        try {
+
+            byte[] content = null;
+
+            //first chunk might not have DEFAULT_CONTENT_CHUNK_SIZE
+            if (offsetValue == 0) {
+                AndesMessagePart messagePart = MessagingEngine.getInstance().getMessageContentChunk(messageId, offsetValue);
+                int messagePartSize = messagePart.getDataLength();
+                if (initialBufferSize > messagePartSize) {
+
+                    dst.put(messagePart.getData());
+                    written += messagePart.getDataLength();
+                } else {
+                    dst.put(messagePart.getData(), 0, initialBufferSize);
+                    written += initialBufferSize;
+                }
+                //here there will be chunks of DEFAULT_CONTENT_CHUNK_SIZE
+            } else {
+                //first read from first chunk from where we stopped
+                AndesMessagePart firstPart = MessagingEngine.getInstance().getMessageContentChunk(messageId,firstIndexToQuery);
+                int firstMessagePartSize = firstPart.getDataLength();
+                int numOfBytesToRead = firstMessagePartSize - positionToReadFromFirstChunk;
+                if(initialBufferSize > numOfBytesToRead) {
+                    dst.put(firstPart.getData(),positionToReadFromFirstChunk,numOfBytesToRead);
+                    written += numOfBytesToRead;
+
+                    //if we have additional size in buffer read from next chunk as well
+/*                    int remainingSizeOfBuffer = initialBufferSize - dst.position();
+                    if(remainingSizeOfBuffer > 0 ) {
+                        AndesMessagePart secondPart = MessagingEngine.getInstance().getMessageContentChunk(messageId,secondIndexToQuery);
+                        dst.put(secondPart.getData(),0,remainingSizeOfBuffer);
+                        written += remainingSizeOfBuffer;
+                    }*/
+                } else {
+                    dst.put(firstPart.getData(), positionToReadFromFirstChunk, initialBufferSize);
+                    written += initialBufferSize;
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Error in reading content for message id " + messageId, e);
+        }
+        return written;
     }
 }

@@ -1,5 +1,6 @@
 package org.wso2.andes.mqtt;
 
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.MessagingEngine;
@@ -58,7 +59,12 @@ public class MQTTUtils {
     public static ByteBuffer getContentFromMetaInformation(AndesMessageMetadata metadata) {
         //Need to get the value dynamically
         ByteBuffer message = ByteBuffer.allocate(metadata.getMessageContentLength());
-        MessagingEngine.getInstance().getDurableMessageStore().getContent(Long.toString(metadata.getMessageID()), 0, message);
+        try {
+            AndesMessagePart messagePart = MessagingEngine.getInstance().getDurableMessageStore().getContent(Long.toString(metadata.getMessageID()), 0);
+            message.put(messagePart.getData());
+        } catch (AndesException e) {
+            throw new RuntimeException("Error in getting content for message", e);
+        }
         return message;
     }
 

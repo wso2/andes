@@ -98,10 +98,13 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 Insert insert = CQLDataAccessHelper.addMessageToQueue(KEYSPACE,MESSAGE_CONTENT_COLUMN_FAMILY,
                         rowKey, part.getOffSet(), part.getData(), false);
                 inserts.add(insert);
-                System.out.println("STORE >> message part id" + part.getMessageID() + " offset " + part.getOffSet());
+                //System.out.println("STORE >> message part id" + part.getMessageID() + " offset " + part.getOffSet());
             }
             /*messageMutator.execute();*/
             GenericCQLDAO.batchExecute(KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
+/*            for(AndesMessagePart part : partList) {
+                log.info("STORED PART ID: " + part.getMessageID() + " OFFSET: " + part.getOffSet() + " Data Len= " + part.getDataLength());
+            }*/
         } catch (CassandraDataAccessException e) {
             //TODO handle Cassandra failures
             //When a error happened, we should remember that and stop accepting messages
@@ -198,78 +201,34 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
 
-    public int getContent(String messageId, int offsetValue, ByteBuffer dst) {
-        System.out.println("GET CONTENT >> id " + messageId + " offset " + offsetValue);
-        int written = 0;
-        int chunkSize = 65534;
-        byte[] content = null;
+    public AndesMessagePart getContent(String messageId, int offsetValue) throws AndesException{
+        //log.info("REQUEST GET CONTENT >> id " + messageId + " offset " + offsetValue);
+        byte[] content;
+        AndesMessagePart messagePart;
         try {
-        	log.info(offsetValue);
-        	
             String rowKey = "mid" + messageId;
-            if (offsetValue == 0) {
-
-                /*ColumnQuery columnQuery = HFactory.createColumnQuery(KEYSPACE, stringSerializer,
-                        integerSerializer, byteBufferSerializer);
-                columnQuery.setColumnFamily(MESSAGE_CONTENT_COLUMN_FAMILY);
-                columnQuery.setKey(rowKey.trim());
-                columnQuery.setName(offsetValue);
-
-                QueryResult<HColumn<Integer, ByteBuffer>> result = columnQuery.execute();
-                HColumn<Integer, ByteBuffer> column = result.get();*/
             	List<AndesMessageMetadata> messages = CQLDataAccessHelper.getMessagesFromQueue(rowKey.trim(), MESSAGE_CONTENT_COLUMN_FAMILY, KEYSPACE, 0, 0, 10,false,false);
                 if (!messages.isEmpty()) {
                 	AndesMessageMetadata msg = messages.iterator().next();
                     int offset = (int) msg.getMessageID();//column.getName();
                     content = msg.getMetadata();//bytesArraySerializer.fromByteBuffer(column.getValue());
 
-                    final int size =  content.length;
-                    int posInArray = written;
-                    int count = size - posInArray;
-                    if (count > dst.remaining()) {
-                        count = dst.remaining();
-                    }
-                    dst.put(content, 0, count);
-                    written = count;
+                    messagePart = new AndesMessagePart();
+                    messagePart.setData(content);
+                    messagePart.setMessageID(Long.parseLong(messageId));
+                    messagePart.setOffSet(offset);
+                    messagePart.setDataLength(content.length);
+
+
                 } else {
-                    throw new RuntimeException("Unexpected Error , content already deleted for message id :" + messageId);
+                    throw new RuntimeException("Unexpected Error , content not available for message id :" + messageId);
                 }
-            } else {
-                ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
-                int k = offsetValue;
-               /* SliceQuery query = HFactory.createSliceQuery(KEYSPACE, stringSerializer,
-                        integerSerializer, byteBufferSerializer);
-                query.setColumnFamily(MESSAGE_CONTENT_COLUMN_FAMILY);
-                query.setKey(rowKey.trim());
-                query.setRange(k * chunkSize, (k + 1) * chunkSize + 1, false, 10);
-
-                QueryResult<ColumnSlice<Integer, ByteBuffer>> result = query.execute();
-                ColumnSlice<Integer, ByteBuffer> columnSlice = result.get();
-                for (HColumn<Integer, ByteBuffer> column : columnSlice.getColumns()) {
-                    byteOutputStream.write(bytesArraySerializer.fromByteBuffer(column.getValue()));
-                }*/
-                List<AndesMessageMetadata> messages = CQLDataAccessHelper.getMessagesFromQueue(rowKey.trim(), MESSAGE_CONTENT_COLUMN_FAMILY, KEYSPACE, k , (k+2),10,true, false);
-                for (AndesMessageMetadata msg : messages) {
-                    byteOutputStream.write(msg.getMetadata());
-                }
-                
-                content = byteOutputStream.toByteArray();
-                final int size = (int) content.length;
-                int posInArray = offsetValue - k;
-                int count = size - posInArray;
-                if (count > dst.remaining()) {
-                    count = dst.remaining();
-                }
-
-                dst.put(content, posInArray, count);
-
-                written += count;
-            }
 
         } catch (Exception e) {
-            log.error("Error in reading content", e);
+            log.error("Error in reading content messageID= " + messageId + " offset=" + offsetValue, e);
+            throw  new AndesException("Error in reading content messageID=" + messageId + " offset="+offsetValue, e);
         }
-        return written;
+        return messagePart;
     }
 
     public void deleteMessageParts(long messageID, byte[] data) {
@@ -360,11 +319,15 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 }
                 inserts.add(insert);
                 PerformanceCounter.recordIncomingMessageWrittenToCassandra();
-                log.info("Wrote message " + md.getMessageID() + " to Global Queue " + queueAddress.queueName);
+                //log.info("Wrote message " + md.getMessageID() + " to Global Queue " + queueAddress.queueName);
 
             }
             long start = System.currentTimeMillis();
             GenericCQLDAO.batchExecute(KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
+
+/*            for (AndesMessageMetadata md : messageList) {
+                log.info("METADATA STORED ID " + md.getMessageID());
+            }*/
             //messageMutator.execute();
 
             PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency((int) (System.currentTimeMillis() - start));
@@ -493,7 +456,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
     @Override
     //TODO:hasitha - do we want this method?
-    public AndesMessageMetadata getMetaData(long messageId) {
+    public AndesMessageMetadata getMetaData(long messageId) throws AndesException{
         AndesMessageMetadata metadata = null;
         try {
 
@@ -505,6 +468,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
         } catch (Exception e) {
             log.error("Error in getting meta data of provided message id", e);
+            throw new AndesException("Error in getting meta data for messageID " + messageId, e);
         }
         return metadata;
     }

@@ -109,34 +109,14 @@ public class MessagingEngine {
         return config;
     }
 
-	public void setDurableMessageStore(
-            MessageStore durableMessageStore) {
-		this.durableMessageStore = durableMessageStore;
-	}
-
-	public DisruptorBasedExecutor getDisruptorBasedExecutor() {
-		return disruptorBasedExecutor;
-	}
-
 
 	public void messageContentReceived(AndesMessagePart part) {
         disruptorBasedExecutor.messagePartReceived(part);
     }
 
-    public void messageContentChunkReceived(long _messageId, int offsetInMessage, ByteBuffer src) {
-        //write to disruptor
-        AndesMessagePart part = new AndesMessagePart();
-        src = src.slice();
-        final byte[] chunkData = new byte[src.limit()];
-
-        src.duplicate().get(chunkData);
-
-        part.setData(chunkData);
-        part.setMessageID(_messageId);
-        part.setOffSet(offsetInMessage);
-        part.setDataLength(chunkData.length);
-
-        messageContentReceived(part);
+    public AndesMessagePart getMessageContentChunk(long messageID, int offsetInMessage) throws AndesException{
+        AndesMessagePart messagePart = durableMessageStore.getContent(messageID + "", offsetInMessage);
+        return messagePart;
     }
 
     public void messageReceived(AndesMessageMetadata message, long channelID) throws AndesException {
@@ -210,6 +190,10 @@ public class MessagingEngine {
         } catch (Exception e) {
             throw new AndesException("Error in storing the message to the store", e);
         }
+    }
+
+    public AndesMessageMetadata getMessageMetaData(long messageID) throws AndesException{
+         return durableMessageStore.getMetaData(messageID);
     }
 
     public void ackReceived(AndesAckData ack) throws AndesException {

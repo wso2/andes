@@ -21,6 +21,8 @@ package org.wso2.andes.kernel.distrupter;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.MessageStore;
@@ -32,6 +34,9 @@ import com.lmax.disruptor.EventHandler;
  * of IO threads through that.
  */
 public class AlternatingCassandraWriter implements EventHandler<CassandraDataEvent> {
+
+    private static Log log = LogFactory.getLog(AlternatingCassandraWriter.class);
+
     int totalPendingEventLength = 0;
     private int writerCount;
     private int turn;
@@ -55,6 +60,7 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
             if (calculatedTurn == turn) {
                 //Message parts we write on the fly. It is tradeoff of memory vs. batching
                 //May be we need better handling .. batch that data as well
+                //log.info("CASSANDRA WRITER - CONTENT PART RECEIVED ID " + event.part.getMessageID() + " OFFSET: " + event.part.getOffSet());
                 partList.add(event.part);
                 totalPendingEventLength += event.part.getDataLength();
             }
@@ -63,6 +69,7 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
             int calculatedTurn = Math.abs(event.metadata.getDestination().hashCode() % writerCount);
 
             if (calculatedTurn == turn) {
+                //log.info("CASSANDRA WRITER - METADATA RECEIVED ID " + event.metadata.getMessageID());
                 metaList.add(event.metadata);
                 totalPendingEventLength += event.metadata.getMetadata().length;
             }
