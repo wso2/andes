@@ -47,6 +47,8 @@ public class CQLConnection implements DurableStoreConnection {
     private static Log log = LogFactory.getLog(CQLConnection.class);
     private boolean isCassandraConnectionLive = false;
     private int gcGraceSeconds;
+    private final static int DEFAULT_GC_GRAE_SECOND_VALUE = 864000;
+
 
 
     @Override
@@ -61,7 +63,11 @@ public class CQLConnection implements DurableStoreConnection {
             String readConsistancyLevel = configuration.getString(READ_CONSISTENCY_LEVEL);
             String writeConsistancyLevel = configuration.getString(WRITE_CONSISTENCY_LEVEL);
             String gcGraceSecondsString = (String) configuration.getProperty(GC_GRACE_SECONDS);
-            setGcGraceSeconds(Integer.parseInt(gcGraceSecondsString));
+            if (gcGraceSecondsString != null) {
+                setGcGraceSeconds(Integer.parseInt(gcGraceSecondsString));
+            }else{
+                setGcGraceSeconds(DEFAULT_GC_GRAE_SECOND_VALUE);
+            }
 
             int port = 9042;
             boolean isExternalCassandraServerRequired = ClusterResourceHolder.getInstance().
