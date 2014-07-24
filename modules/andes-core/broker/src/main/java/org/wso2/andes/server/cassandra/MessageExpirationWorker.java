@@ -66,7 +66,7 @@ public class MessageExpirationWorker extends Thread {
                         sleepForWaitInterval(workerWaitInterval);
 
                     } else {
-                        messageStore.deleteMessages(expiredMessages, saveExpiredToDLC);
+                        messageStore.deleteMessageMetadata(expiredMessages, saveExpiredToDLC);
                         sleepForWaitInterval(workerWaitInterval);
                     }
 

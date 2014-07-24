@@ -20,14 +20,13 @@ package org.wso2.andes.kernel;
 
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 
 public interface MessageStore {
 
     public void initializeMessageStore (DurableStoreConnection durableConnection) throws AndesException;
 
-    public void storeMessagePart(List<AndesMessagePart> part)throws AndesException;
+    public void storeMessagePart(List<AndesMessagePart> partList)throws AndesException;
 
     public void deleteMessageParts(List<Long> messageIdList)throws AndesException;
 
