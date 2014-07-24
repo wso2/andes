@@ -110,9 +110,9 @@ public class SubscriptionStore {
         else if(type == SubscriptionChange.Disconnected){
             log.info("Encoded string: " + subscription.encodeAsStr());
             if(subscription.isBoundToTopic()){
-                SubscriptionMap(subscription, clusterTopicSubscriptionMap);
+                changeSubscriptionMap(subscription, clusterTopicSubscriptionMap);
             }else{
-                SubscriptionMap(subscription, clusterQueueSubscriptionMap);
+                changeSubscriptionMap(subscription, clusterQueueSubscriptionMap);
             }
         }
         log.info("===============Updated subscription maps================");
@@ -213,7 +213,7 @@ public class SubscriptionStore {
         while(topicSubscriptionItr.hasNext()){
             LocalSubscription subscription = topicSubscriptionItr.next();
             if(subscription.getTargetQueue().equals(targetQueue)){
-                removeLocalSubscriptionAndNotify(destination, subscription.getSubscriptionID());
+                removeLocalSubscriptionAndNotify(subscription);
                 break;
             }
         }
@@ -223,7 +223,7 @@ public class SubscriptionStore {
         Iterator<LocalSubscription> queueSubscriptionItr = queueSubscriptionList.values().iterator();
         while(queueSubscriptionItr.hasNext()){
             LocalSubscription subscription = queueSubscriptionItr.next();
-            removeLocalSubscriptionAndNotify(targetQueue, subscription.getSubscriptionID());
+            removeLocalSubscriptionAndNotify(subscription);
         }
 
     }
@@ -245,7 +245,7 @@ public class SubscriptionStore {
             if(subscriptionsOfNode !=null && !subscriptionsOfNode.isEmpty()) {
                 for(Subscrption sub : subscriptionsOfNode) {
                     //remove and notify
-                    removeLocalSubscriptionAndNotify(sub.getSubscribedDestination(),sub.getSubscriptionID());
+                    removeLocalSubscriptionAndNotify(sub);
                 }
             }
         }
@@ -264,7 +264,7 @@ public class SubscriptionStore {
             if(subscriptionsOfDestination != null && !subscriptionsOfDestination.isEmpty()) {
                 for(Subscrption sub : subscriptionsOfDestination.values()) {
                     //remove and notify
-                    removeLocalSubscriptionAndNotify(sub.getSubscribedDestination(),sub.getSubscriptionID());
+                    removeLocalSubscriptionAndNotify(sub);
                 }
             }
         }
@@ -310,7 +310,7 @@ public class SubscriptionStore {
                 //Store the subscription
                 String destinationIdentifier = new StringBuffer().append((subscrption.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX))
                         .append(destinationQueue).toString();
-                String subscriptionID = subscrption.getSubscriptionID();
+                String subscriptionID = subscrption.getSubscribedNode() + "_" + subscrption.getSubscriptionID();
                 andesContextStore.storeDurableSubscription(destinationIdentifier, subscriptionID, subscrption.encodeAsStr());
 
                 if(type == SubscriptionChange.Added) {
@@ -345,12 +345,14 @@ public class SubscriptionStore {
                 }
 
             } else if(type == SubscriptionChange.Deleted){
-                removeLocalSubscriptionAndNotify(subscrption.getSubscribedDestination(), subscrption.getSubscriptionID());
+                removeLocalSubscriptionAndNotify(subscrption);
             }
 
     }
     
-    private LocalSubscription removeLocalSubscriptionAndNotify(String destination, String subscriptionID) throws AndesException{
+    private LocalSubscription removeLocalSubscriptionAndNotify(Subscrption subscrption) throws AndesException{
+        String destination = subscrption.getSubscribedDestination();
+        String subscriptionID = subscrption.getSubscriptionID();
     	long start = System.currentTimeMillis();
             //check queue local subscriptions
     		Map<String, LocalSubscription> subscriptionList = getSubscriptionList(destination, false);
@@ -382,7 +384,7 @@ public class SubscriptionStore {
 			if(subscriptionToRemove != null){
 				String destinationIdentifier = new StringBuffer().append((subscriptionToRemove.isBoundToTopic()? TOPIC_PREFIX:QUEUE_PREFIX))
 						.append(destination).toString();
-                andesContextStore.removeDurableSubscription(destinationIdentifier,subscriptionID);
+                andesContextStore.removeDurableSubscription(destinationIdentifier,subscrption.getSubscribedNode() + "_" + subscriptionID);
 				log.info("Subscription Removed Locally for  "+ destination + "@" +  subscriptionID + " "+ subscriptionToRemove);
 				notifyListeners(subscriptionToRemove, true, SubscriptionChange.Deleted);
 			}else{
@@ -557,7 +559,7 @@ public class SubscriptionStore {
             Map<String,LocalSubscription> localQueueSubscriptions = localQueueSubscriptionMap.get(destinationQueueName);
             if(localQueueSubscriptions != null && localQueueSubscriptions.values().size() >0) {
                 for(LocalSubscription sub : localQueueSubscriptions.values()) {
-                    removeLocalSubscriptionAndNotify(sub.getSubscribedDestination(),sub.getSubscriptionID());
+                    removeLocalSubscriptionAndNotify(sub);
                 }
             }
             //remove message counter
@@ -570,7 +572,7 @@ public class SubscriptionStore {
                 if(topicSubscriptions != null && !topicSubscriptions.values().isEmpty()) {
                     for(LocalSubscription sub : topicSubscriptions.values()) {
                         if(sub.getTargetQueue().equals(destinationQueueName)) {
-                            removeLocalSubscriptionAndNotify(destinationQueueName, sub.getSubscriptionID());
+                            removeLocalSubscriptionAndNotify(sub);
                             break;
                         }
                     }
@@ -620,7 +622,7 @@ public class SubscriptionStore {
         //todo: we do not currently delete exchanges. We have only direct and topic
     }
 
-    private void SubscriptionMap(Subscrption subscription, Map<String, List<Subscrption>> map){
+    private void changeSubscriptionMap(Subscrption subscription, Map<String, List<Subscrption>> map){
         String destinationIdentifier = subscription.getSubscribedDestination();
         List<Subscrption> subscriptionList = map.get(destinationIdentifier);
         if(subscriptionList == null){
@@ -628,7 +630,7 @@ public class SubscriptionStore {
         }
 
         for(Subscrption s:subscriptionList){
-            if(s.getSubscriptionID().equals(subscription.getSubscriptionID())){
+            if(s.getSubscriptionID().equals(subscription.getSubscriptionID()) && s.getSubscribedNode().equals(subscription.getSubscribedNode())){
                 subscriptionList.remove(s);
                 subscriptionList.add(subscription);
                 break;
@@ -646,7 +648,7 @@ public class SubscriptionStore {
 
         boolean duplicate = false;
         for(Subscrption s:subscriptionList){
-            if(s.getSubscriptionID().equals(subscription.getSubscriptionID())){
+            if(s.getSubscriptionID().equals(subscription.getSubscriptionID()) && s.getSubscribedNode().equals(subscription.getSubscribedNode())){
                 duplicate = true;
                 subscriptionList.remove(s);
                 subscriptionList.add(subscription);
@@ -663,7 +665,7 @@ public class SubscriptionStore {
         String destinationIdentifier = subscription.getSubscribedDestination();
         List<Subscrption> subscriptionList = map.get(destinationIdentifier);
         for(Subscrption s: subscriptionList){
-            if(s.getSubscriptionID().equals(subscription.getSubscriptionID())){
+            if(s.getSubscriptionID().equals(subscription.getSubscriptionID()) && s.getSubscribedNode().equals(subscription.getSubscribedNode())){
                 subscriptionList.remove(s);
             }
         }
