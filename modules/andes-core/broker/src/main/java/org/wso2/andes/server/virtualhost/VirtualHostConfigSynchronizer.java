@@ -10,6 +10,7 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.BindingFactory;
 import org.wso2.andes.server.cluster.coordination.SubscriptionListener;
 import org.wso2.andes.server.cluster.coordination.SubscriptionNotification;
@@ -163,6 +164,10 @@ public class VirtualHostConfigSynchronizer implements
 
     @Override
     public void subscriptionsChanged(SubscriptionNotification subscriptionNotification) {
+        log.info("Updating subscription maps");
+        BasicSubscription subscription = new BasicSubscription(subscriptionNotification.getEncodedString());
+        ClusterResourceHolder.getInstance().getSubscriptionManager().updateClusterSubscriptionMaps(subscription, subscriptionNotification.getStatus());
+
         log.info("Synchronizing Exchanges, Queues and Bindings...");
         syncExchangesQueuesAndBindings(subscriptionNotification);
     }
@@ -188,7 +193,7 @@ public class VirtualHostConfigSynchronizer implements
                 olderBindingMap.put(b.boundExchangeName.concat(b.routingKey).concat(b.boundQueue.queueName), b);
             }
             //update cluster subscriptions
-            subscriptionStore.reloadSubscriptionsFromStorage();
+            ClusterResourceHolder.getInstance().getSubscriptionManager().reloadSubscriptionsFromStorage();
             syncExchanges(this);
             syncQueues(this, olderQueueMap);
             syncBindngs(this, olderBindingMap);
@@ -197,9 +202,6 @@ public class VirtualHostConfigSynchronizer implements
 
     public void syncExchangesQueuesAndBindings(SubscriptionNotification subscriptionNotification) {
         try {
-            log.info("Updating subscription maps");
-            BasicSubscription subscription = new BasicSubscription(subscriptionNotification.getEncodedString());
-            subscriptionStore.updateSubscriptionMaps(subscription, subscriptionNotification.getStatus());
 
             if(subscriptionNotification != null && subscriptionNotification.isDurable()){
 

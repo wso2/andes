@@ -9,7 +9,7 @@ public class AndesContext {
 	private MessageStore messageStore; 
 	private SubscriptionStore subscriptionStore;
     private AndesContextStore andesContextStore;
-	private Map<String, Subscrption> dataSenderMap;
+	private Map<String, AndesSubscription> dataSenderMap;
     private HazelcastInstance hazelcastInstance;
     private boolean isClusteringEnabled;
 
@@ -34,11 +34,11 @@ public class AndesContext {
         return this.andesContextStore;
     }
 	
-	public void addDataSender(String key, Subscrption dataSender){
+	public void addDataSender(String key, AndesSubscription dataSender){
 		dataSenderMap.put(key, dataSender);
 	}
 	
-	public Subscrption getDataSender(String key){
+	public AndesSubscription getDataSender(String key){
 		return dataSenderMap.get(key);
 	}
 	

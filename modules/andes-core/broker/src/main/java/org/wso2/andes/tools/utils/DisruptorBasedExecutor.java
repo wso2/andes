@@ -12,8 +12,6 @@ import org.wso2.andes.kernel.distrupter.*;
 import org.wso2.andes.server.cassandra.SequentialThreadPoolExecutor;
 
 import com.lmax.disruptor.RingBuffer;
-import org.wso2.andes.server.queue.QueueEntry;
-import org.wso2.andes.server.subscription.Subscription;
 
 public class DisruptorBasedExecutor {
 
@@ -25,7 +23,7 @@ public class DisruptorBasedExecutor {
     //private static DisruptorRuntime<SubscriptionDataEvent> dataDeliveryDisruptorRuntime;
     private static Map<Long, PendingJob> pendingJobsTracker = new ConcurrentHashMap<Long, PendingJob>();
 
-    public DisruptorBasedExecutor(MessageStore store, Subscrption delivery) {
+    public DisruptorBasedExecutor(MessageStore store, AndesSubscription delivery) {
         int MAX_WRITE_HANDLERS = 10;
         AlternatingCassandraWriter[] writerHandlers = new AlternatingCassandraWriter[MAX_WRITE_HANDLERS];
         for (int i = 0; i < writerHandlers.length; i++) {

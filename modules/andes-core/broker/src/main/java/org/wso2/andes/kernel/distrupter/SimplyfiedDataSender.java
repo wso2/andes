@@ -2,14 +2,14 @@ package org.wso2.andes.kernel.distrupter;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.Subscrption;
+import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
 
 import java.util.List;
 
-public class SimplyfiedDataSender implements Subscrption {
+public class SimplyfiedDataSender implements AndesSubscription {
     private static Log log = LogFactory.getLog(SimplyfiedDataSender.class);
 
     public void sendAsynchronouslyToQueueEndPoint(final List<SubscriptionDataEvent> messageList){

@@ -1,6 +1,6 @@
 package org.wso2.andes.kernel;
 
-public interface LocalSubscription extends Subscrption{
+public interface LocalSubscription extends AndesSubscription {
 
 	public int getnotAckedMsgCount();
 

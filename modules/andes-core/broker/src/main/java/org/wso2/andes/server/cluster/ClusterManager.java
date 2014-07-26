@@ -407,13 +407,11 @@ public class ClusterManager {
         if(!isClusteringEnabled) {
             //if in stand-alone mode close all local queue and topic subscriptions
             synchronized (this) {
-                subscriptionStore.closeAllLocalSubscriptionsOfNode(true);
-                subscriptionStore.closeAllLocalSubscriptionsOfNode(false);
+                ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllLocalSubscriptionsOfNode(nodeID);
             }
         } else {
             //close all cluster queue and topic subscriptions for the node
-            subscriptionStore.closeAllClusterSubscriptionsOfNode(nodeID, false);
-            subscriptionStore.closeAllClusterSubscriptionsOfNode(nodeID, true);
+            ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllClusterSubscriptionsOfNode(nodeID);
         }
     }
 
