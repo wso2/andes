@@ -1,7 +1,7 @@
 package org.wso2.andes.kernel;
 
 
-public interface Subscrption {
+public interface AndesSubscription {
     /**
      * @return subscription ID of the subscription or null
      */

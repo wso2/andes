@@ -21,7 +21,7 @@ public class OrphanedMessagesDueToUnsubscriptionHandler implements
 			.getLog(OrphanedMessagesDueToUnsubscriptionHandler.class);
 
 	@Override
-	public void notifyClusterSubscriptionHasChanged(Subscrption subscrption,
+	public void notifyClusterSubscriptionHasChanged(AndesSubscription subscrption,
 			SubscriptionChange changeType) {
 		// TODO Auto-generated method stub
 

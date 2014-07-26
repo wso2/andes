@@ -18,7 +18,6 @@
 
 package org.wso2.andes.kernel;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -128,7 +127,7 @@ public class MessagingEngine {
             }
 
             if (message.isTopic) {
-                List<Subscrption> subscriptionList = subscriptionStore.getClusterSubscribersForTopic(message.getDestination());
+                List<AndesSubscription> subscriptionList = subscriptionStore.getActiveClusterSubscribersForDestination(message.getDestination(), true);
                 if (subscriptionList.size() == 0) {
                     log.info("Message routing key: " + message.getDestination() + " No routes in cluster.");
                     List<Long> messageIdList =  new ArrayList<Long>();
@@ -139,7 +138,7 @@ public class MessagingEngine {
                 Set<String> targetAndesNodeSet = new HashSet<String>();
                 boolean originalMessageUsed = false;
                 boolean hasNonDurableSubscriptions = false; 
-                for (Subscrption subscriberQueue : subscriptionList) {
+                for (AndesSubscription subscriberQueue : subscriptionList) {
                     if (subscriberQueue.isDurable()) {
                     	/**
                     	 * If message is durable, we clone the message (if there is more than one subscription) and send them to a queue created for with the name of the

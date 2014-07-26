@@ -1,10 +1,10 @@
 package org.wso2.andes.subscription;
 
-import org.wso2.andes.kernel.Subscrption;
+import org.wso2.andes.kernel.AndesSubscription;
 
 import java.util.UUID;
 
-public class BasicSubscription implements Subscrption{
+public class BasicSubscription implements AndesSubscription {
 	protected String subscriptionID; 
 	protected String destination;
 	protected boolean isBoundToTopic;

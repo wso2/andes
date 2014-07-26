@@ -170,10 +170,9 @@ public class QpidAMQPBridge {
     public void deleteExchange(Exchange exchange) throws AMQException{
         log.info("===Andes Bridge: deleteExchange " + exchange.getName());
         try {
-            SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
             AndesExchange andesExchange = new AndesExchange(exchange.getName(), exchange.getType().getName().toString(),
                     exchange.isAutoDelete() ? Short.parseShort("1") : Short.parseShort("0"));
-            subscriptionStore.deleteExchange(andesExchange);
+            ClusterResourceHolder.getInstance().getSubscriptionManager().deleteSubscriptionsRepresentingExchange(andesExchange);
         } catch (AndesException e) {
             log.error("error while deleting exchange", e);
             throw new AMQException(AMQConstant.INTERNAL_ERROR,"error while deleting exchange",e);
@@ -183,7 +182,8 @@ public class QpidAMQPBridge {
     public void createQueue(AMQQueue queue) throws AMQException {
         log.info("===Andes Bridge create queue: " + queue.getName());
         try {
-            AndesContext.getInstance().getSubscriptionStore().addLocalSubscription(AMQPUtils.createInactiveLocalSubscriberRepresentingQueue(queue));
+            AndesSubscriptionManager subManager = ClusterResourceHolder.getInstance().getSubscriptionManager();
+            subManager.addSubscription(AMQPUtils.createInactiveLocalSubscriberRepresentingQueue(queue));
         } catch (AndesException e) {
             log.error("error while creating queue", e);
             throw new AMQException(AMQConstant.INTERNAL_ERROR,"error while creating queue",e);
@@ -193,10 +193,8 @@ public class QpidAMQPBridge {
     public void deleteQueue(AMQQueue queue) throws AMQException {
         log.info("Andes Bridge delete queue : " + queue.getName());
         try {
-            SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-            subscriptionStore.removeQueue(queue.getName(), queue.isExclusive());
-            //caller should remove messages from global queue
-            ClusterResourceHolder.getInstance().getSubscriptionManager().handleMessageRemovalFromGlobalQueue(queue.getName());
+            ClusterResourceHolder.getInstance().getSubscriptionManager().removeSubscriptionsRepresentingQueue(queue.getName(),queue.isExclusive());
+
         } catch (AndesException e) {
             log.error("error while removing queue", e);
             throw new AMQException(AMQConstant.INTERNAL_ERROR,"error while removing queue",e);
@@ -222,7 +220,8 @@ public class QpidAMQPBridge {
         if(b.getExchange().getName().equalsIgnoreCase("amq.topic")) {
 
             //we remove bindings irrespective of temp or durable
-            subscriptionStore.removeAllSubscriptionsRepresentingBinding(b.getBindingKey(), b.getQueue().getName());
+            ClusterResourceHolder.getInstance().getSubscriptionManager().removeAllSubscriptionsRepresentingBinding
+                    (b.getBindingKey(), b.getQueue().getName());
 
             //stop Topic Delivery Worker If Having No actual normal (not durable) topic subscriptions on this node
             if(ClusterResourceHolder.getInstance().getTopicDeliveryWorker() != null) {

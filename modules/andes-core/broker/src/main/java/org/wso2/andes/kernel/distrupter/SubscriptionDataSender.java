@@ -2,8 +2,7 @@ package org.wso2.andes.kernel.distrupter;
 
 import com.lmax.disruptor.EventHandler;
 
-import org.wso2.andes.kernel.Subscrption;
-import org.wso2.andes.server.queue.QueueEntry;
+import org.wso2.andes.kernel.AndesSubscription;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,13 +14,13 @@ import java.util.List;
 public class SubscriptionDataSender implements EventHandler<SubscriptionDataEvent> {
     private int writerCount;
     private int turn;
-    private Subscrption delivery;
+    private AndesSubscription delivery;
     // TODO - Disruptor make this configurable
     private int MAX_BUFFER_LIMIT = 100;
 
     private List<SubscriptionDataEvent> messageList = new ArrayList<SubscriptionDataEvent>();
 
-    public SubscriptionDataSender(int writerCount, int turn, Subscrption delivery) {
+    public SubscriptionDataSender(int writerCount, int turn, AndesSubscription delivery) {
         this.writerCount = writerCount;
         this.turn = turn;
         this.delivery = delivery;

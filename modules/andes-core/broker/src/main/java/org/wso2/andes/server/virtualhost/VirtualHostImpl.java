@@ -265,6 +265,11 @@ public class VirtualHostImpl implements VirtualHost
             ClusterResourceHolder.getInstance().setSubscriptionCoordinationManager(subscriptionCoordinationManager);
         }
 
+        AndesSubscriptionManager subscriptionManager =
+                new AndesSubscriptionManager();
+        ClusterResourceHolder.getInstance().setSubscriptionManager(subscriptionManager);
+        subscriptionManager.init();
+
         ClusterManager clusterManager = new ClusterManager();
         clusterManager.init();
         ClusterResourceHolder.getInstance().setClusterManager(clusterManager);
@@ -275,10 +280,6 @@ public class VirtualHostImpl implements VirtualHost
         QueueManagementInformationMBean queueManagementMBean = new QueueManagementInformationMBean();
         queueManagementMBean.register();
 
-        AndesSubscriptionManager subscriptionManager =
-                new AndesSubscriptionManager();
-        ClusterResourceHolder.getInstance().setSubscriptionManager(subscriptionManager);
-        subscriptionManager.init();
 
         _logger.info("Starting syncing exchanges, queues and bindings");
         VirtualHostConfigSynchronizer _VirtualHostConfigSynchronizer = new VirtualHostConfigSynchronizer(this,clusterConfiguration.getVirtualHostSyncTaskInterval());
