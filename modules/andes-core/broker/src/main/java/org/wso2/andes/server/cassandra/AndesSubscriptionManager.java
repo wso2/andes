@@ -21,6 +21,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.mqtt.MQTTLocalSubscription;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.util.AndesUtils;
@@ -67,6 +68,11 @@ public class AndesSubscriptionManager {
             ClusterResourceHolder.getInstance().getClusterManager().getGlobalQueueManager().resetGlobalQueueWorkerIfRunning(globalQueueName);
         } else if (localSubscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
             //now we have a subscription on this node. Start a topicDeliveryWorker if one has not started
+            if (!ClusterResourceHolder.getInstance().getTopicDeliveryWorker().isWorking()) {
+                ClusterResourceHolder.getInstance().getTopicDeliveryWorker().setWorking();
+            }
+        } else if (localSubscription instanceof MQTTLocalSubscription) {
+            //now we have a MQTT subscription on this node. Start a topicDeliveryWorker if one has not started
             if (!ClusterResourceHolder.getInstance().getTopicDeliveryWorker().isWorking()) {
                 ClusterResourceHolder.getInstance().getTopicDeliveryWorker().setWorking();
             }

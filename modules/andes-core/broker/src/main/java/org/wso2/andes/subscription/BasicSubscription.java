@@ -40,11 +40,11 @@ public class BasicSubscription implements Subscrption{
             }else if(tokens[0].equals("targetQueueOwner")){
                 this.targetQueueOwner = tokens[1].equals("null") ? null : tokens[1] ;
             }else if(tokens[0].equals("targetQueueBoundExchange")){
-                this.targetQueueBoundExchange = tokens[1];
+                this.targetQueueBoundExchange =  tokens[1].equals("null") ? null : tokens[1] ;
             }else if(tokens[0].equals("targetQueueBoundExchangeType")){
-                this.targetQueueBoundExchangeType = tokens[1];
+                this.targetQueueBoundExchangeType =  tokens[1].equals("null") ? null : tokens[1] ;
             }else if(tokens[0].equals("isTargetQueueBoundExchangeAutoDeletable")){
-                this.isTargetQueueBoundExchangeAutoDeletable = Short.parseShort(tokens[1]);
+                this.isTargetQueueBoundExchangeAutoDeletable =  tokens[1].equals("null") ? null : Short.parseShort(tokens[1]);
             }else if(tokens[0].equals("hasExternalSubscriptions")){
                 this.hasExternalSubscriptions = Boolean.parseBoolean(tokens[1]);
 			}else{
