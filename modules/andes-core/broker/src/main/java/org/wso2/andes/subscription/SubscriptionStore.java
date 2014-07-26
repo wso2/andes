@@ -597,20 +597,24 @@ public class SubscriptionStore {
         HashMap<String,AndesExchange> exchanges = new HashMap<String, AndesExchange>();
         for(String destination : clusterQueueSubscriptionMap.keySet()) {
             for(Subscrption subscription : clusterQueueSubscriptionMap.get(destination)) {
-                String exchangeIdentifier = new StringBuffer(subscription.getTargetQueueBoundExchangeName()).append("&").append(subscription.getTargetQueueBoundExchangeType()).append("&").append(subscription.ifTargetQueueBoundExchangeAutoDeletable()).toString();
-                if(subscription.isDurable() && exchanges.get(exchangeIdentifier) == null) {
-                    AndesExchange andesexchange = new AndesExchange(subscription.getTargetQueueBoundExchangeName(),subscription.getTargetQueueBoundExchangeType(),subscription.ifTargetQueueBoundExchangeAutoDeletable());
-                    exchanges.put(exchangeIdentifier, andesexchange);
+                if(subscription.getTargetQueueBoundExchangeName() != null) {
+                    String exchangeIdentifier = new StringBuffer(subscription.getTargetQueueBoundExchangeName()).append("&").append(subscription.getTargetQueueBoundExchangeType()).append("&").append(subscription.ifTargetQueueBoundExchangeAutoDeletable()).toString();
+                    if(subscription.isDurable() && exchanges.get(exchangeIdentifier) == null) {
+                        AndesExchange andesexchange = new AndesExchange(subscription.getTargetQueueBoundExchangeName(),subscription.getTargetQueueBoundExchangeType(),subscription.ifTargetQueueBoundExchangeAutoDeletable());
+                        exchanges.put(exchangeIdentifier, andesexchange);
+                    }
                 }
             }
         }
 
         for(String destination : clusterTopicSubscriptionMap.keySet()) {
             for(Subscrption subscription : clusterTopicSubscriptionMap.get(destination)) {
-                String exchangeIdentifier = new StringBuffer(subscription.getTargetQueueBoundExchangeName()).append("&").append(subscription.getTargetQueueBoundExchangeType()).append("&").append(subscription.ifTargetQueueBoundExchangeAutoDeletable()).toString();
-                if(subscription.isDurable() && exchanges.get(exchangeIdentifier) == null) {
-                    AndesExchange andesexchange = new AndesExchange(subscription.getTargetQueueBoundExchangeName(),subscription.getTargetQueueBoundExchangeType(),subscription.ifTargetQueueBoundExchangeAutoDeletable());
-                    exchanges.put(exchangeIdentifier, andesexchange);
+                if(subscription.getTargetQueueBoundExchangeName() != null) {
+                    String exchangeIdentifier = new StringBuffer(subscription.getTargetQueueBoundExchangeName()).append("&").append(subscription.getTargetQueueBoundExchangeType()).append("&").append(subscription.ifTargetQueueBoundExchangeAutoDeletable()).toString();
+                    if(subscription.isDurable() && exchanges.get(exchangeIdentifier) == null) {
+                        AndesExchange andesexchange = new AndesExchange(subscription.getTargetQueueBoundExchangeName(),subscription.getTargetQueueBoundExchangeType(),subscription.ifTargetQueueBoundExchangeAutoDeletable());
+                        exchanges.put(exchangeIdentifier, andesexchange);
+                    }
                 }
             }
         }

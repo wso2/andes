@@ -19,7 +19,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
         setTargetBoundExchange();
         setIsTopic();
         setNodeInfo();
-        setSubscriptionStatus();
+        setIsActive(true);
 
 
     }
@@ -58,8 +58,8 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
     }
 
     /*Provide the external subscriptions*/
-    public void setSubscriptionStatus() {
-        this.hasExternalSubscriptions = true;
+    public void setIsActive(boolean isActive) {
+        this.hasExternalSubscriptions = isActive;
     }
 
     @Override

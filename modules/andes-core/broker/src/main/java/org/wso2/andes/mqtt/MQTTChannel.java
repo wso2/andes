@@ -64,6 +64,7 @@ public class MQTTChannel {
         localSubscription.setMqqtServerChannel(channel);
         localSubscription.setTopic(topic);
         localSubscription.setSubscriptionID(clientID);
+        localSubscription.setIsActive(true);
 
         //Shold indicate the record in the cluster
         try {
@@ -74,14 +75,18 @@ public class MQTTChannel {
     }
 
     /*Will handle subscriber disconnection*/
-    public void disconnectSubscriber(String subscribedTopic, String clientID) {
+    public void disconnectSubscriber(AndesBridge channel, String subscribedTopic, String clientID) {
         try {
-            Collection<LocalSubscription> subscriptions = AndesContext.getInstance().getSubscriptionStore().getLocalSubscribersForTopic(subscribedTopic);
-            for (LocalSubscription local_sub : subscriptions) {
-                if (local_sub.getSubscriptionID().equals(clientID)) {
-                    AndesContext.getInstance().getSubscriptionStore().closeLocalSubscription(local_sub);
-                }
-            }
+
+            //Will create a new local subscription object
+            MQTTLocalSubscription localSubscription = new MQTTLocalSubscription("");
+            localSubscription.setMqqtServerChannel(channel);
+            localSubscription.setTopic(subscribedTopic);
+            localSubscription.setSubscriptionID(clientID);
+            localSubscription.setIsActive(false);
+
+            ClusterResourceHolder.getInstance().getSubscriptionManager().closeSubscription(localSubscription);
+
         } catch (AndesException e) {
             e.printStackTrace();
         }

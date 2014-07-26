@@ -35,10 +35,10 @@ public class AndesBridge {
                 if (!clientTopicRelation.containsValue(subscribe_topic)) {
                     //No relation to the topic means no connections
                     synchronized (topics) {
-                        if (topics.containsValue(subscribe_topic)) {
+                        if (topics.containsKey(subscribe_topic)) {
                             //Will get the actual subscriber connection
                             String bridgingClientID = topics.get(subscribe_topic);
-                            MQTTChannel.getInstance().disconnectSubscriber(subscribe_topic, bridgingClientID);
+                            MQTTChannel.getInstance().disconnectSubscriber(this,subscribe_topic, bridgingClientID);
                             //Finally remove the entry from the list
                             topics.remove(subscribe_topic);
                         }
