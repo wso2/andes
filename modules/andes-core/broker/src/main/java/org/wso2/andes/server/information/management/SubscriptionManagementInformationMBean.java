@@ -1,15 +1,11 @@
 package org.wso2.andes.server.information.management;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.QueueAddress;
-import org.wso2.andes.kernel.Subscrption;
 import org.wso2.andes.management.common.mbeans.SubscriptionManagementInformation;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.management.AMQManagedObject;
-import org.wso2.andes.server.util.AndesUtils;
 
 import javax.management.NotCompliantMBeanException;
 import java.util.ArrayList;
@@ -55,9 +51,9 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
             List<String> allQueues = AndesContext.getInstance().getSubscriptionStore().listQueues();
 
             for (String queue : allQueues) {
-                List<Subscrption> subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination(queue, false);
+                List<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination(queue, false);
 
-                for (Subscrption s : subscriptions) {
+                for (AndesSubscription s : subscriptions) {
 
                     QueueAddress nodeQueueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE,s.getSubscribedNode());
 
@@ -89,9 +85,9 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
             for (String topic : allTopics) {
 
-                List<Subscrption> subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination(topic, true);
+                List<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination(topic, true);
 
-                for (Subscrption s : subscriptions) {
+                for (AndesSubscription s : subscriptions) {
 
                     QueueAddress nodeQueueAddress = new QueueAddress(QueueAddress.QueueType.TOPIC_NODE_QUEUE,s.getSubscribedNode());
 
@@ -136,7 +132,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         }
     }
 
-    private static String renderSubscriptionForUI(Subscrption subscription, int pendingMessageCount) {
+    private static String renderSubscriptionForUI(AndesSubscription subscription, int pendingMessageCount) {
 
         //  subscriptionInfo =  subscriptionIdentifier |  subscribedQueueOrTopicName | subscriberQueueBoundExchange |
         // subscriberQueueName |  isDurable | isActive | numberOfMessagesRemainingForSubscriber | subscriberNodeAddress

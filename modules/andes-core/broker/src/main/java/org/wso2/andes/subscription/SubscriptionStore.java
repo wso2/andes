@@ -36,7 +36,7 @@ public class SubscriptionStore {
         andesContextStore = AndesContext.getInstance().getAndesContextStore();
 	}
 
-    public List<Subscrption> getAllSubscribersForDestination(String destination, boolean isTopic) throws AndesException {
+    public List<AndesSubscription> getAllSubscribersForDestination(String destination, boolean isTopic) throws AndesException {
         return (isTopic? clusterTopicSubscriptionMap.get(destination): clusterQueueSubscriptionMap.get(destination));
     }
 
