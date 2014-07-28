@@ -36,7 +36,7 @@ public interface QueueManagementInformation {
             description = "Name of the queue to be deleted") String queueName);
 
     @MBeanAttribute(name="MessageCount",description = "Message count of the queue")
-    int getMessageCount(String queueName);
+    int getMessageCount(String queueName,String msgPattern);
 
     @MBeanAttribute(name="SubscriptionCount", description = "Number of subscriptions for the queue")
     int getSubscriptionCount(String queueName);
@@ -48,4 +48,5 @@ public interface QueueManagementInformation {
     @MBeanAttribute(name = " Delete All Messages In Queue ", description = "Delete all the messages in the queue without removing queue bindings.")
     void deleteAllMessagesInQueue(@MBeanOperationParameter(name = "queueName" ,
             description = "Name of the queue to delete messages from") String queueName);
+
 }
