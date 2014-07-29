@@ -12,6 +12,7 @@ import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 import org.wso2.andes.server.util.AndesUtils;
 
+@Deprecated
 public class InMemoryMessageStore implements MessageStore {
 
     private ConcurrentHashMap<String, TreeMap<Long, AndesMessageMetadata>> messageMetadata = new ConcurrentHashMap<String, TreeMap<Long, AndesMessageMetadata>>();
@@ -117,6 +118,11 @@ public class InMemoryMessageStore implements MessageStore {
     }
 
     @Override
+    public void addMetaData(String queueName, List<AndesMessageMetadata> metadataList) throws AndesException {
+
+    }
+
+    @Override
     public void addMessageMetaData(QueueAddress queueAddress,
                                    List<AndesMessageMetadata> messageList) throws AndesException {
         if (queueAddress != null) {
@@ -207,6 +213,26 @@ public class InMemoryMessageStore implements MessageStore {
     @Override
     public AndesMessageMetadata getMetaData(long messageId) throws AndesException{
         //todo: implement this
+        return null;
+    }
+
+    @Override
+    public List<AndesMessageMetadata> getMetaDataList(String queueName, long firstMsgId, long lastMsgID) throws AndesException {
+        return null;
+    }
+
+    @Override
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String queueName, long firstMsgId, int count) throws AndesException {
+        return null;
+    }
+
+    @Override
+    public void deleteMessageMetadataFromQueue(String queueName, List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
+
+    }
+
+    @Override
+    public List<AndesRemovableMetadata> getExpiredMessages(Long limit) throws AndesException {
         return null;
     }
 
