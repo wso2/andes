@@ -93,7 +93,8 @@ public interface MessageStore {
      * @throws AndesException
      */
     @Deprecated
-    void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException;
+    void deleteMessageMetadata(List<AndesRemovableMetadata> messagesToRemove,
+                        boolean moveToDeadLetterChannel) throws AndesException;
 
     /**
      *

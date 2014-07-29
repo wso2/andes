@@ -182,7 +182,7 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
     }
 
 
-    public AndesMessagePart getContent(String messageId, int offsetValue) throws AndesException{
+    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException{
         log.info("GET CONTENT >> id " + messageId + " offset " + offsetValue);
         byte[] content;
         AndesMessagePart messagePart;
@@ -203,7 +203,7 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
 
                 messagePart = new AndesMessagePart();
                 messagePart.setData(content);
-                messagePart.setMessageID(Long.parseLong(messageId));
+                messagePart.setMessageID(messageId);
                 messagePart.setOffSet(offset);
                 messagePart.setDataLength(content.length);
             } else {
@@ -441,12 +441,6 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
     }
 
     @Override
-    public List<AndesRemovableMetadata> getExpiredMessages(Long limit) throws AndesException {
-        return null;
-    }
-
-
-    @Override
     public void deleteMessageParts(List<Long> messageIdList) throws AndesException {
         try {
             List<String> rows2Remove = new ArrayList<String>();
@@ -463,6 +457,11 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
             throw new AndesException(e);
         }
 
+    }
+
+    @Override
+    public AndesMessagePart getContent(String messageId, int offsetValue) throws AndesException {
+        return null;
     }
 
     @Override
@@ -483,6 +482,11 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
             log.error("Error while deleting messages", e);
             throw new AndesException(e);
         }
+    }
+
+    @Override
+    public void deleteMessageMetadata(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDLC) throws AndesException {
+
     }
 
     public int countMessagesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch) throws AndesException {
@@ -554,6 +558,11 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
             this.messageContentRemoverTask.setRunning(false);
     }
 
+    @Override
+    public List<AndesRemovableMetadata> getExpiredMessages(Long limit) {
+        return null;
+    }
+
 /*    public int removeMessaesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch) throws AndesException {
         long lastProcessedMessageID = 0;
         int messageCount = 0;
@@ -591,7 +600,6 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
         //To change body of implemented methods use File | Settings | File Templates.
     }
 
-    @Override
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
         //To change body of implemented methods use File | Settings | File Templates.
     }

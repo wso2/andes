@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -115,7 +114,7 @@ public class MessagingEngine {
     }
 
     public AndesMessagePart getMessageContentChunk(long messageID, int offsetInMessage) throws AndesException{
-        AndesMessagePart messagePart = durableMessageStore.getContent(messageID + "", offsetInMessage);
+        AndesMessagePart messagePart = durableMessageStore.getContent(messageID, offsetInMessage);
         return messagePart;
     }
 
@@ -136,7 +135,7 @@ public class MessagingEngine {
                     durableMessageStore.deleteMessageParts(messageIdList);
                 }
 
-                Set<String> targetAndesNodeSet = new HashSet<String>();
+                Set<String> targetAndesNodeSet;
                 boolean originalMessageUsed = false;
                 boolean hasNonDurableSubscriptions = false; 
                 for (AndesSubscription subscriberQueue : subscriptionList) {
@@ -146,7 +145,7 @@ public class MessagingEngine {
                     	 * Subscription ID by writing it to the global queue.
                     	 */
                     	message.setDestination(subscriberQueue.getTargetQueue());
-                    	AndesMessageMetadata clone = null; 
+                    	AndesMessageMetadata clone;
                     	if(!originalMessageUsed){
                     		originalMessageUsed = true;
                     		clone = message; 
@@ -170,7 +169,7 @@ public class MessagingEngine {
                 	 */
                     targetAndesNodeSet  = subscriptionStore.getNodeQueuesHavingSubscriptionsForTopic(message.getDestination());
                     for (String hostId : targetAndesNodeSet) {
-                    	AndesMessageMetadata clone = null; 
+                    	AndesMessageMetadata clone;
                     	if(!originalMessageUsed){
                     		originalMessageUsed = true;
                     		clone = message; 

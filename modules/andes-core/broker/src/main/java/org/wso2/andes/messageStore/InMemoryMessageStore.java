@@ -1,6 +1,5 @@
 package org.wso2.andes.messageStore;
 
-import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,7 +36,7 @@ public class InMemoryMessageStore implements MessageStore {
     }
 
     @Override
-    public AndesMessagePart getContent(String messageId, int offsetValue) throws AndesException{
+    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException{
         //todo:implement this
         return null;
     }
@@ -51,6 +50,11 @@ public class InMemoryMessageStore implements MessageStore {
                 decrementQueueCount(message.destination, message.messageID);
             }
         }
+    }
+
+    @Override
+    public void deleteMessageMetadata(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDLC) throws AndesException {
+
     }
 
     @Override
@@ -244,6 +248,11 @@ public class InMemoryMessageStore implements MessageStore {
     }
 
     @Override
+    public List<AndesRemovableMetadata> getExpiredMessages(Long limit) {
+        return null;
+    }
+
+    @Override
     public void initializeMessageStore(DurableStoreConnection cassandraconnection) throws AndesException {
 
     }
@@ -289,7 +298,6 @@ public class InMemoryMessageStore implements MessageStore {
         //To change body of implemented methods use File | Settings | File Templates.
     }
 
-    @Override
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
         //To change body of implemented methods use File | Settings | File Templates.
     }

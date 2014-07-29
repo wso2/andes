@@ -26,7 +26,6 @@ import org.wso2.andes.server.store.util.CassandraDataAccessException;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
-import java.nio.ByteBuffer;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -103,25 +102,29 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
     }
 
     @Override
-    public int getContent(String messageId, int offsetValue, ByteBuffer dst) {
+    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
         String select = "SELECT " + JDBCConstants.MESSAGE_CONTENT +
                 " FROM " + JDBCConstants.MESSAGES_TABLE +
                 " WHERE " + JDBCConstants.MESSAGE_ID + "=" + messageId +
-                " AND " + JDBCConstants.MSG_OFFSET + "=" + String.valueOf(offsetValue);
-        int offset = 0;
+                " AND " + JDBCConstants.MSG_OFFSET + "=" + offsetValue;
+        AndesMessagePart messagePart = null;
         try {
             Statement stmt = connection.createStatement();
             ResultSet results = stmt.executeQuery(select);
 
-            while (results.next()){
+            if(results.first()){
                 byte[] b = results.getBytes(JDBCConstants.MESSAGE_CONTENT);
-                dst = ByteBuffer.wrap(b);
-                offset = b.length;
+                messagePart = new AndesMessagePart();
+                messagePart.setMessageID(messageId);
+                messagePart.setData(b);
+                messagePart.setDataLength(b.length);
+                messagePart.setOffSet(offsetValue);
+
             }
         } catch (SQLException e) {
             logger.error("Error occurred while retrieving message content from DB [msg_id=" + messageId + "]");
         }
-        return offset;
+        return messagePart;
     }
 
     @Override
@@ -129,7 +132,8 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
 
         try {
                 Integer id = getMainQueueID(queueAddress.queueName);
-                String sqlString = "DELETE * FROM " + JDBCConstants.METADATA_TABLE +
+                String sqlString = "DELETE * " +
+                        " FROM " + JDBCConstants.METADATA_TABLE +
                         " WHERE " + JDBCConstants.QUEUE_ID + "=" + String.valueOf(id) +
                         " AND " + JDBCConstants.MESSAGE_ID + "=?";
 
@@ -149,7 +153,8 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
     @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(QueueAddress queueAddress, long startMsgID, int count) throws AndesException {
 
-        String select = "SELECT * FROM " + JDBCConstants.METADATA_TABLE +
+        String select = "SELECT " + JDBCConstants.MESSAGE_ID + "," + JDBCConstants.METADATA +
+                " FROM " + JDBCConstants.METADATA_TABLE +
                 " WHERE " + JDBCConstants.MESSAGE_ID + ">" + (startMsgID - 1) +
                 " AND " + JDBCConstants.QUEUE_ID + "=" + String.valueOf(getMainQueueID(queueAddress.queueName)) +
                 " LIMIT " + count;
@@ -197,7 +202,7 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
             String sqlString = "UPDATE " + JDBCConstants.METADATA_TABLE +
                     " SET " + JDBCConstants.TNQ_NQ_GQ_ID + "=" + String.valueOf(getMainQueueID(targetAddress.queueName)) +
                     " WHERE " + JDBCConstants.TNQ_NQ_GQ_ID + "=" + String.valueOf(getMainQueueID(sourceAddress.queueName)) +
-                    " AND " + JDBCConstants.QUEUE_ID + "=" + String.valueOf(getDestQueueID(destinationQueue));
+                    " AND " + JDBCConstants.QUEUE_ID + "=" + String.valueOf(getDestinationQueueID(destinationQueue));
 
             Statement stmt = connection.createStatement();
             movedCount = stmt.executeUpdate(sqlString);
@@ -211,13 +216,10 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
 
     @Override
     public int countMessagesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch) throws AndesException {
+        // todo change for slot architecture
         String select = "SELECT COUNT(" + JDBCConstants.TNQ_NQ_GQ_ID + ") AS count" +
-                " WHERE " + JDBCConstants.TNQ_NQ_GQ_ID +
-                " IN (SELECT " + JDBCConstants.TNQ_NQ_GQ_ID + " FROM " + JDBCConstants.TNQ_NQ_GQ_TABLE +
-                " WHERE " + JDBCConstants.TNQ_NQ_GQ_NAME + "=" + queueAddress.queueName + ") " +
-                " AND " + JDBCConstants.QUEUE_ID +
-                " IN ( SELECT " + JDBCConstants.QUEUE_ID +
-                " WHERE " + JDBCConstants.QUEUE_NAME + "=" + destinationQueueNameToMatch + ") ";
+                " WHERE (" + JDBCConstants.TNQ_NQ_GQ_ID + "," + JDBCConstants.QUEUE_ID + ") = " +
+                "(";
 
         int count = 0;
         try {
@@ -280,6 +282,11 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
     }
 
     @Override
+    public List<AndesRemovableMetadata> getExpiredMessages(Long limit) {
+        return null;
+    }
+
+    @Override
     public void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException {
 
     }
@@ -304,7 +311,7 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
         return null;
     }
 
-    private int getDestQueueID(final String destinationQueueName){
+    private int getDestinationQueueID(final String destinationQueueName){
 
         Integer id = destinationQueueMap.get(destinationQueueName);
         if(id != null){
@@ -313,7 +320,7 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
 
         String sqlString = "INSERT INTO " + JDBCConstants.QUEUES_TABLE + "( "+ JDBCConstants.QUEUE_NAME +")" +
                 " VALUES (\"" + destinationQueueName + "\")";
-        Statement stmt = null;
+        Statement stmt;
         try {
             stmt = connection.createStatement();
             stmt.executeUpdate(sqlString, Statement.RETURN_GENERATED_KEYS);
@@ -336,7 +343,7 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
 
         String sqlString = "INSERT INTO " + JDBCConstants.TNQ_NQ_GQ_TABLE + "( "+ JDBCConstants.TNQ_NQ_GQ_NAME +")" +
                 " VALUES (\"" + mainQueueName + "\")";
-        Statement stmt = null;
+        Statement stmt;
         try {
             stmt = connection.createStatement();
             stmt.executeUpdate(sqlString, Statement.RETURN_GENERATED_KEYS);

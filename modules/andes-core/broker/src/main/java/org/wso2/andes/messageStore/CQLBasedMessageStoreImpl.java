@@ -214,7 +214,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 messagePart.setOffSet(offset);
                 messagePart.setDataLength(content.length);
 
-
             } else {
                 throw new RuntimeException("Unexpected Error , content not available for message id :" + messageId);
             }
@@ -560,12 +559,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     @Override
-    public List<AndesRemovableMetadata> getExpiredMessages(Long limit) throws AndesException {
-        return null;
-    }
-
-
-    @Override
     public void deleteMessageParts(List<Long> messageIdList) throws AndesException {
         try {
             List<String> rows2Remove = new ArrayList<String>();
@@ -699,6 +692,11 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         }
         alreadyMovedMessageTracker.shutDownMessageTracker();
         connection.close();
+    }
+
+    @Override
+    public List<AndesRemovableMetadata> getExpiredMessages(Long limit) {
+        return null;
     }
 
 
