@@ -25,7 +25,7 @@ import java.util.List;
 
 public interface MessageStore {
 
-    public void initializeMessageStore (DurableStoreConnection cassandraconnection) throws AndesException;
+    public void initializeMessageStore (DurableStoreConnection durableConnection) throws AndesException;
 
     public void storeMessagePart(List<AndesMessagePart> part)throws AndesException;
 
@@ -33,23 +33,21 @@ public interface MessageStore {
 
     public AndesMessagePart getContent(String messageId, int offsetValue)throws AndesException;
 
-    public void deleteMessageMetadataFromQueue(QueueAddress queueAddress,List<AndesRemovableMetadata> messagesToRemove) throws AndesException;
-
-    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(QueueAddress queueAddress, long startMsgID, int count)throws AndesException;
-
     public void ackReceived(List<AndesAckData> ackList)throws AndesException;
 
-    public void addMessageMetaData(QueueAddress queueAddress, List<AndesMessageMetadata> messageList)throws AndesException;
+    public void addMetaData(final String queueName, List<AndesMessageMetadata> metadataList) throws AndesException;
 
-    public void moveMessageMetaData(QueueAddress sourceAddress, QueueAddress targetAddress, List<AndesMessageMetadata> messageList) throws AndesException;
-
-    public long moveAllMessageMetaDataOfQueue(QueueAddress sourceAddress, QueueAddress targetAddress, String destinationQueue) throws AndesException;
-
-    public int countMessagesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch) throws AndesException;
-
-    public long getMessageCountForQueue(String destinationQueueName) throws AndesException;
+    public long getMessageCountForQueue(final String destinationQueueName) throws AndesException;
 
     public AndesMessageMetadata getMetaData(long messageId) throws AndesException;
+
+    public List<AndesMessageMetadata> getMetaDataList(final String queueName, long firstMsgId, long lastMsgID) throws AndesException;
+
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId, int count) throws AndesException;
+
+    public void deleteMessageMetadataFromQueue(final String queueName,List<AndesRemovableMetadata> messagesToRemove) throws AndesException;
+
+    List<AndesRemovableMetadata> getExpiredMessages(Long limit) throws AndesException;
 
     public void close();
 
@@ -60,6 +58,24 @@ public interface MessageStore {
      */
     void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException;
 
+    @Deprecated
+    public void deleteMessageMetadataFromQueue(QueueAddress queueAddress,List<AndesRemovableMetadata> messagesToRemove) throws AndesException;
+
+    @Deprecated
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(QueueAddress queueAddress, long startMsgID, int count)throws AndesException;
+
+    @Deprecated
+    public void addMessageMetaData(QueueAddress queueAddress, List<AndesMessageMetadata> messageList)throws AndesException;
+
+    @Deprecated
+    public void moveMessageMetaData(QueueAddress sourceAddress, QueueAddress targetAddress, List<AndesMessageMetadata> messageList) throws AndesException;
+
+    @Deprecated
+    public long moveAllMessageMetaDataOfQueue(QueueAddress sourceAddress, QueueAddress targetAddress, String destinationQueue) throws AndesException;
+
+    @Deprecated
+    public int countMessagesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch) throws AndesException;
+
     /**
      * Adds the received JMS Message ID along with its expiration time to MESSAGES_FOR_EXPIRY_COLUMN_FAMILY queue
      * @param messageId
@@ -68,6 +84,7 @@ public interface MessageStore {
      * @param destination
      * @throws org.wso2.andes.server.store.util.CassandraDataAccessException
      */
+    @Deprecated
     void addMessageToExpiryQueue(Long messageId, Long expirationTime, boolean isMessageForTopic, String destination) throws CassandraDataAccessException;
 
     /**
@@ -76,12 +93,14 @@ public interface MessageStore {
      * @param moveToDeadLetterChannel
      * @throws AndesException
      */
+    @Deprecated
     void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException;
 
     /**
      *
      * @param messageList
      */
+    @Deprecated
     void moveToDeadLetterChannel(List<AndesRemovableMetadata> messageList);
 
     /**
@@ -92,5 +111,6 @@ public interface MessageStore {
      * @param keyspace
      * @return
      */
+    @Deprecated
     List<AndesRemovableMetadata> getExpiredMessages(Long limit,String columnFamilyName, String keyspace);
 }

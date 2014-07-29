@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 
 import static org.wso2.andes.messageStore.CassandraConstants.*;
 
+@Deprecated
 public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageStore {
     private static Log log = LogFactory.getLog(CassandraBasedMessageStoreImpl.class);
 
@@ -272,6 +273,11 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
         }
     }
 
+    @Override
+    public void addMetaData(String queueName, List<AndesMessageMetadata> metadataList) throws AndesException {
+
+    }
+
     private void addContentDeletionTask(long currentNanoTime, long messageID) {
         contentDeletionTasks.put(currentNanoTime, messageID);
     }
@@ -417,6 +423,26 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
             throw new AndesException("Error in getting meta data for messageID " + messageId, e);
         }
         return metadata;
+    }
+
+    @Override
+    public List<AndesMessageMetadata> getMetaDataList(String queueName, long firstMsgId, long lastMsgID) throws AndesException {
+        return null;
+    }
+
+    @Override
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String queueName, long firstMsgId, int count) throws AndesException {
+        return null;
+    }
+
+    @Override
+    public void deleteMessageMetadataFromQueue(String queueName, List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
+
+    }
+
+    @Override
+    public List<AndesRemovableMetadata> getExpiredMessages(Long limit) throws AndesException {
+        return null;
     }
 
 
