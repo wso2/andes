@@ -66,7 +66,7 @@ public class SubscriptionStore {
         return activeLocalSubscriptionList;
     }
 
-    public Collection<LocalSubscription> getActiveLocalSubscribersForQueue(String queue) throws AndesException{
+    public Collection<LocalSubscription> getActiveLocalSubscribersForQueue(String queue) {
         Collection<LocalSubscription> list = getLocalSubscriptionList(queue, false).values();
         Collection<LocalSubscription> activeLocalSubscriptionList = new ArrayList<LocalSubscription>();
         for(LocalSubscription localSubscription : list) {

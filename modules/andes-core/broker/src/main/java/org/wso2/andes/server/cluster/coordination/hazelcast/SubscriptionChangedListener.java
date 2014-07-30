@@ -25,9 +25,17 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.SubscriptionNotification;
 
+/**
+ * This listener class is triggered when any subscription change (Subscriber added, subscriber deleted
+ * or subscriber disconnected) is happened.
+ */
 public class SubscriptionChangedListener implements MessageListener {
     private static Log log = LogFactory.getLog(SubscriptionChangedListener.class);
 
+    /**
+     * This method is triggered when a subscription is changed in clustered environment.
+     * @param message
+     */
     @Override
     public void onMessage(Message message) {
         log.info("Handling cluster gossip: received a subscriber changed notification");

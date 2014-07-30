@@ -151,7 +151,7 @@ public class QueueDeliveryWorker extends Thread {
     }
 
 
-    public QueueDeliveryInfo getQueueDeliveryInfo(String queueName) throws AndesException {
+    public QueueDeliveryInfo getQueueDeliveryInfo(String queueName) {
         QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(queueName);
         if (queueDeliveryInfo == null) {
             queueDeliveryInfo = new QueueDeliveryInfo();
@@ -628,7 +628,7 @@ public class QueueDeliveryWorker extends Thread {
         return startingIndex;
     }
 
-    public void clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(String destinationQueueName) throws AndesException {
+    public void clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(String destinationQueueName) {
         undeliveredMessagesMap.remove(destinationQueueName);
         getQueueDeliveryInfo(destinationQueueName).readButUndeliveredMessages.clear();
         Iterator<AndesMessageMetadata> laggardsIterator = laggardsMessages.iterator();

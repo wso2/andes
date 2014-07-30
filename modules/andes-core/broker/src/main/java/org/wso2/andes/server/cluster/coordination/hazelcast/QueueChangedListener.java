@@ -23,6 +23,9 @@ import com.hazelcast.core.MessageListener;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+/**
+ * This listener class is triggered when queue purge is happened.
+ */
 public class QueueChangedListener implements MessageListener {
     private static Log log = LogFactory.getLog(QueueChangedListener.class);
 

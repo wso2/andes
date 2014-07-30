@@ -35,13 +35,35 @@ import java.util.*;
 public class HazelcastAgent {
     private static Log log = LogFactory.getLog(HazelcastAgent.class);
 
+    /**
+     * Singleton HazelcastAgent Instance.
+     */
     private static HazelcastAgent hazelcastAgent;
 
+    /**
+     * Hazelcast instance exposed by Carbon.
+     */
     private HazelcastInstance hazelcastInstance;
+
+    /**
+     * Distributed topic to communicate subscription change notifications among cluster nodes.
+     */
     private ITopic subscriptionChangedNotifierChannel;
+
+    /**
+     * Distributed topic to communicate queue purge notifications among cluster nodes.
+     */
     private ITopic queueChangedNotifierChannel;
+
+    /**
+     * Unique ID generated to represent the node.
+     * This ID is used when generating message IDs.
+     */
     private int uniqueIdOfLocalMember;
 
+    /**
+     * private constructor.
+     */
     private HazelcastAgent(){
         log.info("Initializing Hazelcast Agent");
         this.hazelcastInstance = AndesContext.getInstance().getHazelcastInstance();
@@ -61,13 +83,13 @@ public class HazelcastAgent {
         log.info("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
     }
 
-    public static HazelcastAgent getInstance() {
+    /**
+     * Get singleton HazelcastAgent.
+     * @return HazelcastAgent
+     */
+    public static synchronized HazelcastAgent getInstance() {
         if (hazelcastAgent == null) {
-            synchronized (HazelcastAgent.class) {
-                if(hazelcastAgent == null)  {
-                    hazelcastAgent = new HazelcastAgent();
-                }
-            }
+            hazelcastAgent = new HazelcastAgent();
         }
 
         return hazelcastAgent;
@@ -86,14 +108,17 @@ public class HazelcastAgent {
     }
 
     /**
-     * All members of the cluster are returned as a Set
-     * @return Set of Member
+     * All members of the cluster are returned as a Set of Members
+     * @return Set of Members
      */
     public Set<Member> getAllClusterMembers(){
         return hazelcastInstance.getCluster().getMembers();
     }
 
-
+    /**
+     * Get node IDs of all nodes available in the cluster.
+     * @return List of node IDs.
+     */
     public List<String> getMembersNodeIDs(){
         Set<Member> members = this.getAllClusterMembers();
         List<String> nodeIDList = new ArrayList<String>();
@@ -107,18 +132,35 @@ public class HazelcastAgent {
         return nodeIDList;
     }
 
+    /**
+     * Get local node.
+     * @return local node as a Member.
+     */
     public Member getLocalMember(){
         return hazelcastInstance.getCluster().getLocalMember();
     }
 
+    /**
+     * Get number of members in the cluster.
+     * @return number of members.
+     */
     public int getClusterSize(){
         return hazelcastInstance.getCluster().getMembers().size();
     }
 
+    /**
+     * Get unique ID to represent local member.
+     * @return unique ID.
+     */
     public int getUniqueIdForTheNode(){
         return uniqueIdOfLocalMember;
     }
 
+    /**
+     * Get node ID of the given node.
+     * @param node
+     * @return node ID.
+     */
     public String getIdOfNode(Member node){
         return CoordinationConstants.NODE_NAME_PREFIX
                 + node.getInetSocketAddress().getAddress()
@@ -126,6 +168,12 @@ public class HazelcastAgent {
                 + node.getUuid() ;
     }
 
+    /**
+     * Each member of the cluster is given an unique UUID and here the UUIDs of all nodes are sorted
+     * and the index of the belonging UUID of the given node is returned.
+     * @param node
+     * @return
+     */
     public int getIndexOfNode(Member node){
         List<String> membersUniqueRepresentations = new ArrayList<String>();
         for(Member member: this.getAllClusterMembers()){
@@ -136,10 +184,18 @@ public class HazelcastAgent {
         return indexOfMyId;
     }
 
+    /**
+     * Get the index where the local node is placed when all the cluster nodes are sorted according to their UUID.
+     * @return
+     */
     public int getIndexOfLocalNode(){
         return this.getIndexOfNode(this.getLocalMember());
     }
 
+    /**
+     * Send cluster wide subscription change notification.
+     * @param subscriptionNotification
+     */
     public void notifySubscriberChanged(SubscriptionNotification subscriptionNotification){
         log.info("Handling cluster gossip: Sending subscriber changed notification to cluster...");
         this.subscriptionChangedNotifierChannel.publish(subscriptionNotification);

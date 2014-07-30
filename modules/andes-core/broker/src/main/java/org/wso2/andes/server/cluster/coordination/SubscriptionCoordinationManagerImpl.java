@@ -78,6 +78,7 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
         }
     }
 
+    @Override
     public void handleClusterSubscriptionChange(SubscriptionNotification subscriptionNotification) {
         notifySubscriptionChange(subscriptionNotification);
     }

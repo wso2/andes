@@ -22,16 +22,9 @@ package org.wso2.andes.server.transport;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQUnknownExchangeType;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.protocol.AMQConstant;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.CoordinationException;
 import org.wso2.andes.server.exchange.*;
 import org.wso2.andes.server.filter.FilterManager;
 import org.wso2.andes.server.filter.FilterManagerFactory;
