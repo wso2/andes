@@ -139,6 +139,15 @@ public class SubscriptionStore {
         return list;
     }
 
+    public ArrayList<String> getQueueListHavingSubscriptions(){
+        ArrayList<String> queueList = new ArrayList<String>();
+        if(!localQueueSubscriptionMap.keySet().isEmpty()){
+            queueList = new ArrayList<String>(localQueueSubscriptionMap.keySet());
+        }
+        return queueList;
+
+    }
+
     public List<AndesSubscription> getClusterSubscriptionList(String destination, boolean isTopic) {
         Map<String, List<AndesSubscription>> subscriptionMap = isTopic ? clusterTopicSubscriptionMap : clusterQueueSubscriptionMap;
         return subscriptionMap.get(destination);

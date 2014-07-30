@@ -1,14 +1,5 @@
 package org.wso2.andes.messageStore;
 
-import static org.wso2.andes.messageStore.CassandraConstants.GLOBAL_QUEUES_COLUMN_FAMILY;
-import static org.wso2.andes.messageStore.CassandraConstants.KEYSPACE;
-import static org.wso2.andes.messageStore.CassandraConstants.LONG_TYPE;
-import static org.wso2.andes.messageStore.CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY;
-import static org.wso2.andes.messageStore.CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY;
-import static org.wso2.andes.messageStore.CassandraConstants.MESSAGE_COUNTERS_RAW_NAME;
-import static org.wso2.andes.messageStore.CassandraConstants.NODE_QUEUES_COLUMN_FAMILY;
-import static org.wso2.andes.messageStore.CassandraConstants.PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY;
-
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -37,6 +28,8 @@ import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 
 import com.datastax.driver.core.querybuilder.Delete;
 import com.datastax.driver.core.querybuilder.Insert;
+
+import static org.wso2.andes.messageStore.CassandraConstants.*;
 
 public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageStore {
     private static Log log = LogFactory.getLog(CQLBasedMessageStoreImpl.class);
@@ -83,6 +76,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         CQLDataAccessHelper.createColumnFamily(MESSAGE_CONTENT_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob(),gcGraceSeconds);
         CQLDataAccessHelper.createColumnFamily(NODE_QUEUES_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob(),gcGraceSeconds);
         CQLDataAccessHelper.createColumnFamily(GLOBAL_QUEUES_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob(),gcGraceSeconds);
+        CQLDataAccessHelper.createColumnFamily(META_DATA_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob(),gcGraceSeconds);
         CQLDataAccessHelper.createColumnFamily(PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob(),gcGraceSeconds);
         CQLDataAccessHelper.createCounterColumnFamily(MESSAGE_COUNTERS_COLUMN_FAMILY, KEYSPACE, this.cluster,gcGraceSeconds);
         CQLDataAccessHelper.createMessageExpiryColumnFamily(CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY, KEYSPACE, this.cluster,gcGraceSeconds);
@@ -359,6 +353,65 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             throw new AndesException("Error writing incoming messages to Cassandra", e);
         }
     }
+
+    public void addMessageMetaDataToSlot(QueueAddress queueAddress, List<AndesMessageMetadata> messageList) throws AndesException {
+        try {
+/*            Mutator<String> messageMutator = HFactory.createMutator(KEYSPACE, stringSerializer);*/
+            HashMap<String, Integer> incomingMessagesMap = new HashMap<String, Integer>();
+            List<Insert> inserts = new ArrayList<Insert>();
+            for (AndesMessageMetadata md : messageList) {
+
+                //TODO Stop deleting from QMD_ROW_NAME and GLOBAL_QUEUE_LIST_COLUMN_FAMILY
+
+                //TODO this is to avoid having to group messages in AlternatingCassandraWriter
+                if (queueAddress == null) {
+                    queueAddress = md.queueAddress;
+                }
+                Insert insert = CQLDataAccessHelper.addMessageToQueue(KEYSPACE, CassandraConstants.META_DATA_COLUMN_FAMILY, md.getDestination(),
+                        md.getMessageID(), md.getMetadata(), false);
+                if (incomingMessagesMap.get(md.getDestination()) == null) {
+                    incomingMessagesMap.put(md.getDestination(), 1);
+                } else {
+                    incomingMessagesMap.put(md.getDestination(), incomingMessagesMap.get(md.getDestination()) + 1);
+                }
+                inserts.add(insert);
+                PerformanceCounter.recordIncomingMessageWrittenToCassandra();
+                //log.info("Wrote message " + md.getMessageID() + " to Global Queue " + queueAddress.queueName);
+
+            }
+            long start = System.currentTimeMillis();
+            GenericCQLDAO.batchExecute(KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
+
+/*            for (AndesMessageMetadata md : messageList) {
+                log.info("METADATA STORED ID " + md.getMessageID());
+            }*/
+            //messageMutator.execute();
+
+            PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency((int) (System.currentTimeMillis() - start));
+
+            if (isMessageCountingAllowed) {
+                for (AndesMessageMetadata md : messageList) {
+                    incrementQueueCount(md.getDestination(), 1);
+                }
+            }
+
+            // Client waits for these message ID to be written, this signal those, if there is a error
+            //we will not signal and client who tries to close the connection will timeout.
+            //We can do this better, but leaving this as is or now.
+            for (AndesMessageMetadata md : messageList) {
+                PendingJob jobData = md.getPendingJobsTracker().get(md.getMessageID());
+                if (jobData != null) {
+                    jobData.semaphore.release();
+                }
+            }
+        } catch (Exception e) {
+            //TODO handle Cassandra failures
+            //TODO may be we can write those message to a disk, or do something. Currently we will just loose them
+            log.error("Error writing incoming messages to Cassandra", e);
+            throw new AndesException("Error writing incoming messages to Cassandra", e);
+        }
+    }
+
 
     /**
      * Here if target address is null, we will try to find the address from each AndesMessageMetadata
