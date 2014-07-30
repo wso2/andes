@@ -25,9 +25,16 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.ClusterManager;
 
+/**
+ * This class act as the listener to handle cluster node added and removed actions.
+ */
 public class AndesMembershipListener implements MembershipListener {
     private static Log log = LogFactory.getLog(AndesMembershipListener.class);
 
+    /**
+     * This is triggered when a new member joined to the cluster.
+     * @param membershipEvent
+     */
     @Override
     public void memberAdded(MembershipEvent membershipEvent) {
         Member member = membershipEvent.getMember();
@@ -38,6 +45,10 @@ public class AndesMembershipListener implements MembershipListener {
         ClusterResourceHolder.getInstance().getClusterManager().handleNewNodeJoiningToCluster(member);
     }
 
+    /**
+     * This is triggered when a node left the cluster.
+     * @param membershipEvent
+     */
     @Override
     public void memberRemoved(MembershipEvent membershipEvent) {
         Member member = membershipEvent.getMember();

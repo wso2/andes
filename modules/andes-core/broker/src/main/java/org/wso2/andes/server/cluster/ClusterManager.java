@@ -26,7 +26,6 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
-import org.wso2.andes.server.cluster.coordination.CoordinationException;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.wso2.andes.server.util.AndesConstants;
@@ -113,7 +112,7 @@ public class ClusterManager {
     /**
      * Handles changes needs to be done in current node when a node leaves the cluster
      */
-    public void handleNodeLeavingCluster(Member node) throws AndesException, CoordinationException {
+    public void handleNodeLeavingCluster(Member node) throws AndesException {
         String deletedNodeId = hazelcastAgent.getIdOfNode(node);
         log.info("Handling cluster gossip: Node with ID " + deletedNodeId + " left the cluster");
 
@@ -249,7 +248,7 @@ public class ClusterManager {
      * @param destinationQueueName name of queue messages should be removed
      * @throws AndesException
      */
-    public void removeInMemoryMessagesAccumulated(String destinationQueueName) throws AndesException {
+    public void removeInMemoryMessagesAccumulated(String destinationQueueName) {
         //remove in-memory messages accumulated due to sudden subscription closing
         QueueDeliveryWorker queueDeliveryWorker = ClusterResourceHolder.getInstance().getQueueDeliveryWorker();
         if (queueDeliveryWorker != null) {
@@ -394,8 +393,7 @@ public class ClusterManager {
         }
     }
 
-    //TODO:handle closeAllClusterSubscriptionsOfNode for new Node ID
-    private void clearAllPersistedStatesOfDissapearedNode(String nodeID) throws CoordinationException, AndesException {
+    private void clearAllPersistedStatesOfDissapearedNode(String nodeID) throws AndesException {
 
         log.info("Clearing the Persisted State of Node with ID " + nodeID);
 

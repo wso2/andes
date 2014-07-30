@@ -19,12 +19,23 @@ package org.wso2.andes.server.cluster.coordination;
 
 
 public final class CoordinationConstants {
+    /**
+     * Hazelcast distributed topic name to send subscription changed notifications to cluster nodes.
+     */
+    public static String HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME = "SUBSCRIPTION_CHANGED";
 
-    public static String HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME = "SUBSCRIPTION";
-
+    /**
+     * Hazelcast distributed topic name to send queue purged notifications to cluster nodes.
+     */
     public static String HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME = "QUEUE_CHANGED";
 
+    /**
+     * Prefix to generate node ID
+     */
     public static String NODE_NAME_PREFIX = "NODE";
 
+    /**
+     * Hazelcast ID generator name to generate an unique ID for each node.
+     */
     public static String HAZELCAST_ID_GENERATOR_NAME = "UNIQUE_ID";
 }
