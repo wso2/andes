@@ -32,27 +32,28 @@ public class SubscriptionNotification implements Serializable {
     private AndesExchange andesExchange;
     private AndesBinding andesBinding;
     private AndesQueue andesQueue;
-    private  SubscriptionChange status;
+    private SubscriptionChange status;
     private boolean isDurable;
     private String encodedString;
 
     /**
      * Initialize SubscriptionNotification.
-     * @param exchangeName  Name of the exchange
-     * @param exchangeType  Type of the exchange
-     * @param exchangeAutoDeletable  Is the exchange auto deletable
-     * @param change Is it a subscription addition, or deletion or disconnection
-     * @param queue  Belonging queue name
-     * @param queueOwner Owner of the queue
-     * @param isExclusive Is exclusive
-     * @param isDurable  Is durable topic or a queue
-     * @param destination destination name
-     * @param encodedString encoded string which contains all information about the subscription.
+     *
+     * @param exchangeName          Name of the exchange
+     * @param exchangeType          Type of the exchange
+     * @param exchangeAutoDeletable Is the exchange auto deletable
+     * @param change                Is it a subscription addition, or deletion or disconnection
+     * @param queue                 Belonging queue name
+     * @param queueOwner            Owner of the queue
+     * @param isExclusive           Is exclusive
+     * @param isDurable             Is durable topic or a queue
+     * @param destination           destination name
+     * @param encodedString         encoded string which contains all information about the subscription.
      */
     public SubscriptionNotification(String exchangeName, String exchangeType,
                                     Short exchangeAutoDeletable, SubscriptionChange change, String queue,
                                     String queueOwner, boolean isExclusive, boolean isDurable,
-                                    String destination, String encodedString){
+                                    String destination, String encodedString) {
         this.andesExchange = new AndesExchange(exchangeName, exchangeType, exchangeAutoDeletable);
         this.andesQueue = new AndesQueue(queue, queueOwner, isExclusive, isDurable);
         this.andesBinding = new AndesBinding(exchangeName, this.andesQueue, destination);
@@ -63,6 +64,7 @@ public class SubscriptionNotification implements Serializable {
 
     /**
      * Get AndesExchange used by the subscription
+     *
      * @return
      */
     public AndesExchange getAndesExchange() {
@@ -71,14 +73,16 @@ public class SubscriptionNotification implements Serializable {
 
     /**
      * Get AndesQueue used by the subscription
+     *
      * @return
      */
     public AndesQueue getAndesQueue() {
-        return  this.andesQueue;
+        return this.andesQueue;
     }
 
     /**
      * Get AndesBinding used by the subscription
+     *
      * @return
      */
     public AndesBinding getAndesBinding() {
@@ -87,6 +91,7 @@ public class SubscriptionNotification implements Serializable {
 
     /**
      * Get the type of change happen to the subscription (Added, deleted or disconnected)
+     *
      * @return
      */
     public SubscriptionChange getStatus() {
@@ -95,6 +100,7 @@ public class SubscriptionNotification implements Serializable {
 
     /**
      * Is the subscription to a durable topic or to a queue.
+     *
      * @return
      */
     public boolean isDurable() {
@@ -103,9 +109,10 @@ public class SubscriptionNotification implements Serializable {
 
     /**
      * Get encoded string of the subscription
+     *
      * @return
      */
-    public String getEncodedString(){
+    public String getEncodedString() {
         return this.encodedString;
     }
 }

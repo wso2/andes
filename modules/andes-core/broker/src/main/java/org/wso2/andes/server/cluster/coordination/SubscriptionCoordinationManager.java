@@ -30,7 +30,7 @@ public interface SubscriptionCoordinationManager {
     public void init();
 
     /**
-     *Notify Subscription Listeners on subscription changes
+     * Notify Subscription Listeners on subscription changes
      */
     public void notifySubscriptionChange(SubscriptionNotification subscriptionNotification);
 
@@ -49,6 +49,7 @@ public interface SubscriptionCoordinationManager {
     /**
      * Register a Subscription Listener for Subscription changes. This is not a one time subscription
      * Subscriber will get notified about changes it will remove it from the  SubscriptionCoordinationManager
+     *
      * @param listener Subscription Listener implementation which will handle the subscription changes
      */
     public void registerSubscriptionListener(SubscriptionListener listener);
@@ -56,6 +57,7 @@ public interface SubscriptionCoordinationManager {
     /**
      * Remove Subscription Listener from SubscriptionCoordinationManager so that it will no longer notified with
      * Subscription changes
+     *
      * @param listener Subscription Listener implementation which handle the subscription changes
      */
     public void removeSubscriptionListener(SubscriptionListener listener);

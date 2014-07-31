@@ -46,6 +46,7 @@ public class ClusterManager {
 
     private Log log = LogFactory.getLog(ClusterManager.class);
 
+    //HazelcastAgent instance
     private HazelcastAgent hazelcastAgent;
     private String nodeId;
 
@@ -122,7 +123,7 @@ public class ClusterManager {
         handleGlobalQueueAddition();
 
         // Below steps are carried out only by the 0th node of the list.
-        if(globalQueueSyncId == 0){
+        if (globalQueueSyncId == 0) {
             log.info("===Removing persisted states of the left node:" + deletedNodeId);
             //Update the durable store
             andesContextStore.removeNodeData(deletedNodeId);
@@ -149,7 +150,7 @@ public class ClusterManager {
         List<String> globalQueuesToBeAssigned = new ArrayList<String>();
         List<String> membersUniqueRepresentations = new ArrayList<String>();
 
-        for(Member member: hazelcastAgent.getAllClusterMembers()){
+        for (Member member : hazelcastAgent.getAllClusterMembers()) {
             membersUniqueRepresentations.add(member.getUuid());
         }
 
@@ -196,6 +197,7 @@ public class ClusterManager {
 
     /**
      * Get the node ID of the current node
+     *
      * @return
      */
     public String getMyNodeID() {
@@ -213,7 +215,7 @@ public class ClusterManager {
             //stop all global queue Workers
             globalQueueManager.removeAllQueueWorkersLocally();
             //if in clustered mode copy back node queue messages back to global queue
-            if(isClusteringEnabled) {
+            if (isClusteringEnabled) {
                 checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(MessagingEngine.getMyNodeQueueName());
             }
         } catch (Exception e) {
@@ -225,7 +227,7 @@ public class ClusterManager {
     /**
      * get message count of node queue belonging to given node
      *
-     * @param nodeId             ID of the node
+     * @param nodeId           ID of the node
      * @param destinationQueue destination queue name
      * @return message count
      */
@@ -235,8 +237,8 @@ public class ClusterManager {
         return MessagingEngine.getInstance().getDurableMessageStore().countMessagesOfQueue(nodeQueueAddress, destinationQueue);
     }
 
-    public int getUniqueIdForLocalNode(){
-        if(isClusteringEnabled){
+    public int getUniqueIdForLocalNode() {
+        if (isClusteringEnabled) {
             return hazelcastAgent.getUniqueIdForTheNode();
         }
         return 0;
@@ -283,7 +285,7 @@ public class ClusterManager {
                 + nodeQueueName + "to Global Queues ");
     }
 
-    private void initStandaloneMode() throws Exception{
+    private void initStandaloneMode() throws Exception {
         final ClusterConfiguration config = ClusterResourceHolder.getInstance().getClusterConfiguration();
 
         this.nodeId = CoordinationConstants.NODE_NAME_PREFIX + InetAddress.getLocalHost().toString();
@@ -303,7 +305,7 @@ public class ClusterManager {
         startAllGlobalQueueWorkers();
     }
 
-    private void initClusterMode() throws Exception{
+    private void initClusterMode() throws Exception {
         final ClusterConfiguration config = ClusterResourceHolder.getInstance().getClusterConfiguration();
 
         this.hazelcastAgent = HazelcastAgent.getInstance();
@@ -343,7 +345,7 @@ public class ClusterManager {
     /**
      * Start and stop global queue workers
      */
-    private void updateGlobalQueuesAssignedTome(){
+    private void updateGlobalQueuesAssignedTome() {
 
         List<String> globalQueuesToBeAssigned = new ArrayList<String>();
         int globalQueueCount = ClusterResourceHolder.getInstance().getClusterConfiguration().getGlobalQueueCount();
@@ -358,6 +360,7 @@ public class ClusterManager {
             globalQueuesAssignedToMe.add(q);
         }
     }
+
     /**
      * Start all global queues and workers
      */
@@ -402,7 +405,7 @@ public class ClusterManager {
         //remove node from nodes list
         andesContextStore.removeNodeData(nodeID);
 
-        if(!isClusteringEnabled) {
+        if (!isClusteringEnabled) {
             //if in stand-alone mode close all local queue and topic subscriptions
             synchronized (this) {
                 ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllLocalSubscriptionsOfNode(nodeID);
@@ -413,7 +416,7 @@ public class ClusterManager {
         }
     }
 
-    public String getNodeId(Member node){
+    public String getNodeId(Member node) {
         return hazelcastAgent.getIdOfNode(node);
     }
 }

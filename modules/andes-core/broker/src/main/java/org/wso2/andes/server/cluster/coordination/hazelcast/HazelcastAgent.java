@@ -38,7 +38,7 @@ public class HazelcastAgent {
     /**
      * Singleton HazelcastAgent Instance.
      */
-    private static HazelcastAgent hazelcastAgent;
+    private static volatile HazelcastAgent hazelcastAgentInstance = null;
 
     /**
      * Hazelcast instance exposed by Carbon.
@@ -62,9 +62,9 @@ public class HazelcastAgent {
     private int uniqueIdOfLocalMember;
 
     /**
-     * private constructor.
+     * Private constructor.
      */
-    private HazelcastAgent(){
+    private HazelcastAgent() {
         log.info("Initializing Hazelcast Agent");
         this.hazelcastInstance = AndesContext.getInstance().getHazelcastInstance();
         this.hazelcastInstance.getCluster().addMembershipListener(new AndesMembershipListener());
@@ -77,7 +77,7 @@ public class HazelcastAgent {
                 CoordinationConstants.HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME);
         this.queueChangedNotifierChannel.addMessageListener(new QueueChangedListener());
 
-        IdGenerator idGenerator =hazelcastInstance.getIdGenerator(CoordinationConstants.HAZELCAST_ID_GENERATOR_NAME);
+        IdGenerator idGenerator = hazelcastInstance.getIdGenerator(CoordinationConstants.HAZELCAST_ID_GENERATOR_NAME);
         this.uniqueIdOfLocalMember = (int) idGenerator.newId();
         log.info("Successfully initialized Hazelcast Agent");
         log.info("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
@@ -85,44 +85,52 @@ public class HazelcastAgent {
 
     /**
      * Get singleton HazelcastAgent.
+     *
      * @return HazelcastAgent
      */
-    public static synchronized HazelcastAgent getInstance() {
-        if (hazelcastAgent == null) {
-            hazelcastAgent = new HazelcastAgent();
+    public static HazelcastAgent getInstance() {
+        if (hazelcastAgentInstance == null) {
+            synchronized (HazelcastAgent.class) {
+                if (hazelcastAgentInstance == null) {
+                    hazelcastAgentInstance = new HazelcastAgent();
+                }
+            }
         }
 
-        return hazelcastAgent;
+        return hazelcastAgentInstance;
     }
 
     /**
      * Node ID is generated in the format of "NODE/<host IP>_<Node UUID>"
+     *
      * @return NodeId
      */
-    public String getNodeId(){
+    public String getNodeId() {
         Member localMember = hazelcastInstance.getCluster().getLocalMember();
         return CoordinationConstants.NODE_NAME_PREFIX
                 + localMember.getInetSocketAddress().getAddress()
                 + "_"
-                + localMember.getUuid() ;
+                + localMember.getUuid();
     }
 
     /**
      * All members of the cluster are returned as a Set of Members
+     *
      * @return Set of Members
      */
-    public Set<Member> getAllClusterMembers(){
+    public Set<Member> getAllClusterMembers() {
         return hazelcastInstance.getCluster().getMembers();
     }
 
     /**
      * Get node IDs of all nodes available in the cluster.
+     *
      * @return List of node IDs.
      */
-    public List<String> getMembersNodeIDs(){
+    public List<String> getMembersNodeIDs() {
         Set<Member> members = this.getAllClusterMembers();
         List<String> nodeIDList = new ArrayList<String>();
-        for(Member member: members){
+        for (Member member : members) {
             nodeIDList.add(CoordinationConstants.NODE_NAME_PREFIX
                     + member.getInetSocketAddress().getAddress()
                     + "_"
@@ -134,49 +142,54 @@ public class HazelcastAgent {
 
     /**
      * Get local node.
+     *
      * @return local node as a Member.
      */
-    public Member getLocalMember(){
+    public Member getLocalMember() {
         return hazelcastInstance.getCluster().getLocalMember();
     }
 
     /**
      * Get number of members in the cluster.
+     *
      * @return number of members.
      */
-    public int getClusterSize(){
+    public int getClusterSize() {
         return hazelcastInstance.getCluster().getMembers().size();
     }
 
     /**
      * Get unique ID to represent local member.
+     *
      * @return unique ID.
      */
-    public int getUniqueIdForTheNode(){
+    public int getUniqueIdForTheNode() {
         return uniqueIdOfLocalMember;
     }
 
     /**
      * Get node ID of the given node.
+     *
      * @param node
      * @return node ID.
      */
-    public String getIdOfNode(Member node){
+    public String getIdOfNode(Member node) {
         return CoordinationConstants.NODE_NAME_PREFIX
                 + node.getInetSocketAddress().getAddress()
                 + "_"
-                + node.getUuid() ;
+                + node.getUuid();
     }
 
     /**
      * Each member of the cluster is given an unique UUID and here the UUIDs of all nodes are sorted
      * and the index of the belonging UUID of the given node is returned.
+     *
      * @param node
      * @return
      */
-    public int getIndexOfNode(Member node){
+    public int getIndexOfNode(Member node) {
         List<String> membersUniqueRepresentations = new ArrayList<String>();
-        for(Member member: this.getAllClusterMembers()){
+        for (Member member : this.getAllClusterMembers()) {
             membersUniqueRepresentations.add(member.getUuid());
         }
         Collections.sort(membersUniqueRepresentations);
@@ -186,17 +199,19 @@ public class HazelcastAgent {
 
     /**
      * Get the index where the local node is placed when all the cluster nodes are sorted according to their UUID.
+     *
      * @return
      */
-    public int getIndexOfLocalNode(){
+    public int getIndexOfLocalNode() {
         return this.getIndexOfNode(this.getLocalMember());
     }
 
     /**
      * Send cluster wide subscription change notification.
+     *
      * @param subscriptionNotification
      */
-    public void notifySubscriberChanged(SubscriptionNotification subscriptionNotification){
+    public void notifySubscriberChanged(SubscriptionNotification subscriptionNotification) {
         log.info("Handling cluster gossip: Sending subscriber changed notification to cluster...");
         this.subscriptionChangedNotifierChannel.publish(subscriptionNotification);
     }

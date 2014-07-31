@@ -33,6 +33,7 @@ public class AndesMembershipListener implements MembershipListener {
 
     /**
      * This is triggered when a new member joined to the cluster.
+     *
      * @param membershipEvent
      */
     @Override
@@ -47,6 +48,7 @@ public class AndesMembershipListener implements MembershipListener {
 
     /**
      * This is triggered when a node left the cluster.
+     *
      * @param membershipEvent
      */
     @Override

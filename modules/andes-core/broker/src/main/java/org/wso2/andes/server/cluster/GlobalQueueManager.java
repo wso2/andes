@@ -42,8 +42,8 @@ public class GlobalQueueManager {
     private MessageStore messageStore;
 
 
-    private Map<String,GlobalQueueWorker> queueWorkerMap =
-            new ConcurrentHashMap<String,GlobalQueueWorker>();
+    private Map<String, GlobalQueueWorker> queueWorkerMap =
+            new ConcurrentHashMap<String, GlobalQueueWorker>();
 
 
     private ExecutorService globalQueueManagerexecutorService;
@@ -57,13 +57,13 @@ public class GlobalQueueManager {
     }
 
     public void scheduleWorkForGlobalQueue(String queueName) {
-        if(queueWorkerMap.containsKey(queueName)) {
+        if (queueWorkerMap.containsKey(queueName)) {
             startWorker(queueName);
             return;
         }
         int batchSize = ClusterResourceHolder.getInstance().getClusterConfiguration().
                 getGlobalQueueWorkerMessageBatchSize();
-        GlobalQueueWorker worker = new GlobalQueueWorker(queueName, messageStore,batchSize);
+        GlobalQueueWorker worker = new GlobalQueueWorker(queueName, messageStore, batchSize);
         worker.setRunning(true);
         queueWorkerMap.put(queueName, worker);
         log.info("Starting Global Queue Worker for Global Queue : " + queueName);
@@ -72,7 +72,8 @@ public class GlobalQueueManager {
 
     /**
      * get the list of global Queue names on which workers are running in this node
-     * @return  list of global queue names
+     *
+     * @return list of global queue names
      */
     public List<String> getWorkerRunningGlobalQueueNames() {
         List<String> globalQueueNames = new ArrayList<String>();
@@ -82,8 +83,9 @@ public class GlobalQueueManager {
 
     /**
      * returns worker for the given global queue name if exists, otherwise null
+     *
      * @param globalQueueName name of global queue
-     * @return  worker
+     * @return worker
      */
     public GlobalQueueWorker getWorkerForGlobalQueueName(String globalQueueName) {
         GlobalQueueWorker gqw = null;
@@ -96,7 +98,7 @@ public class GlobalQueueManager {
      */
     public void resetGlobalQueueWorkerIfRunning(String globalQueueName) {
         List<String> globalQueues = getWorkerRunningGlobalQueueNames();
-        if(globalQueues.contains(globalQueueName)) {
+        if (globalQueues.contains(globalQueueName)) {
             queueWorkerMap.get(globalQueueName).resetMessageReading();
         }
     }
@@ -130,7 +132,7 @@ public class GlobalQueueManager {
     }
 
     public int getMessageCountOfGlobalQueue(String globalQueueName) throws AndesException {
-        QueueAddress queueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE,globalQueueName);
+        QueueAddress queueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE, globalQueueName);
         return messageStore.countMessagesOfQueue(queueAddress, null);
     }
 
@@ -142,7 +144,7 @@ public class GlobalQueueManager {
 
         log.info("Stopping all locally existing global queue workers");
         Set<String> queueList = queueWorkerMap.keySet();
-        for(String queue :queueList) {
+        for (String queue : queueList) {
             removeWorker(queue);
         }
     }
@@ -150,7 +152,7 @@ public class GlobalQueueManager {
     public void stopAllQueueWorkersLocally() {
 
         Set<String> queueList = queueWorkerMap.keySet();
-        for(String queue :queueList) {
+        for (String queue : queueList) {
             stopWorker(queue);
         }
     }
@@ -158,7 +160,7 @@ public class GlobalQueueManager {
     public void startAllQueueWorkersLocally() {
 
         Set<String> queueList = queueWorkerMap.keySet();
-        for(String queue :queueList) {
+        for (String queue : queueList) {
             startWorker(queue);
         }
     }
