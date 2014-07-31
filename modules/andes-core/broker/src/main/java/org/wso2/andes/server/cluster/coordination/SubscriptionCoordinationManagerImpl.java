@@ -26,7 +26,7 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordinationManager{
+public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordinationManager {
 
 
     private static Log log = LogFactory.getLog(SubscriptionCoordinationManagerImpl.class);
@@ -36,14 +36,14 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
 
     @Override
     public void init() {
-        if(AndesContext.getInstance().isClusteringEnabled()) {
+        if (AndesContext.getInstance().isClusteringEnabled()) {
             hazelcastAgent = HazelcastAgent.getInstance();
         }
     }
 
     @Override
-    public void notifySubscriptionChange(final SubscriptionNotification subscriptionNotification)  {
-        if(log.isDebugEnabled()){
+    public void notifySubscriptionChange(final SubscriptionNotification subscriptionNotification) {
+        if (log.isDebugEnabled()) {
             log.debug("Handling cluster gossip: Notifying subscribers on Subscription changes ");
         }
         Runnable r = new Runnable() {
@@ -57,7 +57,7 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
                     try {
                         listener.subscriptionsChanged(subscriptionNotification);
                     } catch (Exception e) {
-                        log.error("Error handling the subscription change " ,e);
+                        log.error("Error handling the subscription change ", e);
                     }
                 }
             }
@@ -85,7 +85,7 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
 
     @Override
     public void registerSubscriptionListener(SubscriptionListener listener) {
-        if(listener == null) {
+        if (listener == null) {
             throw new RuntimeException("Error while registering subscribers : invalid argument listener = null");
         }
 
@@ -94,7 +94,7 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
 
     @Override
     public void removeSubscriptionListener(SubscriptionListener listener) {
-        if(this.subscriptionListeners.contains(listener)) {
+        if (this.subscriptionListeners.contains(listener)) {
             this.subscriptionListeners.remove(listener);
         }
     }

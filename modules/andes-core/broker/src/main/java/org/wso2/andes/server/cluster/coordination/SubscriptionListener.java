@@ -26,7 +26,7 @@ public interface SubscriptionListener {
 
     /**
      * Handle the subscription change event.
-     *
+     * <p/>
      * Note : Do not to any assumptions about number of times this get invoked = the number of subscription changes
      * This can be changed in some scenarios
      */
