@@ -276,6 +276,7 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
     @Override
     public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException {
         //To change body of implemented methods use File | Settings | File Templates.
+
     }
 
     private void addContentDeletionTask(long currentNanoTime, long messageID) {
@@ -441,6 +442,11 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
     }
 
     @Override
+    public List<AndesRemovableMetadata> getExpiredMessages(Long limit) throws AndesException {
+        return null;
+    }
+
+    @Override
     public void deleteMessageParts(List<Long> messageIdList) throws AndesException {
         try {
             List<String> rows2Remove = new ArrayList<String>();
@@ -482,11 +488,6 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
             log.error("Error while deleting messages", e);
             throw new AndesException(e);
         }
-    }
-
-    @Override
-    public void deleteMessageMetadata(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDLC) throws AndesException {
-
     }
 
     public int countMessagesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch) throws AndesException {
@@ -558,10 +559,6 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
             this.messageContentRemoverTask.setRunning(false);
     }
 
-    @Override
-    public List<AndesRemovableMetadata> getExpiredMessages(Long limit) {
-        return null;
-    }
 
 /*    public int removeMessaesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch) throws AndesException {
         long lastProcessedMessageID = 0;
@@ -598,6 +595,11 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
     @Override
     public void addMessageToExpiryQueue(Long messageId, Long expirationTime, boolean isMessageForTopic, String destination) throws CassandraDataAccessException {
         //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public void deleteMessageMetadata(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
+
     }
 
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {

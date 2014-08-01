@@ -24,17 +24,16 @@ public class JDBCConstants {
     public static final String MESSAGES_TABLE = "messages";
     public static final String METADATA_TABLE = "metadata";
     public static final String QUEUES_TABLE = "queues";
-    public static final String TNQ_NQ_GQ_TABLE = "tnq_nq_gnq";
     public static final String REF_COUNT_TABLE = "reference_counts";
+    public static final String EXPIRATION_TABLE = "expiration_data";
 
     public static final String MESSAGE_ID = "message_id";
     public static final String QUEUE_ID = "queue_id";
-    public static final String TNQ_NQ_GQ_ID = "tnq_nq_gq_id";
     public static final String QUEUE_NAME = "name";
     public static final String REF_COUNT = "reference_count";
-    public static final String TNQ_NQ_GQ_NAME = "name";
     public static final String METADATA = "data";
     public static final String MSG_OFFSET = "offset";
     public static final String MESSAGE_CONTENT = "content";
+    public static final String EXPIRATION_TIME = "expiration_time";
 
 }

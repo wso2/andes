@@ -55,7 +55,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         messageContentRemoverTask.start();
     }
 
-
     private void initializeCassandraMessageStore(DurableStoreConnection cassandraconnection) throws AndesException {
         try {
             cluster = ((CQLConnection) cassandraconnection).getCluster();
@@ -194,7 +193,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             throw new AndesException(e);
         }
     }
-
 
     public AndesMessagePart getContent(String messageId, int offsetValue) throws AndesException {
         //log.info("REQUEST GET CONTENT >> id " + messageId + " offset " + offsetValue);
@@ -665,7 +663,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         return msgCount;
     }
 
-
     private boolean msgOKToMove(long msgID, QueueAddress sourceAddress, QueueAddress targetAddress) throws CassandraDataAccessException {
         if (alreadyMovedMessageTracker.checkIfAlreadyTracked(msgID)) {
             List<Statement> statements = new ArrayList<Statement>();
@@ -685,7 +682,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         }
     }
 
-
     public void close() {
         if (messageContentRemoverTask != null && messageContentRemoverTask.isRunning()) {
             this.messageContentRemoverTask.setRunning(false);
@@ -698,9 +694,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     public List<AndesRemovableMetadata> getExpiredMessages(Long limit) {
         return null;
     }
-
-
-
 
 /*    public int removeMessaesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch) throws AndesException {
         long lastProcessedMessageID = 0;
@@ -748,8 +741,68 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     @Override
-    public void deleteMessageMetadata(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDLC) throws AndesException {
+/**
+ * Method to delete entries from MESSAGES_FOR_EXPIRY_COLUMN_FAMILY Column Family
+ */
+    public void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException {
+        try {
+            List<Statement> statements = new ArrayList<Statement>();
+            for (Long messageId : messagesToRemove) {
 
+                CQLQueryBuilder.CqlDelete cqlDelete = new CQLQueryBuilder.CqlDelete(KEYSPACE, CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY);
+
+                cqlDelete.addCondition(CQLDataAccessHelper.MESSAGE_ID, messageId, CassandraHelper.WHERE_OPERATORS.EQ);
+
+                Delete delete = CQLQueryBuilder.buildSingleDelete(cqlDelete);
+
+                statements.add(delete);
+            }
+
+            // There is another way. Can delete using a single where clause on the timestamp. (delete all messages with expiration time < current timestamp)
+            // But that could result in inconsistent data overall.
+            // If a message has been added to the queue between expiry checker invocation and this method, it could be lost.
+            // Therefore, the above approach to delete.
+            GenericCQLDAO.batchExecute(KEYSPACE, statements.toArray(new Statement[statements.size()]));
+        } catch (Exception e) {
+            log.error("Error while deleting messages", e);
+            throw new AndesException(e);
+        }
+    }
+
+    @Override
+/**
+ * Adds the received JMS Message ID along with its expiration time to "MESSAGES_FOR_EXPIRY_COLUMN_FAMILY" queue
+ * @param messageId
+ * @param expirationTime
+ * @throws CassandraDataAccessException
+ */
+    public void addMessageToExpiryQueue(Long messageId, Long expirationTime, boolean isMessageForTopic, String destination) throws CassandraDataAccessException {
+
+        final String columnFamily = CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY;
+        //final String rowKey = CassandraConstants.MESSAGES_FOR_EXPIRY_ROW_NAME;
+
+        if (columnFamily == null || messageId == 0) {
+            throw new CassandraDataAccessException("Can't add data with queueType = " + columnFamily +
+                    " and messageId  = " + messageId + " expirationTime = " + expirationTime);
+        }
+
+        Map<String, Object> keyValueMap = new HashMap<String, Object>();
+        keyValueMap.put(CQLDataAccessHelper.MESSAGE_ID, messageId);
+        keyValueMap.put(CQLDataAccessHelper.MESSAGE_EXPIRATION_TIME, expirationTime);
+        keyValueMap.put(CQLDataAccessHelper.MESSAGE_DESTINATION, destination);
+        keyValueMap.put(CQLDataAccessHelper.MESSAGE_IS_FOR_TOPIC, isMessageForTopic);
+
+        Insert insert = CQLQueryBuilder.buildSingleInsert(KEYSPACE, columnFamily, keyValueMap);
+
+        GenericCQLDAO.execute(KEYSPACE, insert.getQueryString());
+
+        log.info("Wrote message " + messageId + " to Column Family " + CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY);
+
+    }
+
+    @Override
+    public void deleteMessageMetadata(List<AndesRemovableMetadata> messagesToRemove,
+                               boolean moveToDLC) throws AndesException {
         try {
 
             HashMap<String, List<AndesRemovableMetadata>> messagesForTopics = new HashMap<String, List<AndesRemovableMetadata>>();
@@ -821,67 +874,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             throw new AndesException("Error during message deletion ", e);
         }
     }
-
-    @Override
-/**
- * Method to delete entries from MESSAGES_FOR_EXPIRY_COLUMN_FAMILY Column Family
- */
-    public void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException {
-        try {
-            List<Statement> statements = new ArrayList<Statement>();
-            for (Long messageId : messagesToRemove) {
-
-                CQLQueryBuilder.CqlDelete cqlDelete = new CQLQueryBuilder.CqlDelete(KEYSPACE, CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY);
-
-                cqlDelete.addCondition(CQLDataAccessHelper.MESSAGE_ID, messageId, CassandraHelper.WHERE_OPERATORS.EQ);
-
-                Delete delete = CQLQueryBuilder.buildSingleDelete(cqlDelete);
-
-                statements.add(delete);
-            }
-
-            // There is another way. Can delete using a single where clause on the timestamp. (delete all messages with expiration time < current timestamp)
-            // But that could result in inconsistent data overall.
-            // If a message has been added to the queue between expiry checker invocation and this method, it could be lost.
-            // Therefore, the above approach to delete.
-            GenericCQLDAO.batchExecute(KEYSPACE, statements.toArray(new Statement[statements.size()]));
-        } catch (Exception e) {
-            log.error("Error while deleting messages", e);
-            throw new AndesException(e);
-        }
-    }
-
-    @Override
-/**
- * Adds the received JMS Message ID along with its expiration time to "MESSAGES_FOR_EXPIRY_COLUMN_FAMILY" queue
- * @param messageId
- * @param expirationTime
- * @throws CassandraDataAccessException
- */
-    public void addMessageToExpiryQueue(Long messageId, Long expirationTime, boolean isMessageForTopic, String destination) throws CassandraDataAccessException {
-
-        final String columnFamily = CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY;
-        //final String rowKey = CassandraConstants.MESSAGES_FOR_EXPIRY_ROW_NAME;
-
-        if (columnFamily == null || messageId == 0) {
-            throw new CassandraDataAccessException("Can't add data with queueType = " + columnFamily +
-                    " and messageId  = " + messageId + " expirationTime = " + expirationTime);
-        }
-
-        Map<String, Object> keyValueMap = new HashMap<String, Object>();
-        keyValueMap.put(CQLDataAccessHelper.MESSAGE_ID, messageId);
-        keyValueMap.put(CQLDataAccessHelper.MESSAGE_EXPIRATION_TIME, expirationTime);
-        keyValueMap.put(CQLDataAccessHelper.MESSAGE_DESTINATION, destination);
-        keyValueMap.put(CQLDataAccessHelper.MESSAGE_IS_FOR_TOPIC, isMessageForTopic);
-
-        Insert insert = CQLQueryBuilder.buildSingleInsert(KEYSPACE, columnFamily, keyValueMap);
-
-        GenericCQLDAO.execute(KEYSPACE, insert.getQueryString());
-
-        log.info("Wrote message " + messageId + " to Column Family " + CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY);
-
-    }
-
 
     @Override
     public List<AndesRemovableMetadata> getExpiredMessages(Long limit, String columnFamilyName, String keyspace) {

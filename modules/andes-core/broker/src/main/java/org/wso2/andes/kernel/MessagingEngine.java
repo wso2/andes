@@ -53,8 +53,6 @@ public class MessagingEngine {
     private SubscriptionStore subscriptionStore;
     private MessageIdGenerator messageIdGenerator;
     private ClusterConfiguration config;
-    private final String ID_GENENRATOR = "idGenerator";
-
 
     public static synchronized MessagingEngine getInstance() {
         if(messagingEngine == null){
@@ -108,14 +106,12 @@ public class MessagingEngine {
         return config;
     }
 
-
 	public void messageContentReceived(AndesMessagePart part) {
         disruptorBasedExecutor.messagePartReceived(part);
     }
 
     public AndesMessagePart getMessageContentChunk(long messageID, int offsetInMessage) throws AndesException{
-        AndesMessagePart messagePart = durableMessageStore.getContent(messageID, offsetInMessage);
-        return messagePart;
+        return durableMessageStore.getContent(messageID, offsetInMessage);
     }
 
     public void messageReceived(AndesMessageMetadata message, long channelID) throws AndesException {
@@ -296,8 +292,8 @@ public class MessagingEngine {
     
     public static String getMyNodeQueueName(){
         ClusterManager clusterManager = ClusterResourceHolder.getInstance().getClusterManager();
-        String nodeQueueName = AndesConstants.NODE_QUEUE_NAME_PREFIX + clusterManager.getMyNodeID() ;
-        return nodeQueueName;
+        return AndesConstants.NODE_QUEUE_NAME_PREFIX + clusterManager.getMyNodeID();
+
     }
 
     private void configureMessageIDGenerator() {
@@ -323,7 +319,7 @@ public class MessagingEngine {
      * start message delivery. Start threads. If not created create.
      * @throws Exception
      */
-    public void startMessageDelivey() throws Exception{
+    public void startMessageDelivery() throws Exception{
 
 //        log.info("Starting queue message publisher");
 //        QueueDeliveryWorker qdw =
@@ -381,7 +377,7 @@ public class MessagingEngine {
         stopMessageDelivery();
         //todo: hasitha - we need to wait all jobs are finished, all executors have no future tasks
         durableMessageStore.close();
-
+        inMemoryMessageStore.close();
         stopMessageExpirationWorker();
 
     }

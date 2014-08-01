@@ -293,7 +293,7 @@ public class VirtualHostImpl implements VirtualHost
         ClusterResourceHolder.getInstance().getSubscriptionCoordinationManager().
                 registerSubscriptionListener(_VirtualHostConfigSynchronizer);
 
-        MessagingEngine.getInstance().startMessageDelivey();
+        MessagingEngine.getInstance().startMessageDelivery();
         MessagingEngine.getInstance().startMessageExpirationWorker();
 
         //reload exchanges/queues/bindings and subscriptions

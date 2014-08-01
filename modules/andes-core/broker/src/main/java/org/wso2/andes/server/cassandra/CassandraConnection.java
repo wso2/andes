@@ -143,7 +143,7 @@ public class CassandraConnection implements DurableStoreConnection {
             if (MessagingEngine.getInstance().getDurableMessageStore() != null
                     && AndesContext.getInstance().getSubscriptionStore() != null) {
 
-                MessagingEngine.getInstance().startMessageDelivey();
+                MessagingEngine.getInstance().startMessageDelivery();
 
                 ClusterManager cm = ClusterResourceHolder.getInstance().getClusterManager();
 
