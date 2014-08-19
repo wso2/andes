@@ -121,6 +121,8 @@ public class InMemoryMessageStore implements MessageStore {
 
     }
 
+
+
     @Override
     public void addMetaData(AndesMessageMetadata metadata) throws AndesException {
 

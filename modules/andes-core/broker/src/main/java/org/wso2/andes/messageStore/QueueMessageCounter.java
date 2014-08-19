@@ -4,6 +4,7 @@ import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.slot.SlotManager;
 
+
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -15,7 +16,6 @@ public class QueueMessageCounter {
     //TODO what should be these value
     private static long timeOutForMessagesInQueue = 1000; // In milliseconds
     private static SlotManager slotManager;
-    private static boolean isClusteringEnabled;
 
     static {
         slotManager = SlotManager.getInstance();
@@ -32,6 +32,7 @@ public class QueueMessageCounter {
                         for (String queue : slotTimeOutMap.keySet()) {
                             if ((System.currentTimeMillis() - slotTimeOutMap.get(queue)) > timeOutForMessagesInQueue) {
                                 recordMetaDataCountInSlot(null, queue);
+
                             }
                         }
 
@@ -51,6 +52,7 @@ public class QueueMessageCounter {
      */
     public static synchronized void recordMetaDataCountInSlot(List<AndesMessageMetadata> metadataList, String queue) {
         if (metadataList != null) {
+
             for (AndesMessageMetadata md : metadataList) {
                 String queueName = md.getDestination();
                 //if this is the first message to that queue
@@ -125,6 +127,7 @@ public class QueueMessageCounter {
             slotManager.updateMessageID(queueName, slot.getEndMessageId());
             queueToSlotMap.remove(queueName);
             slotTimeOutMap.remove(queueName);
+
         }
 
     }

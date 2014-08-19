@@ -13,6 +13,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.CQLConnection;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.slot.Slot;
+
 import org.wso2.andes.server.cassandra.dao.CQLQueryBuilder;
 import org.wso2.andes.server.cassandra.dao.CassandraHelper;
 import org.wso2.andes.server.cassandra.dao.GenericCQLDAO;
@@ -309,6 +310,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             GenericCQLDAO.batchExecute(KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
             if (isClusteringEnabled) {
                 QueueMessageCounter.recordMetaDataCountInSlot(metadataList, null);
+
             }
             PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency((int) (System.currentTimeMillis() - start));
 

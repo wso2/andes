@@ -55,7 +55,8 @@ public class QueueDeliveryWorker {
     private SubscriptionStore subscriptionStore;
     private OnflightMessageTracker onflightMessageTracker;
 
-    private static QueueDeliveryWorker queueDeliveryWorker;
+    private static QueueDeliveryWorker queueDeliveryWorker = new QueueDeliveryWorker(1000,false);
+
 
 
     //messages read by Laggards thread
@@ -229,6 +230,7 @@ public class QueueDeliveryWorker {
 
        // while (true) {
            // if (running) {
+
                     try {
                         /**
                          *    Following check is to avoid the worker queue been full with too many pending tasks.
@@ -243,6 +245,7 @@ public class QueueDeliveryWorker {
                             log.info("skipping content cassandra reading thread as flusher queue has " + workqueueSize + " tasks");
                             sleep4waitInterval(queueWorkerWaitInterval);
                             //continue;
+
                         }
 
                         resetOffsetAtCassadraQueueIfNeeded(false);
@@ -260,6 +263,7 @@ public class QueueDeliveryWorker {
                           //  QueueAddress queueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueue);
 //                            List<AndesMessageMetadata> messagesReadByLeadingThread =
 //                                    messageStore.getNextNMessageMetadataFromQueue(queueAddress, lastProcessedId++, messageCountToRead);
+
                             //log.info(" LEADING >> Read " + messageCountToRead + " number of messages from id " + lastProcessedId + ". Returned " + messagesReadByLeadingThread.size());
 
                             for (AndesMessageMetadata message : messagesReadByLeadingThread) {
@@ -401,6 +405,7 @@ public class QueueDeliveryWorker {
                         }
                         log.error("Error running Cassandra Message Flusher" + e.getMessage(), e);
                     }
+
 
 //            } else {
 //                try {
@@ -646,15 +651,8 @@ public class QueueDeliveryWorker {
     }
 
     public static QueueDeliveryWorker getInstance() {
-        if (queueDeliveryWorker == null) {
-
-            synchronized (QueueDeliveryWorker.class) {
-                if (queueDeliveryWorker == null) {
-                    queueDeliveryWorker = new QueueDeliveryWorker(1000,false);
-                }
-            }
-        }
         return queueDeliveryWorker;
     }
+
 
 }

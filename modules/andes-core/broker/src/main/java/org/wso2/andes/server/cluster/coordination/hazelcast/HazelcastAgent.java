@@ -24,6 +24,8 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessagePurgeHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
+import org.wso2.andes.server.slot.Slot;
+
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.slot.Slot;
 
@@ -60,6 +62,7 @@ public class HazelcastAgent {
      */
     private ITopic<ClusterNotification> queueChangedNotifierChannel;
 
+
     /**
      * Distributed topic to communicate exchange change notification among cluster nodes.
      */
@@ -74,7 +77,10 @@ public class HazelcastAgent {
      * Unique ID generated to represent the node.
      * This ID is used when generating message IDs.
      */
+
     private int uniqueIdOfLocalMember;
+
+
 
     /**
      * Private constructor.
@@ -317,4 +323,5 @@ public class HazelcastAgent {
     public IMap<String, HashMap<Long, Slot>> getSlotAssignmentMap() {
         return slotAssignmentMap;
     }
+
 }
