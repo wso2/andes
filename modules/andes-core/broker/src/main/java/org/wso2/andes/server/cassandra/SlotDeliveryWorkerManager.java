@@ -5,13 +5,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * Created with IntelliJ IDEA.
- * User: sajini
- * Date: 7/29/14
- * Time: 2:06 PM
- * To change this template use File | Settings | File Templates.
- */
 public class SlotDeliveryWorkerManager {
 
     private Map<Integer,SlotDeliveryWorker> queueWorkerMap =
@@ -19,10 +12,24 @@ public class SlotDeliveryWorkerManager {
 
     private ExecutorService slotDeliveryWorkerExecutor;
     private int numberOfThreads;
+    private static SlotDeliveryWorkerManager slotDeliveryWorkerManagerManager;
 
-    public SlotDeliveryWorkerManager(){
+
+    private SlotDeliveryWorkerManager(){
         numberOfThreads = 5;
         this.slotDeliveryWorkerExecutor = Executors.newFixedThreadPool(numberOfThreads);
+    }
+
+    public static SlotDeliveryWorkerManager getInstance() {
+        if (slotDeliveryWorkerManagerManager == null) {
+
+            synchronized (SlotDeliveryWorkerManager.class) {
+                if (slotDeliveryWorkerManagerManager == null) {
+                    slotDeliveryWorkerManagerManager = new SlotDeliveryWorkerManager();
+                }
+            }
+        }
+        return slotDeliveryWorkerManagerManager;
     }
 
     public void startSlotDeliveryWorkerForQueue(String queueName){
@@ -34,7 +41,7 @@ public class SlotDeliveryWorkerManager {
                     slotDeliveryWorker.addQueueToThread(queueName);
                 }
        } else{
-           SlotDeliveryWorker slotDeliveryWorker = new SlotDeliveryWorker(slotDeliveryWorkerId);
+           SlotDeliveryWorker slotDeliveryWorker = new SlotDeliveryWorker();
            slotDeliveryWorker.addQueueToThread(queueName);
            queueWorkerMap.put(slotDeliveryWorkerId, slotDeliveryWorker);
            slotDeliveryWorkerExecutor.execute(slotDeliveryWorker);

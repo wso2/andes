@@ -40,4 +40,15 @@ public final class CoordinationConstants {
      * Hazelcast ID generator name to generate an unique ID for each node.
      */
     public static String HAZELCAST_ID_GENERATOR_NAME = "UNIQUE_ID";
+
+    public static String FREE_SLOT_MAP_NAME = "freeSlotsMap";
+
+    public static String QUEUE_TO_MESSAGE_ID_LIST_MAP_NAME = "messageIdListMap";
+
+    public static String LAST_PROCESSED_IDS_MAP_NAME = "lastProcessedIDsMap";
+
+    public static String SLOT_ASSIGNMENT_MAP_NAME = "slotAssignmentMap";
+
+    public static String LOCK_NAME = "freeSlotMapLock";
+
 }

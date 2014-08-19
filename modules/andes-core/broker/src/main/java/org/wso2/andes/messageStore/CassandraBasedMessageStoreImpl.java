@@ -274,8 +274,8 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
     }
 
     @Override
-    public void addMetaData(String queueName, List<AndesMessageMetadata> metadataList) throws AndesException {
-
+    public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException {
+        //To change body of implemented methods use File | Settings | File Templates.
     }
 
     private void addContentDeletionTask(long currentNanoTime, long messageID) {

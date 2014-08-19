@@ -35,7 +35,7 @@ public interface MessageStore {
 
     public void ackReceived(List<AndesAckData> ackList)throws AndesException;
 
-    public void addMetaData(final String queueName, List<AndesMessageMetadata> metadataList) throws AndesException;
+    public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException;
 
     public long getMessageCountForQueue(final String destinationQueueName) throws AndesException;
 

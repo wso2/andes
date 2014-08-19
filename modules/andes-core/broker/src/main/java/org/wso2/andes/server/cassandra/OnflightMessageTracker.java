@@ -258,7 +258,8 @@ public synchronized boolean testAndAddMessage(AndesMessageMetadata andesMetaData
 
         String queue = andesMetaDataEntry.getDestination();
 
-        String nodeSpecificQueueName = queue + "_" + ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        //String nodeSpecificQueueName = queue + "_" + ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        String nodeSpecificQueueName = queue;
 
         String deliveryID = new StringBuffer(channel.getId().toString()).append("/").append(deliveryTag).toString();
 
@@ -372,7 +373,8 @@ public synchronized boolean testAndAddMessage(AndesMessageMetadata andesMetaData
 
     private void handleMessageRemovalWhenAcked(MsgData msgData) throws AMQStoreException, AndesException {
         if (deliveredButNotAckedMessages.contains(msgData.msgID)) {
-            String destinationQueueName = msgData.queue.substring(0, msgData.queue.lastIndexOf("_"));
+            //String destinationQueueName = msgData.queue.substring(0, msgData.queue.lastIndexOf("_"));
+            String destinationQueueName = msgData.queue;
             //schedule to remove message from message store
             if (isInMemoryMode) {
                 List<AndesAckData> ackData = new ArrayList<AndesAckData>();

@@ -17,19 +17,15 @@
 */
 package org.wso2.andes.server.cluster.coordination.hazelcast;
 
-import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.ITopic;
-import com.hazelcast.core.IdGenerator;
-import com.hazelcast.core.Member;
+import com.hazelcast.core.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.server.cassandra.Slot;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.SubscriptionNotification;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * This is a singleton class, which contains all Hazelcast related operations.
@@ -57,11 +53,20 @@ public class HazelcastAgent {
      */
     private ITopic queueChangedNotifierChannel;
 
+
+    private IMap<String, TreeSet<Long>> queueToMessageIdListMap;
+    private IMap<String,Slot> slotAssignmentMap;
+    private IMap<String, Long> lastProcessedIDs;
     /**
      * Unique ID generated to represent the node.
      * This ID is used when generating message IDs.
      */
+
     private int uniqueIdOfLocalMember;
+
+    private IMap<String, TreeSet<Slot>> freeSlotMap;
+
+
 
     /**
      * Get singleton HazelcastAgent.
@@ -105,6 +110,12 @@ public class HazelcastAgent {
 
         IdGenerator idGenerator = hazelcastInstance.getIdGenerator(CoordinationConstants.HAZELCAST_ID_GENERATOR_NAME);
         this.uniqueIdOfLocalMember = (int) idGenerator.newId();
+        freeSlotMap = hazelcastInstance.getMap(CoordinationConstants.FREE_SLOT_MAP_NAME);
+        queueToMessageIdListMap = hazelcastInstance.getMap(CoordinationConstants.QUEUE_TO_MESSAGE_ID_LIST_MAP_NAME);
+        lastProcessedIDs = hazelcastInstance.getMap(CoordinationConstants.LAST_PROCESSED_IDS_MAP_NAME);
+        slotAssignmentMap = hazelcastInstance.getMap(CoordinationConstants.SLOT_ASSIGNMENT_MAP_NAME);
+        log.info("Successfully initialized Hazelcast Agent");
+        log.info("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
 
         if (log.isInfoEnabled()) {
             log.info("Successfully initialized Hazelcast Agent");
@@ -231,5 +242,21 @@ public class HazelcastAgent {
             log.info("Handling cluster gossip: Sending subscriber changed notification to cluster...");
         }
         this.subscriptionChangedNotifierChannel.publish(subscriptionNotification);
+    }
+
+    public IMap<String,TreeSet<Slot>> getFreeSlotMap(){
+        return freeSlotMap;
+    }
+
+    public IMap<String, TreeSet<Long>> getQueueToMessageIdListMap() {
+        return queueToMessageIdListMap;
+    }
+
+    public IMap<String, Long> getLastProcessedIDs() {
+        return lastProcessedIDs;
+    }
+
+    public IMap<String,Slot> getSlotAssignmentMap() {
+        return slotAssignmentMap;
     }
 }

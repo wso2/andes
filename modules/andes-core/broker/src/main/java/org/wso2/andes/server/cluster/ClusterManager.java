@@ -74,12 +74,16 @@ public class ClusterManager {
      */
     private AndesContextStore andesContextStore;
 
+    private SlotManager slotManager;
+
     /**
      * Create a ClusterManager instance
      */
     public ClusterManager() {
         this.andesContextStore = AndesContext.getInstance().getAndesContextStore();
         this.globalQueueManager = new GlobalQueueManager(MessagingEngine.getInstance().getDurableMessageStore());
+        this.slotManager = SlotManager.getInstance();
+
     }
 
     /**
@@ -152,6 +156,8 @@ public class ClusterManager {
             //clear persisted states of disappeared node
             clearAllPersistedStatesOfDissapearedNode(deletedNodeId);
 
+            //Reassign the slot to free slots pool
+             slotManager.reAssignAssignedSlotsToFreeSlotsPool(deletedNodeId);
             // check and copy back messages of node queue belonging to disappeared node
             checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(AndesUtils.getNodeQueueNameForNodeId(deletedNodeId));
         }
@@ -322,7 +328,8 @@ public class ClusterManager {
         andesContextStore.storeNodeDetails(nodeId, config.getBindIpAddress());
 
         //start all global queue workers on the node
-        startAllGlobalQueueWorkers();
+        //TODO commented by sajini
+        //startAllGlobalQueueWorkers();
     }
 
     private void initClusterMode() throws Exception {
@@ -409,16 +416,19 @@ public class ClusterManager {
         updateGlobalQueuesAssignedTome();
 
         //stop any global queue worker that is not assigned to me now
-        for (String globalQueue : currentGlobalQueueAssignments) {
-            if (!globalQueuesAssignedToMe.contains(globalQueue)) {
-                globalQueueManager.removeWorker(globalQueue);
-            }
-        }
+        //TODO commented by sajini
+
+//        for (String globalQueue : currentGlobalQueueAssignments) {
+//            if (!globalQueuesAssignedToMe.contains(globalQueue)) {
+//                globalQueueManager.removeWorker(globalQueue);
+//            }
+//        }
 
         //start global queue workers for queues assigned to me
-        for (String globalQueue : globalQueuesAssignedToMe) {
-            globalQueueManager.scheduleWorkForGlobalQueue(globalQueue);
-        }
+        //TODO commented by sajini
+//        for (String globalQueue : globalQueuesAssignedToMe) {
+//            globalQueueManager.scheduleWorkForGlobalQueue(globalQueue);
+//        }
     }
 
     /**

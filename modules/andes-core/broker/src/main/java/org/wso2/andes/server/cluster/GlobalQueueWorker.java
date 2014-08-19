@@ -56,14 +56,14 @@ public class GlobalQueueWorker implements Runnable {
         int repeatedSleepingCounter = 0;
 
         while (true) {
-            if (running) {
+         /*   if (running) {
                 try {
-                    /**
+                    *//**
                      * Steps
                      *
                      * 1)Poll Global queue and get chunk of messages 2) Put messages
                      * one by one to node queues and delete them
-                     */
+                     *//*
                     QueueAddress sourceQueueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE, globalQueueName);
 
                     List<AndesMessageMetadata> messageList = messageStore.getNextNMessageMetadataFromQueue(sourceQueueAddress, lastProcessedMessageID, messageCountToReadFromCasssandra);
@@ -72,9 +72,9 @@ public class GlobalQueueWorker implements Runnable {
                         while (metadataIterator.hasNext()) {
                             AndesMessageMetadata metadata = metadataIterator.next();
 
-                            /**
+                            *//**
                              * check if the cluster has some subscriptions for that message and distribute to relevant node queues
-                             */
+                             *//*
                             String destinationQueue = metadata.getDestination();
                             Random random = new Random();
                             //TODO remove this list to set conversion
@@ -118,7 +118,7 @@ public class GlobalQueueWorker implements Runnable {
                 } catch (InterruptedException e) {
                     //silently ignore
                 }
-            }
+            }*/
 
         }
 

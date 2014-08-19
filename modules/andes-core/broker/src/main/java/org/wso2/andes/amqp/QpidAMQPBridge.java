@@ -31,6 +31,8 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
 import org.wso2.andes.server.cassandra.QueueBrowserDeliveryWorker;
+import org.wso2.andes.server.cassandra.SlotDeliveryWorker;
+import org.wso2.andes.server.cassandra.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.exchange.ExchangeRegistry;
 import org.wso2.andes.server.message.AMQMessage;
@@ -144,6 +146,9 @@ public class QpidAMQPBridge {
             } else {
                 log.info("Binding Subscription " + subscription.getSubscriptionID() + " to queue " + queue.getName());
             }
+
+            SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
+            slotDeliveryWorkerManager.startSlotDeliveryWorkerForQueue(queue.getName());
         } catch (AndesException e) {
             log.error("Error while adding the subscription", e);
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while registering subscription", e);

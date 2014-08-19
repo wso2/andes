@@ -1,35 +1,24 @@
 package org.wso2.andes.server.cassandra;
 
-/**
- * Created with IntelliJ IDEA.
- * User: sajini
- * Date: 7/29/14
- * Time: 4:44 PM
- * To change this template use File | Settings | File Templates.
- */
-public class Slot {
+import java.io.Serializable;
 
-    private long slotNo;
+public class Slot implements Serializable {
+
     private long messageCount;
-    private String startMessageId;
-    private String endMessageId;
+    private long startMessageId;
+    private long endMessageId;
 
-
-    public String getStartMessageId() {
-        return startMessageId;
+    public void setQueue(String queue) {
+        this.queue = queue;
     }
 
-    public void setStartMessageId(String startMessageId) {
-        this.startMessageId = startMessageId;
+    public String getQueue() {
+
+        return queue;
     }
 
-    public long getSlotNo() {
-        return slotNo;
-    }
+    private String queue;
 
-    public void setSlotNo(long slotNo) {
-        this.slotNo = slotNo;
-    }
 
     public long getMessageCount() {
         return messageCount;
@@ -39,11 +28,25 @@ public class Slot {
         this.messageCount = messageCount;
     }
 
-    public String getEndMessageId() {
+    public long getEndMessageId() {
         return endMessageId;
     }
 
-    public void setEndMessageId(String endMessageId) {
+    public void setEndMessageId(long endMessageId) {
         this.endMessageId = endMessageId;
     }
+
+    public long getStartMessageId() {
+        return startMessageId;
+    }
+
+    public void setStartMessageId(long startMessageId) {
+        this.startMessageId = startMessageId;
+    }
+
+    public void setMessageRange(long startMessageId, long endMessageId){
+       this.startMessageId = startMessageId;
+        this.endMessageId = endMessageId;
+    }
+
 }

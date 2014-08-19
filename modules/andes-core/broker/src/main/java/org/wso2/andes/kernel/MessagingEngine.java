@@ -325,33 +325,33 @@ public class MessagingEngine {
      */
     public void startMessageDelivey() throws Exception{
 
-        log.info("Starting queue message publisher");
-        QueueDeliveryWorker qdw =
-                ClusterResourceHolder.getInstance().getQueueDeliveryWorker();
-        if(qdw == null) {
-            boolean isInMemoryMode = ClusterResourceHolder.getInstance().getClusterConfiguration().isInMemoryMode();
-            int queueWorkerInterval = ClusterResourceHolder.getInstance().getClusterConfiguration().getQueueWorkerInterval();
-            QueueDeliveryWorker queueDeliveryWorker = new QueueDeliveryWorker(queueWorkerInterval, isInMemoryMode);
-            ClusterResourceHolder.getInstance().setQueueDeliveryWorker(queueDeliveryWorker);
-        }  else {
-            if (!qdw.isWorking()) {
-                qdw.setWorking();
-            }
-        }
-
-        log.info("Starting topic message publisher");
-        TopicDeliveryWorker tdw =
-                ClusterResourceHolder.getInstance().getTopicDeliveryWorker();
-        if(tdw == null) {
-            TopicDeliveryWorker topicDeliveryWorker = new TopicDeliveryWorker();
-            ClusterResourceHolder.getInstance().setTopicDeliveryWorker(topicDeliveryWorker);
-        }  else {
-            if (!tdw.isWorking()) {
-                tdw.setWorking();
-            }
-        }
-
-        log.info("Starting Disruptor writing messages to store");
+//        log.info("Starting queue message publisher");
+//        QueueDeliveryWorker qdw =
+//                ClusterResourceHolder.getInstance().getQueueDeliveryWorker();
+//        if(qdw == null) {
+//            boolean isInMemoryMode = ClusterResourceHolder.getInstance().getClusterConfiguration().isInMemoryMode();
+//            int queueWorkerInterval = ClusterResourceHolder.getInstance().getClusterConfiguration().getQueueWorkerInterval();
+////            QueueDeliveryWorker queueDeliveryWorker = new QueueDeliveryWorker(queueWorkerInterval, isInMemoryMode);
+////            ClusterResourceHolder.getInstance().setQueueDeliveryWorker(queueDeliveryWorker);
+//        }  else {
+//            if (!qdw.isWorking()) {
+//                qdw.setWorking();
+//            }
+//        }
+//
+//        log.info("Starting topic message publisher");
+//        TopicDeliveryWorker tdw =
+//                ClusterResourceHolder.getInstance().getTopicDeliveryWorker();
+//        if(tdw == null) {
+//            TopicDeliveryWorker topicDeliveryWorker = new TopicDeliveryWorker();
+//            ClusterResourceHolder.getInstance().setTopicDeliveryWorker(topicDeliveryWorker);
+//        }  else {
+//            if (!tdw.isWorking()) {
+//                tdw.setWorking();
+//            }
+//        }
+//
+//        log.info("Starting Disruptor writing messages to store");
     }
 
     /**
