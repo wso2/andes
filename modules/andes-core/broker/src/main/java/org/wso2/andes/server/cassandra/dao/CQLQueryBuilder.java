@@ -82,18 +82,31 @@ public class CQLQueryBuilder {
 		if (hasColumns) {
 			columns.append(" ) ");
 		}
-        String sql;
+        StringBuffer sql;
+        String fullyQualifiedTableName = table.getKeySpace() + "." + table.getName();
         if(table.getStorageType()==null){
-             sql = "CREATE TABLE " + table.getKeySpace() + "." + table.getName()
-                    + columns.toString() + "WITH gc_grace_seconds = "+table.getGcGraceSeconds() + ";";
+             sql = new StringBuffer("CREATE TABLE " + fullyQualifiedTableName
+                    + columns.toString() + "WITH gc_grace_seconds = "+table.getGcGraceSeconds() + ";");
         }else{
-		     sql = "CREATE TABLE " + table.getKeySpace() + "." + table.getName()
-				+ columns.toString() + storageType + " AND gc_grace_seconds = "+table.getGcGraceSeconds()+";";
+		     sql = new StringBuffer("CREATE TABLE " + fullyQualifiedTableName
+				+ columns.toString() + storageType + " AND gc_grace_seconds = "+table.getGcGraceSeconds()+";");
         }
 
-		return sql;
+		return sql.toString();
 
 	}
+
+    /**
+     * Create an index for the table.
+     * Index name will be keyspace_tableName_columnName.
+     * @param keyspace
+     * @param tableName
+     * @param columnName
+     * @return sql query for creating the index
+     */
+    public static String buildCreateIndexQuery(String keyspace, String tableName, String columnName) {
+        return "CREATE INDEX "+ keyspace + "_" + tableName + "_" + columnName + " ON " + keyspace + "." + tableName + " (" + columnName + ");";
+    }
 
 	public static Select buildSelect(CQLQueryBuilder.CqlSelect cqlSelect) {
 		String table = cqlSelect.getTable();

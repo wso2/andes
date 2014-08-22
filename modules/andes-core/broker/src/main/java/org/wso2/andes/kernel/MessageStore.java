@@ -18,10 +18,11 @@
 
 package org.wso2.andes.kernel;
 
+import org.wso2.andes.server.stats.MessageCounterKey;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 
-import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 
 public interface MessageStore {
 
@@ -93,4 +94,28 @@ public interface MessageStore {
      * @return
      */
     List<AndesRemovableMetadata> getExpiredMessages(Long limit,String columnFamilyName, String keyspace);
+
+    /**
+     * Generic interface report the message store about the message status changes.
+     * @param messageId The message Id
+     * @param timeMillis The timestamp which the change happened
+     * @param messageCounterKey The combined key which contains the message queue name and the state it changed to
+     * @throws AndesException
+     */
+    public void addMessageStatusChange(long messageId, long timeMillis, MessageCounterKey messageCounterKey) throws AndesException;
+
+    /**
+     * Generic interface to get data to draw the message rate graph.
+     * @param queueName The queue name to get data, if null all.
+     * @return The message rate data. Map<MessageCounterType, Map<TimeInMillis, Number of messages>>
+     * @throws AndesException
+     */
+    public Map<MessageCounterKey.MessageCounterType, java.util.Map<Long, Integer>> getMessageRates(String queueName, Long minDate, Long maxDate) throws AndesException;
+
+    /**
+     * Get the status of each of messages.
+     * @param queueName The queue name to get data, if null all.
+     * @return Message Status data. Map<Message Id, Map<Property, Value>>
+     */
+    public Map<Long, Map<String, String>> getMessageStatuses(String queueName, Long minDate, Long maxDate) throws AndesException;
 }

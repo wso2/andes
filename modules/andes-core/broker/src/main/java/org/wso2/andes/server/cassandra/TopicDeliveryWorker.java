@@ -22,6 +22,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.stats.MessageCounter;
+import org.wso2.andes.server.stats.MessageCounterKey;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.SubscriptionStore;
 
@@ -159,6 +161,10 @@ public class TopicDeliveryWorker extends Thread {
             }
         };
         messagePublishingExecutor.submit(r, (subscription.getTargetQueue() + subscription.getSubscriptionID()).hashCode());
+
+        if (ClusterResourceHolder.getInstance().getClusterConfiguration().isStatsEnabled()) {
+            MessageCounter.getInstance().updateOngoingMessageStatus(message.getMessageID(), MessageCounterKey.MessageCounterType.DELIVER_COUNTER, message.getDestination(), System.currentTimeMillis());
+        }
     }
 
     /**

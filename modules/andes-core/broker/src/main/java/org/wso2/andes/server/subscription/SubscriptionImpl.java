@@ -47,10 +47,13 @@ import org.wso2.andes.server.logging.actors.SubscriptionActor;
 import org.wso2.andes.server.logging.messages.SubscriptionMessages;
 import org.wso2.andes.server.logging.subjects.SubscriptionLogSubject;
 import org.wso2.andes.server.message.AMQMessage;
+import org.wso2.andes.server.message.ServerMessage;
 import org.wso2.andes.server.output.ProtocolOutputConverter;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
+import org.wso2.andes.server.stats.MessageCounter;
+import org.wso2.andes.server.stats.MessageCounterKey;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -749,6 +752,11 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
     {
         _deliveryMethod.deliverToClient(this,entry,deliveryTag);
         _deliveredCount.incrementAndGet();
+        ServerMessage serverMessage = entry.getMessage();
+
+        if (ClusterResourceHolder.getInstance().getClusterConfiguration().isStatsEnabled()) {
+            MessageCounter.getInstance().updateOngoingMessageStatus(serverMessage.getMessageNumber(), MessageCounterKey.MessageCounterType.DELIVER_COUNTER, serverMessage.getRoutingKey(), System.currentTimeMillis());
+        }
     }
 
 

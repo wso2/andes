@@ -36,6 +36,8 @@ import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
+import org.wso2.andes.server.stats.MessageCounter;
+import org.wso2.andes.server.stats.MessageCounterKey;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.SubscriptionStore;
@@ -102,6 +104,7 @@ public class MessagingEngine {
             log.error("Cannot initialize message store", e);
             throw new AndesException(e);
         }
+
     }
 
     public ClusterConfiguration getConfig() {
@@ -119,6 +122,7 @@ public class MessagingEngine {
     }
 
     public void messageReceived(AndesMessageMetadata message, long channelID) throws AndesException {
+
         try {
 
             if (message.getExpirationTime() > 0l)  {
@@ -186,6 +190,12 @@ public class MessagingEngine {
                 QueueAddress globalQueueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE, globalQueueName);
             	sendMessageToMessageStore(globalQueueAddress, message, channelID);
             }
+
+            if(config.isStatsEnabled()) {
+                // Report to the MessageCounter about the received message.
+                MessageCounter.getInstance().updateOngoingMessageStatus(message.getMessageID(), MessageCounterKey.MessageCounterType.PUBLISH_COUNTER, message.getDestination(), System.currentTimeMillis());
+            }
+
         } catch (Exception e) {
             throw new AndesException("Error in storing the message to the store", e);
         }

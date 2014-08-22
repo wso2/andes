@@ -18,6 +18,7 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.CassandraConnection;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
+import org.wso2.andes.server.stats.MessageCounterKey;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 import org.wso2.andes.server.store.util.CassandraDataAccessHelper;
@@ -76,6 +77,7 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
         CassandraDataAccessHelper.createColumnFamily(NODE_QUEUES_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE);
         CassandraDataAccessHelper.createColumnFamily(GLOBAL_QUEUES_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE);
         CassandraDataAccessHelper.createColumnFamily(PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE);
+        CassandraDataAccessHelper.createColumnFamily(MESSAGE_STATUS_CHANGE_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE);
         CassandraDataAccessHelper.createCounterColumnFamily(MESSAGE_COUNTERS_COLUMN_FAMILY, KEYSPACE, this.cluster);
     }
 
@@ -578,6 +580,41 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
     @Override
     public List<AndesRemovableMetadata> getExpiredMessages(Long limit, String columnFamilyName, String keyspace) {
         return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    /**
+     * Generic interface report the message store about the message status changes.
+     * @param messageId The message Id
+     * @param timeMillis The timestamp which the change happened
+     * @param messageCounterKey The combined key which contains the message queue name and the state it changed to
+     * @throws AndesException
+     */
+    @Override
+    public void addMessageStatusChange(long messageId, long timeMillis, MessageCounterKey messageCounterKey) throws AndesException {
+        // Not implemented since this class is not being used
+    }
+
+    /**
+     * Generic interface to get data to draw the message rate graph.
+     * @param queueName The queue name to get data, if null all.
+     * @return The message rate data. Map<MessageCounterType, Map<TimeInMillis, Number of messages>>
+     * @throws AndesException
+     */
+    @Override
+    public Map<MessageCounterKey.MessageCounterType, Map<Long, Integer>> getMessageRates(String queueName, Long minDate, Long maxDate) throws AndesException {
+        // Not implemented since this class is not being used.
+        return null;
+    }
+
+    /**
+     * Get the status of each of messages.
+     * @param queueName The queue name to get data, if null all.
+     * @return Message Status data. Map<Message Id, Map<Property, Value>>
+     */
+    @Override
+    public Map<Long, Map<String, String>> getMessageStatuses(String queueName, Long minDate, Long maxDate) {
+        // Not implemented since this class is not being used.
+        return null;
     }
 
 }

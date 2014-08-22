@@ -1,18 +1,10 @@
 package org.wso2.andes.messageStore;
 
-import static org.wso2.andes.messageStore.CassandraConstants.GLOBAL_QUEUES_COLUMN_FAMILY;
-import static org.wso2.andes.messageStore.CassandraConstants.KEYSPACE;
-import static org.wso2.andes.messageStore.CassandraConstants.LONG_TYPE;
-import static org.wso2.andes.messageStore.CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY;
-import static org.wso2.andes.messageStore.CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY;
-import static org.wso2.andes.messageStore.CassandraConstants.MESSAGE_COUNTERS_RAW_NAME;
-import static org.wso2.andes.messageStore.CassandraConstants.NODE_QUEUES_COLUMN_FAMILY;
-import static org.wso2.andes.messageStore.CassandraConstants.PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY;
-
-import java.io.ByteArrayOutputStream;
-import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.querybuilder.Select;
@@ -21,11 +13,12 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.CQLConnection;
-import org.wso2.andes.server.cassandra.CassandraConnection;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cassandra.dao.CQLQueryBuilder;
 import org.wso2.andes.server.cassandra.dao.CassandraHelper;
 import org.wso2.andes.server.cassandra.dao.GenericCQLDAO;
+import org.wso2.andes.server.stats.MessageCounter;
+import org.wso2.andes.server.stats.MessageCounterKey;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
@@ -38,6 +31,8 @@ import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 import com.datastax.driver.core.querybuilder.Delete;
 import com.datastax.driver.core.querybuilder.Insert;
 
+import static org.wso2.andes.messageStore.CassandraConstants.*;
+
 public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageStore {
     private static Log log = LogFactory.getLog(CQLBasedMessageStoreImpl.class);
 
@@ -47,9 +42,16 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     private boolean isMessageCountingAllowed;
     private DurableStoreConnection connection;
     private Cluster cluster;
+    private boolean statsEnabled;
+
+    private List<Statement> messageStatusInserts;
+
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
 
     public CQLBasedMessageStoreImpl() {
         isMessageCountingAllowed = ClusterResourceHolder.getInstance().getClusterConfiguration().getViewMessageCounts();
+        statsEnabled = ClusterResourceHolder.getInstance().getClusterConfiguration().isStatsEnabled();
     }
 
     public void initializeMessageStore(DurableStoreConnection cassandraconnection) throws AndesException {
@@ -66,6 +68,23 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         try {
             cluster = ((CQLConnection) cassandraconnection).getCluster();
             createColumnFamilies();
+
+            initializeMessageStatusInserts();
+
+            if (statsEnabled) {
+                // Schedule status update to take place after every 10 seconds.
+                scheduler.scheduleAtFixedRate(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            CQLBasedMessageStoreImpl messageStore = (CQLBasedMessageStoreImpl) MessagingEngine.getInstance().getDurableMessageStore();
+                            messageStore.processMessageStatusInserts();
+                        } catch (AndesException e) {
+                            log.error("Error processing message status insert by schedule.", e);
+                        }
+                    }
+                }, 0, 10, TimeUnit.SECONDS);
+            }
         } catch (CassandraDataAccessException e) {
             log.error("Error while initializing cassandra message store", e);
             throw new AndesException(e);
@@ -86,6 +105,10 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         CQLDataAccessHelper.createColumnFamily(PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob(),gcGraceSeconds);
         CQLDataAccessHelper.createCounterColumnFamily(MESSAGE_COUNTERS_COLUMN_FAMILY, KEYSPACE, this.cluster,gcGraceSeconds);
         CQLDataAccessHelper.createMessageExpiryColumnFamily(CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY, KEYSPACE, this.cluster,gcGraceSeconds);
+
+        if (statsEnabled) {
+            CQLDataAccessHelper.createMessageStatusColumnFamily(MESSAGE_STATUS_CHANGE_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.bigint(), gcGraceSeconds);
+        }
     }
 
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException {
@@ -236,7 +259,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
     public void ackReceived(List<AndesAckData> ackList) throws AndesException {
         try {
-
             List<AndesRemovableMetadata> messagesAddressedToQueues = new ArrayList<AndesRemovableMetadata>();
             List<AndesRemovableMetadata> messagesAddressedToTopics = new ArrayList<AndesRemovableMetadata>();
 
@@ -270,6 +292,10 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 PerformanceCounter.recordMessageRemovedAfterAck();
 
                 messageIds.add(ackData.messageID);
+
+                if(statsEnabled) {
+                    MessageCounter.getInstance().updateOngoingMessageStatus(ackData.messageID, MessageCounterKey.MessageCounterType.ACKNOWLEDGED_COUNTER, ackData.qName, System.currentTimeMillis());
+                }
             }
 
             //remove queue message metadata now
@@ -852,5 +878,88 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     @Override
     public void moveToDeadLetterChannel(List<AndesRemovableMetadata> messageList) {
         //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    /**
+     * Generic interface report the message store about the message status changes.
+     * @param messageId The message Id
+     * @param timeMillis The timestamp which the change happened
+     * @param messageCounterKey The combined key which contains the message queue name and the state it changed to
+     * @throws AndesException
+     */
+    @Override
+    public void addMessageStatusChange(long messageId, long timeMillis, MessageCounterKey messageCounterKey) throws AndesException {
+        try {
+            if (MessageCounterKey.MessageCounterType.PUBLISH_COUNTER.equals(messageCounterKey.getMessageCounterType())) {
+                messageStatusInserts.add(CQLDataAccessHelper.insertMessageStatusChange(KEYSPACE, MESSAGE_STATUS_CHANGE_COLUMN_FAMILY, messageId, timeMillis, messageCounterKey, false));
+
+            } else {
+                messageStatusInserts.add(CQLDataAccessHelper.updateMessageStatusChange(KEYSPACE, MESSAGE_STATUS_CHANGE_COLUMN_FAMILY, messageId, timeMillis, messageCounterKey, false));
+            }
+
+            if (messageStatusInserts.size() > 9999) {
+                processMessageStatusInserts();
+            }
+
+        } catch (Exception e) {
+            //TODO handle Cassandra failures
+            //TODO may be we can write those message to a disk, or do something. Currently we will just loose them
+            log.error("Error writing incoming messages to Cassandra", e);
+            throw new AndesException("Error writing incoming messages to Cassandra", e);
+        }
+    }
+
+    /**
+     * Generic interface to get data to draw the message rate graph.
+     * @param queueName The queue name to get data, if null all.
+     * @return The message rate data. Map<MessageCounterType, Map<TimeInMillis, Number of messages>>
+     * @throws AndesException
+     */
+    @Override
+    public Map<MessageCounterKey.MessageCounterType, Map<Long, Integer>> getMessageRates(String queueName, Long minDate, Long maxDate) throws AndesException {
+        try {
+            return CQLDataAccessHelper.getMessageRates(MESSAGE_STATUS_CHANGE_COLUMN_FAMILY, KEYSPACE, queueName, minDate, maxDate);
+        } catch (Exception e) {
+            log.error("Error retrieving message rates", e);
+            throw new AndesException("Error retrieving message status counts", e);
+        }
+    }
+
+    /**
+     * Get the status of each of messages.
+     * @param queueName The queue name to get data, if null all.
+     * @return Message Status data. Map<Message Id, Map<Property, Value>>
+     */
+    @Override
+    public Map<Long, Map<String, String>> getMessageStatuses(String queueName, Long minDate, Long maxDate) throws AndesException {
+        try {
+            return CQLDataAccessHelper.getMessageStatuses(MESSAGE_STATUS_CHANGE_COLUMN_FAMILY, KEYSPACE, queueName, minDate, maxDate);
+        } catch (CassandraDataAccessException e) {
+            throw new AndesException(e);
+        }
+    }
+
+    /**
+     * Batch process collected message status inserts/updates.
+     * @throws AndesException
+     */
+    public void processMessageStatusInserts() throws AndesException {
+        try {
+            if (messageStatusInserts.size() > 0) {
+                // Do a hard copy of the statements from the original list so the original list can be cleaned.
+                List<Statement> statementsToExecute = new ArrayList<Statement>(messageStatusInserts);
+                GenericCQLDAO.batchExecute(KEYSPACE, statementsToExecute.toArray(new Statement[statementsToExecute.size()]));
+                initializeMessageStatusInserts();
+            }
+        } catch (CassandraDataAccessException e) {
+            throw new AndesException("Error batch processing message status inserts.", e);
+        }
+    }
+
+    /**
+     * Reset message status insert/update list.
+     */
+    private void initializeMessageStatusInserts() {
+        messageStatusInserts = new ArrayList<Statement>();
     }
 }

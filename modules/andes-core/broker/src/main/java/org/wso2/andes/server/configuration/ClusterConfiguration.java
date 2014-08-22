@@ -212,4 +212,11 @@ public class ClusterConfiguration {
     public Boolean getSaveExpiredToDLC() {
         return serverConfig.getSaveExpiredToDLC();
     }
+
+    /**
+     * @return whether to collect stats data
+     */
+    public Boolean isStatsEnabled() {
+        return serverConfig.isStatsEnabled();
+    }
 }

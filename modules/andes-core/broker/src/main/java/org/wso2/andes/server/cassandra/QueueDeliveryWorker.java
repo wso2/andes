@@ -491,6 +491,7 @@ public class QueueDeliveryWorker extends Thread {
                             log.debug("TRACING>> scheduled to deliver - messageID: " + message.getMessageID() + " for queue: " + message.getDestination());
                         }
                         deliverAsynchronously(localSubscription, message);
+
                         totMsgSent++;
                         sentMessageCount++;
                         totalReadButUndeliveredMessages--;
