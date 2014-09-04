@@ -100,8 +100,8 @@ public class AndesMessageMetadata {
     
     /**
      * Create a clone, with new message ID
-     * @param messageId
-     * @return
+     * @param messageId message id
+     * @return returns AndesMessageMetadata
      */
     public  AndesMessageMetadata deepClone(long messageId){
     	AndesMessageMetadata clone = new AndesMessageMetadata();
@@ -161,7 +161,6 @@ public class AndesMessageMetadata {
             this.isPersistent = ((MQTTMessageMetaData) mdt).isPersistent();
             this.messageContentLength = ((MQTTMessageMetaData) mdt).getContentSize();
         }
-
     }
 
     public Object getMessageHeader(String header) {

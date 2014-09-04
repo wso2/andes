@@ -24,17 +24,23 @@ import java.util.List;
 
 public interface MessageStore {
 
-    public void initializeMessageStore (DurableStoreConnection durableConnection) throws AndesException;
+    public void initializeMessageStore(DurableStoreConnection durableConnection) throws AndesException;
 
-    public void storeMessagePart(List<AndesMessagePart> partList)throws AndesException;
+    public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException;
 
-    public void deleteMessageParts(List<Long> messageIdList)throws AndesException;
+    public void deleteMessageParts(List<Long> messageIdList) throws AndesException;
 
     public AndesMessagePart getContent(String messageId, int offsetValue)throws AndesException;
 
-    public void ackReceived(List<AndesAckData> ackList)throws AndesException;
+    public void ackReceived(List<AndesAckData> ackList) throws AndesException;
 
     public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException;
+
+    public void addMetaData(AndesMessageMetadata metadata) throws AndesException;
+
+    public void addMetaDataToQueue(final String queueName, AndesMessageMetadata metadata) throws AndesException;
+
+    public void addMetadataToQueue(final String queueName, List<AndesMessageMetadata> metadata) throws AndesException;
 
     public long getMessageCountForQueue(final String destinationQueueName) throws AndesException;
 
@@ -44,27 +50,39 @@ public interface MessageStore {
 
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId, int count) throws AndesException;
 
-    public void deleteMessageMetadataFromQueue(final String queueName,List<AndesRemovableMetadata> messagesToRemove) throws AndesException;
+    /**
+     * This method can be used to delete messages from a special queue such as dead letter channel where messages
+     * are stored in a different queue rather than it's actual destination.
+     *
+     * @param queueName        queue from which metadata to be removed ignoring the destination of metadata
+     * @param messagesToRemove AndesMessageMetadata list to be reomoved from given queue
+     * @throws AndesException
+     */
+    public void deleteMessageMetadataFromQueue(final String queueName, List<AndesRemovableMetadata> messagesToRemove) throws AndesException;
 
     List<AndesRemovableMetadata> getExpiredMessages(Long limit) throws AndesException;
 
+    /**
+     * close the database connection
+     */
     public void close();
 
     /**
      * interface to delete messages from expired messages collection
+     *
      * @param messagesToRemove
      * @throws AndesException
      */
     void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException;
 
     @Deprecated
-    public void deleteMessageMetadataFromQueue(QueueAddress queueAddress,List<AndesRemovableMetadata> messagesToRemove) throws AndesException;
+    public void deleteMessageMetadataFromQueue(QueueAddress queueAddress, List<AndesRemovableMetadata> messagesToRemove) throws AndesException;
 
     @Deprecated
-    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(QueueAddress queueAddress, long startMsgID, int count)throws AndesException;
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(QueueAddress queueAddress, long startMsgID, int count) throws AndesException;
 
     @Deprecated
-    public void addMessageMetaData(QueueAddress queueAddress, List<AndesMessageMetadata> messageList)throws AndesException;
+    public void addMessageMetaData(QueueAddress queueAddress, List<AndesMessageMetadata> messageList) throws AndesException;
 
     @Deprecated
     public void moveMessageMetaData(QueueAddress sourceAddress, QueueAddress targetAddress, List<AndesMessageMetadata> messageList) throws AndesException;
@@ -77,6 +95,7 @@ public interface MessageStore {
 
     /**
      * Adds the received JMS Message ID along with its expiration time to MESSAGES_FOR_EXPIRY_COLUMN_FAMILY queue
+     *
      * @param messageId
      * @param expirationTime
      * @param isMessageForTopic,
@@ -88,6 +107,7 @@ public interface MessageStore {
 
     /**
      * Generic interface to delete all references to a message - to be used when deleting messages not in ackrecieved state
+     *
      * @param messagesToRemove
      * @param moveToDeadLetterChannel
      * @throws AndesException
@@ -97,7 +117,6 @@ public interface MessageStore {
                         boolean moveToDeadLetterChannel) throws AndesException;
 
     /**
-     *
      * @param messageList
      */
     @Deprecated
@@ -106,11 +125,12 @@ public interface MessageStore {
     /**
      * Get Top @param limit messages having expiration times < current timestamp
      * if limit <= 0, fetches all entries matching criteria.
+     *
      * @param limit
      * @param columnFamilyName
      * @param keyspace
      * @return
      */
     @Deprecated
-    List<AndesRemovableMetadata> getExpiredMessages(Long limit,String columnFamilyName, String keyspace);
+    List<AndesRemovableMetadata> getExpiredMessages(Long limit, String columnFamilyName, String keyspace);
 }

@@ -123,6 +123,21 @@ public class InMemoryMessageStore implements MessageStore {
 
 
     @Override
+    public void addMetaData(AndesMessageMetadata metadata) throws AndesException {
+
+    }
+
+    @Override
+    public void addMetaDataToQueue(String queueName, AndesMessageMetadata metadata) throws AndesException {
+
+    }
+
+    @Override
+    public void addMetadataToQueue(String queueName, List<AndesMessageMetadata> metadata) throws AndesException {
+
+    }
+
+    @Override
     public void addMessageMetaData(QueueAddress queueAddress,
                                    List<AndesMessageMetadata> messageList) throws AndesException {
         if (queueAddress != null) {

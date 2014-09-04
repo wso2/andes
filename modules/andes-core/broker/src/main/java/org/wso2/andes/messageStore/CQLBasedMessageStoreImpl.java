@@ -336,6 +336,21 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         }
     }
 
+    @Override
+    public void addMetaData(AndesMessageMetadata metadata) throws AndesException {
+
+    }
+
+    @Override
+    public void addMetaDataToQueue(String queueName, AndesMessageMetadata metadata) throws AndesException {
+
+    }
+
+    @Override
+    public void addMetadataToQueue(String queueName, List<AndesMessageMetadata> metadata) throws AndesException {
+
+    }
+
     private void addContentDeletionTask(long currentNanoTime, long messageID) {
         contentDeletionTasks.put(currentNanoTime, messageID);
     }
