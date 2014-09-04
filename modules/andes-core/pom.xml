@@ -410,6 +410,16 @@
             <artifactId>hazelcast</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>tomcat</groupId>
+            <artifactId>naming-factory</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>tomcat</groupId>
+            <artifactId>naming-resources</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -657,6 +667,18 @@
                             <directory>tasks/classes</directory>
                         </fileset>
                     </filesets>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.14.1</version>
+                <configuration>
+                    <skipTests>true</skipTests>
+                    <forkCount>1</forkCount>
+                    <reuseForks>false</reuseForks>
+                    <parallel>classes</parallel>
+                    <argLine>-Xmx500m -XX:MaxPermSize=256m</argLine>
                 </configuration>
             </plugin>
         </plugins>
