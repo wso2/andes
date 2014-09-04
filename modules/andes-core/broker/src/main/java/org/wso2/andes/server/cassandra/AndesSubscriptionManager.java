@@ -25,6 +25,7 @@ import org.wso2.andes.mqtt.MQTTLocalSubscription;
 import org.wso2.andes.pool.AndesExecuter;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.BasicSubscription;
 import org.wso2.andes.subscription.ClusterwideSubscriptionChangeNotifier;
@@ -81,6 +82,7 @@ public class AndesSubscriptionManager {
     public void addSubscription(LocalSubscription localSubscription) throws AndesException {
 
         log.info("Added subscription: " + localSubscription.toString());
+
         //create a local subscription and notify
         subscriptionStore.createDisconnectOrRemoveLocalSubscription(localSubscription, SubscriptionListener.SubscriptionChange.Added);
         notifyListeners(localSubscription, true, SubscriptionListener.SubscriptionChange.Added);

@@ -19,8 +19,10 @@ public class SlotDeliveryWorker extends Thread {
     private Map<String, QueueDeliveryInfo> subscriptionCursar4QueueMap = new HashMap<String, QueueDeliveryInfo>();
     private int maxNumberOfUnAckedMessages = 20000;
     private HashMap<String, Long> localLastProcessedIdMap;
+    private static HashMap<String,QueueDeliveryWorker> queueToQueueDeliveryWorkerMap;
     private static boolean isClusteringEnabled;
     private static Log log = LogFactory.getLog(SlotDeliveryWorker.class);
+    private Map<String,List<Slot>> localQueueToSlotsMap;
 
 
     public SlotDeliveryWorker() {
@@ -30,6 +32,10 @@ public class SlotDeliveryWorker extends Thread {
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
         localLastProcessedIdMap = new HashMap<String, Long>();
+        queueToQueueDeliveryWorkerMap = new HashMap<String, QueueDeliveryWorker>();
+        localQueueToSlotsMap = new HashMap<String, List<Slot>>();
+        startSlotDeletingThread();
+
     }
 
     public class QueueDeliveryInfo {
@@ -112,11 +118,11 @@ public class SlotDeliveryWorker extends Thread {
                     if (subscriptions4Queue != null && !subscriptions4Queue.isEmpty()) {
 
                         if (isClusteringEnabled) {
-                            long[] slotRange = slotManager.getSlotRangeForQueue(queue);
-                            if (slotRange == null) {
+                            Slot currentSlot = slotManager.getASlotFromSlotManager(queue);
+                            if (currentSlot == null) {
                                 //no available free slots
-                                //update slot assignment map
-                                slotManager.deleteEntryFromSlotAssignmentMap(queue);
+                                //delete previsous entry from slot assignment map
+                              //  slotManager.deleteEntryFromSlotAssignmentMap(queue);
                                 try {
                                     //TODO is it ok to sleep since there are other queues
                                     Thread.sleep(2000);
@@ -124,12 +130,13 @@ public class SlotDeliveryWorker extends Thread {
                                     //silently ignore
                                 }
                             } else {
-                                slotManager.addEntryToSlotAssignmentMap(queue, slotRange[0], slotRange[1]);
-                                long firstMsgId = slotRange[0];
-                                long lastMsgId = slotRange[1];
+                                slotManager.addEntryToSlotAssignmentMap(queue, currentSlot);
+                                long firstMsgId = currentSlot.getStartMessageId();
+                                long lastMsgId = currentSlot.getEndMessageId();
                                 List<AndesMessageMetadata> messagesReadByLeadingThread = messageStore.getMetaDataList(queue, firstMsgId, lastMsgId);
                                 if (messagesReadByLeadingThread!=null) {
-                                    sendMessages(messagesReadByLeadingThread, subscriptions4Queue, queue);
+                                   // sendMessages(messagesReadByLeadingThread, subscriptions4Queue, queue);
+                                    QueueDeliveryWorker.getInstance().run(messagesReadByLeadingThread);
                                 }
                             }
                         } else {
@@ -147,8 +154,7 @@ public class SlotDeliveryWorker extends Thread {
                                     //silently ignore
                                 }
                             } else {
-                                sendMessages(messagesReadByLeadingThread, subscriptions4Queue, queue);
-
+                                QueueDeliveryWorker.getInstance().run(messagesReadByLeadingThread);
                             }
                         }
                     }
@@ -163,6 +169,8 @@ public class SlotDeliveryWorker extends Thread {
 
     public void addQueueToThread(String queueName) {
         getQueueList().add(queueName);
+      //  QueueDeliveryWorker queueDeliveryWorker = new QueueDeliveryWorker(1000,false);
+       // queueToQueueDeliveryWorkerMap.put(queueName,queueDeliveryWorker);
     }
 
     public List<String> getQueueList() {
@@ -195,5 +203,10 @@ public class SlotDeliveryWorker extends Thread {
         }
     }
 
+    private void startSlotDeletingThread() {
+        new Thread() {
+
+        }.start();
+    }
 }
 

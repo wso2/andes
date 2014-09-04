@@ -10,13 +10,14 @@ import org.wso2.andes.subscription.SubscriptionStore;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * <code>QueueDeliveryWorker</code> Handles the task of polling the user queues and flushing
  * the messages to subscribers
  * There will be one Flusher per Queue Per Node
  */
-public class QueueDeliveryWorker extends Thread {
+public class QueueDeliveryWorker {
     private final String nodeQueue;
     private boolean running = true;
     private static Log log = LogFactory.getLog(QueueDeliveryWorker.class);
@@ -25,8 +26,8 @@ public class QueueDeliveryWorker extends Thread {
     private int maxMessageCountToRead = 300;
     private int minMessageCountToRead = 20;
 
-
     private int maxNumberOfUnAckedMessages = 20000;
+    //per queue
     private int maxNumberOfReadButUndeliveredMessages = 1000;
 
     private long lastProcessedId = 0;
@@ -54,6 +55,7 @@ public class QueueDeliveryWorker extends Thread {
     private SubscriptionStore subscriptionStore;
     private OnflightMessageTracker onflightMessageTracker;
 
+    private static QueueDeliveryWorker queueDeliveryWorker;
 
 
     //messages read by Laggards thread
@@ -84,10 +86,10 @@ public class QueueDeliveryWorker extends Thread {
             this.messageStore = MessagingEngine.getInstance().getDurableMessageStore();
         }
 
-        this.start();
-        this.setWorking();
-        startLaggardsThread();
-
+       // this.start();
+      //  this.setWorking();
+     //   startLaggardsThread();
+     //
 
         log.info("Queue worker started Listening for " + nodeQueue + " with on flight message checks");
     }
@@ -167,66 +169,66 @@ public class QueueDeliveryWorker extends Thread {
     /**
      * Laggards Thread to deliver messages skipped by Primary Delivery Thread if the conditions met
      */
-    private void startLaggardsThread() {
-        new Thread() {
-            public void run() {
-                try {
-                    long lastReadLaggardMessageID = 0;
-                    int laggardQueueEntriesListSize = 0;
-                    //we need to delay laggards thread as it should be started after a fair interval after the leading thread
-                    sleep4waitInterval(60000);
-                    while (true) {
-                        if (running) {
-                            try {
-                                if (laggardQueueEntriesListSize == 0 || lastReadLaggardMessageID >= lastProcessedId) {
-                                    lastReadLaggardMessageID = 0;
-                                    sleep4waitInterval(queueWorkerWaitInterval * 5);
-                                }
-
-                                //List<AMQMessage> laggardQueueEntriesList = messageStore.getMessagesFromNodeQueue(nodeQueue, queue, messageCountToRead, lastReadLaggardMessageID);
-                                QueueAddress queueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueue);
-                                List<AndesMessageMetadata> laggardMessageMetaDataList = messageStore.getNextNMessageMetadataFromQueue(queueAddress, lastReadLaggardMessageID++, messageCountToRead);
-                                //log.info("LAGGARDS>> Read " + messageCountToRead + " number of messages from id " + lastReadLaggardMessageID + ". Returned " + laggardMessageMetaDataList.size());
-                                for (AndesMessageMetadata entry : laggardMessageMetaDataList) {
-                                    String routingKey = entry.getDestination();
-                                    if (subscriptionStore.getActiveClusterSubscribersForDestination(routingKey, false).size() > 0) {
-                                        laggardsMessages.add(entry);
-                                    }
-                                }
-                                laggardQueueEntriesListSize = laggardMessageMetaDataList.size();
-                                if (laggardQueueEntriesListSize > 0) {
-                                    lastReadLaggardMessageID = laggardMessageMetaDataList.get(laggardQueueEntriesListSize - 1).getMessageID();
-                                }
-                                sleep4waitInterval(20000);
-                            } catch (Exception e) {
-                                log.warn("Error in laggard message reading thread ", e);
-                                sleep4waitInterval(queueWorkerWaitInterval * 2);
-                            }
-                        } else {
-                            Thread.sleep(2000);
-                        }
-
-                    }
-                } catch (Exception e) {
-                    log.error("Error in laggard message reader thread, it will break the thread", e);
-                }
-
-            }
-        }.start();
-    }
+//    private void startLaggardsThread() {
+//        new Thread() {
+//            public void run() {
+//                try {
+//                    long lastReadLaggardMessageID = 0;
+//                    int laggardQueueEntriesListSize = 0;
+//                    //we need to delay laggards thread as it should be started after a fair interval after the leading thread
+//                    sleep4waitInterval(60000);
+//                    while (true) {
+//                        if (running) {
+//                            try {
+//                                if (laggardQueueEntriesListSize == 0 || lastReadLaggardMessageID >= lastProcessedId) {
+//                                    lastReadLaggardMessageID = 0;
+//                                    sleep4waitInterval(queueWorkerWaitInterval * 5);
+//                                }
+//
+//                                //List<AMQMessage> laggardQueueEntriesList = messageStore.getMessagesFromNodeQueue(nodeQueue, queue, messageCountToRead, lastReadLaggardMessageID);
+//                                QueueAddress queueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueue);
+//                                List<AndesMessageMetadata> laggardMessageMetaDataList = messageStore.getNextNMessageMetadataFromQueue(queueAddress, lastReadLaggardMessageID++, messageCountToRead);
+//                                //log.info("LAGGARDS>> Read " + messageCountToRead + " number of messages from id " + lastReadLaggardMessageID + ". Returned " + laggardMessageMetaDataList.size());
+//                                for (AndesMessageMetadata entry : laggardMessageMetaDataList) {
+//                                    String routingKey = entry.getDestination();
+//                                    if (subscriptionStore.getActiveClusterSubscribersForDestination(routingKey, false).size() > 0) {
+//                                        laggardsMessages.add(entry);
+//                                    }
+//                                }
+//                                laggardQueueEntriesListSize = laggardMessageMetaDataList.size();
+//                                if (laggardQueueEntriesListSize > 0) {
+//                                    lastReadLaggardMessageID = laggardMessageMetaDataList.get(laggardQueueEntriesListSize - 1).getMessageID();
+//                                }
+//                                sleep4waitInterval(20000);
+//                            } catch (Exception e) {
+//                                log.warn("Error in laggard message reading thread ", e);
+//                                sleep4waitInterval(queueWorkerWaitInterval * 2);
+//                            }
+//                        } else {
+//                            Thread.sleep(2000);
+//                        }
+//
+//                    }
+//                } catch (Exception e) {
+//                    log.error("Error in laggard message reader thread, it will break the thread", e);
+//                }
+//
+//            }
+//        }.start();
+//    }
 
     /**
      * Main Message Delivery Thread
      */
-    @Override
-    public void run() {
+
+    public void run(List<AndesMessageMetadata> messagesReadByLeadingThread) {
         iterations = 0;
         workqueueSize = 0;
         lastRestTime = System.currentTimeMillis();
         failureCount = 0;
 
-        while (true) {
-            if (running) {
+       // while (true) {
+           // if (running) {
                     try {
                         /**
                          *    Following check is to avoid the worker queue been full with too many pending tasks.
@@ -240,7 +242,7 @@ public class QueueDeliveryWorker extends Thread {
                             }
                             log.info("skipping content cassandra reading thread as flusher queue has " + workqueueSize + " tasks");
                             sleep4waitInterval(queueWorkerWaitInterval);
-                            continue;
+                            //continue;
                         }
 
                         resetOffsetAtCassadraQueueIfNeeded(false);
@@ -255,9 +257,9 @@ public class QueueDeliveryWorker extends Thread {
                              * Read messages from leading thread
                              */
                             messagesFromMessageStore = new ArrayList<AndesMessageMetadata>();
-                            QueueAddress queueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueue);
-                            List<AndesMessageMetadata> messagesReadByLeadingThread =
-                                    messageStore.getNextNMessageMetadataFromQueue(queueAddress, lastProcessedId++, messageCountToRead);
+                          //  QueueAddress queueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueue);
+//                            List<AndesMessageMetadata> messagesReadByLeadingThread =
+//                                    messageStore.getNextNMessageMetadataFromQueue(queueAddress, lastProcessedId++, messageCountToRead);
                             //log.info(" LEADING >> Read " + messageCountToRead + " number of messages from id " + lastProcessedId + ". Returned " + messagesReadByLeadingThread.size());
 
                             for (AndesMessageMetadata message : messagesReadByLeadingThread) {
@@ -400,15 +402,15 @@ public class QueueDeliveryWorker extends Thread {
                         log.error("Error running Cassandra Message Flusher" + e.getMessage(), e);
                     }
 
-            } else {
-                try {
-                    Thread.sleep(2000);
-                } catch (InterruptedException e) {
-                    //silently ignore
-                }
-            }
+//            } else {
+//                try {
+//                    Thread.sleep(2000);
+//                } catch (InterruptedException e) {
+//                    //silently ignore
+//                }
+//            }
 
-        }
+      //  }
     }
 
 
@@ -642,6 +644,16 @@ public class QueueDeliveryWorker extends Thread {
         }
     }
 
+    public static QueueDeliveryWorker getInstance() {
+        if (queueDeliveryWorker == null) {
 
+            synchronized (SlotDeliveryWorkerManager.class) {
+                if (queueDeliveryWorker == null) {
+                    queueDeliveryWorker = new QueueDeliveryWorker(1000,false);
+                }
+            }
+        }
+        return queueDeliveryWorker;
+    }
 
 }

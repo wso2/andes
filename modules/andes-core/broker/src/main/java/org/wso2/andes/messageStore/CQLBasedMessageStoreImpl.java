@@ -16,8 +16,6 @@ import org.wso2.andes.server.cassandra.Slot;
 import org.wso2.andes.server.cassandra.dao.CQLQueryBuilder;
 import org.wso2.andes.server.cassandra.dao.CassandraHelper;
 import org.wso2.andes.server.cassandra.dao.GenericCQLDAO;
-import org.wso2.andes.server.cluster.SlotManager;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
@@ -314,7 +312,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             long start = System.currentTimeMillis();
             GenericCQLDAO.batchExecute(KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
             if (isClusteringEnabled) {
-               QueueMessageCounter.recordMetaDataCount(metadataList,null);
+               QueueMessageCounter.recordMetaDataCountInSlot(metadataList, null);
             }
             PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency((int) (System.currentTimeMillis() - start));
 

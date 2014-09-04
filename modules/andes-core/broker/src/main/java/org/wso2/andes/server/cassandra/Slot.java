@@ -7,18 +7,16 @@ public class Slot implements Serializable {
     private long messageCount;
     private long startMessageId;
     private long endMessageId;
+    private String queue;
+
 
     public void setQueue(String queue) {
         this.queue = queue;
     }
 
     public String getQueue() {
-
         return queue;
     }
-
-    private String queue;
-
 
     public long getMessageCount() {
         return messageCount;

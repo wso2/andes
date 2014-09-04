@@ -20,7 +20,7 @@ public class QueueMessageCounter {
     static {
         slotManager = SlotManager.getInstance();
     }
-
+     //TODO USE FUTURES
     static {
         new Thread(new Runnable() {
             @Override
@@ -30,7 +30,7 @@ public class QueueMessageCounter {
                         Thread.sleep(3000);
                         for (String queue : slotTimeOutMap.keySet()) {
                             if((System.currentTimeMillis() - slotTimeOutMap.get(queue))> timeOutForMessagesInQueue){
-                                recordMetaDataCount(null, queue);
+                                recordMetaDataCountInSlot(null, queue);
                             }
                         }
 
@@ -41,7 +41,13 @@ public class QueueMessageCounter {
         }).start();
     }
 
-    public static synchronized void recordMetaDataCount(List<AndesMessageMetadata> metadataList,String queue) {
+
+    /**
+     * Record metadata count in the slot so far
+     * @param metadataList
+     * @param queue
+     */
+    public static synchronized void recordMetaDataCountInSlot(List<AndesMessageMetadata> metadataList, String queue) {
         if (metadataList!=null) {
             for (AndesMessageMetadata md : metadataList) {
                 String queueName = md.getDestination();
@@ -49,7 +55,7 @@ public class QueueMessageCounter {
                 if (queueToSlotMap.get(queueName) == null) {
                     Slot slot = new Slot();
                     slot.setEndMessageId(md.getMessageID());
-                    slot.setMessageCount((long) 1);
+                    slot.setMessageCount(1L);
                     queueToSlotMap.put(queueName, slot);
                     slotTimeOutMap.put(queueName,System.currentTimeMillis());
                 } else {
@@ -59,12 +65,12 @@ public class QueueMessageCounter {
                     queueToSlotMap.get(queueName).setEndMessageId(md.getMessageID());
 
                     if (queueToSlotMap.get(queueName).getMessageCount() >= slotManager.getSlotThreshold()) {
-                        recordLastMessageId(queueName);
+                        recordLastMessageIdOfSlotInDistributedMap(queueName);
                     }
                 }
             }
         } else {
-            recordLastMessageId(queue);
+            recordLastMessageIdOfSlotInDistributedMap(queue);
 
         }
     }
@@ -104,12 +110,18 @@ public class QueueMessageCounter {
 //        }
 //    }
 
-    public static void recordLastMessageId(String queue){
-        if (queueToSlotMap.get(queue)!=null) {
-            Slot slot = queueToSlotMap.get(queue);
-            slotManager.updateMessageIdList(queue, slot.getEndMessageId());
-            queueToSlotMap.remove(queue);
-            slotTimeOutMap.remove(queue);
+
+    /**
+     * Record last message ID in the slot in the distributed map
+     * @param queueName
+     */
+
+    public static void recordLastMessageIdOfSlotInDistributedMap(String queueName){
+        if (queueToSlotMap.get(queueName)!=null) {
+            Slot slot = queueToSlotMap.get(queueName);
+            slotManager.recordMySlotLastMessageId(queueName, slot.getEndMessageId());
+            queueToSlotMap.remove(queueName);
+            slotTimeOutMap.remove(queueName);
         }
 
     }
