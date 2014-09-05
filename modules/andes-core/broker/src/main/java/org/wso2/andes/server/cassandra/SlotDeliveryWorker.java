@@ -8,6 +8,10 @@ import org.wso2.andes.subscription.SubscriptionStore;
 
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 
 public class SlotDeliveryWorker extends Thread {
@@ -19,23 +23,32 @@ public class SlotDeliveryWorker extends Thread {
     private Map<String, QueueDeliveryInfo> subscriptionCursar4QueueMap = new HashMap<String, QueueDeliveryInfo>();
     private int maxNumberOfUnAckedMessages = 20000;
     private HashMap<String, Long> localLastProcessedIdMap;
-    private static HashMap<String,QueueDeliveryWorker> queueToQueueDeliveryWorkerMap;
+    private static HashMap<String, QueueDeliveryWorker> queueToQueueDeliveryWorkerMap;
     private static boolean isClusteringEnabled;
     private static Log log = LogFactory.getLog(SlotDeliveryWorker.class);
-    private Map<String,List<Slot>> localQueueToSlotsMap;
+    private ConcurrentHashMap<String, List<Slot>> slotsOwnedByMe;
+    private int messageCountToRead = 1000;
+
+
+    private static final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+    private static final Lock readLock = readWriteLock.readLock();
+    private static final Lock writeLock = readWriteLock.writeLock();
 
 
     public SlotDeliveryWorker() {
+        log.info("SlotDeliveryWorker Initialized.");
         this.queueList = new ArrayList<String>();
-        slotManager = SlotManager.getInstance();
         this.messageStore = MessagingEngine.getInstance().getDurableMessageStore();
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
         localLastProcessedIdMap = new HashMap<String, Long>();
         queueToQueueDeliveryWorkerMap = new HashMap<String, QueueDeliveryWorker>();
-        localQueueToSlotsMap = new HashMap<String, List<Slot>>();
-        startSlotDeletingThread();
-
+        slotsOwnedByMe = new ConcurrentHashMap<String, List<Slot>>();
+        if (isClusteringEnabled) {
+            slotManager = SlotManager.getInstance();
+            startSlotDeletingThread();
+        } else {
+        }
     }
 
     public class QueueDeliveryInfo {
@@ -113,6 +126,7 @@ public class SlotDeliveryWorker extends Thread {
             for (String queue : queueList) {
 
                 Collection<LocalSubscription> subscriptions4Queue;
+                List<Slot> slotsListForThisQueue = new ArrayList<Slot>();
                 try {
                     subscriptions4Queue = subscriptionStore.getActiveLocalSubscribersForQueue(queue);
                     if (subscriptions4Queue != null && !subscriptions4Queue.isEmpty()) {
@@ -121,8 +135,6 @@ public class SlotDeliveryWorker extends Thread {
                             Slot currentSlot = slotManager.getASlotFromSlotManager(queue);
                             if (currentSlot == null) {
                                 //no available free slots
-                                //delete previsous entry from slot assignment map
-                              //  slotManager.deleteEntryFromSlotAssignmentMap(queue);
                                 try {
                                     //TODO is it ok to sleep since there are other queues
                                     Thread.sleep(2000);
@@ -130,12 +142,28 @@ public class SlotDeliveryWorker extends Thread {
                                     //silently ignore
                                 }
                             } else {
+                                log.info("Received slot for queue " + queue + " is: " + currentSlot.getStartMessageId() + " - " +currentSlot.getEndMessageId());
                                 slotManager.addEntryToSlotAssignmentMap(queue, currentSlot);
+                                writeLock.lock();
+                                try {
+                                    if (slotsOwnedByMe.get(queue) != null) {
+                                        slotsOwnedByMe.get(queue).add(currentSlot);
+
+                                    } else {
+                                        slotsListForThisQueue.add(currentSlot);
+                                        slotsOwnedByMe.put(queue, slotsListForThisQueue);
+
+                                    }
+                                } finally {
+                                    writeLock.unlock();
+                                }
                                 long firstMsgId = currentSlot.getStartMessageId();
                                 long lastMsgId = currentSlot.getEndMessageId();
                                 List<AndesMessageMetadata> messagesReadByLeadingThread = messageStore.getMetaDataList(queue, firstMsgId, lastMsgId);
-                                if (messagesReadByLeadingThread!=null) {
-                                   // sendMessages(messagesReadByLeadingThread, subscriptions4Queue, queue);
+                                if (messagesReadByLeadingThread != null && !messagesReadByLeadingThread.isEmpty()) {
+                                    // sendMessages(messagesReadByLeadingThread, subscriptions4Queue, queue);
+                                    log.info("Number of messages read from slot " + currentSlot.getStartMessageId() + " - " +
+                                            currentSlot.getEndMessageId()+" is " + messagesReadByLeadingThread.size());
                                     QueueDeliveryWorker.getInstance().run(messagesReadByLeadingThread);
                                 }
                             }
@@ -145,15 +173,18 @@ public class SlotDeliveryWorker extends Thread {
                                 startMessageId = localLastProcessedIdMap.get(queue);
                             }
                             List<AndesMessageMetadata> messagesReadByLeadingThread = messageStore.getNextNMessageMetadataFromQueue
-                                    (queue, startMessageId, 100);
-                            if (messagesReadByLeadingThread == null) {
+                                    (queue, startMessageId++, messageCountToRead);
+                            if (messagesReadByLeadingThread == null || messagesReadByLeadingThread.isEmpty()) {
                                 try {
+                                    //log.info("There are no messages to read....");
                                     //TODO is it ok to sleep since there are other queues
                                     Thread.sleep(2000);
                                 } catch (InterruptedException ignored) {
                                     //silently ignore
                                 }
                             } else {
+                                log.info(messagesReadByLeadingThread.size()+" number of messages read from slot");
+                                localLastProcessedIdMap.put(queue,messagesReadByLeadingThread.get(messagesReadByLeadingThread.size() -1).getMessageID());
                                 QueueDeliveryWorker.getInstance().run(messagesReadByLeadingThread);
                             }
                         }
@@ -169,8 +200,8 @@ public class SlotDeliveryWorker extends Thread {
 
     public void addQueueToThread(String queueName) {
         getQueueList().add(queueName);
-      //  QueueDeliveryWorker queueDeliveryWorker = new QueueDeliveryWorker(1000,false);
-       // queueToQueueDeliveryWorkerMap.put(queueName,queueDeliveryWorker);
+        //  QueueDeliveryWorker queueDeliveryWorker = new QueueDeliveryWorker(1000,false);
+        // queueToQueueDeliveryWorkerMap.put(queueName,queueDeliveryWorker);
     }
 
     public List<String> getQueueList() {
@@ -205,6 +236,36 @@ public class SlotDeliveryWorker extends Thread {
 
     private void startSlotDeletingThread() {
         new Thread() {
+            public void run() {
+                try {
+
+                    log.info("SLOT DELETING THREAD STARTED");
+                    Thread.sleep(10000);
+                    while (true) {
+                        writeLock.lock();
+                        try {
+                            Iterator<String> queueIterator = slotsOwnedByMe.keySet().iterator();
+                            while (queueIterator.hasNext()) {
+                                String queue = queueIterator.next();
+                                Iterator<Slot> slotIterator = slotsOwnedByMe.get(queue).iterator();
+                                while (slotIterator.hasNext()) {
+                                    Slot slot = slotIterator.next();
+                                    if (slotManager.isThisSlotEmpty(slot)) {
+                                        slotManager.unAssignSlot(queue, slot.getStartMessageId());
+                                         slotIterator.remove();
+                                    }
+                                }
+                            }
+                        } finally {
+                            writeLock.unlock();
+                        }
+
+                        Thread.sleep(10000);
+                    }
+                } catch (InterruptedException e) {
+                    log.error("Error in slot deleting thread, it will break the thread", e);
+                }
+            }
 
         }.start();
     }

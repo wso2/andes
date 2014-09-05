@@ -15,12 +15,13 @@ public class QueueMessageCounter {
     //TODO what should be these value
     private static long timeOutForMessagesInQueue = 1000; // In milliseconds
     private static SlotManager slotManager;
-
+    private static boolean isClusteringEnabled;
 
     static {
         slotManager = SlotManager.getInstance();
     }
-     //TODO USE FUTURES
+
+    //TODO USE FUTURES
     static {
         new Thread(new Runnable() {
             @Override
@@ -29,7 +30,7 @@ public class QueueMessageCounter {
                     try {
                         Thread.sleep(3000);
                         for (String queue : slotTimeOutMap.keySet()) {
-                            if((System.currentTimeMillis() - slotTimeOutMap.get(queue))> timeOutForMessagesInQueue){
+                            if ((System.currentTimeMillis() - slotTimeOutMap.get(queue)) > timeOutForMessagesInQueue) {
                                 recordMetaDataCountInSlot(null, queue);
                             }
                         }
@@ -44,11 +45,12 @@ public class QueueMessageCounter {
 
     /**
      * Record metadata count in the slot so far
+     *
      * @param metadataList
      * @param queue
      */
     public static synchronized void recordMetaDataCountInSlot(List<AndesMessageMetadata> metadataList, String queue) {
-        if (metadataList!=null) {
+        if (metadataList != null) {
             for (AndesMessageMetadata md : metadataList) {
                 String queueName = md.getDestination();
                 //if this is the first message to that queue
@@ -57,7 +59,7 @@ public class QueueMessageCounter {
                     slot.setEndMessageId(md.getMessageID());
                     slot.setMessageCount(1L);
                     queueToSlotMap.put(queueName, slot);
-                    slotTimeOutMap.put(queueName,System.currentTimeMillis());
+                    slotTimeOutMap.put(queueName, System.currentTimeMillis());
                 } else {
                     long currentMsgCount = queueToSlotMap.get(queueName).getMessageCount();
                     long newMessageCount = currentMsgCount + 1;
@@ -113,11 +115,12 @@ public class QueueMessageCounter {
 
     /**
      * Record last message ID in the slot in the distributed map
+     *
      * @param queueName
      */
 
-    public static void recordLastMessageIdOfSlotInDistributedMap(String queueName){
-        if (queueToSlotMap.get(queueName)!=null) {
+    public static void recordLastMessageIdOfSlotInDistributedMap(String queueName) {
+        if (queueToSlotMap.get(queueName) != null) {
             Slot slot = queueToSlotMap.get(queueName);
             slotManager.recordMySlotLastMessageId(queueName, slot.getEndMessageId());
             queueToSlotMap.remove(queueName);

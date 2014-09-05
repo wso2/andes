@@ -15,7 +15,7 @@ public class SlotManager {
     private IMap<String, TreeSet<Slot>> freedSlotsMap;
     private IMap<String, TreeSet<Long>> queueToMessageIdsMap;
     private IMap<String, Long> queueToLastAssignedIDMap;
-    private IMap<String, List<Slot>> slotAssignmentMap;
+    private IMap<String, HashMap<Long,Slot>> slotAssignmentMap;
     private MessageStore messageStore;
     private long slotThresholdValue = 100;
     private HazelcastAgent hazelcastAgent;
@@ -49,14 +49,14 @@ public class SlotManager {
         //long[] slotRangeIDs = new long[2];
         Slot slotToBeAssigned = new Slot();
         slotToBeAssigned.setQueue(queueName);
-        if (freedSlotsMap.get(queueName) != null && !freedSlotsMap.get(queueName).isEmpty() ) {
-           freedSlotsMap.lock(queueName);
+        if (freedSlotsMap.get(queueName) != null && !freedSlotsMap.get(queueName).isEmpty()) {
+            freedSlotsMap.lock(queueName);
             try {
                 if (freedSlotsMap.get(queueName) != null && !freedSlotsMap.get(queueName).isEmpty()) {
                     slotToBeAssigned = freedSlotsMap.get(queueName).pollFirst();
                     freedSlotsMap.unlock(queueName);
                     return slotToBeAssigned;
-                }else{
+                } else {
                     slotToBeAssigned = getAFreshSlot(queueName);
                     return slotToBeAssigned;
                 }
@@ -70,7 +70,7 @@ public class SlotManager {
 
     }
 
-    private Slot getAFreshSlot(String queueName){
+    private Slot getAFreshSlot(String queueName) {
         TreeSet<Long> messageIDSet;
         Slot slotToBeAssigned = new Slot();
         slotToBeAssigned.setQueue(queueName);
@@ -98,20 +98,21 @@ public class SlotManager {
     public void addEntryToSlotAssignmentMap(String queue, Slot allocatedSlot) {
         String nodeId = hazelcastAgent.getNodeId();
         String slotAssignmentMapKey = nodeId + "_" + queue;
-        List<Slot> slotListForQueue = new ArrayList<Slot>();
-        slotAssignmentMap.putIfAbsent(slotAssignmentMapKey,slotListForQueue);
+        HashMap<Long,Slot> startIdToSlotMap = new HashMap<Long, Slot>();
+        slotAssignmentMap.putIfAbsent(slotAssignmentMapKey, startIdToSlotMap);
         slotAssignmentMap.lock(slotAssignmentMapKey);
         try {
-            slotListForQueue = slotAssignmentMap.get(slotAssignmentMapKey);
-            slotListForQueue.add(allocatedSlot);
-            slotAssignmentMap.put(slotAssignmentMapKey, slotListForQueue);
+            startIdToSlotMap = slotAssignmentMap.get(slotAssignmentMapKey);
+            startIdToSlotMap.put(allocatedSlot.getStartMessageId(), allocatedSlot);
+            slotAssignmentMap.put(slotAssignmentMapKey, startIdToSlotMap);
+            log.info("Updated the slotAssignmentMap with new Slot");
         } finally {
             slotAssignmentMap.unlock(slotAssignmentMapKey);
         }
         //slotAssignmentMap.putIfAbsent(slotAssignmentMapKey,allocatedSlot);
     }
 
-    public void deleteEntryFromSlotAssignmentMap(String queue){
+    public void deleteEntryFromSlotAssignmentMap(String queue) {
         String nodeId = hazelcastAgent.getNodeId();
         String slotAssignmentMapKey = nodeId + "_" + queue;
         slotAssignmentMap.remove(slotAssignmentMapKey);
@@ -120,6 +121,7 @@ public class SlotManager {
 
     /**
      * Record Slot's last message ID related to a particular queue
+     *
      * @param queueName
      * @param lastMessageIdInTheSlot
      */
@@ -137,7 +139,7 @@ public class SlotManager {
                 }
             }
             if (!isMessageIdRangeOutdated) {
-                messageIdSet= queueToMessageIdsMap.get(queueName);
+                messageIdSet = queueToMessageIdsMap.get(queueName);
                 messageIdSet.add(lastMessageIdInTheSlot);
                 queueToMessageIdsMap.put(queueName, messageIdSet);
             }
@@ -151,32 +153,33 @@ public class SlotManager {
             String slotAssignmentMapKey = (String) o;
             if (slotAssignmentMapKey.contains(nodeId)) {
                 //slots list for a particular queue
-                List<Slot> slotsToBeReAssigned = slotAssignmentMap.get(slotAssignmentMapKey);
+                List<Slot> slotsToBeReAssigned = new ArrayList(slotAssignmentMap.get(slotAssignmentMapKey).values());
                 TreeSet<Slot> freeSlotTreeSet = new TreeSet<Slot>();
-                freedSlotsMap.putIfAbsent(freeSlotTreeSet.first().getQueue(), freeSlotTreeSet);
-                for (Slot slotToBeReAssigned:slotsToBeReAssigned) {
-
-                    if (!isSlotEmpty(slotToBeReAssigned)) {
+                for (Slot slotToBeReAssigned : slotsToBeReAssigned) {
+                    if (!isThisSlotEmpty(slotToBeReAssigned)) {
+                        freedSlotsMap.putIfAbsent(slotToBeReAssigned.getQueue(), freeSlotTreeSet);
                         freedSlotsMap.lock(slotToBeReAssigned.getQueue());
                         try {
                             freeSlotTreeSet = freedSlotsMap.get(slotToBeReAssigned.getQueue());
-                             freeSlotTreeSet.add(slotToBeReAssigned);
-                             freedSlotsMap.put(slotToBeReAssigned.getQueue(), freeSlotTreeSet);
-                             slotAssignmentMap.remove(slotAssignmentMapKey);
-                         } finally {
-                             freedSlotsMap.unlock(slotToBeReAssigned.getQueue());
-                         }
+                            freeSlotTreeSet.add(slotToBeReAssigned);
+                            freedSlotsMap.put(slotToBeReAssigned.getQueue(), freeSlotTreeSet);
+                            log.info("Reassigned slot " + slotToBeReAssigned.getStartMessageId() + " - " +
+                                    slotToBeReAssigned.getEndMessageId() + "from node " + nodeId );
+                        } finally {
+                            freedSlotsMap.unlock(slotToBeReAssigned.getQueue());
+                        }
                     }
                 }
+                slotAssignmentMap.remove(slotAssignmentMapKey);
             }
         }
     }
 
-    public boolean isSlotEmpty(Slot slot){
+    public boolean isThisSlotEmpty(Slot slot) {
         try {
             List<AndesMessageMetadata> messagesReturnedFromCassandra =
                     messageStore.getMetaDataList(slot.getQueue(), slot.getStartMessageId(), slot.getEndMessageId());
-            if(messagesReturnedFromCassandra == null){
+            if (messagesReturnedFromCassandra == null || messagesReturnedFromCassandra.isEmpty()) {
                 return true;
             } else {
                 return false;
@@ -184,6 +187,19 @@ public class SlotManager {
         } catch (AndesException e) {
             log.error("Error occurred while querying metadata from cassandra", e);
             return false;
+        }
+    }
+
+    public void unAssignSlot(String queueName,long startMessageIdOfSlot) {
+        String slotAssignmentMapKey = hazelcastAgent.getNodeId() + "_" + queueName;
+        slotAssignmentMap.lock(slotAssignmentMapKey);
+        try {
+            HashMap<Long,Slot> startIdToSlotMap = slotAssignmentMap.get(slotAssignmentMapKey);
+            startIdToSlotMap.remove(startMessageIdOfSlot);
+            slotAssignmentMap.replace(slotAssignmentMapKey,startIdToSlotMap);
+            log.info("Unassigned slot start with: " + startMessageIdOfSlot);
+        } finally {
+            slotAssignmentMap.unlock(slotAssignmentMapKey);
         }
     }
 

@@ -169,53 +169,53 @@ public class QueueDeliveryWorker {
     /**
      * Laggards Thread to deliver messages skipped by Primary Delivery Thread if the conditions met
      */
-//    private void startLaggardsThread() {
-//        new Thread() {
-//            public void run() {
-//                try {
-//                    long lastReadLaggardMessageID = 0;
-//                    int laggardQueueEntriesListSize = 0;
-//                    //we need to delay laggards thread as it should be started after a fair interval after the leading thread
-//                    sleep4waitInterval(60000);
-//                    while (true) {
-//                        if (running) {
-//                            try {
-//                                if (laggardQueueEntriesListSize == 0 || lastReadLaggardMessageID >= lastProcessedId) {
-//                                    lastReadLaggardMessageID = 0;
-//                                    sleep4waitInterval(queueWorkerWaitInterval * 5);
-//                                }
-//
-//                                //List<AMQMessage> laggardQueueEntriesList = messageStore.getMessagesFromNodeQueue(nodeQueue, queue, messageCountToRead, lastReadLaggardMessageID);
-//                                QueueAddress queueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueue);
-//                                List<AndesMessageMetadata> laggardMessageMetaDataList = messageStore.getNextNMessageMetadataFromQueue(queueAddress, lastReadLaggardMessageID++, messageCountToRead);
-//                                //log.info("LAGGARDS>> Read " + messageCountToRead + " number of messages from id " + lastReadLaggardMessageID + ". Returned " + laggardMessageMetaDataList.size());
-//                                for (AndesMessageMetadata entry : laggardMessageMetaDataList) {
-//                                    String routingKey = entry.getDestination();
-//                                    if (subscriptionStore.getActiveClusterSubscribersForDestination(routingKey, false).size() > 0) {
-//                                        laggardsMessages.add(entry);
-//                                    }
-//                                }
-//                                laggardQueueEntriesListSize = laggardMessageMetaDataList.size();
-//                                if (laggardQueueEntriesListSize > 0) {
-//                                    lastReadLaggardMessageID = laggardMessageMetaDataList.get(laggardQueueEntriesListSize - 1).getMessageID();
-//                                }
-//                                sleep4waitInterval(20000);
-//                            } catch (Exception e) {
-//                                log.warn("Error in laggard message reading thread ", e);
-//                                sleep4waitInterval(queueWorkerWaitInterval * 2);
-//                            }
-//                        } else {
-//                            Thread.sleep(2000);
-//                        }
-//
-//                    }
-//                } catch (Exception e) {
-//                    log.error("Error in laggard message reader thread, it will break the thread", e);
-//                }
-//
-//            }
-//        }.start();
-//    }
+    private void startLaggardsThread() {
+       new Thread() {
+            public void run() {
+                try {
+                    long lastReadLaggardMessageID = 0;
+                    int laggardQueueEntriesListSize = 0;
+                    //we need to delay laggards thread as it should be started after a fair interval after the leading thread
+                    sleep4waitInterval(60000);
+                    while (true) {
+                        if (running) {
+                            try {
+                                if (laggardQueueEntriesListSize == 0 || lastReadLaggardMessageID >= lastProcessedId) {
+                                    lastReadLaggardMessageID = 0;
+                                    sleep4waitInterval(queueWorkerWaitInterval * 5);
+                                }
+
+                                //List<AMQMessage> laggardQueueEntriesList = messageStore.getMessagesFromNodeQueue(nodeQueue, queue, messageCountToRead, lastReadLaggardMessageID);
+                                QueueAddress queueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueue);
+                                List<AndesMessageMetadata> laggardMessageMetaDataList = messageStore.getNextNMessageMetadataFromQueue(queueAddress, lastReadLaggardMessageID++, messageCountToRead);
+                                //log.info("LAGGARDS>> Read " + messageCountToRead + " number of messages from id " + lastReadLaggardMessageID + ". Returned " + laggardMessageMetaDataList.size());
+                                for (AndesMessageMetadata entry : laggardMessageMetaDataList) {
+                                    String routingKey = entry.getDestination();
+                                    if (subscriptionStore.getActiveClusterSubscribersForDestination(routingKey, false).size() > 0) {
+                                        laggardsMessages.add(entry);
+                                    }
+                                }
+                                laggardQueueEntriesListSize = laggardMessageMetaDataList.size();
+                                if (laggardQueueEntriesListSize > 0) {
+                                    lastReadLaggardMessageID = laggardMessageMetaDataList.get(laggardQueueEntriesListSize - 1).getMessageID();
+                                }
+                                sleep4waitInterval(20000);
+                            } catch (Exception e) {
+                                log.warn("Error in laggard message reading thread ", e);
+                                sleep4waitInterval(queueWorkerWaitInterval * 2);
+                            }
+                        } else {
+                            Thread.sleep(2000);
+                        }
+
+                    }
+                } catch (Exception e) {
+                    log.error("Error in laggard message reader thread, it will break the thread", e);
+                }
+
+            }
+        }.start();
+    }
 
     /**
      * Main Message Delivery Thread
@@ -647,7 +647,7 @@ public class QueueDeliveryWorker {
     public static QueueDeliveryWorker getInstance() {
         if (queueDeliveryWorker == null) {
 
-            synchronized (SlotDeliveryWorkerManager.class) {
+            synchronized (QueueDeliveryWorker.class) {
                 if (queueDeliveryWorker == null) {
                     queueDeliveryWorker = new QueueDeliveryWorker(1000,false);
                 }

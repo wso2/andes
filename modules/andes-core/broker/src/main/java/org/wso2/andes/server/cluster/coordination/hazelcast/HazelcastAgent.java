@@ -55,7 +55,7 @@ public class HazelcastAgent {
 
 
     private IMap<String, TreeSet<Long>> queueToMessageIdListMap;
-    private IMap<String,List<Slot>> slotAssignmentMap;
+    private IMap<String,HashMap<Long,Slot>> slotAssignmentMap;
     private IMap<String, Long> lastProcessedIDs;
     /**
      * Unique ID generated to represent the node.
@@ -256,7 +256,7 @@ public class HazelcastAgent {
         return lastProcessedIDs;
     }
 
-    public IMap<String,List<Slot>> getSlotAssignmentMap() {
+    public IMap<String,HashMap<Long,Slot>> getSlotAssignmentMap() {
         return slotAssignmentMap;
     }
 }
