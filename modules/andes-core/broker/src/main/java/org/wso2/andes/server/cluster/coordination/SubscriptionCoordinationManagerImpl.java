@@ -26,14 +26,28 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * This class handles all subscription management tasks
+ */
 public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordinationManager {
 
 
     private static Log log = LogFactory.getLog(SubscriptionCoordinationManagerImpl.class);
 
+    /**
+     * HazelcastAgent instance.
+     */
     private HazelcastAgent hazelcastAgent;
+
+    /**
+     * A list of listeners who should be notified about changes of subscriptions.
+     */
     private List<SubscriptionListener> subscriptionListeners = new ArrayList<SubscriptionListener>();
 
+    /**
+     * This method must be called just after initializing the SubscriptionCoordinationManagerImpl class
+     * for the first time.
+     */
     @Override
     public void init() {
         if (AndesContext.getInstance().isClusteringEnabled()) {
@@ -41,6 +55,11 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
         }
     }
 
+    /**
+     * Notify the listeners about the changes happened to Subscriptions.
+     *
+     * @param subscriptionNotification contains the information about the subscription change.
+     */
     @Override
     public void notifySubscriptionChange(final SubscriptionNotification subscriptionNotification) {
         if (log.isDebugEnabled()) {
@@ -51,13 +70,14 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
             public void run() {
                 /**
                  *TODO:Currently only the listener implemented for QPID (VirtualHostConfigSynchronizer) is available.
-                 *TODO:Other listeners should be implemented for MQTT etc.
+                 * Other listeners should be implemented for MQTT etc.
                  */
                 for (SubscriptionListener listener : subscriptionListeners) {
                     try {
                         listener.subscriptionsChanged(subscriptionNotification);
                     } catch (Exception e) {
                         log.error("Error handling the subscription change ", e);
+                        throw new RuntimeException(e);
                     }
                 }
             }
@@ -67,6 +87,13 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
         AndesExecuter.runAsync(r);
     }
 
+    /**
+     * This method get called when a subscription which is in current node has changed.
+     * If clustering is enabled, cluster wide subscription changed notification will be sent.
+     * Otherwise, local listeners will be notified to handle subscription change.
+     *
+     * @param subscriptionNotification contains the information about the changed subscription
+     */
     @Override
     public void handleLocalSubscriptionChange(SubscriptionNotification subscriptionNotification) {
         if (AndesContext.getInstance().isClusteringEnabled()) {
@@ -78,11 +105,21 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
         }
     }
 
+    /**
+     * This method get called when the cluster wide notification about subscription change is received.
+     *
+     * @param subscriptionNotification contains the information about the changed subscription,
+     */
     @Override
     public void handleClusterSubscriptionChange(SubscriptionNotification subscriptionNotification) {
         notifySubscriptionChange(subscriptionNotification);
     }
 
+    /**
+     * Register listeners which needs to be triggered when a subscription is changed.
+     *
+     * @param listener Subscription Listener implementation which will handle the subscription changes
+     */
     @Override
     public void registerSubscriptionListener(SubscriptionListener listener) {
         if (listener == null) {
@@ -92,6 +129,11 @@ public class SubscriptionCoordinationManagerImpl implements SubscriptionCoordina
         this.subscriptionListeners.add(listener);
     }
 
+    /**
+     * Unregister a listener.
+     *
+     * @param listener which should be unregistered.
+     */
     @Override
     public void removeSubscriptionListener(SubscriptionListener listener) {
         if (this.subscriptionListeners.contains(listener)) {

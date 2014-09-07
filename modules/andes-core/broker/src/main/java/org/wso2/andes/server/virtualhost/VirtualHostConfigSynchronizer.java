@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+
 public class VirtualHostConfigSynchronizer implements
         ConfigurationRecoveryHandler.QueueRecoveryHandler,
         ConfigurationRecoveryHandler.ExchangeRecoveryHandler,
@@ -48,7 +49,7 @@ public class VirtualHostConfigSynchronizer implements
 
     @Override
     public void binding(String exchangeName, String queueName, String bindingKey, ByteBuffer buf) {
-        synchronized( this ) {
+        synchronized (this) {
             try {
                 Exchange exchange = _virtualHost.getExchangeRegistry().getExchange(exchangeName);
                 if (exchange == null) {
@@ -98,7 +99,7 @@ public class VirtualHostConfigSynchronizer implements
 
     @Override
     public void exchange(String exchangeName, String type, boolean autoDelete) {
-        synchronized( this ) {
+        synchronized (this) {
             try {
                 Exchange exchange;
                 AMQShortString exchangeNameSS = new AMQShortString(exchangeName);
@@ -106,8 +107,9 @@ public class VirtualHostConfigSynchronizer implements
                 if (exchange == null) {
                     exchange = _virtualHost.getExchangeFactory().createExchange(exchangeNameSS, new AMQShortString(type), true, autoDelete, 0);
                     _virtualHost.getExchangeRegistry().registerExchange(exchange);
-                    _logger.info("Added Exchange: " + exchangeName
-                            + ", Type: " + type + ", autoDelete: " + autoDelete);
+                    if (_logger.isInfoEnabled()) {
+                        _logger.info("Added Exchange: " + exchangeName + ", Type: " + type + ", autoDelete: " + autoDelete);
+                    }
                 }
             } catch (AMQException e) {
                 log.error("Error while creating Exchanges", e);
@@ -124,7 +126,7 @@ public class VirtualHostConfigSynchronizer implements
     @Override
     public void queue(String queueName, String owner, boolean exclusive, FieldTable arguments) {
 
-        synchronized( this ) {
+        synchronized (this) {
             try {
                 AMQShortString queueNameShortString = new AMQShortString(queueName);
 
@@ -132,7 +134,8 @@ public class VirtualHostConfigSynchronizer implements
 
                 if (q == null) {
                     //if a new durable queue is added we can know it here
-                    q = AMQQueueFactory.createAMQQueueImpl(queueNameShortString, true, owner == null ? null : new AMQShortString(owner), false, exclusive, _virtualHost,
+                    q = AMQQueueFactory.createAMQQueueImpl(queueNameShortString, true
+                            , owner == null ? null : new AMQShortString(owner), false, exclusive, _virtualHost,
                             arguments);
                     _virtualHost.getQueueRegistry().registerQueue(q);
                     _logger.info("Queue sync - Added Queue: " + queueName
@@ -162,13 +165,21 @@ public class VirtualHostConfigSynchronizer implements
         running = false;
     }
 
+    /**
+     * Handles subscription changed event.
+     * @param subscriptionNotification
+     */
     @Override
     public void subscriptionsChanged(SubscriptionNotification subscriptionNotification) {
-        log.info("Updating subscription maps");
+        if (log.isInfoEnabled()) {
+            log.info("Updating subscription maps");
+        }
         BasicSubscription subscription = new BasicSubscription(subscriptionNotification.getEncodedString());
         ClusterResourceHolder.getInstance().getSubscriptionManager().updateClusterSubscriptionMaps(subscription, subscriptionNotification.getStatus());
 
-        log.info("Synchronizing Exchanges, Queues and Bindings...");
+        if (log.isInfoEnabled()) {
+            log.info("Synchronizing Exchanges, Queues and Bindings...");
+        }
         syncExchangesQueuesAndBindings(subscriptionNotification);
     }
 
@@ -200,30 +211,40 @@ public class VirtualHostConfigSynchronizer implements
         }
     }
 
+    /**
+     * Sync the exchange, binding and queue related to the subscription change.
+     *
+     * @param subscriptionNotification contains the information related to the subscripton change
+     */
     public void syncExchangesQueuesAndBindings(SubscriptionNotification subscriptionNotification) {
         try {
 
-            if(subscriptionNotification != null && subscriptionNotification.isDurable()){
+            if (subscriptionNotification != null && subscriptionNotification.isDurable()) {
 
-                AndesExchange exchange =  subscriptionNotification.getAndesExchange();
+                AndesExchange exchange = subscriptionNotification.getAndesExchange();
                 AndesQueue queue = subscriptionNotification.getAndesQueue();
                 AndesBinding binding = subscriptionNotification.getAndesBinding();
 
-                if(subscriptionNotification.getStatus() == SubscriptionChange.Added){
-                    log.info("Handling added subscription");
+                if (subscriptionNotification.getStatus() == SubscriptionChange.Added) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Handling added subscription");
+                    }
                     exchange(exchange.exchangeName, exchange.type, exchange.autoDelete != 0);
                     queue(queue.queueName, queue.queueOwner, queue.isExclusive, null);
                     binding(binding.boundExchangeName, binding.boundQueue.queueName, binding.routingKey, null);
-                }
-                else if(subscriptionNotification.getStatus() == SubscriptionChange.Deleted){
+                } else if (subscriptionNotification.getStatus() == SubscriptionChange.Deleted) {
                     // SubscriptionChange.Deleted are triggered only as a result of queue deletion
-                    log.info("Handling deleted subscription");
+                    if (log.isDebugEnabled()) {
+                        log.debug("Handling deleted subscription");
+                    }
                     removeQueue(queue.queueName);
                     removeBinding(binding.boundExchangeName, queue.queueName, binding.routingKey, null);
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // This exception should not be thrown since the failure of syncing subscription data will affect
+            // only the particular subscription. Not the whole message broker system.
+            log.error("Error while syncing exchanges binding and queues for the subscription", e);
         }
     }
 
@@ -296,7 +317,7 @@ public class VirtualHostConfigSynchronizer implements
 
     private void removeBinding(String exchangeName, String queueName, String bindingKey, ByteBuffer buf) throws AMQSecurityException, AMQInternalException {
 
-        synchronized( this ) {
+        synchronized (this) {
             Exchange exchange = _virtualHost.getExchangeRegistry().getExchange(exchangeName);
             if (exchange == null) {
                 //_logger.error("Unknown exchange: " + exchangeName + ", cannot remove binding : " + queueName);

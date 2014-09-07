@@ -29,11 +29,35 @@ import java.io.Serializable;
  * communicated using SubscriptionNotification instances.
  */
 public class SubscriptionNotification implements Serializable {
+
+    /**
+     * The exchange bind with the subscription
+     */
     private AndesExchange andesExchange;
+
+    /**
+     * The binding bind with the subscription
+     */
     private AndesBinding andesBinding;
+
+    /**
+     * The queue to which the subscription was made
+     */
     private AndesQueue andesQueue;
+
+    /**
+     * What kind of change happen to the subscription (deleted, added, disconnected)
+     */
     private SubscriptionChange status;
+
+    /**
+     * Is the subscription durable
+     */
     private boolean isDurable;
+
+    /**
+     * The string which represent all information about the subscription
+     */
     private String encodedString;
 
     /**
@@ -65,16 +89,16 @@ public class SubscriptionNotification implements Serializable {
     /**
      * Get AndesExchange used by the subscription
      *
-     * @return
+     * @return the exchange used by subscription
      */
     public AndesExchange getAndesExchange() {
         return this.andesExchange;
     }
 
     /**
-     * Get AndesQueue used by the subscription
+     * Get AndesQueue to which the subscription was made
      *
-     * @return
+     * @return queue used by subscription
      */
     public AndesQueue getAndesQueue() {
         return this.andesQueue;
@@ -83,7 +107,7 @@ public class SubscriptionNotification implements Serializable {
     /**
      * Get AndesBinding used by the subscription
      *
-     * @return
+     * @return binding used by subscription
      */
     public AndesBinding getAndesBinding() {
         return this.andesBinding;
@@ -92,7 +116,7 @@ public class SubscriptionNotification implements Serializable {
     /**
      * Get the type of change happen to the subscription (Added, deleted or disconnected)
      *
-     * @return
+     * @return type of change happened to the subscription
      */
     public SubscriptionChange getStatus() {
         return this.status;
@@ -101,7 +125,7 @@ public class SubscriptionNotification implements Serializable {
     /**
      * Is the subscription to a durable topic or to a queue.
      *
-     * @return
+     * @return true if subscription is durable
      */
     public boolean isDurable() {
         return this.isDurable;
@@ -110,7 +134,7 @@ public class SubscriptionNotification implements Serializable {
     /**
      * Get encoded string of the subscription
      *
-     * @return
+     * @return the encoded string of the subscription
      */
     public String getEncodedString() {
         return this.encodedString;

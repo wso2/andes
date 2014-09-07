@@ -32,38 +32,45 @@ public class AndesMembershipListener implements MembershipListener {
     private static Log log = LogFactory.getLog(AndesMembershipListener.class);
 
     /**
-     * This is triggered when a new member joined to the cluster.
+     * This is triggered when a new member has joined to the cluster.
      *
-     * @param membershipEvent
+     * @param membershipEvent contains the information about joined node.
      */
     @Override
     public void memberAdded(MembershipEvent membershipEvent) {
         Member member = membershipEvent.getMember();
-        log.info("Handling cluster gossip: New member joined to the cluster. Member Socket Address:"
-                + member.getInetSocketAddress()
-                + " UUID:"
-                + member.getUuid());
+
+        if(log.isInfoEnabled()){
+            log.info("Handling cluster gossip: New member joined to the cluster. Member Socket Address:"
+                    + member.getInetSocketAddress()
+                    + " UUID:"
+                    + member.getUuid());
+        }
+
         ClusterResourceHolder.getInstance().getClusterManager().handleNewNodeJoiningToCluster(member);
     }
 
     /**
-     * This is triggered when a node left the cluster.
+     * This is triggered when a node has left the cluster.
      *
-     * @param membershipEvent
+     * @param membershipEvent contains the information about left node.
      */
     @Override
     public void memberRemoved(MembershipEvent membershipEvent) {
         Member member = membershipEvent.getMember();
-        log.info("Handling cluster gossip: A member left the cluster. Member Socket Address:"
-                + member.getInetSocketAddress()
-                + " UUID:"
-                + member.getUuid());
+        if(log.isInfoEnabled()){
+            log.info("Handling cluster gossip: A member left the cluster. Member Socket Address:"
+                    + member.getInetSocketAddress()
+                    + " UUID:"
+                    + member.getUuid());
+        }
+
         ClusterManager clusterManager = ClusterResourceHolder.getInstance().getClusterManager();
         try {
             clusterManager.handleNodeLeavingCluster(member);
         } catch (Exception e) {
             log.error("Error while handling node removal, NodeID:" + clusterManager.getNodeId(member), e);
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 }

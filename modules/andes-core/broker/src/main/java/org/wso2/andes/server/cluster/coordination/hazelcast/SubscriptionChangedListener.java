@@ -35,11 +35,13 @@ public class SubscriptionChangedListener implements MessageListener {
     /**
      * This method is triggered when a subscription is changed in clustered environment.
      *
-     * @param message
+     * @param message contains the SubscriptionNotification
      */
     @Override
     public void onMessage(Message message) {
-        log.info("Handling cluster gossip: received a subscriber changed notification");
+        if (log.isInfoEnabled()) {
+            log.info("Handling cluster gossip: received a subscriber changed notification");
+        }
         ClusterResourceHolder.getInstance().getSubscriptionCoordinationManager().handleClusterSubscriptionChange(
                 (SubscriptionNotification) message.getMessageObject());
     }

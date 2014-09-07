@@ -24,7 +24,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 /**
- * This listener class is triggered when queue purge is happened.
+ * This listener class is triggered when a queue has been purged.
  */
 public class QueueChangedListener implements MessageListener {
     private static Log log = LogFactory.getLog(QueueChangedListener.class);
@@ -33,6 +33,8 @@ public class QueueChangedListener implements MessageListener {
     //TODO Implement this
     //This should be called only for queue purge operations
     public void onMessage(Message message) {
-        log.info("Handling cluster gossip: On message triggered in QueueChangedListener");
+        if (log.isInfoEnabled()) {
+            log.info("Handling cluster gossip: On message triggered in QueueChangedListener");
+        }
     }
 }
