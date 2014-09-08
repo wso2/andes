@@ -197,7 +197,6 @@ public class SlotDeliveryWorker extends Thread {
 
     }
 
-
     public void addQueueToThread(String queueName) {
         getQueueList().add(queueName);
         //  QueueDeliveryWorker queueDeliveryWorker = new QueueDeliveryWorker(1000,false);

@@ -457,8 +457,8 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
     }
 
     @Override
-    public List<AndesRemovableMetadata> getExpiredMessages(Long limit) throws AndesException {
-        return null;
+    public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException {
+        return new ArrayList<AndesRemovableMetadata>();
     }
 
     @Override

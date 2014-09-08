@@ -252,8 +252,8 @@ public class InMemoryMessageStore implements MessageStore {
     }
 
     @Override
-    public List<AndesRemovableMetadata> getExpiredMessages(Long limit) {
-        return null;
+    public List<AndesRemovableMetadata> getExpiredMessages(int limit) {
+        return new ArrayList<AndesRemovableMetadata>();
     }
 
     @Override

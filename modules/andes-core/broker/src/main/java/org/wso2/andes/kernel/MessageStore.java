@@ -60,7 +60,7 @@ public interface MessageStore {
      */
     public void deleteMessageMetadataFromQueue(final String queueName, List<AndesRemovableMetadata> messagesToRemove) throws AndesException;
 
-    List<AndesRemovableMetadata> getExpiredMessages(Long limit) throws AndesException;
+    List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException;
 
     /**
      * close the database connection

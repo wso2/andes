@@ -20,7 +20,6 @@
 package org.wso2.andes.messageStore;
 
 import org.apache.log4j.Logger;
-import org.javacc.jjdoc.JJDocMain;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 
@@ -29,29 +28,35 @@ import javax.naming.NamingException;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
+public class H2BasedMessageStoreImpl implements MessageStore {
 
-    private static final Logger logger = Logger.getLogger(H2BasedInMemoryMessageStoreImpl.class);
+    private static final Logger logger = Logger.getLogger(H2BasedMessageStoreImpl.class);
     private final Map<String, Integer> queueMap; // cache queue name to queue_id mapping to avoid extra sql queries
     private DataSource datasource;
+    private String icEntry;
 
-    public H2BasedInMemoryMessageStoreImpl() {
+    public H2BasedMessageStoreImpl() {
+        icEntry = "jdbc/H2MessageStoreDB";
         queueMap = new ConcurrentHashMap<String, Integer>();
+
+    }
+
+    public H2BasedMessageStoreImpl(boolean isInMemory) {
+        this();
+        if(isInMemory) {
+            icEntry = "jdbc/InMemoryMessageStoreDB";
+        }
     }
 
     @Override
     public void initializeMessageStore(DurableStoreConnection cassandraConnection) throws AndesException {
-        // this will load the MySQL driver, each DB has its own driver
-        // setup the connection with the DB.
-        String icEntry = "";
         Connection connection = null;
+        icEntry = "jdbc/InMemoryMessageStoreDB";
         try {
-            icEntry = "jdbc/InMemoryMessageStoreDB";
             datasource = InitialContext.doLookup(icEntry);
             connection = datasource.getConnection();
             createTables();
@@ -173,7 +178,7 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
             PreparedStatement preparedStatement = connection.prepareStatement(delete);
             for (AndesAckData ackData : ackList) {
                 preparedStatement.setLong(1, ackData.messageID);
-                preparedStatement.setInt(2, getQueueID(ackData.qName));
+                preparedStatement.setInt(2, getCachedQueueID(ackData.qName));
                 preparedStatement.addBatch();
             }
             preparedStatement.executeBatch();
@@ -203,6 +208,10 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
             preparedStatement.close();
             addListToExpiryTable(connection, metadataList);
             connection.commit();
+
+            if(logger.isDebugEnabled()) {
+                logger.debug("Metadata list added. Metadata count: " + metadataList.size());
+            }
         } catch (SQLException e) {
             String errMsg = "Error occurred while inserting metadata list to queues [" + e.getMessage() + "]";
             logger.error(errMsg);
@@ -228,6 +237,10 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
             addToExpiryTable(connection, metadata);
             incrementRefCount(connection, metadata.getMessageID());
             connection.commit();
+
+            if(logger.isDebugEnabled()) {
+                logger.debug("Metadata added: msgID: " + metadata.getMessageID() + " Destination: " + metadata.getDestination());
+            }
         } catch (SQLException e) {
             String errMsg = "Error occurred while inserting message metadata to queue [" + e.getMessage() + "]";
             logger.error(errMsg);
@@ -302,7 +315,7 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
     private void updateAddMetadataPreparedStmt(PreparedStatement preparedStatement, AndesMessageMetadata metadata,
                                                final String queueName) throws SQLException {
         preparedStatement.setLong(1, metadata.getMessageID());
-        preparedStatement.setInt(2, getQueueID(queueName));
+        preparedStatement.setInt(2, getCachedQueueID(queueName));
         preparedStatement.setBytes(3, metadata.getMetadata());
     }
 
@@ -347,7 +360,7 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
         try {
             connection = getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(select);
-            preparedStatement.setInt(1, getQueueID(destinationQueueName));
+            preparedStatement.setInt(1, getCachedQueueID(destinationQueueName));
 
             ResultSet results = preparedStatement.executeQuery();
             if (results.first()) {
@@ -408,7 +421,7 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
         try {
             connection = getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(select);
-            preparedStatement.setInt(1, getQueueID(queueName));
+            preparedStatement.setInt(1, getCachedQueueID(queueName));
             preparedStatement.setLong(2, firstMsgId);
             preparedStatement.setLong(3, lastMsgID);
 
@@ -420,6 +433,10 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
                         true
                 );
                 metadataList.add(md);
+            }
+            if(logger.isDebugEnabled()){
+                logger.debug("request: metadata range ("+  firstMsgId + " , " + lastMsgID + ") in destination queue " + queueName
+                        +"\nresponse: metadata count " + metadataList.size());
             }
         } catch (SQLException e) {
             logger.error("Error occurred while retrieving messages between msg id "
@@ -445,7 +462,7 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
             connection = getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(select);
             preparedStatement.setLong(1, firstMsgId - 1);
-            preparedStatement.setInt(2, getQueueID(queueName));
+            preparedStatement.setInt(2, getCachedQueueID(queueName));
             preparedStatement.setInt(3, count);
 
             ResultSet results = preparedStatement.executeQuery();
@@ -476,7 +493,7 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
                 " AND " + JDBCConstants.MESSAGE_ID + "=?";
         Connection connection = null;
         try {
-            int queueID = getQueueID(queueName);
+            int queueID = getCachedQueueID(queueName);
 
             connection = getConnection();
             connection.setAutoCommit(false);
@@ -489,6 +506,11 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
             preparedStatement.executeUpdate();
             connection.commit();
             preparedStatement.close();
+
+            if(logger.isDebugEnabled()){
+                logger.debug("Metadata removed. " + messagesToRemove.size() + " metadata from destination "
+                                + queueName );
+            }
         } catch (SQLException e) {
             String errMsg = "error occurred while deleting message metadata from queue [" + e.getMessage() + "]";
             logger.error(errMsg);
@@ -500,11 +522,10 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
     }
 
     @Override
-    public List<AndesRemovableMetadata> getExpiredMessages(Long limit) {
-
-//        String select = "SELECT " +
-
-        return null;
+    public List<AndesRemovableMetadata> getExpiredMessages(int limit) {
+        // todo implement
+        List<AndesRemovableMetadata> list = new ArrayList<AndesRemovableMetadata>();
+        return list;
     }
 
     @Override
@@ -545,24 +566,60 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
         }
     }
 
-    private int getQueueID(final String destinationQueueName) throws SQLException{
+    private int getCachedQueueID(final String destinationQueueName) throws SQLException {
 
+        // get from map
         Integer id = queueMap.get(destinationQueueName);
         if (id != null) {
             return id;
         }
 
-        String sqlString = "INSERT INTO " + JDBCConstants.QUEUES_TABLE + " (" + JDBCConstants.QUEUE_NAME + ")" +
-                " VALUES (?)";
+        // not in map query from DB (some other node might have created it)
+        int queueID = getQueueID(destinationQueueName);
+
+        if (queueID != -1) {
+            return queueID;
+        }
+
+        // if queue is not available create a queue in DB
+        return createNewQueue(destinationQueueName);
+    }
+
+    private int getQueueID(final String destinationQueueName) throws SQLException {
+        String sqlString = "SELECT " + JDBCConstants.QUEUE_ID +
+                " FROM " + JDBCConstants.QUEUES_TABLE +
+                " WHERE " + JDBCConstants.QUEUE_NAME + "=?";
+
         int queueID = -1;
         Connection connection = null;
         try {
             connection = getConnection();
-            connection.setAutoCommit(false);
+            PreparedStatement preparedStatement = connection.prepareStatement(sqlString, Statement.RETURN_GENERATED_KEYS);
+            preparedStatement.setString(1, destinationQueueName);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.first()) {
+                queueID = resultSet.getInt(JDBCConstants.QUEUE_ID);
+            }
+        } catch (SQLException e) {
+            logger.error("Error occurred while inserting destination queue details to database [" + e.getMessage() + "]");
+            throw e;
+        } finally {
+            close(connection);
+        }
+        return queueID;
+    }
+
+    private int createNewQueue(final String destinationQueueName) throws SQLException {
+        String sqlString = "INSERT INTO " + JDBCConstants.QUEUES_TABLE + " (" + JDBCConstants.QUEUE_NAME + ")" +
+                " VALUES (?)";
+        Connection connection = null;
+        int queueID = -1;
+
+        try {
+            connection = getConnection();
             PreparedStatement preparedStatement = connection.prepareStatement(sqlString, Statement.RETURN_GENERATED_KEYS);
             preparedStatement.setString(1, destinationQueueName);
             preparedStatement.executeUpdate();
-            connection.commit();
 
             ResultSet results = preparedStatement.getGeneratedKeys();
             if (results.first()) {
@@ -575,8 +632,7 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
                 queueMap.put(destinationQueueName, queueID);
             }
         } catch (SQLException e) {
-            logger.error( "Error occurred while inserting destination queue details to database [" + e.getMessage() + "]");
-            rollback(connection);
+            logger.error("Error occurred while inserting destination queue details to database [" + e.getMessage() + "]");
             throw e;
         } finally {
             close(connection);
@@ -645,14 +701,14 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
         }
     }
 
-    private void incrementRefCount(Connection connection, long messageId) throws SQLException{
+    private void incrementRefCount(Connection connection, long messageId) throws SQLException {
         String sql = "INSERT INTO " + JDBCConstants.REF_COUNT_TABLE +
                 " (" + JDBCConstants.MESSAGE_ID + "," + JDBCConstants.REF_COUNT + ") " +
                 "VALUES (" + messageId + ", 1)";
 //                "ON DUPLICATE KEY UPDATE " + JDBCConstants.REF_COUNT + "=" + JDBCConstants.REF_COUNT + " + 1";
 
         Statement stmt = connection.createStatement();
-        System.out.println(stmt.executeUpdate(sql));
+        stmt.executeUpdate(sql);
     }
 
     private void close(Connection connection) {
@@ -708,7 +764,7 @@ public class H2BasedInMemoryMessageStoreImpl implements MessageStore {
 //            String sqlString = "UPDATE " + JDBCConstants.METADATA_TABLE +
 //                    " SET " + JDBCConstants.TNQ_NQ_GQ_ID + "=" + String.valueOf(getMainQueueID(targetAddress.queueName)) +
 //                    " WHERE " + JDBCConstants.TNQ_NQ_GQ_ID + "=" + String.valueOf(getMainQueueID(sourceAddress.queueName)) +
-//                    " AND " + JDBCConstants.QUEUE_ID + "=" + String.valueOf(getQueueID(destinationQueue));
+//                    " AND " + JDBCConstants.QUEUE_ID + "=" + String.valueOf(getCachedQueueID(destinationQueue));
 //
 //            Statement stmt = connection.createStatement();
 //            movedCount = stmt.executeUpdate(sqlString);

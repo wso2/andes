@@ -59,7 +59,8 @@ public class MessageExpirationWorker extends Thread {
             if (working) {
                 try {
                     //Get Expired messages
-                    List<AndesRemovableMetadata> expiredMessages = CQLDataAccessHelper.getExpiredMessages(messageBatchSize, CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY,CassandraConstants.KEYSPACE);
+                    List<AndesRemovableMetadata> expiredMessages = messageStore.getExpiredMessages(messageBatchSize);
+//                            CQLDataAccessHelper.getExpiredMessages(messageBatchSize, CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY,CassandraConstants.KEYSPACE);
 
                     if (expiredMessages == null || expiredMessages.size() == 0 )  {
 

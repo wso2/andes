@@ -706,8 +706,10 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     @Override
-    public List<AndesRemovableMetadata> getExpiredMessages(Long limit) {
-        return null;
+    public List<AndesRemovableMetadata> getExpiredMessages(int limit) {
+        // todo implement
+
+        return new ArrayList<AndesRemovableMetadata>();
     }
 
 /*    public int removeMessaesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch) throws AndesException {

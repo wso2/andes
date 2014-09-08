@@ -95,8 +95,6 @@ public class VirtualHostImpl implements VirtualHost
 
     private MessageStore _messageStore;
 
-    private MessageStore cassandraMessageStore;
-
     protected VirtualHostMBean _virtualHostMBean;
 
     private AMQBrokerManagerMBean _brokerMBean;
@@ -449,7 +447,7 @@ public class VirtualHostImpl implements VirtualHost
             contextStoreConnection.initialize(hostConfig.getStoreConfiguration());
 
             //create a andes context store and register
-            String contextStoreClassName = "org.wso2.andes.kernel.CassandraBasedAndesContextStore";
+            String contextStoreClassName = AndesContext.getInstance().getAndesContextStoreClass();
             Class clazz2 = Class.forName(contextStoreClassName);
             Object o2 = clazz2.newInstance();
 
@@ -477,7 +475,10 @@ public class VirtualHostImpl implements VirtualHost
             }
             DurableStoreConnection messageStoreConnection = (DurableStoreConnection) o;
             messageStoreConnection.initialize(hostConfig.getStoreConfiguration());
-            MessagingEngine.getInstance().initializeMessageStore(messageStoreConnection, "org.wso2.andes.messageStore.CQLBasedMessageStoreImpl");
+            MessagingEngine.getInstance().initializeMessageStore(
+                                                        messageStoreConnection,
+                                                        AndesContext.getInstance().getMessageStoreClass()
+                                                    );
         }
 
         //this is considered as an internal impl now, so hard coding

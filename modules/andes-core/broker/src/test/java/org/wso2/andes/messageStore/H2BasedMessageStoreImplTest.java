@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class H2BasedInMemoryMessageStoreImplTest extends TestCase {
+public class H2BasedMessageStoreImplTest extends TestCase {
 
     private MessageStore messageStore;
     private Connection connection;
@@ -27,7 +27,7 @@ public class H2BasedInMemoryMessageStoreImplTest extends TestCase {
     public void setUp() throws Exception {
         super.setUp();
         Class.forName("org.h2.Driver");
-        connection = DriverManager.getConnection("jdbc:h2:mem:msg_store;mode=mysql");
+        connection = DriverManager.getConnection("jdbc:h2:mem:msg_store");
 
         try {
             if (!isInitialised) {
@@ -40,14 +40,14 @@ public class H2BasedInMemoryMessageStoreImplTest extends TestCase {
                 ic = new InitialContext();
                 ic.createSubcontext("jdbc");
                 JdbcDataSource ds = new JdbcDataSource();
-                ds.setURL("jdbc:h2:mem:msg_store;mode=mysql");
+                ds.setURL("jdbc:h2:mem:msg_store");
                 ic.bind("jdbc/InMemoryMessageStoreDB", ds);
                 isInitialised = true;
             }
         } catch (NameAlreadyBoundException ignored) {
         }
 
-        messageStore = new H2BasedInMemoryMessageStoreImpl();
+        messageStore = new H2BasedMessageStoreImpl();
         messageStore.initializeMessageStore(null);
 
     }
@@ -175,9 +175,9 @@ public class H2BasedInMemoryMessageStoreImplTest extends TestCase {
         assertEquals(true, Arrays.equals(md.getMetadata(), resultSet.getBytes(JDBCConstants.METADATA)));
         assertEquals(msgId, resultSet.getLong(JDBCConstants.MESSAGE_ID));
 
-//        assertEquals(true, resultSet.next());
-//        assertEquals(true, Arrays.equals(md2.getMetadata(), resultSet.getBytes(JDBCConstants.METADATA)));
-//        assertEquals(msgId, resultSet.getLong(JDBCConstants.MESSAGE_ID));
+        assertEquals(true, resultSet.next());
+        assertEquals(true, Arrays.equals(md2.getMetadata(), resultSet.getBytes(JDBCConstants.METADATA)));
+        assertEquals(msgId, resultSet.getLong(JDBCConstants.MESSAGE_ID));
 
         // todo check refcount
 

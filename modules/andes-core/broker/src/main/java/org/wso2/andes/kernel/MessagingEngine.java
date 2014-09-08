@@ -25,7 +25,7 @@ import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.messageStore.CQLBasedMessageStoreImpl;
-import org.wso2.andes.messageStore.H2BasedInMemoryMessageStoreImpl;
+import org.wso2.andes.messageStore.H2BasedMessageStoreImpl;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
@@ -62,9 +62,7 @@ public class MessagingEngine {
     }
 
     private MessagingEngine() {
-        durableMessageStore = new CQLBasedMessageStoreImpl();
-        inMemoryMessageStore = new H2BasedInMemoryMessageStoreImpl();
-        disruptorBasedExecutor = new DisruptorBasedExecutor(durableMessageStore, null);
+//        inMemoryMessageStore = new H2BasedMessageStoreImpl(true);
         config = ClusterResourceHolder.getInstance().getClusterConfiguration();
         configureMessageIDGenerator();
     }
@@ -95,7 +93,8 @@ public class MessagingEngine {
             durableMessageStore = (MessageStore) o;
             durableMessageStore.initializeMessageStore(connection);
             subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-            inMemoryMessageStore.initializeMessageStore(connection);
+//            inMemoryMessageStore.initializeMessageStore(connection);
+            disruptorBasedExecutor = new DisruptorBasedExecutor(durableMessageStore, null);
         } catch (Exception e) {
             log.error("Cannot initialize message store", e);
             throw new AndesException(e);
