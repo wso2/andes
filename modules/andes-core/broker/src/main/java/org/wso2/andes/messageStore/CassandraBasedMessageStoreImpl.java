@@ -595,26 +595,36 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
     }
 
     /**
-     * Generic interface to get data to draw the message rate graph.
-     * @param queueName The queue name to get data, if null all.
-     * @return The message rate data. Map<MessageCounterType, Map<TimeInMillis, Number of messages>>
-     * @throws AndesException
-     */
-    @Override
-    public Map<MessageCounterKey.MessageCounterType, Map<Long, Integer>> getMessageRates(String queueName, Long minDate, Long maxDate) throws AndesException {
-        // Not implemented since this class is not being used.
-        return null;
-    }
-
-    /**
      * Get the status of each of messages.
      * @param queueName The queue name to get data, if null all.
      * @return Message Status data. Map<Message Id, Map<Property, Value>>
      */
     @Override
-    public Map<Long, Map<String, String>> getMessageStatuses(String queueName, Long minDate, Long maxDate) {
+    public Map<Long, Map<String, String>> getMessageStatuses(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, Boolean compareAllStatuses) {
         // Not implemented since this class is not being used.
         return null;
     }
 
+    /**
+     * Not implemented.
+     */
+    @Override
+    public void startMessageStatusUpdateExecutor() {
+
+    }
+
+    @Override
+    public void stopMessageStatusUpdateExecutor() {
+
+    }
+
+    @Override
+    public Long getMessageStatusCount(String queueName, Long minDate, Long maxDate) throws AndesException {
+        return null;
+    }
+
+    @Override
+    public Map<Long, Long> getMessageStatusChangeTimes(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, MessageCounterKey.MessageCounterType rangeColumn) throws AndesException {
+        return null;
+    }
 }

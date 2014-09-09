@@ -294,6 +294,9 @@ public class VirtualHostImpl implements VirtualHost
 
         //reload exchanges/queues/bindings and subscriptions
         _VirtualHostConfigSynchronizer.syncExchangesQueuesAndBindings();
+
+        // Start updating message status changes via a schedule.
+        MessagingEngine.getInstance().startMessageStatusUpdateExecutor();
     }
 
 	private void initialiseHouseKeeping(long period)

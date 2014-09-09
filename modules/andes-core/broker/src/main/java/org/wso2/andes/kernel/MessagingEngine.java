@@ -206,6 +206,11 @@ public class MessagingEngine {
     }
 
     public void ackReceived(AndesAckData ack) throws AndesException {
+        if(config.isStatsEnabled()) {
+            // Notify message counter of the received acknowledgement.
+            MessageCounter.getInstance().updateOngoingMessageStatus(ack.messageID, MessageCounterKey.MessageCounterType.ACKNOWLEDGED_COUNTER, ack.qName, System.currentTimeMillis());
+        }
+
         if(config.isInMemoryMode()) {
             List<AndesAckData> ackData = new ArrayList<AndesAckData>();
             ackData.add(ack);
@@ -394,6 +399,9 @@ public class MessagingEngine {
 
         stopMessageExpirationWorker();
 
+        // Stop message status update scheduler.
+        stopMessageStatusUpdateExecutor();
+
     }
 
     /**
@@ -431,5 +439,21 @@ public class MessagingEngine {
             mew.stopWorking();
         }
     }
+
+    /**
+     * Start updating message status changes via a schedule.
+     */
+    public void startMessageStatusUpdateExecutor() {
+        durableMessageStore.startMessageStatusUpdateExecutor();
+    }
+
+    /**
+     * Stop updating message status changes via a schedule.
+     */
+    public void stopMessageStatusUpdateExecutor() {
+        durableMessageStore.stopMessageStatusUpdateExecutor();
+    }
+
+
     
 }

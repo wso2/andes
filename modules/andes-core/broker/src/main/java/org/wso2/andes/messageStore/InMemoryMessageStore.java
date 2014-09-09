@@ -8,7 +8,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.server.stats.MessageCounter;
 import org.wso2.andes.server.stats.MessageCounterKey;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
@@ -101,11 +100,6 @@ public class InMemoryMessageStore implements MessageStore {
             }
 
             PerformanceCounter.recordMessageRemovedAfterAck();
-
-            if(ClusterResourceHolder.getInstance().getClusterConfiguration().isStatsEnabled()) {
-                // Notify message counter of the received acknowledgement.
-                MessageCounter.getInstance().updateOngoingMessageStatus(ackData.messageID, MessageCounterKey.MessageCounterType.ACKNOWLEDGED_COUNTER, ackData.qName, System.currentTimeMillis());
-            }
         }
 
         //remove queue message metadata now
@@ -320,67 +314,7 @@ public class InMemoryMessageStore implements MessageStore {
     }
 
     @Override
-    public Map<MessageCounterKey.MessageCounterType, Map<Long, Integer>> getMessageRates(String queueName, Long minDate, Long maxDate) throws AndesException {
-        try {
-
-            Map<MessageCounterKey.MessageCounterType, Map<Long, Integer>> total = new HashMap<MessageCounterKey.MessageCounterType, Map<Long, Integer>>();
-            Map<Long, Integer> published = new TreeMap<Long, Integer>();
-            Map<Long, Integer> delivered = new TreeMap<Long, Integer>();
-            Map<Long, Integer> acknowledged = new TreeMap<Long, Integer>();
-
-            Map<Long, Long[]> messageStatus = messageStatuses.get(queueName);
-
-            for (Entry<Long, Long[]> currItrValue : messageStatus.entrySet()) {
-                Long[] values = currItrValue.getValue();
-                Long publishedTime = values[0];
-                Long deliveredTime = values[1];
-                Long acknowledgedTime = values[2];
-
-                if (publishedTime != null) {
-                    Integer currentCount = published.get(publishedTime);
-                    if (currentCount == null) {
-                        currentCount = 1;
-                    } else {
-                        currentCount += 1;
-                    }
-
-                    published.put(publishedTime, currentCount);
-                }
-
-                if (deliveredTime != null && deliveredTime != 0) {
-                    Integer currentCount = delivered.get(deliveredTime);
-                    if (currentCount == null) {
-                        currentCount = 1;
-                    } else {
-                        currentCount += 1;
-                    }
-
-                    delivered.put(deliveredTime, currentCount);
-
-                }
-
-                if (acknowledgedTime != null && acknowledgedTime != 0) {
-                    Integer currentCount = acknowledged.get(acknowledgedTime);
-                    if (currentCount == null) {
-                        currentCount = 1;
-                    } else {
-                        currentCount += 1;
-                    }
-
-                    acknowledged.put(acknowledgedTime, currentCount);
-
-                }
-            }
-
-            return total;
-
-        } catch (Exception e) {
-            throw new AndesException("Error retrieveing message status counts", e);
-        }
-    }
-
-    @Override
-    public Map<Long, Map<String, String>> getMessageStatuses(String queueName, Long minDate, Long maxDate) throws AndesException {
+    public Map<Long, Map<String, String>> getMessageStatuses(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, Boolean comparePublishOnly) throws AndesException {
         try {
             Map<Long, Map<String, String>> messageStatusesOut = new HashMap<Long, Map<String, String>>();
 
@@ -416,5 +350,28 @@ public class InMemoryMessageStore implements MessageStore {
         } catch (Exception e) {
             throw new AndesException(e);
         }
+    }
+
+    /**
+     * Not implemented.
+     */
+    @Override
+    public void startMessageStatusUpdateExecutor() {
+
+    }
+
+    @Override
+    public void stopMessageStatusUpdateExecutor() {
+
+    }
+
+    @Override
+    public Long getMessageStatusCount(String queueName, Long minDate, Long maxDate) throws AndesException {
+        return null;
+    }
+
+    @Override
+    public Map<Long, Long> getMessageStatusChangeTimes(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, MessageCounterKey.MessageCounterType rangeColumn) throws AndesException {
+        return null;
     }
 }

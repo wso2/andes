@@ -3,17 +3,14 @@ package org.wso2.andes.server.stats;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.ClusterResourceHolder;
 
-import java.util.*;
+import java.util.Map;
 
 /**
- * Created by Akalanka on 7/30/14.
  * This class is responsible for keeping track of message rates and ongoing message statuses.
  */
 public final class MessageCounter {
@@ -39,7 +36,7 @@ public final class MessageCounter {
      * Get the singleton instance of the Message Counter.
      * @return The MessageCounter singleton instance.
      */
-    public static synchronized MessageCounter getInstance() {
+    public static MessageCounter getInstance() {
         return messageCounter;
     }
 
@@ -49,97 +46,78 @@ public final class MessageCounter {
      * @param messageID The message ID in the broker.
      * @param messageCounterType The message status.
      * @param queueName The queue name the message is in.
+     * @param timeMillis The status change occured time.
      */
     public void updateOngoingMessageStatus(long messageID, MessageCounterKey.MessageCounterType messageCounterType, String queueName, long timeMillis) {
         MessageCounterKey messageCounterKey = new MessageCounterKey(queueName, messageCounterType);
         try{
             messageStore.addMessageStatusChange(messageID, timeMillis, messageCounterKey);
         } catch (Exception e) {
-            e.printStackTrace();
-            log.error(e);
+            log.error("Error recording message status change.", e);
         }
 
     }
 
     /**
-     * Generate the json key for the rate that is used for json objects which pass graph data.
+     * Get stats of each message published, delivered and acknowledged times.
      *
-     * The JSON value keys will be distinct for each message status.
-     * They are...
-     * RatePublishCounter
-     * RateDeliverCounter
-     * RateAcknowledgedCounter
-     *
-     * This is to enable the chart to show all three or selected types at once in a single chart.
+     * @param queueName The queue name the message is in.
+     * @param minDate The min value for the time range to retrieve in timemillis.
+     * @param maxDate The max value for the time range to retrieve in timemillis.
+     * @param minMessageId The min messageId to retrieve (use for paginated data retrieval. Else null).
+     * @param limit Limit of the number of records to retrieve. The messages will be retrieved in ascending messageId order. If null MAX value of long will be set.
+     * @param compareAllStatuses Compare all the statuses that are changed within the given period, else only the published time will be compared.
+     * @return The message stats. Map<MessageId, Map{Published:time, Delivered:time, Aknowledged:time, queue_name:name}>
+     */
+    public Map<Long, Map<String, String>> getOnGoingMessageStatus(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, Boolean compareAllStatuses) {
+        Map<Long, Map<String, String>> messageStatuses = null;
 
+        try {
+            messageStatuses =  messageStore.getMessageStatuses(queueName, minDate, maxDate, minMessageId, limit, compareAllStatuses);
+        } catch (AndesException e) {
+            log.error("Error retrieving message statuses.", e);
+        }
+        return messageStatuses;
+    }
+
+    /**
+     * Get message count within the given time range and given queue.
+     *
+     * @param queueName The queue name the message is in.
+     * @param minDate The min value for the time range to retrieve in timemillis.
+     * @param maxDate The max value for the time range to retrieve in timemillis.
+     * @return The message count.
+     */
+    public Long getMessageStatusCounts(String queueName, Long minDate, Long maxDate) {
+        Long count = 0L;
+        try {
+            count =  messageStore.getMessageStatusCount(queueName, minDate, maxDate);
+        } catch (AndesException e) {
+            log.error("Error retrieving message status counts.", e);
+        }
+
+        return count;
+    }
+
+    /**
+     * Get message status change times for a given message status.
+     *
+     * @param queueName The queue name the message is in.
+     * @param minDate The min value for the time range to retrieve in timemillis.
+     * @param maxDate The max value for the time range to retrieve in timemillis.
+     * @param minMessageId The min messageId to retrieve (used for paginated data retrieval. Else null).
+     * @param limit Limit of the number of records to retrieve. The messages will be retrieved in ascending messageId order. If null MAX value of long will be set.
      * @param messageCounterType The message status.
-     * @return The message rate JSON data
+     * @return Map<MessageId MessageStatusChangeTimeMillis>
      */
-    private String generateRateJsonKey(MessageCounterKey.MessageCounterType messageCounterType) {
-        return "Rate" + messageCounterType.getType();
-    }
+    public Map<Long, Long> getMessageStatusChangeTimes(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, MessageCounterKey.MessageCounterType messageCounterType) {
+        Map<Long, Long> messageStatuses = null;
 
-    /**
-     * Get the graph data as a JSON String.
-     *
-     * @param queueName The queue name to get data
-     * @return The JSON String of Graph Data
-     */
-    public String getGraphData(String queueName, Long minDate, Long maxDate) {
-        JSONArray graphData = new JSONArray();
         try {
-            Map<MessageCounterKey.MessageCounterType, Map<Long, Integer>> total = messageStore.getMessageRates(queueName, minDate, maxDate);
-
-            for (Map.Entry<MessageCounterKey.MessageCounterType, Map<Long, Integer>> currEntry : total.entrySet()) {
-                String rateJsonKey = generateRateJsonKey(currEntry.getKey());
-
-                Map<Long, Integer> currValues = currEntry.getValue();
-
-                Iterator<Map.Entry<Long,Integer>> valueItr= currValues.entrySet().iterator();
-                Long previousKey = null;
-
-                while(valueItr.hasNext()) {
-                    Map.Entry<Long, Integer> currSecondData = valueItr.next();
-                    Long currKey = currSecondData.getKey();
-
-                    if (previousKey != null) {
-                        long secondsDiff = (currKey - previousKey) / 1000;
-                        if ( secondsDiff > 1 ) {
-                            for (long i = secondsDiff; i > 1; i--) {
-                                previousKey += 1000;
-                                JSONObject fillEmpty = new JSONObject();
-                                fillEmpty.put("Date", previousKey);
-                                fillEmpty.put(rateJsonKey, 0);
-                                graphData.add(fillEmpty);
-                            }
-                        }
-                    }
-
-                    JSONObject secondRate = new JSONObject();
-                    secondRate.put("Date", currKey);
-                    secondRate.put(rateJsonKey, currSecondData.getValue());
-                    graphData.add(secondRate);
-
-                    previousKey = currKey;
-                }
-            }
+            messageStatuses =  messageStore.getMessageStatusChangeTimes(queueName, minDate, maxDate, minMessageId, limit, messageCounterType);
         } catch (AndesException e) {
-            e.printStackTrace();
+            log.error("Error retrieving message statuses.", e);
         }
-
-        return graphData.toJSONString();
-    }
-
-    /**
-     * Get statuses of on going messages.
-     * @return Map of on going message status Map<MessageID, MessageCounterKey>
-     */
-    public Map<Long, Map<String, String>> getOnGoingMessageStatus(String queueName, Long minDate, Long maxDate) {
-        try {
-            return messageStore.getMessageStatuses(queueName, minDate, maxDate);
-        } catch (AndesException e) {
-            e.printStackTrace();
-            return null;
-        }
+        return messageStatuses;
     }
 }

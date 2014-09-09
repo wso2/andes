@@ -105,17 +105,48 @@ public interface MessageStore {
     public void addMessageStatusChange(long messageId, long timeMillis, MessageCounterKey messageCounterKey) throws AndesException;
 
     /**
-     * Generic interface to get data to draw the message rate graph.
-     * @param queueName The queue name to get data, if null all.
-     * @return The message rate data. Map<MessageCounterType, Map<TimeInMillis, Number of messages>>
-     * @throws AndesException
+     * Get stats of each message published, delivered and acknowledged times.
+     *
+     * @param queueName The queue name the message is in.
+     * @param minDate The min value for the time range to retrieve in timemillis.
+     * @param maxDate The max value for the time range to retrieve in timemillis.
+     * @param minMessageId The min messageId to retrieve (use for paginated data retrieval. Else null).
+     * @param limit Limit of the number of records to retrieve. The messages will be retrieved in ascending messageId order. If null MAX value of long will be set.
+     * @param compareAllStatuses Compare all the statuses that are changed within the given period, else only the published time will be compared.
+     * @return The message stats. Map<MessageId, Map{Published:time, Delivered:time, Aknowledged:time, queue_name:name}>
      */
-    public Map<MessageCounterKey.MessageCounterType, java.util.Map<Long, Integer>> getMessageRates(String queueName, Long minDate, Long maxDate) throws AndesException;
+    public Map<Long, Map<String, String>> getMessageStatuses(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, Boolean compareAllStatuses) throws AndesException;
 
     /**
-     * Get the status of each of messages.
-     * @param queueName The queue name to get data, if null all.
-     * @return Message Status data. Map<Message Id, Map<Property, Value>>
+     *
+     * @param queueName The queue name the message is in.
+     * @param minDate The min value for the time range to retrieve in timemillis.
+     * @param maxDate The max value for the time range to retrieve in timemillis.
+     * @return The row count.
+     * @throws AndesException
      */
-    public Map<Long, Map<String, String>> getMessageStatuses(String queueName, Long minDate, Long maxDate) throws AndesException;
+    public Long getMessageStatusCount(String queueName, Long minDate, Long maxDate) throws AndesException;
+
+    /**
+     *
+     * @param queueName The queue name the message is in.
+     * @param minDate The min value for the time range to retrieve in timemillis.
+     * @param maxDate The max value for the time range to retrieve in timemillis.
+     * @param minMessageId The min messageId to retrieve (use for paginated data retrieval. Else null).
+     * @param limit Limit of the number of records to retrieve. The messages will be retrieved in ascending messageId order. If null MAX value of long will be set.
+     * @param rangeColumn The message status change type to compare and return.
+     * @return Map<MessageId MessageStatusChangeTime>
+     * @throws AndesException
+     */
+    public Map<Long, Long> getMessageStatusChangeTimes(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, MessageCounterKey.MessageCounterType rangeColumn) throws AndesException;
+
+    /**
+     * Start message status update statements executor schedule.
+     */
+    public void startMessageStatusUpdateExecutor();
+
+    /**
+     * Stop message status update stements executor schedule.
+     */
+    public void stopMessageStatusUpdateExecutor();
 }

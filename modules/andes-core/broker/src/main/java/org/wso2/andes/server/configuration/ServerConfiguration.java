@@ -951,6 +951,14 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
     {
         return getBooleanValue("stats.enabled", true);
     }
+
+    /**
+     * Configuration property to specify time to live for stats data records.
+     * @return Stats Time to Live
+     */
+    public int getStatsTimeToLive() {
+        return getIntValue("stats.timeToLive", 4320);
+    }
 }
 
 // TODO : Disruptor clean the configs

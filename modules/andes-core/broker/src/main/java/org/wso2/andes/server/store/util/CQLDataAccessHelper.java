@@ -40,7 +40,7 @@ import me.prettyprint.hector.api.query.CounterQuery;
 import me.prettyprint.hector.api.query.QueryResult;
 import me.prettyprint.hector.api.query.SliceQuery;*/
 
-import com.datastax.driver.core.querybuilder.Update;
+import com.datastax.driver.core.querybuilder.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -65,9 +65,6 @@ import com.datastax.driver.core.SocketOptions;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.policies.ConstantReconnectionPolicy;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
-import com.datastax.driver.core.querybuilder.Delete;
-import com.datastax.driver.core.querybuilder.Insert;
-import com.datastax.driver.core.querybuilder.Select;
 import org.wso2.andes.server.stats.MessageCounterKey;
 
 
@@ -583,14 +580,17 @@ public class CQLDataAccessHelper {
             table.getPrimaryKeys().add(MESSAGE_ID);
             table.getPrimaryKeys().add(MSG_COUNTER_QUEUE);
 
+            table.setClusteringOrderColumn(MESSAGE_ID);
+
             String query = CQLQueryBuilder.buildTableQuery(table);
+
             GenericCQLDAO.execute(keySpace, query);
 
             // Create indexes
             GenericCQLDAO.execute(keySpace, CQLQueryBuilder.buildCreateIndexQuery(keySpace, name, PUBLISHED_TIME));
+            GenericCQLDAO.execute(keySpace, CQLQueryBuilder.buildCreateIndexQuery(keySpace, name, DELIVERED_TIME));
+            GenericCQLDAO.execute(keySpace, CQLQueryBuilder.buildCreateIndexQuery(keySpace, name, ACKNOWLEDGED_TIME));
             GenericCQLDAO.execute(keySpace, CQLQueryBuilder.buildCreateIndexQuery(keySpace, name, MESSAGE_VALIDITY));
-//            GenericCQLDAO.execute(keySpace, "CREATE INDEX "+ keySpace + "_" + name + "_" + PUBLISHED_TIME + " ON " + keySpace + "." + name  + " (" + PUBLISHED_TIME + ");");
-//            GenericCQLDAO.execute(keySpace, "CREATE INDEX "+ keySpace + "_" + name + "_" + MESSAGE_VALIDITY + " ON " + keySpace + "." + name  + " (" + MESSAGE_VALIDITY + ");");
         }
     }
 
@@ -1991,10 +1991,11 @@ public class CQLDataAccessHelper {
      * @param timeMillis The action occured time in millis.
      * @param messageCounterKey The MessageCounterKey containing queue and status.
      * @param execute To execute immediate or not.
+     * @param ttl Time To Live for the inserting record.
      * @return The executable insert statement.
      * @throws CassandraDataAccessException
      */
-    public static Insert insertMessageStatusChange(String keySpace, String columnFamily, long messageId, long timeMillis, MessageCounterKey messageCounterKey, boolean execute)
+    public static Insert insertMessageStatusChange(String keySpace, String columnFamily, long messageId, long timeMillis, MessageCounterKey messageCounterKey, boolean execute, int ttl)
             throws CassandraDataAccessException {
 
         if (columnFamily == null) {
@@ -2008,7 +2009,14 @@ public class CQLDataAccessHelper {
         keyValueMap.put(PUBLISHED_TIME, timeMillis);
         keyValueMap.put(MESSAGE_VALIDITY, 1);
 
-        Insert insert = CQLQueryBuilder.buildSingleInsert(keySpace, columnFamily, keyValueMap);
+        Insert insert;
+
+        if (ttl > 0) {
+            insert = CQLQueryBuilder.buildSingleInsertWithTTL(keySpace, columnFamily, keyValueMap, ttl);
+        } else {
+            insert = CQLQueryBuilder.buildSingleInsert(keySpace, columnFamily, keyValueMap);
+        }
+
         if (execute) {
             GenericCQLDAO.execute(keySpace, insert.getQueryString());
         }
@@ -2024,10 +2032,11 @@ public class CQLDataAccessHelper {
      * @param timeMillis The action occured time in millis.
      * @param messageCounterKey The MessageCounterKey containing queue and status.
      * @param execute To execute immediate or not.
+     * @param ttl Time To Live for the inserting record.
      * @return The executable Update statement.
      * @throws CassandraDataAccessException
      */
-    public static Update updateMessageStatusChange(String keySpace, String columnFamily,long messageId, long timeMillis, MessageCounterKey messageCounterKey, boolean execute)
+    public static Update updateMessageStatusChange(String keySpace, String columnFamily,long messageId, long timeMillis, MessageCounterKey messageCounterKey, boolean execute, int ttl)
             throws CassandraDataAccessException {
         CQLQueryBuilder.CqlUpdate update = new CQLQueryBuilder.CqlUpdate(keySpace, columnFamily);
 
@@ -2043,118 +2052,15 @@ public class CQLDataAccessHelper {
             GenericCQLDAO.update(keySpace, update);
         }
 
-        return CQLQueryBuilder.buildSingleUpdate(update);
-    }
+        Update updateStatement;
 
-    /**
-     * Get message rates.
-     * @param columnFamilyName The column family / table name.
-     * @param keyspace The key space.
-     * @param queueName The queue name,if null all.
-     * @param minDate The min of date range, if null no min value.
-     * @param maxDate The max of date range, if null no max value.
-     * @return Message rate data. Map<MessageCounterType, Map<TimeInMillis, Messages transferred>>
-     * @throws CassandraDataAccessException
-     */
-    public static Map<MessageCounterKey.MessageCounterType, Map<Long, Integer>> getMessageRates(String columnFamilyName, String keyspace, String queueName, Long minDate, Long maxDate) throws CassandraDataAccessException {
-
-        if (keyspace == null) {
-            throw new CassandraDataAccessException("Can't access Data , no keyspace provided ");
+        if (ttl > 0) {
+            updateStatement = CQLQueryBuilder.buildSingleUpdateWithTTL(update, ttl);
+        } else {
+            updateStatement = CQLQueryBuilder.buildSingleUpdate(update);
         }
 
-        if(columnFamilyName == null) {
-            throw new CassandraDataAccessException("Can't access data with queueType = " + columnFamilyName );
-        }
-
-        Map<MessageCounterKey.MessageCounterType, Map<Long, Integer>> total = new HashMap<MessageCounterKey.MessageCounterType, Map<Long, Integer>>();
-
-        try {
-            Map<Long, Integer> published = new TreeMap<Long, Integer>();
-            Map<Long, Integer> delivered = new TreeMap<Long, Integer>();
-            Map<Long, Integer> acknowledged = new TreeMap<Long, Integer>();
-
-            CQLQueryBuilder.CqlSelect cqlSelect = new CQLQueryBuilder.CqlSelect(columnFamilyName, Integer.MAX_VALUE, true);
-            cqlSelect.addColumn(MSG_COUNTER_QUEUE);
-            cqlSelect.addColumn(PUBLISHED_TIME);
-            cqlSelect.addColumn(DELIVERED_TIME);
-            cqlSelect.addColumn(ACKNOWLEDGED_TIME);
-
-            cqlSelect.addCondition(MESSAGE_VALIDITY, 1, WHERE_OPERATORS.EQ);
-
-            if (queueName != null) {
-                cqlSelect.addCondition(MSG_COUNTER_QUEUE, queueName, WHERE_OPERATORS.EQ);
-            }
-
-            if (minDate != null) {
-                cqlSelect.addCondition(PUBLISHED_TIME, minDate, WHERE_OPERATORS.GT);
-            }
-
-            if (maxDate != null) {
-                cqlSelect.addCondition(PUBLISHED_TIME, maxDate, WHERE_OPERATORS.LT);
-            }
-
-            Select select = CQLQueryBuilder.buildSelect(cqlSelect);
-
-            if(log.isDebugEnabled()){
-                log.debug(" getMessageStatus : "+ select.toString());
-            }
-
-            ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
-
-            for(Row row : result){
-
-                Long publishedTime = row.getLong(PUBLISHED_TIME);
-                if (publishedTime != null) {
-                    Integer currentCount = published.get(publishedTime);
-                    if (currentCount == null) {
-                        currentCount = 1;
-                    } else {
-                        currentCount += 1;
-                    }
-
-                    published.put(publishedTime, currentCount);
-
-                }
-
-                Long deliveredTime = row.getLong(DELIVERED_TIME);
-                if (deliveredTime != null && deliveredTime != 0) {
-                    Integer currentCount = delivered.get(deliveredTime);
-                    if (currentCount == null) {
-                        currentCount = 1;
-                    } else {
-                        currentCount += 1;
-                    }
-
-                    delivered.put(deliveredTime, currentCount);
-
-                }
-
-                Long acknowledgedTime = row.getLong(ACKNOWLEDGED_TIME);
-                if (acknowledgedTime != null && acknowledgedTime != 0) {
-                    Integer currentCount = acknowledged.get(acknowledgedTime);
-                    if (currentCount == null) {
-                        currentCount = 1;
-                    } else {
-                        currentCount += 1;
-                    }
-
-                    acknowledged.put(acknowledgedTime, currentCount);
-
-                }
-
-                total.put(MessageCounterKey.MessageCounterType.PUBLISH_COUNTER, published);
-                total.put(MessageCounterKey.MessageCounterType.DELIVER_COUNTER, delivered);
-                total.put(MessageCounterKey.MessageCounterType.ACKNOWLEDGED_COUNTER, acknowledged);
-
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new CassandraDataAccessException("Error while getting data from " + columnFamilyName,e);
-        }
-
-
-        return total;
-
+        return updateStatement;
     }
 
     /**
@@ -2164,10 +2070,13 @@ public class CQLDataAccessHelper {
      * @param queueName The queue name,if null all.
      * @param minDate The min of date range, if null no min value.
      * @param maxDate The max of date range, if null no max value.
+     * @param minMessageId Message range lower limit. If null 0 (use for paginated data retrieving).
+     * @param limit The limit of number of records to retrieve. Will be retrieving in messageId ascending order. If null MAX Long value.
+     * @param rangeColumn Message Status type column to retrieve.
      * @return Message statuses. Map<Message Id, Map<Property, Value>>
      * @throws CassandraDataAccessException
      */
-    public static Map<Long, Map<String, String>> getMessageStatuses(String columnFamilyName, String keyspace, String queueName, Long minDate, Long maxDate) throws CassandraDataAccessException {
+    public static Map<Long, Map<String, String>> getMessageStatuses(String columnFamilyName, String keyspace, String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, MessageCounterKey.MessageCounterType rangeColumn) throws CassandraDataAccessException {
         if (keyspace == null) {
             throw new CassandraDataAccessException("Can't access Data , no keyspace provided ");
         }
@@ -2176,9 +2085,27 @@ public class CQLDataAccessHelper {
             throw new CassandraDataAccessException("Can't access data with keyspace = " + keyspace + ". The column family is null." );
         }
 
-        Map<Long, Map<String, String>> messageStatus = new HashMap<Long, Map<String, String>>();
+        if (minMessageId == null) {
+            minMessageId = 0l;
+        }
 
-        CQLQueryBuilder.CqlSelect cqlSelect = new CQLQueryBuilder.CqlSelect(columnFamilyName, Integer.MAX_VALUE, true);
+        if (limit == null) {
+            limit = Long.MAX_VALUE;
+        }
+
+        String compareColumn = "";
+
+        if (MessageCounterKey.MessageCounterType.PUBLISH_COUNTER.equals(rangeColumn)) {
+            compareColumn = PUBLISHED_TIME;
+        } else if (MessageCounterKey.MessageCounterType.DELIVER_COUNTER.equals(rangeColumn)) {
+            compareColumn = DELIVERED_TIME;
+        } else if (MessageCounterKey.MessageCounterType.ACKNOWLEDGED_COUNTER.equals(rangeColumn)) {
+            compareColumn = ACKNOWLEDGED_TIME;
+        }
+
+        Map<Long, Map<String, String>> messageStatus = new TreeMap<Long, Map<String, String>>();
+
+        CQLQueryBuilder.CqlSelect cqlSelect = new CQLQueryBuilder.CqlSelect(columnFamilyName, limit, true);
         cqlSelect.addColumn(MSG_COUNTER_QUEUE);
         cqlSelect.addColumn(MESSAGE_ID);
         cqlSelect.addColumn(PUBLISHED_TIME);
@@ -2192,13 +2119,17 @@ public class CQLDataAccessHelper {
         }
 
         if (minDate != null) {
-            cqlSelect.addCondition(PUBLISHED_TIME, minDate, WHERE_OPERATORS.GT);
+            cqlSelect.addCondition(compareColumn, minDate, WHERE_OPERATORS.GT);
         }
 
         if (maxDate != null) {
-            cqlSelect.addCondition(PUBLISHED_TIME, maxDate, WHERE_OPERATORS.LT);
+            cqlSelect.addCondition(compareColumn, maxDate, WHERE_OPERATORS.LT);
         }
 
+        if (minMessageId != null) {
+            // Messages are automatically ordered in ascending order in save
+            cqlSelect.addCondition(MESSAGE_ID, minMessageId, WHERE_OPERATORS.GT);
+        }
 
         Select select = CQLQueryBuilder.buildSelect(cqlSelect);
 
@@ -2218,5 +2149,140 @@ public class CQLDataAccessHelper {
             messageStatus.put(row.getLong(MESSAGE_ID), currentMessageStatus);
         }
         return messageStatus;
+    }
+
+
+    /**
+     * Get message status change times for a given message status type.
+     *
+     * @param columnFamilyName The column family / table name.
+     * @param keyspace The key space.
+     * @param queueName The queue name,if null all.
+     * @param minDate The min of date range, if null no min value.
+     * @param maxDate The max of date range, if null no max value.
+     * @param minMessageId Message range lower limit. If null 0 (use for paginated data retrieving).
+     * @param limit The limit of number of records to retrieve. Will be retrieving in messageId ascending order. If null MAX Long value.
+     * @param rangeColumn Message Status type column to retrieve.
+     * @return Map<MessageId StatusChangeTime>
+     * @throws CassandraDataAccessException
+     */
+    public static Map<Long, Long> getMessageStatusChangeTimes(String columnFamilyName, String keyspace, String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, MessageCounterKey.MessageCounterType rangeColumn) throws CassandraDataAccessException {
+        if (keyspace == null) {
+            throw new CassandraDataAccessException("Can't access Data , no keyspace provided ");
+        }
+
+        if(columnFamilyName == null) {
+            throw new CassandraDataAccessException("Can't access data with keyspace = " + keyspace + ". The column family is null." );
+        }
+
+        if (minMessageId == null) {
+            minMessageId = 0l;
+        }
+
+        if (limit == null) {
+            limit = Long.MAX_VALUE;
+        }
+
+        String compareColumn = "";
+
+        if (MessageCounterKey.MessageCounterType.PUBLISH_COUNTER.equals(rangeColumn)) {
+            compareColumn = PUBLISHED_TIME;
+        } else if (MessageCounterKey.MessageCounterType.DELIVER_COUNTER.equals(rangeColumn)) {
+            compareColumn = DELIVERED_TIME;
+        } else if (MessageCounterKey.MessageCounterType.ACKNOWLEDGED_COUNTER.equals(rangeColumn)) {
+            compareColumn = ACKNOWLEDGED_TIME;
+        }
+
+        Map<Long, Long> messageStatus = new TreeMap<Long, Long>();
+
+        CQLQueryBuilder.CqlSelect cqlSelect = new CQLQueryBuilder.CqlSelect(columnFamilyName, limit, true);
+        cqlSelect.addColumn(MESSAGE_ID);
+        cqlSelect.addColumn(compareColumn);
+
+        cqlSelect.addCondition(MESSAGE_VALIDITY, 1, WHERE_OPERATORS.EQ);
+
+        if (queueName != null) {
+            cqlSelect.addCondition(MSG_COUNTER_QUEUE, queueName, WHERE_OPERATORS.EQ);
+        }
+
+        if (minDate != null) {
+            cqlSelect.addCondition(compareColumn, minDate, WHERE_OPERATORS.GT);
+        }
+
+        if (maxDate != null) {
+            cqlSelect.addCondition(compareColumn, maxDate, WHERE_OPERATORS.LT);
+        }
+
+        if (minMessageId != null) {
+            // Messages are automatically ordered in ascending order in save
+            cqlSelect.addCondition(MESSAGE_ID, minMessageId, WHERE_OPERATORS.GT);
+        }
+
+        Select select = CQLQueryBuilder.buildSelect(cqlSelect);
+
+        if(log.isDebugEnabled()){
+            log.debug(" getMessageStatusChangeTimes : "+ select.toString());
+        }
+
+        ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
+
+        for (Row row : result) {
+            messageStatus.put(row.getLong(MESSAGE_ID), row.getLong(compareColumn));
+        }
+        return messageStatus;
+    }
+
+    /**
+     *
+     * @param columnFamilyName The column family / table name.
+     * @param keyspace The key space.
+     * @param queueName The queue name,if null all.
+     * @param minDate The min of date range, if null no min value.
+     * @param maxDate The max of date range, if null no max value.
+     * @return Row Count
+     * @throws CassandraDataAccessException
+     */
+    public static Long getMessageStatusCount(String columnFamilyName, String keyspace, String queueName, Long minDate, Long maxDate)  throws CassandraDataAccessException {
+        if (keyspace == null) {
+            throw new CassandraDataAccessException("Can't access Data , no keyspace provided ");
+        }
+
+        if(columnFamilyName == null) {
+            throw new CassandraDataAccessException("Can't access data with keyspace = " + keyspace + ". The column family is null." );
+        }
+        Select.Selection selection = QueryBuilder.select();
+        Select.Builder selectBuilder = selection.countAll();
+        Select select = selectBuilder.from(keyspace, columnFamilyName).allowFiltering();
+
+        Clause validityClause = QueryBuilder.eq(MESSAGE_VALIDITY, 1);
+        select.where(validityClause);
+
+        if (minDate != null) {
+            Clause minDateClause = QueryBuilder.gt(PUBLISHED_TIME, minDate);
+            select.where(minDateClause);
+        }
+
+        if (maxDate != null) {
+            Clause maxDateClause = QueryBuilder.lt(PUBLISHED_TIME, maxDate);
+            select.where(maxDateClause);
+        }
+
+        if (queueName != null) {
+            Clause queueClause = QueryBuilder.eq(MSG_COUNTER_QUEUE, queueName);
+            select.where(queueClause);
+        }
+
+        if(log.isDebugEnabled()){
+            log.debug(" getMessageStatus : "+ select.toString());
+        }
+
+        ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
+        Long count = 0l;
+
+        for(Row row : result) {
+            count = row.getLong("count");
+        }
+        return count;
+
     }
 }

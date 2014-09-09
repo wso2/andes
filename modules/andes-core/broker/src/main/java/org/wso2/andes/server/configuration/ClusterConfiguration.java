@@ -219,4 +219,12 @@ public class ClusterConfiguration {
     public Boolean isStatsEnabled() {
         return serverConfig.isStatsEnabled();
     }
+
+    /**
+     * Time to live for stats data records.
+     * @return Stats Time to Live
+     */
+    public int getStatsTimeToLive() {
+        return serverConfig.getStatsTimeToLive();
+    }
 }
