@@ -408,7 +408,7 @@ public synchronized boolean testAndAddMessage(AndesMessageMetadata andesMetaData
             List<Long> messageIdsToRemoveContent = new ArrayList<Long>();
             messagesToRemove.add(new AndesRemovableMetadata(messageId, destinationQueueName));
             messageIdsToRemoveContent.add(messageId);
-            messageStore.deleteMessageMetadataFromQueue(nodeQueueAddress, messagesToRemove);
+            messageStore.deleteMessageMetadataFromQueue(destinationQueueName, messagesToRemove);
             messageStore.deleteMessageParts(messageIdsToRemoveContent);
 
             //cassandraMessageStore.removeMessageFromNodeQueue(nodeQueueName, messageId);

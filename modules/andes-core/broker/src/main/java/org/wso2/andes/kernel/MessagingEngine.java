@@ -132,7 +132,7 @@ public class MessagingEngine {
 
                 Set<String> targetAndesNodeSet;
                 boolean originalMessageUsed = false;
-                boolean hasNonDurableSubscriptions = false; 
+                boolean hasNonDurableSubscriptions = false;
                 for (AndesSubscription subscriberQueue : subscriptionList) {
                     if (subscriberQueue.isDurable()) {
                     	/**
@@ -143,7 +143,7 @@ public class MessagingEngine {
                     	AndesMessageMetadata clone;
                     	if(!originalMessageUsed){
                     		originalMessageUsed = true;
-                    		clone = message; 
+                    		clone = message;
                     	}else{
                     		clone = cloneAndesMessageMetadataAndContent(message);
                     	}
@@ -154,10 +154,10 @@ public class MessagingEngine {
                         QueueAddress globalQueueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE, globalQueueName);
                     	sendMessageToMessageStore(globalQueueAddress, clone, channelID);
                     } else {
-                    	hasNonDurableSubscriptions = true; 
+                    	hasNonDurableSubscriptions = true;
                     }
                 }
-                
+
                 if(hasNonDurableSubscriptions){
                 	/**
                 	 * If there are non durable subscriptions, we write it to each node where there is a subscription. Here we collect all nodes to which we need to write to.
@@ -167,7 +167,7 @@ public class MessagingEngine {
                     	AndesMessageMetadata clone;
                     	if(!originalMessageUsed){
                     		originalMessageUsed = true;
-                    		clone = message; 
+                    		clone = message;
                     	}else{
                     		clone = message.deepClone(messageIdGenerator.getNextId());
                     	}
@@ -206,43 +206,35 @@ public class MessagingEngine {
 
     /**
      * remove messages of the queue matching to some destination queue
-     * @param queueAddress  queue address
-     * @param destinationQueueNameToMatch  destination queue name to match
+     * @param destinationQueue  destination queue name to match
      * @return  number of messages removed
      * @throws AndesException
      */
-    public int removeMessagesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch) throws AndesException {
+    public int removeMessagesOfQueue(String destinationQueue) throws AndesException {
         long lastProcessedMessageID = 0;
         int messageCount = 0;
-        List<AndesMessageMetadata> messageList = durableMessageStore.getNextNMessageMetadataFromQueue(queueAddress, lastProcessedMessageID, 500);
+        List<AndesMessageMetadata> messageList = durableMessageStore.getNextNMessageMetadataFromQueue(destinationQueue, lastProcessedMessageID, 500);
         List<AndesRemovableMetadata> messageMetaDataList = new ArrayList<AndesRemovableMetadata>();
         List<Long> messageIdList = new ArrayList<Long>();
         while (messageList.size() != 0) {
-            Iterator<AndesMessageMetadata> metadataIterator = messageList.iterator();
-            while (metadataIterator.hasNext()) {
-                AndesMessageMetadata metadata = metadataIterator.next();
-                String destinationQueue = metadata.getDestination();
-                if (destinationQueueNameToMatch != null) {
-                    if (destinationQueue.equals(destinationQueueNameToMatch)) {
-                        messageMetaDataList.add(new AndesRemovableMetadata(metadata.getMessageID(), metadata.getDestination()));
-                        messageIdList.add(metadata.getMessageID());
-                        messageCount++;
-                    } else {
-                        metadataIterator.remove();
-                    }
-                } else {
-                    messageCount++;
-                }
 
-                lastProcessedMessageID = metadata.getMessageID();
-
+            // update metadata lists.
+            for (AndesMessageMetadata metadata : messageList) {
+                messageMetaDataList.add(new AndesRemovableMetadata(metadata.getMessageID(), metadata.getDestination()));
+                messageIdList.add(metadata.getMessageID());
             }
+
+            messageCount += messageIdList.size();
+            lastProcessedMessageID = messageIdList.get(messageIdList.size() - 1);
+
             //remove metadata
-            durableMessageStore.deleteMessageMetadataFromQueue(queueAddress, messageMetaDataList);
+            durableMessageStore.deleteMessageMetadataFromQueue(destinationQueue, messageMetaDataList);
             //remove content
             durableMessageStore.deleteMessageParts(messageIdList);
+
             messageMetaDataList.clear();
-            messageList = durableMessageStore.getNextNMessageMetadataFromQueue(queueAddress, lastProcessedMessageID, 500);
+            messageIdList.clear();
+            messageList = durableMessageStore.getNextNMessageMetadataFromQueue(destinationQueue, lastProcessedMessageID, 500);
         }
         return messageCount;
     }
@@ -266,7 +258,7 @@ public class MessagingEngine {
     public long generateNewMessageId() {
         return messageIdGenerator.getNextId();
     }
-    
+
     private void sendMessageToMessageStore(QueueAddress queueAdr, AndesMessageMetadata message, long channelID)throws AndesException{
     	if(message.isPersistent()){
             disruptorBasedExecutor.messageCompleted(queueAdr, message, channelID);
@@ -288,7 +280,7 @@ public class MessagingEngine {
         return clone;
 
     }
-    
+
     public static String getMyNodeQueueName(){
         ClusterManager clusterManager = ClusterResourceHolder.getInstance().getClusterManager();
         return AndesConstants.NODE_QUEUE_NAME_PREFIX + clusterManager.getMyNodeID();
@@ -416,5 +408,5 @@ public class MessagingEngine {
             mew.stopWorking();
         }
     }
-    
+
 }
