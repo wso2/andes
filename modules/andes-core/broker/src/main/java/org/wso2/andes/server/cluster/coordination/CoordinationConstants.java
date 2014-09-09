@@ -17,7 +17,9 @@
 */
 package org.wso2.andes.server.cluster.coordination;
 
-
+/**
+ * This class contains all constants used in Hazelcast coordination.
+ */
 public final class CoordinationConstants {
     /**
      * Hazelcast distributed topic name to send subscription changed notifications to cluster nodes.

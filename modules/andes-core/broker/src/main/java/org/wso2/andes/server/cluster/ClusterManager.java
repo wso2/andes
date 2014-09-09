@@ -30,12 +30,10 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.util.AndesUtils;
-import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -46,20 +44,35 @@ public class ClusterManager {
 
     private Log log = LogFactory.getLog(ClusterManager.class);
 
-    //HazelcastAgent instance
+    /**
+     * HazelcastAgent instance
+     */
     private HazelcastAgent hazelcastAgent;
+
+    /**
+     * Id of the local node
+     */
     private String nodeId;
 
-    //each node is assigned  an ID 0-x after arranging nodeIDs in an ascending order
+    /**
+     * each node is assigned  an ID 0-x after arranging nodeIDs in an ascending order
+     */
     private int globalQueueSyncId;
 
+    /**
+     * GlobalQueueManager to manage global queues
+     */
     private GlobalQueueManager globalQueueManager;
 
-    //in memory map keeping global queues assigned to the this node
+    /**
+     * in memory map keeping global queues assigned to the this node
+     */
     private List<String> globalQueuesAssignedToMe = Collections.synchronizedList(new ArrayList<String>());
 
+    /**
+     * AndesContextStore instance
+     */
     private AndesContextStore andesContextStore;
-    private boolean isClusteringEnabled;
 
     /**
      * Create a ClusterManager instance
@@ -67,7 +80,6 @@ public class ClusterManager {
     public ClusterManager() {
         this.andesContextStore = AndesContext.getInstance().getAndesContextStore();
         this.globalQueueManager = new GlobalQueueManager(MessagingEngine.getInstance().getDurableMessageStore());
-        this.isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
     }
 
     /**
@@ -77,7 +89,7 @@ public class ClusterManager {
      */
     public void init() throws Exception {
         try {
-            if (!isClusteringEnabled) {
+            if (!AndesContext.getInstance().isClusteringEnabled()) {
                 this.initStandaloneMode();
                 return;
             }
@@ -86,7 +98,6 @@ public class ClusterManager {
 
         } catch (Exception e) {
             log.error("Error while initializing the Hazelcast coordination ", e);
-            e.printStackTrace();
             throw e;
         }
     }
@@ -94,7 +105,7 @@ public class ClusterManager {
     /**
      * get global queue manager working in the current node
      *
-     * @return
+     * @return global queue manager
      */
     public GlobalQueueManager getGlobalQueueManager() {
         return this.globalQueueManager;
@@ -105,7 +116,11 @@ public class ClusterManager {
      */
     public void handleNewNodeJoiningToCluster(Member node) {
         String nodeId = hazelcastAgent.getIdOfNode(node);
-        log.info("Handling cluster gossip: Node with ID " + nodeId + " joined the cluster");
+
+        if (log.isInfoEnabled()) {
+            log.info("Handling cluster gossip: Node with ID " + nodeId + " joined the cluster");
+        }
+
         reAssignGlobalQueueSyncId();
         handleGlobalQueueAddition();
     }
@@ -115,7 +130,10 @@ public class ClusterManager {
      */
     public void handleNodeLeavingCluster(Member node) throws AndesException {
         String deletedNodeId = hazelcastAgent.getIdOfNode(node);
-        log.info("Handling cluster gossip: Node with ID " + deletedNodeId + " left the cluster");
+
+        if (log.isInfoEnabled()) {
+            log.info("Handling cluster gossip: Node with ID " + deletedNodeId + " left the cluster");
+        }
 
         //refresh global queue sync ID
         reAssignGlobalQueueSyncId();
@@ -124,7 +142,10 @@ public class ClusterManager {
 
         // Below steps are carried out only by the 0th node of the list.
         if (globalQueueSyncId == 0) {
-            log.info("===Removing persisted states of the left node:" + deletedNodeId);
+            if (log.isDebugEnabled()) {
+                log.debug("Removing persisted states of the left node:" + deletedNodeId);
+            }
+
             //Update the durable store
             andesContextStore.removeNodeData(deletedNodeId);
 
@@ -146,6 +167,12 @@ public class ClusterManager {
         return andesContextStore.getAllStoredNodeData().get(nodeId);
     }
 
+    /**
+     * Get all global queues assigned to a node
+     *
+     * @param nodeId Id of the node
+     * @return global queues as an array of Strings
+     */
     public String[] getGlobalQueuesAssigned(String nodeId) {
         List<String> globalQueuesToBeAssigned = new ArrayList<String>();
         List<String> membersUniqueRepresentations = new ArrayList<String>();
@@ -166,15 +193,14 @@ public class ClusterManager {
             }
         }
 
-        String[] globalQueueList = globalQueuesToBeAssigned.toArray(new String[globalQueuesToBeAssigned.size()]);
-        return globalQueueList;
+        return globalQueuesToBeAssigned.toArray(new String[globalQueuesToBeAssigned.size()]);
     }
 
     /**
      * get how many messages in the given global queue
      *
      * @param globalQueue global queue name
-     * @return
+     * @return number of messages in the global queue
      */
     public int numberOfMessagesInGlobalQueue(String globalQueue) throws AndesException {
         return globalQueueManager.getMessageCountOfGlobalQueue(globalQueue);
@@ -182,23 +208,13 @@ public class ClusterManager {
 
     //TODO:hasitha can we implement moving global queue workers?
     public boolean updateWorkerForQueue(String queueToBeMoved, String newNodeToAssign) {
-        boolean successful = false;
         return false;
-    }
-
-    /**
-     * Get whether clustering is enabled
-     *
-     * @return
-     */
-    public boolean isClusteringEnabled() {
-        return AndesContext.getInstance().isClusteringEnabled();
     }
 
     /**
      * Get the node ID of the current node
      *
-     * @return
+     * @return ID of the local node
      */
     public String getMyNodeID() {
         return nodeId;
@@ -215,7 +231,7 @@ public class ClusterManager {
             //stop all global queue Workers
             globalQueueManager.removeAllQueueWorkersLocally();
             //if in clustered mode copy back node queue messages back to global queue
-            if (isClusteringEnabled) {
+            if (AndesContext.getInstance().isClusteringEnabled()) {
                 checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(MessagingEngine.getMyNodeQueueName());
             }
         } catch (Exception e) {
@@ -238,7 +254,7 @@ public class ClusterManager {
     }
 
     public int getUniqueIdForLocalNode() {
-        if (isClusteringEnabled) {
+        if (AndesContext.getInstance().isClusteringEnabled()) {
             return hazelcastAgent.getUniqueIdForTheNode();
         }
         return 0;
@@ -248,7 +264,6 @@ public class ClusterManager {
      * remove in-memory messages tracked for this queue
      *
      * @param destinationQueueName name of queue messages should be removed
-     * @throws AndesException
      */
     public void removeInMemoryMessagesAccumulated(String destinationQueueName) {
         //remove in-memory messages accumulated due to sudden subscription closing
@@ -270,9 +285,7 @@ public class ClusterManager {
         int numberOfMessagesMoved = 0;
         List<AndesMessageMetadata> messageList = messageStore.getNextNMessageMetadataFromQueue(nodeQueueAddress, lastProcessedMessageID, 40);
         while (messageList.size() != 0) {
-            Iterator<AndesMessageMetadata> metadataIterator = messageList.iterator();
-            while (metadataIterator.hasNext()) {
-                AndesMessageMetadata metadata = metadataIterator.next();
+            for (AndesMessageMetadata metadata : messageList) {
                 lastProcessedMessageID = metadata.getMessageID();
             }
             messageStore.moveMessageMetaData(nodeQueueAddress, null, messageList);
@@ -280,9 +293,12 @@ public class ClusterManager {
             messageList = messageStore.getNextNMessageMetadataFromQueue(nodeQueueAddress, lastProcessedMessageID, 40);
         }
 
-        log.info("Moved " + numberOfMessagesMoved
-                + " Number of Messages from Node Queue "
-                + nodeQueueName + "to Global Queues ");
+        if (log.isInfoEnabled()) {
+            log.info("Moved " + numberOfMessagesMoved
+                    + " Number of Messages from Node Queue "
+                    + nodeQueueName + "to Global Queues ");
+        }
+
     }
 
     private void initStandaloneMode() throws Exception {
@@ -298,7 +314,11 @@ public class ClusterManager {
         }
 
         clearAllPersistedStatesOfDissapearedNode(nodeId);
-        log.info("NodeID:" + this.nodeId);
+
+        if (log.isInfoEnabled()) {
+            log.info("NodeID:" + this.nodeId);
+        }
+
         andesContextStore.storeNodeDetails(nodeId, config.getBindIpAddress());
 
         //start all global queue workers on the node
@@ -310,7 +330,9 @@ public class ClusterManager {
 
         this.hazelcastAgent = HazelcastAgent.getInstance();
         this.nodeId = this.hazelcastAgent.getNodeId();
-        log.info("NodeID:" + this.nodeId);
+        if (log.isInfoEnabled()) {
+            log.info("NodeID:" + this.nodeId);
+        }
 
         //add node information to durable store
         andesContextStore.storeNodeDetails(nodeId, config.getBindIpAddress());
@@ -332,7 +354,6 @@ public class ClusterManager {
             }
         }
         handleNewNodeJoiningToCluster(hazelcastAgent.getLocalMember());
-        log.info("Handling cluster gossip: Node " + nodeId + "  Joined the Cluster");
     }
 
     /**
@@ -365,7 +386,7 @@ public class ClusterManager {
      * Start all global queues and workers
      */
     private void startAllGlobalQueueWorkers() {
-        if (!isClusteringEnabled) {
+        if (!AndesContext.getInstance().isClusteringEnabled()) {
             List<String> globalQueueNames = AndesUtils.getAllGlobalQueueNames();
             for (String globalQueueName : globalQueueNames) {
                 globalQueueManager.scheduleWorkForGlobalQueue(globalQueueName);
@@ -373,6 +394,10 @@ public class ClusterManager {
         }
     }
 
+    /**
+     * When redistributing the global queues among cluster nodes, some nodes will get more global queues
+     * than the existing global queues. This case is handled by below methods.
+     */
     private void handleGlobalQueueAddition() {
         //get the current globalQueue Assignments
         List<String> currentGlobalQueueAssignments = new ArrayList<String>();
@@ -396,16 +421,21 @@ public class ClusterManager {
         }
     }
 
+    /**
+     * This method should be called when a node leaves the cluster to delete the persisted states of the disappeared nodes
+     *
+     * @param nodeID Id of the node
+     * @throws AndesException
+     */
     private void clearAllPersistedStatesOfDissapearedNode(String nodeID) throws AndesException {
-
-        log.info("Clearing the Persisted State of Node with ID " + nodeID);
-
-        SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+        if (log.isDebugEnabled()) {
+            log.info("Clearing the Persisted State of Node with ID " + nodeID);
+        }
 
         //remove node from nodes list
         andesContextStore.removeNodeData(nodeID);
 
-        if (!isClusteringEnabled) {
+        if (!AndesContext.getInstance().isClusteringEnabled()) {
             //if in stand-alone mode close all local queue and topic subscriptions
             synchronized (this) {
                 ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllLocalSubscriptionsOfNode(nodeID);
@@ -416,6 +446,12 @@ public class ClusterManager {
         }
     }
 
+    /**
+     * Get the ID of the given node
+     *
+     * @param node given node
+     * @return ID of the node
+     */
     public String getNodeId(Member node) {
         return hazelcastAgent.getIdOfNode(node);
     }

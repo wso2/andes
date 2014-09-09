@@ -1,6 +1,5 @@
 package org.wso2.andes.kernel;
 
-import com.hazelcast.core.HazelcastInstance;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Map;
@@ -10,7 +9,6 @@ public class AndesContext {
 	private SubscriptionStore subscriptionStore;
     private AndesContextStore andesContextStore;
 	private Map<String, AndesSubscription> dataSenderMap;
-    private HazelcastInstance hazelcastInstance;
     private boolean isClusteringEnabled;
 
 	public MessageStore getMessageStore() {
@@ -46,14 +44,6 @@ public class AndesContext {
 	public static AndesContext getInstance(){
 		return instance;
 	}
-
-    public HazelcastInstance getHazelcastInstance(){
-        return this.hazelcastInstance;
-    }
-
-    public void setHazelcastInstance(HazelcastInstance hazelcastInstance){
-        this.hazelcastInstance = hazelcastInstance;
-    }
 
     public boolean isClusteringEnabled(){
         return isClusteringEnabled;

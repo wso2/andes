@@ -20,10 +20,8 @@
  */
 package org.wso2.andes.server;
 
-import com.hazelcast.core.HazelcastInstance;
 import org.apache.commons.cli.*;
 import org.dna.mqtt.moquette.server.Server;
-import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.server.Broker.InitException;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 
@@ -36,7 +34,6 @@ public class Main
 {
     private final Options options = new Options();
     private CommandLine commandLine;
-    private HazelcastInstance hazelcastInstance;
 
     public static void main(String[] args)
     {
@@ -53,8 +50,6 @@ public class Main
 
     public Main(final String[] args)
     {
-        hazelcastInstance = AndesContext.getInstance().getHazelcastInstance();
-
         setOptions(options);
         if (parseCommandline(args))
         {

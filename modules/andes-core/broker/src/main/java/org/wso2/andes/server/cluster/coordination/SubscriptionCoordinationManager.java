@@ -42,7 +42,7 @@ public interface SubscriptionCoordinationManager {
 
     /**
      * Handle the cluster subscription change event.
-     * This method handles the Hazelcast notification about Subscription change.
+     * This method handles received the Hazelcast notification about Subscription change.
      */
     public void handleClusterSubscriptionChange(SubscriptionNotification subscriptionNotification);
 
