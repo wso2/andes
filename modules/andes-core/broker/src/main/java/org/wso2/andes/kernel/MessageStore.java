@@ -63,6 +63,15 @@ public interface MessageStore {
     List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException;
 
     /**
+     * Generic interface to delete all references to a message - to be used when deleting messages not in ackrecieved state
+     *
+     * @param messagesToRemove
+     * @param moveToDeadLetterChannel
+     * @throws AndesException
+     */
+    void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException;
+
+    /**
      * close the database connection
      */
     public void close();

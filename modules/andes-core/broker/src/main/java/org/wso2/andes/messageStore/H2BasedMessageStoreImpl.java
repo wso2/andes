@@ -21,7 +21,11 @@ package org.wso2.andes.messageStore;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.cassandra.OnflightMessageTracker;
+import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
+import org.wso2.andes.server.util.AndesUtils;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -31,6 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 public class H2BasedMessageStoreImpl implements MessageStore {
 
@@ -38,6 +43,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     private final Map<String, Integer> queueMap; // cache queue name to queue_id mapping to avoid extra sql queries
     private DataSource datasource;
     private String icEntry;
+    private ConcurrentSkipListMap<Long, Long> contentDeletionTasks = new ConcurrentSkipListMap<Long, Long>();
 
     public H2BasedMessageStoreImpl() {
         icEntry = "jdbc/H2MessageStoreDB";
@@ -53,13 +59,20 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     }
 
     @Override
-    public void initializeMessageStore(DurableStoreConnection cassandraConnection) throws AndesException {
+    public void initializeMessageStore(DurableStoreConnection H2Connection) throws AndesException {
         Connection connection = null;
-        icEntry = "jdbc/InMemoryMessageStoreDB";
+        icEntry = "jdbc/InMemoryMessageStoreDB"; // todo: remove
+        H2Connection c = new H2Connection();
+
         try {
             datasource = InitialContext.doLookup(icEntry);
             connection = datasource.getConnection();
-            createTables();
+
+//            createTables();
+            c.setIsConnected(true);
+            MessageContentRemoverTask messageContentRemoverTask = new MessageContentRemoverTask(ClusterResourceHolder.getInstance().getClusterConfiguration().
+                    getContentRemovalTaskInterval(), contentDeletionTasks, this, c);
+            messageContentRemoverTask.start();
             logger.info("H2 In-Memory message store initialised");
         } catch (SQLException e) {
             String errMsg = "Connecting to H2 database failed!";
@@ -104,7 +117,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
 
     @Override
     public void deleteMessageParts(List<Long> messageIdList) throws AndesException {
-        //TODO: Is cascade delete needed?
+        //TODO: cascade delete?
         String delete = "DELETE " +
                 " FROM " + JDBCConstants.MESSAGES_TABLE +
                 " WHERE " + JDBCConstants.MESSAGE_ID + "=?";
@@ -118,7 +131,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
                 preparedStatement.setLong(1, msgId);
                 preparedStatement.addBatch();
             }
-            preparedStatement.executeUpdate();
+            preparedStatement.executeBatch();
             preparedStatement.close();
             connection.commit();
         } catch (SQLException e) {
@@ -166,30 +179,43 @@ public class H2BasedMessageStoreImpl implements MessageStore {
 
     @Override
     public void ackReceived(List<AndesAckData> ackList) throws AndesException {
-        String delete = " DELETE " +
-                " FROM " + JDBCConstants.METADATA_TABLE +
-                " WHERE (" + JDBCConstants.MESSAGE_ID + "," + JDBCConstants.QUEUE_ID + ") = " +
-                " ( ?, ? )";
-        // todo update ref count
+        List<AndesRemovableMetadata> messagesAddressedToQueues = new ArrayList<AndesRemovableMetadata>();
+        List<AndesRemovableMetadata> messagesAddressedToTopics = new ArrayList<AndesRemovableMetadata>();
 
-        Connection connection = null;
-        try {
-            connection = getConnection();
-            PreparedStatement preparedStatement = connection.prepareStatement(delete);
-            for (AndesAckData ackData : ackList) {
-                preparedStatement.setLong(1, ackData.messageID);
-                preparedStatement.setInt(2, getCachedQueueID(ackData.qName));
-                preparedStatement.addBatch();
+        List<Long> messageIds = new ArrayList<Long>();
+
+        for (AndesAckData ackData : ackList) {
+            if (!ackData.isTopic) {
+
+                messagesAddressedToTopics.add(ackData.convertToRemovableMetaData());
+
+                //schedule to remove queue and topic message content
+                long timeGapConfigured = ClusterResourceHolder.getInstance().
+                        getClusterConfiguration().getPubSubMessageRemovalTaskInterval() * 1000000;
+                contentDeletionTasks.put(System.nanoTime() + timeGapConfigured, ackData.messageID);
+
+            } else {
+
+                messagesAddressedToQueues.add(ackData.convertToRemovableMetaData());
+                OnflightMessageTracker onflightMessageTracker = OnflightMessageTracker.getInstance();
+                onflightMessageTracker.updateDeliveredButNotAckedMessages(ackData.messageID);
+
+                //schedule to remove queue and topic message content
+                contentDeletionTasks.put(System.nanoTime(), ackData.messageID);
             }
-            preparedStatement.executeBatch();
-            preparedStatement.close();
-        } catch (SQLException e) {
-            String errMsg = "Error occurred while deleting acknowledged messages. [" + e.getMessage() + "]";
-            logger.error(errMsg);
-            throw new AndesException(errMsg);
-        } finally {
-            close(connection);
+
+            PerformanceCounter.recordMessageRemovedAfterAck();
+
+            messageIds.add(ackData.messageID);
         }
+
+        //remove queue message metadata now
+        deleteMessages(messagesAddressedToQueues, false);
+
+        //remove topic message metadata now
+        deleteMessages(messagesAddressedToTopics, false);
+
+        deleteMessagesFromExpiryQueue(messageIds);      // hasithad This cant be done here cos topic delivery logic comes here before a delivery :(
     }
 
     @Override
@@ -485,6 +511,42 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     }
 
     @Override
+    public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
+
+        // todo: update when DLC implementation is ported to 3.0.0
+        String sqlString = "DELETE " +
+                " FROM " + JDBCConstants.METADATA_TABLE +
+                " WHERE " + JDBCConstants.QUEUE_ID + "=?" +
+                " AND " + JDBCConstants.MESSAGE_ID + "=?";
+        Connection connection = null;
+        try {
+
+            connection = getConnection();
+            connection.setAutoCommit(false);
+            PreparedStatement preparedStatement = connection.prepareStatement(sqlString);
+            for (AndesRemovableMetadata md : messagesToRemove) {
+                preparedStatement.setInt(1, getCachedQueueID(md.destination));
+                preparedStatement.setLong(2, md.messageID);
+                preparedStatement.addBatch();
+            }
+            preparedStatement.executeBatch();
+            connection.commit();
+            preparedStatement.close();
+
+            if(logger.isDebugEnabled()){
+                logger.debug(messagesToRemove.size() + " message metadata removed ");
+            }
+        } catch (SQLException e) {
+            String errMsg = "error occurred while deleting message metadata [" + e.getMessage() + "]";
+            logger.error(errMsg);
+            rollback(connection);
+            throw new AndesException(errMsg);
+        } finally {
+            close(connection);
+        }
+    }
+
+    @Override
     public void deleteMessageMetadataFromQueue(final String queueName, List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
 
         String sqlString = "DELETE " +
@@ -503,7 +565,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
                 preparedStatement.setLong(2, md.messageID);
                 preparedStatement.addBatch();
             }
-            preparedStatement.executeUpdate();
+            preparedStatement.executeBatch();
             connection.commit();
             preparedStatement.close();
 
@@ -553,7 +615,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
                 preparedStatement.setLong(1, mid);
                 preparedStatement.addBatch();
             }
-            preparedStatement.executeUpdate();
+            preparedStatement.executeBatch();
             connection.commit();
             preparedStatement.close();
         } catch (SQLException e) {
@@ -649,42 +711,81 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         Connection connection = null;
         try {
             connection = getConnection();
+//            String[] queries = {
+//                    "CREATE TABLE " + JDBCConstants.MESSAGES_TABLE + " (" +
+//                            JDBCConstants.MESSAGE_ID + " BIGINT, " +
+//                            JDBCConstants.MSG_OFFSET + " INT, " +
+//                            JDBCConstants.MESSAGE_CONTENT + " BINARY NOT NULL, " +
+//                            "PRIMARY KEY (" + JDBCConstants.MESSAGE_ID + "," + JDBCConstants.MSG_OFFSET + ")" +
+//                            ");"
+//                    ,
+//
+//                    "CREATE TABLE " + JDBCConstants.QUEUES_TABLE + " (" +
+//                            JDBCConstants.QUEUE_ID + " INT AUTO_INCREMENT, " +
+//                            JDBCConstants.QUEUE_NAME + " VARCHAR NOT NULL, " +
+//                            "UNIQUE (" + JDBCConstants.QUEUE_NAME + ")," +
+//                            "PRIMARY KEY (" + JDBCConstants.QUEUE_ID + ")" +
+//                            ");",
+//
+//                    "CREATE TABLE " + JDBCConstants.REF_COUNT_TABLE + " (" +
+//                            JDBCConstants.MESSAGE_ID + " BIGINT, " +
+//                            JDBCConstants.REF_COUNT + " INT, " +
+//                            "PRIMARY KEY (" + JDBCConstants.MESSAGE_ID + ")" +
+//                            ");",
+//
+//                    "CREATE TABLE " + JDBCConstants.METADATA_TABLE + "(" +
+//                            JDBCConstants.MESSAGE_ID + " BIGINT, " +
+//                            JDBCConstants.QUEUE_ID + " INT, " +
+//                            JDBCConstants.METADATA + " BINARY, " +
+//                            "PRIMARY KEY (" + JDBCConstants.MESSAGE_ID + "," + JDBCConstants.QUEUE_ID + "), " +
+//                            "FOREIGN KEY (" + JDBCConstants.QUEUE_ID + ") " +
+//                            "REFERENCES " + JDBCConstants.QUEUES_TABLE + " (" + JDBCConstants.QUEUE_ID + ") " +
+//                            ");",
+//
+//                    "CREATE TABLE " + JDBCConstants.EXPIRATION_TABLE + "(" +
+//                            JDBCConstants.MESSAGE_ID + " BIGINT UNIQUE," +
+//                            JDBCConstants.EXPIRATION_TIME + " BIGINT, " +
+//                            "FOREIGN KEY (" + JDBCConstants.MESSAGE_ID + ") " +
+//                            "REFERENCES " + JDBCConstants.METADATA_TABLE + " (" + JDBCConstants.MESSAGE_ID + ")" +
+//                            "); "
+//            };
+
             String[] queries = {
-                    "CREATE TABLE " + JDBCConstants.MESSAGES_TABLE + " (" +
-                            JDBCConstants.MESSAGE_ID + " BIGINT, " +
-                            JDBCConstants.MSG_OFFSET + " INT, " +
-                            JDBCConstants.MESSAGE_CONTENT + " BINARY NOT NULL, " +
-                            "PRIMARY KEY (" + JDBCConstants.MESSAGE_ID + "," + JDBCConstants.MSG_OFFSET + ")" +
+                    "CREATE TABLE messages (" +
+                            "message_id BIGINT, " +
+                            "offset INT, " +
+                            "content BINARY NOT NULL, " +
+                            "PRIMARY KEY (message_id,offset)" +
                             ");"
                     ,
 
-                    "CREATE TABLE " + JDBCConstants.QUEUES_TABLE + " (" +
-                            JDBCConstants.QUEUE_ID + " INT AUTO_INCREMENT, " +
-                            JDBCConstants.QUEUE_NAME + " VARCHAR NOT NULL, " +
-                            "UNIQUE (" + JDBCConstants.QUEUE_NAME + ")," +
-                            "PRIMARY KEY (" + JDBCConstants.QUEUE_ID + ")" +
+                    "CREATE TABLE queues (" +
+                            "queue_id INT AUTO_INCREMENT, " +
+                            "name VARCHAR NOT NULL, " +
+                            "UNIQUE (name)," +
+                            "PRIMARY KEY (queue_id)" +
                             ");",
 
-                    "CREATE TABLE " + JDBCConstants.REF_COUNT_TABLE + " (" +
-                            JDBCConstants.MESSAGE_ID + " BIGINT, " +
-                            JDBCConstants.REF_COUNT + " INT, " +
-                            "PRIMARY KEY (" + JDBCConstants.MESSAGE_ID + ")" +
+                    "CREATE TABLE reference_counts ( " +
+                            "message_id BIGINT, " +
+                            "reference_count INT, " +
+                            "PRIMARY KEY (message_id)" +
                             ");",
 
-                    "CREATE TABLE " + JDBCConstants.METADATA_TABLE + "(" +
-                            JDBCConstants.MESSAGE_ID + " BIGINT, " +
-                            JDBCConstants.QUEUE_ID + " INT, " +
-                            JDBCConstants.METADATA + " BINARY, " +
-                            "PRIMARY KEY (" + JDBCConstants.MESSAGE_ID + "," + JDBCConstants.QUEUE_ID + "), " +
-                            "FOREIGN KEY (" + JDBCConstants.QUEUE_ID + ") " +
-                            "REFERENCES " + JDBCConstants.QUEUES_TABLE + " (" + JDBCConstants.QUEUE_ID + ") " +
+                    "CREATE TABLE metadata(" +
+                            "message_id BIGINT, " +
+                            "queue_id INT, " +
+                            "data BINARY, " +
+                            "FOREIGN KEY (queue_id) " +
+                            "PRIMARY KEY (message_id, queue_id), " +
+                            "REFERENCES queues (queue_id) " +
                             ");",
 
-                    "CREATE TABLE " + JDBCConstants.EXPIRATION_TABLE + "(" +
-                            JDBCConstants.MESSAGE_ID + " BIGINT UNIQUE," +
-                            JDBCConstants.EXPIRATION_TIME + " BIGINT, " +
-                            "FOREIGN KEY (" + JDBCConstants.MESSAGE_ID + ") " +
-                            "REFERENCES " + JDBCConstants.METADATA_TABLE + " (" + JDBCConstants.MESSAGE_ID + ")" +
+                    "CREATE TABLE expiration_data (" +
+                            "message_id BIGINT UNIQUE," +
+                            "expiration_time BIGINT, " +
+                            "FOREIGN KEY (message_id) " +
+                            "REFERENCES metadata (message_id)" +
                             "); "
             };
             Statement stmt = connection.createStatement();
@@ -731,6 +832,8 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     /////////////////////////////////////////////////////////////
     // DEPRECATED METHODS
     ////////////////////////////////////////////////////////////
+
+
 
 
     @Override

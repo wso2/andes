@@ -1,7 +1,11 @@
 package org.wso2.andes.messageStore;
 
-import junit.framework.TestCase;
+import junit.framework.Assert;
 import org.h2.jdbcx.JdbcDataSource;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.MessageStore;
@@ -9,53 +13,66 @@ import org.wso2.andes.kernel.MessageStore;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NameAlreadyBoundException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class H2BasedMessageStoreImplTest extends TestCase {
+public class H2BasedMessageStoreImplTest {
 
     private MessageStore messageStore;
-    private Connection connection;
-    private static boolean isInitialised = false;
-    private static InitialContext ic;
+    private static Connection connection;
 
-    public void setUp() throws Exception {
-        super.setUp();
-        Class.forName("org.h2.Driver");
-        connection = DriverManager.getConnection("jdbc:h2:mem:msg_store");
-
+    @BeforeClass
+    public static void setUpBeforeClass() throws Exception {
         try {
-            if (!isInitialised) {
-                // Create initial context
-                System.setProperty(Context.INITIAL_CONTEXT_FACTORY,
-                        "org.apache.naming.java.javaURLContextFactory");
-                System.setProperty(Context.URL_PKG_PREFIXES,
-                        "org.apache.naming");
+            // Create initial context
+            System.setProperty(Context.INITIAL_CONTEXT_FACTORY,
+                    "org.apache.naming.java.javaURLContextFactory");
+            System.setProperty(Context.URL_PKG_PREFIXES,
+                    "org.apache.naming");
 
-                ic = new InitialContext();
-                ic.createSubcontext("jdbc");
-                JdbcDataSource ds = new JdbcDataSource();
-                ds.setURL("jdbc:h2:mem:msg_store");
-                ic.bind("jdbc/InMemoryMessageStoreDB", ds);
-                isInitialised = true;
-            }
+            InitialContext ic = new InitialContext();
+            ic.createSubcontext("jdbc");
+            JdbcDataSource ds = new JdbcDataSource();
+            ds.setURL("jdbc:h2:mem:msg_store;DB_CLOSE_ON_EXIT=FALSE");
+            ic.bind("jdbc/InMemoryMessageStoreDB", ds);
+            Class.forName("org.h2.Driver");
+            connection = DriverManager.getConnection("jdbc:h2:mem:msg_store;DB_CLOSE_ON_EXIT=FALSE");
         } catch (NameAlreadyBoundException ignored) {
         }
+    }
 
+    @Before
+    public void setUp() throws Exception {
+        createTables();
         messageStore = new H2BasedMessageStoreImpl();
         messageStore.initializeMessageStore(null);
-
     }
 
+    @After
     public void tearDown() throws Exception {
-//        messageStore.close();
+        dropTables();
     }
 
+    public void dropTables() throws SQLException {
+
+        String[] queries = {
+                "DROP TABLE messages",
+                "DROP TABLE queues ",
+                "DROP TABLE reference_counts ",
+                "DROP TABLE metadata ",
+                "DROP TABLE expiration_data "
+        };
+        Statement stmt = connection.createStatement();
+        for (String q : queries) {
+            stmt.addBatch(q);
+        }
+        stmt.executeBatch();
+        stmt.close();
+    }
+
+    @Test
     public void testStoreRetrieveMessagePart() throws Exception {
 
         // store messages
@@ -66,13 +83,14 @@ public class H2BasedMessageStoreImplTest extends TestCase {
         for (AndesMessagePart msgPart : list) {
             AndesMessagePart p = messageStore.getContent(msgPart.getMessageID(), msgPart.getOffSet());
             assert p != null;
-            assertEquals(msgPart.getMessageID(), p.getMessageID());
-            assertEquals(true, Arrays.equals(msgPart.getData(), p.getData()));
-            assertEquals(msgPart.getDataLength(), p.getDataLength());
-            assertEquals(msgPart.getOffSet(), p.getOffSet());
+            Assert.assertEquals(msgPart.getMessageID(), p.getMessageID());
+            Assert.assertEquals(true, Arrays.equals(msgPart.getData(), p.getData()));
+            Assert.assertEquals(msgPart.getDataLength(), p.getDataLength());
+            Assert.assertEquals(msgPart.getOffSet(), p.getOffSet());
         }
     }
 
+    @Test
     public void testDeleteMessageParts() throws Exception {
 
         int firstMsgId = 10;
@@ -99,9 +117,10 @@ public class H2BasedMessageStoreImplTest extends TestCase {
             preparedStatement.addBatch();
         }
         ResultSet resultSet = preparedStatement.executeQuery();
-        assertEquals(false, resultSet.next());
+        Assert.assertEquals(false, resultSet.next());
     }
 
+    @Test
     public void testAckReceived() throws Exception {
 
 
@@ -123,6 +142,7 @@ public class H2BasedMessageStoreImplTest extends TestCase {
 //
 //    }
 
+    @Test
     public void testAddMetaDataList() throws Exception {
 
         String destQueueName = "queue_";
@@ -140,9 +160,9 @@ public class H2BasedMessageStoreImplTest extends TestCase {
         ResultSet resultSet = preparedStatement.executeQuery();
 
         for (AndesMessageMetadata md : lst) {
-            assertEquals(true, resultSet.next());
-            assertEquals(md.getMessageID(), resultSet.getLong(JDBCConstants.MESSAGE_ID));
-            assertEquals(true, Arrays.equals(md.getMetadata(), resultSet.getBytes(JDBCConstants.METADATA)));
+            Assert.assertEquals(true, resultSet.next());
+            Assert.assertEquals(md.getMessageID(), resultSet.getLong(JDBCConstants.MESSAGE_ID));
+            Assert.assertEquals(true, Arrays.equals(md.getMetadata(), resultSet.getBytes(JDBCConstants.METADATA)));
         }
 
         sqlStr = "SELECT * FROM " + JDBCConstants.EXPIRATION_TABLE;
@@ -150,16 +170,17 @@ public class H2BasedMessageStoreImplTest extends TestCase {
         resultSet = preparedStatement.executeQuery();
         int count = 0;
         while (resultSet.next()) {
-            assertEquals(true, resultSet.getLong(JDBCConstants.EXPIRATION_TIME) > 0);
+            Assert.assertEquals(true, resultSet.getLong(JDBCConstants.EXPIRATION_TIME) > 0);
             count++;
         }
-        assertEquals(5, count);
+        Assert.assertEquals(5, count);
     }
 
+    @Test
     public void testAddMetaData() throws Exception {
         int msgId = 2; // JDBCTestHelper returns positive expiry values for even number message ids
         AndesMessageMetadata md = JDBCTestHelper.getMetadata(msgId, "myQueue");
-        AndesMessageMetadata md2 = JDBCTestHelper.getMetadata(msgId, "myQueue2"); // to test ref count
+        AndesMessageMetadata md2 = JDBCTestHelper.getMetadata(4, "myQueue2"); // to test ref count
         messageStore.addMetaData(md);
         messageStore.addMetaData(md2);
 
@@ -171,13 +192,13 @@ public class H2BasedMessageStoreImplTest extends TestCase {
         preparedStatement.setLong(1, msgId);
         ResultSet resultSet = preparedStatement.executeQuery();
 
-        assertEquals(true, resultSet.first());
-        assertEquals(true, Arrays.equals(md.getMetadata(), resultSet.getBytes(JDBCConstants.METADATA)));
-        assertEquals(msgId, resultSet.getLong(JDBCConstants.MESSAGE_ID));
+        Assert.assertEquals(true, resultSet.first());
+        Assert.assertEquals(true, Arrays.equals(md.getMetadata(), resultSet.getBytes(JDBCConstants.METADATA)));
+        Assert.assertEquals(msgId, resultSet.getLong(JDBCConstants.MESSAGE_ID));
 
-        assertEquals(true, resultSet.next());
-        assertEquals(true, Arrays.equals(md2.getMetadata(), resultSet.getBytes(JDBCConstants.METADATA)));
-        assertEquals(msgId, resultSet.getLong(JDBCConstants.MESSAGE_ID));
+        Assert.assertEquals(true, resultSet.next());
+        Assert.assertEquals(true, Arrays.equals(md2.getMetadata(), resultSet.getBytes(JDBCConstants.METADATA)));
+        Assert.assertEquals(msgId, resultSet.getLong(JDBCConstants.MESSAGE_ID));
 
         // todo check refcount
 
@@ -189,10 +210,11 @@ public class H2BasedMessageStoreImplTest extends TestCase {
         preparedStatement.setLong(1, msgId);
         resultSet = preparedStatement.executeQuery();
 
-        assertEquals(true, resultSet.first());
-        assertEquals(msgId, resultSet.getLong(JDBCConstants.MESSAGE_ID));
+        Assert.assertEquals(true, resultSet.first());
+        Assert.assertEquals(msgId, resultSet.getLong(JDBCConstants.MESSAGE_ID));
     }
 
+    @Test
     public void testAddMetadataToQueue() throws Exception {
         AndesMessageMetadata md = new AndesMessageMetadata();
         int msgId = 1;
@@ -217,12 +239,13 @@ public class H2BasedMessageStoreImplTest extends TestCase {
         preparedStatement.setLong(1, msgId);
         ResultSet resultSet = preparedStatement.executeQuery();
 
-        assertEquals(true, resultSet.first());
-        assertEquals(true, Arrays.equals(content, resultSet.getBytes(JDBCConstants.METADATA)));
-        assertEquals(msgId, resultSet.getLong(JDBCConstants.MESSAGE_ID));
-        assertEquals(specificQueue, resultSet.getString(JDBCConstants.QUEUE_NAME));
+        Assert.assertEquals(true, resultSet.first());
+        Assert.assertEquals(true, Arrays.equals(content, resultSet.getBytes(JDBCConstants.METADATA)));
+        Assert.assertEquals(msgId, resultSet.getLong(JDBCConstants.MESSAGE_ID));
+        Assert.assertEquals(specificQueue, resultSet.getString(JDBCConstants.QUEUE_NAME));
     }
 
+    @Test
     public void testAddMetadataListToQueue() throws Exception {
         String destQueueName = "queue_";
         String specificQueue = "DLC";
@@ -243,10 +266,10 @@ public class H2BasedMessageStoreImplTest extends TestCase {
         ResultSet resultSet = preparedStatement.executeQuery();
 
         for (AndesMessageMetadata md : lst) {
-            assertEquals(true, resultSet.next());
-            assertEquals(md.getMessageID(), resultSet.getLong(JDBCConstants.MESSAGE_ID));
-            assertEquals(true, Arrays.equals(md.getMetadata(), resultSet.getBytes(JDBCConstants.METADATA)));
-            assertEquals(specificQueue, resultSet.getString(JDBCConstants.QUEUE_NAME));
+            Assert.assertEquals(true, resultSet.next());
+            Assert.assertEquals(md.getMessageID(), resultSet.getLong(JDBCConstants.MESSAGE_ID));
+            Assert.assertEquals(true, Arrays.equals(md.getMetadata(), resultSet.getBytes(JDBCConstants.METADATA)));
+            Assert.assertEquals(specificQueue, resultSet.getString(JDBCConstants.QUEUE_NAME));
         }
 
         sql = "SELECT * FROM " + JDBCConstants.EXPIRATION_TABLE;
@@ -254,12 +277,13 @@ public class H2BasedMessageStoreImplTest extends TestCase {
         resultSet = preparedStatement.executeQuery();
         int count = 0;
         while (resultSet.next()) {
-            assertEquals(true, resultSet.getLong(JDBCConstants.EXPIRATION_TIME) > 0);
+            Assert.assertEquals(true, resultSet.getLong(JDBCConstants.EXPIRATION_TIME) > 0);
             count++;
         }
-        assertEquals(5, count);
+        Assert.assertEquals(5, count);
     }
 
+    @Test
     public void testGetMessageCountForQueue() throws Exception {
 
         String[] destQueues = {"queue_1", "queue_2"};
@@ -271,13 +295,14 @@ public class H2BasedMessageStoreImplTest extends TestCase {
 
         //TEST
         long count = messageStore.getMessageCountForQueue(destQueues[0] + "noQueue");
-        assertEquals(0, count); // no such queue
+        Assert.assertEquals(0, count); // no such queue
         count = messageStore.getMessageCountForQueue(destQueues[0]);
-        assertEquals(5, count);
+        Assert.assertEquals(5, count);
         count = messageStore.getMessageCountForQueue(destQueues[1]);
-        assertEquals(5, count);
+        Assert.assertEquals(5, count);
     }
 
+    @Test
     public void testGetMetaData() throws Exception {
 
         int firstMsgId = 1;
@@ -289,12 +314,13 @@ public class H2BasedMessageStoreImplTest extends TestCase {
         //TEST
         for (AndesMessageMetadata md : lst) {
             AndesMessageMetadata retrieved = messageStore.getMetaData(md.getMessageID());
-            assertEquals(md.getMessageID(), retrieved.getMessageID());
-            assertEquals(true, Arrays.equals(md.getMetadata(), retrieved.getMetadata()));
-            assertEquals(destQueueName, md.getDestination());
+            Assert.assertEquals(md.getMessageID(), retrieved.getMessageID());
+            Assert.assertEquals(true, Arrays.equals(md.getMetadata(), retrieved.getMetadata()));
+            Assert.assertEquals(destQueueName, md.getDestination());
         }
     }
 
+    @Test
     public void testGetMetaDataList() throws Exception {
 
         String destQueue_1 = "queue_1";
@@ -305,20 +331,21 @@ public class H2BasedMessageStoreImplTest extends TestCase {
         // Retrieve
         List<AndesMessageMetadata> list = messageStore.getMetaDataList(destQueue_1, 0, 5);
         // Test
-        assertEquals(5, list.size());
+        Assert.assertEquals(5, list.size());
         for (AndesMessageMetadata andesMessageMetadata : list) {
-            assertEquals(0, destQueue_1.compareTo(andesMessageMetadata.getDestination()));
+            Assert.assertEquals(0, destQueue_1.compareTo(andesMessageMetadata.getDestination()));
         }
 
         // Retrieve
         list = messageStore.getMetaDataList(destQueue_2, 5, 10);
         // Test
-        assertEquals(5, list.size());
+        Assert.assertEquals(5, list.size());
         for (AndesMessageMetadata andesMessageMetadata : list) {
-            assertEquals(0, destQueue_2.compareTo(andesMessageMetadata.getDestination()));
+            Assert.assertEquals(0, destQueue_2.compareTo(andesMessageMetadata.getDestination()));
         }
     }
 
+    @Test
     public void testGetNextNMessageMetadataFromQueue() throws Exception {
 
         String destQueues[] = {"queue_1", "queue_2"};
@@ -328,17 +355,66 @@ public class H2BasedMessageStoreImplTest extends TestCase {
         List<AndesMessageMetadata> mdList =
                 messageStore.getNextNMessageMetadataFromQueue(destQueues[0], 0, 3);
         // Test
-        assertEquals(3, mdList.size());
+        Assert.assertEquals(3, mdList.size());
         for (AndesMessageMetadata andesMessageMetadata : mdList) {
-            assertEquals(0, destQueues[0].compareTo(andesMessageMetadata.getDestination()));
+            Assert.assertEquals(0, destQueues[0].compareTo(andesMessageMetadata.getDestination()));
         }
 
         // Retrieve
         mdList = messageStore.getNextNMessageMetadataFromQueue(destQueues[1], 2, 5);
         // Test
-        assertEquals(4, mdList.size());
+        Assert.assertEquals(4, mdList.size());
         for (AndesMessageMetadata andesMessageMetadata : mdList) {
-            assertEquals(0, destQueues[1].compareTo(andesMessageMetadata.getDestination()));
+            Assert.assertEquals(0, destQueues[1].compareTo(andesMessageMetadata.getDestination()));
         }
+    }
+
+    private void createTables() throws SQLException {
+        String[] queries = {
+                "CREATE TABLE messages (" +
+                        "message_id BIGINT, " +
+                        "offset INT, " +
+                        "content BINARY NOT NULL, " +
+                        "PRIMARY KEY (message_id,offset)" +
+                        ");"
+                ,
+
+                "CREATE TABLE queues (" +
+                        "queue_id INT AUTO_INCREMENT, " +
+                        "name VARCHAR NOT NULL, " +
+                        "UNIQUE (name)," +
+                        "PRIMARY KEY (queue_id)" +
+                        ");",
+
+                "CREATE TABLE reference_counts ( " +
+                        "message_id BIGINT, " +
+                        "reference_count INT, " +
+                        "PRIMARY KEY (message_id)" +
+                        ");"
+                ,
+
+                "CREATE TABLE metadata (" +
+                        "message_id BIGINT, " +
+                        "queue_id INT, " +
+                        "data BINARY, " +
+                        "PRIMARY KEY (message_id, queue_id), " +
+                        "FOREIGN KEY (queue_id) " +
+                        "REFERENCES queues (queue_id) " +
+                        ");",
+
+                "CREATE TABLE expiration_data (" +
+                        "message_id BIGINT UNIQUE," +
+                        "expiration_time BIGINT, " +
+                        "FOREIGN KEY (message_id) " +
+                        "REFERENCES metadata (message_id)" +
+                        "); "
+        };
+        Statement stmt = connection.createStatement();
+        for (String q : queries) {
+            stmt.addBatch(q);
+        }
+        stmt.executeBatch();
+        stmt.close();
+
     }
 }

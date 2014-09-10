@@ -190,7 +190,7 @@ public class SlotDeliveryWorker extends Thread {
                         }
                     }
                 } catch (AndesException e) {
-                    log.error("Error running Cassandra Message Reader" + e.getMessage(), e);
+                    log.error("Error running Cassandra Message Reader " + e.getMessage(), e);
                 }
             }
         }

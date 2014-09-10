@@ -63,7 +63,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             log.error("Error while initializing cassandra message store", e);
             throw new AndesException(e);
         }
-
     }
 
     /**
