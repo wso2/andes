@@ -20,8 +20,6 @@
  */
 package org.wso2.andes.server;
 
-import static org.wso2.andes.transport.ConnectionSettings.WILDCARD_ADDRESS;
-
 import java.util.Collections;
 import java.util.Arrays;
 import java.util.HashSet;

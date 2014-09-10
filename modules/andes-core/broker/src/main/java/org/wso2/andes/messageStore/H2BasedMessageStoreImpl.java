@@ -25,7 +25,6 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
-import org.wso2.andes.server.util.AndesUtils;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
