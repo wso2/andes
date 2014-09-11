@@ -21,12 +21,14 @@ package org.wso2.andes.messageStore;
 
 public class JDBCConstants {
 
+    // tables
     public static final String MESSAGES_TABLE = "messages";
     public static final String METADATA_TABLE = "metadata";
     public static final String QUEUES_TABLE = "queues";
     public static final String REF_COUNT_TABLE = "reference_counts";
     public static final String EXPIRATION_TABLE = "expiration_data";
 
+    // columns
     public static final String MESSAGE_ID = "message_id";
     public static final String QUEUE_ID = "queue_id";
     public static final String QUEUE_NAME = "name";
@@ -35,5 +37,6 @@ public class JDBCConstants {
     public static final String MSG_OFFSET = "offset";
     public static final String MESSAGE_CONTENT = "content";
     public static final String EXPIRATION_TIME = "expiration_time";
+    public static final String DESTINATION_QUEUE = "destination";
 
 }

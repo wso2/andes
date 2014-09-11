@@ -27,13 +27,17 @@ import java.util.List;
 public class JDBCTestHelper {
 
     protected static List<AndesMessageMetadata> getMetadataList(final String destQueueName, long firstMsgId, long lastMsgId) {
+        return getMetadataList(destQueueName, firstMsgId, lastMsgId, 10000);
+    }
+
+    protected static List<AndesMessageMetadata> getMetadataList(final String destQueueName, long firstMsgId,
+                                                                long lastMsgId, int expirationTime) {
         List<AndesMessageMetadata> lst = new ArrayList<AndesMessageMetadata>(10);
         for (long i = firstMsgId; i < lastMsgId; i++) {
-            lst.add(getMetadata(i, destQueueName));
+            lst.add(getMetadata(i, destQueueName, expirationTime));
         }
         return lst;
     }
-
     /**
      *
      * @param qNameArray String array of queue names
@@ -53,12 +57,16 @@ public class JDBCTestHelper {
     }
 
     protected static AndesMessageMetadata getMetadata(long msgId, final String queueName) {
+        return getMetadata(msgId, queueName, 10000);
+    }
+
+    protected static AndesMessageMetadata getMetadata(long msgId, final String queueName, int expirationTime) {
         AndesMessageMetadata md = new AndesMessageMetadata();
         md.setMessageID(msgId);
         md.setDestination(queueName);
         md.setMetadata(("\u0002:MessageID=" + msgId + ",persistent=false,Topic=false,Destination=" + queueName +
                 ",Persistant=false,MessageContentLength=0").getBytes());
-        md.setExpirationTime((msgId % 2 == 0) ? (System.currentTimeMillis() + 10000) : 0);
+        md.setExpirationTime((msgId % 2 == 0) ? (System.currentTimeMillis() + expirationTime) : 0);
         return md;
     }
 

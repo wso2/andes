@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 public class MessageContentRemoverTask implements Runnable {
 
     private int waitInterval = 5000;
-    private boolean running = true;
+    private volatile boolean running = true;
     private long timeOutPerMessage = 10000000000L; //10s
     private SortedMap<Long, Long> contentDeletionTasks;
     private MessageStore messageStore;
