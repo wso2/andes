@@ -45,17 +45,14 @@ public class MessageContentRemoverTask implements Runnable {
         this.connectionToMessageStore = connection;
     }
 
-    public void start() {
-        this.setRunning(true);
-        Thread t = new Thread(this);
-        t.setName(this.getClass().getSimpleName() + "-Thread");
-        t.start();
+    public MessageContentRemoverTask(ConcurrentSkipListMap<Long, Long> contentDeletionTasks, MessageStore messageStore) {
+        this.contentDeletionTasks = contentDeletionTasks;
+        this.messageStore = messageStore;
     }
 
     public void run() {
-        while (running) {
             try {
-                while (!contentDeletionTasks.isEmpty() && connectionToMessageStore.isLive()) {
+                if (!contentDeletionTasks.isEmpty() && connectionToMessageStore.isLive()) {
                     long currentTime = System.nanoTime();
 
                     //remove content for timeout messages
@@ -78,13 +75,22 @@ public class MessageContentRemoverTask implements Runnable {
             } catch (Throwable e) {
                 log.error("Erring in removing message content details ", e);
             }
-        }
     }
 
+    @Deprecated
     public boolean isRunning() {
         return running;
     }
 
+    @Deprecated
+    public void start() {
+        this.setRunning(true);
+        Thread t = new Thread(this);
+        t.setName(this.getClass().getSimpleName() + "-Thread");
+        t.start();
+    }
+
+    @Deprecated
     public void setRunning(boolean running) {
         this.running = running;
     }
