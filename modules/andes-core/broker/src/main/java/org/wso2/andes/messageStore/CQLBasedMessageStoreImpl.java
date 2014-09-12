@@ -15,6 +15,7 @@ import org.wso2.andes.server.cassandra.dao.CQLQueryBuilder;
 import org.wso2.andes.server.cassandra.dao.CassandraHelper;
 import org.wso2.andes.server.cassandra.dao.GenericCQLDAO;
 import org.wso2.andes.server.stats.MessageCounterKey;
+import org.wso2.andes.server.stats.MessageStatus;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
@@ -30,6 +31,7 @@ import com.datastax.driver.core.querybuilder.Insert;
 import static org.wso2.andes.messageStore.CassandraConstants.*;
 
 public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageStore {
+
     private static Log log = LogFactory.getLog(CQLBasedMessageStoreImpl.class);
 
     private ConcurrentSkipListMap<Long, Long> contentDeletionTasks = new ConcurrentSkipListMap<Long, Long>();
@@ -45,6 +47,12 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     ScheduledFuture<?> messageStatusUpdateSchedule;
+
+    // Run stats statement batch execution in a loop each STATS_STATEMENT_EXECUTE_SCHEDULE_TIME seconds.
+    public static final int STATS_STATEMENT_EXECUTE_SCHEDULE_TIME = 10;
+
+    // Number of statements to buffer before batch executing message status change statements
+    public static final int STATS_STATEMENT_BUFFER_SIZE = 10000;
 
 
     public CQLBasedMessageStoreImpl() {
@@ -861,7 +869,9 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     /**
-     * Generic interface report the message store about the message status changes.
+     * Store the message status change in the message store. If the message previously had a different status change,
+     * then add the current status change to the same unit.
+     *
      * @param messageId The message Id
      * @param timeMillis The timestamp which the change happened
      * @param messageCounterKey The combined key which contains the message queue name and the state it changed to
@@ -877,19 +887,18 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 messageStatusInserts.add(CQLDataAccessHelper.updateMessageStatusChange(KEYSPACE, MESSAGE_STATUS_CHANGE_COLUMN_FAMILY, messageId, timeMillis, messageCounterKey, false, statsTimeToLive));
             }
 
-            if (messageStatusInserts.size() > 9999) {
+            if (messageStatusInserts.size() > STATS_STATEMENT_BUFFER_SIZE) {
                 processMessageStatusInserts();
             }
 
         } catch (Exception e) {
-            //TODO handle Cassandra failures
-            //TODO may be we can write those message to a disk, or do something. Currently we will just loose them
             log.error("Error writing incoming messages to Cassandra", e);
             throw new AndesException("Error writing incoming messages to Cassandra", e);
         }
     }
 
     /**
+     * Get the message status changed times for all statuses which are either arrived at a given time range or came to any of the statuses at a given time range.
      *
      * @param queueName The queue name the message is in.
      * @param minDate The min value for the time range to retrieve in timemillis.
@@ -897,17 +906,17 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
      * @param minMessageId The min messageId to retrieve (use for paginated data retrieval. Else null).
      * @param limit Limit of the number of records to retrieve. The messages will be retrieved in ascending messageId order. If null MAX value of long will be set.
      * @param compareAllStatuses Compare all the statuses that are changed within the given period, else only the published time will be compared.
-     * @return Message Status data. Map<Message Id, Map<Property, Value>>.
+     * @return Message Status data ordered in Message Id ascending order.
      * @throws AndesException
      */
     @Override
-    public Map<Long, Map<String, String>> getMessageStatuses(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, Boolean compareAllStatuses) throws AndesException {
+    public Set<MessageStatus> getMessageStatuses(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, Boolean compareAllStatuses) throws AndesException {
         try {
-            Map<Long, Map<String, String>> messageStatuses = CQLDataAccessHelper.getMessageStatuses(MESSAGE_STATUS_CHANGE_COLUMN_FAMILY, KEYSPACE, queueName, minDate, maxDate, minMessageId, limit, MessageCounterKey.MessageCounterType.PUBLISH_COUNTER);
+            Set<MessageStatus> messageStatuses = CQLDataAccessHelper.getMessageStatuses(MESSAGE_STATUS_CHANGE_COLUMN_FAMILY, KEYSPACE, queueName, minDate, maxDate, minMessageId, limit, MessageCounterKey.MessageCounterType.PUBLISH_COUNTER);
 
             if (compareAllStatuses) {
-                messageStatuses.putAll(CQLDataAccessHelper.getMessageStatuses(MESSAGE_STATUS_CHANGE_COLUMN_FAMILY, KEYSPACE, queueName, minDate, maxDate, minMessageId, limit, MessageCounterKey.MessageCounterType.PUBLISH_COUNTER));
-                messageStatuses.putAll(CQLDataAccessHelper.getMessageStatuses(MESSAGE_STATUS_CHANGE_COLUMN_FAMILY, KEYSPACE, queueName, minDate, maxDate, minMessageId, limit, MessageCounterKey.MessageCounterType.PUBLISH_COUNTER));
+                messageStatuses.addAll(CQLDataAccessHelper.getMessageStatuses(MESSAGE_STATUS_CHANGE_COLUMN_FAMILY, KEYSPACE, queueName, minDate, maxDate, minMessageId, limit, MessageCounterKey.MessageCounterType.PUBLISH_COUNTER));
+                messageStatuses.addAll(CQLDataAccessHelper.getMessageStatuses(MESSAGE_STATUS_CHANGE_COLUMN_FAMILY, KEYSPACE, queueName, minDate, maxDate, minMessageId, limit, MessageCounterKey.MessageCounterType.PUBLISH_COUNTER));
             }
             return messageStatuses;
         } catch (CassandraDataAccessException e) {
@@ -916,7 +925,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     /**
-     * Get the row cout for the given message status changes within the period.
+     * Get the row count for the given message status changes within the period.
      *
      * @param queueName The queue name the message is in.
      * @param minDate The min value for the time range to retrieve in timemillis.
@@ -934,6 +943,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     /**
+     * Get the message status changed times for a specific status for the messages which arrived at a given status within a given time range.
      *
      * @param queueName The queue name the message is in.
      * @param minDate The min value for the time range to retrieve in timemillis.
@@ -954,7 +964,8 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     /**
-     * Batch execute collected message status inserts/updates.
+     * Batch execute buffered message status inserts/updates. All the collected statements will be removed from the buffer
+     * and forwarded for batch execution.
      * @throws AndesException
      */
     public void processMessageStatusInserts() throws AndesException {
@@ -974,14 +985,15 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     /**
-     * Reset message status insert/update list.
+     * Reset message status insert/update list by reinitializing the statement buffer.
+     * This is used to reset the buffer after batch executing statements inside the buffer.
      */
     private void initializeMessageStatusInserts() {
         messageStatusInserts = new ArrayList<Statement>();
     }
 
     /**
-     * Execute buffered message status update statements every 10 seconds.
+     * Execute buffered message status update statements in a scheduled time period.
      */
     @Override
     public void startMessageStatusUpdateExecutor() {
@@ -997,13 +1009,13 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                         log.error("Error processing message status insert by schedule.", e);
                     }
                 }
-            }, 0, 10, TimeUnit.SECONDS);
+            }, 0, STATS_STATEMENT_EXECUTE_SCHEDULE_TIME, TimeUnit.SECONDS);
         }
     }
 
     /**
-     * Stop executing buffered message status updates every 10 seconds.
-     * After invoking, message statuses will be updated only when buffer is overflowed.
+     * Stop executing buffered message status updates by a schedule.
+     * After invoking, message statuses will be updated only when statements buffer is overflowed.
      */
     @Override
     public void stopMessageStatusUpdateExecutor() {

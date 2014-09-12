@@ -66,6 +66,7 @@ import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.policies.ConstantReconnectionPolicy;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
 import org.wso2.andes.server.stats.MessageCounterKey;
+import org.wso2.andes.server.stats.MessageStatus;
 
 
 /**
@@ -1984,7 +1985,8 @@ public class CQLDataAccessHelper {
     }
 
     /**
-     * Insert message published time data to the system.
+     * Insert message published time data to the database.
+     *
      * @param keySpace The key space.
      * @param columnFamily The column family/table name.
      * @param messageId The message id in message store.
@@ -2025,7 +2027,8 @@ public class CQLDataAccessHelper {
     }
 
     /**
-     * Insert message delivered/acknowledged time data to the system.
+     * Insert message delivered/acknowledged time data to the database.
+     *
      * @param keySpace The key space.
      * @param columnFamily The column family/table name.
      * @param messageId The message id in message store.
@@ -2064,7 +2067,9 @@ public class CQLDataAccessHelper {
     }
 
     /**
-     * Get the statuses of each message.
+     * Get the statuses change times of each message which a given state change has happened within a given time range
+     * and the message Id is greater than a given value.
+     *
      * @param columnFamilyName The column family / table name.
      * @param keyspace The key space.
      * @param queueName The queue name,if null all.
@@ -2073,10 +2078,9 @@ public class CQLDataAccessHelper {
      * @param minMessageId Message range lower limit. If null 0 (use for paginated data retrieving).
      * @param limit The limit of number of records to retrieve. Will be retrieving in messageId ascending order. If null MAX Long value.
      * @param rangeColumn Message Status type column to retrieve.
-     * @return Message statuses. Map<Message Id, Map<Property, Value>>
-     * @throws CassandraDataAccessException
+     * @return Message statuses sorted in ascending order or message Id's.
      */
-    public static Map<Long, Map<String, String>> getMessageStatuses(String columnFamilyName, String keyspace, String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, MessageCounterKey.MessageCounterType rangeColumn) throws CassandraDataAccessException {
+    public static Set<MessageStatus> getMessageStatuses(String columnFamilyName, String keyspace, String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, MessageCounterKey.MessageCounterType rangeColumn) throws CassandraDataAccessException {
         if (keyspace == null) {
             throw new CassandraDataAccessException("Can't access Data , no keyspace provided ");
         }
@@ -2103,7 +2107,20 @@ public class CQLDataAccessHelper {
             compareColumn = ACKNOWLEDGED_TIME;
         }
 
-        Map<Long, Map<String, String>> messageStatus = new TreeMap<Long, Map<String, String>>();
+        // sort output in message Id ascending order
+        Set<MessageStatus> messageStatuses = new TreeSet<MessageStatus>(new Comparator<MessageStatus>(){
+                    public int compare(MessageStatus a, MessageStatus b){
+                        long diff = a.getMessageId() - b.getMessageId();
+                        int returnVal = 0;
+                        if (diff > 0) {
+                            returnVal = 1;
+                        } else if (diff < 0 ) {
+                            returnVal = -1;
+                        }
+
+                        return returnVal;
+                    }
+                });
 
         CQLQueryBuilder.CqlSelect cqlSelect = new CQLQueryBuilder.CqlSelect(columnFamilyName, limit, true);
         cqlSelect.addColumn(MSG_COUNTER_QUEUE);
@@ -2141,19 +2158,20 @@ public class CQLDataAccessHelper {
 
         for (Row row : result) {
 
-            Map<String, String> currentMessageStatus = new HashMap<String, String>();
-            currentMessageStatus.put(MSG_COUNTER_QUEUE, row.getString(MSG_COUNTER_QUEUE));
-            currentMessageStatus.put(MessageCounterKey.MessageCounterType.PUBLISH_COUNTER.getType(), Long.toString(row.getLong(PUBLISHED_TIME)));
-            currentMessageStatus.put(MessageCounterKey.MessageCounterType.DELIVER_COUNTER.getType(), Long.toString(row.getLong(DELIVERED_TIME)));
-            currentMessageStatus.put(MessageCounterKey.MessageCounterType.ACKNOWLEDGED_COUNTER.getType(), Long.toString(row.getLong(ACKNOWLEDGED_TIME)));
-            messageStatus.put(row.getLong(MESSAGE_ID), currentMessageStatus);
+            MessageStatus currentMessageStatus = new MessageStatus();
+            currentMessageStatus.setMessageId(row.getLong(MESSAGE_ID));
+            currentMessageStatus.setQueueName(row.getString(MSG_COUNTER_QUEUE));
+            currentMessageStatus.setPublishedTime(row.getLong(PUBLISHED_TIME));
+            currentMessageStatus.setDeliveredTime(row.getLong(DELIVERED_TIME));
+            currentMessageStatus.setAcknowledgedTime(row.getLong(ACKNOWLEDGED_TIME));
+            messageStatuses.add(currentMessageStatus);
         }
-        return messageStatus;
+        return messageStatuses;
     }
 
 
     /**
-     * Get message status change times for a given message status type.
+     * Get message status change times for a given message status type within a given time range which has message Id's grater than a given number.
      *
      * @param columnFamilyName The column family / table name.
      * @param keyspace The key space.
@@ -2233,6 +2251,7 @@ public class CQLDataAccessHelper {
     }
 
     /**
+     * Retrieve the number of messages published between the given time range.
      *
      * @param columnFamilyName The column family / table name.
      * @param keyspace The key space.

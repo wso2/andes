@@ -957,7 +957,7 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      * @return Stats Time to Live
      */
     public int getStatsTimeToLive() {
-        return getIntValue("stats.timeToLive", 4320);
+        return getIntValue("stats.timeToLive", 259200);
     }
 }
 

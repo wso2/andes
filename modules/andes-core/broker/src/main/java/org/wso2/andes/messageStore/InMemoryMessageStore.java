@@ -9,6 +9,7 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.stats.MessageCounterKey;
+import org.wso2.andes.server.stats.MessageStatus;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 import org.wso2.andes.server.util.AndesUtils;
@@ -22,8 +23,6 @@ public class InMemoryMessageStore implements MessageStore {
     private HashMap<String, Long> messageCountTable = new HashMap<String, Long>();
 
     private boolean isMessageCoutingAllowed = ClusterResourceHolder.getInstance().getClusterConfiguration().getViewMessageCounts();
-
-    private Map<String, Map<Long,Long[]>> messageStatuses = new HashMap<String, Map<Long, Long[]>>();
 
     @Override
     public void storeMessagePart(List<AndesMessagePart> part)
@@ -281,75 +280,11 @@ public class InMemoryMessageStore implements MessageStore {
 
     @Override
     public void addMessageStatusChange(long messageId, long timeMillis, MessageCounterKey messageCounterKey) throws AndesException {
-        try {
-            String queueName = messageCounterKey.getQueueName();
-
-            Map<Long, Long[]> messageStatus = messageStatuses.get(queueName);
-
-            if (messageStatus == null) {
-                messageStatus = new HashMap<Long, Long[]>();
-            }
-
-            Long[] statusTakenTime = messageStatus.get(messageId);
-
-            if (statusTakenTime == null) {
-                statusTakenTime = new Long[3];
-            }
-
-            if (MessageCounterKey.MessageCounterType.PUBLISH_COUNTER.equals(messageCounterKey.getMessageCounterType())) {
-                statusTakenTime[0] = timeMillis;
-            } else if (MessageCounterKey.MessageCounterType.DELIVER_COUNTER.equals(messageCounterKey.getMessageCounterType())) {
-                statusTakenTime[1] = timeMillis;
-            } else if (MessageCounterKey.MessageCounterType.ACKNOWLEDGED_COUNTER.equals(messageCounterKey.getMessageCounterType())) {
-                statusTakenTime[2] = timeMillis;
-            }
-
-            messageStatus.put(messageId, statusTakenTime);
-
-            messageStatuses.put(messageCounterKey.getQueueName(), messageStatus);
-
-        } catch (Exception e) {
-            throw new AndesException("Error writing incoming messages to Cassandra", e);
-        }
     }
 
     @Override
-    public Map<Long, Map<String, String>> getMessageStatuses(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, Boolean comparePublishOnly) throws AndesException {
-        try {
-            Map<Long, Map<String, String>> messageStatusesOut = new HashMap<Long, Map<String, String>>();
-
-            Map<Long, Long[]> messageStatus = messageStatuses.get(queueName);
-
-
-            for (Entry<Long, Long[]> currItrValue : messageStatus.entrySet()) {
-                Long[] values = currItrValue.getValue();
-
-                Long deliveredTime = values[1];
-                Long acknowledgedTime = values[2];
-
-                Map<String, String> currentMessageStatus = new HashMap<String, String>();
-                currentMessageStatus.put("queue_name", queueName);
-                currentMessageStatus.put(MessageCounterKey.MessageCounterType.PUBLISH_COUNTER.getType(), values[0].toString());
-                currentMessageStatus.put(MessageCounterKey.MessageCounterType.DELIVER_COUNTER.getType(), values[1].toString());
-                currentMessageStatus.put(MessageCounterKey.MessageCounterType.ACKNOWLEDGED_COUNTER.getType(), values[2].toString());
-
-                if (acknowledgedTime != null) {
-                    currentMessageStatus.put("message_status", MessageCounterKey.MessageCounterType.ACKNOWLEDGED_COUNTER.getType());
-                } else if (deliveredTime != null) {
-                    currentMessageStatus.put("message_status", MessageCounterKey.MessageCounterType.DELIVER_COUNTER.getType());
-                } else {
-                    currentMessageStatus.put("message_status", MessageCounterKey.MessageCounterType.PUBLISH_COUNTER.getType());
-                }
-
-                messageStatusesOut.put(currItrValue.getKey(), currentMessageStatus);
-
-            }
-
-
-            return messageStatusesOut;
-        } catch (Exception e) {
-            throw new AndesException(e);
-        }
+    public Set<MessageStatus> getMessageStatuses(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, Boolean comparePublishOnly) throws AndesException {
+        return null;
     }
 
     /**
@@ -360,16 +295,21 @@ public class InMemoryMessageStore implements MessageStore {
 
     }
 
+    /**
+     * Not implemented since not being used.
+     */
     @Override
     public void stopMessageStatusUpdateExecutor() {
 
     }
 
+    // Not implemented
     @Override
     public Long getMessageStatusCount(String queueName, Long minDate, Long maxDate) throws AndesException {
         return null;
     }
 
+    // Not implemented
     @Override
     public Map<Long, Long> getMessageStatusChangeTimes(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, MessageCounterKey.MessageCounterType rangeColumn) throws AndesException {
         return null;

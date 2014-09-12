@@ -19,6 +19,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.CassandraConnection;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.stats.MessageCounterKey;
+import org.wso2.andes.server.stats.MessageStatus;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 import org.wso2.andes.server.store.util.CassandraDataAccessHelper;
@@ -597,32 +598,54 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
     /**
      * Get the status of each of messages.
      * @param queueName The queue name to get data, if null all.
-     * @return Message Status data. Map<Message Id, Map<Property, Value>>
+     * @return Message Status data.
      */
     @Override
-    public Map<Long, Map<String, String>> getMessageStatuses(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, Boolean compareAllStatuses) {
+    public Set<MessageStatus> getMessageStatuses(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, Boolean compareAllStatuses) {
         // Not implemented since this class is not being used.
         return null;
     }
 
     /**
-     * Not implemented.
+     * Not implemented since not being used.
      */
     @Override
     public void startMessageStatusUpdateExecutor() {
 
     }
 
+    /**
+     * Not implemented since not being used.
+     */
     @Override
     public void stopMessageStatusUpdateExecutor() {
 
     }
 
+    /**
+     * Not implemented since not being used.
+     * @param queueName The queue name the message is in.
+     * @param minDate The min value for the time range to retrieve in timemillis.
+     * @param maxDate The max value for the time range to retrieve in timemillis.
+     * @return
+     * @throws AndesException
+     */
     @Override
     public Long getMessageStatusCount(String queueName, Long minDate, Long maxDate) throws AndesException {
         return null;
     }
 
+    /**
+     * Not implemented since not being used.
+     * @param queueName The queue name the message is in.
+     * @param minDate The min value for the time range to retrieve in timemillis.
+     * @param maxDate The max value for the time range to retrieve in timemillis.
+     * @param minMessageId The min messageId to retrieve (use for paginated data retrieval. Else null).
+     * @param limit Limit of the number of records to retrieve. The messages will be retrieved in ascending messageId order. If null MAX value of long will be set.
+     * @param rangeColumn The message status change type to compare and return.
+     * @return
+     * @throws AndesException
+     */
     @Override
     public Map<Long, Long> getMessageStatusChangeTimes(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, MessageCounterKey.MessageCounterType rangeColumn) throws AndesException {
         return null;

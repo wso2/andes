@@ -1,3 +1,21 @@
+/*
+*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+*
+*  WSO2 Inc. licenses this file to you under the Apache License,
+*  Version 2.0 (the "License"); you may not use this file except
+*  in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/
+
 package org.wso2.andes.server.stats;
 
 import org.apache.commons.logging.Log;
@@ -9,6 +27,7 @@ import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.util.Map;
+import java.util.Set;
 
 /**
  * This class is responsible for keeping track of message rates and ongoing message statuses.
@@ -69,8 +88,8 @@ public final class MessageCounter {
      * @param compareAllStatuses Compare all the statuses that are changed within the given period, else only the published time will be compared.
      * @return The message stats. Map<MessageId, Map{Published:time, Delivered:time, Aknowledged:time, queue_name:name}>
      */
-    public Map<Long, Map<String, String>> getOnGoingMessageStatus(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, Boolean compareAllStatuses) {
-        Map<Long, Map<String, String>> messageStatuses = null;
+    public Set<MessageStatus> getOnGoingMessageStatus(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, Boolean compareAllStatuses) {
+        Set<MessageStatus> messageStatuses = null;
 
         try {
             messageStatuses =  messageStore.getMessageStatuses(queueName, minDate, maxDate, minMessageId, limit, compareAllStatuses);
