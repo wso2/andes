@@ -21,14 +21,18 @@ package org.wso2.andes.messageStore;
 
 public class JDBCConstants {
 
-    // tables
+    // jndi lookup
+    protected static final String H2_JNDI_LOOKUP_NAME = "jdbc/H2MessageStoreDB";
+    protected static final String H2_MEM_JNDI_LOOKUP_NAME = "jdbc/InMemoryMessageStoreDB";
+
+    // Message Store tables
     protected static final String MESSAGES_TABLE = "messages";
     protected static final String METADATA_TABLE = "metadata";
     protected static final String QUEUES_TABLE = "queues";
     protected static final String REF_COUNT_TABLE = "reference_counts";
     protected static final String EXPIRATION_TABLE = "expiration_data";
 
-    // columns
+    // Message Store table columns
     protected static final String MESSAGE_ID = "message_id";
     protected static final String QUEUE_ID = "queue_id";
     protected static final String QUEUE_NAME = "name";
@@ -39,12 +43,15 @@ public class JDBCConstants {
     protected static final String EXPIRATION_TIME = "expiration_time";
     protected static final String DESTINATION_QUEUE = "destination";
 
-    // jndi lookup
+    // Andes Context Store tables
+    protected static final String DURABLE_SUB_TABLE = "durable_subscriptions";
 
-    protected static final String H2_JNDI_LOOKUP_NAME = "jdbc/H2MessageStoreDB";
-    protected static final String H2_MEM_JNDI_LOOKUP_NAME = "jdbc/InMemoryMessageStoreDB";
+    // Andes Context Store table columns
+    protected static final String DURABLE_SUB_ID = "sub_id";
+    protected static final String DESTINATION_IDENTIFIER = "destination_identifier";
+    protected static final String DURABLE_SUB_DATA = "data";
 
-    // sql prepared statements
+    // prepared statements for Message Store
     protected static final String PS_INSERT_MESSAGE_PART =
             "INSERT INTO " + JDBCConstants.MESSAGES_TABLE + "(" +
                     JDBCConstants.MESSAGE_ID + "," +
@@ -76,7 +83,7 @@ public class JDBCConstants {
                     JDBCConstants.MESSAGE_ID + "," +
                     JDBCConstants.EXPIRATION_TIME + "," +
                     JDBCConstants.DESTINATION_QUEUE + ")" +
-                    " VALUES ( ?,?,? );";
+                    " VALUES ( ?,?,? )";
 
     protected static final String PS_ALIAS_FOR_COUNT = "count";
 
@@ -130,7 +137,16 @@ public class JDBCConstants {
                     " FROM " + JDBCConstants.QUEUES_TABLE +
                     " WHERE " + JDBCConstants.QUEUE_NAME + "=?";
 
-    // jdbc tasks executed
+    // prepared statements for Andes Context Store
+    protected static final String PS_INSERT_DURABLE_SUBSCRIPTION =
+            "INSERT INTO " + JDBCConstants.DURABLE_SUB_TABLE + " (" +
+                    JDBCConstants.DESTINATION_IDENTIFIER + ", " +
+                    JDBCConstants.DURABLE_SUB_ID + ", " +
+                    JDBCConstants.DURABLE_SUB_DATA + ") " +
+                    " VALUES (?,?,?)";
+
+
+    // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts";
     protected static final String TASK_DELETING_MESSAGE_PARTS = "deleting message parts";
     protected static final String TASK_RETRIEVING_MESSAGE_PARTS = "retrieving message parts";
@@ -154,4 +170,9 @@ public class JDBCConstants {
     protected static final String TASK_RETRIEVING_EXPIRED_MESSAGES = "retrieving expired messages";
     protected static final String TASK_RETRIEVING_QUEUE_ID = "retrieving queue id for queue ";
     protected static final String TASK_CREATING_QUEUE = "creating queue ";
+
+
+    // Andes Context Store related jdbc tasks executed
+    protected static final String TASK_STORING_DURABLE_SUBSCRIPTION = "storing durable subscription";
+
 }

@@ -1,7 +1,6 @@
 package org.wso2.andes.messageStore;
 
 import junit.framework.Assert;
-import junit.framework.TestCase;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.*;
 import org.wso2.andes.kernel.AndesMessageMetadata;

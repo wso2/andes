@@ -26,8 +26,6 @@ import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.ArrayList;
@@ -43,18 +41,17 @@ public class H2BasedMessageStoreImpl implements MessageStore {
 
     private static final Logger logger = Logger.getLogger(H2BasedMessageStoreImpl.class);
     private final Map<String, Integer> queueMap; // cache queue name to queue_id mapping to avoid extra sql queries
-    private DataSource datasource;  // connection pool
-    private String jndiLookupName; // initial context lookup name
+    private DataSource datasource;  // connection pooled datasource
     private ConcurrentSkipListMap<Long, Long> contentDeletionTasksMap = new ConcurrentSkipListMap<Long, Long>();
     private ScheduledExecutorService contentRemovalScheduler = Executors.newScheduledThreadPool(2);
+    private boolean isInMemoryMode;
 
     /**
      * Initialise to work in embedded or server mode
      */
     public H2BasedMessageStoreImpl() {
-        jndiLookupName = JDBCConstants.H2_JNDI_LOOKUP_NAME;
         queueMap = new ConcurrentHashMap<String, Integer>();
-
+        isInMemoryMode = false;
     }
 
     /**
@@ -62,44 +59,30 @@ public class H2BasedMessageStoreImpl implements MessageStore {
      */
     public H2BasedMessageStoreImpl(boolean isInMemory) {
         this();
-        if (isInMemory) {
-            jndiLookupName = JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME;
-        }
+        this.isInMemoryMode = isInMemory;
     }
 
     @Override
     public void initializeMessageStore(DurableStoreConnection durableStoreConnection) throws AndesException {
-        Connection connection = null;
-        H2Connection h2Connection = new H2Connection();
 
-        try {
+        H2Connection h2Connection = new H2Connection(isInMemoryMode);
+        h2Connection.initialize(null);
+        datasource = h2Connection.getDatasource();
 
-            datasource = InitialContext.doLookup(jndiLookupName);
-            connection = datasource.getConnection();
-            h2Connection.setIsConnected(true);
+        // start periodic message removal task
+        MessageContentRemoverTask messageContentRemoverTask =
+                new MessageContentRemoverTask(contentDeletionTasksMap, this);
 
-            // start periodic message removal task
-            MessageContentRemoverTask messageContentRemoverTask =
-                    new MessageContentRemoverTask(contentDeletionTasksMap, this);
+        int schedulerPeriod =
+                ClusterResourceHolder.getInstance().getClusterConfiguration()
+                        .getContentRemovalTaskInterval();
+        contentRemovalScheduler.scheduleAtFixedRate(messageContentRemoverTask,
+                schedulerPeriod,
+                schedulerPeriod,
+                TimeUnit.SECONDS);
 
-            int schedulerPeriod =
-                    ClusterResourceHolder.getInstance().getClusterConfiguration()
-                    .getContentRemovalTaskInterval();
-            contentRemovalScheduler.scheduleAtFixedRate(messageContentRemoverTask,
-                    schedulerPeriod, 
-                    schedulerPeriod,
-                    TimeUnit.SECONDS);
+        logger.info("H2 message store initialised");
 
-            logger.info("H2 message store initialised");
-
-        } catch (SQLException e) {
-            throw new AndesException("Connecting to H2 database failed!", e);
-        } catch (NamingException e) {
-            throw new AndesException("Couldn't look up jndi entry for " +
-                    "\"" + jndiLookupName + "\"" + e);
-        } finally {
-            close(connection, "initialising database");
-        }
     }
 
     @Override

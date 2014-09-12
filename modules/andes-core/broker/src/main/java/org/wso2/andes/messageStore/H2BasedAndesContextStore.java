@@ -18,28 +18,34 @@
 
 package org.wso2.andes.messageStore;
 
+import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.*;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
 public class H2BasedAndesContextStore implements AndesContextStore {
 
-    private DataSource datasource;
-    private String jndiLookupName;
+    private static final Logger logger = Logger.getLogger(H2BasedAndesContextStore.class);
 
-    H2BasedAndesContextStore(boolean isInmemoryMode) {
-        if(isInmemoryMode){
-            jndiLookupName = JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME;
-        }
+    private DataSource datasource;
+    private boolean isInMemoryMode;
+
+    H2BasedAndesContextStore(boolean isInMemoryMode) {
+        this.isInMemoryMode = isInMemoryMode;
     }
 
     @Override
     public void init(DurableStoreConnection connection) throws AndesException {
-
+        H2Connection h2Connection = new H2Connection(isInMemoryMode);
+        h2Connection.initialize(null);
+        datasource = h2Connection.getDatasource();
     }
-
 
     @Override
     public Map<String, List<String>> getAllStoredDurableSubscriptions() throws AndesException {
@@ -49,6 +55,28 @@ public class H2BasedAndesContextStore implements AndesContextStore {
     @Override
     public void storeDurableSubscription(String destinationIdentifier, String subscriptionID, String subscriptionEncodeAsStr) throws AndesException {
 
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        try {
+            connection = getConnection();
+            connection.setAutoCommit(false);
+            preparedStatement = connection.prepareStatement(
+                    JDBCConstants.PS_INSERT_DURABLE_SUBSCRIPTION);
+
+            preparedStatement.setString(1, destinationIdentifier);
+            preparedStatement.setString(2, subscriptionID);
+            preparedStatement.setString(3, subscriptionEncodeAsStr);
+            preparedStatement.executeUpdate();
+            connection.commit();
+
+        } catch (SQLException e) {
+            rollback(connection, JDBCConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
+            throw new AndesException("Error occurred while storing durable subscription. sub id: "
+                    + subscriptionID + " destination identifier: " + destinationIdentifier, e);
+        } finally {
+            close(preparedStatement, JDBCConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
+            close(connection, JDBCConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
+        }
     }
 
     @Override
@@ -134,5 +162,54 @@ public class H2BasedAndesContextStore implements AndesContextStore {
     @Override
     public void close() {
 
+    }
+
+    private Connection getConnection() throws SQLException {
+        return datasource.getConnection();
+    }
+
+    /**
+     * Closes the provided connection. on failure log the error;
+     *
+     * @param connection Connection
+     */
+    private void close(Connection connection, String task) {
+        if (connection != null) {
+            try {
+                connection.close();
+            } catch (SQLException e) {
+                logger.error("Failed to close connection after " + task);
+            }
+        }
+    }
+
+    private void rollback(Connection connection, String task) {
+        if (connection != null) {
+            try {
+                connection.rollback();
+            } catch (SQLException e1) {
+                logger.warn("Rollback failed on " + task);
+            }
+        }
+    }
+
+    private void close(PreparedStatement preparedStatement, String task) {
+        if (preparedStatement != null) {
+            try {
+                preparedStatement.close();
+            } catch (SQLException e) {
+                logger.error("Closing prepared statement failed after " + task);
+            }
+        }
+    }
+
+    private void close(ResultSet resultSet, String task) {
+        if (resultSet != null) {
+            try {
+                resultSet.close();
+            } catch (SQLException e) {
+                logger.error("Closing result set failed after " + task);
+            }
+        }
     }
 }

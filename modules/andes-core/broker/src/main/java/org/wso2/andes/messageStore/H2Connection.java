@@ -19,17 +19,56 @@
 package org.wso2.andes.messageStore;
 
 import org.apache.commons.configuration.Configuration;
+import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
+
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+import javax.sql.DataSource;
+import javax.xml.crypto.Data;
+import java.sql.Connection;
+import java.sql.SQLException;
 
 // todo: need to implement with reading cassandra data source from master-datasources.xml
 public class H2Connection implements DurableStoreConnection {
 
-    boolean isConnected;
+    private static final Logger logger = Logger.getLogger(H2Connection.class);
+    private boolean isConnected;
+    private String jndiLookupName;
+    private DataSource datasource;
 
+
+    public H2Connection(boolean isInMemoryMode) {
+        if(isInMemoryMode) {
+            jndiLookupName = JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME;
+        } else {
+            jndiLookupName = JDBCConstants.H2_JNDI_LOOKUP_NAME;
+        }
+        isConnected = false;
+    }
+
+    // todo: remove argument
     @Override
     public void initialize(Configuration configuration) throws AndesException {
-        isConnected = true;
+        Connection connection = null;
+        isConnected = false;
+        try {
+            datasource = InitialContext.doLookup(jndiLookupName);
+            connection = datasource.getConnection();
+            isConnected = true; // if no errors
+        } catch (SQLException e) {
+            throw new AndesException("Connecting to H2 database failed!", e);
+        } catch (NamingException e) {
+            throw new AndesException("Couldn't look up jndi entry for " +
+                    "\"" + jndiLookupName + "\"" + e);
+        } finally {
+            close(connection, "initialising database");
+        }
+    }
+
+    public DataSource getDatasource() {
+        return datasource;
     }
 
     @Override
@@ -47,7 +86,25 @@ public class H2Connection implements DurableStoreConnection {
         return this; //
     }
 
+
+
     void setIsConnected(boolean isConnected) {
         this.isConnected = isConnected;
+    }
+
+
+    /**
+     * Closes the provided connection. on failure log the error;
+     *
+     * @param connection Connection
+     */
+    private void close(Connection connection, String task) {
+        if (connection != null) {
+            try {
+                connection.close();
+            } catch (SQLException e) {
+                logger.error("Failed to close connection after " + task);
+            }
+        }
     }
 }
