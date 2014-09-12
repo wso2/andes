@@ -24,8 +24,6 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessagePurgeHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
-import org.wso2.andes.server.slot.Slot;
-
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.slot.Slot;
 

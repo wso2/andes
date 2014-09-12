@@ -3,8 +3,6 @@ package org.wso2.andes.messageStore;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.slot.SlotManager;
-
-
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
