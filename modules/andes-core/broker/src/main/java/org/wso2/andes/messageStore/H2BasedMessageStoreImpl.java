@@ -82,7 +82,8 @@ public class H2BasedMessageStoreImpl implements MessageStore {
             MessageContentRemoverTask messageContentRemoverTask =
                     new MessageContentRemoverTask(contentDeletionTasksMap, this);
 
-            int schedulerPeriod = ClusterResourceHolder.getInstance().getClusterConfiguration()
+            int schedulerPeriod =
+                    ClusterResourceHolder.getInstance().getClusterConfiguration()
                     .getContentRemovalTaskInterval();
             contentRemovalScheduler.scheduleAtFixedRate(messageContentRemoverTask,
                     schedulerPeriod, 

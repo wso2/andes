@@ -205,6 +205,36 @@ public class CassandraBasedAndesContextStore implements AndesContextStore{
     }
 
     @Override
+    public void storeQueueInformation(String queueName, String queueInfo) throws AndesException {
+
+    }
+
+    @Override
+    public List<AndesQueue> getAllQueuesStored() throws AndesException {
+        return null;
+    }
+
+    @Override
+    public void deleteQueueInformation(String queueName) throws AndesException {
+
+    }
+
+    @Override
+    public void storeBindingInformation(String exchange, String boundQueueName, String routingKey) throws AndesException {
+
+    }
+
+    @Override
+    public List<AndesBinding> getBindingsStoredForExchange(String exchangeName) throws AndesException {
+        return null;
+    }
+
+    @Override
+    public void deleteBindingInformation(String exchangeName, String boundQueueName) throws AndesException {
+
+    }
+
+    @Override
     public void close() {
         connection.close();
     }

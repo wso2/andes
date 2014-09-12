@@ -111,6 +111,53 @@ public interface AndesContextStore {
      */
     public void deleteExchangeInformation(String exchangeName) throws AndesException;
 
+
+    /**
+     * store a queue
+     * @param queueName  name of the queue to be stored
+     * @param queueInfo  string encoded queue information
+     * @throws AndesException
+     */
+    public void storeQueueInformation(String queueName, String queueInfo) throws AndesException;
+
+    /**
+     * get all stored queues
+     * @return  list of queues
+     * @throws AndesException
+     */
+    public List<AndesQueue> getAllQueuesStored() throws AndesException;
+
+    /**
+     * delete a queue from store
+     * @param queueName  name of the queue to be removed
+     * @throws AndesException
+     */
+    public void deleteQueueInformation(String queueName) throws AndesException;
+
+    /**
+     * store a binding. Bound exchange and bound queue name together will be unique
+     * @param exchange name of the exchange binding represent
+     * @param boundQueueName target queue binding is done
+     * @param routingKey  routing key of the binding
+     * @throws AndesException
+     */
+    public void storeBindingInformation(String exchange, String boundQueueName, String routingKey) throws AndesException;
+
+    /**
+     * get bindings stored for some exchange
+     * @return a list of bindings belonging to the exchange
+     * @throws AndesException
+     */
+    public List<AndesBinding> getBindingsStoredForExchange(String exchangeName) throws AndesException;
+
+    /**
+     * remove a binding from the store
+     * @param exchangeName name of the exchange
+     * @param boundQueueName  name of the queue binding relates to
+     * @throws AndesException
+     */
+    public void deleteBindingInformation(String exchangeName, String boundQueueName) throws AndesException;
+
     /**
      * close the context store
      */

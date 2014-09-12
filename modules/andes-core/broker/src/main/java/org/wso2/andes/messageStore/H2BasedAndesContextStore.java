@@ -16,12 +16,9 @@
 * under the License.
 */
 
-package org.wso2.andes.andesContextStore;
+package org.wso2.andes.messageStore;
 
-import org.wso2.andes.kernel.AndesContextStore;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesExchange;
-import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.kernel.*;
 
 import javax.sql.DataSource;
 import java.util.List;
@@ -30,12 +27,19 @@ import java.util.Map;
 public class H2BasedAndesContextStore implements AndesContextStore {
 
     private DataSource datasource;
-    private String icEntry;
+    private String jndiLookupName;
+
+    H2BasedAndesContextStore(boolean isInmemoryMode) {
+        if(isInmemoryMode){
+            jndiLookupName = JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME;
+        }
+    }
 
     @Override
     public void init(DurableStoreConnection connection) throws AndesException {
 
     }
+
 
     @Override
     public Map<String, List<String>> getAllStoredDurableSubscriptions() throws AndesException {
@@ -94,6 +98,36 @@ public class H2BasedAndesContextStore implements AndesContextStore {
 
     @Override
     public void deleteExchangeInformation(String exchangeName) throws AndesException {
+
+    }
+
+    @Override
+    public void storeQueueInformation(String queueName, String queueInfo) throws AndesException {
+
+    }
+
+    @Override
+    public List<AndesQueue> getAllQueuesStored() throws AndesException {
+        return null;
+    }
+
+    @Override
+    public void deleteQueueInformation(String queueName) throws AndesException {
+
+    }
+
+    @Override
+    public void storeBindingInformation(String exchange, String boundQueueName, String routingKey) throws AndesException {
+
+    }
+
+    @Override
+    public List<AndesBinding> getBindingsStoredForExchange(String exchangeName) throws AndesException {
+        return null;
+    }
+
+    @Override
+    public void deleteBindingInformation(String exchangeName, String boundQueueName) throws AndesException {
 
     }
 

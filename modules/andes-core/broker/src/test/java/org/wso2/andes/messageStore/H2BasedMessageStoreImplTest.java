@@ -1,11 +1,9 @@
 package org.wso2.andes.messageStore;
 
 import junit.framework.Assert;
+import junit.framework.TestCase;
 import org.h2.jdbcx.JdbcDataSource;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
@@ -38,6 +36,7 @@ public class H2BasedMessageStoreImplTest {
             JdbcDataSource ds = new JdbcDataSource();
             ds.setURL("jdbc:h2:mem:msg_store;DB_CLOSE_ON_EXIT=FALSE");
             ic.bind("jdbc/InMemoryMessageStoreDB", ds);
+
             Class.forName("org.h2.Driver");
             connection = DriverManager.getConnection("jdbc:h2:mem:msg_store;DB_CLOSE_ON_EXIT=FALSE");
         } catch (NameAlreadyBoundException ignored) {
@@ -90,6 +89,69 @@ public class H2BasedMessageStoreImplTest {
             Assert.assertEquals(msgPart.getDataLength(), p.getDataLength());
             Assert.assertEquals(msgPart.getOffSet(), p.getOffSet());
         }
+    }
+
+    @Test
+    public void storeSingleMessagePart() throws Exception {
+
+        // create message parts
+        List<AndesMessagePart> list = new ArrayList<AndesMessagePart>(2);
+        byte[] content = "test content".getBytes();
+        int msgid = 1;
+        int offset = 0;
+        AndesMessagePart messagePart = new AndesMessagePart();
+        messagePart.setMessageID(msgid);
+        messagePart.setData(content);
+        messagePart.setOffSet(offset);
+        messagePart.setDataLength(content.length);
+        list.add(messagePart);
+
+        // store
+        messageStore.storeMessagePart(list);
+
+        String select = "SELECT * FROM " + JDBCConstants.MESSAGES_TABLE;
+        Statement stmt = connection.createStatement();
+        ResultSet resultSet = stmt.executeQuery(select);
+
+        // test
+        Assert.assertEquals(true, resultSet.first());
+        Assert.assertEquals(msgid, resultSet.getLong(JDBCConstants.MESSAGE_ID));
+        Assert.assertEquals(true, Arrays.equals(content, resultSet.getBytes(JDBCConstants.MESSAGE_CONTENT)));
+        Assert.assertEquals(offset, resultSet.getInt(JDBCConstants.MSG_OFFSET));
+
+    }
+
+    @Test
+    public void storeMultipleMessagePartsWithSameMsgId() throws Exception {
+        // create message parts
+        List<AndesMessagePart> list = new ArrayList<AndesMessagePart>(2);
+        byte[] content = "test content".getBytes();
+        int msgId = 1;
+        int offset = 0;
+        AndesMessagePart messagePart = new AndesMessagePart();
+        messagePart.setMessageID(msgId);
+        messagePart.setData(content);
+        messagePart.setOffSet(offset);
+        messagePart.setDataLength(content.length);
+        list.add(messagePart);
+
+        int offset2 = 2;
+        AndesMessagePart messagePart2 = new AndesMessagePart();
+        messagePart2.setMessageID(msgId);
+        messagePart2.setData(content);
+        messagePart2.setOffSet(offset2);
+        messagePart2.setDataLength(content.length);
+        list.add(messagePart2);
+
+        // store
+        messageStore.storeMessagePart(list);
+
+        String select = "SELECT * FROM " + JDBCConstants.MESSAGES_TABLE;
+        Statement stmt = connection.createStatement();
+        ResultSet resultSet = stmt.executeQuery(select);
+
+        resultSet.first();
+        Assert.assertEquals(true, resultSet.next());
     }
 
     @Test
