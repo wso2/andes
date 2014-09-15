@@ -153,12 +153,12 @@ public class QueueDeliveryWorker {
     }
 
 
-    public QueueDeliveryInfo getQueueDeliveryInfo(String queueName) {
+    public QueueDeliveryInfo getQueueDeliveryInfo(String queueName) throws AndesException {
         QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(queueName);
         if (queueDeliveryInfo == null) {
             queueDeliveryInfo = new QueueDeliveryInfo();
             queueDeliveryInfo.queueName = queueName;
-            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore.getActiveLocalSubscribersForQueue(queueName);
+            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore.getActiveLocalSubscribers(queueName, false);
             queueDeliveryInfo.iterator = localSubscribersForQueue.iterator();
             subscriptionCursar4QueueMap.put(queueName, queueDeliveryInfo);
         }
@@ -250,22 +250,14 @@ public class QueueDeliveryWorker {
                         /**
                          * Following reads from message store, it reads only if there are not enough messages loaded in memory
                          */
-                        int msgReadThisTime = 0;
-                        List<AndesMessageMetadata> messagesFromMessageStore;
-                        if (totalReadButUndeliveredMessages < 10000) {
-                            /**
-                             * Read messages from leading thread
-                             */
-                            messagesFromMessageStore = new ArrayList<AndesMessageMetadata>();
-                          //  QueueAddress queueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueue);
-//                            List<AndesMessageMetadata> messagesReadByLeadingThread =
-//                                    messageStore.getNextNMessageMetadataFromQueue(queueAddress, lastProcessedId++, messageCountToRead);
-                            //log.info(" LEADING >> Read " + messageCountToRead + " number of messages from id " + lastProcessedId + ". Returned " + messagesReadByLeadingThread.size());
-
-                            for (AndesMessageMetadata message : messagesReadByLeadingThread) {
-                                Long messageID = message.getMessageID();
-                                if (!onflightMessageTracker.checkIfAlreadyReadFromNodeQueue(message.getMessageID())) {
-                                    onflightMessageTracker.markMessageAsReadFromNodeQueue(messageID);
+                        Iterator<AndesMessageMetadata> laggardsIterator = laggardsMessages.iterator();
+                        while (laggardsIterator.hasNext()) {
+                            AndesMessageMetadata laggardsMessage = laggardsIterator.next();
+                            if (!onflightMessageTracker.checkIfAlreadyReadFromNodeQueue(laggardsMessage.getMessageID())) {
+                                String routingKey = laggardsMessage.getDestination();
+                                if (subscriptionStore.getActiveClusterSubscribersForDestination(routingKey, false).size() > 0) {
+                                    messagesFromMessageStore.add(laggardsMessage);
+                                    onflightMessageTracker.markMessageAsReadFromNodeQueue(laggardsMessage.getMessageID());
                                     if (log.isDebugEnabled()) {
                                         log.debug("TRACING>> QDW------Adding " + messageID + " From Leading Thread to Deliver");
                                     }
@@ -477,11 +469,11 @@ public class QueueDeliveryWorker {
             AndesMessageMetadata message = iterator.next();
 
             if (MessageExpirationWorker.isExpired(message.getExpirationTime())) {
-                 continue;
+                continue;
             }
 
             boolean messageSent = false;
-            Collection<LocalSubscription> subscriptions4Queue = subscriptionStore.getActiveLocalSubscribersForQueue(targetQueue);
+            Collection<LocalSubscription> subscriptions4Queue = subscriptionStore.getActiveLocalSubscribers(targetQueue, false);
             if (subscriptions4Queue != null) {
                 /*
                  * we do this in a for loop to avoid iterating for a subscriptions for ever. We only iterate as
@@ -631,7 +623,7 @@ public class QueueDeliveryWorker {
         return startingIndex;
     }
 
-    public void clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(String destinationQueueName) {
+    public void clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(String destinationQueueName) throws AndesException {
         undeliveredMessagesMap.remove(destinationQueueName);
         getQueueDeliveryInfo(destinationQueueName).readButUndeliveredMessages.clear();
         Iterator<AndesMessageMetadata> laggardsIterator = laggardsMessages.iterator();

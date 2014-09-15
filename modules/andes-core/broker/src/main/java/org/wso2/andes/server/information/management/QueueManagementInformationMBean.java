@@ -22,10 +22,8 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.GlobalQueueManager;
 import org.wso2.andes.server.management.AMQManagedObject;
-import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.SubscriptionStore;
 
@@ -54,20 +52,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     public synchronized String[] getAllQueueNames() {
 
         try {
-/*            ArrayList<String> queuesList = (ArrayList<String>) messageStore.getDestinationQueueNames();
-            Iterator itr = queuesList.iterator();
-            //remove topic specific queues
-            while (itr.hasNext()) {
-                String destinationQueueName = (String) itr.next();
-                if(destinationQueueName.startsWith("tmp_") || destinationQueueName.contains(":")) {
-                    itr.remove();
-                }
-            }
-            String[] queues= new String[queuesList.size()];
-            queuesList.toArray(queues);
-            return queues;*/
-
-            List<String> queuesList = AndesContext.getInstance().getSubscriptionStore().listQueues();
+            List<String> queuesList = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
             String[] queues= new String[queuesList.size()];
             queuesList.toArray(queues);
             return queues;
@@ -80,7 +65,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     public boolean isQueueExists(String queueName) {
         try {
-            List<String> queuesList = AndesContext.getInstance().getSubscriptionStore().listQueues();
+            List<String> queuesList = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
             return queuesList.contains(queueName);
         } catch (Exception e) {
           throw new RuntimeException("Error in accessing destination queues",e);
@@ -175,7 +160,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     public int getSubscriptionCount( String queueName){
         try {
-            return AndesContext.getInstance().getSubscriptionStore().numberOfSubscriptionsForQueueInCluster(queueName);
+            return AndesContext.getInstance().getSubscriptionStore().numberOfSubscriptionsInCluster(queueName, false);
         } catch (Exception e) {
             throw new RuntimeException("Error in getting subscriber count",e);
         }

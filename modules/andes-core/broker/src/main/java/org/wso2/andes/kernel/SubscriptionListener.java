@@ -7,11 +7,20 @@ public interface SubscriptionListener {
         Deleted,
         Disconnected}
 
-    //TODO: There is no need of having this here since cluster wide subscription changes are handled by hazelcast.
-    //Current cluster wide notification path is:
-    // notifyLocalSubscriptionHasChanged >> send Hazelcast notification >> SubscriptionChangedListener is triggered >> hanlde
-	public void notifyClusterSubscriptionHasChanged(AndesSubscription subscrption, SubscriptionChange changeType);
+    /**
+     * handle subscription changes in cluster
+     * @param subscription subscription changed
+     * @param changeType type of change happened
+     * @throws AndesException
+     */
+	public void handleClusterSubscriptionsChanged(AndesSubscription subscription, SubscriptionChange changeType) throws AndesException;
 
-	public void notifyLocalSubscriptionHasChanged(LocalSubscription subscription, SubscriptionChange changeType);
+    /**
+     * handle local subscription changes
+     * @param subscription subscription changed
+     * @param changeType type of change happened
+     * @throws AndesException
+     */
+	public void handleLocalSubscriptionsChanged(LocalSubscription subscription, SubscriptionChange changeType) throws AndesException;
 
 }

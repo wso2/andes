@@ -692,7 +692,7 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         return getIntValue("clustering.tuning.waitTimes.contentRemovalTimeDifference",120);
     }
 
-    public int getVirtualHostSyncTaskInterval() {
+    public int getAndesRecoveryTaskInterval() {
         return getIntValue("clustering.tuning.waitTimes.virtualHostSyncTaskInterval",3600);
     }
 

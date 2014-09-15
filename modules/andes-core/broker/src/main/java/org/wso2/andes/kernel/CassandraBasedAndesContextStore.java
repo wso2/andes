@@ -19,6 +19,7 @@
 package org.wso2.andes.kernel;
 
 import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Row;
 import org.apache.commons.logging.Log;
@@ -36,8 +37,7 @@ import java.util.Map;
 import static org.wso2.andes.messageStore.CassandraConstants.*;
 
 
-
-public class CassandraBasedAndesContextStore implements AndesContextStore{
+public class CassandraBasedAndesContextStore implements AndesContextStore {
 
     private static Log log = LogFactory.getLog(CassandraBasedAndesContextStore.class);
     private DurableStoreConnection connection;
@@ -48,15 +48,19 @@ public class CassandraBasedAndesContextStore implements AndesContextStore{
 
         try {
 
-            connection =  storeConnection;
-            this.cluster =  ((CQLConnection)connection).getCluster();
+            connection = storeConnection;
+            this.cluster = ((CQLConnection) connection).getCluster();
             //create needed column families
             CQLDataAccessHelper.createColumnFamily(SUBSCRIPTIONS_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
-                    ((CQLConnection)connection.getConnection()).getGcGraceSeconds());
+                    ((CQLConnection) connection.getConnection()).getGcGraceSeconds());
             CQLDataAccessHelper.createColumnFamily(EXCHANGE_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
-                    ((CQLConnection)connection.getConnection()).getGcGraceSeconds());
+                    ((CQLConnection) connection.getConnection()).getGcGraceSeconds());
+            CQLDataAccessHelper.createColumnFamily(QUEUE_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
+                    ((CQLConnection) connection.getConnection()).getGcGraceSeconds());
+            CQLDataAccessHelper.createColumnFamily(BINDING_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
+                    ((CQLConnection) connection.getConnection()).getGcGraceSeconds());
             CQLDataAccessHelper.createColumnFamily(NODE_DETAIL_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
-                    ((CQLConnection)connection.getConnection()).getGcGraceSeconds());
+                    ((CQLConnection) connection.getConnection()).getGcGraceSeconds());
         } catch (CassandraDataAccessException e) {
             log.error("Error while creating column spaces during subscription store init. ", e);
             throw new AndesException(e);
@@ -67,7 +71,7 @@ public class CassandraBasedAndesContextStore implements AndesContextStore{
     @Override
     public Map<String, List<String>> getAllStoredDurableSubscriptions() throws AndesException {
         try {
-            return  CQLDataAccessHelper.listAllStringRows(SUBSCRIPTIONS_COLUMN_FAMILY, KEYSPACE);
+            return CQLDataAccessHelper.listAllStringRows(SUBSCRIPTIONS_COLUMN_FAMILY, KEYSPACE);
         } catch (CassandraDataAccessException e) {
             log.error("error while getting durable subscriptions from cassandra context store", e);
             throw new AndesException(e);
@@ -89,7 +93,7 @@ public class CassandraBasedAndesContextStore implements AndesContextStore{
         try {
             CQLDataAccessHelper.deleteStringColumnFromRaw(SUBSCRIPTIONS_COLUMN_FAMILY, destinationIdentifier, subscriptionID, KEYSPACE);
         } catch (CassandraDataAccessException e) {
-            log.error("error while removing durable topic subscriptions" , e);
+            log.error("error while removing durable topic subscriptions", e);
             throw new AndesException(e);
         }
     }
@@ -99,19 +103,19 @@ public class CassandraBasedAndesContextStore implements AndesContextStore{
         try {
             CQLDataAccessHelper.addMappingToRaw(KEYSPACE, NODE_DETAIL_COLUMN_FAMILY, NODE_DETAIL_ROW, nodeID, data, true);
         } catch (CassandraDataAccessException e) {
-            log.error("error while storing node details" , e);
+            log.error("error while storing node details", e);
             throw new AndesException(e);
         }
     }
 
     @Override
-    public Map<String,String> getAllStoredNodeData() throws AndesException {
+    public Map<String, String> getAllStoredNodeData() throws AndesException {
         try {
-            Map<String,String> nodeDetails = new HashMap<String, String>();
+            Map<String, String> nodeDetails = new HashMap<String, String>();
             List<Row> values = CQLDataAccessHelper.getStringTypeColumnsInARow(NODE_DETAIL_ROW, null, NODE_DETAIL_COLUMN_FAMILY,
                     KEYSPACE, Long.MAX_VALUE);
-            if(values != null) {
-                for(Row row : values){
+            if (values != null) {
+                for (Row row : values) {
                     String nodeID = row.getString(CQLDataAccessHelper.MSG_KEY);
                     String value = row.getString(CQLDataAccessHelper.MSG_VALUE);
                     nodeDetails.put(nodeID, value);
@@ -121,7 +125,7 @@ public class CassandraBasedAndesContextStore implements AndesContextStore{
 
             return nodeDetails;
         } catch (CassandraDataAccessException e) {
-            log.error("error while retrieving all node data" , e);
+            log.error("error while retrieving all node data", e);
             throw new AndesException(e);
         }
     }
@@ -139,7 +143,7 @@ public class CassandraBasedAndesContextStore implements AndesContextStore{
     @Override
     public void addMessageCounterForQueue(String destinationQueueName) throws AndesException {
         try {
-            CQLDataAccessHelper.insertCounterColumn(MESSAGE_COUNTERS_COLUMN_FAMILY, MESSAGE_COUNTERS_RAW_NAME,destinationQueueName,KEYSPACE);
+            CQLDataAccessHelper.insertCounterColumn(MESSAGE_COUNTERS_COLUMN_FAMILY, MESSAGE_COUNTERS_RAW_NAME, destinationQueueName, KEYSPACE);
         } catch (CassandraDataAccessException e) {
             log.error("error while adding message counter to cassandra context store", e);
             throw new AndesException(e);
@@ -179,12 +183,8 @@ public class CassandraBasedAndesContextStore implements AndesContextStore{
             List<Row> rows = CQLDataAccessHelper.
                     getStringTypeColumnsInARow(EXCHANGE_ROW, null, EXCHANGE_COLUMN_FAMILY, KEYSPACE, Long.MAX_VALUE);
             for (Row row : rows) {
-                String columnName = row.getString(CQLDataAccessHelper.MSG_KEY);
-                String value = row.getString(CQLDataAccessHelper.MSG_VALUE);
-                String[] valuesFields = value.split("\\|");
-                String type = valuesFields[1];
-                short autoDelete = Short.parseShort(valuesFields[2]);
-                exchanges.add(new AndesExchange(columnName, type, autoDelete));
+                String encodedStr = row.getString(CQLDataAccessHelper.MSG_VALUE);
+                exchanges.add(new AndesExchange(encodedStr));
             }
             return exchanges;
 
@@ -207,31 +207,78 @@ public class CassandraBasedAndesContextStore implements AndesContextStore{
     @Override
     public void storeQueueInformation(String queueName, String queueInfo) throws AndesException {
 
+        try {
+            CQLDataAccessHelper.addMappingToRaw(KEYSPACE, QUEUE_COLUMN_FAMILY, QUEUE_ROW, queueName, queueInfo, true);
+        } catch (CassandraDataAccessException e) {
+            log.error("error while storing queue information to cassandra context store", e);
+            throw new AndesException(e);
+        }
     }
 
     @Override
     public List<AndesQueue> getAllQueuesStored() throws AndesException {
-        return null;
+        try {
+            List<AndesQueue> queues = new ArrayList<AndesQueue>();
+            List<Row> rows = CQLDataAccessHelper.
+                    getStringTypeColumnsInARow(QUEUE_ROW, null, QUEUE_COLUMN_FAMILY, KEYSPACE, Long.MAX_VALUE);
+            for (Row row : rows) {
+                String encodedStr = row.getString(CQLDataAccessHelper.MSG_VALUE);
+                queues.add(new AndesQueue(encodedStr));
+            }
+            return queues;
+
+        } catch (CassandraDataAccessException e) {
+            log.error("error while reading queue information to cassandra context store", e);
+            throw new AndesException(e);
+        }
     }
 
     @Override
     public void deleteQueueInformation(String queueName) throws AndesException {
-
+        try {
+            CQLDataAccessHelper.deleteStringColumnFromRaw(QUEUE_COLUMN_FAMILY, QUEUE_ROW, queueName, KEYSPACE);
+        } catch (CassandraDataAccessException e) {
+            log.error("error while deleting queue information to cassandra context store", e);
+            throw new AndesException(e);
+        }
     }
 
     @Override
     public void storeBindingInformation(String exchange, String boundQueueName, String routingKey) throws AndesException {
-
+        try {
+            CQLDataAccessHelper.addMappingToRaw(KEYSPACE, BINDING_COLUMN_FAMILY, exchange, boundQueueName, routingKey, true);
+        } catch (CassandraDataAccessException e) {
+            log.error("error while storing binding information to cassandra context store", e);
+            throw new AndesException(e);
+        }
     }
 
     @Override
     public List<AndesBinding> getBindingsStoredForExchange(String exchangeName) throws AndesException {
-        return null;
+        try {
+            List<AndesBinding> bindings = new ArrayList<AndesBinding>();
+            List<Row> rows = CQLDataAccessHelper.
+                    getStringTypeColumnsInARow(exchangeName, null, BINDING_COLUMN_FAMILY, KEYSPACE, Long.MAX_VALUE);
+            for (Row row : rows) {
+                String encodedStr = row.getString(CQLDataAccessHelper.MSG_VALUE);
+                bindings.add(new AndesBinding(encodedStr));
+            }
+            return bindings;
+
+        } catch (CassandraDataAccessException e) {
+            log.error("error while reading queue information to cassandra context store", e);
+            throw new AndesException(e);
+        }
     }
 
     @Override
     public void deleteBindingInformation(String exchangeName, String boundQueueName) throws AndesException {
-
+        try {
+            CQLDataAccessHelper.deleteStringColumnFromRaw(BINDING_COLUMN_FAMILY, exchangeName, boundQueueName, KEYSPACE);
+        } catch (CassandraDataAccessException e) {
+            log.error("error while deleting queue information to cassandra context store", e);
+            throw new AndesException(e);
+        }
     }
 
     @Override

@@ -18,35 +18,30 @@
 
 package org.wso2.andes.kernel;
 
-import org.apache.commons.configuration.Configuration;
+/**
+ * Listener listening for queue changes local and cluster
+ */
+public interface QueueListener {
 
-public interface DurableStoreConnection {
+    public static enum QueueChange {
+        Added,
+        Deleted,
+        Purged
+    }
 
     /**
-     * Initialize database connection
+     * handle queue has changed in the cluster
      *
-     * @param configuration storage configuration
-     * @throws AndesException
+     * @param andesQueue changed queue
+     * @param changeType what type of change has happened
      */
-    public void initialize(Configuration configuration) throws AndesException;
+    public void handleClusterQueuesChanged(AndesQueue andesQueue, QueueChange changeType) throws AndesException;
 
     /**
-     * Close database connection
-     */
-    public void close();
-
-    /**
-     * check if connection is live
+     * handle a queue has changed in the local node
      *
-     * @return if connection is live
+     * @param andesQueue changed queue
+     * @param changeType what type of change has happened
      */
-    public boolean isLive();
-
-    /**
-     * return instance of connection
-     *
-     * @return instance
-     */
-    public Object getConnection();
-
+    public void handleLocalQueuesChanged(AndesQueue andesQueue, QueueChange changeType) throws AndesException;
 }

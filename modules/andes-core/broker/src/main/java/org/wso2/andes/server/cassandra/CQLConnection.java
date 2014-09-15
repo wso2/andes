@@ -50,7 +50,6 @@ public class CQLConnection implements DurableStoreConnection {
     private final static int DEFAULT_GC_GRAE_SECOND_VALUE = 864000;
 
 
-
     @Override
     public void initialize(Configuration configuration) throws AndesException {
 
@@ -65,20 +64,20 @@ public class CQLConnection implements DurableStoreConnection {
             String gcGraceSecondsString = (String) configuration.getProperty(GC_GRACE_SECONDS);
             if (gcGraceSecondsString != null) {
                 setGcGraceSeconds(Integer.parseInt(gcGraceSecondsString));
-            }else{
+            } else {
                 setGcGraceSeconds(DEFAULT_GC_GRAE_SECOND_VALUE);
             }
 
             int port = 9042;
             boolean isExternalCassandraServerRequired = ClusterResourceHolder.getInstance().
                     getClusterConfiguration().getIsExternalCassandraserverRequired();
-            
+
             List<String> hosts = new ArrayList<String>();
 
             if (connections instanceof ArrayList && isExternalCassandraServerRequired) {
                 List<String> cons = (ArrayList<String>) connections;
-                for(String connection : cons) {
-                   String host = connection.split(":")[0];
+                for (String connection : cons) {
+                    String host = connection.split(":")[0];
                     port = Integer.parseInt(connection.split(":")[1]);
                     hosts.add(host);
                 }
@@ -90,7 +89,7 @@ public class CQLConnection implements DurableStoreConnection {
                     hosts.add(host);
                     port = Integer.parseInt(connectionString.split(":")[1]);
                 }
-            }  else {
+            } else {
                 String defaultHost = "localhost";
                 int defaultPort = AndesUtils.getInstance().getCassandraPort();
                 port = defaultPort;
@@ -98,7 +97,7 @@ public class CQLConnection implements DurableStoreConnection {
             }
 
             String clusterName = (String) configuration.getProperty(CLUSTER_KEY);
-            ClusterConfiguration clusterConfig = new ClusterConfiguration(userName, password, clusterName, hosts , port);
+            ClusterConfiguration clusterConfig = new ClusterConfiguration(userName, password, clusterName, hosts, port);
 
             log.info("Initializing Cassandra Message Store: HOSTS=" + hosts + " PORT=" + port);
 
@@ -153,14 +152,14 @@ public class CQLConnection implements DurableStoreConnection {
     }
 
     private void createKeySpace(int replicationFactor, String strategyClass) throws CassandraDataAccessException {
-        CQLDataAccessHelper.createKeySpace(cluster,GenericCQLDAO.CLUSTER_SESSION,  KEYSPACE, replicationFactor, strategyClass);
+        CQLDataAccessHelper.createKeySpace(cluster, GenericCQLDAO.CLUSTER_SESSION, KEYSPACE, replicationFactor, strategyClass);
     }
 
     public Cluster getCluster() {
         return cluster;
     }
 
- 
+
     //TODO:better way is to use a listener
 
     /**
@@ -185,7 +184,7 @@ public class CQLConnection implements DurableStoreConnection {
                 }
                 if (ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer() != null) {
                     log.info("Starting syncing exchanges, queues and bindings");
-                    ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().start();
+                    ClusterResourceHolder.getInstance().getAndesRecoveryTask().startRunning();
                 }
             }
         } catch (Exception e) {
@@ -212,17 +211,21 @@ public class CQLConnection implements DurableStoreConnection {
         }
         if (ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer() != null) {
             log.info("Stopping syncing exchanges, queues and bindings");
-            ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().stop();
+            ClusterResourceHolder.getInstance().getAndesRecoveryTask().stopRunning();
         }
     }
 
+    /**
+     * exponential backoff thread to
+     * check if cassandra connection is live
+     */
     private void checkCassandraConnection() {
         Thread cassandraConnectionCheckerThread = new Thread(new Runnable() {
             public void run() {
                 int retriedCount = 0;
                 while (true) {
                     try {
-                        if (CQLDataAccessHelper.isKeySpaceExist(KEYSPACE) ) {
+                        if (CQLDataAccessHelper.isKeySpaceExist(KEYSPACE)) {
                             boolean previousState = isCassandraConnectionLive;
                             isCassandraConnectionLive = true;
                             retriedCount = 0;

@@ -550,7 +550,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                 sub.getSendLock();
                 sub.getQueue().unregisterSubscription(sub);
 //			    ClusteringEnabledSubscriptionManager csm = ClusterResourceHolder.getInstance().getSubscriptionManager();
-//			    csm.closeSubscription(sub.getQueue().getResourceName(), String.valueOf(sub.getSubscriptionID()));
+//			    csm.closeLocalSubscription(sub.getQueue().getResourceName(), String.valueOf(sub.getSubscriptionID()));
 //            }catch(AndesException e){
 //            	throw new AMQException(AMQConstant.INTERNAL_ERROR, e.getMessage(),  e);
             }finally

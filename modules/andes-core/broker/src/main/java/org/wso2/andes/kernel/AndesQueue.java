@@ -18,20 +18,83 @@
 
 package org.wso2.andes.kernel;
 
-import java.io.Serializable;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 
-public class AndesQueue implements Serializable {
-     public String queueName;
-     public String queueOwner;
-     public boolean isExclusive;
-     public boolean isDurable;
-     public int subscriptionCount;
+public class AndesQueue {
+    public String queueName;
+    public String queueOwner;
+    public boolean isExclusive;
+    public boolean isDurable;
+    public int subscriptionCount;
 
+    /**
+     * create an instance of andes queue
+     *
+     * @param queueName   name of the queue
+     * @param queueOwner  owner of the queue (virtualhost)
+     * @param isExclusive is queue exclusive
+     * @param isDurable   is queue durable
+     */
     public AndesQueue(String queueName, String queueOwner, boolean isExclusive, boolean isDurable) {
         this.queueName = queueName;
         this.queueOwner = queueOwner;
         this.isExclusive = isExclusive;
         this.isDurable = isDurable;
-        this.subscriptionCount =1;
+        this.subscriptionCount = 1;
+    }
+
+    /**
+     * create an instance of andes queue
+     *
+     * @param queueAsStr queue information as encoded string
+     */
+    public AndesQueue(String queueAsStr) {
+        String[] propertyToken = queueAsStr.split(",");
+        for (String pt : propertyToken) {
+            String[] tokens = pt.split("=");
+            if (tokens[0].equals("queueName")) {
+                this.queueName = tokens[1];
+            } else if (tokens[0].equals("isExclusive")) {
+                this.queueOwner = tokens[1].equals("null") ? null : tokens[1];
+            } else if (tokens[0].equals("isExclusive")) {
+                this.isExclusive = Boolean.parseBoolean(tokens[1]);
+            } else if (tokens[0].equals("isDurable")) {
+                this.isDurable = Boolean.parseBoolean(tokens[1]);
+            }
+        }
+    }
+
+    public String toString() {
+        StringBuffer buf = new StringBuffer();
+        buf.append("[").append(queueName)
+                .append("] OW=").append(queueOwner)
+                .append("/X=").append(isExclusive)
+                .append("/D").append(isDurable);
+        return buf.toString();
+    }
+
+    public String encodeAsString() {
+        StringBuffer buf = new StringBuffer();
+        buf.append("queueName=").append(queueName)
+                .append(",queueOwner=").append(queueOwner)
+                .append(",isExclusive=").append(isExclusive)
+                .append(",isDurable=").append(isDurable);
+        return buf.toString();
+    }
+
+    public boolean equals(Object o) {
+        if (o instanceof AndesQueue) {
+            AndesQueue c = (AndesQueue) o;
+            if (this.queueName.equals(c.queueName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public int hashCode() {
+        return new HashCodeBuilder(17, 31).
+                append(queueName).
+                toHashCode();
     }
 }

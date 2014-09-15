@@ -47,7 +47,7 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
      */
     @MBeanConstructor("Creates an MBean exposing an Cluster Manager")
     public ClusterManagementInformationMBean(ClusterManager clusterManager) throws JMException {
-        super(ClusterManagementInformation.class , ClusterManagementInformation.TYPE);
+        super(ClusterManagementInformation.class, ClusterManagementInformation.TYPE);
         this.clusterManager = clusterManager;
     }
 
@@ -70,13 +70,6 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
         return clusterManager.getGlobalQueuesAssigned(nodeId);
     }
 
-    /**
-     * Move a queue from current node to another node.
-     *
-     * @param queueToBeMoved  name of the queue to be moved
-     * @param newNodeToAssign node ID of the new node
-     * @return true if the queue is successfully moved
-     */
     public boolean updateWorkerForQueue(String queueToBeMoved, String newNodeToAssign) {
         return clusterManager.updateWorkerForQueue(queueToBeMoved, newNodeToAssign);
     }
@@ -106,7 +99,8 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
      * @return message count
      */
     public int getMessageCount(@MBeanOperationParameter(name = "queueName", description = "Name of the queue which message count is required") String queueName) {
-        int count;
+
+        int count = 0;
         try {
             count = clusterManager.numberOfMessagesInGlobalQueue(queueName);
         } catch (AndesException e) {
@@ -136,8 +130,12 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
      */
     public List<String> getDestinationQueuesOfCluster() {
         List<String> queueList = new ArrayList<String>();
-        for (AndesQueue queue : AndesContext.getInstance().getSubscriptionStore().getDurableQueues()) {
-            queueList.add(queue.queueName);
+        try {
+            for (AndesQueue queue : AndesContext.getInstance().getAMQPConstructStore().getQueues()) {
+                queueList.add(queue.queueName);
+            }
+        } catch (AndesException e) {
+            throw new RuntimeException(e);
         }
         return queueList;
     }
@@ -158,7 +156,7 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
     }
 
     public int getNodeQueueSubscriberCount(String nodeId, String destinationQueue) {
-        //TODO:Should be implemented.
+
         throw new UnsupportedOperationException();
     }
 
