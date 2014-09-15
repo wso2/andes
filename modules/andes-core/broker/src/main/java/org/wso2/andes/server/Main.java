@@ -28,37 +28,28 @@ import org.wso2.andes.server.registry.ApplicationRegistry;
 
 /**
  * Main entry point for AMQPD.
- *
  */
-public class Main
-{
+public class Main {
     private final Options options = new Options();
     private CommandLine commandLine;
 
-    public static void main(String[] args)
-    {
+    public static void main(String[] args) {
         //if the -Dlog4j.configuration property has not been set, enable the init override
         //to stop Log4J wondering off and picking up the first log4j.xml/properties file it
         //finds from the classpath when we get the first Loggers
-        if(System.getProperty("log4j.configuration") == null)
-        {
+        if (System.getProperty("log4j.configuration") == null) {
             System.setProperty("log4j.defaultInitOverride", "true");
         }
 
         new Main(args);
     }
 
-    public Main(final String[] args)
-    {
+    public Main(final String[] args) {
         setOptions(options);
-        if (parseCommandline(args))
-        {
-            try
-            {
+        if (parseCommandline(args)) {
+            try {
                 execute();
-            }
-            catch(Exception e)
-            {
+            } catch (Exception e) {
                 System.err.println("Exception during startup: " + e);
                 e.printStackTrace();
                 shutdown(1);
@@ -66,16 +57,12 @@ public class Main
         }
     }
 
-    protected boolean parseCommandline(final String[] args)
-    {
-        try
-        {
+    protected boolean parseCommandline(final String[] args) {
+        try {
             commandLine = new PosixParser().parse(options, args);
 
             return true;
-        }
-        catch (ParseException e)
-        {
+        } catch (ParseException e) {
             System.err.println("Error: " + e.getMessage());
             HelpFormatter formatter = new HelpFormatter();
             formatter.printHelp("Qpid", options, true);
@@ -84,8 +71,7 @@ public class Main
         }
     }
 
-    protected void setOptions(final Options options)
-    {
+    protected void setOptions(final Options options) {
         Option help = new Option("h", "help", false, "print this message");
         Option version = new Option("v", "version", false, "print the version information and exit");
         Option configFile =
@@ -132,12 +118,12 @@ public class Main
         Option logconfig =
                 OptionBuilder.withArgName("logconfig").hasArg()
                         .withDescription("use the specified log4j xml configuration file. By "
-                                         + "default looks for a file named " + BrokerOptions.DEFAULT_LOG_CONFIG_FILE
-                                         + " in the same directory as the configuration file").withLongOpt("logconfig").create(BrokerOptions.LOG_CONFIG);
+                                + "default looks for a file named " + BrokerOptions.DEFAULT_LOG_CONFIG_FILE
+                                + " in the same directory as the configuration file").withLongOpt("logconfig").create(BrokerOptions.LOG_CONFIG);
         Option logwatchconfig =
                 OptionBuilder.withArgName("logwatch").hasArg()
                         .withDescription("monitor the log file configuration file for changes. Units are seconds. "
-                                         + "Zero means do not check for changes.").withLongOpt("logwatch").create(BrokerOptions.WATCH);
+                                + "Zero means do not check for changes.").withLongOpt("logwatch").create(BrokerOptions.WATCH);
 
         Option sslport =
                 OptionBuilder.withArgName("sslport").hasArg()
@@ -171,88 +157,76 @@ public class Main
         options.addOption(cassandraPort);
     }
 
-    protected void execute() throws Exception
-    {
+    protected void execute() throws Exception {
         BrokerOptions options = new BrokerOptions();
         String configFile = commandLine.getOptionValue(BrokerOptions.CONFIG);
-        if(configFile != null)
-        {
+        if (configFile != null) {
             options.setConfigFile(configFile);
         }
 
         String logWatchConfig = commandLine.getOptionValue(BrokerOptions.WATCH);
-        if(logWatchConfig != null)
-        {
+        if (logWatchConfig != null) {
             options.setLogWatchFrequency(Integer.parseInt(logWatchConfig));
         }
 
         String logConfig = commandLine.getOptionValue(BrokerOptions.LOG_CONFIG);
-        if(logConfig != null)
-        {
+        if (logConfig != null) {
             options.setLogConfigFile(logConfig);
         }
 
         String jmxPort = commandLine.getOptionValue(BrokerOptions.MANAGEMENT);
-        if(jmxPort != null)
-        {
+        if (jmxPort != null) {
             options.setJmxPort(Integer.parseInt(jmxPort));
         }
 
         String bindAddr = commandLine.getOptionValue(BrokerOptions.BIND);
-        if (bindAddr != null)
-        {
+        if (bindAddr != null) {
             options.setBind(bindAddr);
         }
 
         String[] portStr = commandLine.getOptionValues(BrokerOptions.PORTS);
-        if(portStr != null)
-        {
+        if (portStr != null) {
             parsePortArray(options, portStr, false);
-            for(ProtocolExclusion pe : ProtocolExclusion.values())
-            {
+            for (ProtocolExclusion pe : ProtocolExclusion.values()) {
                 parsePortArray(options, commandLine.getOptionValues(pe.getExcludeName()), pe);
             }
         }
 
         String[] sslPortStr = commandLine.getOptionValues(BrokerOptions.SSL_PORTS);
-        if(sslPortStr != null)
-        {
+        if (sslPortStr != null) {
             parsePortArray(options, sslPortStr, true);
-            for(ProtocolExclusion pe : ProtocolExclusion.values())
-            {
+            for (ProtocolExclusion pe : ProtocolExclusion.values()) {
                 parsePortArray(options, commandLine.getOptionValues(pe.getExcludeName()), pe);
             }
         }
 
         String mqttPortStr = commandLine.getOptionValue(BrokerOptions.MQTT_PORT);
-        if(mqttPortStr != null)
-        {
+        if (mqttPortStr != null) {
             parseMQTTPort(options, mqttPortStr);
         } else {
             options.setMQTTPort(Server.DEFAULT_MQTT_PORT);
         }
 
         String cassandraPort = commandLine.getOptionValue(BrokerOptions.CASSANDRA_PORT);
-        if(cassandraPort != null){
+        if (cassandraPort != null) {
             options.set_cassandraPort(Integer.parseInt(cassandraPort));
         }
 
         startBroker(options);
     }
 
-    protected void startMQTTBroker(final BrokerOptions options) throws Exception{
+    protected void startMQTTBroker(final BrokerOptions options) throws Exception {
         //Setting the system path manually
         //todo need to link this qpid-config
         //todo need to discuss
-        System.setProperty("moquette.path","./repository/conf/advanced/");
+        System.setProperty("moquette.path", "./repository/conf/advanced/");
         Server server = new Server();
         server.startServer(options.getMQTTPort());
     }
 
-    protected void startBroker(final BrokerOptions options) throws Exception
-    {
+    protected void startBroker(final BrokerOptions options) throws Exception {
         Broker broker = new Broker();
-         //TODO Fix this properly
+        //TODO Fix this properly
         broker.startup(options);
 
         //Will start the MQTT Broker
@@ -260,69 +234,47 @@ public class Main
         startMQTTBroker(options);
     }
 
-    protected void shutdown(final int status)
-    {
+    protected void shutdown(final int status) {
         ApplicationRegistry.remove();
         System.exit(status);
         //todo need to add the abuility to gracefully shutdown the MQTT server
     }
 
-    private static void parsePortArray(final BrokerOptions options,final Object[] ports,
-                                       final boolean ssl) throws InitException
-    {
-        if(ports != null)
-        {
-            for(int i = 0; i < ports.length; i++)
-            {
-                try
-                {
-                    if(ssl)
-                    {
-                        options.addSSLPort(Integer.parseInt(String.valueOf(ports[i])));
+    private static void parsePortArray(final BrokerOptions options, final Object[] ports,
+                                       final boolean ssl) throws InitException {
+        if (ports != null) {
+            for (Object port : ports) {
+                try {
+                    if (ssl) {
+                        options.addSSLPort(Integer.parseInt(String.valueOf(port)));
+                    } else {
+                        options.addPort(Integer.parseInt(String.valueOf(port)));
                     }
-                    else
-                    {
-                        options.addPort(Integer.parseInt(String.valueOf(ports[i])));
-                    }
-                }
-                catch (NumberFormatException e)
-                {
-                    throw new InitException("Invalid port: " + ports[i], e);
+                } catch (NumberFormatException e) {
+                    throw new InitException("Invalid port: " + port, e);
                 }
             }
         }
     }
 
-    private static void parseMQTTPort(final BrokerOptions options,final String port) throws InitException
-    {
-        if(port != null)
-        {
-                try
-                {
-                    options.setMQTTPort(Integer.parseInt(String.valueOf(port)));
-                }
-                catch (NumberFormatException e)
-                {
-                    throw new InitException("Invalid port: " + port, e);
-                }
+    private static void parseMQTTPort(final BrokerOptions options, final String port) throws InitException {
+        if (port != null) {
+            try {
+                options.setMQTTPort(Integer.parseInt(String.valueOf(port)));
+            } catch (NumberFormatException e) {
+                throw new InitException("Invalid port: " + port, e);
+            }
         }
     }
 
     private static void parsePortArray(final BrokerOptions options, final Object[] ports,
-                                       final ProtocolExclusion excludedProtocol) throws InitException
-    {
-        if(ports != null)
-        {
-            for(int i = 0; i < ports.length; i++)
-            {
-                try
-                {
-                    options.addExcludedPort(excludedProtocol, 
-                            Integer.parseInt(String.valueOf(ports[i])));
-                }
-                catch (NumberFormatException e)
-                {
-                    throw new InitException("Invalid port for exclusion: " + ports[i], e);
+                                       final ProtocolExclusion excludedProtocol) throws InitException {
+        if (ports != null) {
+            for (Object port : ports) {
+                try {
+                    options.addExcludedPort(excludedProtocol,Integer.parseInt(String.valueOf(port)));
+                } catch (NumberFormatException e) {
+                    throw new InitException("Invalid port for exclusion: " + port, e);
                 }
             }
         }

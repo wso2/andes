@@ -31,10 +31,12 @@ import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.wso2.andes.server.slot.SlotManager;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.util.AndesUtils;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -74,7 +76,6 @@ public class ClusterManager {
      * AndesContextStore instance
      */
     private AndesContextStore andesContextStore;
-
     private SlotManager slotManager;
 
     /**
@@ -121,11 +122,7 @@ public class ClusterManager {
      */
     public void handleNewNodeJoiningToCluster(Member node) {
         String nodeId = hazelcastAgent.getIdOfNode(node);
-
-        if (log.isInfoEnabled()) {
-            log.info("Handling cluster gossip: Node with ID " + nodeId + " joined the cluster");
-        }
-
+        log.info("Handling cluster gossip: Node with ID " + nodeId + " joined the cluster");
         reAssignGlobalQueueSyncId();
         handleGlobalQueueAddition();
     }
@@ -135,10 +132,7 @@ public class ClusterManager {
      */
     public void handleNodeLeavingCluster(Member node) throws AndesException {
         String deletedNodeId = hazelcastAgent.getIdOfNode(node);
-
-        if (log.isInfoEnabled()) {
-            log.info("Handling cluster gossip: Node with ID " + deletedNodeId + " left the cluster");
-        }
+        log.info("Handling cluster gossip: Node with ID " + deletedNodeId + " left the cluster");
 
         //refresh global queue sync ID
         reAssignGlobalQueueSyncId();
@@ -150,8 +144,6 @@ public class ClusterManager {
             //clear persisted states of disappeared node
             clearAllPersistedStatesOfDisappearedNode(deletedNodeId);
 
-            //Reassign the slot to free slots pool
-             slotManager.reAssignSlotsToFreeSlotsPool(deletedNodeId);
             // check and copy back messages of node queue belonging to disappeared node
             checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(AndesUtils.getNodeQueueNameForNodeId(deletedNodeId));
         }
@@ -208,13 +200,23 @@ public class ClusterManager {
 
     //TODO:hasitha can we implement moving global queue workers?
     public boolean updateWorkerForQueue(String queueToBeMoved, String newNodeToAssign) {
+        boolean successful = false;
         return false;
+    }
+
+    /**
+     * Get whether clustering is enabled
+     *
+     * @return
+     */
+    public boolean isClusteringEnabled() {
+        return AndesContext.getInstance().isClusteringEnabled();
     }
 
     /**
      * Get the node ID of the current node
      *
-     * @return ID of the local node
+     * @return
      */
     public String getMyNodeID() {
         return nodeId;
@@ -265,6 +267,7 @@ public class ClusterManager {
      * remove in-memory messages tracked for this queue
      *
      * @param destinationQueueName name of queue messages should be removed
+     * @throws AndesException
      */
     public void removeInMemoryMessagesAccumulated(String destinationQueueName) throws AndesException {
         //remove in-memory messages accumulated due to sudden subscription closing
@@ -294,12 +297,9 @@ public class ClusterManager {
             messageList = messageStore.getNextNMessageMetadataFromQueue(nodeQueueAddress, lastProcessedMessageID, 40);
         }
 
-        if (log.isInfoEnabled()) {
-            log.info("Moved " + numberOfMessagesMoved
-                    + " Number of Messages from Node Queue "
-                    + nodeQueueName + "to Global Queues ");
-        }
-
+        log.info("Moved " + numberOfMessagesMoved
+                + " Number of Messages from Node Queue "
+                + nodeQueueName + "to Global Queues ");
     }
 
     private void initStandaloneMode() throws Exception {
@@ -327,9 +327,7 @@ public class ClusterManager {
 
         this.hazelcastAgent = HazelcastAgent.getInstance();
         this.nodeId = this.hazelcastAgent.getNodeId();
-        if (log.isInfoEnabled()) {
-            log.info("NodeID:" + this.nodeId);
-        }
+        log.info("NodeID:" + this.nodeId);
 
         //add node information to durable store
         andesContextStore.storeNodeDetails(nodeId, config.getBindIpAddress());
@@ -351,6 +349,7 @@ public class ClusterManager {
             }
         }
         handleNewNodeJoiningToCluster(hazelcastAgent.getLocalMember());
+        log.info("Handling cluster gossip: Node " + nodeId + "  Joined the Cluster");
     }
 
     /**
@@ -429,6 +428,7 @@ public class ClusterManager {
         andesContextStore.removeNodeData(nodeID);
         //close all local queue and topic subscriptions belonging to the node
         ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllClusterSubscriptionsOfNode(nodeID);
+
     }
 
     /**

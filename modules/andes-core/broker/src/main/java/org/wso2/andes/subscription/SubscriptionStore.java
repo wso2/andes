@@ -337,10 +337,7 @@ public class SubscriptionStore {
                 subscriptionList.add(subscription);
                 clusterSubscriptionMap.put(destination, subscriptionList);
             }
-
-            if (log.isInfoEnabled()) {
-                log.info("Added Subscription to map. queue name:" + subscription.getTargetQueue() + ", Type: " + subscription.getTargetQueueBoundExchangeType());
-            }
+            log.info("Added Subscription to map. queue name:" + subscription.getTargetQueue() + ", Type: " + subscription.getTargetQueueBoundExchangeType());
 
         } else if (type == SubscriptionChange.Disconnected) {
             if (subscriptionList == null) {
@@ -538,41 +535,6 @@ public class SubscriptionStore {
                     + " topic=" + localTopicSubscriptionMap + "\n" + localQueueSubscriptionMap + "\n");
         }
         return subscriptionToRemove;
-    }
-
-
-    /**
-     * get bindings of durable queues. We only wanted to get bindings that are durable (bound to durable queues).
-     * We identify bindings iterating through Subscriptions.
-     * There a unique binding is identified by <exchange - queue - routing key(destination)>
-     *
-     * @return list of bindings
-     */
-    public List<AndesBinding> getDurableBindings() {
-        HashMap<String, AndesBinding> bindings = new HashMap<String, AndesBinding>();
-        for (String destination : clusterQueueSubscriptionMap.keySet()) {
-            for (AndesSubscription subscription : clusterQueueSubscriptionMap.get(destination)) {
-                String bindingIdentifier = new StringBuffer(subscription.getTargetQueue()).append("&").append(subscription.getSubscribedDestination()).toString();
-                if (subscription.isDurable() && bindings.get(bindingIdentifier) == null) {
-                    AndesQueue andesQueue = new AndesQueue(subscription.getTargetQueue(), subscription.getTargetQueueOwner(), subscription.isExclusive(), subscription.isDurable());
-                    AndesBinding andesBinding = new AndesBinding(subscription.getTargetQueueBoundExchangeName(), andesQueue, subscription.getSubscribedDestination());
-                    bindings.put(bindingIdentifier, andesBinding);
-                }
-            }
-        }
-
-        for (String destination : clusterTopicSubscriptionMap.keySet()) {
-            for (AndesSubscription subscription : clusterTopicSubscriptionMap.get(destination)) {
-                String bindingIdentifier = new StringBuffer(subscription.getTargetQueue()).append("&").append(subscription.getSubscribedDestination()).toString();
-                if (subscription.isDurable() && bindings.get(bindingIdentifier) == null) {
-                    AndesQueue andesQueue = new AndesQueue(subscription.getTargetQueue(), subscription.getTargetQueueOwner(), subscription.isExclusive(), subscription.isDurable());
-                    AndesBinding andesBinding = new AndesBinding(subscription.getTargetQueueBoundExchangeName(), andesQueue, subscription.getSubscribedDestination());
-                    bindings.put(bindingIdentifier, andesBinding);
-                }
-            }
-        }
-
-        return new ArrayList<AndesBinding>(bindings.values());
     }
 
     /**

@@ -63,9 +63,7 @@ public class MessagePurgeHandler implements QueueListener {
     private void handleMessageRemovalFromGlobalQueue(String destinationQueueName) throws AndesException {
         int numberOfMessagesRemoved = 0;
         //there can be messages still in global queue which needs to be removed
-        String globalQueueName = AndesUtils.getGlobalQueueNameForDestinationQueue(destinationQueueName);
-        QueueAddress globalQueueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE, globalQueueName);
-        numberOfMessagesRemoved += MessagingEngine.getInstance().removeMessagesOfQueue(globalQueueAddress, destinationQueueName);
+        numberOfMessagesRemoved += MessagingEngine.getInstance().removeMessagesOfQueue(destinationQueueName);
         log.info("Removed " + numberOfMessagesRemoved + " Messages From Global Queue Addressed to Queue " + destinationQueueName);
     }
 
@@ -82,9 +80,7 @@ public class MessagePurgeHandler implements QueueListener {
         MessagingEngine.getInstance().removeInMemoryMessagesAccumulated(destinationQueueName);
 
         //there can be non-acked messages in the node queue addressed to the destination queue
-        String nodeQueueName = MessagingEngine.getMyNodeQueueName();
-        QueueAddress nodeQueueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueueName);
-        numberOfMessagesRemoved += MessagingEngine.getInstance().removeMessagesOfQueue(nodeQueueAddress, destinationQueueName);
+        numberOfMessagesRemoved += MessagingEngine.getInstance().removeMessagesOfQueue(destinationQueueName);
 
         log.info("Removed " + numberOfMessagesRemoved + " Messages From Node Queue Addressed to Queue " + destinationQueueName);
 

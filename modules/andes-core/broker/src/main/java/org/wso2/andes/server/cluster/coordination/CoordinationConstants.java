@@ -27,7 +27,7 @@ public final class CoordinationConstants {
     public static String HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME = "SUBSCRIPTION_CHANGED";
 
     /**
-     * Hazelcast distributed topic name to send queue notifications to cluster nodes.
+     * Hazelcast distributed topic name to send queue purged notifications to cluster nodes.
      */
     public static String HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME = "QUEUE_CHANGED";
 

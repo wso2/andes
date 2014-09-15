@@ -206,7 +206,6 @@ public class CassandraBasedAndesContextStore implements AndesContextStore {
 
     @Override
     public void storeQueueInformation(String queueName, String queueInfo) throws AndesException {
-
         try {
             CQLDataAccessHelper.addMappingToRaw(KEYSPACE, QUEUE_COLUMN_FAMILY, QUEUE_ROW, queueName, queueInfo, true);
         } catch (CassandraDataAccessException e) {

@@ -157,7 +157,6 @@ public class AndesSubscriptionManager {
      * @param isTopic if topic subscriptions are queried
      * @return if any subscription exists
      */
-
     public boolean checkIfActiveClusterSubscriptionsExists(boolean isTopic) {
         List<AndesSubscription> activeSubscriptions = subscriptionStore.getActiveClusterSubscribersForNode(ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(), isTopic);
         return !activeSubscriptions.isEmpty();

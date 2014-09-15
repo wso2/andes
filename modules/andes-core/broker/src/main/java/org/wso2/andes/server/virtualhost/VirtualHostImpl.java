@@ -84,6 +84,8 @@ public class VirtualHostImpl implements VirtualHost {
 
     private MessageStore _messageStore;
 
+    private MessageStore cassandraMessageStore;
+
     protected VirtualHostMBean _virtualHostMBean;
 
     private AMQBrokerManagerMBean _brokerMBean;
@@ -222,7 +224,6 @@ public class VirtualHostImpl implements VirtualHost {
         _brokerMBean.register();
         initialiseHouseKeeping(hostConfig.getHousekeepingExpiredMessageCheckPeriod());
 
-
         initialiseStatistics();
 
     }
@@ -332,7 +333,6 @@ public class VirtualHostImpl implements VirtualHost {
      * @throws Exception
      */
     private void initialiseMessageStore(VirtualHostConfiguration hostConfig) throws Exception {
-
 
         //kernel will start message stores for Andes
         AndesKernelBoot.startAndesStores(hostConfig.getStoreConfiguration(), this);

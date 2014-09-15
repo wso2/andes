@@ -42,14 +42,14 @@ public class TimeStampBasedMessageIdGenerator implements MessageIdGenerator {
     long lastTimestamp = 0;
     long lastID = 0;
     private AtomicInteger offsetOnthisslot = new AtomicInteger();
-	private static final long referenceStart = 41 * 365 * 24 * 60 * 60 * 10000; //this is 2011
+    private long referenceStart = 41 * 365 * 24 * 60 * 60 * 10000; //this is 2011
 
     /**
      * Out of 64 bits for long, we will use the range as follows
      * [1 sign bit][45bits for time spent from reference time in milliseconds][8bit node id][10 bit offset for ID falls within the same timestamp]
      * This assumes there will not be more than 1024 hits within a given milisecond. Range is sufficient for 6029925857 years.
      *
-     * @return next ID
+     * @return
      */
     public synchronized long getNextId() {
         uniqueIdForNode = ClusterResourceHolder.getInstance().getClusterManager().getUniqueIdForLocalNode();

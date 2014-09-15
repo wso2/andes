@@ -23,7 +23,7 @@ public class JDBCConstants {
 
     // jndi lookup
     protected static final String H2_JNDI_LOOKUP_NAME = "jdbc/H2MessageStoreDB";
-    protected static final String H2_MEM_JNDI_LOOKUP_NAME = "jdbc/InMemoryMessageStoreDB";
+    protected static final String H2_MEM_JNDI_LOOKUP_NAME = "jdbc/InMemoryStore";
 
     // Message Store tables
     protected static final String MESSAGES_TABLE = "messages";

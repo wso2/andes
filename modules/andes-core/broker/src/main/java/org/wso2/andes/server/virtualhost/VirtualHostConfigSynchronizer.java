@@ -11,7 +11,6 @@ import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.binding.BindingFactory;
 import org.wso2.andes.server.exchange.Exchange;
-import org.wso2.andes.server.exchange.ExchangeInUseException;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.AMQQueueFactory;
 import org.wso2.andes.server.store.ConfigurationRecoveryHandler;
@@ -35,7 +34,6 @@ public class VirtualHostConfigSynchronizer implements
 
 
     @Override
-
     public ConfigurationRecoveryHandler.BindingRecoveryHandler completeExchangeRecovery() {
         return null;
     }
@@ -150,9 +148,8 @@ public class VirtualHostConfigSynchronizer implements
                 if (exchange == null) {
                     exchange = _virtualHost.getExchangeFactory().createExchange(exchangeNameSS, new AMQShortString(type), true, autoDelete, 0);
                     _virtualHost.getExchangeRegistry().registerExchange(exchange);
-                    if (_logger.isInfoEnabled()) {
-                        _logger.info("Added Exchange: " + exchangeName + ", Type: " + type + ", autoDelete: " + autoDelete);
-                    }
+                    _logger.info("Added Exchange: " + exchangeName
+                            + ", Type: " + type + ", autoDelete: " + autoDelete);
                 }
             } catch (AMQException e) {
                 log.error("Error while creating Exchanges", e);
@@ -173,8 +170,7 @@ public class VirtualHostConfigSynchronizer implements
 
                 if (q == null) {
                     //if a new durable queue is added we can know it here
-                    q = AMQQueueFactory.createAMQQueueImpl(queueNameShortString, true
-                            , owner == null ? null : new AMQShortString(owner), false, exclusive, _virtualHost,
+                    q = AMQQueueFactory.createAMQQueueImpl(queueNameShortString, true, owner == null ? null : new AMQShortString(owner), false, exclusive, _virtualHost,
                             arguments);
                     _virtualHost.getQueueRegistry().registerQueue(q);
                     _logger.info("Queue sync - Added Queue: " + queueName
@@ -188,7 +184,6 @@ public class VirtualHostConfigSynchronizer implements
 
     //add the binding into internal qpid if NOT present
     @Override
-
     public void binding(String exchangeName, String queueName, String bindingKey, ByteBuffer buf) {
         synchronized (this) {
             try {
@@ -260,10 +255,7 @@ public class VirtualHostConfigSynchronizer implements
             }*/
 
             AMQQueue queue = _virtualHost.getQueueRegistry().getQueue(new AMQShortString(queueName));
-            if (queue == null) {
-                return;
-                //_logger.error("Unknown queue: " + queueName + ", cannot be unbind from exchange: " + exchangeName);
-            } else {
+            if (queue != null) {
                 FieldTable argumentsFT = null;
                 if (buf != null) {
                     argumentsFT = new FieldTable(org.apache.mina.common.ByteBuffer.wrap(buf), buf.limit());

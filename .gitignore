@@ -5,6 +5,7 @@ target
 .project
 *.i??
 .idea
+*.iml
 *.db
 
 # Mobile Tools for Java (J2ME)

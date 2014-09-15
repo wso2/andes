@@ -70,6 +70,13 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
         return clusterManager.getGlobalQueuesAssigned(nodeId);
     }
 
+    /**
+     * Move a queue from current node to another node.
+     *
+     * @param queueToBeMoved  name of the queue to be moved
+     * @param newNodeToAssign node ID of the new node
+     * @return true if the queue is successfully moved
+     */
     public boolean updateWorkerForQueue(String queueToBeMoved, String newNodeToAssign) {
         return clusterManager.updateWorkerForQueue(queueToBeMoved, newNodeToAssign);
     }
@@ -99,8 +106,7 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
      * @return message count
      */
     public int getMessageCount(@MBeanOperationParameter(name = "queueName", description = "Name of the queue which message count is required") String queueName) {
-
-        int count = 0;
+        int count;
         try {
             count = clusterManager.numberOfMessagesInGlobalQueue(queueName);
         } catch (AndesException e) {
@@ -156,7 +162,7 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
     }
 
     public int getNodeQueueSubscriberCount(String nodeId, String destinationQueue) {
-
+        //TODO:Should be implemented.
         throw new UnsupportedOperationException();
     }
 

@@ -259,7 +259,7 @@ public class AndesKernelBoot {
      * @throws Exception
      */
     public static void startMessaging() throws Exception {
-        MessagingEngine.getInstance().startMessageDelivey();
+        MessagingEngine.getInstance().startMessageDelivery();
         MessagingEngine.getInstance().startMessageExpirationWorker();
     }
 

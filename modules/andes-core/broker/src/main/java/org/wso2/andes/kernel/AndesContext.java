@@ -6,32 +6,50 @@ import org.wso2.andes.subscription.SubscriptionStore;
 import java.util.Map;
 
 public class AndesContext {
-
-    private MessageStore messageStore;
+    private String messageStoreClass;
+    private String andesContextStoreClass;
     private SubscriptionStore subscriptionStore;
     private AndesContextStore andesContextStore;
     private Map<String, AndesSubscription> dataSenderMap;
-    private HazelcastInstance hazelcastInstance;
     private boolean isClusteringEnabled;
     private AMQPConstructStore AMQPConstructStore;
     private static AndesContext instance = new AndesContext();
+    private String messageStoreDataSourceName;
+    private String contextStoreDataSourceName;
 
-    /**
-     * get message store
-     *
-     * @return MessageStore
+
+ 	/**
+     * @return fully qualified class name of a MessageStore interface implementation
      */
-    public MessageStore getMessageStore() {
-        return messageStore;
+    public String getMessageStoreClass() {
+        return messageStoreClass;
     }
 
     /**
-     * set message store instance
+     * Method works as a placeholder for fully qualified class name for the MessageStore implementation.
+     * This is used to create the relevant MessageStore object
      *
-     * @param messageStore message store to keep
+     * @param messageStoreClass fully qualified class name of the MessageStore interface implementation
      */
-    public void setMessageStore(MessageStore messageStore) {
-        this.messageStore = messageStore;
+    public void setMessageStoreClass(String messageStoreClass) {
+        this.messageStoreClass = messageStoreClass;
+    }
+
+    /**
+     * Used as a placeholder for fully qualified class name for the MessageStore implementation.
+     * This is used to create the relevant context store object
+     *
+     * @param andesContextStoreClass fully qualified class name of a MessageStore interface implementation
+     */
+    public void setAndesContextStoreClass(String andesContextStoreClass) {
+        this.andesContextStoreClass = andesContextStoreClass;
+    }
+
+    /**
+     * @return fully qualified class name of a MessageStore interface implementation
+     */
+    public String getAndesContextStoreClass() {
+        return andesContextStoreClass;
     }
 
     /**
@@ -87,23 +105,7 @@ public class AndesContext {
         return instance;
     }
 
-    /**
-     * get hazleCast instance
-     *
-     * @return hazelcast instance
-     */
-    public HazelcastInstance getHazelcastInstance() {
-        return this.hazelcastInstance;
-    }
 
-    /**
-     * set hazelCast instance
-     *
-     * @param hazelcastInstance
-     */
-    public void setHazelcastInstance(HazelcastInstance hazelcastInstance) {
-        this.hazelcastInstance = hazelcastInstance;
-    }
 
     /**
      * get if clustering is enabled
@@ -139,5 +141,29 @@ public class AndesContext {
      */
     public AMQPConstructStore getAMQPConstructStore() {
         return AMQPConstructStore;
+    }
+
+    public String getMessageStoreDataSourceName() {
+        return messageStoreDataSourceName;
+    }
+
+    /**
+     *
+     * @param messageStoreDataSourceName data source name according to jndi config
+     */
+    public void setMessageStoreDataSourceName(String messageStoreDataSourceName) {
+        this.messageStoreDataSourceName = messageStoreDataSourceName;
+    }
+
+    public String getContextStoreDataSourceName() {
+        return contextStoreDataSourceName;
+    }
+
+    /**
+     *
+     * @param contextStoreDataSourceName data source name according to jndi config
+     */
+    public void setContextStoreDataSourceName(String contextStoreDataSourceName) {
+        this.contextStoreDataSourceName = contextStoreDataSourceName;
     }
 }

@@ -107,7 +107,8 @@ public class SlotDeliveryWorker extends Thread {
         if (queueDeliveryInfo == null) {
             queueDeliveryInfo = new QueueDeliveryInfo();
             queueDeliveryInfo.queueName = queueName;
-            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore.getActiveLocalSubscribersForQueue(queueName);
+            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
+                    .getActiveLocalSubscribers(queueName, false);
             queueDeliveryInfo.iterator = localSubscribersForQueue.iterator();
             subscriptionCursar4QueueMap.put(queueName, queueDeliveryInfo);
         }
@@ -145,7 +146,7 @@ public class SlotDeliveryWorker extends Thread {
                 Collection<LocalSubscription> subscriptions4Queue;
                 List<Slot> slotsListForThisQueue = new ArrayList<Slot>();
                 try {
-                    subscriptions4Queue = subscriptionStore.getActiveLocalSubscribersForQueue(queue);
+                    subscriptions4Queue = subscriptionStore.getActiveLocalSubscribers(queue, false);
                     if (subscriptions4Queue != null && !subscriptions4Queue.isEmpty()) {
 
                         if (isClusteringEnabled) {
