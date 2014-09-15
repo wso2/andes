@@ -1,6 +1,5 @@
 package org.wso2.andes.kernel;
 
-import com.hazelcast.core.HazelcastInstance;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Map;
@@ -11,8 +10,10 @@ public class AndesContext {
     private SubscriptionStore subscriptionStore;
     private AndesContextStore andesContextStore;
     private Map<String, AndesSubscription> dataSenderMap;
-    private HazelcastInstance hazelcastInstance;
     private boolean isClusteringEnabled;
+    private String messageStoreDataSourceName;
+    private String contextStoreDataSourceName;
+
 
     /**
      * @return fully qualified class name of a MessageStore interface implementation
@@ -48,13 +49,12 @@ public class AndesContext {
         return andesContextStoreClass;
     }
 
-    public SubscriptionStore getSubscriptionStore() {
-        return subscriptionStore;
-    }
-
-    public void setSubscriptionStore(SubscriptionStore subscriptionStore) {
-        this.subscriptionStore = subscriptionStore;
-    }
+	public SubscriptionStore getSubscriptionStore() {
+		return subscriptionStore;
+	}
+	public void setSubscriptionStore(SubscriptionStore subscriptionStore) {
+		this.subscriptionStore = subscriptionStore;
+	}
 
     public void setAndesContextStore(AndesContextStore andesContextStore) {
         this.andesContextStore = andesContextStore;
@@ -63,34 +63,49 @@ public class AndesContext {
     public AndesContextStore getAndesContextStore() {
         return this.andesContextStore;
     }
+	
+	public void addDataSender(String key, AndesSubscription dataSender){
+		dataSenderMap.put(key, dataSender);
+	}
+	
+	public AndesSubscription getDataSender(String key){
+		return dataSenderMap.get(key);
+	}
+	
+	private static AndesContext instance = new AndesContext();
+	public static AndesContext getInstance(){
+		return instance;
+	}
 
-    public void addDataSender(String key, AndesSubscription dataSender) {
-        dataSenderMap.put(key, dataSender);
-    }
-
-    public AndesSubscription getDataSender(String key) {
-        return dataSenderMap.get(key);
-    }
-
-    private static AndesContext instance = new AndesContext();
-
-    public static AndesContext getInstance() {
-        return instance;
-    }
-
-    public HazelcastInstance getHazelcastInstance() {
-        return this.hazelcastInstance;
-    }
-
-    public void setHazelcastInstance(HazelcastInstance hazelcastInstance) {
-        this.hazelcastInstance = hazelcastInstance;
-    }
-
-    public boolean isClusteringEnabled() {
+    public boolean isClusteringEnabled(){
         return isClusteringEnabled;
     }
 
-    public void setClusteringEnabled(boolean isClusteringEnabled) {
+    public void setClusteringEnabled(boolean isClusteringEnabled){
         this.isClusteringEnabled = isClusteringEnabled;
+    }
+
+    public String getMessageStoreDataSourceName() {
+        return messageStoreDataSourceName;
+    }
+
+    /**
+     *
+     * @param messageStoreDataSourceName data source name according to jndi config
+     */
+    public void setMessageStoreDataSourceName(String messageStoreDataSourceName) {
+        this.messageStoreDataSourceName = messageStoreDataSourceName;
+    }
+
+    public String getContextStoreDataSourceName() {
+        return contextStoreDataSourceName;
+    }
+
+    /**
+     *
+     * @param contextStoreDataSourceName data source name according to jndi config
+     */
+    public void setContextStoreDataSourceName(String contextStoreDataSourceName) {
+        this.contextStoreDataSourceName = contextStoreDataSourceName;
     }
 }

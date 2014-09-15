@@ -1,10 +1,8 @@
 package org.wso2.andes.messageStore;
 
-import junit.framework.*;
 import junit.framework.Assert;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.*;
-import org.junit.Test;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
@@ -107,10 +105,112 @@ public class H2BasedAndesContextStoreTest {
         Map<String, List<String>> subscriberMap = contextStore.getAllStoredDurableSubscriptions();
 
         // test
+        int destinationCount = 2;
+        Assert.assertEquals(destinationCount, subscriberMap.size());
 
+        List<String> subscriberList = subscriberMap.get(destinationIdOne);
+        Assert.assertEquals(dataOne, subscriberList.get(0));
 
+        subscriberList = subscriberMap.get(destinationIdTwo);
+        Assert.assertEquals(dataTwo, subscriberList.get(0));
+    }
 
+    @Test
+    public void testGetAllSubscribersWithSameDestinationForALL() throws Exception {
+        String insert = "INSERT INTO " + JDBCConstants.DURABLE_SUB_TABLE + " (" +
+                JDBCConstants.DESTINATION_IDENTIFIER + ", " +
+                JDBCConstants.DURABLE_SUB_ID + ", " +
+                JDBCConstants.DURABLE_SUB_DATA + ") " +
+                " VALUES ( ?,?,? )";
 
+        // populate data
+        String destinationIdOne = "destination1";
+        String subscriptionIdOne = "sub-0";
+        String dataOne = "data1";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(insert);
+        preparedStatement.setString(1, destinationIdOne);
+        preparedStatement.setString(2, subscriptionIdOne);
+        preparedStatement.setString(3, dataOne);
+        preparedStatement.addBatch();
+
+        String subscriptionIdTwo = "sub-1";
+        String dataTwo = "data2";
+
+        preparedStatement.setString(1, destinationIdOne);
+        preparedStatement.setString(2, subscriptionIdTwo);
+        preparedStatement.setString(3, dataTwo);
+        preparedStatement.addBatch();
+        preparedStatement.executeBatch();
+
+        // retrieve data
+        Map<String, List<String>> subscriberMap = contextStore.getAllStoredDurableSubscriptions();
+
+        // test
+        int destinationCount = 1;
+        Assert.assertEquals(destinationCount, subscriberMap.size());
+
+        List<String> subscriberList = subscriberMap.get(destinationIdOne);
+        Assert.assertEquals(dataOne, subscriberList.get(0));
+        Assert.assertEquals(dataTwo, subscriberList.get(1));
+    }
+
+    @Test
+    public void testRemoveDurableSubscription() throws Exception {
+        String insert = "INSERT INTO " + JDBCConstants.DURABLE_SUB_TABLE + " (" +
+                JDBCConstants.DESTINATION_IDENTIFIER + ", " +
+                JDBCConstants.DURABLE_SUB_ID + ", " +
+                JDBCConstants.DURABLE_SUB_DATA + ") " +
+                " VALUES ( ?,?,? )";
+
+        // populate data
+        String destinationIdOne = "destination1";
+        String subscriptionIdOne = "sub-0";
+        String dataOne = "data1";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(insert);
+        preparedStatement.setString(1, destinationIdOne);
+        preparedStatement.setString(2, subscriptionIdOne);
+        preparedStatement.setString(3, dataOne);
+        preparedStatement.executeUpdate();
+        preparedStatement.close();
+
+        // delete
+        contextStore.removeDurableSubscription(destinationIdOne, subscriptionIdOne);
+
+        String select = "SELECT * FROM " + JDBCConstants.DURABLE_SUB_TABLE +
+                " WHERE " + JDBCConstants.DESTINATION_IDENTIFIER + "=? " +
+                " AND " + JDBCConstants.DURABLE_SUB_ID + "=?";
+
+        preparedStatement = connection.prepareStatement(select);
+        preparedStatement.setString(1, destinationIdOne);
+        preparedStatement.setString(2, subscriptionIdOne);
+        ResultSet resultSet = preparedStatement.executeQuery();
+
+        // there should be no entries in result set.
+        Assert.assertEquals(false, resultSet.first());
+    }
+
+    @Test
+    public void testStoreNodeDetails() throws Exception {
+        String nodeId = "nodeId";
+        String data = "node data";
+
+        // store data
+        contextStore.storeNodeDetails(nodeId, data);
+
+        // retrieve to test
+        String select = "SELECT * FROM " + JDBCConstants.NODE_INFO_TABLE +
+                " WHERE " + JDBCConstants.NODE_ID + "=?";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(select);
+        preparedStatement.setString(1, nodeId);
+        ResultSet resultSet = preparedStatement.executeQuery();
+
+        // test
+        Assert.assertEquals(true, resultSet.first());
+        Assert.assertEquals(nodeId, resultSet.getString(JDBCConstants.NODE_ID));
+        Assert.assertEquals(data, resultSet.getString(JDBCConstants.NODE_DATA));
     }
 
     private void createTables() throws Exception {

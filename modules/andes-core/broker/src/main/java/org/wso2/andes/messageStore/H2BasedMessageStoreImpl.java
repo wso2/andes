@@ -69,6 +69,11 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         h2Connection.initialize(null);
         datasource = h2Connection.getDatasource();
 
+        // create DB tables ONLY in in-memory mode
+        if (isInMemoryMode) {
+            createTables();
+        }
+
         // start periodic message removal task
         MessageContentRemoverTask messageContentRemoverTask =
                 new MessageContentRemoverTask(contentDeletionTasksMap, this);
@@ -82,7 +87,77 @@ public class H2BasedMessageStoreImpl implements MessageStore {
                 TimeUnit.SECONDS);
 
         logger.info("H2 message store initialised");
+    }
 
+    /**
+     * This method creates all the DB tables used by this Message Store implementation
+     * NOTE: This method is only called in memory mode
+     *
+     * @throws AndesException
+     */
+    private void createTables() throws AndesException {
+        String[] queries = {
+                "CREATE TABLE messages (" +
+                        "message_id BIGINT, " +
+                        "offset INT, " +
+                        "content BINARY NOT NULL, " +
+                        "PRIMARY KEY (message_id,offset)" +
+                        ");"
+                ,
+
+                "CREATE TABLE queues (" +
+                        "queue_id INT AUTO_INCREMENT, " +
+                        "name VARCHAR NOT NULL, " +
+                        "UNIQUE (name)," +
+                        "PRIMARY KEY (queue_id)" +
+                        ");",
+
+                "CREATE TABLE reference_counts ( " +
+                        "message_id BIGINT, " +
+                        "reference_count INT, " +
+                        "PRIMARY KEY (message_id)" +
+                        ");"
+                ,
+
+                "CREATE TABLE metadata (" +
+                        "message_id BIGINT, " +
+                        "queue_id INT, " +
+                        "data BINARY, " +
+                        "PRIMARY KEY (message_id, queue_id), " +
+                        "FOREIGN KEY (queue_id) " +
+                        "REFERENCES queues (queue_id) " +
+                        ");",
+
+                "CREATE TABLE expiration_data (" +
+                        "message_id BIGINT UNIQUE," +
+                        "expiration_time BIGINT, " +
+                        "destination VARCHAR NOT NULL, " +
+                        "FOREIGN KEY (message_id) " +
+                        "REFERENCES metadata (message_id)" +
+                        "); "
+        };
+
+        Connection connection = null;
+        Statement stmt = null;
+        try {
+            connection = getConnection();
+            stmt = connection.createStatement();
+            for (String q : queries) {
+                stmt.addBatch(q);
+            }
+            stmt.executeBatch();
+        } catch (SQLException e) {
+            throw new AndesException("Error occurred while creating in memory DB tables", e);
+        } finally {
+            try {
+                if (stmt != null) {
+                    stmt.close();
+                }
+            } catch (SQLException e) {
+                logger.error("Failed to close connection after creating DB tables");
+            }
+            close(connection, "creating in memory DB tables");
+        }
     }
 
     @Override
@@ -902,12 +977,6 @@ public class H2BasedMessageStoreImpl implements MessageStore {
 
     @Override
     public void addMessageToExpiryQueue(Long messageId, Long expirationTime, boolean isMessageForTopic, String destination) throws CassandraDataAccessException {
-
-    }
-
-    @Override
-    public void deleteMessageMetadata(List<AndesRemovableMetadata> messagesToRemove,
-                               boolean moveToDeadLetterChannel) throws AndesException {
 
     }
 

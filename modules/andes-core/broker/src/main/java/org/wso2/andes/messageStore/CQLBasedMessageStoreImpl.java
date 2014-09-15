@@ -12,7 +12,7 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.CQLConnection;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.server.cassandra.Slot;
+import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.cassandra.dao.CQLQueryBuilder;
 import org.wso2.andes.server.cassandra.dao.CassandraHelper;
 import org.wso2.andes.server.cassandra.dao.GenericCQLDAO;
@@ -308,7 +308,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             long start = System.currentTimeMillis();
             GenericCQLDAO.batchExecute(KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
             if (isClusteringEnabled) {
-               QueueMessageCounter.recordMetaDataCountInSlot(metadataList, null);
+                QueueMessageCounter.recordMetaDataCountInSlot(metadataList, null);
             }
             PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency((int) (System.currentTimeMillis() - start));
 
@@ -346,8 +346,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     @Override
-    public void addMetadataToQueue(String queueName, List<AndesMessageMetadata> metadata) throws AndesException {
-
+    public void addMetadataToQueue(String queueName, List<AndesMessageMetadata> metadataList) throws AndesException {
     }
 
     private void addContentDeletionTask(long currentNanoTime, long messageID) {
@@ -756,6 +755,9 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         }
     }
 
+    public void deleteMessageMetadata(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDLC) throws AndesException {
+    }
+
     @Override
 /**
  * Method to delete entries from MESSAGES_FOR_EXPIRY_COLUMN_FAMILY Column Family
@@ -817,8 +819,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     @Override
-    public void deleteMessageMetadata(List<AndesRemovableMetadata> messagesToRemove,
-                               boolean moveToDLC) throws AndesException {
+    public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDLC) throws AndesException {
         try {
 
             HashMap<String, List<AndesRemovableMetadata>> messagesForTopics = new HashMap<String, List<AndesRemovableMetadata>>();

@@ -42,6 +42,7 @@ public class TimeStampBasedMessageIdGenerator implements MessageIdGenerator {
     long lastTimestamp = 0;
     long lastID = 0;
     private AtomicInteger offsetOnthisslot = new AtomicInteger();
+	private static final long referenceStart = 41 * 365 * 24 * 60 * 60 * 10000; //this is 2011
 
     /**
      * Out of 64 bits for long, we will use the range as follows
@@ -60,7 +61,6 @@ public class TimeStampBasedMessageIdGenerator implements MessageIdGenerator {
             offsetOnthisslot.set(0);
         }
         lastTimestamp = ts;
-        long referenceStart = 41 * 365 * 24 * 60 * 60 * 10000;
         long id = (ts - referenceStart) * 256 * 1024 + uniqueIdForNode * 1024 + offset;
         if (lastID == id) {
             throw new RuntimeException("duplicate ids detected. This should never happen");

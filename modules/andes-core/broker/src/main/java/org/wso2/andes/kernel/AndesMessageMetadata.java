@@ -161,6 +161,7 @@ public class AndesMessageMetadata {
             this.isPersistent = ((MQTTMessageMetaData) mdt).isPersistent();
             this.messageContentLength = ((MQTTMessageMetaData) mdt).getContentSize();
         }
+
     }
 
     public Object getMessageHeader(String header) {

@@ -28,6 +28,7 @@ import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
+import org.wso2.andes.server.slot.SlotManager;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.util.AndesUtils;
 
@@ -82,7 +83,7 @@ public class ClusterManager {
     public ClusterManager() {
         this.andesContextStore = AndesContext.getInstance().getAndesContextStore();
         this.globalQueueManager = new GlobalQueueManager(MessagingEngine.getInstance().getDurableMessageStore());
-        this.slotManager = SlotManager.getInstance();
+		this.slotManager = SlotManager.getInstance();
 
     }
 
@@ -157,7 +158,7 @@ public class ClusterManager {
             clearAllPersistedStatesOfDissapearedNode(deletedNodeId);
 
             //Reassign the slot to free slots pool
-             slotManager.reAssignAssignedSlotsToFreeSlotsPool(deletedNodeId);
+             slotManager.reAssignSlotsToFreeSlotsPool(deletedNodeId);
             // check and copy back messages of node queue belonging to disappeared node
             checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(AndesUtils.getNodeQueueNameForNodeId(deletedNodeId));
         }
@@ -328,8 +329,7 @@ public class ClusterManager {
         andesContextStore.storeNodeDetails(nodeId, config.getBindIpAddress());
 
         //start all global queue workers on the node
-        //TODO commented by sajini
-        //startAllGlobalQueueWorkers();
+        startAllGlobalQueueWorkers();
     }
 
     private void initClusterMode() throws Exception {

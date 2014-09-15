@@ -413,7 +413,7 @@ public interface ManagedQueue
      * @throws IOException
      * @throws JMException
      */
-    @MBeanOperation(name="deleteMessageMetadata",
+    @MBeanOperation(name="deleteMessages",
                     description="Delete a range of messages from a specified queue",
                     impact= MBeanOperationInfo.ACTION)
     void deleteMessages(@MBeanOperationParameter(name="from MessageId", description="from MessageId")long fromMessageId,

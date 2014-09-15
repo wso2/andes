@@ -81,7 +81,7 @@ public class H2BasedMessageStoreImplTest {
 
         // retrieve
         for (AndesMessagePart msgPart : list) {
-            AndesMessagePart p = messageStore.getContent(msgPart.getMessageID(), msgPart.getOffSet());
+            AndesMessagePart p = messageStore.getContent(msgPart.getMessageID() + "", msgPart.getOffSet());
             assert p != null;
             Assert.assertEquals(msgPart.getMessageID(), p.getMessageID());
             Assert.assertEquals(true, Arrays.equals(msgPart.getData(), p.getData()));

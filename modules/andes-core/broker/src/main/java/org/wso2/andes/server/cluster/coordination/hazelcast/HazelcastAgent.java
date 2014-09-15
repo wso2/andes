@@ -21,7 +21,7 @@ import com.hazelcast.core.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.server.cassandra.Slot;
+import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.SubscriptionNotification;
 
@@ -61,12 +61,9 @@ public class HazelcastAgent {
      * Unique ID generated to represent the node.
      * This ID is used when generating message IDs.
      */
-
     private int uniqueIdOfLocalMember;
 
-    private IMap<String, TreeSet<Slot>> freeSlotMap;
-
-
+	private IMap<String, TreeSet<Slot>> freeSlotMap;
 
     /**
      * Get singleton HazelcastAgent.
@@ -110,12 +107,10 @@ public class HazelcastAgent {
 
         IdGenerator idGenerator = hazelcastInstance.getIdGenerator(CoordinationConstants.HAZELCAST_ID_GENERATOR_NAME);
         this.uniqueIdOfLocalMember = (int) idGenerator.newId();
-        freeSlotMap = hazelcastInstance.getMap(CoordinationConstants.FREE_SLOT_MAP_NAME);
+		freeSlotMap = hazelcastInstance.getMap(CoordinationConstants.FREE_SLOT_MAP_NAME);
         queueToMessageIdListMap = hazelcastInstance.getMap(CoordinationConstants.QUEUE_TO_MESSAGE_ID_LIST_MAP_NAME);
         lastProcessedIDs = hazelcastInstance.getMap(CoordinationConstants.LAST_PROCESSED_IDS_MAP_NAME);
         slotAssignmentMap = hazelcastInstance.getMap(CoordinationConstants.SLOT_ASSIGNMENT_MAP_NAME);
-        log.info("Successfully initialized Hazelcast Agent");
-        log.info("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
 
         if (log.isInfoEnabled()) {
             log.info("Successfully initialized Hazelcast Agent");

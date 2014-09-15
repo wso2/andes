@@ -1,8 +1,8 @@
 package org.wso2.andes.messageStore;
 
 import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.server.cassandra.Slot;
-import org.wso2.andes.server.cluster.SlotManager;
+import org.wso2.andes.server.slot.Slot;
+import org.wso2.andes.server.slot.SlotManager;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -122,7 +122,7 @@ public class QueueMessageCounter {
     public static void recordLastMessageIdOfSlotInDistributedMap(String queueName) {
         if (queueToSlotMap.get(queueName) != null) {
             Slot slot = queueToSlotMap.get(queueName);
-            slotManager.recordMySlotLastMessageId(queueName, slot.getEndMessageId());
+            slotManager.updateMessageID(queueName, slot.getEndMessageId());
             queueToSlotMap.remove(queueName);
             slotTimeOutMap.remove(queueName);
         }

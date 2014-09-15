@@ -1,9 +1,26 @@
-package org.wso2.andes.server.cassandra;
+/*
+*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+*
+*  WSO2 Inc. licenses this file to you under the Apache License,
+*  Version 2.0 (the "License"); you may not use this file except
+*  in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/
+package org.wso2.andes.server.slot;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.server.cluster.SlotManager;
+import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 
@@ -132,8 +149,8 @@ public class SlotDeliveryWorker extends Thread {
                     if (subscriptions4Queue != null && !subscriptions4Queue.isEmpty()) {
 
                         if (isClusteringEnabled) {
-                            Slot currentSlot = slotManager.getASlotFromSlotManager(queue);
-                            if (currentSlot == null) {
+                            Slot currentSlotImp = slotManager.getSlot(queue);
+                            if (currentSlotImp == null) {
                                 //no available free slots
                                 try {
                                     //TODO is it ok to sleep since there are other queues
@@ -142,28 +159,28 @@ public class SlotDeliveryWorker extends Thread {
                                     //silently ignore
                                 }
                             } else {
-                                log.info("Received slot for queue " + queue + " is: " + currentSlot.getStartMessageId() + " - " +currentSlot.getEndMessageId());
-                                slotManager.addEntryToSlotAssignmentMap(queue, currentSlot);
+                                log.info("Received slot for queue " + queue + " is: " + currentSlotImp.getStartMessageId() + " - " + currentSlotImp.getEndMessageId());
+                                slotManager.updateSlotAssignmentMap(queue, currentSlotImp);
                                 writeLock.lock();
                                 try {
                                     if (slotsOwnedByMe.get(queue) != null) {
-                                        slotsOwnedByMe.get(queue).add(currentSlot);
+                                        slotsOwnedByMe.get(queue).add(currentSlotImp);
 
                                     } else {
-                                        slotsListForThisQueue.add(currentSlot);
+                                        slotsListForThisQueue.add(currentSlotImp);
                                         slotsOwnedByMe.put(queue, slotsListForThisQueue);
 
                                     }
                                 } finally {
                                     writeLock.unlock();
                                 }
-                                long firstMsgId = currentSlot.getStartMessageId();
-                                long lastMsgId = currentSlot.getEndMessageId();
+                                long firstMsgId = currentSlotImp.getStartMessageId();
+                                long lastMsgId = currentSlotImp.getEndMessageId();
                                 List<AndesMessageMetadata> messagesReadByLeadingThread = messageStore.getMetaDataList(queue, firstMsgId, lastMsgId);
                                 if (messagesReadByLeadingThread != null && !messagesReadByLeadingThread.isEmpty()) {
                                     // sendMessages(messagesReadByLeadingThread, subscriptions4Queue, queue);
-                                    log.info("Number of messages read from slot " + currentSlot.getStartMessageId() + " - " +
-                                            currentSlot.getEndMessageId()+" is " + messagesReadByLeadingThread.size());
+                                    log.info("Number of messages read from slot " + currentSlotImp.getStartMessageId() + " - " +
+                                            currentSlotImp.getEndMessageId()+" is " + messagesReadByLeadingThread.size());
                                     QueueDeliveryWorker.getInstance().run(messagesReadByLeadingThread);
                                 }
                             }
@@ -248,9 +265,9 @@ public class SlotDeliveryWorker extends Thread {
                                 String queue = queueIterator.next();
                                 Iterator<Slot> slotIterator = slotsOwnedByMe.get(queue).iterator();
                                 while (slotIterator.hasNext()) {
-                                    Slot slot = slotIterator.next();
-                                    if (slotManager.isThisSlotEmpty(slot)) {
-                                        slotManager.unAssignSlot(queue, slot.getStartMessageId());
+                                    Slot slotImp = slotIterator.next();
+                                    if (slotManager.isThisSlotEmpty(slotImp)) {
+                                        slotManager.unAssignSlot(queue, slotImp.getStartMessageId());
                                          slotIterator.remove();
                                     }
                                 }

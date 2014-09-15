@@ -45,11 +45,14 @@ public class JDBCConstants {
 
     // Andes Context Store tables
     protected static final String DURABLE_SUB_TABLE = "durable_subscriptions";
+    protected static final String NODE_INFO_TABLE = "node_info";
 
     // Andes Context Store table columns
     protected static final String DURABLE_SUB_ID = "sub_id";
     protected static final String DESTINATION_IDENTIFIER = "destination_identifier";
     protected static final String DURABLE_SUB_DATA = "data";
+    protected static final String NODE_ID = "node_id";
+    protected static final String NODE_DATA = "data";
 
     // prepared statements for Message Store
     protected static final String PS_INSERT_MESSAGE_PART =
@@ -145,6 +148,28 @@ public class JDBCConstants {
                     JDBCConstants.DURABLE_SUB_DATA + ") " +
                     " VALUES (?,?,?)";
 
+    protected static final String PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS =
+            "SELECT " + JDBCConstants.DESTINATION_IDENTIFIER + "," + JDBCConstants.DURABLE_SUB_DATA +
+                    " FROM " + JDBCConstants.DURABLE_SUB_TABLE;
+
+    protected static final String PS_DELETE_DURABLE_SUBSCRIPTION =
+            "DELETE FROM " + JDBCConstants.DURABLE_SUB_TABLE +
+                    " WHERE " + JDBCConstants.DESTINATION_IDENTIFIER + "=? " +
+                    " AND " + JDBCConstants.DURABLE_SUB_ID + "=?";
+
+    protected static final String PS_INSERT_NODE_INFO =
+            "INSERT INTO " + JDBCConstants.NODE_INFO_TABLE + " ( " +
+                    JDBCConstants.NODE_ID + "," +
+                    JDBCConstants.NODE_DATA + ") " +
+                    " VALUES (?,?)";
+
+    protected static final String PS_SELECT_ALL_NODE_INFO =
+            "SELECT * " +
+                    "FROM " + JDBCConstants.NODE_INFO_TABLE;
+
+    protected static final String PS_DELETE_NODE_INFO =
+            "DELETE FROM " + JDBCConstants.NODE_INFO_TABLE +
+            " WHERE " + JDBCConstants.NODE_ID + "=?";
 
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts";
@@ -174,5 +199,14 @@ public class JDBCConstants {
 
     // Andes Context Store related jdbc tasks executed
     protected static final String TASK_STORING_DURABLE_SUBSCRIPTION = "storing durable subscription";
+    protected static final String TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION = "retrieving " +
+            "all durable subscriptions";
+
+    protected static final String TASK_REMOVING_DURABLE_SUBSCRIPTION = "removing durable " +
+            "subscription. ";
+    protected static final String TASK_STORING_NODE_INFORMATION = "storing node information";
+    protected static final String TASK_RETRIEVING_ALL_NODE_DETAILS = "retrieving all node " +
+            "information";
+    protected static final String TASK_REMOVING_NODE_INFORMATION = "removing node information";
 
 }

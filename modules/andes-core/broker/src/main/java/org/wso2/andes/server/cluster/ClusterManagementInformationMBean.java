@@ -47,7 +47,7 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
      */
     @MBeanConstructor("Creates an MBean exposing an Cluster Manager")
     public ClusterManagementInformationMBean(ClusterManager clusterManager) throws JMException {
-        super(ClusterManagementInformation.class, ClusterManagementInformation.TYPE);
+        super(ClusterManagementInformation.class , ClusterManagementInformation.TYPE);
         this.clusterManager = clusterManager;
     }
 

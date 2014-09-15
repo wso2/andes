@@ -62,7 +62,7 @@ public class MessagingEngine {
     }
 
     private MessagingEngine() {
-//        inMemoryMessageStore = new H2BasedMessageStoreImpl(true);
+        inMemoryMessageStore = new H2BasedMessageStoreImpl(true);
         config = ClusterResourceHolder.getInstance().getClusterConfiguration();
         configureMessageIDGenerator();
     }
@@ -93,7 +93,7 @@ public class MessagingEngine {
             durableMessageStore = (MessageStore) o;
             durableMessageStore.initializeMessageStore(connection);
             subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-//            inMemoryMessageStore.initializeMessageStore(connection);
+            inMemoryMessageStore.initializeMessageStore(connection);
             disruptorBasedExecutor = new DisruptorBasedExecutor(durableMessageStore, null);
         } catch (Exception e) {
             log.error("Cannot initialize message store", e);
@@ -110,7 +110,7 @@ public class MessagingEngine {
     }
 
     public AndesMessagePart getMessageContentChunk(long messageID, int offsetInMessage) throws AndesException{
-        return durableMessageStore.getContent(messageID, offsetInMessage);
+        return durableMessageStore.getContent(messageID + "" , offsetInMessage);
     }
 
     public void messageReceived(AndesMessageMetadata message, long channelID) throws AndesException {

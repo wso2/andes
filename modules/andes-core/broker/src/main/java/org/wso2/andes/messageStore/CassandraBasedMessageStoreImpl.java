@@ -182,7 +182,7 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
     }
 
 
-    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException{
+    public AndesMessagePart getContent(String messageId, int offsetValue) throws AndesException{
         log.info("GET CONTENT >> id " + messageId + " offset " + offsetValue);
         byte[] content;
         AndesMessagePart messagePart;
@@ -203,7 +203,7 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
 
                 messagePart = new AndesMessagePart();
                 messagePart.setData(content);
-                messagePart.setMessageID(messageId);
+                messagePart.setMessageID(Long.parseLong(messageId));
                 messagePart.setOffSet(offset);
                 messagePart.setDataLength(content.length);
             } else {
@@ -275,7 +275,6 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
 
     @Override
     public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException {
-        //To change body of implemented methods use File | Settings | File Templates.
 
     }
 
@@ -461,6 +460,7 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
         return new ArrayList<AndesRemovableMetadata>();
     }
 
+
     @Override
     public void deleteMessageParts(List<Long> messageIdList) throws AndesException {
         try {
@@ -478,11 +478,6 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
             throw new AndesException(e);
         }
 
-    }
-
-    @Override
-    public AndesMessagePart getContent(String messageId, int offsetValue) throws AndesException {
-        return null;
     }
 
     @Override
@@ -610,11 +605,6 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
     @Override
     public void addMessageToExpiryQueue(Long messageId, Long expirationTime, boolean isMessageForTopic, String destination) throws CassandraDataAccessException {
         //To change body of implemented methods use File | Settings | File Templates.
-    }
-
-    @Override
-    public void deleteMessageMetadata(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
-
     }
 
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {

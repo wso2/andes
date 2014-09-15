@@ -36,7 +36,8 @@ public class InMemoryMessageStore implements MessageStore {
     }
 
     @Override
-    public AndesMessagePart getContent(String messageId, int offsetValue) throws AndesException {
+    public AndesMessagePart getContent(String messageId, int offsetValue) throws AndesException{
+        //todo:implement this
         return null;
     }
 
@@ -117,10 +118,8 @@ public class InMemoryMessageStore implements MessageStore {
 
     @Override
     public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException {
-        //To change body of implemented methods use File | Settings | File Templates.
+
     }
-
-
 
     @Override
     public void addMetaData(AndesMessageMetadata metadata) throws AndesException {
@@ -136,6 +135,8 @@ public class InMemoryMessageStore implements MessageStore {
     public void addMetadataToQueue(String queueName, List<AndesMessageMetadata> metadata) throws AndesException {
 
     }
+
+
 
     @Override
     public void addMessageMetaData(QueueAddress queueAddress,
@@ -300,11 +301,6 @@ public class InMemoryMessageStore implements MessageStore {
     @Override
     public void addMessageToExpiryQueue(Long messageId, Long expirationTime, boolean isMessageForTopic, String destination) throws CassandraDataAccessException {
         //To change body of implemented methods use File | Settings | File Templates.
-    }
-
-    @Override
-    public void deleteMessageMetadata(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
-
     }
 
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {

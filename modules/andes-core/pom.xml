@@ -51,10 +51,10 @@
             <artifactId>cassandra-javautils</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.apache.cassandra</groupId>
-            <artifactId>cassandra-thrift</artifactId>
-        </dependency>
+        <!--dependency>
+          <groupId>org.apache.cassandra</groupId>
+          <artifactId>cassandra-thrift</artifactId>
+        </dependency-->
 
         <dependency>
             <groupId>com.ibm.icu</groupId>
@@ -186,10 +186,10 @@
             <artifactId>junit</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.apache.thrift</groupId>
-            <artifactId>libthrift</artifactId>
-        </dependency>
+        <!--dependency>
+          <groupId>org.apache.thrift</groupId>
+          <artifactId>libthrift</artifactId>
+        </dependency-->
 
         <dependency>
             <groupId>log4j</groupId>
@@ -389,6 +389,7 @@
             <optional>true</optional>
         </dependency>
 
+
         <dependency>
             <groupId>org.fusesource.hawtdb</groupId>
             <artifactId>hawtdb</artifactId>
@@ -411,6 +412,18 @@
         </dependency>
 
         <dependency>
+            <groupId>org.wso2.carbon</groupId>
+            <artifactId>org.wso2.carbon.core</artifactId>
+        </dependency>
+
+        <!--Thrift Dependency-->
+
+        <dependency>
+            <groupId>libthrift.wso2</groupId>
+            <artifactId>libthrift</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>tomcat</groupId>
             <artifactId>naming-factory</artifactId>
         </dependency>
@@ -419,7 +432,6 @@
             <groupId>tomcat</groupId>
             <artifactId>naming-resources</artifactId>
         </dependency>
-
     </dependencies>
 
     <build>
