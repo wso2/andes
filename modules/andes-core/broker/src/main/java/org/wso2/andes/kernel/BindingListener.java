@@ -18,35 +18,31 @@
 
 package org.wso2.andes.kernel;
 
-import org.apache.commons.configuration.Configuration;
+/**
+ * Listener listening for binding changes local and cluster
+ */
+public interface BindingListener {
 
-public interface DurableStoreConnection {
+    public static enum BindingChange {
+        Added,
+        Deleted
+    }
 
     /**
-     * Initialize database connection
+     * handle when an binding has changed in cluster
      *
-     * @param configuration storage configuration
+     * @param binding    binding changed
+     * @param changeType the change
      * @throws AndesException
      */
-    public void initialize(Configuration configuration) throws AndesException;
+    public void handleClusterBindingsChanged(AndesBinding binding, BindingChange changeType) throws AndesException;
 
     /**
-     * Close database connection
-     */
-    public void close();
-
-    /**
-     * check if connection is live
+     * handle when binding is changed in local node
      *
-     * @return if connection is live
+     * @param binding    binding changed
+     * @param changeType the change
+     * @throws AndesException
      */
-    public boolean isLive();
-
-    /**
-     * return instance of connection
-     *
-     * @return instance
-     */
-    public Object getConnection();
-
+    public void handleLocalBindingsChanged(AndesBinding binding, BindingChange changeType) throws AndesException;
 }

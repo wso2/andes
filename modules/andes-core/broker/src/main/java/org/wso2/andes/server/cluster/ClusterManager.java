@@ -124,12 +124,8 @@ public class ClusterManager {
 
         // Below steps are carried out only by the 0th node of the list.
         if (globalQueueSyncId == 0) {
-            log.info("===Removing persisted states of the left node:" + deletedNodeId);
-            //Update the durable store
-            andesContextStore.removeNodeData(deletedNodeId);
-
             //clear persisted states of disappeared node
-            clearAllPersistedStatesOfDissapearedNode(deletedNodeId);
+            clearAllPersistedStatesOfDisappearedNode(deletedNodeId);
 
             // check and copy back messages of node queue belonging to disappeared node
             checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(AndesUtils.getNodeQueueNameForNodeId(deletedNodeId));
@@ -211,8 +207,9 @@ public class ClusterManager {
         try {
 
             //clear stored node IDS and mark subscriptions of node as closed
-            clearAllPersistedStatesOfDissapearedNode(nodeId);
+            clearAllPersistedStatesOfDisappearedNode(nodeId);
             //stop all global queue Workers
+            log.info("Stopping all global queue workers locally");
             globalQueueManager.removeAllQueueWorkersLocally();
             //if in clustered mode copy back node queue messages back to global queue
             if (isClusteringEnabled) {
@@ -250,7 +247,7 @@ public class ClusterManager {
      * @param destinationQueueName name of queue messages should be removed
      * @throws AndesException
      */
-    public void removeInMemoryMessagesAccumulated(String destinationQueueName) {
+    public void removeInMemoryMessagesAccumulated(String destinationQueueName) throws AndesException {
         //remove in-memory messages accumulated due to sudden subscription closing
         QueueDeliveryWorker queueDeliveryWorker = ClusterResourceHolder.getInstance().getQueueDeliveryWorker();
         if (queueDeliveryWorker != null) {
@@ -297,7 +294,7 @@ public class ClusterManager {
             andesContextStore.removeNodeData(node);
         }
 
-        clearAllPersistedStatesOfDissapearedNode(nodeId);
+        clearAllPersistedStatesOfDisappearedNode(nodeId);
         log.info("NodeID:" + this.nodeId);
         andesContextStore.storeNodeDetails(nodeId, config.getBindIpAddress());
 
@@ -321,13 +318,13 @@ public class ClusterManager {
          * copy back node queue messages of them back to global queue.
          * We need to clear up current node's state as well as there might have been a node with same id and it was killed
          */
-        clearAllPersistedStatesOfDissapearedNode(nodeId);
+        clearAllPersistedStatesOfDisappearedNode(nodeId);
 
         List<String> storedNodes = new ArrayList<String>(andesContextStore.getAllStoredNodeData().keySet());
         List<String> availableNodeIds = hazelcastAgent.getMembersNodeIDs();
         for (String storedNodeId : storedNodes) {
             if (!availableNodeIds.contains(storedNodeId)) {
-                clearAllPersistedStatesOfDissapearedNode(storedNodeId);
+                clearAllPersistedStatesOfDisappearedNode(storedNodeId);
                 checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(AndesUtils.getNodeQueueNameForNodeId(storedNodeId));
             }
         }
@@ -396,24 +393,15 @@ public class ClusterManager {
         }
     }
 
-    private void clearAllPersistedStatesOfDissapearedNode(String nodeID) throws AndesException {
+    private void clearAllPersistedStatesOfDisappearedNode(String nodeID) throws AndesException {
 
         log.info("Clearing the Persisted State of Node with ID " + nodeID);
 
-        SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-
         //remove node from nodes list
         andesContextStore.removeNodeData(nodeID);
+        //close all local queue and topic subscriptions belonging to the node
+        ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllClusterSubscriptionsOfNode(nodeID);
 
-        if (!isClusteringEnabled) {
-            //if in stand-alone mode close all local queue and topic subscriptions
-            synchronized (this) {
-                ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllLocalSubscriptionsOfNode(nodeID);
-            }
-        } else {
-            //close all cluster queue and topic subscriptions for the node
-            ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllClusterSubscriptionsOfNode(nodeID);
-        }
     }
 
     public String getNodeId(Member node) {

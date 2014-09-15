@@ -18,6 +18,8 @@
 
 package org.wso2.andes.kernel;
 
+import org.apache.commons.lang.builder.HashCodeBuilder;
+
 import java.io.Serializable;
 
 public class AndesBinding implements Serializable {
@@ -26,9 +28,76 @@ public class AndesBinding implements Serializable {
     public String routingKey;
     public AndesQueue boundQueue;
 
+    /**
+     * create an instance of andes binding
+     *
+     * @param boundExchangeName name of exchange binding carries
+     * @param boundQueue        name of the queue bound
+     * @param routingKey        routing key of the binding
+     */
     public AndesBinding(String boundExchangeName, AndesQueue boundQueue, String routingKey) {
         this.boundExchangeName = boundExchangeName;
         this.boundQueue = boundQueue;
         this.routingKey = routingKey;
     }
+
+    /**
+     * create an instance of andes binding
+     *
+     * @param bindingAsStr binding information as encoded string
+     */
+    public AndesBinding(String bindingAsStr) {
+        String[] propertyToken = bindingAsStr.split("\\|");
+        for (String pt : propertyToken) {
+            String[] tokens = pt.split("&");
+            if (tokens[0].equals("boundExchange")) {
+                this.boundExchangeName = tokens[1];
+            } else if (tokens[0].equals("boundQueue")) {
+                this.boundQueue = new AndesQueue(tokens[1]);
+            } else if (tokens[0].equals("routingKey")) {
+                this.routingKey = tokens[1];
+            }
+        }
+    }
+
+    public String toString() {
+        StringBuffer buf = new StringBuffer();
+        buf.append("[Binding]")
+                .append("E=").append(boundExchangeName)
+                .append("/Q=").append(boundQueue.queueName)
+                .append("/RK=").append(routingKey)
+                .append("/D=").append(boundQueue.isDurable)
+                .append("/EX=").append(boundQueue.isExclusive);
+        return buf.toString();
+    }
+
+    public String encodeAsString() {
+        StringBuffer buf = new StringBuffer();
+        buf.append("boundExchange&").append(boundExchangeName)
+                .append("|boundQueue&").append(boundQueue.encodeAsString())
+                .append("|routingKey&").append(routingKey);
+        return buf.toString();
+    }
+
+    public boolean equals(Object o) {
+        if (o instanceof AndesBinding) {
+            AndesBinding c = (AndesBinding) o;
+            if (this.boundExchangeName.equals(c.boundExchangeName) &&
+                    this.boundQueue.queueName.equals(c.boundQueue.queueName) &&
+                    this.routingKey.equals(c.routingKey)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public int hashCode() {
+        return new HashCodeBuilder(17, 31).
+                append(boundExchangeName).
+                append(boundQueue.queueName).
+                append(routingKey).
+                toHashCode();
+    }
+
+
 }

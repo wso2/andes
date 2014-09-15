@@ -226,6 +226,7 @@ public class BindingFactory
                 removeBinding(existingMapping);
             }
 
+            //save only durable bindings
             if (b.isDurable() && !restore)
             {
                      _configSource.getDurableConfigurationStore().bindQueue
@@ -279,9 +280,11 @@ public class BindingFactory
 
         removeBinding(b.getBindingKey(), b.getQueue(), b.getExchange(), b.getArguments());
         try {
-
-            //inform andes kernel to remove binding
-            QpidAMQPBridge.getInstance().removeBinding(b, getVirtualHost());
+            //we only inform the kernel about DURABLE bindings
+            if(b.isDurable() ) {
+                //inform andes kernel to remove binding
+                QpidAMQPBridge.getInstance().removeBinding(b, getVirtualHost());
+            }
 
         } catch (Exception e) {
             throw new AMQInternalException("Error while reamove Binding:"+ e.getMessage(),e);

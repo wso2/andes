@@ -24,8 +24,11 @@ import com.hazelcast.core.Member;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.MessagePurgeHandler;
+import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
+import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
-import org.wso2.andes.server.cluster.coordination.SubscriptionNotification;
 
 import java.util.*;
 
@@ -51,9 +54,19 @@ public class HazelcastAgent {
     private ITopic subscriptionChangedNotifierChannel;
 
     /**
+     * Distributed topic to communicate binding change notifications among cluster nodes.
+     */
+    private ITopic bindingChangeNotifierChannel;
+
+    /**
      * Distributed topic to communicate queue purge notifications among cluster nodes.
      */
     private ITopic queueChangedNotifierChannel;
+
+    /**
+     * Distributed topic to communicate exchange change notification amoung cluster nodes.
+     */
+    private ITopic exchangeChangeNotifierChannel;
 
     /**
      * Unique ID generated to represent the node.
@@ -69,13 +82,46 @@ public class HazelcastAgent {
         this.hazelcastInstance = AndesContext.getInstance().getHazelcastInstance();
         this.hazelcastInstance.getCluster().addMembershipListener(new AndesMembershipListener());
 
+        /**
+         * subscription changes
+         */
         this.subscriptionChangedNotifierChannel = this.hazelcastInstance.getTopic(
                 CoordinationConstants.HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME);
-        this.subscriptionChangedNotifierChannel.addMessageListener(new SubscriptionChangedListener());
+        ClusterSubscriptionChangedListener clusterSubscriptionChangedListener = new ClusterSubscriptionChangedListener();
+        clusterSubscriptionChangedListener.addSubscriptionListener(new ClusterCoordinationHandler(this));
+        this.subscriptionChangedNotifierChannel.addMessageListener(clusterSubscriptionChangedListener);
 
+
+        /**
+         * exchange changes
+         */
+        this.exchangeChangeNotifierChannel = this.hazelcastInstance.getTopic(
+                CoordinationConstants.HAZELCAST_EXCHANGE_CHANGED_NOTIFIER_TOPIC_NAME);
+        ClusterExchangeChangedListener clusterExchangeChangedListener = new ClusterExchangeChangedListener();
+        clusterExchangeChangedListener.addExchangeListener(new ClusterCoordinationHandler(this));
+        this.exchangeChangeNotifierChannel.addMessageListener(clusterExchangeChangedListener);
+
+
+        /**
+         * queue changes
+         */
         this.queueChangedNotifierChannel = this.hazelcastInstance.getTopic(
                 CoordinationConstants.HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME);
-        this.queueChangedNotifierChannel.addMessageListener(new QueueChangedListener());
+        ClusterQueueChangedListener clusterQueueChangedListener = new ClusterQueueChangedListener();
+        clusterQueueChangedListener.addQueueListener(new ClusterCoordinationHandler(this));
+        clusterQueueChangedListener.addQueueListener(new MessagePurgeHandler());
+        this.queueChangedNotifierChannel.addMessageListener(clusterQueueChangedListener);
+
+
+        /**
+         * binding changes
+         */
+        this.bindingChangeNotifierChannel = this.hazelcastInstance.getTopic(
+                CoordinationConstants.HAZELCAST_BINDING_CHANGED_NOTIFIER_TOPIC_NAME);
+        ClusterBindingChangedListener clusterBindingChangedListener = new ClusterBindingChangedListener();
+        clusterBindingChangedListener.addBindingListener(new ClusterCoordinationHandler(this));
+        this.bindingChangeNotifierChannel.addMessageListener(clusterBindingChangedListener);
+
 
         IdGenerator idGenerator = hazelcastInstance.getIdGenerator(CoordinationConstants.HAZELCAST_ID_GENERATOR_NAME);
         this.uniqueIdOfLocalMember = (int) idGenerator.newId();
@@ -88,7 +134,7 @@ public class HazelcastAgent {
      *
      * @return HazelcastAgent
      */
-    public static HazelcastAgent getInstance() {
+    public static synchronized HazelcastAgent getInstance() {
         if (hazelcastAgentInstance == null) {
             synchronized (HazelcastAgent.class) {
                 if (hazelcastAgentInstance == null) {
@@ -198,7 +244,8 @@ public class HazelcastAgent {
     }
 
     /**
-     * Get the index where the local node is placed when all the cluster nodes are sorted according to their UUID.
+     * Get the index where the local node is placed when all
+     * the cluster nodes are sorted according to their UUID.
      *
      * @return
      */
@@ -206,13 +253,40 @@ public class HazelcastAgent {
         return this.getIndexOfNode(this.getLocalMember());
     }
 
-    /**
-     * Send cluster wide subscription change notification.
-     *
-     * @param subscriptionNotification
-     */
-    public void notifySubscriberChanged(SubscriptionNotification subscriptionNotification) {
-        log.info("Handling cluster gossip: Sending subscriber changed notification to cluster...");
-        this.subscriptionChangedNotifierChannel.publish(subscriptionNotification);
+
+    public void notifySubscriptionsChanged(ClusterNotification clusterNotification) {
+        log.info("GOSSIP: " + clusterNotification.getDescription());
+        this.subscriptionChangedNotifierChannel.publish(clusterNotification);
+    }
+
+    public void notifyQueuesChanged(ClusterNotification clusterNotification) throws AndesException {
+        log.info("GOSSIP: " + clusterNotification.getDescription());
+        try {
+            this.queueChangedNotifierChannel.publish(clusterNotification);
+        } catch (Exception e) {
+            log.error("Error while sending queue change notification", e);
+            throw new AndesException("Error while sending queue change notification", e);
+        }
+
+    }
+
+    public void notifyExchangesChanged(ClusterNotification clusterNotification) throws AndesException {
+        log.info("GOSSIP: " + clusterNotification.getDescription());
+        try {
+            this.exchangeChangeNotifierChannel.publish(clusterNotification);
+        } catch (Exception e) {
+            log.error("Error while sending exchange change notification", e);
+            throw new AndesException("Error while sending exchange change notification", e);
+        }
+    }
+
+    public void notifyBindingsChanged(ClusterNotification clusterNotification) throws AndesException {
+        log.info("GOSSIP: " + clusterNotification.getDescription());
+        try {
+            this.bindingChangeNotifierChannel.publish(clusterNotification);
+        } catch (Exception e) {
+            log.error("Error while sending binding change notification", e);
+            throw new AndesException("Error while sending binding change notification", e);
+        }
     }
 }

@@ -5,7 +5,6 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.nio.ByteBuffer;
-import java.util.Collection;
 
 
 public class MQTTChannel {
@@ -85,7 +84,7 @@ public class MQTTChannel {
             localSubscription.setSubscriptionID(clientID);
             localSubscription.setIsActive(false);
 
-            ClusterResourceHolder.getInstance().getSubscriptionManager().closeSubscription(localSubscription);
+            ClusterResourceHolder.getInstance().getSubscriptionManager().closeLocalSubscription(localSubscription);
 
         } catch (AndesException e) {
             e.printStackTrace();

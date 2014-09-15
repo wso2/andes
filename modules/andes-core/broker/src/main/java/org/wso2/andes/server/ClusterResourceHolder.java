@@ -17,12 +17,12 @@
 */
 package org.wso2.andes.server;
 
+import org.wso2.andes.kernel.AndesRecoveryTask;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cassandra.TopicDeliveryWorker;
 import org.wso2.andes.server.cluster.ClusterManager;
-import org.wso2.andes.server.cluster.coordination.SubscriptionCoordinationManager;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.wso2.andes.server.store.CassandraMessageStore;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
@@ -60,16 +60,12 @@ public class ClusterResourceHolder {
 
 
     /**
-     * Holds Subscription Coordination manager
+     * Holds a reference to andes recovery task
      */
-    private SubscriptionCoordinationManager subscriptionCoordinationManager;
+    private AndesRecoveryTask andesRecoveryTask;
 
     /**
-     * Holds Topic Subscription Coordination manager
-     */
-    //private TopicSubscriptionCoordinationManager topicSubscriptionCoordinationManager;
-    /*
-    *  Holds Cluster Manager Instance
+     * holds cluster manager
      */
     private ClusterManager clusterManager;
 
@@ -89,7 +85,7 @@ public class ClusterResourceHolder {
         if (resourceHolder == null) {
 
             synchronized (ClusterResourceHolder.class) {
-                if(resourceHolder == null)  {
+                if (resourceHolder == null) {
                     resourceHolder = new ClusterResourceHolder();
                 }
             }
@@ -115,14 +111,11 @@ public class ClusterResourceHolder {
         this.subscriptionManager = subscriptionManager;
     }
 
-
-    public void setClusterManager(ClusterManager clusterManager)
-    {
+    public void setClusterManager(ClusterManager clusterManager) {
         this.clusterManager = clusterManager;
     }
 
-    public ClusterManager getClusterManager()
-    {
+    public ClusterManager getClusterManager() {
         return this.clusterManager;
     }
 
@@ -134,7 +127,6 @@ public class ClusterResourceHolder {
         this.clusterConfiguration = clusterConfiguration;
     }
 
-
     public VirtualHostConfigSynchronizer getVirtualHostConfigSynchronizer() {
         return virtualHostConfigSynchronizer;
     }
@@ -143,21 +135,13 @@ public class ClusterResourceHolder {
         this.virtualHostConfigSynchronizer = virtualHostConfigSynchronizer;
     }
 
-    public SubscriptionCoordinationManager getSubscriptionCoordinationManager() {
-        return subscriptionCoordinationManager;
+    public AndesRecoveryTask getAndesRecoveryTask() {
+        return andesRecoveryTask;
     }
 
-    public void setSubscriptionCoordinationManager(SubscriptionCoordinationManager subscriptionCoordinationManager) {
-        this.subscriptionCoordinationManager = subscriptionCoordinationManager;
+    public void setAndesRecoveryTask(AndesRecoveryTask andesRecoveryTask) {
+        this.andesRecoveryTask = andesRecoveryTask;
     }
-
-//    public TopicSubscriptionCoordinationManager getTopicSubscriptionCoordinationManager() {
-//        return topicSubscriptionCoordinationManager;
-//    }
-
-//    public void setTopicSubscriptionCoordinationManager(TopicSubscriptionCoordinationManager topicSubscriptionCoordinationManager) {
-//        this.topicSubscriptionCoordinationManager = topicSubscriptionCoordinationManager;
-//    }
 
     public TopicDeliveryWorker getTopicDeliveryWorker() {
         return topicDeliveryWorker;
@@ -179,7 +163,7 @@ public class ClusterResourceHolder {
         return messageExpirationWorker;
     }
 
-        public void setMessageExpirationWorker(MessageExpirationWorker messageExpirationWorker) {
+    public void setMessageExpirationWorker(MessageExpirationWorker messageExpirationWorker) {
         this.messageExpirationWorker = messageExpirationWorker;
     }
 }

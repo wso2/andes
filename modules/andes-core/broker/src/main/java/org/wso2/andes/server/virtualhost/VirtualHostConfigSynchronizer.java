@@ -9,46 +9,184 @@ import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.BindingFactory;
-import org.wso2.andes.server.cluster.coordination.SubscriptionListener;
-import org.wso2.andes.server.cluster.coordination.SubscriptionNotification;
 import org.wso2.andes.server.exchange.Exchange;
+import org.wso2.andes.server.exchange.ExchangeInUseException;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.AMQQueueFactory;
 import org.wso2.andes.server.store.ConfigurationRecoveryHandler;
-import org.wso2.andes.subscription.BasicSubscription;
-import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class VirtualHostConfigSynchronizer implements
         ConfigurationRecoveryHandler.QueueRecoveryHandler,
         ConfigurationRecoveryHandler.ExchangeRecoveryHandler,
-        ConfigurationRecoveryHandler.BindingRecoveryHandler, SubscriptionListener {
+        ConfigurationRecoveryHandler.BindingRecoveryHandler {
 
     private final VirtualHost _virtualHost;
     private static final Logger _logger = Logger.getLogger(VirtualHostConfigSynchronizer.class);
-    private int _syncInterval;
-    private boolean running = false;
-    private SubscriptionStore subscriptionStore;
-
     private static Log log = LogFactory.getLog(VirtualHostConfigSynchronizer.class);
 
 
-    public VirtualHostConfigSynchronizer(VirtualHost _virtualHost, int synchInterval) {
+    public VirtualHostConfigSynchronizer(VirtualHost _virtualHost) {
         this._virtualHost = _virtualHost;
-        this._syncInterval = synchInterval;
-        this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+    }
+
+
+    @Override
+    public ConfigurationRecoveryHandler.BindingRecoveryHandler completeExchangeRecovery() {
+        return null;
     }
 
     @Override
+    public ConfigurationRecoveryHandler.ExchangeRecoveryHandler completeQueueRecovery() {
+        return null;
+    }
+
+    @Override
+    public void completeBindingRecovery() {
+
+    }
+
+    /**
+     * add an exchange to the local node
+     *
+     * @param exchange exchange to be created
+     */
+    public void clusterExchangeAdded(AndesExchange exchange) throws AndesException {
+        try {
+            exchange(exchange.exchangeName, exchange.type, exchange.autoDelete);
+            AndesContext.getInstance().getAMQPConstructStore().addExchange(exchange, false);
+        } catch (Exception e) {
+            log.error("could not add cluster exchange", e);
+            throw new AndesException("could not add cluster exchange", e);
+        }
+    }
+
+    /**
+     * remove exchange from local node
+     *
+     * @param exchange exchange to be removed
+     */
+    public void clusterExchangeRemoved(AndesExchange exchange) throws AndesException {
+        try {
+            removeExchange(exchange.exchangeName);
+        } catch (Exception e) {
+            log.error("could not remove cluster exchange", e);
+            throw new AndesException("could not remove cluster exchange", e);
+        }
+    }
+
+    /**
+     * create a queue in local node
+     *
+     * @param queue queue to be created
+     */
+    public void clusterQueueAdded(AndesQueue queue) throws AndesException {
+        try {
+            queue(queue.queueName, queue.queueOwner, queue.isExclusive, null);
+            AndesContext.getInstance().getAMQPConstructStore().addQueue(queue, false);
+        } catch (Exception e) {
+            log.error("could not add cluster queue", e);
+            throw new AndesException("could not add cluster queue : " + queue.toString(), e);
+        }
+
+    }
+
+    /**
+     * remove queue from local node
+     *
+     * @param queue queue to be removed
+     */
+    public void clusterQueueRemoved(AndesQueue queue) throws AndesException {
+        try {
+            removeQueue(queue.queueName);
+            AndesContext.getInstance().getAMQPConstructStore().removeQueue(queue.queueName, false);
+        } catch (Exception e) {
+            log.error("could not remove cluster queue", e);
+            throw new AndesException("could not remove cluster queue : " + queue.toString(), e);
+        }
+    }
+
+    /**
+     * add binding to the local node
+     *
+     * @param binding binding to be added
+     */
+    public void clusterBindingAdded(AndesBinding binding) throws AndesException {
+        try {
+            binding(binding.boundExchangeName, binding.boundQueue.queueName, binding.routingKey, null);
+            AndesContext.getInstance().getAMQPConstructStore().addBinding(binding, false);
+        } catch (Exception e) {
+            log.error("could not add cluster binding + " + binding.toString(), e);
+            throw new AndesException("could not add cluster binding : " + binding.toString(), e);
+        }
+    }
+
+    /**
+     * remove binding rom local node
+     *
+     * @param binding binding to be removed
+     */
+    public void clusterBindingRemoved(AndesBinding binding) throws AndesException {
+        try {
+            removeBinding(binding.boundExchangeName, binding.boundQueue.queueName, binding.routingKey, null);
+        } catch (Exception e) {
+            log.error("could not remove cluster binding + " + binding.toString(), e);
+            throw new AndesException("could not remove cluster binding : " + binding.toString(), e);
+        }
+    }
+
+    //add the exchange into internal qpid if NOT present
+    @Override
+    public void exchange(String exchangeName, String type, boolean autoDelete) {
+        synchronized (this) {
+            try {
+                Exchange exchange;
+                AMQShortString exchangeNameSS = new AMQShortString(exchangeName);
+                exchange = _virtualHost.getExchangeRegistry().getExchange(exchangeNameSS);
+                if (exchange == null) {
+                    exchange = _virtualHost.getExchangeFactory().createExchange(exchangeNameSS, new AMQShortString(type), true, autoDelete, 0);
+                    _virtualHost.getExchangeRegistry().registerExchange(exchange);
+                    _logger.info("Added Exchange: " + exchangeName
+                            + ", Type: " + type + ", autoDelete: " + autoDelete);
+                }
+            } catch (AMQException e) {
+                log.error("Error while creating Exchanges", e);
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    //add the queue into internal qpid if NOT present
+    @Override
+    public void queue(String queueName, String owner, boolean exclusive, FieldTable arguments) {
+
+        synchronized (this) {
+            try {
+                AMQShortString queueNameShortString = new AMQShortString(queueName);
+
+                AMQQueue q = _virtualHost.getQueueRegistry().getQueue(queueNameShortString);
+
+                if (q == null) {
+                    //if a new durable queue is added we can know it here
+                    q = AMQQueueFactory.createAMQQueueImpl(queueNameShortString, true, owner == null ? null : new AMQShortString(owner), false, exclusive, _virtualHost,
+                            arguments);
+                    _virtualHost.getQueueRegistry().registerQueue(q);
+                    _logger.info("Queue sync - Added Queue: " + queueName
+                            + ", Owner: " + owner + ", IsExclusive: " + exclusive + ", Arguments: " + arguments);
+                }
+            } catch (AMQException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    //add the binding into internal qpid if NOT present
+    @Override
     public void binding(String exchangeName, String queueName, String bindingKey, ByteBuffer buf) {
-        synchronized( this ) {
+        synchronized (this) {
             try {
                 Exchange exchange = _virtualHost.getExchangeRegistry().getExchange(exchangeName);
                 if (exchange == null) {
@@ -91,215 +229,21 @@ public class VirtualHostConfigSynchronizer implements
         }
     }
 
-    @Override
-    public void completeBindingRecovery() {
-
-    }
-
-    @Override
-    public void exchange(String exchangeName, String type, boolean autoDelete) {
-        synchronized( this ) {
-            try {
-                Exchange exchange;
-                AMQShortString exchangeNameSS = new AMQShortString(exchangeName);
-                exchange = _virtualHost.getExchangeRegistry().getExchange(exchangeNameSS);
-                if (exchange == null) {
-                    exchange = _virtualHost.getExchangeFactory().createExchange(exchangeNameSS, new AMQShortString(type), true, autoDelete, 0);
-                    _virtualHost.getExchangeRegistry().registerExchange(exchange);
-                    _logger.info("Added Exchange: " + exchangeName
-                            + ", Type: " + type + ", autoDelete: " + autoDelete);
-                }
-            } catch (AMQException e) {
-                log.error("Error while creating Exchanges", e);
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    @Override
-    public ConfigurationRecoveryHandler.BindingRecoveryHandler completeExchangeRecovery() {
-        return null;
-    }
-
-    @Override
-    public void queue(String queueName, String owner, boolean exclusive, FieldTable arguments) {
-
-        synchronized( this ) {
-            try {
-                AMQShortString queueNameShortString = new AMQShortString(queueName);
-
-                AMQQueue q = _virtualHost.getQueueRegistry().getQueue(queueNameShortString);
-
-                if (q == null) {
-                    //if a new durable queue is added we can know it here
-                    q = AMQQueueFactory.createAMQQueueImpl(queueNameShortString, true, owner == null ? null : new AMQShortString(owner), false, exclusive, _virtualHost,
-                            arguments);
-                    _virtualHost.getQueueRegistry().registerQueue(q);
-                    _logger.info("Queue sync - Added Queue: " + queueName
-                            + ", Owner: " + owner + ", IsExclusive: " + exclusive + ", Arguments: " + arguments);
-                }
-            } catch (AMQException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    @Override
-    public ConfigurationRecoveryHandler.ExchangeRecoveryHandler completeQueueRecovery() {
-        return null;
-    }
-
-    public void start() {
-        if (!running && AndesContext.getInstance().getSubscriptionStore() != null) {
-            running = true;
-            Thread t = new Thread(new VirtualHostConfigSynchronizingTask(this));
-            t.setName(this.getClass().getSimpleName());
-            t.start();
-        }
-    }
-
-    public void stop() {
-        running = false;
-    }
-
-    @Override
-    public void subscriptionsChanged(SubscriptionNotification subscriptionNotification) {
-        log.info("Updating subscription maps");
-        BasicSubscription subscription = new BasicSubscription(subscriptionNotification.getEncodedString());
-        ClusterResourceHolder.getInstance().getSubscriptionManager().updateClusterSubscriptionMaps(subscription, subscriptionNotification.getStatus());
-
-        log.info("Synchronizing Exchanges, Queues and Bindings...");
-        syncExchangesQueuesAndBindings(subscriptionNotification);
-    }
-
-
     /**
-     * reload subscriptions
-     * sync exchanges
-     * sync queues
-     * sync bindings
+     * Remove binding from internal qpid node
+     *
+     * @param exchangeName exchange of the binding
+     * @param queueName    name of the queue of binding
+     * @param bindingKey   routing key
+     * @param buf          arguments
+     * @throws AMQSecurityException
+     * @throws AMQInternalException
      */
-    public void syncExchangesQueuesAndBindings() {
-        if (subscriptionStore != null) {
-            //record older queues and bindings
-            List<AndesQueue> olderQueues = subscriptionStore.getDurableQueues();
-            Map<String, AndesQueue> olderQueueMap = new HashMap<String, AndesQueue>();
-            for (AndesQueue q : olderQueues) {
-                olderQueueMap.put(q.queueName, q);
-            }
-            List<AndesBinding> olderBindings = subscriptionStore.getDurableBindings();
-            Map<String, AndesBinding> olderBindingMap = new HashMap<String, AndesBinding>();
-            for (AndesBinding b : olderBindings) {
-                olderBindingMap.put(b.boundExchangeName.concat(b.routingKey).concat(b.boundQueue.queueName), b);
-            }
-            //update cluster subscriptions
-            ClusterResourceHolder.getInstance().getSubscriptionManager().reloadSubscriptionsFromStorage();
-            syncExchanges(this);
-            syncQueues(this, olderQueueMap);
-            syncBindngs(this, olderBindingMap);
-        }
-    }
-
-    public void syncExchangesQueuesAndBindings(SubscriptionNotification subscriptionNotification) {
-        try {
-
-            if(subscriptionNotification != null && subscriptionNotification.isDurable()){
-
-                AndesExchange exchange =  subscriptionNotification.getAndesExchange();
-                AndesQueue queue = subscriptionNotification.getAndesQueue();
-                AndesBinding binding = subscriptionNotification.getAndesBinding();
-
-                if(subscriptionNotification.getStatus() == SubscriptionChange.Added){
-                    log.info("Handling added subscription");
-                    exchange(exchange.exchangeName, exchange.type, exchange.autoDelete != 0);
-                    queue(queue.queueName, queue.queueOwner, queue.isExclusive, null);
-                    binding(binding.boundExchangeName, binding.boundQueue.queueName, binding.routingKey, null);
-                }
-                else if(subscriptionNotification.getStatus() == SubscriptionChange.Deleted){
-                    // SubscriptionChange.Deleted are triggered only as a result of queue deletion
-                    log.info("Handling deleted subscription");
-                    removeQueue(queue.queueName);
-                    removeBinding(binding.boundExchangeName, queue.queueName, binding.routingKey, null);
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private class VirtualHostConfigSynchronizingTask implements Runnable {
-        private VirtualHostConfigSynchronizer syc;
-
-        public VirtualHostConfigSynchronizingTask(VirtualHostConfigSynchronizer synchronizer) {
-            this.syc = synchronizer;
-        }
-
-
-        @Override
-        public void run() {
-            while (running) {
-                try {
-                    syncExchangesQueuesAndBindings();
-
-                } catch (Exception e) {
-                    log.error("Error while syncing Virtual host details ", e);
-                }
-                try {
-                    Thread.sleep(_syncInterval * 1000);
-                } catch (InterruptedException e) {
-                    // ignore
-                }
-
-            }
-        }
-    }
-
-    private void syncQueues(VirtualHostConfigSynchronizer vhcs, Map<String, AndesQueue> olderQueueMap) {
-        List<AndesQueue> queues = subscriptionStore.getDurableQueues();
-        for (AndesQueue queue : queues) {
-            vhcs.queue(queue.queueName, queue.queueOwner, queue.isExclusive, null);
-            olderQueueMap.remove(queue.queueName);
-        }
-        //remove queues
-        for (AndesQueue q : olderQueueMap.values()) {
-            removeQueue(q.queueName);
-        }
-    }
-
-    private void syncBindngs(VirtualHostConfigSynchronizer vhcs, Map<String, AndesBinding> olderBindingMap) {
-        try {
-            List<AndesBinding> bindings = subscriptionStore.getDurableBindings();
-            for (AndesBinding binding : bindings) {
-                vhcs.binding(binding.boundExchangeName, binding.boundQueue.queueName, binding.routingKey, null);
-                olderBindingMap.remove(binding.boundExchangeName.concat(binding.routingKey).concat(binding.boundQueue.queueName));
-            }
-            //remove bindings
-            for (AndesBinding binding : olderBindingMap.values()) {
-                removeBinding(binding.boundExchangeName, binding.boundQueue.queueName, binding.routingKey, null);
-            }
-        } catch (Exception e) {
-            log.error("Error while syncing bindings ", e);
-            throw new RuntimeException(e);
-        }
-    }
-
-    private void syncExchanges(VirtualHostConfigSynchronizer vhcs) {
-        try {
-            List<AndesExchange> exchanges = subscriptionStore.getExchanges();
-            for (AndesExchange exchange : exchanges) {
-                vhcs.exchange(exchange.exchangeName, exchange.type, exchange.autoDelete != 0);
-            }
-        } catch (AndesException e) {
-            log.error("Error while syncing exchanges");
-        }
-    }
-
     private void removeBinding(String exchangeName, String queueName, String bindingKey, ByteBuffer buf) throws AMQSecurityException, AMQInternalException {
 
-        synchronized( this ) {
+        synchronized (this) {
             Exchange exchange = _virtualHost.getExchangeRegistry().getExchange(exchangeName);
             if (exchange == null) {
-                //_logger.error("Unknown exchange: " + exchangeName + ", cannot remove binding : " + queueName);
                 return;
             }
 
@@ -336,7 +280,13 @@ public class VirtualHostConfigSynchronizer implements
         }
     }
 
-    private void removeQueue(String queueName) {
+    /**
+     * remove queue from internal qpid node
+     *
+     * @param queueName name of the queue to be removed
+     * @throws AndesException
+     */
+    private void removeQueue(String queueName) throws AndesException {
 
         synchronized (this) {
             AMQShortString queueNameShortString = new AMQShortString(queueName);
@@ -350,10 +300,24 @@ public class VirtualHostConfigSynchronizer implements
                     q.delete();
                 } catch (AMQException e) {
                     _logger.error("Error while removing the queue " + queueName);
-                    throw new RuntimeException(e);
+                    throw new AndesException(e);
                 }
                 _logger.info("Queue sync - Removed Queue: " + queueName);
             }
+        }
+    }
+
+    /**
+     * remove exchange from internal qpid node
+     *
+     * @param exchangeName name of exchange to be removed
+     * @throws AMQException
+     */
+    private void removeExchange(String exchangeName) throws AMQException {
+
+        synchronized (this) {
+            _virtualHost.getExchangeRegistry().unregisterExchange(exchangeName, true);
+            _logger.info("Exchange sync - Removed Exchange: " + exchangeName);
         }
     }
 }
