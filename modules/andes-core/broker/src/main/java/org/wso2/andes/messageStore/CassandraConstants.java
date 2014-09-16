@@ -35,6 +35,13 @@ public class CassandraConstants {
     public final static String EXCHANGE_COLUMN_FAMILY = "ExchangeColumnFamily";
     public final static String EXCHANGE_ROW = "ExchangesRow";
 
+    //column family to keep track of queues created
+    public final static String QUEUE_COLUMN_FAMILY = "QueueColumnFamily";
+    public final static String QUEUE_ROW = "QueuesRow";
+
+    //column family to keep track of bindings
+    public final static String BINDING_COLUMN_FAMILY = "BindingColumnFamily";
+
     //column family to add and remove message content with their <messageID,offset> values
     public final static String MESSAGE_CONTENT_COLUMN_FAMILY = "MessageContent";
 
@@ -43,6 +50,9 @@ public class CassandraConstants {
 
     //column family to keep messages for global queues (<global-queue,messageID>)
     public final static String GLOBAL_QUEUES_COLUMN_FAMILY = "GlobalQueue";
+
+    //column family to keep message metadata for queues
+    public final static String META_DATA_COLUMN_FAMILY = "MetaData";
 
     //column family to keep track of message IDs for topics <nodeQueueName,MessageID>
     public final static String PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY = "pubSubMessages";

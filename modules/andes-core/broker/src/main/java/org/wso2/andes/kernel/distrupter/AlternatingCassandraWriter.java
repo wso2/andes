@@ -84,7 +84,8 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
 
             // Write message meta list to cassandra
             if (metaList.size() > 0) {
-                messageStore.addMessageMetaData(null, metaList);
+                //messageStore.addMessageMetaData(null, metaList);
+                messageStore.addMetaData(metaList);
                 metaList.clear();
             }
             totalPendingEventLength = 0;

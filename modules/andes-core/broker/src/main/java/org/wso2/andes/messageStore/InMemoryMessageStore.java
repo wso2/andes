@@ -1,6 +1,5 @@
 package org.wso2.andes.messageStore;
 
-import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -118,9 +117,26 @@ public class InMemoryMessageStore implements MessageStore {
     }
 
     @Override
-    public void addMetaData(String queueName, List<AndesMessageMetadata> metadataList) throws AndesException {
+    public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException {
 
     }
+
+    @Override
+    public void addMetaData(AndesMessageMetadata metadata) throws AndesException {
+
+    }
+
+    @Override
+    public void addMetaDataToQueue(String queueName, AndesMessageMetadata metadata) throws AndesException {
+
+    }
+
+    @Override
+    public void addMetadataToQueue(String queueName, List<AndesMessageMetadata> metadata) throws AndesException {
+
+    }
+
+
 
     @Override
     public void addMessageMetaData(QueueAddress queueAddress,
@@ -232,13 +248,13 @@ public class InMemoryMessageStore implements MessageStore {
     }
 
     @Override
-    public List<AndesRemovableMetadata> getExpiredMessages(Long limit) throws AndesException {
-        return null;
+    public void close() {
+        //todo: implement this
     }
 
     @Override
-    public void close() {
-        //todo: implement this
+    public List<AndesRemovableMetadata> getExpiredMessages(int limit) {
+        return new ArrayList<AndesRemovableMetadata>();
     }
 
     @Override
@@ -287,7 +303,6 @@ public class InMemoryMessageStore implements MessageStore {
         //To change body of implemented methods use File | Settings | File Templates.
     }
 
-    @Override
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
         //To change body of implemented methods use File | Settings | File Templates.
     }

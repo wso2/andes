@@ -48,7 +48,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         try {
             List<String> allSubscriptionsForQueues = new ArrayList<String>();
 
-            List<String> allQueues = AndesContext.getInstance().getSubscriptionStore().listQueues();
+            List<String> allQueues = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
 
             for (String queue : allQueues) {
                 List<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination(queue, false);

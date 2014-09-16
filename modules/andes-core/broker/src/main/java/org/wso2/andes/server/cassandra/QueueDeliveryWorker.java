@@ -10,13 +10,14 @@ import org.wso2.andes.subscription.SubscriptionStore;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * <code>QueueDeliveryWorker</code> Handles the task of polling the user queues and flushing
  * the messages to subscribers
  * There will be one Flusher per Queue Per Node
  */
-public class QueueDeliveryWorker extends Thread {
+public class QueueDeliveryWorker {
     private final String nodeQueue;
     private boolean running = true;
     private static Log log = LogFactory.getLog(QueueDeliveryWorker.class);
@@ -25,8 +26,8 @@ public class QueueDeliveryWorker extends Thread {
     private int maxMessageCountToRead = 300;
     private int minMessageCountToRead = 20;
 
-
     private int maxNumberOfUnAckedMessages = 20000;
+    //per queue
     private int maxNumberOfReadButUndeliveredMessages = 1000;
 
     private long lastProcessedId = 0;
@@ -54,6 +55,8 @@ public class QueueDeliveryWorker extends Thread {
     private SubscriptionStore subscriptionStore;
     private OnflightMessageTracker onflightMessageTracker;
 
+    private static QueueDeliveryWorker queueDeliveryWorker;
+
 
     //messages read by Laggards thread
     ConcurrentLinkedQueue<AndesMessageMetadata> laggardsMessages = new ConcurrentLinkedQueue<AndesMessageMetadata>();
@@ -62,7 +65,6 @@ public class QueueDeliveryWorker extends Thread {
     private ConcurrentHashMap<String, ArrayList<AndesMessageMetadata>> undeliveredMessagesMap = new ConcurrentHashMap<String, ArrayList<AndesMessageMetadata>>();
 
     public QueueDeliveryWorker(final int queueWorkerWaitInterval, boolean isInMemoryMode) {
-
         this.nodeQueue = MessagingEngine.getMyNodeQueueName();
         this.executor = new SequentialThreadPoolExecutor((ClusterResourceHolder.getInstance().getClusterConfiguration().
                 getPublisherPoolSize()), "QueueMessagePublishingExecutor");
@@ -84,10 +86,10 @@ public class QueueDeliveryWorker extends Thread {
             this.messageStore = MessagingEngine.getInstance().getDurableMessageStore();
         }
 
-        this.start();
-        this.setWorking();
-        startLaggardsThread();
-
+       // this.start();
+      //  this.setWorking();
+     //   startLaggardsThread();
+     //
 
         log.info("Queue worker started Listening for " + nodeQueue + " with on flight message checks");
     }
@@ -151,12 +153,12 @@ public class QueueDeliveryWorker extends Thread {
     }
 
 
-    public QueueDeliveryInfo getQueueDeliveryInfo(String queueName) {
+    public QueueDeliveryInfo getQueueDeliveryInfo(String queueName) throws AndesException {
         QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(queueName);
         if (queueDeliveryInfo == null) {
             queueDeliveryInfo = new QueueDeliveryInfo();
             queueDeliveryInfo.queueName = queueName;
-            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore.getActiveLocalSubscribersForQueue(queueName);
+            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore.getActiveLocalSubscribers(queueName, false);
             queueDeliveryInfo.iterator = localSubscribersForQueue.iterator();
             subscriptionCursar4QueueMap.put(queueName, queueDeliveryInfo);
         }
@@ -218,196 +220,197 @@ public class QueueDeliveryWorker extends Thread {
     /**
      * Main Message Delivery Thread
      */
-    @Override
-    public void run() {
+
+    public void run(List<AndesMessageMetadata> messagesReadByLeadingThread) {
         iterations = 0;
         workqueueSize = 0;
         lastRestTime = System.currentTimeMillis();
         failureCount = 0;
 
-        while (true) {
-            if (running) {
-                try {
-                    /**
-                     *    Following check is to avoid the worker queue been full with too many pending tasks.
-                     *    those pending tasks are best left in Cassandra until we have some breathing room
-                     */
-                    workqueueSize = executor.getSize();
-
-                    if (workqueueSize > 1000) {
-                        if (workqueueSize > 5000) {
-                            log.error("Flusher queue is growing, and this should not happen. Please check cassandra Flusher");
-                        }
-                        log.info("skipping content cassandra reading thread as flusher queue has " + workqueueSize + " tasks");
-                        sleep4waitInterval(queueWorkerWaitInterval);
-                        continue;
-                    }
-
-                    resetOffsetAtCassadraQueueIfNeeded(false);
-
-                    /**
-                     * Following reads from message store, it reads only if there are not enough messages loaded in memory
-                     */
-                    int msgReadThisTime = 0;
-                    List<AndesMessageMetadata> messagesFromMessageStore;
-                    if (totalReadButUndeliveredMessages < 10000) {
+       // while (true) {
+           // if (running) {
+                    try {
                         /**
-                         * Read messages from leading thread
+                         *    Following check is to avoid the worker queue been full with too many pending tasks.
+                         *    those pending tasks are best left in Cassandra until we have some breathing room
                          */
-                        messagesFromMessageStore = new ArrayList<AndesMessageMetadata>();
-                        QueueAddress queueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueue);
-                        List<AndesMessageMetadata> messagesReadByLeadingThread =
-                                messageStore.getNextNMessageMetadataFromQueue(queueAddress, lastProcessedId++, messageCountToRead);
-                        //log.info(" LEADING >> Read " + messageCountToRead + " number of messages from id " + lastProcessedId + ". Returned " + messagesReadByLeadingThread.size());
+                        workqueueSize = executor.getSize();
 
-                        for (AndesMessageMetadata message : messagesReadByLeadingThread) {
-                            Long messageID = message.getMessageID();
-                            if (!onflightMessageTracker.checkIfAlreadyReadFromNodeQueue(message.getMessageID())) {
-                                onflightMessageTracker.markMessageAsReadFromNodeQueue(messageID);
-                                if (log.isDebugEnabled()) {
-                                    log.debug("TRACING>> QDW------Adding " + messageID + " From Leading Thread to Deliver");
-                                }
-                                messagesFromMessageStore.add(message);
+                        if (workqueueSize > 1000) {
+                            if (workqueueSize > 5000) {
+                                log.error("Flusher queue is growing, and this should not happen. Please check cassandra Flusher");
                             }
-                            lastProcessedId = messageID;
+                            log.info("skipping content cassandra reading thread as flusher queue has " + workqueueSize + " tasks");
+                            sleep4waitInterval(queueWorkerWaitInterval);
+                            //continue;
                         }
 
+                        resetOffsetAtCassadraQueueIfNeeded(false);
+
                         /**
-                         * Add messages read from Laggards Thread as well
+                         * Following reads from message store, it reads only if there are not enough messages loaded in memory
                          */
-                        Iterator<AndesMessageMetadata> laggardsIterator = laggardsMessages.iterator();
-                        while (laggardsIterator.hasNext()) {
-                            AndesMessageMetadata laggardsMessage = laggardsIterator.next();
-                            if (!onflightMessageTracker.checkIfAlreadyReadFromNodeQueue(laggardsMessage.getMessageID())) {
-                                String routingKey = laggardsMessage.getDestination();
-                                if (subscriptionStore.getActiveClusterSubscribersForDestination(routingKey,false).size() > 0) {
-                                    messagesFromMessageStore.add(laggardsMessage);
-                                    onflightMessageTracker.markMessageAsReadFromNodeQueue(laggardsMessage.getMessageID());
+                        int msgReadThisTime = 0;
+                        List<AndesMessageMetadata> messagesFromMessageStore;
+                        if (totalReadButUndeliveredMessages < 10000) {
+                            /**
+                             * Read messages from leading thread
+                             */
+                            messagesFromMessageStore = new ArrayList<AndesMessageMetadata>();
+                          //  QueueAddress queueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueue);
+//                            List<AndesMessageMetadata> messagesReadByLeadingThread =
+//                                    messageStore.getNextNMessageMetadataFromQueue(queueAddress, lastProcessedId++, messageCountToRead);
+                            //log.info(" LEADING >> Read " + messageCountToRead + " number of messages from id " + lastProcessedId + ". Returned " + messagesReadByLeadingThread.size());
+
+                            for (AndesMessageMetadata message : messagesReadByLeadingThread) {
+                                Long messageID = message.getMessageID();
+                                if (!onflightMessageTracker.checkIfAlreadyReadFromNodeQueue(message.getMessageID())) {
+                                    onflightMessageTracker.markMessageAsReadFromNodeQueue(messageID);
                                     if (log.isDebugEnabled()) {
-                                        log.debug("TRACING>> QDW------Adding " + laggardsMessage.getMessageID() + " From laggardsMessages to deliver");
+                                        log.debug("TRACING>> QDW------Adding " + messageID + " From Leading Thread to Deliver");
+                                    }
+                                    messagesFromMessageStore.add(message);
+                                }
+                                lastProcessedId = messageID;
+                            }
+
+                            /**
+                             * Add messages read from Laggards Thread as well
+                             */
+                            Iterator<AndesMessageMetadata> laggardsIterator = laggardsMessages.iterator();
+                            while (laggardsIterator.hasNext()) {
+                                AndesMessageMetadata laggardsMessage = laggardsIterator.next();
+                                if (!onflightMessageTracker.checkIfAlreadyReadFromNodeQueue(laggardsMessage.getMessageID())) {
+                                    String routingKey = laggardsMessage.getDestination();
+                                    if (subscriptionStore.getActiveClusterSubscribersForDestination(routingKey,false).size() > 0) {
+                                        messagesFromMessageStore.add(laggardsMessage);
+                                        onflightMessageTracker.markMessageAsReadFromNodeQueue(laggardsMessage.getMessageID());
+                                        if (log.isDebugEnabled()) {
+                                            log.debug("TRACING>> QDW------Adding " + laggardsMessage.getMessageID() + " From laggardsMessages to deliver");
+                                        }
                                     }
                                 }
+                                laggardsIterator.remove();
                             }
-                            laggardsIterator.remove();
-                        }
-                        if (log.isDebugEnabled()) {
-                            log.debug("QDW >> Number of messages read from " + nodeQueue + " with last processed ID " + lastProcessedId + " is  = " + messagesFromMessageStore.size());
-                        }
-                        for (AndesMessageMetadata message : messagesFromMessageStore) {
-
-                            /**
-                             * If this is a message that had sent already, just drop them.
-                             */
-                            if (!onflightMessageTracker.testMessage(message.getMessageID())) {
-                                continue;
+                            if (log.isDebugEnabled()) {
+                                log.debug("QDW >> Number of messages read from " + nodeQueue + " with last processed ID " + lastProcessedId + " is  = " + messagesFromMessageStore.size());
                             }
+                            for (AndesMessageMetadata message : messagesFromMessageStore) {
 
-                            String queueName = message.getDestination();
-                            QueueDeliveryInfo queueDeliveryInfo = getQueueDeliveryInfo(queueName);
+                                /**
+                                 * If this is a message that had sent already, just drop them.
+                                 */
+                                if (!onflightMessageTracker.testMessage(message.getMessageID())) {
+                                    continue;
+                                }
 
-                            /**
-                             * We keep a limited number of messages in-memory scheduled to deliver
-                             */
-                            if (!queueDeliveryInfo.hasQueueFullAndMessagesIgnored) {
-                                if (queueDeliveryInfo.readButUndeliveredMessages.size() < maxNumberOfReadButUndeliveredMessages) {
+                                String queueName = message.getDestination();
+                                QueueDeliveryInfo queueDeliveryInfo = getQueueDeliveryInfo(queueName);
 
-                                    long currentMessageId = message.getMessageID();
-                                    queueDeliveryInfo.readButUndeliveredMessages.add(message);
-                                    totalReadButUndeliveredMessages++;
+                                /**
+                                 * We keep a limited number of messages in-memory scheduled to deliver
+                                 */
+                                if (!queueDeliveryInfo.hasQueueFullAndMessagesIgnored) {
+                                    if (queueDeliveryInfo.readButUndeliveredMessages.size() < maxNumberOfReadButUndeliveredMessages) {
+
+                                        long currentMessageId = message.getMessageID();
+                                        queueDeliveryInfo.readButUndeliveredMessages.add(message);
+                                        totalReadButUndeliveredMessages++;
+                                    } else {
+                                        queueDeliveryInfo.hasQueueFullAndMessagesIgnored = true;
+                                        queueDeliveryInfo.ignoredFirstMessageId = message.getMessageID();
+                                        OnflightMessageTracker.getInstance().unMarkMessageAsAlreadyReadFromNodeQueueMessageInstantly(message.getMessageID());
+                                    }
                                 } else {
-                                    queueDeliveryInfo.hasQueueFullAndMessagesIgnored = true;
-                                    queueDeliveryInfo.ignoredFirstMessageId = message.getMessageID();
+                                    /**
+                                     * All subscription in this queue are full and we were forced to ignore messages
+                                     * do not keep message in-memory. Mark it as not read from Node Queue
+                                     */
+                                    if (queueDeliveryInfo.hasQueueFullAndMessagesIgnored && queueDeliveryInfo.ignoredFirstMessageId == -1) {
+                                        queueDeliveryInfo.ignoredFirstMessageId = message.getMessageID();
+                                    }
                                     OnflightMessageTracker.getInstance().unMarkMessageAsAlreadyReadFromNodeQueueMessageInstantly(message.getMessageID());
                                 }
-                            } else {
-                                /**
-                                 * All subscription in this queue are full and we were forced to ignore messages
-                                 * do not keep message in-memory. Mark it as not read from Node Queue
-                                 */
-                                if (queueDeliveryInfo.hasQueueFullAndMessagesIgnored && queueDeliveryInfo.ignoredFirstMessageId == -1) {
-                                    queueDeliveryInfo.ignoredFirstMessageId = message.getMessageID();
+                            }
+                            /**
+                             * If no messages to read sleep more
+                             */
+                            if (messagesFromMessageStore.size() == 0) {
+                                sleep4waitInterval(queueWorkerWaitInterval);
+                            }
+
+                            //If we have read all messages we asked for, we increase the reading count. Else we reduce it.
+                            //TODO we might want to take into account the size of the message while we change the batch size
+                            if (messagesFromMessageStore.size() == messageCountToRead) {
+                                messageCountToRead += 100;
+                                if (messageCountToRead > maxMessageCountToRead) {
+                                    messageCountToRead = maxMessageCountToRead;
                                 }
-                                OnflightMessageTracker.getInstance().unMarkMessageAsAlreadyReadFromNodeQueueMessageInstantly(message.getMessageID());
+                            } else {
+                                messageCountToRead -= 50;
+                                if (messageCountToRead < minMessageCountToRead) {
+                                    messageCountToRead = minMessageCountToRead;
+                                }
+                            }
+                            totMsgRead = totMsgRead + messagesFromMessageStore.size();
+                            msgReadThisTime = messagesFromMessageStore.size();
+                        } else {
+                            if (log.isDebugEnabled()) {
+                                log.debug("QDW >> Total ReadButUndeliveredMessages count " + totalReadButUndeliveredMessages + " is over the accepted limit ");
                             }
                         }
+
                         /**
-                         * If no messages to read sleep more
+                         * Now messages are read to the memory. Send the read messages to subscriptions
                          */
-                        if (messagesFromMessageStore.size() == 0) {
+                        int sentMessageCount = 0;
+                        for (QueueDeliveryInfo queueDeliveryInfo : subscriptionCursar4QueueMap.values()) {
+                            log.debug("TRACING>> delivering read but undelivered message list with size: " + queueDeliveryInfo.readButUndeliveredMessages.size());
+                            sentMessageCount = sendMessagesToSubscriptions(queueDeliveryInfo.queueName, queueDeliveryInfo.readButUndeliveredMessages);
+                            queueDeliveryInfo.messageIgnored = false;
+                        }
+
+                        if (iterations % 20 == 0) {
+                            if (log.isDebugEnabled()) {
+                                log.info("[Flusher" + this + "]readNow=" + msgReadThisTime + " totRead=" + totMsgRead + " totprocessed= " + totMsgSent + ", totalReadButNotSent=" +
+                                        totalReadButUndeliveredMessages + ". workQueue= " + workqueueSize + " lastID=" + lastProcessedId);
+                            }
+                        }
+                        iterations++;
+                        //Message reading work is over in this iteration. If read message count in this iteration is 0 definitely
+                        // we have to force reset the counter
+                        if (msgReadThisTime == 0) {
+                            boolean f = resetOffsetAtCassadraQueueIfNeeded(false);
+                        }
+                        //on every 10th, we sleep a bit to give cassandra a break, we do the same if we have not sent any messages
+                        if (sentMessageCount == 0 || iterations % 10 == 0) {
                             sleep4waitInterval(queueWorkerWaitInterval);
                         }
-
-                        //If we have read all messages we asked for, we increase the reading count. Else we reduce it.
-                        //TODO we might want to take into account the size of the message while we change the batch size
-                        if (messagesFromMessageStore.size() == messageCountToRead) {
-                            messageCountToRead += 100;
-                            if (messageCountToRead > maxMessageCountToRead) {
-                                messageCountToRead = maxMessageCountToRead;
-                            }
-                        } else {
-                            messageCountToRead -= 50;
-                            if (messageCountToRead < minMessageCountToRead) {
-                                messageCountToRead = minMessageCountToRead;
-                            }
+                        failureCount = 0;
+                    } catch (Throwable e) {
+                        /**
+                         * When there is a error, we will wait to avoid looping.
+                         */
+                        long waitTime = queueWorkerWaitInterval;
+                        failureCount++;
+                        long faultWaitTime = Math.max(waitTime * 5, failureCount * waitTime);
+                        try {
+                            Thread.sleep(faultWaitTime);
+                        } catch (InterruptedException e1) {
+                            //silently ignore
                         }
-                        totMsgRead = totMsgRead + messagesFromMessageStore.size();
-                        msgReadThisTime = messagesFromMessageStore.size();
-                    } else {
-                        if (log.isDebugEnabled()) {
-                            log.debug("QDW >> Total ReadButUndeliveredMessages count " + totalReadButUndeliveredMessages + " is over the accepted limit ");
-                        }
+                        log.error("Error running Cassandra Message Flusher" + e.getMessage(), e);
                     }
 
-                    /**
-                     * Now messages are read to the memory. Send the read messages to subscriptions
-                     */
-                    int sentMessageCount = 0;
-                    for (QueueDeliveryInfo queueDeliveryInfo : subscriptionCursar4QueueMap.values()) {
-                        log.debug("TRACING>> delivering read but undelivered message list with size: " + queueDeliveryInfo.readButUndeliveredMessages.size());
-                        sentMessageCount = sendMessagesToSubscriptions(queueDeliveryInfo.queueName, queueDeliveryInfo.readButUndeliveredMessages);
-                        queueDeliveryInfo.messageIgnored = false;
-                    }
+//            } else {
+//                try {
+//                    Thread.sleep(2000);
+//                } catch (InterruptedException e) {
+//                    //silently ignore
+//                }
+//            }
 
-                    if (iterations % 20 == 0) {
-                        if (log.isDebugEnabled()) {
-                            log.info("[Flusher" + this + "]readNow=" + msgReadThisTime + " totRead=" + totMsgRead + " totprocessed= " + totMsgSent + ", totalReadButNotSent=" +
-                                    totalReadButUndeliveredMessages + ". workQueue= " + workqueueSize + " lastID=" + lastProcessedId);
-                        }
-                    }
-                    iterations++;
-                    //Message reading work is over in this iteration. If read message count in this iteration is 0 definitely
-                    // we have to force reset the counter
-                    if (msgReadThisTime == 0) {
-                        boolean f = resetOffsetAtCassadraQueueIfNeeded(false);
-                    }
-                    //on every 10th, we sleep a bit to give cassandra a break, we do the same if we have not sent any messages
-                    if (sentMessageCount == 0 || iterations % 10 == 0) {
-                        sleep4waitInterval(queueWorkerWaitInterval);
-                    }
-                    failureCount = 0;
-                } catch (Throwable e) {
-                    /**
-                     * When there is a error, we will wait to avoid looping.
-                     */
-                    long waitTime = queueWorkerWaitInterval;
-                    failureCount++;
-                    long faultWaitTime = Math.max(waitTime * 5, failureCount * waitTime);
-                    try {
-                        Thread.sleep(faultWaitTime);
-                    } catch (InterruptedException e1) {
-                        //silently ignore
-                    }
-                    log.error("Error running Cassandra Message Flusher" + e.getMessage(), e);
-                }
-            } else {
-                try {
-                    Thread.sleep(2000);
-                } catch (InterruptedException e) {
-                    //silently ignore
-                }
-            }
-
-        }
+      //  }
     }
 
 
@@ -478,7 +481,8 @@ public class QueueDeliveryWorker extends Thread {
             }
 
             boolean messageSent = false;
-            Collection<LocalSubscription> subscriptions4Queue = subscriptionStore.getActiveLocalSubscribersForQueue(targetQueue);
+            Collection<LocalSubscription> subscriptions4Queue = subscriptionStore
+                    .getActiveLocalSubscribers(targetQueue, false);
             if (subscriptions4Queue != null) {
                 /*
                  * we do this in a for loop to avoid iterating for a subscriptions for ever. We only iterate as
@@ -628,7 +632,7 @@ public class QueueDeliveryWorker extends Thread {
         return startingIndex;
     }
 
-    public void clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(String destinationQueueName) {
+    public void clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(String destinationQueueName) throws AndesException {
         undeliveredMessagesMap.remove(destinationQueueName);
         getQueueDeliveryInfo(destinationQueueName).readButUndeliveredMessages.clear();
         Iterator<AndesMessageMetadata> laggardsIterator = laggardsMessages.iterator();
@@ -639,6 +643,18 @@ public class QueueDeliveryWorker extends Thread {
                 laggardsIterator.remove();
             }
         }
+    }
+
+    public static QueueDeliveryWorker getInstance() {
+        if (queueDeliveryWorker == null) {
+
+            synchronized (QueueDeliveryWorker.class) {
+                if (queueDeliveryWorker == null) {
+                    queueDeliveryWorker = new QueueDeliveryWorker(1000,false);
+                }
+            }
+        }
+        return queueDeliveryWorker;
     }
 
 }

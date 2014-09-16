@@ -136,8 +136,12 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
      */
     public List<String> getDestinationQueuesOfCluster() {
         List<String> queueList = new ArrayList<String>();
-        for (AndesQueue queue : AndesContext.getInstance().getSubscriptionStore().getDurableQueues()) {
-            queueList.add(queue.queueName);
+        try {
+            for (AndesQueue queue : AndesContext.getInstance().getAMQPConstructStore().getQueues()) {
+                queueList.add(queue.queueName);
+            }
+        } catch (AndesException e) {
+            throw new RuntimeException(e);
         }
         return queueList;
     }

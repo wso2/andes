@@ -143,7 +143,7 @@ public class CassandraConnection implements DurableStoreConnection {
             if (MessagingEngine.getInstance().getDurableMessageStore() != null
                     && AndesContext.getInstance().getSubscriptionStore() != null) {
 
-                MessagingEngine.getInstance().startMessageDelivey();
+                MessagingEngine.getInstance().startMessageDelivery();
 
                 ClusterManager cm = ClusterResourceHolder.getInstance().getClusterManager();
 
@@ -154,9 +154,9 @@ public class CassandraConnection implements DurableStoreConnection {
                         gqm.startAllQueueWorkersLocally();
                     }
                 }
-                if (ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer() != null) {
+                if (ClusterResourceHolder.getInstance().getAndesRecoveryTask() != null) {
                     log.info("Starting syncing exchanges, queues and bindings");
-                    ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().start();
+                    ClusterResourceHolder.getInstance().getAndesRecoveryTask().startRunning();
                 }
             }
         } catch (Exception e) {
@@ -183,10 +183,14 @@ public class CassandraConnection implements DurableStoreConnection {
         }
         if (ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer() != null) {
             log.info("Stopping syncing exchanges, queues and bindings");
-            ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().stop();
+            ClusterResourceHolder.getInstance().getAndesRecoveryTask().stopRunning();
         }
     }
 
+    /**
+     * exponential backoff thread to
+     * check if cassandra connection is live
+     */
     private void checkCassandraConnection() {
         Thread cassandraConnectionCheckerThread = new Thread(new Runnable() {
             public void run() {

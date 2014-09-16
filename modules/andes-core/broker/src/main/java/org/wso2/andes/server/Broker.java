@@ -24,7 +24,7 @@ import org.apache.commons.logging.Log;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.log4j.xml.QpidLog4JConfigurator;
 import org.wso2.andes.AMQException;
-import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.AndesKernelBoot;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.wso2.andes.server.configuration.ServerConfiguration;
 import org.wso2.andes.server.configuration.ServerNetworkTransportConfiguration;
@@ -92,6 +92,14 @@ public class Broker
 
     public void shutdown()
     {
+        /**
+         * shutdown kernel first
+         */
+        try {
+            AndesKernelBoot.shutDownAndesKernel();
+        } catch (Exception e) {
+            log.error("Error while shutting down andes kernel", e);
+        }
         ApplicationRegistry.remove();
     }
 
@@ -146,7 +154,7 @@ public class Broker
             clusterConfiguration.setBindIpAddress(serverConfig.getBind());
         }
         ClusterResourceHolder.getInstance().setClusterConfiguration(clusterConfiguration);
-
+        AndesKernelBoot.loadConfigurations(clusterConfiguration);
 
          /* Registering the memory threshold ratio configured in the qpid-config.xml */
         double memoryThresholdRatio = clusterConfiguration.getGlobalMemoryThresholdRatio();
@@ -294,12 +302,12 @@ public class Broker
                 }
             }
 
-
-
-
-
             CurrentActor.get().message(BrokerMessages.READY());
-            MessagingEngine.getInstance();
+
+            /**
+             * Boot andes kernel
+             */
+            AndesKernelBoot.bootAndesKernel();
         }
         finally
         {

@@ -84,7 +84,7 @@ public class TopicDeliveryWorker extends Thread {
                             try {
                                 if (!MessageExpirationWorker.isExpired(message.getExpirationTime())) {
                                     enqueueMessage(message);
-                                    publishedMessages.add(new AndesAckData(message.getMessageID(),message.getDestination(),true));
+                                    publishedMessages.add(new AndesAckData(message.getMessageID(), message.getDestination(), true));
                                     lastDeliveredMessageID = message.getMessageID();
                                     if (log.isDebugEnabled()) {
                                         log.debug("Sending message  " + lastDeliveredMessageID + "from cassandra topic publisher");
@@ -133,7 +133,7 @@ public class TopicDeliveryWorker extends Thread {
              * We need to publish the message to the exact matching queues
              * */
             String routingKey = message.getDestination();
-            Collection<LocalSubscription> localSubscribersForTopic = subscriptionStore.getActiveLocalSubscribersForTopic(routingKey);
+            Collection<LocalSubscription> localSubscribersForTopic = subscriptionStore.getActiveLocalSubscribers(routingKey, true);
             for (LocalSubscription subscription : localSubscribersForTopic) {
                 deliverAsynchronously(subscription, message);
             }
@@ -148,7 +148,7 @@ public class TopicDeliveryWorker extends Thread {
             public void run() {
                 try {
                     if (subscription.isActive()) {
-                        if (MessageExpirationWorker.isExpired(message.getExpirationTime()))  {
+                        if (MessageExpirationWorker.isExpired(message.getExpirationTime())) {
                             return;
                         }
                         (subscription).sendMessageToSubscriber(message);

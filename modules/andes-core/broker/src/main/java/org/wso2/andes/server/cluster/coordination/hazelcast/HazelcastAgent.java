@@ -17,19 +17,18 @@
 */
 package org.wso2.andes.server.cluster.coordination.hazelcast;
 
-import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.ITopic;
-import com.hazelcast.core.IdGenerator;
-import com.hazelcast.core.Member;
+import com.hazelcast.core.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.MessagePurgeHandler;
+import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
+import org.wso2.andes.server.cluster.coordination.ClusterNotification;
+import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
-import org.wso2.andes.server.cluster.coordination.SubscriptionNotification;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * This is a singleton class, which contains all Hazelcast related operations.
@@ -53,9 +52,24 @@ public class HazelcastAgent {
     private ITopic subscriptionChangedNotifierChannel;
 
     /**
+     * Distributed topic to communicate binding change notifications among cluster nodes.
+     */
+    private ITopic bindingChangeNotifierChannel;
+
+    /**
      * Distributed topic to communicate queue purge notifications among cluster nodes.
      */
     private ITopic queueChangedNotifierChannel;
+
+    /**
+     * Distributed topic to communicate exchange change notification amoung cluster nodes.
+     */
+    private ITopic exchangeChangeNotifierChannel;
+
+    private IMap<String, TreeSet<Long>> queueToMessageIdListMap;
+    private IMap<String, HashMap<Long, Slot>> slotAssignmentMap;
+    private IMap<String, Long> lastProcessedIDs;
+    private IMap<String, TreeSet<Slot>> freeSlotMap;
 
     /**
      * Unique ID generated to represent the node.
@@ -64,11 +78,19 @@ public class HazelcastAgent {
     private int uniqueIdOfLocalMember;
 
     /**
+     * Private constructor.
+     */
+    private HazelcastAgent() {
+
+
+    }
+
+    /**
      * Get singleton HazelcastAgent.
      *
      * @return HazelcastAgent
      */
-    public static HazelcastAgent getInstance() {
+    public static synchronized HazelcastAgent getInstance() {
         if (hazelcastAgentInstance == null) {
             synchronized (HazelcastAgent.class) {
                 if (hazelcastAgentInstance == null) {
@@ -91,34 +113,69 @@ public class HazelcastAgent {
             log.info("Initializing Hazelcast Agent");
         }
         this.hazelcastInstance = hazelcastInstance;
+
+        /**
+         * membership changes
+         */
         this.hazelcastInstance.getCluster().addMembershipListener(new AndesMembershipListener());
 
-        // Initialize the ITopic to notify subscription change events and bind the listener to the Topic
+        /**
+         * subscription changes
+         */
         this.subscriptionChangedNotifierChannel = this.hazelcastInstance.getTopic(
                 CoordinationConstants.HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME);
-        this.subscriptionChangedNotifierChannel.addMessageListener(new SubscriptionChangedListener());
+        ClusterSubscriptionChangedListener clusterSubscriptionChangedListener = new ClusterSubscriptionChangedListener();
+        clusterSubscriptionChangedListener.addSubscriptionListener(new ClusterCoordinationHandler(this));
+        this.subscriptionChangedNotifierChannel.addMessageListener(clusterSubscriptionChangedListener);
 
-        // Initialize the ITopic to notify queue purge events and bind the listener to the Topic
+
+        /**
+         * exchange changes
+         */
+        this.exchangeChangeNotifierChannel = this.hazelcastInstance.getTopic(
+                CoordinationConstants.HAZELCAST_EXCHANGE_CHANGED_NOTIFIER_TOPIC_NAME);
+        ClusterExchangeChangedListener clusterExchangeChangedListener = new ClusterExchangeChangedListener();
+        clusterExchangeChangedListener.addExchangeListener(new ClusterCoordinationHandler(this));
+        this.exchangeChangeNotifierChannel.addMessageListener(clusterExchangeChangedListener);
+
+
+        /**
+         * queue changes
+         */
         this.queueChangedNotifierChannel = this.hazelcastInstance.getTopic(
                 CoordinationConstants.HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME);
-        this.queueChangedNotifierChannel.addMessageListener(new QueueChangedListener());
+        ClusterQueueChangedListener clusterQueueChangedListener = new ClusterQueueChangedListener();
+        clusterQueueChangedListener.addQueueListener(new ClusterCoordinationHandler(this));
+        clusterQueueChangedListener.addQueueListener(new MessagePurgeHandler());
+        this.queueChangedNotifierChannel.addMessageListener(clusterQueueChangedListener);
 
+        /**
+         * binding changes
+         */
+        this.bindingChangeNotifierChannel = this.hazelcastInstance.getTopic(
+                CoordinationConstants.HAZELCAST_BINDING_CHANGED_NOTIFIER_TOPIC_NAME);
+        ClusterBindingChangedListener clusterBindingChangedListener = new ClusterBindingChangedListener();
+        clusterBindingChangedListener.addBindingListener(new ClusterCoordinationHandler(this));
+        this.bindingChangeNotifierChannel.addMessageListener(clusterBindingChangedListener);
+
+        // generates a unique id for the node unique for the cluster
         IdGenerator idGenerator = hazelcastInstance.getIdGenerator(CoordinationConstants.HAZELCAST_ID_GENERATOR_NAME);
         this.uniqueIdOfLocalMember = (int) idGenerator.newId();
 
-        if (log.isInfoEnabled()) {
-            log.info("Successfully initialized Hazelcast Agent");
-        }
+        freeSlotMap = hazelcastInstance.getMap(CoordinationConstants.FREE_SLOT_MAP_NAME);
+        queueToMessageIdListMap = hazelcastInstance.getMap(CoordinationConstants.QUEUE_TO_MESSAGE_ID_LIST_MAP_NAME);
+        lastProcessedIDs = hazelcastInstance.getMap(CoordinationConstants.LAST_PROCESSED_IDS_MAP_NAME);
+        slotAssignmentMap = hazelcastInstance.getMap(CoordinationConstants.SLOT_ASSIGNMENT_MAP_NAME);
 
-        if (log.isDebugEnabled()) {
-            log.debug("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
-        }
+        log.info("Successfully initialized Hazelcast Agent");
+
+        log.debug("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
     }
 
     /**
      * Node ID is generated in the format of "NODE/<host IP>_<Node UUID>"
      *
-     * @return NodeId of the local node
+     * @return NodeId
      */
     public String getNodeId() {
         Member localMember = hazelcastInstance.getCluster().getLocalMember();
@@ -129,9 +186,9 @@ public class HazelcastAgent {
     }
 
     /**
-     * All nodes of the cluster are returned as a Set of Members
+     * All members of the cluster are returned as a Set of Members
      *
-     * @return all nodes of the cluster
+     * @return Set of Members
      */
     public Set<Member> getAllClusterMembers() {
         return hazelcastInstance.getCluster().getMembers();
@@ -165,9 +222,9 @@ public class HazelcastAgent {
     }
 
     /**
-     * Get number of nodes in the cluster.
+     * Get number of members in the cluster.
      *
-     * @return number of nodes.
+     * @return number of members.
      */
     public int getClusterSize() {
         return hazelcastInstance.getCluster().getMembers().size();
@@ -176,7 +233,7 @@ public class HazelcastAgent {
     /**
      * Get unique ID to represent local member.
      *
-     * @return unique ID assigned for the local node.
+     * @return unique ID.
      */
     public int getUniqueIdForTheNode() {
         return uniqueIdOfLocalMember;
@@ -185,8 +242,8 @@ public class HazelcastAgent {
     /**
      * Get node ID of the given node.
      *
-     * @param node node
-     * @return node ID
+     * @param node
+     * @return node ID.
      */
     public String getIdOfNode(Member node) {
         return CoordinationConstants.NODE_NAME_PREFIX
@@ -199,8 +256,8 @@ public class HazelcastAgent {
      * Each member of the cluster is given an unique UUID and here the UUIDs of all nodes are sorted
      * and the index of the belonging UUID of the given node is returned.
      *
-     * @param node node
-     * @return the index given to the node according to its UUID
+     * @param node
+     * @return
      */
     public int getIndexOfNode(Member node) {
         List<String> membersUniqueRepresentations = new ArrayList<String>();
@@ -208,28 +265,71 @@ public class HazelcastAgent {
             membersUniqueRepresentations.add(member.getUuid());
         }
         Collections.sort(membersUniqueRepresentations);
-        return membersUniqueRepresentations.indexOf(node.getUuid());
+        int indexOfMyId = membersUniqueRepresentations.indexOf(node.getUuid());
+        return indexOfMyId;
     }
 
     /**
-     * Get the index where the local node is placed when all the cluster nodes are sorted according to their UUID.
+     * Get the index where the local node is placed when all
+     * the cluster nodes are sorted according to their UUID.
      *
-     * @return index given to the local node according to its UUID
+     * @return
      */
     public int getIndexOfLocalNode() {
         return this.getIndexOfNode(this.getLocalMember());
     }
 
-    /**
-     * Send cluster wide subscription change notification.
-     *
-     * @param subscriptionNotification notification
-     */
-    @SuppressWarnings("unchecked")
-    public void notifySubscriberChanged(SubscriptionNotification subscriptionNotification) {
-        if (log.isInfoEnabled()) {
-            log.info("Handling cluster gossip: Sending subscriber changed notification to cluster...");
+
+    public void notifySubscriptionsChanged(ClusterNotification clusterNotification) {
+        log.info("GOSSIP: " + clusterNotification.getDescription());
+        this.subscriptionChangedNotifierChannel.publish(clusterNotification);
+    }
+
+    public void notifyQueuesChanged(ClusterNotification clusterNotification) throws AndesException {
+        log.info("GOSSIP: " + clusterNotification.getDescription());
+        try {
+            this.queueChangedNotifierChannel.publish(clusterNotification);
+        } catch (Exception e) {
+            log.error("Error while sending queue change notification", e);
+            throw new AndesException("Error while sending queue change notification", e);
         }
-        this.subscriptionChangedNotifierChannel.publish(subscriptionNotification);
+
+    }
+
+    public void notifyExchangesChanged(ClusterNotification clusterNotification) throws AndesException {
+        log.info("GOSSIP: " + clusterNotification.getDescription());
+        try {
+            this.exchangeChangeNotifierChannel.publish(clusterNotification);
+        } catch (Exception e) {
+            log.error("Error while sending exchange change notification", e);
+            throw new AndesException("Error while sending exchange change notification", e);
+        }
+    }
+
+    public void notifyBindingsChanged(ClusterNotification clusterNotification) throws AndesException {
+        log.info("GOSSIP: " + clusterNotification.getDescription());
+        try {
+            this.bindingChangeNotifierChannel.publish(clusterNotification);
+        } catch (Exception e) {
+            log.error("Error while sending binding change notification", e);
+            throw new AndesException("Error while sending binding change notification", e);
+        }
+    }
+
+    public IMap<String, TreeSet<Slot>> getFreeSlotMap() {
+        return freeSlotMap;
+    }
+
+    public IMap<String, TreeSet<Long>> getQueueToMessageIdListMap() {
+        return queueToMessageIdListMap;
+    }
+
+    public IMap<String, Long> getLastProcessedIDs() {
+        return lastProcessedIDs;
+    }
+
+    public IMap<String, HashMap<Long, Slot>> getSlotAssignmentMap() {
+        return slotAssignmentMap;
+
     }
 }

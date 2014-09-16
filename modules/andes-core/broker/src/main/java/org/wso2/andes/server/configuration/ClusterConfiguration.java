@@ -121,8 +121,8 @@ public class ClusterConfiguration {
         return serverConfig.getContentRemovalTimeDifference();
     }
 
-    public int getVirtualHostSyncTaskInterval() {
-        return serverConfig.getVirtualHostSyncTaskInterval();
+    public int getAndesRecoveryTaskInterval() {
+        return serverConfig.getAndesRecoveryTaskInterval();
     }
 
     public int getQueueMsgDeliveryCurserResetTimeInterval() {

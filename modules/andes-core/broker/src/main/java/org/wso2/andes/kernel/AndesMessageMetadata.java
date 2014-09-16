@@ -100,8 +100,8 @@ public class AndesMessageMetadata {
     
     /**
      * Create a clone, with new message ID
-     * @param messageId
-     * @return
+     * @param messageId message id
+     * @return returns AndesMessageMetadata
      */
     public  AndesMessageMetadata deepClone(long messageId){
     	AndesMessageMetadata clone = new AndesMessageMetadata();

@@ -28,12 +28,15 @@ import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
+import org.wso2.andes.server.slot.SlotManager;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.util.AndesUtils;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -73,6 +76,7 @@ public class ClusterManager {
      * AndesContextStore instance
      */
     private AndesContextStore andesContextStore;
+    private SlotManager slotManager;
 
     /**
      * Create a ClusterManager instance
@@ -80,6 +84,8 @@ public class ClusterManager {
     public ClusterManager() {
         this.andesContextStore = AndesContext.getInstance().getAndesContextStore();
         this.globalQueueManager = new GlobalQueueManager(MessagingEngine.getInstance().getDurableMessageStore());
+		this.slotManager = SlotManager.getInstance();
+
     }
 
     /**
@@ -116,11 +122,7 @@ public class ClusterManager {
      */
     public void handleNewNodeJoiningToCluster(Member node) {
         String nodeId = hazelcastAgent.getIdOfNode(node);
-
-        if (log.isInfoEnabled()) {
-            log.info("Handling cluster gossip: Node with ID " + nodeId + " joined the cluster");
-        }
-
+        log.info("Handling cluster gossip: Node with ID " + nodeId + " joined the cluster");
         reAssignGlobalQueueSyncId();
         handleGlobalQueueAddition();
     }
@@ -130,10 +132,7 @@ public class ClusterManager {
      */
     public void handleNodeLeavingCluster(Member node) throws AndesException {
         String deletedNodeId = hazelcastAgent.getIdOfNode(node);
-
-        if (log.isInfoEnabled()) {
-            log.info("Handling cluster gossip: Node with ID " + deletedNodeId + " left the cluster");
-        }
+        log.info("Handling cluster gossip: Node with ID " + deletedNodeId + " left the cluster");
 
         //refresh global queue sync ID
         reAssignGlobalQueueSyncId();
@@ -142,15 +141,8 @@ public class ClusterManager {
 
         // Below steps are carried out only by the 0th node of the list.
         if (globalQueueSyncId == 0) {
-            if (log.isDebugEnabled()) {
-                log.debug("Removing persisted states of the left node:" + deletedNodeId);
-            }
-
-            //Update the durable store
-            andesContextStore.removeNodeData(deletedNodeId);
-
             //clear persisted states of disappeared node
-            clearAllPersistedStatesOfDissapearedNode(deletedNodeId);
+            clearAllPersistedStatesOfDisappearedNode(deletedNodeId);
 
             // check and copy back messages of node queue belonging to disappeared node
             checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(AndesUtils.getNodeQueueNameForNodeId(deletedNodeId));
@@ -208,13 +200,23 @@ public class ClusterManager {
 
     //TODO:hasitha can we implement moving global queue workers?
     public boolean updateWorkerForQueue(String queueToBeMoved, String newNodeToAssign) {
+        boolean successful = false;
         return false;
+    }
+
+    /**
+     * Get whether clustering is enabled
+     *
+     * @return
+     */
+    public boolean isClusteringEnabled() {
+        return AndesContext.getInstance().isClusteringEnabled();
     }
 
     /**
      * Get the node ID of the current node
      *
-     * @return ID of the local node
+     * @return
      */
     public String getMyNodeID() {
         return nodeId;
@@ -227,8 +229,9 @@ public class ClusterManager {
         try {
 
             //clear stored node IDS and mark subscriptions of node as closed
-            clearAllPersistedStatesOfDissapearedNode(nodeId);
+            clearAllPersistedStatesOfDisappearedNode(nodeId);
             //stop all global queue Workers
+            log.info("Stopping all global queue workers locally");
             globalQueueManager.removeAllQueueWorkersLocally();
             //if in clustered mode copy back node queue messages back to global queue
             if (AndesContext.getInstance().isClusteringEnabled()) {
@@ -264,8 +267,9 @@ public class ClusterManager {
      * remove in-memory messages tracked for this queue
      *
      * @param destinationQueueName name of queue messages should be removed
+     * @throws AndesException
      */
-    public void removeInMemoryMessagesAccumulated(String destinationQueueName) {
+    public void removeInMemoryMessagesAccumulated(String destinationQueueName) throws AndesException {
         //remove in-memory messages accumulated due to sudden subscription closing
         QueueDeliveryWorker queueDeliveryWorker = ClusterResourceHolder.getInstance().getQueueDeliveryWorker();
         if (queueDeliveryWorker != null) {
@@ -293,12 +297,9 @@ public class ClusterManager {
             messageList = messageStore.getNextNMessageMetadataFromQueue(nodeQueueAddress, lastProcessedMessageID, 40);
         }
 
-        if (log.isInfoEnabled()) {
-            log.info("Moved " + numberOfMessagesMoved
-                    + " Number of Messages from Node Queue "
-                    + nodeQueueName + "to Global Queues ");
-        }
-
+        log.info("Moved " + numberOfMessagesMoved
+                + " Number of Messages from Node Queue "
+                + nodeQueueName + "to Global Queues ");
     }
 
     private void initStandaloneMode() throws Exception {
@@ -313,12 +314,8 @@ public class ClusterManager {
             andesContextStore.removeNodeData(node);
         }
 
-        clearAllPersistedStatesOfDissapearedNode(nodeId);
-
-        if (log.isInfoEnabled()) {
-            log.info("NodeID:" + this.nodeId);
-        }
-
+        clearAllPersistedStatesOfDisappearedNode(nodeId);
+        log.info("NodeID:" + this.nodeId);
         andesContextStore.storeNodeDetails(nodeId, config.getBindIpAddress());
 
         //start all global queue workers on the node
@@ -330,9 +327,7 @@ public class ClusterManager {
 
         this.hazelcastAgent = HazelcastAgent.getInstance();
         this.nodeId = this.hazelcastAgent.getNodeId();
-        if (log.isInfoEnabled()) {
-            log.info("NodeID:" + this.nodeId);
-        }
+        log.info("NodeID:" + this.nodeId);
 
         //add node information to durable store
         andesContextStore.storeNodeDetails(nodeId, config.getBindIpAddress());
@@ -343,17 +338,18 @@ public class ClusterManager {
          * copy back node queue messages of them back to global queue.
          * We need to clear up current node's state as well as there might have been a node with same id and it was killed
          */
-        clearAllPersistedStatesOfDissapearedNode(nodeId);
+        clearAllPersistedStatesOfDisappearedNode(nodeId);
 
         List<String> storedNodes = new ArrayList<String>(andesContextStore.getAllStoredNodeData().keySet());
         List<String> availableNodeIds = hazelcastAgent.getMembersNodeIDs();
         for (String storedNodeId : storedNodes) {
             if (!availableNodeIds.contains(storedNodeId)) {
-                clearAllPersistedStatesOfDissapearedNode(storedNodeId);
+                clearAllPersistedStatesOfDisappearedNode(storedNodeId);
                 checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(AndesUtils.getNodeQueueNameForNodeId(storedNodeId));
             }
         }
         handleNewNodeJoiningToCluster(hazelcastAgent.getLocalMember());
+        log.info("Handling cluster gossip: Node " + nodeId + "  Joined the Cluster");
     }
 
     /**
@@ -409,41 +405,30 @@ public class ClusterManager {
         updateGlobalQueuesAssignedTome();
 
         //stop any global queue worker that is not assigned to me now
-        for (String globalQueue : currentGlobalQueueAssignments) {
-            if (!globalQueuesAssignedToMe.contains(globalQueue)) {
-                globalQueueManager.removeWorker(globalQueue);
-            }
-        }
+        //TODO commented by sajini
+
+//        for (String globalQueue : currentGlobalQueueAssignments) {
+//            if (!globalQueuesAssignedToMe.contains(globalQueue)) {
+//                globalQueueManager.removeWorker(globalQueue);
+//            }
+//        }
 
         //start global queue workers for queues assigned to me
-        for (String globalQueue : globalQueuesAssignedToMe) {
-            globalQueueManager.scheduleWorkForGlobalQueue(globalQueue);
-        }
+        //TODO commented by sajini
+//        for (String globalQueue : globalQueuesAssignedToMe) {
+//            globalQueueManager.scheduleWorkForGlobalQueue(globalQueue);
+//        }
     }
 
-    /**
-     * This method should be called when a node leaves the cluster to delete the persisted states of the disappeared nodes
-     *
-     * @param nodeID Id of the node
-     * @throws AndesException
-     */
-    private void clearAllPersistedStatesOfDissapearedNode(String nodeID) throws AndesException {
-        if (log.isDebugEnabled()) {
-            log.info("Clearing the Persisted State of Node with ID " + nodeID);
-        }
+    private void clearAllPersistedStatesOfDisappearedNode(String nodeID) throws AndesException {
+
+        log.info("Clearing the Persisted State of Node with ID " + nodeID);
 
         //remove node from nodes list
         andesContextStore.removeNodeData(nodeID);
+        //close all local queue and topic subscriptions belonging to the node
+        ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllClusterSubscriptionsOfNode(nodeID);
 
-        if (!AndesContext.getInstance().isClusteringEnabled()) {
-            //if in stand-alone mode close all local queue and topic subscriptions
-            synchronized (this) {
-                ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllLocalSubscriptionsOfNode(nodeID);
-            }
-        } else {
-            //close all cluster queue and topic subscriptions for the node
-            ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllClusterSubscriptionsOfNode(nodeID);
-        }
     }
 
     /**
