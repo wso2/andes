@@ -79,7 +79,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         MessageContentRemoverTask messageContentRemoverTask =
                 new MessageContentRemoverTask(contentDeletionTasksMap, this);
 
-        int schedulerPeriod =
+        int schedulerPeriod = 5;
                 ClusterResourceHolder.getInstance().getClusterConfiguration()
                         .getContentRemovalTaskInterval();
         contentRemovalScheduler.scheduleAtFixedRate(messageContentRemoverTask,
@@ -98,7 +98,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
      */
     private void createTables() throws AndesException {
         String[] queries = {
-                "CREATE TABLE messages (" +
+                "CREATE TABLE IF NOT EXISTS messages (" +
                         "message_id BIGINT, " +
                         "offset INT, " +
                         "content BINARY NOT NULL, " +
@@ -106,21 +106,21 @@ public class H2BasedMessageStoreImpl implements MessageStore {
                         ");"
                 ,
 
-                "CREATE TABLE queues (" +
+                "CREATE TABLE IF NOT EXISTS queues (" +
                         "queue_id INT AUTO_INCREMENT, " +
                         "name VARCHAR NOT NULL, " +
                         "UNIQUE (name)," +
                         "PRIMARY KEY (queue_id)" +
                         ");",
 
-                "CREATE TABLE reference_counts ( " +
+                "CREATE TABLE IF NOT EXISTS reference_counts ( " +
                         "message_id BIGINT, " +
                         "reference_count INT, " +
                         "PRIMARY KEY (message_id)" +
                         ");"
                 ,
 
-                "CREATE TABLE metadata (" +
+                "CREATE TABLE IF NOT EXISTS metadata (" +
                         "message_id BIGINT, " +
                         "queue_id INT, " +
                         "data BINARY, " +
@@ -129,7 +129,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
                         "REFERENCES queues (queue_id) " +
                         ");",
 
-                "CREATE TABLE expiration_data (" +
+                "CREATE TABLE IF NOT EXISTS expiration_data (" +
                         "message_id BIGINT UNIQUE," +
                         "expiration_time BIGINT, " +
                         "destination VARCHAR NOT NULL, " +

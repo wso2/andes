@@ -3,8 +3,6 @@ package org.wso2.andes.store.jdbc;
 import junit.framework.Assert;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.*;
-import org.wso2.andes.store.jdbc.H2BasedAndesContextStoreImpl;
-import org.wso2.andes.store.jdbc.JDBCConstants;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
@@ -31,7 +29,7 @@ public class H2BasedAndesContextStoreImplTest {
             ic.createSubcontext("jdbc");
             JdbcDataSource ds = new JdbcDataSource();
             ds.setURL("jdbc:h2:mem:msg_store;DB_CLOSE_ON_EXIT=FALSE");
-            ic.bind("jdbc/InMemoryMessageStoreDB", ds);
+            ic.bind(JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME, ds);
 
             Class.forName("org.h2.Driver");
             connection = DriverManager.getConnection("jdbc:h2:mem:msg_store;DB_CLOSE_ON_EXIT=FALSE");
@@ -215,23 +213,145 @@ public class H2BasedAndesContextStoreImplTest {
         Assert.assertEquals(data, resultSet.getString(JDBCConstants.NODE_DATA));
     }
 
+    @Test
+    public void testGetAllNodeDetails() throws Exception {
+        String insert = "INSERT INTO " + JDBCConstants.NODE_INFO_TABLE + "( " +
+                JDBCConstants.NODE_ID  + "," +
+                JDBCConstants.NODE_DATA + ") " +
+                " VALUES (?,?) ";
+
+        int nodeCount = 2;
+        String nodeIdOne = "node1";
+        String nodeDataOne = "data1";
+        String nodeIdTwo = "node2";
+        String nodeDataTwo = "data2";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(insert);
+        // add first data set
+        preparedStatement.setString(1, nodeIdOne);
+        preparedStatement.setString(2, nodeDataOne);
+        preparedStatement.addBatch();
+
+        // add second data set
+        preparedStatement.setString(1, nodeIdTwo);
+        preparedStatement.setString(2, nodeDataTwo);
+        preparedStatement.addBatch();
+
+        preparedStatement.executeBatch();
+        Map<String, String> nodeDataMap = contextStore.getAllStoredNodeData();
+
+        Assert.assertEquals(nodeCount, nodeDataMap.size());
+        Assert.assertEquals(nodeDataOne, nodeDataMap.get(nodeIdOne));
+        Assert.assertEquals(nodeDataTwo, nodeDataMap.get(nodeIdTwo));
+    }
+
+    @Test
+    public void testRemoveNodeData() throws Exception {
+        String insert = "INSERT INTO " + JDBCConstants.NODE_INFO_TABLE + "( " +
+                JDBCConstants.NODE_ID  + "," +
+                JDBCConstants.NODE_DATA + ") " +
+                " VALUES (?,?) ";
+
+        String nodeIdOne = "node1";
+        String nodeDataOne = "data1";
+        String nodeIdTwo = "node2";
+        String nodeDataTwo = "data2";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(insert);
+        // add first data set
+        preparedStatement.setString(1, nodeIdOne);
+        preparedStatement.setString(2, nodeDataOne);
+        preparedStatement.addBatch();
+
+        // add second data set
+        preparedStatement.setString(1, nodeIdTwo);
+        preparedStatement.setString(2, nodeDataTwo);
+        preparedStatement.addBatch();
+
+        preparedStatement.executeBatch();
+
+        // remove node data
+        contextStore.removeNodeData(nodeIdOne);
+
+        // query DB and try to retrieve deleted node information
+        String select = "SELECT * FROM " + JDBCConstants.NODE_INFO_TABLE +
+                " WHERE " + JDBCConstants.NODE_ID + "=?";
+
+        preparedStatement = connection.prepareStatement(select);
+        preparedStatement.setString(1, nodeIdOne);
+        ResultSet resultSet = preparedStatement.executeQuery();
+
+        // result set should be empty.
+        Assert.assertEquals(false, resultSet.first());
+
+    }
+
+    @Test
+    public void testStoreExchange() throws Exception{
+        String exchange1 = "exchange1";
+        String exchange2 = "exchange2";
+        String exchangeInfo1 = "exchangeInfo1";
+        String exchangeInfo2 = "exchangeInfo2";
+
+        contextStore.storeExchangeInformation(exchange1, exchangeInfo1);
+        contextStore.storeExchangeInformation(exchange2, exchangeInfo2);
+
+        // query from db
+        String select = "SELECT * FROM " + JDBCConstants.EXCHANGES_TABLE +
+                " WHERE " + JDBCConstants.EXCHANGE_NAME + "=?";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(select);
+        preparedStatement.setString(1, exchange1);
+        ResultSet resultSet = preparedStatement.executeQuery();
+
+        // test for exchange 1 data
+        Assert.assertEquals(true, resultSet.first());
+        Assert.assertEquals(exchangeInfo1, resultSet.getString(JDBCConstants.EXCHANGE_DATA));
+        preparedStatement.close();
+
+        preparedStatement = connection.prepareStatement(select);
+        preparedStatement.setString(1, exchange2);
+        resultSet = preparedStatement.executeQuery();
+
+        // test for exchange 2 data
+        Assert.assertEquals(true, resultSet.first());
+        Assert.assertEquals(exchangeInfo2, resultSet.getString(JDBCConstants.EXCHANGE_DATA));
+    }
+
     private void createTables() throws Exception {
 
         String[] queries = {
-                "CREATE TABLE durable_subscriptions (" +
-                        "sub_id VARCHAR NOT NULL, " +
+                "CREATE TABLE IF NOT EXISTS durable_subscriptions (" +
+                        "sub_id VARCHAR NOT NULL," +
                         "destination_identifier VARCHAR NOT NULL," +
-                        "data VARCHAR NOT NULL " +
-                        ");"
-                ,
+                        "data VARCHAR NOT NULL" +
+                        ");",
 
-                "CREATE TABLE node_info (" +
+                "CREATE TABLE IF NOT EXISTS node_info (" +
                         "node_id VARCHAR NOT NULL," +
-                        "data VARCHAR NOT NULL, " +
-                        "PRIMARY KEY(node_id) " +
+                        "data VARCHAR NOT NULL," +
+                        "PRIMARY KEY(node_id)" +
+                        ");",
+
+                "CREATE TABLE IF NOT EXISTS exchanges (" +
+                        "name VARCHAR NOT NULL," +
+                        "data VARCHAR NOT NULL," +
+                        "PRIMARY KEY(name)" +
+                        ");",
+
+                "CREATE TABLE IF NOT EXISTS queue_info (" +
+                        "name VARCHAR NOT NULL," +
+                        "data VARCHAR NOT NULL," +
+                        "PRIMARY KEY(name)" +
+                        ");",
+
+                "CREATE TABLE IF NOT EXISTS bindings (" +
+                        "exchange_name VARCHAR NOT NULL," +
+                        "queue_name VARCHAR NOT NULL," +
+                        "routing_key VARCHAR NOT NULL," +
+                        "FOREIGN KEY (exchange_name) REFERENCES exchanges (name)," +
+                        "FOREIGN KEY (queue_name) REFERENCES queue_info (name)" +
                         ");"
-
-
         };
         Statement stmt = connection.createStatement();
         for (String q : queries) {
@@ -244,7 +364,10 @@ public class H2BasedAndesContextStoreImplTest {
     private void dropTables() throws Exception {
         String[] queries = {
                 "DROP TABLE durable_subscriptions;",
-                "DROP TABLE node_info;"
+                "DROP TABLE node_info;",
+                "DROP TABLE exchanges",
+                "DROP TABLE queue_info",
+                "DROP TABLE bindings"
         };
         Statement stmt = connection.createStatement();
         for (String q : queries) {
@@ -253,6 +376,4 @@ public class H2BasedAndesContextStoreImplTest {
         stmt.executeBatch();
         stmt.close();
     }
-
-
 }

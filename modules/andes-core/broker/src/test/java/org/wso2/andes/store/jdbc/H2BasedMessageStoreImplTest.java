@@ -34,7 +34,7 @@ public class H2BasedMessageStoreImplTest {
             ic.createSubcontext("jdbc");
             JdbcDataSource ds = new JdbcDataSource();
             ds.setURL("jdbc:h2:mem:msg_store;DB_CLOSE_ON_EXIT=FALSE");
-            ic.bind("jdbc/InMemoryMessageStoreDB", ds);
+            ic.bind(JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME, ds);
 
             Class.forName("org.h2.Driver");
             connection = DriverManager.getConnection("jdbc:h2:mem:msg_store;DB_CLOSE_ON_EXIT=FALSE");

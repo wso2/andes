@@ -230,6 +230,16 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void storeExchangeInformation(String exchangeName, String exchangeInfo) throws AndesException {
 
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        try {
+            connection = getConnection();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            close(preparedStatement, JDBCConstants.TASK_STORING_EXCHANGE_INFORMATION);
+            close(connection, JDBCConstants.TASK_STORING_EXCHANGE_INFORMATION);
+        }
     }
 
     @Override

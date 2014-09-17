@@ -46,6 +46,10 @@ public class JDBCConstants {
     // Andes Context Store tables
     protected static final String DURABLE_SUB_TABLE = "durable_subscriptions";
     protected static final String NODE_INFO_TABLE = "node_info";
+    protected static final String EXCHANGES_TABLE = "exchanges";
+    protected static final String BINDINGS_TABLE = "bindings";
+    protected static final String QUEUE_INFO_TABLE = "queue_info";
+
 
     // Andes Context Store table columns
     protected static final String DURABLE_SUB_ID = "sub_id";
@@ -53,6 +57,13 @@ public class JDBCConstants {
     protected static final String DURABLE_SUB_DATA = "data";
     protected static final String NODE_ID = "node_id";
     protected static final String NODE_DATA = "data";
+    protected static final String EXCHANGE_NAME = "name";
+    protected static final String EXCHANGE_DATA = "data";
+    protected static final String ROUTING_KEY = "routing_key";
+    protected static final String BINDING_QUEUE_NAME = "queue_name";
+    protected static final String BINDING_EXCHANGE_NAME = "exchange_name";
+    protected static final String QUEUE_DATA= "data";
+
 
     // prepared statements for Message Store
     protected static final String PS_INSERT_MESSAGE_PART =
@@ -208,5 +219,6 @@ public class JDBCConstants {
     protected static final String TASK_RETRIEVING_ALL_NODE_DETAILS = "retrieving all node " +
             "information";
     protected static final String TASK_REMOVING_NODE_INFORMATION = "removing node information";
+    protected static final String TASK_STORING_EXCHANGE_INFORMATION = "storing exchange information";
 
 }
