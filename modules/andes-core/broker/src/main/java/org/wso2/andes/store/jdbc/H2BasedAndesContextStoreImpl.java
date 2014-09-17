@@ -16,13 +16,12 @@
 * under the License.
 */
 
-package org.wso2.andes.messageStore;
+package org.wso2.andes.store.jdbc;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.*;
 
 import javax.sql.DataSource;
-import java.lang.annotation.Inherited;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -32,14 +31,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class H2BasedAndesContextStore implements AndesContextStore {
+public class H2BasedAndesContextStoreImpl implements AndesContextStore {
 
-    private static final Logger logger = Logger.getLogger(H2BasedAndesContextStore.class);
+    private static final Logger logger = Logger.getLogger(H2BasedAndesContextStoreImpl.class);
 
     private DataSource datasource;
     private boolean isInMemoryMode;
 
-    H2BasedAndesContextStore(boolean isInMemoryMode) {
+    H2BasedAndesContextStoreImpl(boolean isInMemoryMode) {
         this.isInMemoryMode = isInMemoryMode;
     }
 

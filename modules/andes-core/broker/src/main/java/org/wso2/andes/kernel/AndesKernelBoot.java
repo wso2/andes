@@ -92,7 +92,7 @@ public class AndesKernelBoot {
 
         } else {
 
-            String contextStoreConnectionClass = "org.wso2.andes.server.cassandra.CQLConnection";
+            String contextStoreConnectionClass = "org.wso2.andes.store.cassandra.CQLConnection";
             Class clazz1 = Class.forName(contextStoreConnectionClass);
             Object o1 = clazz1.newInstance();
 
@@ -104,7 +104,7 @@ public class AndesKernelBoot {
             contextStoreConnection.initialize(storeConfiguration);
 
             //create a andes context store and register
-            String contextStoreClassName = "org.wso2.andes.kernel.CassandraBasedAndesContextStore";
+            String contextStoreClassName = AndesContext.getInstance().getAndesContextStoreClass();
             Class clazz2 = Class.forName(contextStoreClassName);
             Object o2 = clazz2.newInstance();
 
@@ -126,7 +126,7 @@ public class AndesKernelBoot {
 
 
             //create a messaging engine and a message store
-            String messageStoreConnectionClass = "org.wso2.andes.server.cassandra.CQLConnection";
+            String messageStoreConnectionClass = "org.wso2.andes.store.cassandra.CQLConnection";
             Class clazz = Class.forName(messageStoreConnectionClass);
             Object o = clazz.newInstance();
 
@@ -136,7 +136,10 @@ public class AndesKernelBoot {
             }
             DurableStoreConnection messageStoreConnection = (DurableStoreConnection) o;
             messageStoreConnection.initialize(storeConfiguration);
-            MessagingEngine.getInstance().initializeMessageStore(messageStoreConnection, "org.wso2.andes.messageStore.CQLBasedMessageStoreImpl");
+            MessagingEngine.getInstance().initializeMessageStore(
+                    messageStoreConnection,
+                    AndesContext.getInstance().getMessageStoreClass()
+            );
         }
 
         /**

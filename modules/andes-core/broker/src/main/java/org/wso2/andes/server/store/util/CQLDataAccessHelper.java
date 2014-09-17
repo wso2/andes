@@ -18,10 +18,10 @@
 package org.wso2.andes.server.store.util;
 
 
-import static org.wso2.andes.messageStore.CassandraConstants.INTEGER_TYPE;
-import static org.wso2.andes.messageStore.CassandraConstants.LONG_TYPE;
-import static org.wso2.andes.messageStore.CassandraConstants.STRING_TYPE;
-import static org.wso2.andes.server.cassandra.dao.GenericCQLDAO.CLUSTER_SESSION;
+import static org.wso2.andes.store.cassandra.CassandraConstants.INTEGER_TYPE;
+import static org.wso2.andes.store.cassandra.CassandraConstants.LONG_TYPE;
+import static org.wso2.andes.store.cassandra.CassandraConstants.STRING_TYPE;
+import static org.wso2.andes.store.cassandra.dao.GenericCQLDAO.CLUSTER_SESSION;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -52,10 +52,10 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
-import org.wso2.andes.server.cassandra.dao.CQLQueryBuilder;
-import org.wso2.andes.server.cassandra.dao.CQLQueryBuilder.Table;
-import org.wso2.andes.server.cassandra.dao.CassandraHelper.WHERE_OPERATORS;
-import org.wso2.andes.server.cassandra.dao.GenericCQLDAO;
+import org.wso2.andes.store.cassandra.dao.CQLQueryBuilder;
+import org.wso2.andes.store.cassandra.dao.CQLQueryBuilder.Table;
+import org.wso2.andes.store.cassandra.dao.CassandraHelper.WHERE_OPERATORS;
+import org.wso2.andes.store.cassandra.dao.GenericCQLDAO;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Cluster.Builder;

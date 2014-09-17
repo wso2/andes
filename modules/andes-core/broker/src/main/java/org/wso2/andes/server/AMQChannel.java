@@ -31,7 +31,7 @@ import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.messageStore.StoredAMQPMessage;
+import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMapImpl;

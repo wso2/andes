@@ -16,7 +16,7 @@
 * under the License.
 */
 
-package org.wso2.andes.messageStore;
+package org.wso2.andes.store;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

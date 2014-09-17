@@ -23,8 +23,8 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
-import org.wso2.andes.messageStore.CQLBasedMessageStoreImpl;
-import org.wso2.andes.messageStore.H2BasedMessageStoreImpl;
+import org.wso2.andes.store.cassandra.CQLBasedMessageStoreImpl;
+import org.wso2.andes.store.jdbc.H2BasedMessageStoreImpl;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;

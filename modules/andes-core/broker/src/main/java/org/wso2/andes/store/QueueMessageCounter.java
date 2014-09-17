@@ -1,4 +1,4 @@
-package org.wso2.andes.messageStore;
+package org.wso2.andes.store;
 
 import org.apache.thrift.TException;
 import org.wso2.andes.kernel.AndesMessageMetadata;

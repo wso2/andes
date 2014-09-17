@@ -16,7 +16,7 @@
 * under the License.
 */
 
-package org.wso2.andes.messageStore;
+package org.wso2.andes.store.jdbc;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.log4j.Logger;
@@ -26,7 +26,6 @@ import org.wso2.andes.kernel.DurableStoreConnection;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
-import javax.xml.crypto.Data;
 import java.sql.Connection;
 import java.sql.SQLException;
 

@@ -16,7 +16,7 @@
 * under the License.
 */
 
-package org.wso2.andes.messageStore;
+package org.wso2.andes.store.jdbc;
 
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;

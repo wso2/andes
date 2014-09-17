@@ -1,4 +1,4 @@
-package org.wso2.andes.server.cassandra.dao;
+package org.wso2.andes.store.cassandra.dao;
 
 public class CassandraHelper {
 	
