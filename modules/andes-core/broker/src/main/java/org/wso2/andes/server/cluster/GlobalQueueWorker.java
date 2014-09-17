@@ -55,73 +55,63 @@ public class GlobalQueueWorker implements Runnable {
                 .getQueueWorkerInterval();
         int repeatedSleepingCounter = 0;
 
-        while (true) {
-            if (running) {
-                try {
-                    /**
-                     * Steps
-                     *
-                     * 1)Poll Global queue and get chunk of messages 2) Put messages
-                     * one by one to node queues and delete them
-                     */
-                    QueueAddress sourceQueueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE, globalQueueName);
+        while (running) {
+            try {
+                /**
+                 * Steps
+                 *
+                 * 1)Poll Global queue and get chunk of messages 2) Put messages
+                 * one by one to node queues and delete them
+                 */
+                QueueAddress sourceQueueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE, globalQueueName);
 
-                    List<AndesMessageMetadata> messageList = messageStore.getNextNMessageMetadataFromQueue(sourceQueueAddress, lastProcessedMessageID, messageCountToReadFromCasssandra);
-                    while (messageList.size() != 0) {
-                        Iterator<AndesMessageMetadata> metadataIterator = messageList.iterator();
-                        while (metadataIterator.hasNext()) {
-                            AndesMessageMetadata metadata = metadataIterator.next();
+                List<AndesMessageMetadata> messageList = messageStore.getNextNMessageMetadataFromQueue(sourceQueueAddress, lastProcessedMessageID, messageCountToReadFromCasssandra);
+                while (messageList.size() != 0) {
+                    Iterator<AndesMessageMetadata> metadataIterator = messageList.iterator();
+                    while (metadataIterator.hasNext()) {
+                        AndesMessageMetadata metadata = metadataIterator.next();
 
-                            /**
-                             * check if the cluster has some subscriptions for that message and distribute to relevant node queues
-                             */
-                            String destinationQueue = metadata.getDestination();
-                            Random random = new Random();
-                            //TODO remove this list to set conversion
-                            List<String> nodeQueuesHavingSubscriptionsForQueue = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForQueue(destinationQueue));
-                            if (nodeQueuesHavingSubscriptionsForQueue.size() > 0) {
-                                int index = random.nextInt(nodeQueuesHavingSubscriptionsForQueue.size());
-                                String nodeQueue = nodeQueuesHavingSubscriptionsForQueue.get(index);
-                                metadata.queueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueue);
-                                //if (log.isDebugEnabled()) {
-                                String msgID = (String) metadata.getMessageHeader("msgID");
-                                log.debug("TRACING>> GQW " + globalQueueName + ">> copying message-" + (msgID == null ? "" : msgID) +
-                                        " to " + nodeQueue + " message ID: " + metadata.getMessageID());
-                                // }
-                            } else {
-                                //if there is no node queue to move message we skip
-                                metadataIterator.remove();
-                            }
-                            lastProcessedMessageID = metadata.getMessageID();
-
+                        /**
+                         * check if the cluster has some subscriptions for that message and distribute to relevant node queues
+                         */
+                        String destinationQueue = metadata.getDestination();
+                        Random random = new Random();
+                        //TODO remove this list to set conversion
+                        List<String> nodeQueuesHavingSubscriptionsForQueue = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForQueue(destinationQueue));
+                        if (nodeQueuesHavingSubscriptionsForQueue.size() > 0) {
+                            int index = random.nextInt(nodeQueuesHavingSubscriptionsForQueue.size());
+                            String nodeQueue = nodeQueuesHavingSubscriptionsForQueue.get(index);
+                            metadata.queueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueue);
+                            //if (log.isDebugEnabled()) {
+                            String msgID = (String) metadata.getMessageHeader("msgID");
+                            log.debug("TRACING>> GQW " + globalQueueName + ">> copying message-" + (msgID == null ? "" : msgID) +
+                                    " to " + nodeQueue + " message ID: " + metadata.getMessageID());
+                            // }
+                        } else {
+                            //if there is no node queue to move message we skip
+                            metadataIterator.remove();
                         }
-                        messageStore.moveMessageMetaData(sourceQueueAddress, null, messageList);
-                        PerformanceCounter.recordGlobalQueueMsgMove(messageList.size());
-                        messageList = messageStore.getNextNMessageMetadataFromQueue(sourceQueueAddress, lastProcessedMessageID, messageCountToReadFromCasssandra);
-                    }
+                        lastProcessedMessageID = metadata.getMessageID();
 
-                    try {
-                        Thread.sleep(queueWorkerWaitTime);
-                        repeatedSleepingCounter++;
-                        if (repeatedSleepingCounter > 1) {
-                            resetMessageReading();
-                        }
-                    } catch (InterruptedException e) {
-                        // ignore
                     }
-                } catch (Exception e) {
-                    log.error("Error in moving messages from global queue to node queue", e);
+                    messageStore.moveMessageMetaData(sourceQueueAddress, null, messageList);
+                    PerformanceCounter.recordGlobalQueueMsgMove(messageList.size());
+                    messageList = messageStore.getNextNMessageMetadataFromQueue(sourceQueueAddress, lastProcessedMessageID, messageCountToReadFromCasssandra);
                 }
-            } else {
+
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(queueWorkerWaitTime);
+                    repeatedSleepingCounter++;
+                    if (repeatedSleepingCounter > 1) {
+                        resetMessageReading();
+                    }
                 } catch (InterruptedException e) {
-                    //silently ignore
+                    // ignore
                 }
+            } catch (Exception e) {
+                log.error("Error in moving messages from global queue to node queue", e);
             }
-
         }
-
     }
 
     public boolean isRunning() {

@@ -31,12 +31,10 @@ import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.wso2.andes.server.slot.SlotManager;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.util.AndesUtils;
-import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -120,9 +118,8 @@ public class ClusterManager {
     /**
      * Handles changes needs to be done in current node when a node joins to the cluster
      */
-    public void handleNewNodeJoiningToCluster(Member node) {
+    public void memberAdded(Member node) {
         String nodeId = hazelcastAgent.getIdOfNode(node);
-        log.info("Handling cluster gossip: Node with ID " + nodeId + " joined the cluster");
         reAssignGlobalQueueSyncId();
         handleGlobalQueueAddition();
     }
@@ -130,9 +127,8 @@ public class ClusterManager {
     /**
      * Handles changes needs to be done in current node when a node leaves the cluster
      */
-    public void handleNodeLeavingCluster(Member node) throws AndesException {
+    public void memberRemoved(Member node) throws AndesException {
         String deletedNodeId = hazelcastAgent.getIdOfNode(node);
-        log.info("Handling cluster gossip: Node with ID " + deletedNodeId + " left the cluster");
 
         //refresh global queue sync ID
         reAssignGlobalQueueSyncId();
@@ -258,7 +254,7 @@ public class ClusterManager {
 
     public int getUniqueIdForLocalNode() {
         if (AndesContext.getInstance().isClusteringEnabled()) {
-            return hazelcastAgent.getUniqueIdForTheNode();
+            return hazelcastAgent.getUniqueIdForNode();
         }
         return 0;
     }
@@ -348,7 +344,7 @@ public class ClusterManager {
                 checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(AndesUtils.getNodeQueueNameForNodeId(storedNodeId));
             }
         }
-        handleNewNodeJoiningToCluster(hazelcastAgent.getLocalMember());
+        memberAdded(hazelcastAgent.getLocalMember());
         log.info("Handling cluster gossip: Node " + nodeId + "  Joined the Cluster");
     }
 
