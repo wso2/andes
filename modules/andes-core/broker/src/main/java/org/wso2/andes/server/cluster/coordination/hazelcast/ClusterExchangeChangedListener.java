@@ -57,7 +57,6 @@ public class ClusterExchangeChangedListener implements MessageListener {
             }
         } catch (AndesException e) {
             log.error("error while handling cluster exchange change notification", e);
-            throw new RuntimeException("error while handling cluster exchange change notification", e);
         }
     }
 }

@@ -49,6 +49,11 @@ public class ClusterSubscriptionChangedListener implements MessageListener {
         subscriptionListeners.add(listener);
     }
 
+    /**
+     * This method is triggered when a subscription is changed in clustered environment.
+     *
+     * @param message contains the ClusterNotification
+     */
     @Override
     public void onMessage(Message message) {
         ClusterNotification clusterNotification = (ClusterNotification) message.getMessageObject();
@@ -61,7 +66,6 @@ public class ClusterSubscriptionChangedListener implements MessageListener {
             }
         } catch (AndesException e) {
             log.error("error while handling cluster subscription change notification", e);
-            throw new RuntimeException("error while handling cluster subscription change notification", e);
         }
     }
 }

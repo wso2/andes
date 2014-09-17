@@ -58,7 +58,6 @@ public class ClusterQueueChangedListener implements MessageListener {
             }
         } catch (AndesException e) {
             log.error("error while handling cluster queue change notification", e);
-            throw new RuntimeException("error while handling cluster queue change notification", e);
         }
     }
 }

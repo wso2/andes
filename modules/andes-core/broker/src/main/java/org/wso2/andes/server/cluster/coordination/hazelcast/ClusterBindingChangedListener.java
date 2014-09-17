@@ -59,7 +59,6 @@ public class ClusterBindingChangedListener implements MessageListener {
             }
         } catch (AndesException e) {
             log.error("error while handling cluster binding change notification", e);
-            throw new RuntimeException("error while handling cluster binding change notification", e);
         }
     }
 }

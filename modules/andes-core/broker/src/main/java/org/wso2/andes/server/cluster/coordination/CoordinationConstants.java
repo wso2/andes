@@ -49,7 +49,7 @@ public final class CoordinationConstants {
     /**
      * Hazelcast ID generator name to generate an unique ID for each node.
      */
-    public static String HAZELCAST_ID_GENERATOR_NAME = "UNIQUE_ID";
+    public static String HAZELCAST_ID_GENERATOR_NAME = "UNIQUE_ID_TO_GENERATE_MESSAGE_ID";
 
     public static String FREE_SLOT_MAP_NAME = "freeSlotsMap";
 
