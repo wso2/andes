@@ -18,8 +18,6 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.CassandraConnection;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.server.stats.MessageCounterKey;
-import org.wso2.andes.server.stats.MessageStatus;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 import org.wso2.andes.server.store.util.CassandraDataAccessHelper;
@@ -78,7 +76,6 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
         CassandraDataAccessHelper.createColumnFamily(NODE_QUEUES_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE);
         CassandraDataAccessHelper.createColumnFamily(GLOBAL_QUEUES_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE);
         CassandraDataAccessHelper.createColumnFamily(PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE);
-        CassandraDataAccessHelper.createColumnFamily(MESSAGE_STATUS_CHANGE_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE);
         CassandraDataAccessHelper.createCounterColumnFamily(MESSAGE_COUNTERS_COLUMN_FAMILY, KEYSPACE, this.cluster);
     }
 
@@ -583,71 +580,4 @@ public class CassandraBasedMessageStoreImpl implements org.wso2.andes.kernel.Mes
         return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
-    /**
-     * Generic interface report the message store about the message status changes.
-     * @param messageId The message Id
-     * @param timeMillis The timestamp which the change happened
-     * @param messageCounterKey The combined key which contains the message queue name and the state it changed to
-     * @throws AndesException
-     */
-    @Override
-    public void addMessageStatusChange(long messageId, long timeMillis, MessageCounterKey messageCounterKey) throws AndesException {
-        // Not implemented since this class is not being used
-    }
-
-    /**
-     * Get the status of each of messages.
-     * @param queueName The queue name to get data, if null all.
-     * @return Message Status data.
-     */
-    @Override
-    public Set<MessageStatus> getMessageStatuses(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, Boolean compareAllStatuses) {
-        // Not implemented since this class is not being used.
-        return null;
-    }
-
-    /**
-     * Not implemented since not being used.
-     */
-    @Override
-    public void startMessageStatusUpdateExecutor() {
-
-    }
-
-    /**
-     * Not implemented since not being used.
-     */
-    @Override
-    public void stopMessageStatusUpdateExecutor() {
-
-    }
-
-    /**
-     * Not implemented since not being used.
-     * @param queueName The queue name the message is in.
-     * @param minDate The min value for the time range to retrieve in timemillis.
-     * @param maxDate The max value for the time range to retrieve in timemillis.
-     * @return
-     * @throws AndesException
-     */
-    @Override
-    public Long getMessageStatusCount(String queueName, Long minDate, Long maxDate) throws AndesException {
-        return null;
-    }
-
-    /**
-     * Not implemented since not being used.
-     * @param queueName The queue name the message is in.
-     * @param minDate The min value for the time range to retrieve in timemillis.
-     * @param maxDate The max value for the time range to retrieve in timemillis.
-     * @param minMessageId The min messageId to retrieve (use for paginated data retrieval. Else null).
-     * @param limit Limit of the number of records to retrieve. The messages will be retrieved in ascending messageId order. If null MAX value of long will be set.
-     * @param rangeColumn The message status change type to compare and return.
-     * @return
-     * @throws AndesException
-     */
-    @Override
-    public Map<Long, Long> getMessageStatusChangeTimes(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, MessageCounterKey.MessageCounterType rangeColumn) throws AndesException {
-        return null;
-    }
 }

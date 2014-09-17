@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import com.datastax.driver.core.querybuilder.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.cassandra.dao.CassandraHelper.ColumnValueMap;
@@ -27,7 +26,15 @@ import org.wso2.andes.server.store.util.CassandraDataAccessException;
 
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Row;
+import com.datastax.driver.core.querybuilder.Assignment;
+import com.datastax.driver.core.querybuilder.Clause;
+import com.datastax.driver.core.querybuilder.Delete;
+import com.datastax.driver.core.querybuilder.Insert;
+import com.datastax.driver.core.querybuilder.Ordering;
+import com.datastax.driver.core.querybuilder.QueryBuilder;
+import com.datastax.driver.core.querybuilder.Select;
 import com.datastax.driver.core.querybuilder.Select.Selection;
+import com.datastax.driver.core.querybuilder.Update;
 import com.datastax.driver.core.querybuilder.Update.Assignments;
 import com.datastax.driver.core.querybuilder.Update.Where;
 
@@ -75,38 +82,18 @@ public class CQLQueryBuilder {
 		if (hasColumns) {
 			columns.append(" ) ");
 		}
-        StringBuffer sql;
-        String fullyQualifiedTableName = table.getKeySpace() + "." + table.getName();
+        String sql;
         if(table.getStorageType()==null){
-             sql = new StringBuffer("CREATE TABLE " + fullyQualifiedTableName
-                    + columns.toString() + "WITH gc_grace_seconds = "+table.getGcGraceSeconds());
+             sql = "CREATE TABLE " + table.getKeySpace() + "." + table.getName()
+                    + columns.toString() + "WITH gc_grace_seconds = "+table.getGcGraceSeconds() + ";";
         }else{
-		     sql = new StringBuffer("CREATE TABLE " + fullyQualifiedTableName
-				+ columns.toString() + storageType + " AND gc_grace_seconds = "+table.getGcGraceSeconds());
+		     sql = "CREATE TABLE " + table.getKeySpace() + "." + table.getName()
+				+ columns.toString() + storageType + " AND gc_grace_seconds = "+table.getGcGraceSeconds()+";";
         }
 
-        String clusteringColumn = table.getClusteringOrderColumn();
-        if (clusteringColumn == null) {
-            sql.append(";");
-        } else {
-            sql.append(" AND CLUSTERING ORDER BY (" + clusteringColumn + " " + table.getClusteringOrder() + ");");
-        }
-
-		return sql.toString();
+		return sql;
 
 	}
-
-    /**
-     * Create an index for the table.
-     * Index name will be keyspace_tableName_columnName.
-     * @param keyspace
-     * @param tableName
-     * @param columnName
-     * @return sql query for creating the index
-     */
-    public static String buildCreateIndexQuery(String keyspace, String tableName, String columnName) {
-        return "CREATE INDEX "+ keyspace + "_" + tableName + "_" + columnName + " ON " + keyspace + "." + tableName + " (" + columnName + ");";
-    }
 
 	public static Select buildSelect(CQLQueryBuilder.CqlSelect cqlSelect) {
 		String table = cqlSelect.getTable();
@@ -293,54 +280,23 @@ public class CQLQueryBuilder {
 		return update;
 	}
 
-    /**
-     * Create an update statement with time to live option.
-     * @param cqlUpdate The created cql update object.
-     * @param ttl Time to Live.
-     * @return The update statement.
-     */
-    public static Update buildSingleUpdateWithTTL(CQLQueryBuilder.CqlUpdate cqlUpdate, int ttl) {
-        Update update = buildSingleUpdate(cqlUpdate);
-        Using using = QueryBuilder.ttl(ttl);
-        update.using(using);
-        return update;
-    }
-
 	public static Insert buildSingleInsert(String keySpace, String table,
 			Map<String, Object> keyValueMap) {
-        if (keyValueMap.isEmpty()) {
-            log.info(" no any key value to insert into table " + keySpace + "." + table);
-            return null;
-        }
-        Insert insert = insertInto(keySpace, table);
+		if (keyValueMap.isEmpty()) {
+			log.info(" no any key value to insert into table " + keySpace + "." + table);
+			return null;
+		}
+		Insert insert = insertInto(keySpace, table);
 
-        Set<Entry<String, Object>> keyValueSet = keyValueMap.entrySet();
-        Iterator<Entry<String, Object>> iter = keyValueSet.iterator();
-        while (iter.hasNext()) {
-            Entry<String, Object> entry = iter.next();
-            insert.value(entry.getKey(), entry.getValue());
-        }
+		Set<Entry<String, Object>> keyValueSet = keyValueMap.entrySet();
+		Iterator<Entry<String, Object>> iter = keyValueSet.iterator();
+		while (iter.hasNext()) {
+			Entry<String, Object> entry = iter.next();
+			insert.value(entry.getKey(), entry.getValue());
+		}
 
-        return insert;
+		return insert;
 	}
-
-    /**
-     * Create an insert statement with time to live option.
-     * @param keySpace The keyspace
-     * @param table The table name.
-     * @param keyValueMap Update key value pairs.
-     * @param ttl Time to Live.
-     * @return The insert statement.
-     */
-    public static Insert buildSingleInsertWithTTL(String keySpace, String table,
-                                                      Map<String, Object> keyValueMap, int ttl) {
-        Insert insert = buildSingleInsert(keySpace, table, keyValueMap);
-
-        Using using = QueryBuilder.ttl(ttl);
-        insert.using(using);
-
-        return insert;
-    }
 
 	public static Delete buildSingleDelete(CQLQueryBuilder.CqlDelete cqlDelete) {
 		String table = cqlDelete.getTable();
@@ -416,8 +372,6 @@ public class CQLQueryBuilder {
 		private final String name;
 		private final String keySpace;
         private final int gcGraceSeconds;
-        private String clusteringOrderColumn = null;
-        private String clusteringOrder = "ASC";
 
 		public Table(String storageType, String name, String keySpace,int gcGraceSeconds) {
 			super();
@@ -451,22 +405,7 @@ public class CQLQueryBuilder {
             return gcGraceSeconds;
         }
 
-        public String getClusteringOrderColumn() {
-            return clusteringOrderColumn;
-        }
-
-        public String getClusteringOrder() {
-            return clusteringOrder;
-        }
-
-        public void setClusteringOrderColumn(String clusteringOrderColumn) {
-            this.clusteringOrderColumn = clusteringOrderColumn;
-        }
-
-        public void setClusteringOrder(String clusteringOrder) {
-            this.clusteringOrder = clusteringOrder;
-        }
-    }
+	}
 
 	public static class CqlSelect {
 		private Set<String> columns;

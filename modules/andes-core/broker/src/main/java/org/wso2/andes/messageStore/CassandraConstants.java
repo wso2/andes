@@ -59,6 +59,4 @@ public class CassandraConstants {
 
     public final static String MESSAGES_FOR_EXPIRY_COLUMN_FAMILY="MessagesForExpiration";
 
-    public final static String MESSAGE_STATUS_CHANGE_COLUMN_FAMILY = "MessageStatusChange";
-
 }

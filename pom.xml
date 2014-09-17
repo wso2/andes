@@ -636,17 +636,6 @@
                 <enabled>false</enabled>
             </releases>
         </repository>
-	<repository>
-    		<id>MavenCentral</id>
-    		<name>Maven repository</name>
-    		<url>http://dist.wso2.org/maven2</url>
-    		<releases>
-        		<enabled>true</enabled>
-    		</releases>
-    		<snapshots>
-        		<enabled>false</enabled>
-    		</snapshots>
-	</repository>
     </repositories>
 
 </project>

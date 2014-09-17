@@ -942,23 +942,6 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
     public int getExpirationMessageBatchSize() {
         return getIntValue("advanced.expiration.messageBatchSize", DEFAULT_EXPIRATION_MESSAGE_BATCH_SIZE);
     }
-
-    /**
-     * Configuration property to decide whether to collect stats data or not.
-     * @return whether to collect stats data
-     */
-    public boolean isStatsEnabled()
-    {
-        return getBooleanValue("stats.enabled", true);
-    }
-
-    /**
-     * Configuration property to specify time to live for stats data records.
-     * @return Stats Time to Live
-     */
-    public int getStatsTimeToLive() {
-        return getIntValue("stats.timeToLive", 259200);
-    }
 }
 
 // TODO : Disruptor clean the configs

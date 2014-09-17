@@ -325,7 +325,6 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         LOG.debug("Session for clientId {} is {}", clientId, m_clientIDs.get(clientId).getSession());
 //            m_clientIDs.get(clientId).getSession().write(pubMessage);
         disruptorPublish(new OutputMessagingEvent(m_clientIDs.get(clientId).getSession(), pubMessage));
-
     }
     
     private void sendPubRec(String clientID, int messageID) {

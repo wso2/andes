@@ -212,13 +212,6 @@
             <version>1.0.5.wso2v1</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.json</groupId>
-            <artifactId>json</artifactId>
-            <version>20140107</version>
-        </dependency>
-
-
 <!--eclipse set-->
 
         <dependency>

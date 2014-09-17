@@ -8,8 +8,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.server.stats.MessageCounterKey;
-import org.wso2.andes.server.stats.MessageStatus;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 import org.wso2.andes.server.util.AndesUtils;
@@ -278,40 +276,4 @@ public class InMemoryMessageStore implements MessageStore {
         return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
-    @Override
-    public void addMessageStatusChange(long messageId, long timeMillis, MessageCounterKey messageCounterKey) throws AndesException {
-    }
-
-    @Override
-    public Set<MessageStatus> getMessageStatuses(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, Boolean comparePublishOnly) throws AndesException {
-        return null;
-    }
-
-    /**
-     * Not implemented.
-     */
-    @Override
-    public void startMessageStatusUpdateExecutor() {
-
-    }
-
-    /**
-     * Not implemented since not being used.
-     */
-    @Override
-    public void stopMessageStatusUpdateExecutor() {
-
-    }
-
-    // Not implemented
-    @Override
-    public Long getMessageStatusCount(String queueName, Long minDate, Long maxDate) throws AndesException {
-        return null;
-    }
-
-    // Not implemented
-    @Override
-    public Map<Long, Long> getMessageStatusChangeTimes(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, MessageCounterKey.MessageCounterType rangeColumn) throws AndesException {
-        return null;
-    }
 }

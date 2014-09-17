@@ -18,13 +18,10 @@
 
 package org.wso2.andes.kernel;
 
-import org.wso2.andes.server.stats.MessageCounterKey;
-import org.wso2.andes.server.stats.MessageStatus;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 
+import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public interface MessageStore {
 
@@ -96,62 +93,4 @@ public interface MessageStore {
      * @return
      */
     List<AndesRemovableMetadata> getExpiredMessages(Long limit,String columnFamilyName, String keyspace);
-
-    /**
-     * Generic interface to report the message store about the message status changes.
-     * @param messageId The message Id
-     * @param timeMillis The timestamp which the change happened
-     * @param messageCounterKey The combined key which contains the message queue name and the state it changed to
-     * @throws AndesException
-     */
-    public void addMessageStatusChange(long messageId, long timeMillis, MessageCounterKey messageCounterKey) throws AndesException;
-
-    /**
-     * Get stats of each message published, delivered and acknowledged times.
-     *
-     * @param queueName The queue name the message is in.
-     * @param minDate The min value for the time range to retrieve in timemillis.
-     * @param maxDate The max value for the time range to retrieve in timemillis.
-     * @param minMessageId The min messageId to retrieve (use for paginated data retrieval. Else null).
-     * @param limit Limit of the number of records to retrieve. The messages will be retrieved in ascending messageId order. If null MAX value of long will be set.
-     * @param compareAllStatuses Compare all the statuses that are changed within the given period, else only the published time will be compared.
-     * @return The message statuses orderd in message Id ascending order
-     */
-    public Set<MessageStatus> getMessageStatuses(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, Boolean compareAllStatuses) throws AndesException;
-
-    /**
-     *
-     * @param queueName The queue name the message is in.
-     * @param minDate The min value for the time range to retrieve in timemillis.
-     * @param maxDate The max value for the time range to retrieve in timemillis.
-     * @return The row count.
-     * @throws AndesException
-     */
-    public Long getMessageStatusCount(String queueName, Long minDate, Long maxDate) throws AndesException;
-
-    /**
-     * Get the times of messages within a given range arrived at a given status.
-     *
-     * @param queueName The queue name the message is in.
-     * @param minDate The min value for the time range to retrieve in timemillis.
-     * @param maxDate The max value for the time range to retrieve in timemillis.
-     * @param minMessageId The min messageId to retrieve (use for paginated data retrieval. Else null).
-     * @param limit Limit of the number of records to retrieve. The messages will be retrieved in ascending messageId order. If null MAX value of long will be set.
-     * @param rangeColumn The message status change type to compare and return.
-     * @return Map<MessageId MessageStatusChangeTime>
-     * @throws AndesException
-     */
-    public Map<Long, Long> getMessageStatusChangeTimes(String queueName, Long minDate, Long maxDate, Long minMessageId, Long limit, MessageCounterKey.MessageCounterType rangeColumn) throws AndesException;
-
-    /**
-     * Start message status update statements executor schedule to batch execute collected message status change
-     * updates or inserts after a given period of time.
-     */
-    public void startMessageStatusUpdateExecutor();
-
-    /**
-     * Stop message status update statements executor schedule either to shutdown the message broker, turn off stats
-     * gathering or simply execute message status update statements only after the statement buffer is full.
-     */
-    public void stopMessageStatusUpdateExecutor();
 }

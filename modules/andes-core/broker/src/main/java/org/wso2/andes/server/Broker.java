@@ -66,9 +66,6 @@ import java.lang.management.MemoryType;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import static org.wso2.andes.transport.ConnectionSettings.WILDCARD_ADDRESS;
 
@@ -302,12 +299,7 @@ public class Broker
 
 
             CurrentActor.get().message(BrokerMessages.READY());
-
             MessagingEngine.getInstance();
-
-            // Start MessageCounter thread each second
-//            ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor();
-//            exec.scheduleAtFixedRate(new MessageRateCounterThread(), 0, 1, TimeUnit.SECONDS);
         }
         finally
         {
