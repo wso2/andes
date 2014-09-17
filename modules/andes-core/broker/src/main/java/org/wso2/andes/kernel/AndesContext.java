@@ -1,6 +1,8 @@
 package org.wso2.andes.kernel;
 
 import com.hazelcast.core.HazelcastInstance;
+import org.apache.axis2.clustering.ClusteringAgent;
+import org.apache.axis2.clustering.management.NodeManager;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Map;
@@ -10,7 +12,10 @@ public class AndesContext {
     private String andesContextStoreClass;
     private SubscriptionStore subscriptionStore;
     private AndesContextStore andesContextStore;
-    private Map<String, AndesSubscription> dataSenderMap;
+	private Map<String, AndesSubscription> dataSenderMap;
+    private HazelcastInstance hazelcastInstance;
+    private ClusteringAgent agent;
+    private ClusteringAgent clusteringAgent;
     private boolean isClusteringEnabled;
     private AMQPConstructStore AMQPConstructStore;
     private static AndesContext instance = new AndesContext();
@@ -165,5 +170,15 @@ public class AndesContext {
      */
     public void setContextStoreDataSourceName(String contextStoreDataSourceName) {
         this.contextStoreDataSourceName = contextStoreDataSourceName;
+    }
+
+    public void setClusteringAgent(ClusteringAgent clusteringAgent){
+      this.clusteringAgent = clusteringAgent;
+    }
+
+    public ClusteringAgent getClusteringAgent() {
+        return clusteringAgent;
+
+
     }
 }

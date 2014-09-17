@@ -311,6 +311,7 @@ public class MessagingEngine {
      */
     public void startMessageDelivery() throws Exception{
 
+
 //        log.info("Starting queue message publisher");
 //        QueueDeliveryWorker qdw =
 //                ClusterResourceHolder.getInstance().getQueueDeliveryWorker();

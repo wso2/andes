@@ -30,6 +30,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.slot.thrift.gen.SlotManagementService;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 
 public class MBThriftServer {
@@ -52,36 +53,16 @@ public class MBThriftServer {
      *
      * @param hostName           the hostname
      * @param port               thrift server port
-     * @param timeOut            the client timeout
-     * @param keyStorePath       the path of the key store
-     * @param keyStorePassword   the password of the key store
-     * @param trustStorePath     the path of the trust store
-     * @param trustStorePassword the password of the trust store
      * @param taskName           the name of the main server thread
      * @throws org.wso2.andes.kernel.AndesException
      *          throws in case of an starting error
      */
     public void start(final String hostName,
                       final int port,
-                      final int timeOut,
-                      final String keyStorePath,
-                      final String keyStorePassword,
-                      final String trustStorePath,
-                      final String trustStorePassword,
                       final String taskName) throws AndesException {
         try {
-            TSSLTransportFactory.TSSLTransportParameters params =
-                    new TSSLTransportFactory.TSSLTransportParameters();
 
-            params.setKeyStore(keyStorePath, keyStorePassword);
-            params.setTrustStore(trustStorePath, trustStorePassword);
-
-            TServerSocket socket = TSSLTransportFactory.getServerSocket(
-                    port,
-                    timeOut,
-                    InetAddress.getByName(hostName),
-                    params);
-
+            TServerSocket socket = new TServerSocket(new InetSocketAddress(hostName, port));
             SlotManagementService.Processor<SlotManagementServerHandler> processor =
                     new SlotManagementService.Processor<SlotManagementServerHandler>(slotManagementServerHandler);
             TProtocolFactory protocolFactory = new TBinaryProtocol.Factory();
@@ -93,9 +74,7 @@ public class MBThriftServer {
             new Thread(new MBServerMainLoop(server), taskName).start();
 
         } catch (TTransportException e) {
-            throw new AndesException("TTransportException occurs", e);
-        } catch (UnknownHostException e) {
-            throw new AndesException("Unknown host exception occurs", e);
+            throw new AndesException("Cannot start Thrift server on port " + port +" on host " + hostName, e);
         }
     }
 

@@ -1,8 +1,11 @@
 package org.wso2.andes.messageStore;
 
+import org.apache.thrift.TException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.slot.SlotManager;
+import org.wso2.andes.server.slot.thrift.MBThriftClient;
+import org.wso2.andes.server.slot.thrift.MBUtils;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,10 +18,10 @@ public class QueueMessageCounter {
     //TODO what should be these value
     private static long timeOutForMessagesInQueue = 1000; // In milliseconds
     private static SlotManager slotManager;
-    private static boolean isClusteringEnabled;
-
+    private static MBThriftClient mbThriftClient;
     static {
         slotManager = SlotManager.getInstance();
+        mbThriftClient= new MBThriftClient(MBUtils.getCGThriftClient("localhost",7611)) ;
     }
 
     //TODO USE FUTURES
@@ -32,6 +35,7 @@ public class QueueMessageCounter {
                         for (String queue : slotTimeOutMap.keySet()) {
                             if ((System.currentTimeMillis() - slotTimeOutMap.get(queue)) > timeOutForMessagesInQueue) {
                                 recordMetaDataCountInSlot(null, queue);
+
                             }
                         }
 
@@ -51,6 +55,7 @@ public class QueueMessageCounter {
      */
     public static synchronized void recordMetaDataCountInSlot(List<AndesMessageMetadata> metadataList, String queue) {
         if (metadataList != null) {
+
             for (AndesMessageMetadata md : metadataList) {
                 String queueName = md.getDestination();
                 //if this is the first message to that queue
@@ -66,7 +71,7 @@ public class QueueMessageCounter {
                     queueToSlotMap.get(queueName).setMessageCount(newMessageCount);
                     queueToSlotMap.get(queueName).setEndMessageId(md.getMessageID());
 
-                    if (queueToSlotMap.get(queueName).getMessageCount() >= slotManager.getSlotThreshold()) {
+                    if (queueToSlotMap.get(queueName).getMessageCount() >= 100) {
                         recordLastMessageIdOfSlotInDistributedMap(queueName);
                     }
                 }
@@ -122,9 +127,16 @@ public class QueueMessageCounter {
     public static void recordLastMessageIdOfSlotInDistributedMap(String queueName) {
         if (queueToSlotMap.get(queueName) != null) {
             Slot slot = queueToSlotMap.get(queueName);
-            slotManager.updateMessageID(queueName, slot.getEndMessageId());
-            queueToSlotMap.remove(queueName);
-            slotTimeOutMap.remove(queueName);
+          //  try {
+                //mbThriftClient.updateMessageId(queueName,slot.getEndMessageId());
+                slotManager.updateMessageID(queueName, slot.getEndMessageId());
+                queueToSlotMap.remove(queueName);
+                slotTimeOutMap.remove(queueName);
+
+           // } catch (TException e) {
+               // e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+          //  }
+
         }
 
     }

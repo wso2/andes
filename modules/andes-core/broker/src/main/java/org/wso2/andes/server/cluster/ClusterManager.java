@@ -84,6 +84,7 @@ public class ClusterManager {
         this.globalQueueManager = new GlobalQueueManager(MessagingEngine.getInstance().getDurableMessageStore());
 		this.slotManager = SlotManager.getInstance();
 
+
     }
 
     /**
@@ -140,6 +141,8 @@ public class ClusterManager {
             //clear persisted states of disappeared node
             clearAllPersistedStatesOfDisappearedNode(deletedNodeId);
 
+            //Reassign the slot to free slots pool
+             slotManager.reAssignSlotsToFreeSlotsPool(deletedNodeId);
             // check and copy back messages of node queue belonging to disappeared node
             checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(AndesUtils.getNodeQueueNameForNodeId(deletedNodeId));
         }
@@ -315,7 +318,8 @@ public class ClusterManager {
         andesContextStore.storeNodeDetails(nodeId, config.getBindIpAddress());
 
         //start all global queue workers on the node
-        startAllGlobalQueueWorkers();
+        //TODO commented by sajini
+        //startAllGlobalQueueWorkers();
     }
 
     private void initClusterMode() throws Exception {

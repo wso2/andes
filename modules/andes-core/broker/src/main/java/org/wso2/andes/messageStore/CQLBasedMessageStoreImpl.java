@@ -309,6 +309,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             GenericCQLDAO.batchExecute(KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
             if (isClusteringEnabled) {
                 QueueMessageCounter.recordMetaDataCountInSlot(metadataList, null);
+
             }
             PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency((int) (System.currentTimeMillis() - start));
 
