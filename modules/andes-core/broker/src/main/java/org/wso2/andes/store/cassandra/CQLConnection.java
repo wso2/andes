@@ -16,7 +16,7 @@
 * under the License.
 */
 
-package org.wso2.andes.server.cassandra;
+package org.wso2.andes.store.cassandra;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +29,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cassandra.dao.GenericCQLDAO;
+import org.wso2.andes.store.cassandra.dao.GenericCQLDAO;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.GlobalQueueManager;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
@@ -39,7 +39,7 @@ import org.wso2.andes.server.util.AndesUtils;
 
 import com.datastax.driver.core.Cluster;
 
-import static org.wso2.andes.messageStore.CassandraConstants.*;
+import static org.wso2.andes.store.cassandra.CassandraConstants.*;
 
 public class CQLConnection implements DurableStoreConnection {
 

@@ -1,8 +1,10 @@
-package org.wso2.andes.messageStore;
+package org.wso2.andes.store.jdbc;
 
 import junit.framework.Assert;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.*;
+import org.wso2.andes.store.jdbc.H2BasedAndesContextStoreImpl;
+import org.wso2.andes.store.jdbc.JDBCConstants;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
@@ -11,10 +13,10 @@ import java.sql.*;
 import java.util.List;
 import java.util.Map;
 
-public class H2BasedAndesContextStoreTest {
+public class H2BasedAndesContextStoreImplTest {
 
     private static Connection connection;
-    private H2BasedAndesContextStore contextStore;
+    private H2BasedAndesContextStoreImpl contextStore;
 
     @BeforeClass
     public static void BeforeClass() throws Exception {
@@ -40,7 +42,7 @@ public class H2BasedAndesContextStoreTest {
     @Before
     public void setup() throws Exception {
         createTables();
-        contextStore = new H2BasedAndesContextStore(true); // in memory mode mode
+        contextStore = new H2BasedAndesContextStoreImpl(true); // in memory mode mode
         contextStore.init(null);
     }
 

@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.wso2.andes.messageStore;
+package org.wso2.andes.store.jdbc;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.*;
@@ -25,6 +25,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
+import org.wso2.andes.store.MessageContentRemoverTask;
 
 import javax.sql.DataSource;
 import java.sql.*;

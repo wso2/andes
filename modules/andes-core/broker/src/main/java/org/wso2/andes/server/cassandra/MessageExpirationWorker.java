@@ -5,10 +5,8 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.messageStore.CassandraConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
-import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 
 import java.util.List;
 

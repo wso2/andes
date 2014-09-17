@@ -21,7 +21,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.messageStore.StoredAMQPMessage;
+import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.exchange.Exchange;
@@ -37,7 +37,6 @@ import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
 
-import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;

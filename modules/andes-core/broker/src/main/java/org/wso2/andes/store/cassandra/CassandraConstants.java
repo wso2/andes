@@ -1,4 +1,4 @@
-package org.wso2.andes.messageStore;
+package org.wso2.andes.store.cassandra;
 
 import me.prettyprint.cassandra.serializers.ByteBufferSerializer;
 import me.prettyprint.cassandra.serializers.BytesArraySerializer;
