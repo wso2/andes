@@ -64,25 +64,26 @@ public class SlotManager {
      * @return  Slot object
      */
     public Slot getSlot(String queueName) {
-        Slot slotImpToBeAssigned = new Slot();
-        slotImpToBeAssigned.setQueue(queueName);
-        if (freedSlotsMap.get(queueName) != null && !freedSlotsMap.get(queueName).isEmpty()) {
+        Slot slotToBeAssigned = new Slot();
+        slotToBeAssigned.setQueue(queueName);
+        TreeSet<Slot> slotsFromFreedSlotMap = freedSlotsMap.get(queueName);
+        if (slotsFromFreedSlotMap != null && !slotsFromFreedSlotMap.isEmpty()) {
             freedSlotsMap.lock(queueName);
             try {
                 if (freedSlotsMap.get(queueName) != null && !freedSlotsMap.get(queueName).isEmpty()) {
-                    slotImpToBeAssigned = freedSlotsMap.get(queueName).pollFirst();
+                    slotToBeAssigned = freedSlotsMap.get(queueName).pollFirst();
                     freedSlotsMap.unlock(queueName);
-                    return slotImpToBeAssigned;
+                    return slotToBeAssigned;
                 } else {
-                    slotImpToBeAssigned = getFreshSlot(queueName);
-                    return slotImpToBeAssigned;
+                    slotToBeAssigned = getFreshSlot(queueName);
+                    return slotToBeAssigned;
                 }
             } finally {
                 freedSlotsMap.unlock(queueName);
             }
         } else {
-            slotImpToBeAssigned = getFreshSlot(queueName);
-            return slotImpToBeAssigned;
+            slotToBeAssigned = getFreshSlot(queueName);
+            return slotToBeAssigned;
         }
 
     }

@@ -23,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TSSLTransportFactory;
+import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.wso2.andes.server.slot.thrift.gen.SlotManagementService;
@@ -36,29 +37,18 @@ public class MBUtils {
      *
      * @param hostName           thrift server host name
      * @param port               thrift server port client should connect to
-     * @param timeOut            the thrift client timeout
-     * @param trustStorePath     the trust store to use for this client
-     * @param trustStorePassWord the password of the trust store
      * @return a MB thrift service client
      */
-    public static SlotManagementService.Client getCGThriftClient(
-            final String hostName,
-            final int port,
-            final int timeOut,
-            final String trustStorePath,
-            final String trustStorePassWord) {
+    public static SlotManagementService.Client getCGThriftClient(final String hostName,final int port) {
         try {
-            TSSLTransportFactory.TSSLTransportParameters params =
-                    new TSSLTransportFactory.TSSLTransportParameters();
 
-            params.setTrustStore(trustStorePath, trustStorePassWord);
+            TTransport transport;
 
-            TTransport transport = TSSLTransportFactory.getClientSocket(
-                    hostName,
-                    port,
-                    timeOut,
-                    params);
-            TProtocol protocol = new TBinaryProtocol(transport);
+            transport = new TSocket(hostName, port);
+            transport.open();
+
+            TProtocol protocol = new  TBinaryProtocol(transport);
+            SlotManagementService.Client client = new SlotManagementService.Client(protocol);
 
             return new SlotManagementService.Client(protocol);
         } catch (TTransportException e) {
