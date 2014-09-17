@@ -338,7 +338,7 @@ public class VirtualHostImpl implements VirtualHost {
         AndesKernelBoot.startAndesStores(hostConfig.getStoreConfiguration(), this);
 
         //this is considered as an internal impl now, so hard coding
-        String qpidMessageStoreClass = "org.wso2.andes.server.store.CassandraMessageStore";
+        String qpidMessageStoreClass = "org.wso2.andes.server.store.CQLBasedMessageStore";
 
         Class clazz = Class.forName(qpidMessageStoreClass);
         Object o = clazz.newInstance();
