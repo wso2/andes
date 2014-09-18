@@ -31,10 +31,22 @@ import java.util.*;
 public class SlotManager {
 
     private static SlotManager slotManager = new SlotManager();
-    private IMap<String, TreeSet<Slot>> freedSlotsMap; // slots which are previously owned and released by another node
-    private IMap<String, TreeSet<Long>> queueToMessageIdsMap; //to keep list of message IDs against queues
-    private IMap<String, Long> queueToLastAssignedIDMap; //to keep track of last assigned message ID against queue.
-    private IMap<String, HashMap<Long, Slot>> slotAssignmentMap; // to keep track of assigned slots up to now.
+    /**
+     * slots which are previously owned and released by another node
+     */
+    private IMap<String, TreeSet<Slot>> freedSlotsMap;
+    /**
+     * to keep list of message IDs against queues
+     */
+    private IMap<String, TreeSet<Long>> queueToMessageIdsMap;
+    /**
+     * to keep track of last assigned message ID against queue.
+     */
+    private IMap<String, Long> queueToLastAssignedIDMap;
+    /**
+     *  // to keep track of assigned slots up to now.
+     */
+    private IMap<String, HashMap<Long, Slot>> slotAssignmentMap;
     private MessageStore messageStore;
     private long slotThresholdValue = 100;
     private HazelcastAgent hazelcastAgent;

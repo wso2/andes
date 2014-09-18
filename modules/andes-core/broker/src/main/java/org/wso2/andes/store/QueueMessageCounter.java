@@ -94,6 +94,7 @@ public class QueueMessageCounter {
         if (queueToSlotMap.get(queueName) != null) {
             Slot slot = queueToSlotMap.get(queueName);
             //TODO what should be these values? is this values should be configurable
+            //TODO this comment should be removed when thrift communications are enabled
             //  try {
                 //mbThriftClient.updateMessageId(queueName,slot.getEndMessageId());
                 slotManager.updateMessageID(queueName, slot.getEndMessageId());
