@@ -31,10 +31,22 @@ import java.util.*;
 public class SlotManager {
 
     private static SlotManager slotManager = new SlotManager();
-    private IMap<String, TreeSet<Slot>> freedSlotsMap; // slots which are previously owned and released by another node
-    private IMap<String, TreeSet<Long>> queueToMessageIdsMap; //to keep list of message IDs against queues
-    private IMap<String, Long> queueToLastAssignedIDMap; //to keep track of last assigned message ID against queue.
-    private IMap<String, HashMap<Long,Slot>> slotAssignmentMap; // to keep track of assigned slots up to now.
+    /**
+     * slots which are previously owned and released by another node
+     */
+    private IMap<String, TreeSet<Slot>> freedSlotsMap;
+    /**
+     * to keep list of message IDs against queues
+     */
+    private IMap<String, TreeSet<Long>> queueToMessageIdsMap;
+    /**
+     * to keep track of last assigned message ID against queue.
+     */
+    private IMap<String, Long> queueToLastAssignedIDMap;
+    /**
+     *  // to keep track of assigned slots up to now.
+     */
+    private IMap<String, HashMap<Long, Slot>> slotAssignmentMap;
     private MessageStore messageStore;
     private long slotThresholdValue = 100;
     private HazelcastAgent hazelcastAgent;
@@ -60,8 +72,9 @@ public class SlotManager {
     /**
      * get a slot by giving the queue name. This method first lookup the free slot pool for
      * slots and if there are no slots in the free slot pool then return a newly created slot
+     *
      * @param queueName name of the queue
-     * @return  Slot object
+     * @return Slot object
      */
     public Slot getSlot(String queueName) {
         Slot slotToBeAssigned = new Slot();
@@ -89,9 +102,8 @@ public class SlotManager {
     }
 
     /**
-     *
-     * @param queueName
-     * @return
+     * @param queueName name of the queue
+     * @return slot object
      */
     private Slot getFreshSlot(String queueName) {
         TreeSet<Long> messageIDSet;
@@ -119,21 +131,26 @@ public class SlotManager {
         }
     }
 
-    public void updateSlotAssignmentMap(String queue, Slot allocatedSlotImp) {
+
+    /**
+     *
+     * @param queue name of the queue
+     * @param allocatedSlot slot object which is allocated to a particular node
+     */
+    public void updateSlotAssignmentMap(String queue, Slot allocatedSlot) {
         String nodeId = hazelcastAgent.getNodeId();
         String slotAssignmentMapKey = nodeId + "_" + queue;
-        HashMap<Long,Slot> startIdToSlotMap = new HashMap<Long, Slot>();
+        HashMap<Long, Slot> startIdToSlotMap = new HashMap<Long, Slot>();
         slotAssignmentMap.putIfAbsent(slotAssignmentMapKey, startIdToSlotMap);
         slotAssignmentMap.lock(slotAssignmentMapKey);
         try {
             startIdToSlotMap = slotAssignmentMap.get(slotAssignmentMapKey);
-            startIdToSlotMap.put(allocatedSlotImp.getStartMessageId(), allocatedSlotImp);
+            startIdToSlotMap.put(allocatedSlot.getStartMessageId(), allocatedSlot);
             slotAssignmentMap.put(slotAssignmentMapKey, startIdToSlotMap);
             log.info("Updated the slotAssignmentMap with new Slot");
         } finally {
             slotAssignmentMap.unlock(slotAssignmentMapKey);
         }
-        //slotAssignmentMap.putIfAbsent(slotAssignmentMapKey,allocatedSlotImp);
     }
 
     public void deleteEntryFromSlotAssignmentMap(String queue) {
@@ -172,6 +189,11 @@ public class SlotManager {
         }
     }
 
+    /**
+     * This method will reassigned slots which are owned by a node to a free slots pool
+     *
+     * @param nodeId
+     */
     public void reAssignSlotsToFreeSlotsPool(String nodeId) {
         for (Object o : slotAssignmentMap.keySet()) {
             String slotAssignmentMapKey = (String) o;
@@ -188,7 +210,7 @@ public class SlotManager {
                             freeSlotImpTreeSet.add(slotImpToBeReAssigned);
                             freedSlotsMap.put(slotImpToBeReAssigned.getQueue(), freeSlotImpTreeSet);
                             log.info("Reassigned slot " + slotImpToBeReAssigned.getStartMessageId() + " - " +
-                                    slotImpToBeReAssigned.getEndMessageId() + "from node " + nodeId );
+                                    slotImpToBeReAssigned.getEndMessageId() + "from node " + nodeId);
                         } finally {
                             freedSlotsMap.unlock(slotImpToBeReAssigned.getQueue());
                         }
@@ -199,10 +221,16 @@ public class SlotManager {
         }
     }
 
-    public boolean isThisSlotEmpty(Slot slotImp) {
+
+    /**
+     *
+     * @param slot
+     * @return whether the slot is empty or not
+     */
+    public boolean isThisSlotEmpty(Slot slot) {
         try {
             List<AndesMessageMetadata> messagesReturnedFromCassandra =
-                    messageStore.getMetaDataList(slotImp.getQueue(), slotImp.getStartMessageId(), slotImp.getEndMessageId());
+                    messageStore.getMetaDataList(slot.getQueue(), slot.getStartMessageId(), slot.getEndMessageId());
             if (messagesReturnedFromCassandra == null || messagesReturnedFromCassandra.isEmpty()) {
                 return true;
             } else {
@@ -214,13 +242,19 @@ public class SlotManager {
         }
     }
 
-    public void unAssignSlot(String queueName,long startMessageIdOfSlot) {
+
+    /**
+     * remove slot entry from slotAssignment map
+     * @param queueName
+     * @param startMessageIdOfSlot
+     */
+    public void unAssignSlot(String queueName, long startMessageIdOfSlot) {
         String slotAssignmentMapKey = hazelcastAgent.getNodeId() + "_" + queueName;
         slotAssignmentMap.lock(slotAssignmentMapKey);
         try {
-            HashMap<Long,Slot> startIdToSlotMap = slotAssignmentMap.get(slotAssignmentMapKey);
+            HashMap<Long, Slot> startIdToSlotMap = slotAssignmentMap.get(slotAssignmentMapKey);
             startIdToSlotMap.remove(startMessageIdOfSlot);
-            slotAssignmentMap.replace(slotAssignmentMapKey,startIdToSlotMap);
+            slotAssignmentMap.replace(slotAssignmentMapKey, startIdToSlotMap);
             log.info("Unassigned slot start with: " + startMessageIdOfSlot);
         } finally {
             slotAssignmentMap.unlock(slotAssignmentMapKey);
