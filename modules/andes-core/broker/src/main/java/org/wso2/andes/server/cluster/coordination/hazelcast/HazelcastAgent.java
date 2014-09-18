@@ -180,16 +180,14 @@ public class HazelcastAgent {
     }
 
     /**
-     * Node ID is generated in the format of "NODE/<host IP>_<Node UUID>"
+     * Node ID is generated in the format of "NODE/<host IP>:<Port>"
      *
      * @return NodeId
      */
     public String getNodeId() {
         Member localMember = hazelcastInstance.getCluster().getLocalMember();
         return CoordinationConstants.NODE_NAME_PREFIX +
-                localMember.getInetSocketAddress().getAddress() +
-                "_" +
-                localMember.getUuid();
+                localMember.getInetSocketAddress();
     }
 
     /**
@@ -211,9 +209,7 @@ public class HazelcastAgent {
         List<String> nodeIDList = new ArrayList<String>();
         for (Member member : members) {
             nodeIDList.add(CoordinationConstants.NODE_NAME_PREFIX +
-                    member.getInetSocketAddress().getAddress() +
-                    "_" +
-                    member.getUuid());
+                    member.getInetSocketAddress());
         }
 
         return nodeIDList;
@@ -254,9 +250,7 @@ public class HazelcastAgent {
      */
     public String getIdOfNode(Member node) {
         return CoordinationConstants.NODE_NAME_PREFIX +
-                node.getInetSocketAddress().getAddress() +
-                "_" +
-                node.getUuid();
+                node.getInetSocketAddress().getAddress();
     }
 
     /**
