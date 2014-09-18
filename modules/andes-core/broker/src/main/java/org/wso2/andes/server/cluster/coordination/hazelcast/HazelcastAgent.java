@@ -66,6 +66,12 @@ public class HazelcastAgent {
      */
     private ITopic<ClusterNotification> exchangeChangeNotifierChannel;
 
+    /**
+     * Distributed topic to communicate coordinator change notification among cluster nodes.
+     */
+    private ITopic<ClusterNotification> coordinatorChangeNotifierChannel;
+
+
     private IMap<String, TreeSet<Long>> queueToMessageIdListMap;
     private IMap<String, HashMap<Long, Slot>> slotAssignmentMap;
     private IMap<String, Long> lastProcessedIDs;
@@ -149,6 +155,15 @@ public class HazelcastAgent {
         ClusterBindingChangedListener clusterBindingChangedListener = new ClusterBindingChangedListener();
         clusterBindingChangedListener.addBindingListener(new ClusterCoordinationHandler(this));
         this.bindingChangeNotifierChannel.addMessageListener(clusterBindingChangedListener);
+
+
+        /**
+         * coordinator changes
+         */
+        this.coordinatorChangeNotifierChannel = this.hazelcastInstance.getTopic(
+                CoordinationConstants.HAZELCAST_COORDINATOR_CHANGED_NOTIFIER_TOPIC_NAME);
+        ThriftCooordinatorListener thriftCooordinatorListener = new ThriftCooordinatorListener();
+        this.coordinatorChangeNotifierChannel.addMessageListener(thriftCooordinatorListener);
 
         // generates a unique id for the node unique for the cluster
         IdGenerator idGenerator = hazelcastInstance.getIdGenerator(CoordinationConstants.HAZELCAST_ID_GENERATOR_NAME);

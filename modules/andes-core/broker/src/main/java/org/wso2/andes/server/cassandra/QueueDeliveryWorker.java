@@ -218,11 +218,7 @@ public class QueueDeliveryWorker {
         }.start();
     }
 
-    /**
-     * Main Message Delivery Thread
-     */
-
-    public void run(List<AndesMessageMetadata> messagesReadByLeadingThread) {
+    public void startSendingMessages(List<AndesMessageMetadata> messagesReadByLeadingThread) {
         iterations = 0;
         workqueueSize = 0;
         lastRestTime = System.currentTimeMillis();

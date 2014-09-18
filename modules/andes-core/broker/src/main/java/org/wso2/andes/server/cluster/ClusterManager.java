@@ -123,6 +123,9 @@ public class ClusterManager {
         String nodeId = hazelcastAgent.getIdOfNode(node);
         reAssignGlobalQueueSyncId();
         handleGlobalQueueAddition();
+        if(AndesContext.getInstance().getClusteringAgent().isCoordinator()){
+            log.info("New Coordinator is " +nodeId);
+        }
     }
 
     /**

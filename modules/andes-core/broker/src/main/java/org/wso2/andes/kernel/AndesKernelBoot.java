@@ -29,6 +29,8 @@ import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.wso2.andes.server.information.management.QueueManagementInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
+import org.wso2.andes.server.slot.thrift.MBThriftServer;
+import org.wso2.andes.server.slot.thrift.SlotManagementServerHandler;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 import org.wso2.andes.subscription.SubscriptionStore;
@@ -51,6 +53,8 @@ public class AndesKernelBoot {
         syncNodeWithClusterState();
         registerMBeans();
         startMessaging();
+        //todo this should be uncommented after thrift communication is enabled
+        //startThriftServer();
     }
 
     /**
@@ -278,4 +282,13 @@ public class AndesKernelBoot {
     }
 
 
+    private static void startThriftServer() throws AndesException {
+        try {
+            SlotManagementServerHandler slotManagementServerHandler = new SlotManagementServerHandler();
+            MBThriftServer thriftServer = new MBThriftServer(slotManagementServerHandler);
+            thriftServer.start(AndesContext.getInstance().getThriftServerHost(),AndesContext.getInstance().getThriftServerPort(),"MB-ThriftServer-main-thread");
+        } catch (AndesException e) {
+            throw new AndesException("Could not start the MB Thrift Server"+e);
+        }
+    }
 }

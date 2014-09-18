@@ -24,31 +24,33 @@ import java.util.concurrent.Executors;
 
 public class SlotDeliveryWorkerManager {
 
-    private Map<Integer,SlotDeliveryWorker> queueWorkerMap =
-            new ConcurrentHashMap<Integer,SlotDeliveryWorker>();
+    private Map<Integer,SlotDeliveryWorker> queueWorkerMap = new ConcurrentHashMap<Integer,SlotDeliveryWorker>();
 
     private ExecutorService slotDeliveryWorkerExecutor;
     private int numberOfThreads;
-    private static SlotDeliveryWorkerManager slotDeliveryWorkerManagerManager;
+    private static SlotDeliveryWorkerManager slotDeliveryWorkerManagerManager =
+            new SlotDeliveryWorkerManager();
 
 
     private SlotDeliveryWorkerManager(){
-        numberOfThreads = 5;
+        numberOfThreads = SlotConstants.NUMBER_OF_SLOT_DELIVERY_WORKER_THREADS;
         this.slotDeliveryWorkerExecutor = Executors.newFixedThreadPool(numberOfThreads);
     }
 
+    /**
+     *
+     * @return SlotDeliveryWorkerManager instance
+     */
     public static SlotDeliveryWorkerManager getInstance() {
-        if (slotDeliveryWorkerManagerManager == null) {
-
-            synchronized (SlotDeliveryWorkerManager.class) {
-                if (slotDeliveryWorkerManagerManager == null) {
-                    slotDeliveryWorkerManagerManager = new SlotDeliveryWorkerManager();
-                }
-            }
-        }
         return slotDeliveryWorkerManagerManager;
     }
 
+    /**
+     * When a subscription is added this method will be called.
+     * This method will decide which SlotDeliveryWorker thread is assigned to which queue
+     * @param queueName
+     */
+    //todo use schedule tasks
     public void startSlotDeliveryWorkerForQueue(String queueName){
        int slotDeliveryWorkerId = getIdForSlotDeliveryWorker(queueName);
        if(queueWorkerMap.containsKey(slotDeliveryWorkerId)){
@@ -65,13 +67,12 @@ public class SlotDeliveryWorkerManager {
        }
     }
 
+    /**
+     * This method is to decide slotDeliveryWorkerId for the queue
+     * @param queueName
+     * @return slot delivery worker ID
+     */
     private int getIdForSlotDeliveryWorker(String queueName){
-
-       int sum=0;
-        char ch[] = queueName.toCharArray();
-        for (int i=0; i < queueName.length(); i++){
-            sum += ch[i];
-        }
-        return sum % numberOfThreads;
+        return queueName.hashCode() % numberOfThreads;
     }
 }
