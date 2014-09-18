@@ -120,10 +120,12 @@ public class ClusterManager {
      * Handles changes needs to be done in current node when a node joins to the cluster
      */
     public void memberAdded(Member node) {
+
+        String nodeId = hazelcastAgent.getIdOfNode(node);
         reAssignGlobalQueueSyncId();
         handleGlobalQueueAddition();
-        if(AndesContext.getInstance().getClusteringAgent().isCoordinator()){
-            log.info("New Coordinator is " +nodeId);
+        if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
+            log.info("New Coordinator is " + nodeId);
         }
     }
 

@@ -54,7 +54,7 @@ public class AndesKernelBoot {
         registerMBeans();
         startMessaging();
         //todo this should be uncommented after thrift communication is enabled
-        //startThriftServer();
+        startThriftServer();
     }
 
     /**

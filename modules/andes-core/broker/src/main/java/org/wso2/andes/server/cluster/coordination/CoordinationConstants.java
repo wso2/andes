@@ -42,12 +42,6 @@ public final class CoordinationConstants {
     public static String HAZELCAST_BINDING_CHANGED_NOTIFIER_TOPIC_NAME = "BINDING_CHANGED";
 
     /**
-     * Hazelcast distributed topic name to send coordinator changed notifications to cluster nodes
-     */
-
-    public static String HAZELCAST_COORDINATOR_CHANGED_NOTIFIER_TOPIC_NAME = "COORDINATOR_CHANGED";
-
-    /**
      * Prefix to generate node ID
      */
     public static String NODE_NAME_PREFIX = "NODE";
@@ -65,6 +59,7 @@ public final class CoordinationConstants {
 
     public static String SLOT_ASSIGNMENT_MAP_NAME = "slotAssignmentMap";
 
-    public static String LOCK_NAME = "freeSlotMapLock";
+    public static String THRIFT_SERVER_DETAILS_MAP_NAME = "thriftServerDetailsMap";
+
 
 }
