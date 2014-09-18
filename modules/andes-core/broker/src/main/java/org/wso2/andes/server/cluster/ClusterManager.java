@@ -162,7 +162,7 @@ public class ClusterManager {
      *
      * @param nodeId Id of the node
      * @return global queues as an array of Strings
-     * TODO:this should be removed with slot based architecture. The logic behind this method is not valid
+     * TODO:this should be removed with slot based architecture. The logic behind this method is no more valid
      */
     public String[] getGlobalQueuesAssigned(String nodeId) {
         List<String> globalQueuesToBeAssigned = new ArrayList<String>();
