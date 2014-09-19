@@ -1,6 +1,7 @@
-package org.wso2.andes.messageStore;
+package org.wso2.andes.store;
 
 import org.apache.thrift.TException;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.slot.SlotManager;
@@ -15,16 +16,19 @@ public class QueueMessageCounter {
 
     private static ConcurrentHashMap<String, Slot> queueToSlotMap = new ConcurrentHashMap<String, Slot>();
     private static ConcurrentHashMap<String, Long> slotTimeOutMap = new ConcurrentHashMap<String, Long>();
-    //TODO what should be these value
+    //TODO what should be these values? is this values should be configurable
     private static long timeOutForMessagesInQueue = 1000; // In milliseconds
     private static SlotManager slotManager;
-    private static MBThriftClient mbThriftClient;
+    //todo this comment should be removed when thrift communications are enabled
+    // private static MBThriftClient mbThriftClient;
     static {
         slotManager = SlotManager.getInstance();
-        mbThriftClient= new MBThriftClient(MBUtils.getCGThriftClient("localhost",7611)) ;
+       //todo this comment should be removed when thrift communications are enabled
+       // mbThriftClient= new MBThriftClient(MBUtils.getCGThriftClient("localhost",7611)) ;
     }
 
     //TODO USE FUTURES
+    //This thread is to record message IDs in slot manager when a timeout is passed
     static {
         new Thread(new Runnable() {
             @Override
@@ -35,7 +39,6 @@ public class QueueMessageCounter {
                         for (String queue : slotTimeOutMap.keySet()) {
                             if ((System.currentTimeMillis() - slotTimeOutMap.get(queue)) > timeOutForMessagesInQueue) {
                                 recordMetaDataCountInSlot(null, queue);
-
                             }
                         }
 
@@ -50,12 +53,12 @@ public class QueueMessageCounter {
     /**
      * Record metadata count in the slot so far
      *
-     * @param metadataList
-     * @param queue
+     * @param metadataList metadata list to be recorded
+     * @param queue  queue name
      */
     public static synchronized void recordMetaDataCountInSlot(List<AndesMessageMetadata> metadataList, String queue) {
+        //if metadata list is null this method is called from time out thread
         if (metadataList != null) {
-
             for (AndesMessageMetadata md : metadataList) {
                 String queueName = md.getDestination();
                 //if this is the first message to that queue
@@ -77,68 +80,30 @@ public class QueueMessageCounter {
                 }
             }
         } else {
+            //record the last message id of the slot in hazelcast distributed map
             recordLastMessageIdOfSlotInDistributedMap(queue);
-
         }
     }
-
-//    public static void updateDistributedFreeSlotMap(String queue) {
-//
-//        if (queueToSlotMap.get(queue)!=null) {
-//            Slot slot = queueToSlotMap.get(queue);
-//            if (slotManager.getFreeSlotsMap().get(queue) == null) {
-//                slotManager.updateFreeSlotMap(queue, slot, (long) 1);
-//            } else {
-//                //if there is already an entry for this queue in freeSlotMap
-//                long lastSlotRecordId = slotManager.getLastSlotId(queue);
-//                Slot oldSlot = slotManager.getLastSlot(queue);
-//                Slot newSlot = slot;
-//                oldSlot.setMessageCount(oldSlot.getMessageCount() + newSlot.getMessageCount());
-//                if (oldSlot.getMessageCount() <= slotManager.getSlotThreshold()) {
-//                    //can update the current slot with new data
-//                    if (oldSlot.getStartMessageId() > newSlot.getStartMessageId()) {
-//                        oldSlot.setStartMessageId(newSlot.getStartMessageId());
-//                    }
-//                    if (oldSlot.getEndMessageId() < newSlot.getEndMessageId()) {
-//                        oldSlot.setEndMessageId(newSlot.getEndMessageId());
-//                    }
-//                    if (oldSlot.getLastUpdateTime() < newSlot.getLastUpdateTime()) {
-//                        oldSlot.setLastUpdateTime(newSlot.getLastUpdateTime());
-//                    }
-//                    slotManager.updateFreeSlotMap(queue, oldSlot, lastSlotRecordId);
-//                } else {
-//                    //create a new slot
-//                    slotManager.updateFreeSlotMap(queue, newSlot, ++lastSlotRecordId);
-//                }
-//            }
-//            queueToSlotMap.remove(queue);
-//            slotTimeOutMap.remove(queue);
-//
-//        }
-//    }
-
 
     /**
      * Record last message ID in the slot in the distributed map
      *
      * @param queueName
      */
-
     public static void recordLastMessageIdOfSlotInDistributedMap(String queueName) {
         if (queueToSlotMap.get(queueName) != null) {
             Slot slot = queueToSlotMap.get(queueName);
-          //  try {
+            //TODO what should be these values? is this values should be configurable
+            //TODO this comment should be removed when thrift communications are enabled
+            //  try {
                 //mbThriftClient.updateMessageId(queueName,slot.getEndMessageId());
                 slotManager.updateMessageID(queueName, slot.getEndMessageId());
                 queueToSlotMap.remove(queueName);
                 slotTimeOutMap.remove(queueName);
 
            // } catch (TException e) {
-               // e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+              // throw new AndesException("Error occurred while trying to update message IDs in slot manager" + e);
           //  }
-
         }
-
     }
-
 }

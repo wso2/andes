@@ -19,12 +19,15 @@ package org.wso2.andes.server.slot;
 
 import java.io.Serializable;
 
+/**
+ * This class stores all the data related to a slot
+ */
 public class Slot implements Serializable {
 
-    private long messageCount;
-    private long startMessageId;
-    private long endMessageId;
-    private String queue;
+    private long messageCount; // number of messages in the slot
+    private long startMessageId;  //start message ID of the slot
+    private long endMessageId;   //end message ID of the slot
+    private String queue;   //queue which the slot belongs to. This is set when the slot is assigned to a subscriber
 
 
     public void setQueue(String queue) {

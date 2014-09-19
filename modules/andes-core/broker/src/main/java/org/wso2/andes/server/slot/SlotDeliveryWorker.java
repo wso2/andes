@@ -37,8 +37,6 @@ public class SlotDeliveryWorker extends Thread {
     private SlotManager slotManager;
     private MessageStore messageStore;
     private SubscriptionStore subscriptionStore;
-    private Map<String, QueueDeliveryInfo> subscriptionCursar4QueueMap = new HashMap<String, QueueDeliveryInfo>();
-    private int maxNumberOfUnAckedMessages = 20000;
     private HashMap<String, Long> localLastProcessedIdMap;
     private static HashMap<String, QueueDeliveryWorker> queueToQueueDeliveryWorkerMap;
     private static boolean isClusteringEnabled;
@@ -48,7 +46,6 @@ public class SlotDeliveryWorker extends Thread {
 
 
     private static final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
-    private static final Lock readLock = readWriteLock.readLock();
     private static final Lock writeLock = readWriteLock.writeLock();
 
 
@@ -61,6 +58,7 @@ public class SlotDeliveryWorker extends Thread {
         localLastProcessedIdMap = new HashMap<String, Long>();
         queueToQueueDeliveryWorkerMap = new HashMap<String, QueueDeliveryWorker>();
         slotsOwnedByMe = new ConcurrentHashMap<String, List<Slot>>();
+        //start slot deleting thread only if clustering is enabled. Otherwise slots assignment will not happen
         if (isClusteringEnabled) {
             slotManager = SlotManager.getInstance();
             startSlotDeletingThread();
@@ -68,79 +66,11 @@ public class SlotDeliveryWorker extends Thread {
         }
     }
 
-    public class QueueDeliveryInfo {
-        String queueName;
-        Iterator<LocalSubscription> iterator;
-    }
-
-    /**
-     * Get the next subscription for the given queue. If at end of the subscriptions, it circles around to the first one
-     *
-     * @param queueName           name of queue
-     * @param subscriptions4Queue subscriptions registered for the queue
-     * @return subscription to deliver
-     * @throws AndesException
-     */
-    private LocalSubscription findNextSubscriptionToSent(String queueName, Collection<LocalSubscription> subscriptions4Queue) throws AndesException {
-        if (subscriptions4Queue == null || subscriptions4Queue.size() == 0) {
-            subscriptionCursar4QueueMap.remove(queueName);
-            return null;
-        }
-
-        QueueDeliveryInfo queueDeliveryInfo = getQueueDeliveryInfo(queueName);
-        Iterator<LocalSubscription> it = queueDeliveryInfo.iterator;
-        if (it.hasNext()) {
-            return it.next();
-        } else {
-            it = subscriptions4Queue.iterator();
-            queueDeliveryInfo.iterator = it;
-            if (it.hasNext()) {
-                return it.next();
-            } else {
-                return null;
-            }
-        }
-    }
-
-    public QueueDeliveryInfo getQueueDeliveryInfo(String queueName) throws AndesException {
-        QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(queueName);
-        if (queueDeliveryInfo == null) {
-            queueDeliveryInfo = new QueueDeliveryInfo();
-            queueDeliveryInfo.queueName = queueName;
-            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
-                    .getActiveLocalSubscribers(queueName, false);
-            queueDeliveryInfo.iterator = localSubscribersForQueue.iterator();
-            subscriptionCursar4QueueMap.put(queueName, queueDeliveryInfo);
-        }
-        return queueDeliveryInfo;
-    }
-
-    /**
-     * does that queue has too many messages pending
-     *
-     * @param localSubscription local subscription
-     * @return is subscription ready to accept messages
-     */
-    private boolean isThisSubscriptionHasRoom(LocalSubscription localSubscription) {
-        //
-        int notAckedMsgCount = localSubscription.getnotAckedMsgCount();
-
-        //Here we ignore messages that has been scheduled but not executed, so it might send few messages than maxNumberOfUnAckedMessages
-        if (notAckedMsgCount < maxNumberOfUnAckedMessages) {
-            return true;
-        } else {
-
-            if (log.isDebugEnabled()) {
-                //log.debug("Not selected, channel =" + localSubscription + " pending count =" + (notAckedMsgCount + workqueueSize));
-            }
-            return false;
-        }
-    }
-
     @Override
     public void run() {
 
         while (true) {
+            //iterate through all the queues registered in this thread
             for (String queue : queueList) {
 
                 Collection<LocalSubscription> subscriptions4Queue;
@@ -156,13 +86,17 @@ public class SlotDeliveryWorker extends Thread {
                                 try {
                                     //TODO is it ok to sleep since there are other queues
                                     Thread.sleep(2000);
-                                } catch (InterruptedException e) {
+                                } catch (InterruptedException ignored) {
                                     //silently ignore
                                 }
                             } else {
-                                log.info("Received slot for queue " + queue + " is: " + currentSlotImp.getStartMessageId() + " - " + currentSlotImp.getEndMessageId());
+                                if (log.isDebugEnabled()) {
+                                    log.debug("Received slot for queue " + queue + " is: " + currentSlotImp.getStartMessageId() +
+                                            " - " + currentSlotImp.getEndMessageId());
+                                }
                                 slotManager.updateSlotAssignmentMap(queue, currentSlotImp);
                                 writeLock.lock();
+                                //update in-memory slot assignment map
                                 try {
                                     if (slotsOwnedByMe.get(queue) != null) {
                                         slotsOwnedByMe.get(queue).add(currentSlotImp);
@@ -177,12 +111,14 @@ public class SlotDeliveryWorker extends Thread {
                                 }
                                 long firstMsgId = currentSlotImp.getStartMessageId();
                                 long lastMsgId = currentSlotImp.getEndMessageId();
+                                //read messages in the slot
                                 List<AndesMessageMetadata> messagesReadByLeadingThread = messageStore.getMetaDataList(queue, firstMsgId, lastMsgId);
                                 if (messagesReadByLeadingThread != null && !messagesReadByLeadingThread.isEmpty()) {
-                                    // sendMessages(messagesReadByLeadingThread, subscriptions4Queue, queue);
-                                    log.info("Number of messages read from slot " + currentSlotImp.getStartMessageId() + " - " +
-                                            currentSlotImp.getEndMessageId()+" is " + messagesReadByLeadingThread.size());
-                                    QueueDeliveryWorker.getInstance().run(messagesReadByLeadingThread);
+                                    if (log.isDebugEnabled()) {
+                                        log.info("Number of messages read from slot " + currentSlotImp.getStartMessageId() + " - " +
+                                                currentSlotImp.getEndMessageId() + " is " + messagesReadByLeadingThread.size());
+                                    }
+                                    QueueDeliveryWorker.getInstance().startSendingMessages(messagesReadByLeadingThread);
                                 }
                             }
                         } else {
@@ -194,16 +130,18 @@ public class SlotDeliveryWorker extends Thread {
                                     (queue, startMessageId++, messageCountToRead);
                             if (messagesReadByLeadingThread == null || messagesReadByLeadingThread.isEmpty()) {
                                 try {
-                                    //log.info("There are no messages to read....");
+                                    //there are no messages to read
                                     //TODO is it ok to sleep since there are other queues
                                     Thread.sleep(2000);
                                 } catch (InterruptedException ignored) {
                                     //silently ignore
                                 }
                             } else {
-                                log.info(messagesReadByLeadingThread.size()+" number of messages read from slot");
-                                localLastProcessedIdMap.put(queue,messagesReadByLeadingThread.get(messagesReadByLeadingThread.size() -1).getMessageID());
-                                QueueDeliveryWorker.getInstance().run(messagesReadByLeadingThread);
+                                if (log.isDebugEnabled()) {
+                                    log.info(messagesReadByLeadingThread.size() + " number of messages read from slot");
+                                }
+                                localLastProcessedIdMap.put(queue, messagesReadByLeadingThread.get(messagesReadByLeadingThread.size() - 1).getMessageID());
+                                QueueDeliveryWorker.getInstance().startSendingMessages(messagesReadByLeadingThread);
                             }
                         }
                     }
@@ -217,40 +155,15 @@ public class SlotDeliveryWorker extends Thread {
 
     public void addQueueToThread(String queueName) {
         getQueueList().add(queueName);
-        //  QueueDeliveryWorker queueDeliveryWorker = new QueueDeliveryWorker(1000,false);
-        // queueToQueueDeliveryWorkerMap.put(queueName,queueDeliveryWorker);
     }
 
     public List<String> getQueueList() {
         return queueList;
     }
 
-    private void sendMessages(List<AndesMessageMetadata> messageMetadataList, Collection<LocalSubscription> subscriptions4Queue, String queue) {
-        try {
-            for (AndesMessageMetadata message : messageMetadataList) {
-                for (int j = 0; j < subscriptions4Queue.size(); j++) {
-                    LocalSubscription localSubscription = findNextSubscriptionToSent(queue, subscriptions4Queue);
-                    if (isThisSubscriptionHasRoom(localSubscription)) {
-                        if (log.isDebugEnabled()) {
-                            log.debug("TRACING>> scheduled to deliver - messageID: " + message.getMessageID() + " for queue: " + message.getDestination());
-                        }
-                        if (localSubscription.isActive()) {
-                            localSubscription.sendMessageToSubscriber(message);
-                            if (!isClusteringEnabled) {
-                                localLastProcessedIdMap.put(queue, message.getMessageID());
-
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-        } catch (AndesException e) {
-            log.error("Error in sending messages " + e.getMessage(), e);
-
-        }
-    }
-
+    /**
+     * This thread will remove empty slots from slotAssignmentMap
+     */
     private void startSlotDeletingThread() {
         new Thread() {
             public void run() {
@@ -269,7 +182,7 @@ public class SlotDeliveryWorker extends Thread {
                                     Slot slotImp = slotIterator.next();
                                     if (slotManager.isThisSlotEmpty(slotImp)) {
                                         slotManager.unAssignSlot(queue, slotImp.getStartMessageId());
-                                         slotIterator.remove();
+                                        slotIterator.remove();
                                     }
                                 }
                             }

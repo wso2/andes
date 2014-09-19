@@ -66,11 +66,19 @@ public class HazelcastAgent {
      */
     private ITopic<ClusterNotification> exchangeChangeNotifierChannel;
 
+    /**
+     * These distributed maps are used for slot management
+     */
     private IMap<String, TreeSet<Long>> queueToMessageIdListMap;
     private IMap<String, HashMap<Long, Slot>> slotAssignmentMap;
     private IMap<String, Long> lastProcessedIDs;
     private IMap<String, TreeSet<Slot>> freeSlotMap;
 
+    /**
+     * This map is used to store thrift server host and thrift server port
+     * map's key is port or host name.
+     */
+    private IMap<String,String> thriftServerDetailsMap;
     /**
      * Unique ID generated to represent the node.
      * This ID is used when generating message IDs.
@@ -154,10 +162,18 @@ public class HazelcastAgent {
         IdGenerator idGenerator = hazelcastInstance.getIdGenerator(CoordinationConstants.HAZELCAST_ID_GENERATOR_NAME);
         this.uniqueIdOfLocalMember = (int) idGenerator.newId();
 
+        /**
+         * Initialize hazelcast maps for slots
+         */
         freeSlotMap = hazelcastInstance.getMap(CoordinationConstants.FREE_SLOT_MAP_NAME);
         queueToMessageIdListMap = hazelcastInstance.getMap(CoordinationConstants.QUEUE_TO_MESSAGE_ID_LIST_MAP_NAME);
         lastProcessedIDs = hazelcastInstance.getMap(CoordinationConstants.LAST_PROCESSED_IDS_MAP_NAME);
         slotAssignmentMap = hazelcastInstance.getMap(CoordinationConstants.SLOT_ASSIGNMENT_MAP_NAME);
+
+        /**
+         * Initialize hazelcast map fot thrift server details
+         */
+        thriftServerDetailsMap = hazelcastInstance.getMap(CoordinationConstants.THRIFT_SERVER_DETAILS_MAP_NAME);
 
         log.info("Successfully initialized Hazelcast Agent");
 
@@ -165,16 +181,14 @@ public class HazelcastAgent {
     }
 
     /**
-     * Node ID is generated in the format of "NODE/<host IP>_<Node UUID>"
+     * Node ID is generated in the format of "NODE/<host IP>:<Port>"
      *
      * @return NodeId
      */
     public String getNodeId() {
         Member localMember = hazelcastInstance.getCluster().getLocalMember();
         return CoordinationConstants.NODE_NAME_PREFIX +
-                localMember.getInetSocketAddress().getAddress() +
-                "_" +
-                localMember.getUuid();
+                localMember.getInetSocketAddress();
     }
 
     /**
@@ -196,9 +210,7 @@ public class HazelcastAgent {
         List<String> nodeIDList = new ArrayList<String>();
         for (Member member : members) {
             nodeIDList.add(CoordinationConstants.NODE_NAME_PREFIX +
-                    member.getInetSocketAddress().getAddress() +
-                    "_" +
-                    member.getUuid());
+                    member.getInetSocketAddress());
         }
 
         return nodeIDList;
@@ -239,9 +251,7 @@ public class HazelcastAgent {
      */
     public String getIdOfNode(Member node) {
         return CoordinationConstants.NODE_NAME_PREFIX +
-                node.getInetSocketAddress().getAddress() +
-                "_" +
-                node.getUuid();
+                node.getInetSocketAddress().getAddress();
     }
 
     /**
@@ -320,6 +330,14 @@ public class HazelcastAgent {
 
     public IMap<String, HashMap<Long, Slot>> getSlotAssignmentMap() {
         return slotAssignmentMap;
+    }
+
+    /**
+     * This method returns a map containing thrift server port and hostname
+     * @return thriftServerDetailsMap
+     */
+    public IMap<String, String> getThriftServerDetailsMap() {
+        return thriftServerDetailsMap;
     }
 
 }

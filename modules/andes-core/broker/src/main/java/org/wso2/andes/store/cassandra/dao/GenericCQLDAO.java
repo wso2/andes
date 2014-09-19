@@ -1,8 +1,7 @@
-package org.wso2.andes.server.cassandra.dao;
+package org.wso2.andes.store.cassandra.dao;
 
 
 import static com.datastax.driver.core.querybuilder.QueryBuilder.batch;
-import static org.wso2.andes.server.cassandra.dao.GenericCQLDAO.CLUSTER_SESSION;
 
 import java.util.ArrayList;
 import java.util.Iterator;

@@ -21,6 +21,8 @@ public class AndesContext {
     private static AndesContext instance = new AndesContext();
     private String messageStoreDataSourceName;
     private String contextStoreDataSourceName;
+    private String thriftServerHost;
+    private int thriftServerPort;
 
 
  	/**
@@ -178,7 +180,21 @@ public class AndesContext {
 
     public ClusteringAgent getClusteringAgent() {
         return clusteringAgent;
+    }
 
+    public String getThriftServerHost() {
+        return thriftServerHost;
+    }
 
+    public void setThriftServerHost(String thriftServerHost) {
+        this.thriftServerHost = thriftServerHost;
+    }
+
+    public int getThriftServerPort() {
+        return thriftServerPort;
+    }
+
+    public void setThriftServerPort(int thriftServerPort) {
+        this.thriftServerPort = thriftServerPort;
     }
 }

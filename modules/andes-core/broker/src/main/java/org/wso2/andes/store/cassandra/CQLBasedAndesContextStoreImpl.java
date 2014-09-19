@@ -16,16 +16,14 @@
 * under the License.
 */
 
-package org.wso2.andes.kernel;
+package org.wso2.andes.store.cassandra;
 
 import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Row;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.messageStore.CassandraConstants;
-import org.wso2.andes.server.cassandra.CQLConnection;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 
@@ -34,12 +32,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.wso2.andes.messageStore.CassandraConstants.*;
+import static org.wso2.andes.store.cassandra.CassandraConstants.*;
 
 
-public class CassandraBasedAndesContextStore implements AndesContextStore {
+public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
 
-    private static Log log = LogFactory.getLog(CassandraBasedAndesContextStore.class);
+    private static Log log = LogFactory.getLog(CQLBasedAndesContextStoreImpl.class);
     private DurableStoreConnection connection;
     private Cluster cluster;
 

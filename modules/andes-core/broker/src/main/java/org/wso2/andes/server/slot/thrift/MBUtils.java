@@ -43,13 +43,10 @@ public class MBUtils {
         try {
 
             TTransport transport;
-
             transport = new TSocket(hostName, port);
             transport.open();
-
             TProtocol protocol = new  TBinaryProtocol(transport);
             SlotManagementService.Client client = new SlotManagementService.Client(protocol);
-
             return new SlotManagementService.Client(protocol);
         } catch (TTransportException e) {
             log.error("Could not initialize the Thrift client. " + e.getMessage(), e);

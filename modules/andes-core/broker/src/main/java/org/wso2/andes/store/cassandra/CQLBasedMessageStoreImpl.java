@@ -1,4 +1,4 @@
-package org.wso2.andes.messageStore;
+package org.wso2.andes.store.cassandra;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -10,25 +10,24 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cassandra.CQLConnection;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.slot.Slot;
-import org.wso2.andes.server.cassandra.dao.CQLQueryBuilder;
-import org.wso2.andes.server.cassandra.dao.CassandraHelper;
-import org.wso2.andes.server.cassandra.dao.GenericCQLDAO;
+import org.wso2.andes.store.cassandra.dao.CQLQueryBuilder;
+import org.wso2.andes.store.cassandra.dao.CassandraHelper;
+import org.wso2.andes.store.cassandra.dao.GenericCQLDAO;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 import org.wso2.andes.server.util.AlreadyProcessedMessageTracker;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.util.AndesUtils;
+import org.wso2.andes.store.MessageContentRemoverTask;
+import org.wso2.andes.store.QueueMessageCounter;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 
 import com.datastax.driver.core.querybuilder.Delete;
 import com.datastax.driver.core.querybuilder.Insert;
-
-import static org.wso2.andes.messageStore.CassandraConstants.*;
 
 public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageStore {
     private static Log log = LogFactory.getLog(CQLBasedMessageStoreImpl.class);
@@ -72,13 +71,13 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
      */
     private void createColumnFamilies() throws CassandraDataAccessException {
         int gcGraceSeconds = ((CQLConnection) connection.getConnection()).getGcGraceSeconds();
-        CQLDataAccessHelper.createColumnFamily(MESSAGE_CONTENT_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob(), gcGraceSeconds);
-        CQLDataAccessHelper.createColumnFamily(NODE_QUEUES_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob(), gcGraceSeconds);
-        CQLDataAccessHelper.createColumnFamily(GLOBAL_QUEUES_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob(), gcGraceSeconds);
-        CQLDataAccessHelper.createColumnFamily(META_DATA_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob(), gcGraceSeconds);
-        CQLDataAccessHelper.createColumnFamily(PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY, KEYSPACE, this.cluster, LONG_TYPE, DataType.blob(), gcGraceSeconds);
-        CQLDataAccessHelper.createCounterColumnFamily(MESSAGE_COUNTERS_COLUMN_FAMILY, KEYSPACE, this.cluster, gcGraceSeconds);
-        CQLDataAccessHelper.createMessageExpiryColumnFamily(CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY, KEYSPACE, this.cluster, gcGraceSeconds);
+        CQLDataAccessHelper.createColumnFamily(CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY, CassandraConstants.KEYSPACE, this.cluster, CassandraConstants.LONG_TYPE, DataType.blob(), gcGraceSeconds);
+        CQLDataAccessHelper.createColumnFamily(CassandraConstants.NODE_QUEUES_COLUMN_FAMILY, CassandraConstants.KEYSPACE, this.cluster, CassandraConstants.LONG_TYPE, DataType.blob(), gcGraceSeconds);
+        CQLDataAccessHelper.createColumnFamily(CassandraConstants.GLOBAL_QUEUES_COLUMN_FAMILY, CassandraConstants.KEYSPACE, this.cluster, CassandraConstants.LONG_TYPE, DataType.blob(), gcGraceSeconds);
+        CQLDataAccessHelper.createColumnFamily(CassandraConstants.META_DATA_COLUMN_FAMILY, CassandraConstants.KEYSPACE, this.cluster, CassandraConstants.LONG_TYPE, DataType.blob(), gcGraceSeconds);
+        CQLDataAccessHelper.createColumnFamily(CassandraConstants.PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY, CassandraConstants.KEYSPACE, this.cluster, CassandraConstants.LONG_TYPE, DataType.blob(), gcGraceSeconds);
+        CQLDataAccessHelper.createCounterColumnFamily(CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, CassandraConstants.KEYSPACE, this.cluster, gcGraceSeconds);
+        CQLDataAccessHelper.createMessageExpiryColumnFamily(CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY, CassandraConstants.KEYSPACE, this.cluster, gcGraceSeconds);
     }
 
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException {
@@ -88,13 +87,13 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             for (AndesMessagePart part : partList) {
                 final String rowKey = AndesConstants.MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX
                         + part.getMessageID();
-                Insert insert = CQLDataAccessHelper.addMessageToQueue(KEYSPACE, MESSAGE_CONTENT_COLUMN_FAMILY,
+                Insert insert = CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE, CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY,
                         rowKey, part.getOffSet(), part.getData(), false);
                 inserts.add(insert);
                 //System.out.println("STORE >> message part id" + part.getMessageID() + " offset " + part.getOffSet());
             }
             /*messageMutator.execute();*/
-            GenericCQLDAO.batchExecute(KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
+            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
 /*            for(AndesMessagePart part : partList) {
                 log.info("STORED PART ID: " + part.getMessageID() + " OFFSET: " + part.getOffSet() + " Data Len= " + part.getDataLength());
             }*/
@@ -119,7 +118,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
         try {
             List<AndesMessageMetadata> metadataList = CQLDataAccessHelper.getMessagesFromQueue(queueAddress.queueName,
-                    getColumnFamilyFromQueueAddress(queueAddress), KEYSPACE, startMsgID + 1, Long.MAX_VALUE, count, true, true);
+                    getColumnFamilyFromQueueAddress(queueAddress), CassandraConstants.KEYSPACE, startMsgID + 1, Long.MAX_VALUE, count, true, true);
             //combining metadata with message properties create QueueEntries
             /*for (Object column : messagesColumnSlice.getColumns()) {
                 if (column instanceof HColumn) {
@@ -151,7 +150,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             query.setColumnFamily(MESSAGE_CONTENT_COLUMN_FAMILY).setKey(originalRowKey).setRange(0, Integer.MAX_VALUE, false, Integer.MAX_VALUE);
             QueryResult<ColumnSlice<Integer, ByteBuffer>> result = query.execute();*/
 
-            List<AndesMessageMetadata> messages = CQLDataAccessHelper.getMessagesFromQueue(originalRowKey.trim(), MESSAGE_CONTENT_COLUMN_FAMILY, KEYSPACE, 0, Long.MAX_VALUE, Long.MAX_VALUE, true, false);
+            List<AndesMessageMetadata> messages = CQLDataAccessHelper.getMessagesFromQueue(originalRowKey.trim(), CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY, CassandraConstants.KEYSPACE, 0, Long.MAX_VALUE, Long.MAX_VALUE, true, false);
 
             //if there are values duplicate them
 
@@ -170,7 +169,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 for (AndesMessageMetadata msg : messages) {
                     long offset = msg.getMessageID();
                     final byte[] chunkData = msg.getMetadata();
-                    CQLDataAccessHelper.addMessageToQueue(KEYSPACE, MESSAGE_CONTENT_COLUMN_FAMILY, cloneMessageKey,
+                    CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE, CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY, cloneMessageKey,
                             offset, chunkData, false);
                     System.out.println("DUPLICATE>> new id " + messageIdOfClone + " cloned from id " + messageId + " offset" + offset);
                 }
@@ -199,7 +198,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         AndesMessagePart messagePart;
         try {
             String rowKey = "mid" + messageId;
-            List<AndesMessageMetadata> messages = CQLDataAccessHelper.getMessagesFromQueue(rowKey.trim(), MESSAGE_CONTENT_COLUMN_FAMILY, KEYSPACE, 0, 0, 10, false, false);
+            List<AndesMessageMetadata> messages = CQLDataAccessHelper.getMessagesFromQueue(rowKey.trim(), CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY, CassandraConstants.KEYSPACE, 0, 0, 10, false, false);
             if (!messages.isEmpty()) {
                 AndesMessageMetadata msg = messages.iterator().next();
                 int offset = (int) msg.getMessageID();//column.getName();
@@ -292,7 +291,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             ConcurrentHashMap<String, Slot> queueSlotMap = new ConcurrentHashMap<String, Slot>();
             for (AndesMessageMetadata md : metadataList) {
 
-                Insert insert = CQLDataAccessHelper.addMessageToQueue(KEYSPACE, CassandraConstants.META_DATA_COLUMN_FAMILY, md.getDestination(),
+                Insert insert = CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE, CassandraConstants.META_DATA_COLUMN_FAMILY, md.getDestination(),
                         md.getMessageID(), md.getMetadata(), false);
 
 //                if (incomingMessagesMap.get(md.getDestination()) == null) {
@@ -306,7 +305,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
             }
             long start = System.currentTimeMillis();
-            GenericCQLDAO.batchExecute(KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
+            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
             if (isClusteringEnabled) {
                 QueueMessageCounter.recordMetaDataCountInSlot(metadataList, null);
 
@@ -367,7 +366,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 if (queueAddress == null) {
                     queueAddress = md.queueAddress;
                 }
-                Insert insert = CQLDataAccessHelper.addMessageToQueue(KEYSPACE, getColumnFamilyFromQueueAddress(queueAddress), queueAddress.queueName,
+                Insert insert = CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE, getColumnFamilyFromQueueAddress(queueAddress), queueAddress.queueName,
                         md.getMessageID(), md.getMetadata(), false);
                 if (incomingMessagesMap.get(md.getDestination()) == null) {
                     incomingMessagesMap.put(md.getDestination(), 1);
@@ -380,7 +379,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
             }
             long start = System.currentTimeMillis();
-            GenericCQLDAO.batchExecute(KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
+            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
 
 /*            for (AndesMessageMetadata md : messageList) {
                 log.info("METADATA STORED ID " + md.getMessageID());
@@ -426,8 +425,8 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                     targetAddress = messageMetaData.queueAddress;
                 }
                 if (msgOKToMove(messageMetaData.getMessageID(), sourceAddress, targetAddress)) {
-                    Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(KEYSPACE, getColumnFamilyFromQueueAddress(sourceAddress), sourceAddress.queueName, messageMetaData.getMessageID(), false);
-                    Insert insert = CQLDataAccessHelper.addMessageToQueue(KEYSPACE, getColumnFamilyFromQueueAddress(targetAddress), targetAddress.queueName,
+                    Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(CassandraConstants.KEYSPACE, getColumnFamilyFromQueueAddress(sourceAddress), sourceAddress.queueName, messageMetaData.getMessageID(), false);
+                    Insert insert = CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE, getColumnFamilyFromQueueAddress(targetAddress), targetAddress.queueName,
                             messageMetaData.getMessageID(), messageMetaData.getMetadata(), false);
                     if (log.isDebugEnabled()) {
                         log.debug("TRACING>> CMS-Removing messageID-" + messageMetaData.getMessageID() + "-from source Queue-" + sourceAddress.queueName
@@ -439,7 +438,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 }
             }
             // messageMutator.execute();
-            GenericCQLDAO.batchExecute(KEYSPACE, statements.toArray(new Statement[statements.size()]));
+            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, statements.toArray(new Statement[statements.size()]));
 
             for (Long msgID : messageIDsSuccessfullyMoved) {
                 alreadyMovedMessageTracker.addTaskToRemoveMessageFromTracking(msgID);
@@ -469,10 +468,10 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                             targetAddress = messageMetaData.queueAddress;
                         }
                         if (msgOKToMove(messageMetaData.getMessageID(), sourceAddress, targetAddress)) {
-                            Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(KEYSPACE, getColumnFamilyFromQueueAddress(sourceAddress),
+                            Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(CassandraConstants.KEYSPACE, getColumnFamilyFromQueueAddress(sourceAddress),
                                     sourceAddress.queueName, messageMetaData.getMessageID(), false);
 
-                            Insert insert = CQLDataAccessHelper.addMessageToQueue(KEYSPACE, getColumnFamilyFromQueueAddress(targetAddress), targetAddress.queueName,
+                            Insert insert = CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE, getColumnFamilyFromQueueAddress(targetAddress), targetAddress.queueName,
                                     messageMetaData.getMessageID(), messageMetaData.getMetadata(), false);
 
                             statements.add(insert);
@@ -492,7 +491,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                         ignoredFirstMessageId = lastProcessedMessageID;
                     }
                 }
-                GenericCQLDAO.batchExecute(KEYSPACE, statements.toArray(new Statement[statements.size()]));
+                GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, statements.toArray(new Statement[statements.size()]));
                 for (Long msgID : messageIDsSuccessfullyMoved) {
                     alreadyMovedMessageTracker.addTaskToRemoveMessageFromTracking(msgID);
                 }
@@ -518,9 +517,9 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         AndesMessageMetadata metadata = null;
         try {
 
-            byte[] value = CQLDataAccessHelper.getMessageMetaDataFromQueue(CassandraConstants.NODE_QUEUES_COLUMN_FAMILY, KEYSPACE, messageId);
+            byte[] value = CQLDataAccessHelper.getMessageMetaDataFromQueue(CassandraConstants.NODE_QUEUES_COLUMN_FAMILY, CassandraConstants.KEYSPACE, messageId);
             if (value == null) {
-                value = CQLDataAccessHelper.getMessageMetaDataFromQueue(CassandraConstants.PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY, KEYSPACE, messageId);
+                value = CQLDataAccessHelper.getMessageMetaDataFromQueue(CassandraConstants.PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY, CassandraConstants.KEYSPACE, messageId);
             }
             metadata = new AndesMessageMetadata(messageId, value, true);
 
@@ -536,7 +535,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         try {
             //TODO: what should be put to count
             List<AndesMessageMetadata> metadataList = CQLDataAccessHelper.getMessagesFromQueue(queueName,
-                    CassandraConstants.META_DATA_COLUMN_FAMILY, KEYSPACE, firstMsgId, lastMsgID, 1000, true, true);
+                    CassandraConstants.META_DATA_COLUMN_FAMILY, CassandraConstants.KEYSPACE, firstMsgId, lastMsgID, 1000, true, true);
             return metadataList;
         } catch (CassandraDataAccessException e) {
             throw new AndesException(e);
@@ -549,7 +548,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String queueName, long firstMsgId, int count) throws AndesException {
         try {
             List<AndesMessageMetadata> metadataList = CQLDataAccessHelper.getMessagesFromQueue(queueName,
-                    CassandraConstants.META_DATA_COLUMN_FAMILY, KEYSPACE, firstMsgId + 1, Long.MAX_VALUE, count, true, true);
+                    CassandraConstants.META_DATA_COLUMN_FAMILY, CassandraConstants.KEYSPACE, firstMsgId + 1, Long.MAX_VALUE, count, true, true);
             //combining metadata with message properties create QueueEntries
             /*for (Object column : messagesColumnSlice.getColumns()) {
                 if (column instanceof HColumn) {
@@ -581,7 +580,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             }
             //remove content
             if (!rows2Remove.isEmpty()) {
-                CQLDataAccessHelper.deleteIntegerRowListFromColumnFamily(MESSAGE_CONTENT_COLUMN_FAMILY, rows2Remove, KEYSPACE);
+                CQLDataAccessHelper.deleteIntegerRowListFromColumnFamily(CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY, rows2Remove, CassandraConstants.KEYSPACE);
             }
         } catch (CassandraDataAccessException e) {
             throw new AndesException(e);
@@ -598,11 +597,11 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             for (AndesRemovableMetadata message : messagesToRemove) {
                 //mutator.addDeletion(queueAddress.queueName, getColumnFamilyFromQueueAddress(queueAddress), message.messageID, longSerializer);
                 //Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(KEYSPACE, getColumnFamilyFromQueueAddress(queueAddress), queueAddress.queueName, message.messageID, false);
-                Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(KEYSPACE, CassandraConstants.META_DATA_COLUMN_FAMILY, message.destination, message.messageID, false);
+                Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(CassandraConstants.KEYSPACE, CassandraConstants.META_DATA_COLUMN_FAMILY, message.destination, message.messageID, false);
                 statements.add(delete);
             }
             //mutator.execute();
-            GenericCQLDAO.batchExecute(KEYSPACE, statements.toArray(new Statement[statements.size()]));
+            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, statements.toArray(new Statement[statements.size()]));
             if (isMessageCountingAllowed) {
                 for (AndesRemovableMetadata message : messagesToRemove) {
                     decrementQueueCount(message.destination, message.messageID);
@@ -642,13 +641,13 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     private void incrementQueueCount(String destinationQueueName, long incrementBy) throws CassandraDataAccessException {
-        CQLDataAccessHelper.incrementCounter(destinationQueueName, MESSAGE_COUNTERS_COLUMN_FAMILY, MESSAGE_COUNTERS_RAW_NAME, KEYSPACE, incrementBy);
+        CQLDataAccessHelper.incrementCounter(destinationQueueName, CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, CassandraConstants.MESSAGE_COUNTERS_RAW_NAME, CassandraConstants.KEYSPACE, incrementBy);
     }
 
     private void decrementQueueCount(String destinationQueueName, long decrementBy) throws CassandraDataAccessException {
 
-        CQLDataAccessHelper.decrementCounter(destinationQueueName, MESSAGE_COUNTERS_COLUMN_FAMILY, MESSAGE_COUNTERS_RAW_NAME,
-                KEYSPACE, decrementBy);
+        CQLDataAccessHelper.decrementCounter(destinationQueueName, CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, CassandraConstants.MESSAGE_COUNTERS_RAW_NAME,
+                CassandraConstants.KEYSPACE, decrementBy);
     }
 
     private String getColumnFamilyFromQueueAddress(QueueAddress address) {
@@ -668,8 +667,8 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     public long getMessageCountForQueue(String destinationQueueName) throws AndesException {
         long msgCount = 0;
         try {
-            msgCount = CQLDataAccessHelper.getCountValue(KEYSPACE, MESSAGE_COUNTERS_COLUMN_FAMILY, destinationQueueName,
-                    MESSAGE_COUNTERS_RAW_NAME);
+            msgCount = CQLDataAccessHelper.getCountValue(CassandraConstants.KEYSPACE, CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, destinationQueueName,
+                    CassandraConstants.MESSAGE_COUNTERS_RAW_NAME);
         } catch (Exception e) {
             log.error("Error while getting message count for queue " + destinationQueueName);
             throw new AndesException(e);
@@ -680,9 +679,9 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     private boolean msgOKToMove(long msgID, QueueAddress sourceAddress, QueueAddress targetAddress) throws CassandraDataAccessException {
         if (alreadyMovedMessageTracker.checkIfAlreadyTracked(msgID)) {
             List<Statement> statements = new ArrayList<Statement>();
-            Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(KEYSPACE, getColumnFamilyFromQueueAddress(sourceAddress), sourceAddress.queueName, msgID, false);
+            Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(CassandraConstants.KEYSPACE, getColumnFamilyFromQueueAddress(sourceAddress), sourceAddress.queueName, msgID, false);
             statements.add(delete);
-            GenericCQLDAO.batchExecute(KEYSPACE, statements.toArray(new Statement[statements.size()]));
+            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, statements.toArray(new Statement[statements.size()]));
             if (log.isTraceEnabled()) {
                 log.trace("Rejecting moving message id =" + msgID + " as it is already read from " + sourceAddress.queueName);
             }
@@ -768,7 +767,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             List<Statement> statements = new ArrayList<Statement>();
             for (Long messageId : messagesToRemove) {
 
-                CQLQueryBuilder.CqlDelete cqlDelete = new CQLQueryBuilder.CqlDelete(KEYSPACE, CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY);
+                CQLQueryBuilder.CqlDelete cqlDelete = new CQLQueryBuilder.CqlDelete(CassandraConstants.KEYSPACE, CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY);
 
                 cqlDelete.addCondition(CQLDataAccessHelper.MESSAGE_ID, messageId, CassandraHelper.WHERE_OPERATORS.EQ);
 
@@ -781,7 +780,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             // But that could result in inconsistent data overall.
             // If a message has been added to the queue between expiry checker invocation and this method, it could be lost.
             // Therefore, the above approach to delete.
-            GenericCQLDAO.batchExecute(KEYSPACE, statements.toArray(new Statement[statements.size()]));
+            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, statements.toArray(new Statement[statements.size()]));
         } catch (Exception e) {
             log.error("Error while deleting messages", e);
             throw new AndesException(e);
@@ -811,9 +810,9 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         keyValueMap.put(CQLDataAccessHelper.MESSAGE_DESTINATION, destination);
         keyValueMap.put(CQLDataAccessHelper.MESSAGE_IS_FOR_TOPIC, isMessageForTopic);
 
-        Insert insert = CQLQueryBuilder.buildSingleInsert(KEYSPACE, columnFamily, keyValueMap);
+        Insert insert = CQLQueryBuilder.buildSingleInsert(CassandraConstants.KEYSPACE, columnFamily, keyValueMap);
 
-        GenericCQLDAO.execute(KEYSPACE, insert.getQueryString());
+        GenericCQLDAO.execute(CassandraConstants.KEYSPACE, insert.getQueryString());
 
         log.info("Wrote message " + messageId + " to Column Family " + CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY);
 

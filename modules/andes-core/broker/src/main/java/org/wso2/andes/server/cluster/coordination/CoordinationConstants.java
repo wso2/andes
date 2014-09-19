@@ -59,6 +59,7 @@ public final class CoordinationConstants {
 
     public static String SLOT_ASSIGNMENT_MAP_NAME = "slotAssignmentMap";
 
-    public static String LOCK_NAME = "freeSlotMapLock";
+    public static String THRIFT_SERVER_DETAILS_MAP_NAME = "thriftServerDetailsMap";
+
 
 }
