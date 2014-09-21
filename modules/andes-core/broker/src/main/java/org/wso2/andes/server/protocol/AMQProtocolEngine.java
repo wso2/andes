@@ -791,6 +791,8 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
                     task.doTask(this);
                 }
 
+                Broker.getEventDispatcher().removeObserver(this);
+
                 synchronized(this)
                 {
                     _closed = true;

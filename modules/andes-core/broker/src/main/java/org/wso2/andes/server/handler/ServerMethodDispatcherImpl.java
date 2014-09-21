@@ -33,6 +33,11 @@ public class ServerMethodDispatcherImpl implements MethodDispatcher
 {
     private final AMQStateManager _stateManager;
 
+    /**
+     * Configured thread pool size for AndesExecutor
+     */
+    private final int andesInternalParallelThreadPoolSize;
+
     private static interface DispatcherFactory
         {
             public MethodDispatcher createMethodDispatcher(AMQStateManager stateManager);
@@ -114,6 +119,8 @@ public class ServerMethodDispatcherImpl implements MethodDispatcher
     public ServerMethodDispatcherImpl(AMQStateManager stateManager)
     {
         _stateManager = stateManager;
+        andesInternalParallelThreadPoolSize = ClusterResourceHolder.getInstance().getClusterConfiguration()
+                .getAndesInternalParallelThreadPoolSize();
     }
 
 
@@ -130,10 +137,17 @@ public class ServerMethodDispatcherImpl implements MethodDispatcher
         return true;
     }
 
+    /**
+     * Handle Basic Ack message
+     *
+     * @param body Body of the Basic Ack Message
+     * @param channelId Channel ID
+     * @return Success
+     * @throws AMQException
+     */
     public boolean dispatchBasicAck(final BasicAckBody body, final int channelId) throws AMQException
     {
-        AndesExecuter.getInstance(ClusterResourceHolder.getInstance().getClusterConfiguration().
-                getAndesInternalParallelThreadPoolSize()).submit(new Runnable() {
+        AndesExecuter.getInstance(andesInternalParallelThreadPoolSize).submit(new Runnable() {
             @Override
             public void run() {
                 try {
