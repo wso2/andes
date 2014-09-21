@@ -80,9 +80,10 @@ public class MessagingEngine {
         return subscriptionStore;
     }
 
-    public void initializeMessageStore(DurableStoreConnection connection, String messageStoreClassName) throws AndesException {
+    public DurableStoreConnection initializeMessageStore(String messageStoreClassName) throws AndesException {
 
         try {
+            DurableStoreConnection durableStoreConnection;
             Class clazz = Class.forName(messageStoreClassName);
             Object o = clazz.newInstance();
 
@@ -91,10 +92,12 @@ public class MessagingEngine {
                         " does not.");
             }
             durableMessageStore = (MessageStore) o;
-            durableMessageStore.initializeMessageStore(connection);
+            durableStoreConnection = durableMessageStore.initializeMessageStore();
             subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-            inMemoryMessageStore.initializeMessageStore(connection);
+            inMemoryMessageStore.initializeMessageStore();
             disruptorBasedExecutor = new DisruptorBasedExecutor(durableMessageStore, null);
+
+            return durableStoreConnection;
         } catch (Exception e) {
             log.error("Cannot initialize message store", e);
             throw new AndesException(e);
@@ -118,7 +121,7 @@ public class MessagingEngine {
 
             if (message.getExpirationTime() > 0l)  {
                 //store message in MESSAGES_FOR_EXPIRY_COLUMN_FAMILY Queue
-                        durableMessageStore.addMessageToExpiryQueue(message.getMessageID(), message.getExpirationTime(), message.isTopic(), message.getDestination());
+                durableMessageStore.addMessageToExpiryQueue(message.getMessageID(), message.getExpirationTime(), message.isTopic(), message.getDestination());
             }
 
             if (message.isTopic) {

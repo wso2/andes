@@ -42,7 +42,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
 
     private static final Logger logger = Logger.getLogger(H2BasedMessageStoreImpl.class);
     private final Map<String, Integer> queueMap; // cache queue name to queue_id mapping to avoid extra sql queries
-    private DataSource datasource;  // connection pooled datasource
+    private DataSource datasource;  // connection pooled data source
     private ConcurrentSkipListMap<Long, Long> contentDeletionTasksMap = new ConcurrentSkipListMap<Long, Long>();
     private ScheduledExecutorService contentRemovalScheduler = Executors.newScheduledThreadPool(2);
     private boolean isInMemoryMode;
@@ -64,15 +64,18 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     }
 
     @Override
-    public void initializeMessageStore(DurableStoreConnection durableStoreConnection) throws AndesException {
+    public DurableStoreConnection initializeMessageStore() throws AndesException {
 
-        JDBCConnection JDBCConnection = new JDBCConnection(isInMemoryMode);
-        JDBCConnection.initialize(null);
-        datasource = JDBCConnection.getDatasource();
-
-        // create DB tables ONLY in in-memory mode
-        if (isInMemoryMode) {
-            createTables();
+        JDBCConnection jdbcConnection = new JDBCConnection();
+        if(isInMemoryMode) {
+            // use in memory message store
+            jdbcConnection.initialize(JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME);
+            datasource = jdbcConnection.getDataSource();
+            createTables(); // create DB tables ONLY in in-memory mode
+        } else {
+            // read data source name from config and use
+            jdbcConnection.initialize(AndesContext.getInstance().getMessageStoreDataSourceName());
+            datasource = jdbcConnection.getDataSource();
         }
 
         // start periodic message removal task
@@ -88,6 +91,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
                 TimeUnit.SECONDS);
 
         logger.info("H2 message store initialised");
+        return jdbcConnection;
     }
 
     /**
@@ -987,7 +991,8 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     }
 
     @Override
-    public List<AndesRemovableMetadata> getExpiredMessages(Long limit, String columnFamilyName, String keyspace) {
+    public List<AndesRemovableMetadata> getExpiredMessages(Long limit, String columnFamilyName,
+                                                           String keySpace) {
         return null;
     }
 }

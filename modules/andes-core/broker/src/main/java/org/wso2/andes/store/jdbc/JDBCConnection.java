@@ -18,7 +18,6 @@
 
 package org.wso2.andes.store.jdbc;
 
-import org.apache.commons.configuration.Configuration;
 import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
@@ -33,22 +32,10 @@ public class JDBCConnection implements DurableStoreConnection {
 
     private static final Logger logger = Logger.getLogger(JDBCConnection.class);
     private boolean isConnected;
-    private String jndiLookupName;
     private DataSource datasource;
 
-
-    public JDBCConnection(boolean isInMemoryMode) {
-        if(isInMemoryMode) {
-            jndiLookupName = JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME;
-        } else {
-            jndiLookupName = JDBCConstants.H2_JNDI_LOOKUP_NAME;
-        }
-        isConnected = false;
-    }
-
-    // todo: remove argument
     @Override
-    public void initialize(Configuration configuration) throws AndesException {
+    public void initialize(String jndiLookupName) throws AndesException {
         Connection connection = null;
         isConnected = false;
         try {
@@ -61,11 +48,11 @@ public class JDBCConnection implements DurableStoreConnection {
             throw new AndesException("Couldn't look up jndi entry for " +
                     "\"" + jndiLookupName + "\"" + e);
         } finally {
-            close(connection, "initialising database");
+            close(connection, "Initialising database");
         }
     }
 
-    public DataSource getDatasource() {
+    public DataSource getDataSource() {
         return datasource;
     }
 
@@ -83,13 +70,6 @@ public class JDBCConnection implements DurableStoreConnection {
     public Object getConnection() {
         return this; //
     }
-
-
-
-    void setIsConnected(boolean isConnected) {
-        this.isConnected = isConnected;
-    }
-
 
     /**
      * Closes the provided connection. on failure log the error;

@@ -45,18 +45,27 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
     }
 
-    public void initializeMessageStore(DurableStoreConnection cassandraconnection) throws AndesException {
-        connection = cassandraconnection;
-        initializeCassandraMessageStore(cassandraconnection);
+    public DurableStoreConnection initializeMessageStore() throws AndesException {
+
+        // create connection object
+        CQLConnection cqlConnection = new CQLConnection();
+        cqlConnection.initialize(AndesContext.getInstance().getMessageStoreDataSourceName());
+
+        // get cassandra cluster and create column families
+        initializeCassandraMessageStore(cqlConnection);
+
+        // start scheduled tasks
         alreadyMovedMessageTracker = new AlreadyProcessedMessageTracker("Message-move-tracker", 15000000000L, 10);
         messageContentRemoverTask = new MessageContentRemoverTask(ClusterResourceHolder.getInstance().getClusterConfiguration().
-                getContentRemovalTaskInterval(), contentDeletionTasks, this, cassandraconnection);
+                getContentRemovalTaskInterval(), contentDeletionTasks, this, cqlConnection);
         messageContentRemoverTask.start();
+        return cqlConnection;
     }
 
-    private void initializeCassandraMessageStore(DurableStoreConnection cassandraconnection) throws AndesException {
+    private void initializeCassandraMessageStore(CQLConnection cqlConnection) throws
+            AndesException {
         try {
-            cluster = ((CQLConnection) cassandraconnection).getCluster();
+            cluster = cqlConnection.getCluster();
             createColumnFamilies();
         } catch (CassandraDataAccessException e) {
             log.error("Error while initializing cassandra message store", e);

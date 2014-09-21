@@ -33,6 +33,7 @@ import org.wso2.andes.server.slot.thrift.MBThriftServer;
 import org.wso2.andes.server.slot.thrift.SlotManagementServiceImpl;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
+import org.wso2.andes.store.jdbc.H2BasedAndesContextStoreImpl;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 public class AndesKernelBoot {
@@ -97,17 +98,6 @@ public class AndesKernelBoot {
 
         } else {
 
-            String contextStoreConnectionClass = "org.wso2.andes.store.cassandra.CQLConnection";
-            Class clazz1 = Class.forName(contextStoreConnectionClass);
-            Object o1 = clazz1.newInstance();
-
-            if (!(o1 instanceof DurableStoreConnection)) {
-                throw new ClassCastException("Message store connection class must implement " + DurableStoreConnection.class + ". Class " + clazz1 +
-                        " does not.");
-            }
-            DurableStoreConnection contextStoreConnection = (DurableStoreConnection) o1;
-            contextStoreConnection.initialize(storeConfiguration);
-
             //create a andes context store and register
             String contextStoreClassName = AndesContext.getInstance().getAndesContextStoreClass();
             Class clazz2 = Class.forName(contextStoreClassName);
@@ -118,7 +108,7 @@ public class AndesKernelBoot {
                         " does not.");
             }
             AndesContextStore andesContextStore = (AndesContextStore) o2;
-            andesContextStore.init(contextStoreConnection);
+            DurableStoreConnection contextStoreConnection = andesContextStore.init();
             AndesContext.getInstance().setAndesContextStore(andesContextStore);
 
             //create subscription store
@@ -131,18 +121,7 @@ public class AndesKernelBoot {
 
 
             //create a messaging engine and a message store
-            String messageStoreConnectionClass = "org.wso2.andes.store.cassandra.CQLConnection";
-            Class clazz = Class.forName(messageStoreConnectionClass);
-            Object o = clazz.newInstance();
-
-            if (!(o instanceof DurableStoreConnection)) {
-                throw new ClassCastException("Message store connection class must implement " + DurableStoreConnection.class + ". Class " + clazz +
-                        " does not.");
-            }
-            DurableStoreConnection messageStoreConnection = (DurableStoreConnection) o;
-            messageStoreConnection.initialize(storeConfiguration);
             MessagingEngine.getInstance().initializeMessageStore(
-                    messageStoreConnection,
                     AndesContext.getInstance().getMessageStoreClass()
             );
         }

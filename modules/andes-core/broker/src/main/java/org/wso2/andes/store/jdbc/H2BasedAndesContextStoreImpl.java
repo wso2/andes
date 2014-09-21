@@ -36,17 +36,31 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
     private static final Logger logger = Logger.getLogger(H2BasedAndesContextStoreImpl.class);
 
     private DataSource datasource;
-    private final boolean isInMemoryMode;
+    private boolean isInMemoryMode;
 
-    H2BasedAndesContextStoreImpl(boolean isInMemoryMode) {
+    public H2BasedAndesContextStoreImpl() {
+        datasource = null;
+        this.isInMemoryMode = false;
+    }
+
+    public H2BasedAndesContextStoreImpl(boolean isInMemoryMode) {
+        this();
         this.isInMemoryMode = isInMemoryMode;
     }
 
     @Override
-    public void init(DurableStoreConnection connection) throws AndesException {
-        JDBCConnection JDBCConnection = new JDBCConnection(isInMemoryMode);
-        JDBCConnection.initialize(null);
-        datasource = JDBCConnection.getDatasource();
+    public DurableStoreConnection init() throws AndesException {
+        JDBCConnection jdbcConnection = new JDBCConnection();
+        if(isInMemoryMode) {
+            // todo: is in memory mode relevant? We have methods to store durable subscriptions
+            jdbcConnection.initialize(JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME);
+        } else {
+            // read config for data source and use
+            jdbcConnection.initialize(AndesContext.getInstance().getContextStoreDataSourceName());
+        }
+
+        datasource = jdbcConnection.getDataSource();
+        return jdbcConnection;
     }
 
     @Override

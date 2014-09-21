@@ -27,10 +27,15 @@ public interface AndesContextStore {
     /**
      * initialize the storage with the connection
      *
-     * @param connection connection to the storage (JDBC/Cassandra/H2)
+     * @throws AndesException
+     *
+     */
+    /**
+     * initialize the storage and makes a connection to the data base
+     * @return returns the created DurableStoreConnection object created
      * @throws AndesException
      */
-    public void init(DurableStoreConnection connection) throws AndesException;
+    public DurableStoreConnection init() throws AndesException;
 
     /**
      * get all durable encoded subscriptions as strings

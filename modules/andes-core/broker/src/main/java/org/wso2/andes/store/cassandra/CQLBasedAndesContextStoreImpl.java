@@ -39,31 +39,31 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
 
     private static Log log = LogFactory.getLog(CQLBasedAndesContextStoreImpl.class);
     private DurableStoreConnection connection;
-    private Cluster cluster;
 
     @Override
-    public void init(DurableStoreConnection storeConnection) throws AndesException {
+    public DurableStoreConnection init() throws AndesException {
 
         try {
-
-            connection = storeConnection;
-            this.cluster = ((CQLConnection) connection).getCluster();
+            CQLConnection cqlConnection = new CQLConnection();
+            cqlConnection.initialize(AndesContext.getInstance().getContextStoreDataSourceName());
+            connection = cqlConnection;
+            Cluster cluster = cqlConnection.getCluster();
             //create needed column families
-            CQLDataAccessHelper.createColumnFamily(SUBSCRIPTIONS_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
+            CQLDataAccessHelper.createColumnFamily(SUBSCRIPTIONS_COLUMN_FAMILY, KEYSPACE, cluster, CassandraConstants.STRING_TYPE, DataType.text(),
                     ((CQLConnection) connection.getConnection()).getGcGraceSeconds());
-            CQLDataAccessHelper.createColumnFamily(EXCHANGE_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
+            CQLDataAccessHelper.createColumnFamily(EXCHANGE_COLUMN_FAMILY, KEYSPACE, cluster, CassandraConstants.STRING_TYPE, DataType.text(),
                     ((CQLConnection) connection.getConnection()).getGcGraceSeconds());
-            CQLDataAccessHelper.createColumnFamily(QUEUE_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
+            CQLDataAccessHelper.createColumnFamily(QUEUE_COLUMN_FAMILY, KEYSPACE, cluster, CassandraConstants.STRING_TYPE, DataType.text(),
                     ((CQLConnection) connection.getConnection()).getGcGraceSeconds());
-            CQLDataAccessHelper.createColumnFamily(BINDING_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
+            CQLDataAccessHelper.createColumnFamily(BINDING_COLUMN_FAMILY, KEYSPACE, cluster, CassandraConstants.STRING_TYPE, DataType.text(),
                     ((CQLConnection) connection.getConnection()).getGcGraceSeconds());
-            CQLDataAccessHelper.createColumnFamily(NODE_DETAIL_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
+            CQLDataAccessHelper.createColumnFamily(NODE_DETAIL_COLUMN_FAMILY, KEYSPACE, cluster, CassandraConstants.STRING_TYPE, DataType.text(),
                     ((CQLConnection) connection.getConnection()).getGcGraceSeconds());
+            return cqlConnection;
         } catch (CassandraDataAccessException e) {
-            log.error("Error while creating column spaces during subscription store init. ", e);
-            throw new AndesException(e);
+            throw new AndesException("Error while creating column spaces during subscription " +
+                    "store init. ", e);
         }
-
     }
 
     @Override

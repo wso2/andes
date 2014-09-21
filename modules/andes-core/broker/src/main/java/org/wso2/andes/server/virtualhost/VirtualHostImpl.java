@@ -55,10 +55,8 @@ import org.wso2.andes.server.registry.IApplicationRegistry;
 import org.wso2.andes.server.security.SecurityManager;
 import org.wso2.andes.server.security.auth.manager.AuthenticationManager;
 import org.wso2.andes.server.stats.StatisticsCounter;
-import org.wso2.andes.server.store.ConfigurationRecoveryHandler;
-import org.wso2.andes.server.store.DurableConfigurationStore;
+import org.wso2.andes.server.store.*;
 import org.wso2.andes.server.store.MessageStore;
-import org.wso2.andes.server.store.TransactionLog;
 import org.wso2.andes.server.virtualhost.plugins.VirtualHostPlugin;
 import org.wso2.andes.server.virtualhost.plugins.VirtualHostPluginFactory;
 
@@ -337,17 +335,9 @@ public class VirtualHostImpl implements VirtualHost {
         //kernel will start message stores for Andes
         AndesKernelBoot.startAndesStores(hostConfig.getStoreConfiguration(), this);
 
-        //this is considered as an internal impl now, so hard coding
-        String qpidMessageStoreClass = "org.wso2.andes.server.store.CQLBasedMessageStore";
-
-        Class clazz = Class.forName(qpidMessageStoreClass);
-        Object o = clazz.newInstance();
-
-        if (!(o instanceof MessageStore)) {
-            throw new ClassCastException("Message store class must implement " + MessageStore.class + ". Class " + clazz +
-                    " does not.");
-        }
-        MessageStore messageStore = (MessageStore) o;
+        // this is considered as an internal impl now, so hard coding
+        // qpid related messagestore
+        MessageStore messageStore = new CassandraMessageStore();
         VirtualHostConfigRecoveryHandler recoveryHandler = new VirtualHostConfigRecoveryHandler(this);
 
         MessageStoreLogSubject storeLogSubject = new MessageStoreLogSubject(this, messageStore);

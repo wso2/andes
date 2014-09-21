@@ -25,10 +25,10 @@ public interface DurableStoreConnection {
     /**
      * Initialize database connection
      *
-     * @param configuration storage configuration
+     * @param jndiLookupName jndi lookup name to get the data source
      * @throws AndesException
      */
-    public void initialize(Configuration configuration) throws AndesException;
+    public void initialize(String jndiLookupName) throws AndesException;
 
     /**
      * Close database connection

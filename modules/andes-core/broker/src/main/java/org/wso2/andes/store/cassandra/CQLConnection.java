@@ -18,10 +18,6 @@
 
 package org.wso2.andes.store.cassandra;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.commons.configuration.Configuration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
@@ -33,11 +29,12 @@ import org.wso2.andes.store.cassandra.dao.GenericCQLDAO;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.GlobalQueueManager;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
-import org.wso2.andes.server.store.util.CQLDataAccessHelper.ClusterConfiguration;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
-import org.wso2.andes.server.util.AndesUtils;
 
 import com.datastax.driver.core.Cluster;
+
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
 
 import static org.wso2.andes.store.cassandra.CassandraConstants.*;
 
@@ -47,61 +44,22 @@ public class CQLConnection implements DurableStoreConnection {
     private static Log log = LogFactory.getLog(CQLConnection.class);
     private boolean isCassandraConnectionLive = false;
     private int gcGraceSeconds;
-    private final static int DEFAULT_GC_GRAE_SECOND_VALUE = 864000;
+    private final static int DEFAULT_GC_GRACE_SECOND_VALUE = 864000;
 
 
     @Override
-    public void initialize(Configuration configuration) throws AndesException {
-
+    public void initialize(String jndiLookupName) throws AndesException {
         try {
-            String userName = (String) configuration.getProperty(USERNAME_KEY);
-            String password = (String) configuration.getProperty(PASSWORD_KEY);
-            Object connections = configuration.getProperty(CONNECTION_STRING);
-            int replicationFactor = configuration.getInt(REPLICATION_FACTOR, 1);
-            String strategyClass = configuration.getString(STRATERGY_CLASS);
-            String readConsistancyLevel = configuration.getString(READ_CONSISTENCY_LEVEL);
-            String writeConsistancyLevel = configuration.getString(WRITE_CONSISTENCY_LEVEL);
-            String gcGraceSecondsString = (String) configuration.getProperty(GC_GRACE_SECONDS);
-            if (gcGraceSecondsString != null) {
-                setGcGraceSeconds(Integer.parseInt(gcGraceSecondsString));
-            } else {
-                setGcGraceSeconds(DEFAULT_GC_GRAE_SECOND_VALUE);
-            }
+            // todo these configs should be read from data source config file
+            int replicationFactor = 1;
+            String strategyClass = "org.apache.cassandra.locator.SimpleStrategy";
+            String readConsistancyLevel = "QUORUM";
+            String writeConsistancyLevel = "QUORUM";
+            String gcGraceSecondsString = "864000";
+            setGcGraceSeconds(Integer.parseInt(gcGraceSecondsString));
 
-            int port = 9042;
-            boolean isExternalCassandraServerRequired = ClusterResourceHolder.getInstance().
-                    getClusterConfiguration().getIsExternalCassandraserverRequired();
+            cluster = InitialContext.doLookup(jndiLookupName);
 
-            List<String> hosts = new ArrayList<String>();
-
-            if (connections instanceof ArrayList && isExternalCassandraServerRequired) {
-                List<String> cons = (ArrayList<String>) connections;
-                for (String connection : cons) {
-                    String host = connection.split(":")[0];
-                    port = Integer.parseInt(connection.split(":")[1]);
-                    hosts.add(host);
-                }
-
-            } else if (connections instanceof String && isExternalCassandraServerRequired) {
-                String connectionString = (String) connections;
-                if (connectionString.indexOf(":") > 0) {
-                    String host = connectionString.split(":")[0];
-                    hosts.add(host);
-                    port = Integer.parseInt(connectionString.split(":")[1]);
-                }
-            } else {
-                String defaultHost = "localhost";
-                int defaultPort = AndesUtils.getInstance().getCassandraPort();
-                port = defaultPort;
-                hosts.add(defaultHost);
-            }
-
-            String clusterName = (String) configuration.getProperty(CLUSTER_KEY);
-            ClusterConfiguration clusterConfig = new ClusterConfiguration(userName, password, clusterName, hosts, port);
-
-            log.info("Initializing Cassandra Message Store: HOSTS=" + hosts + " PORT=" + port);
-
-            cluster = CQLDataAccessHelper.createCluster(clusterConfig);
             GenericCQLDAO.setCluster(cluster);
             createKeySpace(replicationFactor, strategyClass);
 
@@ -123,10 +81,13 @@ public class CQLConnection implements DurableStoreConnection {
             isCassandraConnectionLive = true;
             checkCassandraConnection();
 
+        } catch (NamingException e) {
+            throw new AndesException("Couldn't look up jndi entry for " +
+                    "\"" + jndiLookupName + "\"" + e);
         } catch (CassandraDataAccessException e) {
-            log.error("Cannot Initialize Cassandra Connection", e);
-            throw new AndesException(e);
+            throw new AndesException("Cannot Initialize Cassandra Connection", e);
         }
+
     }
 
     @Override

@@ -24,7 +24,7 @@ import java.util.List;
 
 public interface MessageStore {
 
-    public void initializeMessageStore(DurableStoreConnection durableConnection) throws AndesException;
+    public DurableStoreConnection initializeMessageStore() throws AndesException;
 
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException;
 

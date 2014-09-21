@@ -169,17 +169,12 @@ public class CQLDataAccessHelper {
 		
 		
     }
-    
-   
 
     /**
-     * Create a Cassandra Cluster instance given the connection details
-     * @param userName  userName to connect to the cassandra
-     * @param password  password to connect to cassandra
-     * @param clusterName Cluster name
-     * @param connections - nodes
-     * @return  Cluster instance
-     * @throws CassandraDataAccessException   In case of and error in accessing database or data error
+     *
+     * @param config cluster config
+     * @return
+     * @throws CassandraDataAccessException
      */
 	public static Cluster createCluster(ClusterConfiguration config)
 			throws CassandraDataAccessException {
@@ -306,8 +301,14 @@ public class CQLDataAccessHelper {
      * @param comparatorType Comparator
      * @throws CassandraDataAccessException   In case of an Error accessing database or data error
      */
-	
-	
+
+    /**
+     * Create a Column family in a Given Cluster instance
+     * @param keySpace KeySpace name
+     * @param table
+     * @return
+     * @throws CassandraDataAccessException
+     */
 	public static boolean isTableExist(String keySpace, String table) throws CassandraDataAccessException{
 		Set<String> tableNames = new HashSet<String>();
 		String query = "SELECT columnfamily_name FROM System.schema_columnfamilies WHERE keyspace_name='"+keySpace.toLowerCase()+"' and columnfamily_name='"+table.toLowerCase()+"';";
@@ -504,10 +505,12 @@ public class CQLDataAccessHelper {
 
     /**
      * Get a list of column names in a given row of a counter column family
-     * @param columnFamilyName
-     * @param rowName
-     * @param keyspace
-     * @return List<String> column names
+     * @param name
+     * @param keySpace
+     * @param cluster
+     * @param comparatorType
+     * @param valueType
+     * @param gcGraceSeconds
      * @throws CassandraDataAccessException
      */
     public static void createColumnFamily(String name, String keySpace, Cluster cluster, String comparatorType, DataType valueType, int gcGraceSeconds) throws CassandraDataAccessException {
@@ -597,14 +600,7 @@ public class CQLDataAccessHelper {
         }
         return rowList;
     }*/
-    /**
-     * Get list of column names in a Given row in a Cassandra Column Family (row,column and value are of STRING type)
-     * @param columnFamilyName Name of the column Family
-     * @param rowName  Row name
-     * @param keyspace  keySpace
-     * @return  List of string in that given row.
-     * @throws CassandraDataAccessException   In case of database access error or data error
-     */
+
 /*    public static List<String> getColumnNameList(String columnFamilyName, String rowName, Keyspace keyspace) throws CassandraDataAccessException {
         ArrayList<String> columnNamesList = new ArrayList<String>();
 
@@ -639,15 +635,6 @@ public class CQLDataAccessHelper {
         return columnNamesList;
     }*/
 
-      /**
-     * Get the value of a given column in a given row in a Cassandra Column Family (row,column,value are of STRING type)
-     * @param columnFamilyName Name of the column Family
-     * @param rowName  Row name
-     * @param keyspace  keySpace
-     * @param columnName Name of the column
-     * @return vlaue of the column in the row.
-     * @throws CassandraDataAccessException   In case of database access error or data error
-     */
 /*    public static List<String> getColumnValuesOfRow(String columnFamilyName, String rowName,Keyspace keyspace, String columnName) throws CassandraDataAccessException {
         List<String> valueList = new ArrayList<String>();
         if (keyspace == null) {
@@ -1015,15 +1002,6 @@ public class CQLDataAccessHelper {
         }
     }
 
-    /**
-     * Get a chunk of <Long,String> type columns in a given row in a cassandra column family
-     * @param rowName  row name
-     * @param columnFamilyName   name of column family
-     * @param keyspace key space
-     * @param count message count
-     * @return Column slice
-     * @throws CassandraDataAccessException
-     */
 /*    public static ColumnSlice<Long, String> getLongTypeColumnsInARow(String rowName,
                                                                          String columnFamilyName,
                                                                          Keyspace keyspace,int count)
@@ -1054,16 +1032,7 @@ public class CQLDataAccessHelper {
             throw new CassandraDataAccessException("Error while getting data from : " + columnFamilyName,e);
         }
     }*/
-    /**
-     * get <String,String> type columns from lastProcessedID string up to the specified count
-     * @param rowName  row name we are querying for
-     * @param columnFamilyName column family name
-     * @param keyspace  key space involved
-     * @param count count of records we wish to receive at maximum
-     * @param lastProcessedId
-     * @return  ColumnSlice<String, String>
-     * @throws CassandraDataAccessException
-     */
+
 /*    public static ColumnSlice<String, String> getStringTypeColumnsInARowWithOffset(String rowName,String columnFamilyName,
                                  Keyspace keyspace,int count,String lastProcessedId) throws CassandraDataAccessException {
 
@@ -1089,16 +1058,6 @@ public class CQLDataAccessHelper {
         }
     }*/
 
-    /**
-     * get a chuck of <Long,String> type of column slice from lastProcessedID string up to the specified count
-     * @param rowName row name
-     * @param columnFamilyName column family name
-     * @param keyspace key space
-     * @param count  num of messages to receive
-     * @param lastProcessedId id from which slice should have values
-     * @return Column slice
-     * @throws CassandraDataAccessException
-     */
 /*    public static ColumnSlice<Long, String> getLongTypeColumnsInARowWithOffset(String rowName,String columnFamilyName,
                                Keyspace keyspace,int count,long lastProcessedId) throws CassandraDataAccessException {
 
@@ -1124,15 +1083,6 @@ public class CQLDataAccessHelper {
         }
     }*/
 
-    /**
-     * Get a  HColumn<Long, byte[]> with a given key in a given row in a given column Family
-     * @param rowName name of the row
-     * @param columnFamily column Family name
-     * @param key   long type key of the column we are looking for
-     * @param keyspace cassandra keySpace instance
-     * @return     query result as a cassandra column
-     * @throws CassandraDataAccessException  in case of an Error when accessing data
-     */
 /*    public static HColumn<Long, byte[]> getLongByteArrayColumnInARow(String rowName,String columnFamily,
                                                                         long key,Keyspace keyspace)
             throws CassandraDataAccessException {
@@ -1164,15 +1114,6 @@ public class CQLDataAccessHelper {
 
     }*/
 
-    /**
-     * Add Message to a Given Queue in Cassandra
-     * @param columnFamily ColumnFamily name
-     * @param queue  queue name
-     * @param messageId  Message id
-     * @param message  message in bytes
-     * @param keyspace  Cassandra KeySpace
-     * @throws CassandraDataAccessException  In case of database access error
-     */
 /*    public static void addMessageToQueue(String columnFamily , String queue , long messageId ,
                                          byte []message , Keyspace keyspace) throws CassandraDataAccessException {
 
@@ -1196,17 +1137,6 @@ public class CQLDataAccessHelper {
         }
     }*/
 
-
-    /**
-     * add message to a queue
-     * @param columnFamily column family name
-     * @param queue name of queue (row name)
-     * @param messageId message ID of the message (column name)
-     * @param message message content
-     * @param mutator mutator to execute the query
-     * @param execute whether to execute the query
-     * @throws CassandraDataAccessException
-     */
     public static Insert addMessageToQueue(String keySpace, String columnFamily , String queue , long messageId ,
                                          byte []message /*, Mutator<String> mutator*/ , boolean execute) throws CassandraDataAccessException {
 
@@ -1240,12 +1170,13 @@ public class CQLDataAccessHelper {
 
     /**
      * add <integer,byte[]> column to a given row. Used to write message content to Cassandra
+     * @param keySpace key space
      * @param columnFamily Name of Column Family
      * @param row name of the row
      * @param key column offset
      * @param value byte[] message content to be written
-     * @param mutator mutator
      * @param execute whether to execte the mutator
+     * @return
      * @throws CassandraDataAccessException
      */
     public static Insert addMessageToQueue(String keySpace, String columnFamily,String row,int key,
@@ -1415,12 +1346,14 @@ public class CQLDataAccessHelper {
     /**
      * Add a <String,String> Mapping to a Given Row in cassandra column family.
      * Mappings are used as search indexes
-     * @param columnFamily  columnFamilyName
-     * @param row  row name
-     * @param cKey  key name for the adding column
-     * @param cValue  value for the adding column
-     * @param keyspace Cassandra KeySpace
-     * @throws CassandraDataAccessException  In case of database access error or data error
+     * @param keySpace Cassandra KeySpace
+     * @param columnFamily columnFamilyName
+     * @param row row name
+     * @param cKey key name for the adding column
+     * @param cValue value for the adding column
+     * @param execute
+     * @return
+     * @throws CassandraDataAccessException
      */
     public static Insert addCellToRow(String keySpace, String columnFamily, String row, String cKey, String cValue/*,
                                        Keyspace keyspace*/, boolean execute) throws CassandraDataAccessException {
@@ -1460,7 +1393,6 @@ public class CQLDataAccessHelper {
      * @param row  row name
      * @param cKey column key
      * @param cValue column value
-     * @param mutator mutator
      * @param execute  should we execute the insertion. if false it will just and the insertion to the mutator
      * @throws CassandraDataAccessException  In case of database access error or data error
      */
@@ -1593,7 +1525,6 @@ public class CQLDataAccessHelper {
      * @param columnFamily name of column family
      * @param row name of row
      * @param key column key
-     * @param mutator mutator
      * @param execute whether to execute the mutator
      * @throws CassandraDataAccessException
      */
@@ -1792,13 +1723,6 @@ public class CQLDataAccessHelper {
         }
     }*/
 
-    /**
-     * delete a whole row from a given colum family
-     * @param columnFamily column family the row to be deleted is in
-     * @param keyspace  key space involved
-     * @param row  name of row to be removed
-     * @throws CassandraDataAccessException
-     */
 /*    public static void deleteWholeRowFromColumnFamily(String columnFamily,Keyspace keyspace, String row) throws CassandraDataAccessException {
         if (keyspace == null) {
             throw new CassandraDataAccessException("Can't delete Data , no keySpace provided ");
@@ -1817,13 +1741,7 @@ public class CQLDataAccessHelper {
         }
     }*/
 
-    /**
-     * Remove <raw key, column key> list from a keyspace
-     * @param columnFamily column falimiy to delete row/columns from
-     * @param keyspace key space
-     * @param inputMap a Map containing (row)/(column) to delete
-     * @throws CassandraDataAccessException
-     */
+
 /*    public static void deleteStringColumnSpecifiedInRowAsBatch(String columnFamily, Keyspace keyspace, Map<String,String> inputMap) throws CassandraDataAccessException {
         if (keyspace == null) {
             throw new CassandraDataAccessException("Can't delete Data , no keyspace provided ");

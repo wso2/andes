@@ -49,7 +49,7 @@ public class H2BasedAndesContextStoreImplTest {
     public void setup() throws Exception {
         createTables();
         contextStore = new H2BasedAndesContextStoreImpl(true); // in memory mode mode
-        contextStore.init(null);
+        contextStore.init();
     }
 
     @After

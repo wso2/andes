@@ -46,7 +46,7 @@ public class H2BasedMessageStoreImplTest {
     public void setUp() throws Exception {
         createTables();
         messageStore = new H2BasedMessageStoreImpl(true);
-        messageStore.initializeMessageStore(null);
+        messageStore.initializeMessageStore();
     }
 
     @After
