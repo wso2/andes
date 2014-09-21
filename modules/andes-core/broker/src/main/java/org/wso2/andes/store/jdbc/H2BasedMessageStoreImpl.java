@@ -43,8 +43,8 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     private static final Logger logger = Logger.getLogger(H2BasedMessageStoreImpl.class);
     private final Map<String, Integer> queueMap; // cache queue name to queue_id mapping to avoid extra sql queries
     private DataSource datasource;  // connection pooled data source
-    private ConcurrentSkipListMap<Long, Long> contentDeletionTasksMap = new ConcurrentSkipListMap<Long, Long>();
-    private ScheduledExecutorService contentRemovalScheduler = Executors.newScheduledThreadPool(2);
+    MessageContentRemoverTask messageContentRemoverTask; // message content remover task thread
+    private ScheduledExecutorService contentRemovalScheduler;
     private boolean isInMemoryMode;
 
     /**
@@ -52,6 +52,8 @@ public class H2BasedMessageStoreImpl implements MessageStore {
      */
     public H2BasedMessageStoreImpl() {
         queueMap = new ConcurrentHashMap<String, Integer>();
+        int threadPoolCount = 1;
+        contentRemovalScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         isInMemoryMode = false;
     }
 
@@ -70,27 +72,30 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         if(isInMemoryMode) {
             // use in memory message store
             jdbcConnection.initialize(JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME);
-            datasource = jdbcConnection.getDataSource();
-            createTables(); // create DB tables ONLY in in-memory mode
         } else {
             // read data source name from config and use
             jdbcConnection.initialize(AndesContext.getInstance().getMessageStoreDataSourceName());
-            datasource = jdbcConnection.getDataSource();
         }
 
-        // start periodic message removal task
-        MessageContentRemoverTask messageContentRemoverTask =
-                new MessageContentRemoverTask(contentDeletionTasksMap, this);
+        datasource = jdbcConnection.getDataSource();
+        createTables(); // create DB tables ONLY in in-memory mode
 
-        int schedulerPeriod = 5;
-                ClusterResourceHolder.getInstance().getClusterConfiguration()
+        // start periodic message removal task
+        messageContentRemoverTask = new MessageContentRemoverTask(this, jdbcConnection);
+
+        int schedulerPeriod = ClusterResourceHolder.getInstance().getClusterConfiguration()
                         .getContentRemovalTaskInterval();
         contentRemovalScheduler.scheduleAtFixedRate(messageContentRemoverTask,
                 schedulerPeriod,
                 schedulerPeriod,
                 TimeUnit.SECONDS);
 
-        logger.info("H2 message store initialised");
+        if(isInMemoryMode) {
+            createTables();
+            logger.info("H2 in-memory message store initialised");
+        } else {
+            logger.info("H2 message store initialised");
+        }
         return jdbcConnection;
     }
 
@@ -264,7 +269,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
                 //schedule to remove queue and topic message content
                 long timeGapConfigured = ClusterResourceHolder.getInstance().
                         getClusterConfiguration().getPubSubMessageRemovalTaskInterval() * 1000000;
-                contentDeletionTasksMap.put(System.nanoTime() + timeGapConfigured, ackData.messageID);
+                messageContentRemoverTask.put(System.nanoTime() + timeGapConfigured, ackData.messageID);
 
             } else {
                 messagesAddressedToQueues.add(ackData.convertToRemovableMetaData());
@@ -272,7 +277,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
                 onflightMessageTracker.updateDeliveredButNotAckedMessages(ackData.messageID);
 
                 //schedule to remove queue and topic message content
-                contentDeletionTasksMap.put(System.nanoTime(), ackData.messageID);
+                messageContentRemoverTask.put(System.nanoTime(), ackData.messageID);
             }
 
             PerformanceCounter.recordMessageRemovedAfterAck();
@@ -615,7 +620,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
             // NOTE: This is done outside transaction intentionally. To Delete ack received
             // content in chunks as a scheduled task.
             for (AndesRemovableMetadata md : messagesToRemove) {
-                contentDeletionTasksMap.put(System.nanoTime(), md.messageID);
+                messageContentRemoverTask.put(System.nanoTime(), md.messageID);
             }
             if (logger.isDebugEnabled()) {
                 logger.debug(messagesToRemove.size() + " messages scheduled to be removed.");

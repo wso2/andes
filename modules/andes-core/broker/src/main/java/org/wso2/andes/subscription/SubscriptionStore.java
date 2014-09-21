@@ -449,8 +449,7 @@ public class SubscriptionStore {
 
             String destinationQueue = subscription.getSubscribedDestination();
             //Store the subscription
-            String destinationIdentifier = new StringBuffer().append((subscription.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX))
-                    .append(destinationQueue).toString();
+            String destinationIdentifier = (subscription.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destinationQueue;
             String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
             andesContextStore.storeDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
 
