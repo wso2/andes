@@ -66,9 +66,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     @Override
     public void initializeMessageStore(DurableStoreConnection durableStoreConnection) throws AndesException {
 
-        H2Connection h2Connection = new H2Connection(isInMemoryMode);
-        h2Connection.initialize(null);
-        datasource = h2Connection.getDatasource();
+        JDBCConnection JDBCConnection = new JDBCConnection(isInMemoryMode);
+        JDBCConnection.initialize(null);
+        datasource = JDBCConnection.getDatasource();
 
         // create DB tables ONLY in in-memory mode
         if (isInMemoryMode) {

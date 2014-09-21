@@ -29,16 +29,15 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-// todo: need to implement with reading cassandra data source from master-datasources.xml
-public class H2Connection implements DurableStoreConnection {
+public class JDBCConnection implements DurableStoreConnection {
 
-    private static final Logger logger = Logger.getLogger(H2Connection.class);
+    private static final Logger logger = Logger.getLogger(JDBCConnection.class);
     private boolean isConnected;
     private String jndiLookupName;
     private DataSource datasource;
 
 
-    public H2Connection(boolean isInMemoryMode) {
+    public JDBCConnection(boolean isInMemoryMode) {
         if(isInMemoryMode) {
             jndiLookupName = JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME;
         } else {

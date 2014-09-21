@@ -61,22 +61,17 @@ public class AndesBinding implements Serializable {
     }
 
     public String toString() {
-        StringBuffer buf = new StringBuffer();
-        buf.append("[Binding]")
-                .append("E=").append(boundExchangeName)
-                .append("/Q=").append(boundQueue.queueName)
-                .append("/RK=").append(routingKey)
-                .append("/D=").append(boundQueue.isDurable)
-                .append("/EX=").append(boundQueue.isExclusive);
-        return buf.toString();
+        return "[Binding]" + "E=" + boundExchangeName +
+                "/Q=" + boundQueue.queueName +
+                "/RK=" + routingKey +
+                "/D=" + boundQueue.isDurable +
+                "/EX=" + boundQueue.isExclusive;
     }
 
     public String encodeAsString() {
-        StringBuffer buf = new StringBuffer();
-        buf.append("boundExchange&").append(boundExchangeName)
-                .append("|boundQueue&").append(boundQueue.encodeAsString())
-                .append("|routingKey&").append(routingKey);
-        return buf.toString();
+        return "boundExchange&" + boundExchangeName +
+                "|boundQueue&" + boundQueue.encodeAsString() +
+                "|routingKey&" + routingKey;
     }
 
     public boolean equals(Object o) {

@@ -46,7 +46,7 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
     private List<AndesMessageMetadata> metaList = new ArrayList<AndesMessageMetadata>();
 
     private List<AndesMessagePart> partList = new ArrayList<AndesMessagePart>();
-    private int MAX_DATA_LENGTH = 128000;
+    private static final int MAX_DATA_LENGTH = 128000;
 
     public AlternatingCassandraWriter(int writerCount, int turn, MessageStore messageStore) {
         this.writerCount = writerCount;
@@ -62,7 +62,6 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
             if (calculatedTurn == turn) {
                 //Message parts we write on the fly. It is tradeoff of memory vs. batching
                 //May be we need better handling .. batch that data as well
-                //log.info("CASSANDRA WRITER - CONTENT PART RECEIVED ID " + event.part.getMessageID() + " OFFSET: " + event.part.getOffSet());
                 partList.add(event.part);
                 totalPendingEventLength += event.part.getDataLength();
             }
@@ -71,14 +70,13 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
             int calculatedTurn = Math.abs(event.metadata.getDestination().hashCode() % writerCount);
 
             if (calculatedTurn == turn) {
-                //log.info("CASSANDRA WRITER - METADATA RECEIVED ID " + event.metadata.getMessageID());
                 metaList.add(event.metadata);
                 totalPendingEventLength += event.metadata.getMetadata().length;
             }
         }
 
         if (totalPendingEventLength > MAX_DATA_LENGTH || (endOfBatch)) {
-            // Write message part list to cassandra
+            // Write message part list to database
             if (partList.size() > 0) {
                 messageStore.storeMessagePart(partList);
                 partList.clear();
@@ -86,7 +84,6 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
 
             // Write message meta list to cassandra
             if (metaList.size() > 0) {
-                //messageStore.addMessageMetaData(null, metaList);
                 messageStore.addMetaData(metaList);
                 //record message data count
                 if (AndesContext.getInstance().isClusteringEnabled()) {
@@ -94,6 +91,7 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
                 }
                 metaList.clear();
             }
+
             totalPendingEventLength = 0;
         }
     }
