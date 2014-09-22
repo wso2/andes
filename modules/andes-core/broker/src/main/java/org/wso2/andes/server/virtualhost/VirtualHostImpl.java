@@ -30,9 +30,7 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.AMQBrokerManagerMBean;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.BindingFactory;
-import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.configuration.*;
 import org.wso2.andes.server.connection.ConnectionRegistry;
 import org.wso2.andes.server.connection.IConnectionRegistry;
@@ -210,7 +208,7 @@ public class VirtualHostImpl implements VirtualHost {
             _messageStore = store;
             _durableConfigurationStore = store;
         } else {
-            initialiseMessageStore(hostConfig);
+            initialiseAndesStores(hostConfig);
         }
 
         // This needs to be after the RT has been defined as it creates the default durable exchanges.
@@ -330,7 +328,7 @@ public class VirtualHostImpl implements VirtualHost {
      * @param hostConfig VirtualHost Configuration
      * @throws Exception
      */
-    private void initialiseMessageStore(VirtualHostConfiguration hostConfig) throws Exception {
+    private void initialiseAndesStores(VirtualHostConfiguration hostConfig) throws Exception {
 
         //kernel will start message stores for Andes
         AndesKernelBoot.startAndesStores(hostConfig.getStoreConfiguration(), this);

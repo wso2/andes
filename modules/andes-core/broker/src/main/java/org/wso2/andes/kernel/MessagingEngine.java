@@ -374,9 +374,9 @@ public class MessagingEngine {
 
         stopMessageDelivery();
         //todo: hasitha - we need to wait all jobs are finished, all executors have no future tasks
+        stopMessageExpirationWorker();
         durableMessageStore.close();
         inMemoryMessageStore.close();
-        stopMessageExpirationWorker();
 
     }
 

@@ -143,10 +143,6 @@ public class CQLConnection implements DurableStoreConnection {
                         gqm.startAllQueueWorkersLocally();
                     }
                 }
-                if (ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer() != null) {
-                    log.info("Starting syncing exchanges, queues and bindings");
-                    ClusterResourceHolder.getInstance().getAndesRecoveryTask().startRunning();
-                }
             }
         } catch (Exception e) {
             log.error("Error while starting broker tasks back. Not retrying...", e);
@@ -169,10 +165,6 @@ public class CQLConnection implements DurableStoreConnection {
                 log.info("Stopping all global queue workers locally");
                 gqm.stopAllQueueWorkersLocally();
             }
-        }
-        if (ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer() != null) {
-            log.info("Stopping syncing exchanges, queues and bindings");
-            ClusterResourceHolder.getInstance().getAndesRecoveryTask().stopRunning();
         }
     }
 

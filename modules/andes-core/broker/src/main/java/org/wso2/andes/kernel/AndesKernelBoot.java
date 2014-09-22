@@ -36,10 +36,16 @@ import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 import org.wso2.andes.store.jdbc.H2BasedAndesContextStoreImpl;
 import org.wso2.andes.subscription.SubscriptionStore;
 
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 public class AndesKernelBoot {
     private static Log log = LogFactory.getLog(AndesKernelBoot.class);
     private static Configuration storeConfiguration;
     private static ClusterConfiguration clusterConfiguration;
+    private static ScheduledExecutorService andesRecoveryTaskScheduler;
 
     /**
      * This will boot up all the components in
@@ -49,6 +55,8 @@ public class AndesKernelBoot {
 
         //loadConfigurations - done from outside
         //startAndesStores - done from outside
+        int threadPoolCount = 1;
+        andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         startAndesComponents();
         startHouseKeepingThreads();
         syncNodeWithClusterState();
@@ -166,9 +174,10 @@ public class AndesKernelBoot {
      */
     public static void startHouseKeepingThreads() throws Exception {
         //reload exchanges/queues/bindings and subscriptions
-        AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask(clusterConfiguration.getAndesRecoveryTaskInterval());
-        andesRecoveryTask.startRunning();
-        AndesExecuter.runAsync(andesRecoveryTask);
+        AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask();
+        int scheduledPeriod = clusterConfiguration.getAndesRecoveryTaskInterval();
+        andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod,
+                scheduledPeriod, TimeUnit.SECONDS);
         ClusterResourceHolder.getInstance().setAndesRecoveryTask(andesRecoveryTask);
     }
 
@@ -179,7 +188,16 @@ public class AndesKernelBoot {
      */
     private static void stopHouseKeepingThreads() throws Exception {
         log.info("Stop syncing exchanges, queues, bindings and subscriptions...");
-        ClusterResourceHolder.getInstance().getAndesRecoveryTask().stopRunning();
+        int threadTerminationTimePerod = 20; // seconds
+        try {
+            andesRecoveryTaskScheduler.shutdown();
+            andesRecoveryTaskScheduler.awaitTermination(threadTerminationTimePerod, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            andesRecoveryTaskScheduler.shutdownNow();
+            log.warn("Recovery task scheduler is forcefully shutdown.");
+            throw e;
+        }
+
     }
 
     /**
