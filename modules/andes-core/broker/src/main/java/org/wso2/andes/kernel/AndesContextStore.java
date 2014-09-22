@@ -160,10 +160,10 @@ public interface AndesContextStore {
      *
      * @param exchange       name of the exchange binding represent
      * @param boundQueueName target queue binding is done
-     * @param routingKey     routing key of the binding
+     * @param bindingInfo     binding information as a string
      * @throws AndesException
      */
-    public void storeBindingInformation(String exchange, String boundQueueName, String routingKey) throws AndesException;
+    public void storeBindingInformation(String exchange, String boundQueueName, String bindingInfo) throws AndesException;
 
     /**
      * get bindings stored for some exchange

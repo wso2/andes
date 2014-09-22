@@ -57,7 +57,7 @@ public class JDBCConstants {
     protected static final String NODE_INFO = "data";
     protected static final String EXCHANGE_NAME = "name";
     protected static final String EXCHANGE_DATA = "data";
-    protected static final String ROUTING_KEY = "routing_key";
+    protected static final String BINDING_INFO = "binding_info";
     protected static final String BINDING_QUEUE_NAME = "queue_name";
     protected static final String BINDING_EXCHANGE_NAME = "exchange_name";
     protected static final String QUEUE_INFO = "data";
@@ -210,21 +210,13 @@ public class JDBCConstants {
             "INSERT INTO " + BINDINGS_TABLE + " ( " +
                     BINDING_EXCHANGE_NAME + "," +
                     BINDING_QUEUE_NAME + "," +
-                    ROUTING_KEY + " ) " +
+                    BINDING_INFO + " ) " +
                     " VALUES (?,?,?)";
 
-//    protected static final String PS_SELECT_BINDINGS_FOR_EXCHANGE =
-//            "SELECT " + BINDING_QUEUE_NAME + "," +
-//                    ROUTING_KEY +
-//                    " FROM " + BINDINGS_TABLE +
-//                    " WHERE " + BINDING_EXCHANGE_NAME + "=?";
-
-    protected static final String PS_SELECT_BINDINGS_JOIN_QUEUE_INFO =
-            "SELECT " + ROUTING_KEY + "," + QUEUE_INFO +
+    protected static final String PS_SELECT_BINDINGS_FOR_EXCHANGE =
+            "SELECT " + BINDING_INFO +
                     " FROM " + BINDINGS_TABLE +
-                    " INNER JOIN " + QUEUE_INFO_TABLE +
-                    " WHERE " + BINDING_QUEUE_NAME + "=" + QUEUE_NAME +
-                    " AND " + JDBCConstants.BINDING_EXCHANGE_NAME + "=?";
+                    " WHERE " + BINDING_EXCHANGE_NAME + "=?";
 
     protected static final String PS_DELETE_BINDING =
             "DELETE FROM " + BINDINGS_TABLE +
@@ -278,6 +270,5 @@ public class JDBCConstants {
     protected static final String TASK_STORING_BINDING = "storing binding information. ";
     protected static final String TASK_RETRIEVING_BINDING_INFO = "retrieving binding information.";
     protected static final String TASK_DELETING_BINDING = "deleting binding information. ";
-
 
 }

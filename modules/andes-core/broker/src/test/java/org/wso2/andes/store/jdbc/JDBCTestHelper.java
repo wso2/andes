@@ -18,6 +18,7 @@
 
 package org.wso2.andes.store.jdbc;
 
+import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesQueue;
@@ -103,7 +104,7 @@ public class JDBCTestHelper {
                                            String owner  ) throws Exception {
         // store queue and exchange information accordingly in db before storing binging.
         AndesQueue andesQueue = new AndesQueue(boundQueue, "owner1", true, false);
-
+        AndesBinding andesBinding = new AndesBinding(exchange, andesQueue, routingKey);
         // setup database with queue information
         String insert = "INSERT INTO " + JDBCConstants.QUEUE_INFO_TABLE + " (" +
                 JDBCConstants.QUEUE_NAME + "," + JDBCConstants.QUEUE_INFO + " ) " +
@@ -137,13 +138,13 @@ public class JDBCTestHelper {
         insert = "INSERT INTO " + JDBCConstants.BINDINGS_TABLE + " (" +
                 JDBCConstants.BINDING_EXCHANGE_NAME + "," +
                 JDBCConstants.BINDING_QUEUE_NAME + "," +
-                JDBCConstants.ROUTING_KEY + " ) " +
+                JDBCConstants.BINDING_INFO + " ) " +
                 " VALUES (?,?,?)";
 
         preparedStatement = connection.prepareStatement(insert);
         preparedStatement.setString(1, exchange);
         preparedStatement.setString(2, andesQueue.queueName);
-        preparedStatement.setString(3, routingKey);
+        preparedStatement.setString(3, andesBinding.encodeAsString());
         preparedStatement.addBatch();
         preparedStatement.executeBatch();
 

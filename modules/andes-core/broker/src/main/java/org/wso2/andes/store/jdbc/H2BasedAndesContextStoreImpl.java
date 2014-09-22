@@ -432,7 +432,7 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
     }
 
     @Override
-    public void storeBindingInformation(String exchange, String boundQueueName, String routingKey) throws AndesException {
+    public void storeBindingInformation(String exchange, String boundQueueName, String bindingInfo) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
@@ -444,14 +444,14 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
             preparedStatement = connection.prepareStatement(JDBCConstants.PS_INSERT_BINDING);
             preparedStatement.setString(1, exchange);
             preparedStatement.setString(2, boundQueueName);
-            preparedStatement.setString(3, routingKey);
+            preparedStatement.setString(3, bindingInfo);
             preparedStatement.executeUpdate();
 
             connection.commit();
 
         } catch (SQLException e) {
             String errMsg = JDBCConstants.TASK_STORING_BINDING + " exchange: " + exchange +
-                    " queue: " + boundQueueName + " routing key: " + routingKey;
+                    " queue: " + boundQueueName + " routing key: " + bindingInfo;
             rollback(connection, errMsg);
             throw new AndesException("Error occurred while " + errMsg, e);
         } finally {
@@ -470,17 +470,14 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
             List<AndesBinding> bindingList = new ArrayList<AndesBinding>();
             connection = getConnection();
 
-            // todo test is this join a performance hit?
             preparedStatement = connection.prepareStatement(JDBCConstants
-                    .PS_SELECT_BINDINGS_JOIN_QUEUE_INFO);
+                    .PS_SELECT_BINDINGS_FOR_EXCHANGE);
             preparedStatement.setString(1, exchangeName);
             resultSet = preparedStatement.executeQuery();
 
             while (resultSet.next()) {
                 AndesBinding andesBinding = new AndesBinding(
-                        exchangeName,
-                        new AndesQueue(resultSet.getString(JDBCConstants.QUEUE_INFO)),
-                        resultSet.getString(JDBCConstants.ROUTING_KEY)
+                        resultSet.getString(JDBCConstants.BINDING_INFO)
                 );
                 bindingList.add(andesBinding);
             }

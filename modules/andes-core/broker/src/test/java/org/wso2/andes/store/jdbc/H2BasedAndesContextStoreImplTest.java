@@ -558,7 +558,7 @@ public class H2BasedAndesContextStoreImplTest {
         ResultSet resultSet = preparedStatement.executeQuery();
 
         Assert.assertEquals(true, resultSet.next());
-        Assert.assertEquals(routingKey1, resultSet.getString(JDBCConstants.ROUTING_KEY));
+        Assert.assertEquals(routingKey1, resultSet.getString(JDBCConstants.BINDING_INFO));
 
     }
 
@@ -617,7 +617,6 @@ public class H2BasedAndesContextStoreImplTest {
         resultSet.next();
         Assert.assertEquals(exchange2, resultSet.getString(JDBCConstants.BINDING_EXCHANGE_NAME));
         Assert.assertEquals(boundQueue2, resultSet.getString(JDBCConstants.BINDING_QUEUE_NAME));
-        Assert.assertEquals(routingKey2, resultSet.getString(JDBCConstants.ROUTING_KEY));
         Assert.assertEquals(false, resultSet.next());
 
     }

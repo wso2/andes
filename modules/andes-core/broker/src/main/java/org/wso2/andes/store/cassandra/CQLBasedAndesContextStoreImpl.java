@@ -241,9 +241,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
     }
 
     @Override
-    public void storeBindingInformation(String exchange, String boundQueueName, String routingKey) throws AndesException {
+    public void storeBindingInformation(String exchange, String boundQueueName, String bindingInfo) throws AndesException {
         try {
-            CQLDataAccessHelper.addMappingToRaw(KEYSPACE, BINDING_COLUMN_FAMILY, exchange, boundQueueName, routingKey, true);
+            CQLDataAccessHelper.addMappingToRaw(KEYSPACE, BINDING_COLUMN_FAMILY, exchange, boundQueueName, bindingInfo, true);
         } catch (CassandraDataAccessException e) {
             log.error("error while storing binding information to cassandra context store", e);
             throw new AndesException(e);

@@ -16,7 +16,7 @@ import java.util.List;
 public class MessageExpirationWorker extends Thread {
 
     private static Log log = LogFactory.getLog(MessageExpirationWorker.class);
-    private boolean working = false;
+    private volatile boolean working = false;
 
     //references
     private MessageStore messageStore;

@@ -73,6 +73,7 @@ public class AndesKernelBoot {
         stopAndesComponents();
         //close stores
         AndesContext.getInstance().getAndesContextStore().close();
+        MessagingEngine.getInstance().close();
     }
 
     /**

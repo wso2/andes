@@ -42,7 +42,7 @@ public class AndesRecoveryTask implements Runnable {
     AMQPConstructStore amqpConstructStore;
 
     long recoveryTaskInterval;
-    boolean running;
+    volatile boolean running;  // different threads access the variable and update
 
     private static Log log = LogFactory.getLog(AndesRecoveryTask.class);
 
