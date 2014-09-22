@@ -189,6 +189,11 @@ public class JDBCConstants {
             "SELECT " + EXCHANGE_DATA +
                     " FROM " + EXCHANGES_TABLE;
 
+    protected static final String PS_SELECT_EXCHANGE =
+            "SELECT " + EXCHANGE_DATA +
+                    " FROM " + EXCHANGES_TABLE +
+                    " WHERE " + EXCHANGE_NAME + "=?";
+
     protected static final String PS_DELETE_EXCHANGE =
             "DELETE FROM " + EXCHANGES_TABLE +
                     " WHERE " + EXCHANGE_NAME + "=?";
@@ -262,6 +267,8 @@ public class JDBCConstants {
     protected static final String TASK_STORING_EXCHANGE_INFORMATION = "storing exchange information";
     protected static final String TASK_RETRIEVING_ALL_EXCHANGE_INFO = "retrieving all exchange " +
             "information. ";
+    protected static final String TASK_IS_EXCHANGE_EXIST = "checking whether an exchange " +
+            "exist. ";
     protected static final String TASK_DELETING_EXCHANGE = "deleting an exchange ";
     protected static final String TASK_STORING_QUEUE_INFO = "storing queue information ";
     protected static final String TASK_RETRIEVING_ALL_QUEUE_INFO = "retrieving all queue " +

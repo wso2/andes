@@ -51,7 +51,7 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public DurableStoreConnection init() throws AndesException {
         JDBCConnection jdbcConnection = new JDBCConnection();
-        if(isInMemoryMode) {
+        if (isInMemoryMode) {
             // todo: is in memory mode relevant? We have methods to store durable subscriptions
             jdbcConnection.initialize(JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME);
         } else {
@@ -276,15 +276,20 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         try {
 
             connection = getConnection();
-            connection.setAutoCommit(false);
+            if(!isExchangeExist(connection, exchangeName)) {
+                // If exchange doesn't exist in DB create exchange
+                // NOTE: Qpid tries to create default exchanges at startup. If this
+                // is not a vanilla setup DB already have the created exchanges. hence need to check
+                // for existence before insertion.
+                connection.setAutoCommit(false);
 
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_STORE_EXCHANGE_INFO);
-            preparedStatement.setString(1, exchangeName);
-            preparedStatement.setString(2, exchangeInfo);
-            preparedStatement.executeUpdate();
+                preparedStatement = connection.prepareStatement(JDBCConstants.PS_STORE_EXCHANGE_INFO);
+                preparedStatement.setString(1, exchangeName);
+                preparedStatement.setString(2, exchangeInfo);
+                preparedStatement.executeUpdate();
 
-            connection.commit();
-
+                connection.commit();
+            }
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_STORING_EXCHANGE_INFORMATION);
             throw new AndesException("Error occurred while " + JDBCConstants
@@ -292,6 +297,32 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         } finally {
             close(preparedStatement, JDBCConstants.TASK_STORING_EXCHANGE_INFORMATION);
             close(connection, JDBCConstants.TASK_STORING_EXCHANGE_INFORMATION);
+        }
+    }
+
+    /**
+     * Helper method to check the existence of an exchange in database
+     * @param connection SQL Connection
+     * @param exchangeName exchange name to be checked
+     * @return return true if exist and wise versa
+     * @throws AndesException
+     */
+    private boolean isExchangeExist(Connection connection, String exchangeName) throws AndesException {
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        try {
+            preparedStatement = connection.prepareStatement(JDBCConstants
+                    .PS_SELECT_EXCHANGE);
+
+            preparedStatement.setString(1, exchangeName);
+            resultSet = preparedStatement.executeQuery();
+            return resultSet.first(); // if present true
+        } catch (SQLException e) {
+            throw new AndesException("Error occurred retrieving exchange information for" +
+                    " exchange: " + exchangeName, e);
+        } finally {
+            close(resultSet, JDBCConstants.TASK_IS_EXCHANGE_EXIST);
+            close(preparedStatement, JDBCConstants.TASK_IS_EXCHANGE_EXIST);
         }
     }
 
