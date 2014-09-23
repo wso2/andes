@@ -250,7 +250,11 @@ public class QpidAMQPBridge {
      */
     public void closeAMQPSubscription(AMQQueue queue, Subscription subscription) throws AndesException {
         log.info("===Andes Bridge: closeAMQPSubscription subID " + subscription.getSubscriptionID() + " from queue " + queue.getName());
-        closeLocalSubscriptionsForAllBindingsOfQueue(queue, subscription);
+
+        // Browser subscriptions are not registered and hence not needed to be closed.
+        if (!(subscription instanceof SubscriptionImpl.BrowserSubscription)) {
+            closeLocalSubscriptionsForAllBindingsOfQueue(queue, subscription);
+        }
     }
 
     /**

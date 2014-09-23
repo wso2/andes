@@ -195,8 +195,7 @@ public class QueueBrowserDeliveryWorker {
                 if(lastReadMessageIdMap.get(nodeQueue) != null){
                     lastReadMessageId = lastReadMessageIdMap.get(nodeQueue);
                 }
-                QueueAddress sourceQueue = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE,nodeQueue);
-                List<AndesMessageMetadata> allMessages = messageStore.getNextNMessageMetadataFromQueue(sourceQueue, lastReadMessageId, messageBatchSize);
+                List<AndesMessageMetadata> allMessages = messageStore.getNextNMessageMetadataFromQueue(queue.getName(), lastReadMessageId, messageBatchSize);
                 for (AndesMessageMetadata messageMetaData : allMessages) {
                     if (messageMetaData.getDestination().equals(queue.getResourceName())) {
                         messageMetadataList.add(messageMetaData);

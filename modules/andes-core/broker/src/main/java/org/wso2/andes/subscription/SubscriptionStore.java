@@ -531,8 +531,7 @@ public class SubscriptionStore {
             andesContextStore.removeDurableSubscription(destinationIdentifier, subscription.getSubscribedNode() + "_" + subscriptionID);
             log.info("Subscription Removed Locally for  " + destination + "@" + subscriptionID + " " + subscriptionToRemove);
         } else {
-            throw new AndesException("Could not find an subscription ID " + subscriptionID + " under destination " + destination
-                    + " topic=" + localTopicSubscriptionMap + "\n" + localQueueSubscriptionMap + "\n");
+            throw new AndesException("Could not find an subscription ID " + subscriptionID + " under destination " + destination);
         }
         return subscriptionToRemove;
     }
