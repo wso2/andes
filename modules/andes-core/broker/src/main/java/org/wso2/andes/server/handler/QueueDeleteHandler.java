@@ -24,24 +24,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.framing.MethodRegistry;
 import org.wso2.andes.framing.QueueDeleteBody;
 import org.wso2.andes.framing.QueueDeleteOkBody;
-import org.wso2.andes.framing.MethodRegistry;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.pool.AndesExecuter;
-import org.wso2.andes.pool.Job;
 import org.wso2.andes.protocol.AMQConstant;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.CoordinationException;
+import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.protocol.AMQSessionModel;
-import org.wso2.andes.server.queue.QueueRegistry;
 import org.wso2.andes.server.queue.AMQQueue;
+import org.wso2.andes.server.queue.QueueRegistry;
 import org.wso2.andes.server.state.AMQStateManager;
 import org.wso2.andes.server.state.StateAwareMethodListener;
 import org.wso2.andes.server.store.DurableConfigurationStore;
 import org.wso2.andes.server.virtualhost.VirtualHost;
-import org.wso2.andes.server.AMQChannel;
 
 public class QueueDeleteHandler implements StateAwareMethodListener<QueueDeleteBody>
 {

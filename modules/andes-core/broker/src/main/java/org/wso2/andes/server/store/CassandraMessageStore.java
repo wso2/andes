@@ -17,8 +17,8 @@
 */
 package org.wso2.andes.server.store;
 
-import java.util.ArrayList;
 import java.util.List;
+
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -27,7 +27,7 @@ import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.messageStore.StoredAMQPMessage;
+import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.LogSubject;
@@ -77,6 +77,7 @@ public class CassandraMessageStore implements MessageStore {
 
     /**
      * Perform configurations using the configurations at cluster
+     *
      * @param configuration configuration object
      * @throws Exception
      */
@@ -87,6 +88,7 @@ public class CassandraMessageStore implements MessageStore {
 
     /**
      * recover bindings
+     *
      * @param recoveryHandler recovery handler
      * @throws AMQException
      */
@@ -141,6 +143,7 @@ public class CassandraMessageStore implements MessageStore {
 
     /**
      * at recovery load queues which were there when shutting down
+     *
      * @param qrh Queue Recovery Handler
      * @throws Exception
      */
@@ -187,9 +190,9 @@ public class CassandraMessageStore implements MessageStore {
             }
             return new StoredAMQPMessage(mid, metaData);
 
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -203,27 +206,28 @@ public class CassandraMessageStore implements MessageStore {
      */
     public void createExchange(Exchange exchange) throws AMQStoreException {
 
-       //we do nothing here now
+        //we do nothing here now
     }
+
+/*    */
 
     /**
      * Load exchanges at a recovery from the permanent cassandra storage
-     * @param erh  Exchange Recovery Handler
+     *
      * @return list of exchanges
      * @throws Exception
-     */
+     *//*
     public List<String> loadExchanges(ConfigurationRecoveryHandler.ExchangeRecoveryHandler erh)
             throws Exception {
         List<String> exchangeNames = new ArrayList<String>();
         List<AndesExchange> exchanges = subscriptionStore.getExchanges();
         for(AndesExchange exchange : exchanges) {
             exchangeNames.add(exchange.exchangeName);
-            erh.exchange(exchange.exchangeName,exchange.type,exchange.autoDelete !=0);
+            erh.exchange(exchange.exchangeName,exchange.type,exchange.autoDelete);
         }
 
         return exchangeNames;
-    }
-
+    }*/
     @Override
     public void removeExchange(Exchange exchange) throws AMQStoreException {
 /*        try {
@@ -311,6 +315,7 @@ public class CassandraMessageStore implements MessageStore {
 
         /**
          * dequeue message from queue entries for transactions
+         *
          * @param queue     The queue to place the message on.
          * @param messageId The message to dequeue.
          * @throws AMQStoreException

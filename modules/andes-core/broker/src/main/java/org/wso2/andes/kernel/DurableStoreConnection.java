@@ -22,12 +22,31 @@ import org.apache.commons.configuration.Configuration;
 
 public interface DurableStoreConnection {
 
+    /**
+     * Initialize database connection
+     *
+     * @param configuration storage configuration
+     * @throws AndesException
+     */
     public void initialize(Configuration configuration) throws AndesException;
 
+    /**
+     * Close database connection
+     */
     public void close();
 
+    /**
+     * check if connection is live
+     *
+     * @return if connection is live
+     */
     public boolean isLive();
 
+    /**
+     * return instance of connection
+     *
+     * @return instance
+     */
     public Object getConnection();
 
 }

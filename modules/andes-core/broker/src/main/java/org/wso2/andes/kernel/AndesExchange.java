@@ -18,16 +18,80 @@
 
 package org.wso2.andes.kernel;
 
+import org.apache.commons.lang.builder.HashCodeBuilder;
+
 import java.io.Serializable;
 
 public class AndesExchange implements Serializable {
     public String exchangeName;
     public String type;
-    public Short autoDelete;
+    public boolean autoDelete;
 
-    public AndesExchange(String exchangeName, String type, Short autoDelete) {
+    /**
+     * create an instance of Andes Exchange
+     *
+     * @param exchangeName name of exchange
+     * @param type         type of the exchange
+     * @param autoDelete   is exchange auto deletable
+     */
+    public AndesExchange(String exchangeName, String type, boolean autoDelete) {
         this.exchangeName = exchangeName;
         this.autoDelete = autoDelete;
         this.type = type;
+    }
+
+    /**
+     * create an instance of Andes Exchange
+     *
+     * @param exchangeAsStr exchange as encoded string
+     */
+    public AndesExchange(String exchangeAsStr) {
+        String[] propertyToken = exchangeAsStr.split(",");
+        for (String pt : propertyToken) {
+            String[] tokens = pt.split("=");
+            if (tokens[0].equals("exchangeName")) {
+                this.exchangeName = tokens[1];
+            } else if (tokens[0].equals("type")) {
+                this.type = tokens[1];
+            } else if (tokens[0].equals("autoDelete")) {
+                this.autoDelete = Boolean.parseBoolean(tokens[1]);
+            }
+        }
+    }
+
+    public String toString() {
+        StringBuffer buf = new StringBuffer();
+        buf.append("[").append(exchangeName)
+                .append("] T=").append(type)
+                .append("/AD=").append(autoDelete);
+        return buf.toString();
+    }
+
+    public String encodeAsString() {
+        StringBuffer buf = new StringBuffer();
+        buf.append("exchangeName=").append(exchangeName)
+                .append(",type=").append(type)
+                .append(",autoDelete").append(autoDelete);
+        return buf.toString();
+    }
+
+    public boolean equals(Object o) {
+        if (o instanceof AndesExchange) {
+            AndesExchange c = (AndesExchange) o;
+            if (this.exchangeName.equals(c.exchangeName) &&
+                    this.type.equals(c.type) &&
+                    this.autoDelete == c.autoDelete) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public int hashCode() {
+        return new HashCodeBuilder(17, 31).
+                append(exchangeName).
+                append(type).
+                append(autoDelete).
+                toHashCode();
     }
 }

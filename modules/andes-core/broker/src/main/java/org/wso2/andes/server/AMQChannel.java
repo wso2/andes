@@ -31,7 +31,7 @@ import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.messageStore.StoredAMQPMessage;
+import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMapImpl;
@@ -550,7 +550,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                 sub.getSendLock();
                 sub.getQueue().unregisterSubscription(sub);
 //			    ClusteringEnabledSubscriptionManager csm = ClusterResourceHolder.getInstance().getSubscriptionManager();
-//			    csm.closeSubscription(sub.getQueue().getResourceName(), String.valueOf(sub.getSubscriptionID()));
+//			    csm.closeLocalSubscription(sub.getQueue().getResourceName(), String.valueOf(sub.getSubscriptionID()));
 //            }catch(AndesException e){
 //            	throw new AMQException(AMQConstant.INTERNAL_ERROR, e.getMessage(),  e);
             }finally

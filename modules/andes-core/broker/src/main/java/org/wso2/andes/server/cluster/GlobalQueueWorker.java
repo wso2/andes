@@ -56,14 +56,14 @@ public class GlobalQueueWorker implements Runnable {
         int repeatedSleepingCounter = 0;
 
         while (true) {
-            if (running) {
+         /*   if (running) {
                 try {
-                    /**
+                    *//**
                      * Steps
                      *
                      * 1)Poll Global queue and get chunk of messages 2) Put messages
                      * one by one to node queues and delete them
-                     */
+                     *//*
                     QueueAddress sourceQueueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE, globalQueueName);
 
                     List<AndesMessageMetadata> messageList = messageStore.getNextNMessageMetadataFromQueue(sourceQueueAddress, lastProcessedMessageID, messageCountToReadFromCasssandra);
@@ -72,9 +72,9 @@ public class GlobalQueueWorker implements Runnable {
                         while (metadataIterator.hasNext()) {
                             AndesMessageMetadata metadata = metadataIterator.next();
 
-                            /**
+                            *//**
                              * check if the cluster has some subscriptions for that message and distribute to relevant node queues
-                             */
+                             *//*
                             String destinationQueue = metadata.getDestination();
                             Random random = new Random();
                             //TODO remove this list to set conversion
@@ -85,7 +85,7 @@ public class GlobalQueueWorker implements Runnable {
                                 metadata.queueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueue);
                                 //if (log.isDebugEnabled()) {
                                 String msgID = (String) metadata.getMessageHeader("msgID");
-                                log.debug("TRACING>> GQW " + globalQueueName + ">> copying message-" + (msgID == null ? "" : msgID ) +
+                                log.debug("TRACING>> GQW " + globalQueueName + ">> copying message-" + (msgID == null ? "" : msgID) +
                                         " to " + nodeQueue + " message ID: " + metadata.getMessageID());
                                 // }
                             } else {
@@ -94,34 +94,33 @@ public class GlobalQueueWorker implements Runnable {
                             }
                             lastProcessedMessageID = metadata.getMessageID();
 
+>>>>>>> removing global queues and addling slots instead- implemented basic functionalities
                         }
-                        messageStore.moveMessageMetaData(sourceQueueAddress, null, messageList);
-                        PerformanceCounter.recordGlobalQueueMsgMove(messageList.size());
-                        messageList = messageStore.getNextNMessageMetadataFromQueue(sourceQueueAddress, lastProcessedMessageID, messageCountToReadFromCasssandra);
-                    }
+                        lastProcessedMessageID = metadata.getMessageID();
 
-                    try {
-                        Thread.sleep(queueWorkerWaitTime);
-                        repeatedSleepingCounter++;
-                        if (repeatedSleepingCounter > 1) {
-                            resetMessageReading();
-                        }
-                    } catch (InterruptedException e) {
-                        // ignore
                     }
-                } catch (Exception e) {
-                    log.error("Error in moving messages from global queue to node queue", e);
+                    messageStore.moveMessageMetaData(sourceQueueAddress, null, messageList);
+                    PerformanceCounter.recordGlobalQueueMsgMove(messageList.size());
+                    messageList = messageStore.getNextNMessageMetadataFromQueue(sourceQueueAddress, lastProcessedMessageID, messageCountToReadFromCasssandra);
                 }
-            } else {
+
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(queueWorkerWaitTime);
+                    repeatedSleepingCounter++;
+                    if (repeatedSleepingCounter > 1) {
+                        resetMessageReading();
+                    }
                 } catch (InterruptedException e) {
-                    //silently ignore
+                    // ignore
                 }
+<<<<<<< HEAD
+            } catch (Exception e) {
+                log.error("Error in moving messages from global queue to node queue", e);
             }
+=======
+            }*/
 
         }
-
     }
 
     public boolean isRunning() {

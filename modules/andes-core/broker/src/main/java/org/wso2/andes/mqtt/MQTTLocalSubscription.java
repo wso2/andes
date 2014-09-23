@@ -1,5 +1,6 @@
 package org.wso2.andes.mqtt;
 
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.dna.mqtt.wso2.AndesBridge;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -86,5 +87,29 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
     @Override
     public LocalSubscription createQueueToListentoTopic() {
         return null;
+    }
+
+    public boolean equals(Object o)
+    {
+        if (o instanceof MQTTLocalSubscription)
+        {
+            MQTTLocalSubscription c = (MQTTLocalSubscription) o;
+            if ( this.subscriptionID.equals(c.subscriptionID) &&
+                    this.getSubscribedNode().equals(c.getSubscribedNode()) &&
+                    this.targetQueue.equals(c.targetQueue) &&
+                    this.targetQueueBoundExchange.equals(c.targetQueueBoundExchange)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public int hashCode() {
+        return new HashCodeBuilder(17, 31).
+                append(subscriptionID).
+                append(getSubscribedNode()).
+                append(targetQueue).
+                append(targetQueueBoundExchange).
+                toHashCode();
     }
 }

@@ -17,14 +17,49 @@
 */
 package org.wso2.andes.server.cluster.coordination;
 
-
+/**
+ * This class contains all constants used in Hazelcast coordination.
+ */
 public final class CoordinationConstants {
+    /**
+     * Hazelcast distributed topic name to send subscription changed notifications to cluster nodes.
+     */
+    public static String HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME = "SUBSCRIPTION_CHANGED";
 
-    public static String HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME = "SUBSCRIPTION";
-
+    /**
+     * Hazelcast distributed topic name to send queue purged notifications to cluster nodes.
+     */
     public static String HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME = "QUEUE_CHANGED";
 
+    /**
+     * Hazelcast distributed topic name to send exchange notifications to cluster nodes
+     */
+    public static String HAZELCAST_EXCHANGE_CHANGED_NOTIFIER_TOPIC_NAME = "EXCHANGE_CHANGED";
+
+    /**
+     * Hazelcast distributed topic name to send binding notifications to cluster nodes
+     */
+    public static String HAZELCAST_BINDING_CHANGED_NOTIFIER_TOPIC_NAME = "BINDING_CHANGED";
+
+    /**
+     * Prefix to generate node ID
+     */
     public static String NODE_NAME_PREFIX = "NODE";
 
-    public static String HAZELCAST_ID_GENERATOR_NAME = "UNIQUE_ID";
+    /**
+     * Hazelcast ID generator name to generate an unique ID for each node.
+     */
+    public static String HAZELCAST_ID_GENERATOR_NAME = "UNIQUE_ID_TO_GENERATE_MESSAGE_ID";
+
+    public static String FREE_SLOT_MAP_NAME = "freeSlotsMap";
+
+    public static String QUEUE_TO_MESSAGE_ID_LIST_MAP_NAME = "messageIdListMap";
+
+    public static String LAST_PROCESSED_IDS_MAP_NAME = "lastProcessedIDsMap";
+
+    public static String SLOT_ASSIGNMENT_MAP_NAME = "slotAssignmentMap";
+
+    public static String THRIFT_SERVER_DETAILS_MAP_NAME = "thriftServerDetailsMap";
+
+
 }

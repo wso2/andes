@@ -17,10 +17,11 @@
 */
 package org.wso2.andes.server.information.management;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.GlobalQueueManager;
 import org.wso2.andes.server.management.AMQManagedObject;
 import org.wso2.andes.server.util.AndesUtils;
@@ -32,6 +33,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class QueueManagementInformationMBean extends AMQManagedObject implements QueueManagementInformation {
+
+    private static Log log = LogFactory.getLog(QueueManagementInformationMBean.class);
 
     GlobalQueueManager globalQueueManager;
     MessageStore messageStore;
@@ -49,20 +52,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     public synchronized String[] getAllQueueNames() {
 
         try {
-/*            ArrayList<String> queuesList = (ArrayList<String>) messageStore.getDestinationQueueNames();
-            Iterator itr = queuesList.iterator();
-            //remove topic specific queues
-            while (itr.hasNext()) {
-                String destinationQueueName = (String) itr.next();
-                if(destinationQueueName.startsWith("tmp_") || destinationQueueName.contains(":")) {
-                    itr.remove();
-                }
-            }
-            String[] queues= new String[queuesList.size()];
-            queuesList.toArray(queues);
-            return queues;*/
-
-            List<String> queuesList = AndesContext.getInstance().getSubscriptionStore().listQueues();
+            List<String> queuesList = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
             String[] queues= new String[queuesList.size()];
             queuesList.toArray(queues);
             return queues;
@@ -75,7 +65,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     public boolean isQueueExists(String queueName) {
         try {
-            List<String> queuesList = AndesContext.getInstance().getSubscriptionStore().listQueues();
+            List<String> queuesList = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
             return queuesList.contains(queueName);
         } catch (Exception e) {
           throw new RuntimeException("Error in accessing destination queues",e);
@@ -116,7 +106,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * it is not acceptable
      *
      * */
-    public int getMessageCount(String queueName) {
+    public int getMessageCount(String queueName,String msgPattern) {
 
 /*        int messageCount = (int) messageStore.getCassandraMessageCountForQueue(queueName);
         if (messageCount < 0) {
@@ -124,6 +114,9 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             messageCount = 0;
         }
         return messageCount;*/
+
+        log.debug("Counting at : " + queueName + "---------");
+
         int messageCount = 0;
         try {
         /**
@@ -131,16 +124,32 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
          * plus the number of messages in respective global queue
          */
         SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-        List<String> nodeQueuesHavingSubscriptionsForQueue = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForQueue(queueName));
-        if (nodeQueuesHavingSubscriptionsForQueue.size() > 0) {
-            for (String nodeQueue : nodeQueuesHavingSubscriptionsForQueue) {
-                QueueAddress nodeQueueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE,nodeQueue);
-                messageCount += messageStore.countMessagesOfQueue(nodeQueueAddress,queueName);
+
+        if (msgPattern.equals("queue")) {
+            List<String> nodeQueuesHavingSubscriptionsForQueue = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForQueue(queueName));
+            if (nodeQueuesHavingSubscriptionsForQueue.size() > 0) {
+                for (String nodeQueue : nodeQueuesHavingSubscriptionsForQueue) {
+                    QueueAddress nodeQueueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE,nodeQueue);
+                    messageCount += messageStore.countMessagesOfQueue(nodeQueueAddress,queueName);
+                    log.debug("Counting Messages at : " + nodeQueue + "  : " + messageCount);
+                }
+            }
+        } else if (msgPattern.equals("topic")) {
+            List<String> nodeQueuesHavingSubscriptionsForQueue = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForTopic(queueName));
+            if (nodeQueuesHavingSubscriptionsForQueue.size() > 0) {
+                for (String nodeQueue : nodeQueuesHavingSubscriptionsForQueue) {
+                    QueueAddress nodeQueueAddress = new QueueAddress(QueueAddress.QueueType.TOPIC_NODE_QUEUE,nodeQueue);
+                    messageCount += messageStore.countMessagesOfQueue(nodeQueueAddress,queueName);
+                    log.debug("Counting Messages at : " + nodeQueue + "  : " + messageCount);
+                }
             }
         }
+
         String globalQueue = AndesUtils.getGlobalQueueNameForDestinationQueue(queueName);
         QueueAddress globalQueueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE,globalQueue);
         messageCount += messageStore.countMessagesOfQueue(globalQueueAddress,queueName);
+        log.debug("Counting Messages at : " + globalQueue + "  : " + messageCount);
+        log.debug("END");
 
         } catch (AndesException e) {
             throw new RuntimeException(e);
@@ -151,9 +160,10 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     public int getSubscriptionCount( String queueName){
         try {
-            return AndesContext.getInstance().getSubscriptionStore().numberOfSubscriptionsForQueueInCluster(queueName);
+            return AndesContext.getInstance().getSubscriptionStore().numberOfSubscriptionsInCluster(queueName, false);
         } catch (Exception e) {
             throw new RuntimeException("Error in getting subscriber count",e);
         }
     }
+
 }

@@ -5,10 +5,8 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.messageStore.CassandraConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
-import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 
 import java.util.List;
 
@@ -59,7 +57,8 @@ public class MessageExpirationWorker extends Thread {
             if (working) {
                 try {
                     //Get Expired messages
-                    List<AndesRemovableMetadata> expiredMessages = CQLDataAccessHelper.getExpiredMessages(messageBatchSize, CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY,CassandraConstants.KEYSPACE);
+                    List<AndesRemovableMetadata> expiredMessages = messageStore.getExpiredMessages(messageBatchSize);
+//                            CQLDataAccessHelper.getExpiredMessages(messageBatchSize, CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY,CassandraConstants.KEYSPACE);
 
                     if (expiredMessages == null || expiredMessages.size() == 0 )  {
 
