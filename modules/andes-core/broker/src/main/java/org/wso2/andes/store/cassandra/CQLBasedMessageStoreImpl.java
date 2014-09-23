@@ -616,7 +616,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     public int countMessagesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch) throws AndesException {
         long lastProcessedMessageID = 0;
         int messageCount = 0;
-        List<AndesMessageMetadata> messageList = getNextNMessageMetadataFromQueue(queueAddress, lastProcessedMessageID, 500);
+        List<AndesMessageMetadata> messageList = getNextNMessageMetadataFromQueue(destinationQueueNameToMatch, lastProcessedMessageID, 500);
         while (messageList.size() != 0) {
             Iterator<AndesMessageMetadata> metadataIterator = messageList.iterator();
             while (metadataIterator.hasNext()) {
@@ -635,7 +635,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 lastProcessedMessageID = metadata.getMessageID();
 
             }
-            messageList = getNextNMessageMetadataFromQueue(queueAddress, lastProcessedMessageID, 500);
+            messageList = getNextNMessageMetadataFromQueue(destinationQueueNameToMatch, lastProcessedMessageID, 500);
         }
         return messageCount;
     }
