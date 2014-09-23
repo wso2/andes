@@ -251,7 +251,7 @@ public class HazelcastAgent {
      */
     public String getIdOfNode(Member node) {
         return CoordinationConstants.NODE_NAME_PREFIX +
-                node.getInetSocketAddress().getAddress();
+                node.getInetSocketAddress();
     }
 
     /**
