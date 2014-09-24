@@ -28,6 +28,11 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 
+/**
+ * JDBC connection class.
+ * Connection is made using the jndi lookup name provided and connection pooled data source is
+ * used to create new connections
+ */
 public class JDBCConnection implements DurableStoreConnection {
 
     private static final Logger logger = Logger.getLogger(JDBCConnection.class);
@@ -52,6 +57,11 @@ public class JDBCConnection implements DurableStoreConnection {
         }
     }
 
+    /**
+     * connection pooled data source object is returned.
+     * Connections to database can be created using the data source.
+     * @return DataSource
+     */
     public DataSource getDataSource() {
         return datasource;
     }
@@ -68,7 +78,7 @@ public class JDBCConnection implements DurableStoreConnection {
 
     @Override
     public Object getConnection() {
-        return this; //
+        return this;
     }
 
     /**

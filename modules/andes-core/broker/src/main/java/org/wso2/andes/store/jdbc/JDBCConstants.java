@@ -19,6 +19,10 @@
  */
 package org.wso2.andes.store.jdbc;
 
+/**
+ * JDBC storage related prepared statements, table names, column names and tasks are grouped
+ * in this class.
+ */
 public class JDBCConstants {
 
     // jndi lookup

@@ -78,7 +78,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         }
 
         datasource = jdbcConnection.getDataSource();
-        createTables(); // create DB tables ONLY in in-memory mode
+        if(isInMemoryMode) {
+            createTables(); // create DB tables ONLY in in-memory mode
+        }
 
         // start periodic message removal task
         messageContentRemoverTask = new MessageContentRemoverTask(this, jdbcConnection);
