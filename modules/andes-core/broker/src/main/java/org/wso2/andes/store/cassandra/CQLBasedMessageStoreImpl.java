@@ -12,6 +12,7 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.slot.Slot;
+import org.wso2.andes.server.slot.SlotMessageCounter;
 import org.wso2.andes.store.cassandra.dao.CQLQueryBuilder;
 import org.wso2.andes.store.cassandra.dao.CassandraHelper;
 import org.wso2.andes.store.cassandra.dao.GenericCQLDAO;
@@ -22,7 +23,6 @@ import org.wso2.andes.server.util.AlreadyProcessedMessageTracker;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.store.MessageContentRemoverTask;
-import org.wso2.andes.store.QueueMessageCounter;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 
@@ -307,7 +307,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             long start = System.currentTimeMillis();
             GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
             if (isClusteringEnabled) {
-                QueueMessageCounter.recordMetaDataCountInSlot(metadataList, null);
+                SlotMessageCounter.getInstance().recordMetaDataCountInSlot(metadataList);
 
             }
             PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency((int) (System.currentTimeMillis() - start));

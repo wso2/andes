@@ -1,5 +1,5 @@
 /*
-*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+*  Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 *  WSO2 Inc. licenses this file to you under the Apache License,
 *  Version 2.0 (the "License"); you may not use this file except
@@ -23,24 +23,24 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TThreadPoolServer;
-import org.apache.thrift.transport.TSSLTransportFactory;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.slot.thrift.gen.SlotManagementService;
 
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 
 public class MBThriftServer {
 
     private static Log log = LogFactory.getLog(MBThriftServer.class);
 
-    private SlotManagementServerHandler slotManagementServerHandler;
+    private static MBThriftServer mbThriftServer = new MBThriftServer();
 
-    public MBThriftServer(SlotManagementServerHandler handler) {
-        this.slotManagementServerHandler = handler;
+    private SlotManagementServiceImpl slotManagementServerHandler;
+
+    private MBThriftServer() {
+        this.slotManagementServerHandler = new SlotManagementServiceImpl();
+
     }
 
     /**
@@ -51,9 +51,9 @@ public class MBThriftServer {
     /**
      * Start the thrift server
      *
-     * @param hostName           the hostname
-     * @param port               thrift server port
-     * @param taskName           the name of the main server thread
+     * @param hostName the hostname
+     * @param port     thrift server port
+     * @param taskName the name of the main server thread
      * @throws org.wso2.andes.kernel.AndesException
      *          throws in case of an starting error
      */
@@ -63,8 +63,8 @@ public class MBThriftServer {
         try {
 
             TServerSocket socket = new TServerSocket(new InetSocketAddress(hostName, port));
-            SlotManagementService.Processor<SlotManagementServerHandler> processor =
-                    new SlotManagementService.Processor<SlotManagementServerHandler>(slotManagementServerHandler);
+            SlotManagementService.Processor<SlotManagementServiceImpl> processor =
+                    new SlotManagementService.Processor<SlotManagementServiceImpl>(slotManagementServerHandler);
             TProtocolFactory protocolFactory = new TBinaryProtocol.Factory();
             server = new TThreadPoolServer(new TThreadPoolServer.Args(socket).
                     processor(processor).inputProtocolFactory(protocolFactory));
@@ -74,7 +74,7 @@ public class MBThriftServer {
             new Thread(new MBServerMainLoop(server), taskName).start();
 
         } catch (TTransportException e) {
-            throw new AndesException("Cannot start Thrift server on port " + port +" on host " + hostName, e);
+            throw new AndesException("Cannot start Thrift server on port " + port + " on host " + hostName, e);
         }
     }
 
@@ -96,6 +96,12 @@ public class MBThriftServer {
         return server != null && server.isServing();
     }
 
+    /**
+     * @return MBThriftServer instance
+     */
+    public static MBThriftServer getInstance() {
+        return mbThriftServer;
+    }
 
     /**
      * The task for starting the thrift server

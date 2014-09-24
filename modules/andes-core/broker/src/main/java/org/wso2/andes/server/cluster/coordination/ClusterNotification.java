@@ -36,7 +36,7 @@ public class ClusterNotification implements Serializable {
      * @param changeType      change happened (added/deleted etc)
      * @param description     description what this notification is
      */
-    ClusterNotification(String encodedAsString, String changeType, String description) {
+    public ClusterNotification(String encodedAsString, String changeType, String description) {
         this.encodedObjectAsString = encodedAsString;
         this.changeType = changeType;
         this.description = description;

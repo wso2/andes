@@ -277,21 +277,21 @@ public class QueueDeliveryWorker {
                             /**
                              * Add messages read from Laggards Thread as well
                              */
-                            Iterator<AndesMessageMetadata> laggardsIterator = laggardsMessages.iterator();
-                            while (laggardsIterator.hasNext()) {
-                                AndesMessageMetadata laggardsMessage = laggardsIterator.next();
-                                if (!onflightMessageTracker.checkIfAlreadyReadFromNodeQueue(laggardsMessage.getMessageID())) {
-                                    String routingKey = laggardsMessage.getDestination();
-                                    if (subscriptionStore.getActiveClusterSubscribersForDestination(routingKey,false).size() > 0) {
-                                        messagesFromMessageStore.add(laggardsMessage);
-                                        onflightMessageTracker.markMessageAsReadFromNodeQueue(laggardsMessage.getMessageID());
-                                        if (log.isDebugEnabled()) {
-                                            log.debug("TRACING>> QDW------Adding " + laggardsMessage.getMessageID() + " From laggardsMessages to deliver");
-                                        }
-                                    }
-                                }
-                                laggardsIterator.remove();
-                            }
+//                            Iterator<AndesMessageMetadata> laggardsIterator = laggardsMessages.iterator();
+//                            while (laggardsIterator.hasNext()) {
+//                                AndesMessageMetadata laggardsMessage = laggardsIterator.next();
+//                                if (!onflightMessageTracker.checkIfAlreadyReadFromNodeQueue(laggardsMessage.getMessageID())) {
+//                                    String routingKey = laggardsMessage.getDestination();
+//                                    if (subscriptionStore.getActiveClusterSubscribersForDestination(routingKey,false).size() > 0) {
+//                                        messagesFromMessageStore.add(laggardsMessage);
+//                                        onflightMessageTracker.markMessageAsReadFromNodeQueue(laggardsMessage.getMessageID());
+//                                        if (log.isDebugEnabled()) {
+//                                            log.debug("TRACING>> QDW------Adding " + laggardsMessage.getMessageID() + " From laggardsMessages to deliver");
+//                                        }
+//                                    }
+//                                }
+//                                laggardsIterator.remove();
+//                            }
                             if (log.isDebugEnabled()) {
                                 log.debug("QDW >> Number of messages read from " + nodeQueue + " with last processed ID " + lastProcessedId + " is  = " + messagesFromMessageStore.size());
                             }
@@ -417,7 +417,7 @@ public class QueueDeliveryWorker {
 
     private void sleep4waitInterval(long sleepInterval) {
         try {
-            Thread.sleep(queueWorkerWaitInterval);
+            Thread.sleep(sleepInterval);
         } catch (InterruptedException ignored) {
         }
     }
