@@ -30,31 +30,39 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     private static SlotManager slotManager = SlotManager.getInstance();
 
     @Override
-    public SlotInfo getSlotInfo(String queueName,String nodeId) throws TException {
+    public SlotInfo getSlotInfo(String queueName, String nodeId) throws TException {
         if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
-            Slot slot = slotManager.getSlot(queueName,nodeId);
+            Slot slot = slotManager.getSlot(queueName, nodeId);
             SlotInfo slotInfo = new SlotInfo();
             if (null != slot) {
                 slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(), slot.getQueueName());
             }
             return slotInfo;
-        } else{
+        } else {
             throw new TException("I'm not the coordinator right now. Please update the thrift server details cache");
         }
     }
 
     @Override
     public void updateMessageId(String queueName, long messageId) throws TException {
-        slotManager.updateMessageID(queueName, messageId);
+        if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
+            slotManager.updateMessageID(queueName, messageId);
+        } else {
+            throw new TException("I'm not the coordinator right now. Please update the thrift server details cache");
+        }
     }
 
     @Override
     public void deleteSlot(String queueName, SlotInfo slotInfo, String nodeId) throws TException {
-        Slot slot = new Slot();
-        slot.setStartMessageId(slotInfo.getStartMessageId());
-        slot.setEndMessageId(slotInfo.getEndMessageId());
-        slot.setQueueName(slotInfo.getQueueName());
-        slotManager.deleteSlot(queueName, slot,nodeId);
+        if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
+            Slot slot = new Slot();
+            slot.setStartMessageId(slotInfo.getStartMessageId());
+            slot.setEndMessageId(slotInfo.getEndMessageId());
+            slot.setQueueName(slotInfo.getQueueName());
+            slotManager.deleteSlot(queueName, slot, nodeId);
+        } else {
+            throw new TException("I'm not the coordinator right now. Please update the thrift server details cache");
+        }
     }
 
 }

@@ -22,6 +22,8 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.thrift.TException;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
 import org.wso2.andes.server.slot.thrift.MBThriftUtils;
 
@@ -40,14 +42,14 @@ public class SlotMessageCounter {
     private ConcurrentHashMap<String, Slot> queueToSlotMap = new ConcurrentHashMap<String, Slot>();
     private ConcurrentHashMap<String, Long> slotTimeOutMap = new ConcurrentHashMap<String, Long>();
     private long timeOutForMessagesInQueue = SlotCoordinationConstants.SLOT_SUBMIT_TIMEOUT;
-    private SlotManager slotManager;
     private Timer submitSlotToCoordinatorTimer = new Timer();
     private Log log = LogFactory.getLog(SlotMessageCounter.class);
     private MBThriftClient mbThriftClient;
+    private ClusterConfiguration clusterConfiguration;
     private static SlotMessageCounter slotMessageCounter = new SlotMessageCounter();
 
     private SlotMessageCounter() {
-        slotManager = SlotManager.getInstance();
+        clusterConfiguration = ClusterResourceHolder.getInstance().getClusterConfiguration();
         scheduleSubmitSlotToCoordinatorTimer();
 
     }
@@ -86,8 +88,7 @@ public class SlotMessageCounter {
             synchronized (this) {
                 currentSlot = updateQueueToSlotMap(md);
             }
-            //todo this value should be configurable
-            if (currentSlot.getMessageCount() >= SlotCoordinationConstants.SLOT_THRESHOLD_VALUE) {
+            if (currentSlot.getMessageCount() >= clusterConfiguration.getSlotWindowSize()) {
                 try {
                     submitSlot(queueName);
                 } catch (AndesException e) {
@@ -99,11 +100,10 @@ public class SlotMessageCounter {
     }
 
     /**
-     *
      * @param metadata
      * @return
      */
-    private synchronized Slot updateQueueToSlotMap(AndesMessageMetadata metadata){
+    private synchronized Slot updateQueueToSlotMap(AndesMessageMetadata metadata) {
         String queueName = metadata.getDestination();
         Slot currentSlot = queueToSlotMap.get(queueName);
         if (currentSlot == null) {
@@ -117,7 +117,7 @@ public class SlotMessageCounter {
             long newMessageCount = currentMsgCount + 1;
             currentSlot.setMessageCount(newMessageCount);
             currentSlot.setEndMessageId(metadata.getMessageID());
-            queueToSlotMap.put(queueName,currentSlot);
+            queueToSlotMap.put(queueName, currentSlot);
         }
         return currentSlot;
     }
@@ -133,7 +133,6 @@ public class SlotMessageCounter {
             try {
                 mbThriftClient = MBThriftUtils.getMBThriftClient();
                 mbThriftClient.updateMessageId(queueName, slot.getEndMessageId());
-                slotManager.updateMessageID(queueName, slot.getEndMessageId());
                 queueToSlotMap.remove(queueName);
                 slotTimeOutMap.remove(queueName);
 

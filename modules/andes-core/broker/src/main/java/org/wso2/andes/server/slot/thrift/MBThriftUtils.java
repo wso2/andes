@@ -37,22 +37,12 @@ public class MBThriftUtils {
     private static MBThriftClient mbThriftClient = null;
 
     /**
-     * IP address of thrift coordinator
-     */
-    public static String thriftCoordinatorServerIP;
-
-    /**
-     * thrift coordinator port
-     */
-    public static int thriftCoordinatorServerPort;
-
-    /**
      * Returns an instance of MB thrift service client
      *
      * @return a MB thrift service client
      */
-    public static MBThriftClient getMBThriftClient() throws TTransportException{
-        if(mbThriftClient ==null){
+    public static MBThriftClient getMBThriftClient() throws TTransportException {
+        if (mbThriftClient == null) {
             HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
             String thriftCoordinatorServerIP = hazelcastAgent.getThriftServerDetailsMap().get(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP);
             int thriftCoordinatorServerPort = Integer.parseInt(hazelcastAgent.getThriftServerDetailsMap().
@@ -72,24 +62,15 @@ public class MBThriftUtils {
     }
 
     /**
-     * Cache thrift server port and ip from hazelcast distriputed map
-     */
-    private static void updateThriftServerCache() {
-        HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
-        thriftCoordinatorServerIP = hazelcastAgent.getThriftServerDetailsMap().get(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP);
-        thriftCoordinatorServerPort = Integer.parseInt(hazelcastAgent.getThriftServerDetailsMap().
-                get(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT));
-    }
-
-    /**
      * set mbThriftClient to null
      */
-    public static void resetMBThriftClient(){
+    public static void resetMBThriftClient() {
         mbThriftClient = null;
     }
 
     /**
      * Try to reconnect to server by taking latest values in the hazelcalst thrift server details map
+     *
      * @throws TTransportException when connecting to thrift server is unsuccessful
      */
     public static void reConnectToServer() throws TTransportException {
@@ -103,9 +84,9 @@ public class MBThriftUtils {
             TProtocol protocol = new TBinaryProtocol(transport);
             mbThriftClient = new MBThriftClient(new SlotManagementService.Client(protocol));
         } catch (TTransportException e) {
-            log.error("Could not connect to the Thrift Server " + thriftCoordinatorServerIP +":"+
+            log.error("Could not connect to the Thrift Server " + thriftCoordinatorServerIP + ":" +
                     thriftCoordinatorServerPort + e.getMessage(), e);
-            throw new TTransportException("Could not connect to the Thrift Server " + thriftCoordinatorServerIP +":"+
+            throw new TTransportException("Could not connect to the Thrift Server " + thriftCoordinatorServerIP + ":" +
                     thriftCoordinatorServerPort, e);
         }
     }

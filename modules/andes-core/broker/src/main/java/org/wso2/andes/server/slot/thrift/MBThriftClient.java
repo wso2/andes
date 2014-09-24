@@ -43,10 +43,9 @@ public class MBThriftClient {
      * @param queueName name of the queue
      * @return SlotInfo object
      * @throws TException in case of an connection error
-     *
      */
-    public Slot getSlot(String queueName,String nodeId) throws TException {
-        SlotInfo slotInfo = client.getSlotInfo(queueName,nodeId);
+    public Slot getSlot(String queueName, String nodeId) throws TException {
+        SlotInfo slotInfo = client.getSlotInfo(queueName, nodeId);
         Slot slot = new Slot();
         slot.setStartMessageId(slotInfo.getStartMessageId());
         slot.setEndMessageId(slotInfo.getEndMessageId());
@@ -68,11 +67,12 @@ public class MBThriftClient {
 
     /**
      * delete the slot from SlotAssignmentMap
+     *
      * @param queueName
-     * @param slot to be deleted
+     * @param slot      to be deleted
      * @throws TException
      */
-    public void deleteSlot(String queueName, Slot slot,String nodeId) throws TException {
+    public void deleteSlot(String queueName, Slot slot, String nodeId) throws TException {
         SlotInfo slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(), slot.getQueueName());
         client.deleteSlot(queueName, slotInfo, nodeId);
     }

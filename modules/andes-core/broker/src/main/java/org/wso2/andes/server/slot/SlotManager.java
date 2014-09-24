@@ -60,6 +60,9 @@ public class SlotManager {
     private SlotManager() {
         if (AndesContext.getInstance().isClusteringEnabled()) {
             hazelcastAgent = HazelcastAgent.getInstance();
+            /**
+             * Initialize distributed maps used in this class
+             */
             unAssignedSlotMap = hazelcastAgent.getUnAssignedSlotMap();
             slotIDMap = hazelcastAgent.getSlotIdMap();
             queueToLastAssignedIDMap = hazelcastAgent.getLastAssignedIDMap();
@@ -82,7 +85,7 @@ public class SlotManager {
      * @param queueName name of the queue
      * @return Slot object
      */
-    public Slot getSlot(String queueName,String nodeId) {
+    public Slot getSlot(String queueName, String nodeId) {
         Slot slotToBeAssigned;
         /**
          *first look in the unassigned slots pool for free slots. These slots are previously own by
@@ -97,7 +100,7 @@ public class SlotManager {
                 slotToBeAssigned = getFreshSlot(queueName);
             }
             if (null != slotToBeAssigned) {
-                updateSlotAssignmentMap(queueName, slotToBeAssigned,nodeId);
+                updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
             }
             return slotToBeAssigned;
         }
@@ -107,7 +110,7 @@ public class SlotManager {
     /**
      * @param queueName name of the queue
      * @return slot object
-     * //todo check if the range is inclusive in message store
+     *         //todo check if the range is inclusive in message store
      */
     private Slot getFreshSlot(String queueName) {
         Slot slotImpToBeAssigned = null;
@@ -132,10 +135,11 @@ public class SlotManager {
 
     /**
      * update the slot assignment map when a slot is assigned
+     *
      * @param queueName     name of the queue
      * @param allocatedSlot slot object which is allocated to a particular node
      */
-    private void updateSlotAssignmentMap(String queueName, Slot allocatedSlot,String nodeId) {
+    private void updateSlotAssignmentMap(String queueName, Slot allocatedSlot, String nodeId) {
         ArrayList<Slot> currentSlotList;
         HashMap<String, List<Slot>> queueToSlotMap = slotAssignmentMap.get(nodeId);
         if (queueToSlotMap == null) {

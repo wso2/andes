@@ -48,6 +48,10 @@ public class ClusterConfiguration {
         return serverConfig.getGlobalQueueCount();
     }
 
+    public int getSlotWindowSize(){
+        return serverConfig.getSlotWindowSize();
+    }
+
     public int getMessageBatchSizeForSubscribersQueues() {
         return serverConfig.getMessageBatchSizeForSubscribersQueues();
     }

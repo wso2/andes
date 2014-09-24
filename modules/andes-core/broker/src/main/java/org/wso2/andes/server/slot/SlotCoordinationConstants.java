@@ -44,11 +44,6 @@ public final class SlotCoordinationConstants {
     public static String THRIFT_COORDINATOR_SERVER_PORT = "thriftCoordinatorServerPort";
 
     /**
-     * Maximum number of messages a slot can have
-     */
-    public static int SLOT_THRESHOLD_VALUE = 100;
-
-    /**
      * Maximum number of messages that will be read from message store each time in standalone mode
      */
     public static int STANDALONE_SLOT_THRESHOLD = 1000;

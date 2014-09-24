@@ -88,7 +88,7 @@ public class SlotDeliveryWorker extends Thread {
 
                         if (isClusteringEnabled) {
                             mbThriftClient = MBThriftUtils.getMBThriftClient();
-                            Slot currentSlot = mbThriftClient.getSlot(queue,nodeId);
+                            Slot currentSlot = mbThriftClient.getSlot(queue, nodeId);
                             if (0 == currentSlot.getEndMessageId()) {
                                 //no available free slots
                                 emptyQueueCounter++;
@@ -134,7 +134,7 @@ public class SlotDeliveryWorker extends Thread {
                         } else {
                             long startMessageId = 0;
                             if (localLastProcessedIdMap.get(queue) != null) {
-                                startMessageId = localLastProcessedIdMap.get(queue)+1;
+                                startMessageId = localLastProcessedIdMap.get(queue) + 1;
                             }
                             List<AndesMessageMetadata> messagesReadByLeadingThread = messageStore.getNextNMessageMetadataFromQueue
                                     (queue, startMessageId, SlotCoordinationConstants.STANDALONE_SLOT_THRESHOLD);

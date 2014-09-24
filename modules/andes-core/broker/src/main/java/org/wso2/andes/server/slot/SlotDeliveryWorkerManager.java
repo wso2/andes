@@ -104,7 +104,7 @@ public class SlotDeliveryWorkerManager {
             public void run() {
                 /**
                  * this thread will try to connect to thrift server while reconnectingStarted flag is true
-                 * After successfully connecting to the server this flag will be set to true
+                 * After successfully connecting to the server this flag will be set to true. While loop is therefore intentional.
                  */
                 while (reconnectingStarted) {
 
@@ -122,7 +122,7 @@ public class SlotDeliveryWorkerManager {
                         try {
                             Thread.sleep(2000);
                         } catch (InterruptedException ignored) {
-                           //silently ignore
+                            //silently ignore
                         }
                     }
 
