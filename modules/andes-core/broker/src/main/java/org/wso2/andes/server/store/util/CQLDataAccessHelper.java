@@ -171,9 +171,9 @@ public class CQLDataAccessHelper {
     }
 
     /**
-     *
+     * Create a Cassandra Cluster instance given the connection details
      * @param config cluster config
-     * @return
+     * @return Cluster
      * @throws CassandraDataAccessException
      */
 	public static Cluster createCluster(ClusterConfiguration config)
@@ -505,12 +505,12 @@ public class CQLDataAccessHelper {
 
     /**
      * Get a list of column names in a given row of a counter column family
-     * @param name
-     * @param keySpace
-     * @param cluster
-     * @param comparatorType
-     * @param valueType
-     * @param gcGraceSeconds
+     * @param name column family name
+     * @param keySpace name of key space
+     * @param cluster cluster object
+     * @param comparatorType data type of the key value.
+     * @param valueType DataType
+     * @param gcGraceSeconds  gc grace seconds
      * @throws CassandraDataAccessException
      */
     public static void createColumnFamily(String name, String keySpace, Cluster cluster, String comparatorType, DataType valueType, int gcGraceSeconds) throws CassandraDataAccessException {

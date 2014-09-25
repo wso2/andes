@@ -31,11 +31,24 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * H2 Based Message context Store.
+ * This is used to persist information of current durable subscription, exchanges,
+ * queues and bindings
+ */
 public class H2BasedAndesContextStoreImpl implements AndesContextStore {
 
     private static final Logger logger = Logger.getLogger(H2BasedAndesContextStoreImpl.class);
 
+    /**
+     * Connection pooled sql data source object. Used to create connections in method scope
+     */
     private DataSource datasource;
+
+    /**
+     * Whether the Context store is running in memory mode or connected to a persistence storage
+     * True if in memory mode and wise versa
+     */
     private boolean isInMemoryMode;
 
     public H2BasedAndesContextStoreImpl() {
@@ -276,11 +289,13 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         try {
 
             connection = getConnection();
+            // If exchange doesn't exist in DB create exchange
+            // NOTE: Qpid tries to create default exchanges at startup. If this
+            // is not a vanilla setup DB already have the created exchanges. hence need to check
+            // for existence before insertion.
+            // This check is done here rather than inside Qpid code which will be updated in
+            // future.
             if(!isExchangeExist(connection, exchangeName)) {
-                // If exchange doesn't exist in DB create exchange
-                // NOTE: Qpid tries to create default exchanges at startup. If this
-                // is not a vanilla setup DB already have the created exchanges. hence need to check
-                // for existence before insertion.
                 connection.setAutoCommit(false);
 
                 preparedStatement = connection.prepareStatement(JDBCConstants.PS_STORE_EXCHANGE_INFO);
@@ -553,6 +568,11 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         // nothing to do here.
     }
 
+    /**
+     * Creates a connection using a thread pooled data source object and returns the connection
+     * @return Connection
+     * @throws SQLException
+     */
     private Connection getConnection() throws SQLException {
         return datasource.getConnection();
     }
@@ -572,6 +592,11 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * On database update failure tries to rollback
+     * @param connection database connection
+     * @param task explanation of the task done when the rollback was triggered
+     */
     private void rollback(Connection connection, String task) {
         if (connection != null) {
             try {
@@ -582,6 +607,11 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * close the prepared statement resource
+     * @param preparedStatement PreparedStatement
+     * @param task task that was done by the closed prepared statement.
+     */
     private void close(PreparedStatement preparedStatement, String task) {
         if (preparedStatement != null) {
             try {
@@ -592,6 +622,11 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * closes the result set resources
+     * @param resultSet ResultSet
+     * @param task task that was done by the closed result set.
+     */
     private void close(ResultSet resultSet, String task) {
         if (resultSet != null) {
             try {

@@ -41,10 +41,30 @@ import java.util.concurrent.*;
 public class H2BasedMessageStoreImpl implements MessageStore {
 
     private static final Logger logger = Logger.getLogger(H2BasedMessageStoreImpl.class);
-    private final Map<String, Integer> queueMap; // cache queue name to queue_id mapping to avoid extra sql queries
-    private DataSource datasource;  // connection pooled data source
-    MessageContentRemoverTask messageContentRemoverTask; // message content remover task thread
+    /**
+     * cache queue name to queue_id mapping to avoid extra sql queries
+     */
+    private final Map<String, Integer> queueMap;
+
+    /**
+     * connection pooled data source
+     */
+    private DataSource datasource;
+
+    /**
+     * message content remover task thread
+     */
+    MessageContentRemoverTask messageContentRemoverTask;
+
+    /**
+     * Scheduled Executor Service to run the message content remover task
+     */
     private ScheduledExecutorService contentRemovalScheduler;
+
+    /**
+     * Whether the message store is running in memory mode or connected to a persistence storage
+     * True if in memory mode and wise versa
+     */
     private boolean isInMemoryMode;
 
     /**
@@ -871,7 +891,6 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         String sql = "INSERT INTO " + JDBCConstants.REF_COUNT_TABLE +
                 " (" + JDBCConstants.MESSAGE_ID + "," + JDBCConstants.REF_COUNT + ") " +
                 "VALUES (" + messageId + ", 1) ";
-//                "ON DUPLICATE KEY UPDATE " + JDBCConstants.REF_COUNT + "=" + JDBCConstants.REF_COUNT + " + 1";
 
         Statement stmt = connection.createStatement();
         stmt.executeUpdate(sql);
@@ -892,6 +911,11 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         }
     }
 
+    /**
+     * On database update failure tries to rollback
+     * @param connection database connection
+     * @param task explanation of the task done when the rollback was triggered
+     */
     private void rollback(Connection connection, String task) {
         if (connection != null) {
             try {
@@ -902,6 +926,11 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         }
     }
 
+    /**
+     * close the prepared statement resource
+     * @param preparedStatement PreparedStatement
+     * @param task task that was done by the closed prepared statement.
+     */
     private void close(PreparedStatement preparedStatement, String task) {
         if (preparedStatement != null) {
             try {
@@ -912,6 +941,11 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         }
     }
 
+    /**
+     * closes the result set resources
+     * @param resultSet ResultSet
+     * @param task task that was done by the closed result set.
+     */
     private void close(ResultSet resultSet, String task) {
         if (resultSet != null) {
             try {
