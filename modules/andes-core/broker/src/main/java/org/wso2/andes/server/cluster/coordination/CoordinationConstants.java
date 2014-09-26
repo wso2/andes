@@ -42,6 +42,11 @@ public final class CoordinationConstants {
     public static String HAZELCAST_BINDING_CHANGED_NOTIFIER_TOPIC_NAME = "BINDING_CHANGED";
 
     /**
+     * Hazelcast distributed topic name to send coordinator change notifications to cluster nodes
+     */
+    public static String HAZELCAST_COORDINATOR_CHANGED_NOTIFIER_TOPIC_NAME = "COORDINATOR_CHANGED";
+
+    /**
      * Prefix to generate node ID
      */
     public static String NODE_NAME_PREFIX = "NODE";
@@ -51,12 +56,25 @@ public final class CoordinationConstants {
      */
     public static String HAZELCAST_ID_GENERATOR_NAME = "UNIQUE_ID_TO_GENERATE_MESSAGE_ID";
 
-    public static String FREE_SLOT_MAP_NAME = "freeSlotsMap";
+    /**
+     * Name of the distributed map to keep track of non-empty slots which are unassigned from
+     * other nodes
+     */
+    public static String UNASSIGNED_SLOT_MAP_NAME = "unassignedSlotsMap";
 
-    public static String QUEUE_TO_MESSAGE_ID_LIST_MAP_NAME = "messageIdListMap";
+    /**
+     *Name of the distributed map to store message ID list against queue name
+     */
+    public static String SLOT_ID_MAP_NAME = "slotIdMap";
 
-    public static String LAST_PROCESSED_IDS_MAP_NAME = "lastProcessedIDsMap";
+    /**
+     *Name of the distributed map to store last assigned message ID against queue name
+     */
+    public static String LAST_ASSIGNED_ID_MAP_NAME = "lastAssignedIDMap";
 
+    /**
+     * Name of the distributed map to store list of assigned slots against queue name
+     */
     public static String SLOT_ASSIGNMENT_MAP_NAME = "slotAssignmentMap";
 
     public static String THRIFT_SERVER_DETAILS_MAP_NAME = "thriftServerDetailsMap";

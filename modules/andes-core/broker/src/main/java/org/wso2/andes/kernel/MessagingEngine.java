@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
+import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.store.cassandra.CQLBasedMessageStoreImpl;
 import org.wso2.andes.store.jdbc.H2BasedMessageStoreImpl;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -359,6 +360,9 @@ public class MessagingEngine {
             tdw.stopWorking();
         }
 
+
+        //stop all slotDeliveryWorkers
+        SlotDeliveryWorkerManager.getInstance().stopSlotDeliveryWorkers();
         log.info("Stopping Disruptor writing messages to store");
 
     }

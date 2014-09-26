@@ -12,6 +12,7 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.slot.Slot;
+import org.wso2.andes.server.slot.SlotMessageCounter;
 import org.wso2.andes.store.cassandra.dao.CQLQueryBuilder;
 import org.wso2.andes.store.cassandra.dao.CassandraHelper;
 import org.wso2.andes.store.cassandra.dao.GenericCQLDAO;
@@ -22,7 +23,6 @@ import org.wso2.andes.server.util.AlreadyProcessedMessageTracker;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.store.MessageContentRemoverTask;
-import org.wso2.andes.store.QueueMessageCounter;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 
@@ -294,11 +294,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 Insert insert = CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE, CassandraConstants.META_DATA_COLUMN_FAMILY, md.getDestination(),
                         md.getMessageID(), md.getMetadata(), false);
 
-//                if (incomingMessagesMap.get(md.getDestination()) == null) {
-//                    incomingMessagesMap.put(md.getDestination(), 1);
-//                } else {
-//                    incomingMessagesMap.put(md.getDestination(), incomingMessagesMap.get(md.getDestination()) + 1);
-//                }
                 inserts.add(insert);
                 PerformanceCounter.recordIncomingMessageWrittenToCassandra();
                 //log.info("Wrote message " + md.getMessageID() + " to Global Queue " + queueAddress.queueName);
@@ -306,10 +301,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             }
             long start = System.currentTimeMillis();
             GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
-            if (isClusteringEnabled) {
-                QueueMessageCounter.recordMetaDataCountInSlot(metadataList, null);
 
-            }
             PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency((int) (System.currentTimeMillis() - start));
 
             if (isMessageCountingAllowed) {

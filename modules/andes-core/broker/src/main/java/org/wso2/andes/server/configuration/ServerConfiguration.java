@@ -591,6 +591,10 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         return getIntValue("clustering.GlobalQueueCount",10);
     }
 
+    public int getSlotWindowSize(){
+        return getIntValue("clustering.SlotWindowSize",1000);
+    }
+
     public int getGlobalQueueWorkerMessageBatchSize() {
         return getIntValue("clustering.tuning.messageBatchSizes.globalQueueWorkerMessageBatchSize", 700);
     }

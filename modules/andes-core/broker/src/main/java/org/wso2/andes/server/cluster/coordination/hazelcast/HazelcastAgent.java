@@ -69,10 +69,28 @@ public class HazelcastAgent {
     /**
      * These distributed maps are used for slot management
      */
-    private IMap<String, TreeSet<Long>> queueToMessageIdListMap;
-    private IMap<String, HashMap<Long, Slot>> slotAssignmentMap;
-    private IMap<String, Long> lastProcessedIDs;
-    private IMap<String, TreeSet<Slot>> freeSlotMap;
+
+
+    /**
+     * distributed Map to store message ID list against queue name
+     */
+    private IMap<String, TreeSet<Long>> slotIdMap;
+
+    /**
+     * to keep track of assigned slots up to now. Key of the map contains nodeID+"_"+queueName
+     */
+    private IMap<String, HashMap<String, List<Slot>>> slotAssignmentMap;
+
+    /**
+     *distributed Map to store last assigned ID against queue name
+     */
+    private IMap<String, Long> lastAssignedIDMap;
+
+    /**
+     * Distributed Map to keep track of non-empty slots which are unassigned from
+     * other nodes
+     */
+    private IMap<String, TreeSet<Slot>> unAssignedSlotMap;
 
     /**
      * This map is used to store thrift server host and thrift server port
@@ -158,6 +176,7 @@ public class HazelcastAgent {
         clusterBindingChangedListener.addBindingListener(new ClusterCoordinationHandler(this));
         this.bindingChangeNotifierChannel.addMessageListener(clusterBindingChangedListener);
 
+
         // generates a unique id for the node unique for the cluster
         IdGenerator idGenerator = hazelcastInstance.getIdGenerator(CoordinationConstants.HAZELCAST_ID_GENERATOR_NAME);
         this.uniqueIdOfLocalMember = (int) idGenerator.newId();
@@ -165,9 +184,9 @@ public class HazelcastAgent {
         /**
          * Initialize hazelcast maps for slots
          */
-        freeSlotMap = hazelcastInstance.getMap(CoordinationConstants.FREE_SLOT_MAP_NAME);
-        queueToMessageIdListMap = hazelcastInstance.getMap(CoordinationConstants.QUEUE_TO_MESSAGE_ID_LIST_MAP_NAME);
-        lastProcessedIDs = hazelcastInstance.getMap(CoordinationConstants.LAST_PROCESSED_IDS_MAP_NAME);
+        unAssignedSlotMap = hazelcastInstance.getMap(CoordinationConstants.UNASSIGNED_SLOT_MAP_NAME);
+        slotIdMap = hazelcastInstance.getMap(CoordinationConstants.SLOT_ID_MAP_NAME);
+        lastAssignedIDMap = hazelcastInstance.getMap(CoordinationConstants.LAST_ASSIGNED_ID_MAP_NAME);
         slotAssignmentMap = hazelcastInstance.getMap(CoordinationConstants.SLOT_ASSIGNMENT_MAP_NAME);
 
         /**
@@ -286,6 +305,7 @@ public class HazelcastAgent {
         this.subscriptionChangedNotifierChannel.publish(clusterNotification);
     }
 
+
     public void notifyQueuesChanged(ClusterNotification clusterNotification) throws AndesException {
         log.info("GOSSIP: " + clusterNotification.getDescription());
         try {
@@ -316,19 +336,19 @@ public class HazelcastAgent {
         }
     }
 
-    public IMap<String, TreeSet<Slot>> getFreeSlotMap() {
-        return freeSlotMap;
+    public IMap<String, TreeSet<Slot>> getUnAssignedSlotMap() {
+        return unAssignedSlotMap;
     }
 
-    public IMap<String, TreeSet<Long>> getQueueToMessageIdListMap() {
-        return queueToMessageIdListMap;
+    public IMap<String, TreeSet<Long>> getSlotIdMap() {
+        return slotIdMap;
     }
 
-    public IMap<String, Long> getLastProcessedIDs() {
-        return lastProcessedIDs;
+    public IMap<String, Long> getLastAssignedIDMap() {
+        return lastAssignedIDMap;
     }
 
-    public IMap<String, HashMap<Long, Slot>> getSlotAssignmentMap() {
+    public IMap<String, HashMap<String, List<Slot>>> getSlotAssignmentMap() {
         return slotAssignmentMap;
     }
 

@@ -24,6 +24,7 @@ import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
+import org.wso2.andes.server.slot.OrphanedSlotHandler;
 import org.wso2.andes.subscription.BasicSubscription;
 import org.wso2.andes.subscription.OrphanedMessageHandler;
 import org.wso2.andes.subscription.SubscriptionStore;
@@ -58,6 +59,7 @@ public class AndesSubscriptionManager {
         addSubscriptionListener(new MessageDeliveryThreadHandler());
         addSubscriptionListener(new OrphanedMessageHandler());
         addSubscriptionListener(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
+        addSubscriptionListener(new OrphanedSlotHandler());
     }
 
 

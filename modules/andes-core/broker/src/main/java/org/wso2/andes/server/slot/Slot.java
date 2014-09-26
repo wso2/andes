@@ -1,5 +1,5 @@
 /*
-*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+*  Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 *  WSO2 Inc. licenses this file to you under the Apache License,
 *  Version 2.0 (the "License"); you may not use this file except
@@ -24,18 +24,33 @@ import java.io.Serializable;
  */
 public class Slot implements Serializable {
 
-    private long messageCount; // number of messages in the slot
-    private long startMessageId;  //start message ID of the slot
-    private long endMessageId;   //end message ID of the slot
-    private String queue;   //queue which the slot belongs to. This is set when the slot is assigned to a subscriber
+    /**
+     * number of messages in the slot
+     */
+    private long messageCount;
+
+    /**
+     * start message ID of the slot
+     */
+    private long startMessageId;
+
+    /**
+     * end message ID of the slot
+     */
+    private long endMessageId;
+
+    /**
+     * queueName which the slot belongs to. This is set when the slot is assigned to a subscriber
+     */
+    private String queueName;
 
 
-    public void setQueue(String queue) {
-        this.queue = queue;
+    public void setQueueName(String queueName) {
+        this.queueName = queueName;
     }
 
-    public String getQueue() {
-        return queue;
+    public String getQueueName() {
+        return queueName;
     }
 
     public long getMessageCount() {
@@ -62,8 +77,8 @@ public class Slot implements Serializable {
         this.startMessageId = startMessageId;
     }
 
-    public void setMessageRange(long startMessageId, long endMessageId){
-       this.startMessageId = startMessageId;
+    public void setMessageRange(long startMessageId, long endMessageId) {
+        this.startMessageId = startMessageId;
         this.endMessageId = endMessageId;
     }
 

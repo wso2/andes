@@ -201,7 +201,6 @@ public class GenericCQLDAO {
 	public static void batchExecute(String keySpace, Statement[] statements) throws CassandraDataAccessException{
 		
 		if(statements == null || statements.length == 0){
-			log.info(" Statements are empty ");
 			return;
 		}
 		Query batch = batch(statements);

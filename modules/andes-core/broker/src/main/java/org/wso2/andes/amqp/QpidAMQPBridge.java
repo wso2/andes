@@ -213,6 +213,16 @@ public class QpidAMQPBridge {
         return contentLenWritten;
     }
 
+    public void ackReceived(long messageID, String queueName, boolean isTopic){
+        try {
+        AndesAckData andesAckData = AMQPUtils.generateAndesAckMessage(messageID,queueName,isTopic);
+        MessagingEngine.getInstance().ackReceived(andesAckData);
+        } catch (AndesException e) {
+            log.error("Exception occurred while handling ack", e);
+        }
+    }
+
+
     /**
      * create a AMQP subscription in andes kernel
      *
@@ -234,7 +244,7 @@ public class QpidAMQPBridge {
             }
 
             SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
-            slotDeliveryWorkerManager.startSlotDeliveryWorkerForQueue(queue.getName());
+            slotDeliveryWorkerManager.startSlotDeliveryWorker(queue.getName());
         } catch (AndesException e) {
             log.error("Error while adding the subscription", e);
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while registering subscription", e);

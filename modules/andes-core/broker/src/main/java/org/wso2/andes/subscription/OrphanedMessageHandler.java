@@ -175,8 +175,8 @@ public class OrphanedMessageHandler implements SubscriptionListener {
         if (queueDeliveryInfo == null) {
             return;
         }
-        queueDeliveryInfo.setIgnoredFirstMessageId(ignoredFirstMessageID);
-        queueDeliveryInfo.setNeedToReset(true);
+       // queueDeliveryInfo.setIgnoredFirstMessageId(ignoredFirstMessageID);
+       // queueDeliveryInfo.setNeedToReset(true);
         log.debug("TRACING>> DCESM-updateQueueDeliveryInformation >> Updated the QDI Object of queue-" + queueName + "-to ignoredFirstMessageID = " + ignoredFirstMessageID);
     }
 }

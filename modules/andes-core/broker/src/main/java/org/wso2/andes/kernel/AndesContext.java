@@ -2,7 +2,6 @@ package org.wso2.andes.kernel;
 
 import com.hazelcast.core.HazelcastInstance;
 import org.apache.axis2.clustering.ClusteringAgent;
-import org.apache.axis2.clustering.management.NodeManager;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Map;
@@ -23,6 +22,8 @@ public class AndesContext {
     private String contextStoreDataSourceName;
     private String thriftServerHost;
     private int thriftServerPort;
+    private String thriftCoordinatorServerIP;
+    private int thriftCoordinatorServerPort;
 
 
  	/**
@@ -182,19 +183,67 @@ public class AndesContext {
         return clusteringAgent;
     }
 
+    /**
+     *  get thrift server host ip
+     * @return  thrift server host ip
+     */
     public String getThriftServerHost() {
         return thriftServerHost;
     }
 
+    /**
+     * set thrift server host ip
+     * @param thriftServerHost
+     */
     public void setThriftServerHost(String thriftServerHost) {
         this.thriftServerHost = thriftServerHost;
     }
 
+    /**
+     * get thrift server port
+     * @return
+     */
     public int getThriftServerPort() {
         return thriftServerPort;
     }
 
+    /**
+     * return thrift server port
+     * @param thriftServerPort
+     */
     public void setThriftServerPort(int thriftServerPort) {
         this.thriftServerPort = thriftServerPort;
+    }
+
+    /**
+     * get IP address of thrift coordinator
+     * @return  IP of the Slot Manager
+     */
+    public String getThriftCoordinatorServerIP() {
+        return thriftCoordinatorServerIP;
+    }
+
+    /**
+     * set IP of the thrift coordinator
+     * @param thriftCoordinatorServerIP
+     */
+    public void setThriftCoordinatorServerIP(String thriftCoordinatorServerIP) {
+        this.thriftCoordinatorServerIP = thriftCoordinatorServerIP;
+    }
+
+    /**
+     * get thrift coordinator port
+     * @return slot manager port
+     */
+    public int getThriftCoordinatorServerPort() {
+        return thriftCoordinatorServerPort;
+    }
+
+    /**
+     * set thrift coordinator port
+     * @param thriftCoordinatorServerPort
+     */
+    public void setThriftCoordinatorServerPort(int thriftCoordinatorServerPort) {
+        this.thriftCoordinatorServerPort = thriftCoordinatorServerPort;
     }
 }

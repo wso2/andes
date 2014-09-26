@@ -28,6 +28,7 @@ import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
+import org.wso2.andes.server.slot.SlotCoordinationConstants;
 import org.wso2.andes.server.slot.SlotManager;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.util.AndesUtils;
@@ -82,7 +83,7 @@ public class ClusterManager {
     public ClusterManager() {
         this.andesContextStore = AndesContext.getInstance().getAndesContextStore();
         this.globalQueueManager = new GlobalQueueManager(MessagingEngine.getInstance().getDurableMessageStore());
-		this.slotManager = SlotManager.getInstance();
+        this.slotManager = SlotManager.getInstance();
 
 
     }
@@ -120,13 +121,10 @@ public class ClusterManager {
      * Handles changes needs to be done in current node when a node joins to the cluster
      */
     public void memberAdded(Member node) {
-
-        String nodeId = hazelcastAgent.getIdOfNode(node);
         reAssignGlobalQueueSyncId();
         handleGlobalQueueAddition();
-        if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
-            log.info("New Coordinator is " + nodeId);
-        }
+        //update thrift coordinator server details
+        updateThriftCoordinatorDetailsToMap();
     }
 
     /**
@@ -146,10 +144,15 @@ public class ClusterManager {
             clearAllPersistedStatesOfDisappearedNode(deletedNodeId);
 
             //Reassign the slot to free slots pool
-             slotManager.reAssignSlotsToFreeSlotsPool(deletedNodeId);
+            if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
+                slotManager.reAssignSlotsWhenMemberLeaves(deletedNodeId);
+            }
             // check and copy back messages of node queue belonging to disappeared node
             checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(AndesUtils.getNodeQueueNameForNodeId(deletedNodeId));
         }
+
+        //update thrift coordinator server details
+        //  setThriftCoordinatorServerDetails();
     }
 
     /**
@@ -167,7 +170,7 @@ public class ClusterManager {
      *
      * @param nodeId Id of the node
      * @return global queues as an array of Strings
-     * TODO:this should be removed with slot based architecture. The logic behind this method is no more valid
+     *         TODO:this should be removed with slot based architecture. The logic behind this method is no more valid
      */
     public String[] getGlobalQueuesAssigned(String nodeId) {
         List<String> globalQueuesToBeAssigned = new ArrayList<String>();
@@ -410,7 +413,7 @@ public class ClusterManager {
         updateGlobalQueuesAssignedTome();
 
         //stop any global queue worker that is not assigned to me now
-        //TODO commented by sajini
+        //TODO these should be removed when slot implememntation is tested
 
 //        for (String globalQueue : currentGlobalQueueAssignments) {
 //            if (!globalQueuesAssignedToMe.contains(globalQueue)) {
@@ -419,7 +422,6 @@ public class ClusterManager {
 //        }
 
         //start global queue workers for queues assigned to me
-        //TODO commented by sajini
 //        for (String globalQueue : globalQueuesAssignedToMe) {
 //            globalQueueManager.scheduleWorkForGlobalQueue(globalQueue);
 //        }
@@ -444,5 +446,18 @@ public class ClusterManager {
      */
     public String getNodeId(Member node) {
         return hazelcastAgent.getIdOfNode(node);
+    }
+
+    /**
+     * set coordinator's thrift server IP and port in hazelcast map.
+     */
+    public void updateThriftCoordinatorDetailsToMap() {
+        String thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerHost();
+        int thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerPort();
+        if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
+            hazelcastAgent.getThriftServerDetailsMap().put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP, thriftCoordinatorServerIP);
+            hazelcastAgent.getThriftServerDetailsMap().put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT,
+                    Integer.toString(thriftCoordinatorServerPort));
+        }
     }
 }
