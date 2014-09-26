@@ -23,6 +23,7 @@ import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Row;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
@@ -41,11 +42,12 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
     private DurableStoreConnection connection;
 
     @Override
-    public DurableStoreConnection init() throws AndesException {
+    public DurableStoreConnection init(ConfigurationProperties connectionProperties) throws
+                                                                              AndesException {
 
         try {
             CQLConnection cqlConnection = new CQLConnection();
-            cqlConnection.initialize(AndesContext.getInstance().getContextStoreDataSourceName());
+            cqlConnection.initialize(connectionProperties);
             connection = cqlConnection;
             Cluster cluster = cqlConnection.getCluster();
             //create needed column families

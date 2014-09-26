@@ -28,6 +28,9 @@ public class JDBCConstants {
     // jndi lookup
     protected static final String H2_MEM_JNDI_LOOKUP_NAME = "jdbc/InMemoryStore";
 
+    // connection properties
+    protected static final String PROP_JNDI_LOOKUP_NAME = "dataSource";
+
     // Message Store tables
     protected static final String MESSAGES_TABLE = "messages";
     protected static final String METADATA_TABLE = "metadata";

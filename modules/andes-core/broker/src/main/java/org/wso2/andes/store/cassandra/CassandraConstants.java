@@ -8,6 +8,39 @@ import me.prettyprint.cassandra.serializers.StringSerializer;
 
 public class CassandraConstants {
 
+    // connection properties
+    /**
+     * Connection property to get the jndi lookup name (value) of the data source
+     */
+    protected static final String PROP_JNDI_LOOKUP_NAME = "dataSource";
+
+    /**
+     * Cassandra cluster objects replication factor for key space.
+     */
+    protected static final String PROP_REPLICATION_FACTOR = "replicationFactor";
+
+    /**
+     * GC grace seconds for Cassandra. ( Specifies the time to wait before garbage collecting
+     * tombstones in Cassandra )
+     */
+    protected static final String PROP_GC_GRACE_SECONDS = "GCGraceSeconds";
+
+    /**
+     * Read Consistency level. From How many replicas to be read before satisfying the read request
+     */
+    protected static final String PROP_READ_CONSISTENCY = "readConsistencyLevel";
+
+    /**
+     * Write consistency level. How many replicas to be successfully written before acknowledging
+     */
+    protected static final String PROP_WRITE_CONSISTENCY = "writeConsistencyLevel";
+
+    /**
+     * Replication placement strategy (algorithm) to be used is defined in this class
+     */
+    protected static final String PROP_STRATEGY_CLASS = "strategyClass";
+
+
 	public static final String USERNAME_KEY = "username";
     public static final String PASSWORD_KEY = "password";
     public static final String CONNECTION_STRING = "connectionString";

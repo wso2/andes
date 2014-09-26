@@ -3,6 +3,7 @@ package org.wso2.andes.store.jdbc;
 import junit.framework.Assert;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.*;
+import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesExchange;
 import org.wso2.andes.kernel.AndesQueue;
@@ -48,8 +49,12 @@ public class H2BasedAndesContextStoreImplTest {
     @Before
     public void setup() throws Exception {
         createTables();
-        contextStore = new H2BasedAndesContextStoreImpl(true); // in memory mode mode
-        contextStore.init();
+        contextStore = new H2BasedAndesContextStoreImpl();
+
+        // start in memory mode
+        ConfigurationProperties configurationProperties = new ConfigurationProperties();
+        configurationProperties.addProperty(JDBCConstants.PROP_JNDI_LOOKUP_NAME, JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME);
+        contextStore.init(configurationProperties);
     }
 
     @After

@@ -18,24 +18,21 @@
 
 package org.wso2.andes.kernel;
 
+import org.wso2.andes.configuration.ConfigurationProperties;
+
 import java.util.List;
 import java.util.Map;
 
 public interface AndesContextStore {
 
-
-    /**
-     * initialize the storage with the connection
-     *
-     * @throws AndesException
-     *
-     */
     /**
      * initialize the storage and makes a connection to the data base
+     * @param connectionProperties ConfigurationProperties
      * @return returns the created DurableStoreConnection object created
      * @throws AndesException
      */
-    public DurableStoreConnection init() throws AndesException;
+    public DurableStoreConnection init(ConfigurationProperties connectionProperties) throws
+                                                                               AndesException;
 
     /**
      * get all durable encoded subscriptions as strings

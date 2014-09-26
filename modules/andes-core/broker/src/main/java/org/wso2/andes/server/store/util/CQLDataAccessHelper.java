@@ -743,7 +743,7 @@ public class CQLDataAccessHelper {
                                                             String columnFamilyName, String keyspace,
                                                             long lastProcessedId, long rangeEnd, long count, boolean isRange, boolean parse) throws CassandraDataAccessException {
         if (keyspace == null) {
-            throw new CassandraDataAccessException("Can't access Data , no keyspace provided ");
+            throw new CassandraDataAccessException("Can't access Data , no keySpace provided ");
         }
 
         if(columnFamilyName == null || rowName == null) {

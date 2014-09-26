@@ -20,6 +20,7 @@
 package org.wso2.andes.store.jdbc;
 
 import org.apache.log4j.Logger;
+import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
@@ -42,17 +43,17 @@ public class H2BasedMessageStoreImpl implements MessageStore {
 
     private static final Logger logger = Logger.getLogger(H2BasedMessageStoreImpl.class);
     /**
-     * cache queue name to queue_id mapping to avoid extra sql queries
+     * Cache queue name to queue_id mapping to avoid extra sql queries
      */
     private final Map<String, Integer> queueMap;
 
     /**
-     * connection pooled data source
+     * Connection pooled data source
      */
     private DataSource datasource;
 
     /**
-     * message content remover task thread
+     * Message content remover task thread
      */
     MessageContentRemoverTask messageContentRemoverTask;
 
@@ -61,73 +62,43 @@ public class H2BasedMessageStoreImpl implements MessageStore {
      */
     private ScheduledExecutorService contentRemovalScheduler;
 
-    /**
-     * Whether the message store is running in memory mode or connected to a persistence storage
-     * True if in memory mode and wise versa
-     */
-    private boolean isInMemoryMode;
-
-    /**
-     * Initialise to work in embedded or server mode
-     */
     public H2BasedMessageStoreImpl() {
         queueMap = new ConcurrentHashMap<String, Integer>();
         int threadPoolCount = 1;
         contentRemovalScheduler = Executors.newScheduledThreadPool(threadPoolCount);
-        isInMemoryMode = false;
-    }
-
-    /**
-     * @param isInMemory if true starts in in-memory mode
-     */
-    public H2BasedMessageStoreImpl(boolean isInMemory) {
-        this();
-        this.isInMemoryMode = isInMemory;
     }
 
     @Override
-    public DurableStoreConnection initializeMessageStore() throws AndesException {
+    public DurableStoreConnection initializeMessageStore(ConfigurationProperties
+                                                       connectionProperties) throws AndesException {
 
         JDBCConnection jdbcConnection = new JDBCConnection();
-        if(isInMemoryMode) {
-            // use in memory message store
-            jdbcConnection.initialize(JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME);
-        } else {
-            // read data source name from config and use
-            jdbcConnection.initialize(AndesContext.getInstance().getMessageStoreDataSourceName());
-        }
-
+        // read data source name from config and use
+        jdbcConnection.initialize(connectionProperties);
         datasource = jdbcConnection.getDataSource();
-        if(isInMemoryMode) {
-            createTables(); // create DB tables ONLY in in-memory mode
-        }
 
         // start periodic message removal task
         messageContentRemoverTask = new MessageContentRemoverTask(this, jdbcConnection);
 
-        int schedulerPeriod = ClusterResourceHolder.getInstance().getClusterConfiguration()
-                        .getContentRemovalTaskInterval();
+        int schedulerPeriod = 5;
+//                ClusterResourceHolder.getInstance().getClusterConfiguration()
+//                        .getContentRemovalTaskInterval();
         contentRemovalScheduler.scheduleAtFixedRate(messageContentRemoverTask,
                 schedulerPeriod,
                 schedulerPeriod,
                 TimeUnit.SECONDS);
 
-        if(isInMemoryMode) {
-            createTables();
-            logger.info("H2 in-memory message store initialised");
-        } else {
-            logger.info("H2 message store initialised");
-        }
         return jdbcConnection;
     }
 
     /**
      * This method creates all the DB tables used by this Message Store implementation
-     * NOTE: This method is only called in memory mode
+     * NOTE: This method is to create tables in memory mode.
+     * For persistence mode need to setup tables using -Dsetup
      *
      * @throws AndesException
      */
-    private void createTables() throws AndesException {
+    public void createTables() throws AndesException {
         String[] queries = {
                 "CREATE TABLE IF NOT EXISTS messages (" +
                         "message_id BIGINT, " +
@@ -888,6 +859,8 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     private void incrementRefCount(Connection connection, long messageId) throws SQLException {
 
         // todo: ON DUPLICATE KEY UPDATE functionality requires newer version of H2 1.3.175
+        // and this query is vendor specific.
+        // Without vendor specific queries mean a read and a write. Triggers?
         String sql = "INSERT INTO " + JDBCConstants.REF_COUNT_TABLE +
                 " (" + JDBCConstants.MESSAGE_ID + "," + JDBCConstants.REF_COUNT + ") " +
                 "VALUES (" + messageId + ", 1) ";

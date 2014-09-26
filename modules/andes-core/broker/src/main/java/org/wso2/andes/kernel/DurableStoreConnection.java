@@ -19,16 +19,17 @@
 package org.wso2.andes.kernel;
 
 import org.apache.commons.configuration.Configuration;
+import org.wso2.andes.configuration.ConfigurationProperties;
 
 public interface DurableStoreConnection {
 
     /**
      * Initialize database connection
      *
-     * @param jndiLookupName jndi lookup name to get the data source
+     * @param connectionProperties ConfigurationProperties
      * @throws AndesException
      */
-    public void initialize(String jndiLookupName) throws AndesException;
+    public void initialize(ConfigurationProperties connectionProperties) throws AndesException;
 
     /**
      * Close database connection

@@ -3,6 +3,7 @@ package org.wso2.andes.store.jdbc;
 import junit.framework.Assert;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.*;
+import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
@@ -45,8 +46,12 @@ public class H2BasedMessageStoreImplTest {
     @Before
     public void setUp() throws Exception {
         createTables();
-        messageStore = new H2BasedMessageStoreImpl(true);
-        messageStore.initializeMessageStore();
+        messageStore = new H2BasedMessageStoreImpl();
+        ConfigurationProperties connectionProperties = new ConfigurationProperties();
+        connectionProperties.addProperty(JDBCConstants.PROP_JNDI_LOOKUP_NAME,
+                                            JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME);
+        messageStore.initializeMessageStore(connectionProperties);
+        ((H2BasedMessageStoreImpl)messageStore).createTables();
     }
 
     @After

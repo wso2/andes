@@ -21,7 +21,7 @@ package org.wso2.andes.kernel;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.pool.AndesExecuter;
+import org.wso2.andes.configuration.VirtualHostsConfiguration;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
@@ -33,10 +33,8 @@ import org.wso2.andes.server.slot.thrift.MBThriftServer;
 import org.wso2.andes.server.slot.thrift.SlotManagementServiceImpl;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
-import org.wso2.andes.store.jdbc.H2BasedAndesContextStoreImpl;
 import org.wso2.andes.subscription.SubscriptionStore;
 
-import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -45,11 +43,14 @@ public class AndesKernelBoot {
     private static Log log = LogFactory.getLog(AndesKernelBoot.class);
     private static Configuration storeConfiguration;
     private static ClusterConfiguration clusterConfiguration;
+
+    /**
+     * Scheduled thread pool executor to run periodic andes recovery task
+     */
     private static ScheduledExecutorService andesRecoveryTaskScheduler;
 
     /**
-     * This will boot up all the components in
-     * Andes kernel and bring the server to working state
+     * This will boot up all the components in Andes kernel and bring the server to working state
      */
     public static void bootAndesKernel() throws Exception {
 
@@ -87,7 +88,8 @@ public class AndesKernelBoot {
     /**
      * load configurations to andes kernel
      *
-     * @param configuration configuration to load
+     * @param configuration
+     *         configuration to load
      */
     public static void loadConfigurations(ClusterConfiguration configuration) {
         clusterConfiguration = configuration;
@@ -96,50 +98,71 @@ public class AndesKernelBoot {
     /**
      * start all andes stores message store/context store and AMQP construct store
      *
-     * @param configuration store configurations
-     * @param virtualHost   virtalhost to relate
+     * @param configuration
+     *         store configurations
+     * @param virtualHost
+     *         virtual host to relate
      * @throws Exception
      */
-    public static void startAndesStores(Configuration configuration, VirtualHost virtualHost) throws Exception {
+    public static void startAndesStores(Configuration configuration, VirtualHost virtualHost)
+            throws Exception {
         storeConfiguration = configuration;
-        //initialize context store and message store
-        if (ClusterResourceHolder.getInstance().getClusterConfiguration().isInMemoryMode()) {
 
-        } else {
+        VirtualHostsConfiguration virtualHostsConfiguration = AndesContext.getInstance()
+                                                                          .getVirtualHostsConfiguration();
+        //create a andes context store and register
+        String contextStoreClassName = virtualHostsConfiguration.getAndesContextStoreClassName();
+        Class clazz2 = Class.forName(contextStoreClassName);
+        Object o2 = clazz2.newInstance();
 
-            //create a andes context store and register
-            String contextStoreClassName = AndesContext.getInstance().getAndesContextStoreClass();
-            Class clazz2 = Class.forName(contextStoreClassName);
-            Object o2 = clazz2.newInstance();
-
-            if (!(o2 instanceof AndesContextStore)) {
-                throw new ClassCastException("Message store class must implement " + AndesContextStore.class + ". Class " + clazz2 +
-                        " does not.");
-            }
-            AndesContextStore andesContextStore = (AndesContextStore) o2;
-            DurableStoreConnection contextStoreConnection = andesContextStore.init();
-            AndesContext.getInstance().setAndesContextStore(andesContextStore);
-
-            //create subscription store
-            SubscriptionStore subscriptionStore = new SubscriptionStore();
-            AndesContext.getInstance().setSubscriptionStore(subscriptionStore);
-
-            //create AMQP Constructs store
-            AMQPConstructStore amqpConstructStore = new AMQPConstructStore();
-            AndesContext.getInstance().setAMQPConstructStore(amqpConstructStore);
-
-
-            //create a messaging engine and a message store
-            MessagingEngine.getInstance().initializeMessageStore(
-                    AndesContext.getInstance().getMessageStoreClass()
-            );
+        if (!(o2 instanceof AndesContextStore)) {
+            throw new ClassCastException(
+                    "Message store class must implement " + AndesContextStore.class + ". Class "
+                    + clazz2 +
+                    " does not.");
         }
+
+        AndesContextStore andesContextStore = (AndesContextStore) o2;
+        DurableStoreConnection contextStoreConnection = andesContextStore.init(
+                virtualHostsConfiguration.getAndesContextStoreProperties()
+        );
+        AndesContext.getInstance().setAndesContextStore(andesContextStore);
+
+        //create subscription store
+        SubscriptionStore subscriptionStore = new SubscriptionStore();
+        AndesContext.getInstance().setSubscriptionStore(subscriptionStore);
+
+        //create AMQP Constructs store
+        AMQPConstructStore amqpConstructStore = new AMQPConstructStore();
+        AndesContext.getInstance().setAMQPConstructStore(amqpConstructStore);
+
+        // create a message store and initialise messaging engine
+        DurableStoreConnection durableStoreConnection;
+        String messageStoreClassName = virtualHostsConfiguration.getMessageStoreClassName();
+        Class clazz = Class.forName(messageStoreClassName);
+        Object o = clazz.newInstance();
+
+        if (!(o instanceof org.wso2.andes.kernel.MessageStore)) {
+            throw new ClassCastException(
+                    "Message store class must implement " + MessageStore.class + ". Class " +
+                    clazz +
+                    " does not.");
+        }
+
+        MessageStore messageStore = (MessageStore) o;
+        durableStoreConnection = messageStore.initializeMessageStore(
+                virtualHostsConfiguration.getMessageStoreProperties()
+        );
+        MessagingEngine.getInstance().initialise(messageStore);
 
         /**
          * initialize amqp constructs syncing into Qpid
          */
-        VirtualHostConfigSynchronizer _VirtualHostConfigSynchronizer = new VirtualHostConfigSynchronizer(virtualHost);
-        ClusterResourceHolder.getInstance().setVirtualHostConfigSynchronizer(_VirtualHostConfigSynchronizer);
+        VirtualHostConfigSynchronizer _VirtualHostConfigSynchronizer = new
+                VirtualHostConfigSynchronizer(
+                virtualHost);
+        ClusterResourceHolder.getInstance()
+                             .setVirtualHostConfigSynchronizer(_VirtualHostConfigSynchronizer);
     }
 
 
@@ -151,7 +174,8 @@ public class AndesKernelBoot {
     public static void syncNodeWithClusterState() throws Exception {
         //at the startup reload exchanges/queues/bindings and subscriptions
         log.info("Syncing exchanges, queues, bindings and subscriptions");
-        ClusterResourceHolder.getInstance().getAndesRecoveryTask().recoverExchangesQueuesBindingsSubscriptions();
+        ClusterResourceHolder.getInstance().getAndesRecoveryTask()
+                             .recoverExchangesQueuesBindingsSubscriptions();
     }
 
     /**
@@ -162,7 +186,8 @@ public class AndesKernelBoot {
     private static void cleanUpAndNotifyCluster() throws Exception {
         //at the shutDown close all localSubscriptions and notify cluster
         log.info("Closing all local subscriptions existing...");
-        ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllLocalSubscriptionsOfNode();
+        ClusterResourceHolder.getInstance().getSubscriptionManager()
+                             .closeAllLocalSubscriptionsOfNode();
         //tell cluster I am leaving
         ClusterResourceHolder.getInstance().getClusterManager().shutDownMyNode();
     }
@@ -177,7 +202,7 @@ public class AndesKernelBoot {
         AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask();
         int scheduledPeriod = clusterConfiguration.getAndesRecoveryTaskInterval();
         andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod,
-                scheduledPeriod, TimeUnit.SECONDS);
+                                                       scheduledPeriod, TimeUnit.SECONDS);
         ClusterResourceHolder.getInstance().setAndesRecoveryTask(andesRecoveryTask);
     }
 
@@ -191,7 +216,8 @@ public class AndesKernelBoot {
         int threadTerminationTimePerod = 20; // seconds
         try {
             andesRecoveryTaskScheduler.shutdown();
-            andesRecoveryTaskScheduler.awaitTermination(threadTerminationTimePerod, TimeUnit.SECONDS);
+            andesRecoveryTaskScheduler
+                    .awaitTermination(threadTerminationTimePerod, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             andesRecoveryTaskScheduler.shutdownNow();
             log.warn("Recovery task scheduler is forcefully shutdown.");
@@ -208,13 +234,16 @@ public class AndesKernelBoot {
     public static void registerMBeans() throws Exception {
 
         ClusterManagementInformationMBean clusterManagementMBean = new
-                ClusterManagementInformationMBean(ClusterResourceHolder.getInstance().getClusterManager());
+                ClusterManagementInformationMBean(
+                ClusterResourceHolder.getInstance().getClusterManager());
         clusterManagementMBean.register();
 
-        QueueManagementInformationMBean queueManagementMBean = new QueueManagementInformationMBean();
+        QueueManagementInformationMBean queueManagementMBean = new
+                QueueManagementInformationMBean();
         queueManagementMBean.register();
 
-        SubscriptionManagementInformationMBean subscriptionManagementInformationMBean = new SubscriptionManagementInformationMBean();
+        SubscriptionManagementInformationMBean subscriptionManagementInformationMBean = new
+                SubscriptionManagementInformationMBean();
         subscriptionManagementInformationMBean.register();
     }
 
@@ -289,8 +318,9 @@ public class AndesKernelBoot {
         try {
             MBThriftServer.getInstance().start(AndesContext.getInstance().getThriftServerHost(),
                     AndesContext.getInstance().getThriftServerPort(),"MB-ThriftServer-main-thread");
+
         } catch (AndesException e) {
-            throw new AndesException("Could not start the MB Thrift Server"+e);
+            throw new AndesException("Could not start the MB Thrift Server" + e);
         }
     }
 

@@ -7,6 +7,7 @@ import com.datastax.driver.core.*;
 import com.datastax.driver.core.querybuilder.Select;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
@@ -47,11 +48,12 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
     }
 
-    public DurableStoreConnection initializeMessageStore() throws AndesException {
+    public DurableStoreConnection initializeMessageStore(ConfigurationProperties
+                                                       connectionProperties) throws AndesException {
 
         // create connection object
         cqlConnection = new CQLConnection();
-        cqlConnection.initialize(AndesContext.getInstance().getMessageStoreDataSourceName());
+        cqlConnection.initialize(connectionProperties);
 
         // get cassandra cluster and create column families
         initializeCassandraMessageStore(cqlConnection);

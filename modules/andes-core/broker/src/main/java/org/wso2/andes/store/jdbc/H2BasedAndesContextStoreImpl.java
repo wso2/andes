@@ -19,6 +19,7 @@
 package org.wso2.andes.store.jdbc;
 
 import org.apache.log4j.Logger;
+import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
 
 import javax.sql.DataSource;
@@ -32,9 +33,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * H2 Based Message context Store.
- * This is used to persist information of current durable subscription, exchanges,
- * queues and bindings
+ * H2 Based Message context Store. This is used to persist information of current durable
+ * subscription, exchanges, queues and bindings
  */
 public class H2BasedAndesContextStoreImpl implements AndesContextStore {
 
@@ -49,28 +49,15 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
      * Whether the Context store is running in memory mode or connected to a persistence storage
      * True if in memory mode and wise versa
      */
-    private boolean isInMemoryMode;
-
     public H2BasedAndesContextStoreImpl() {
         datasource = null;
-        this.isInMemoryMode = false;
-    }
-
-    public H2BasedAndesContextStoreImpl(boolean isInMemoryMode) {
-        this();
-        this.isInMemoryMode = isInMemoryMode;
     }
 
     @Override
-    public DurableStoreConnection init() throws AndesException {
+    public DurableStoreConnection init(ConfigurationProperties connectionProperties) throws
+                                                                                     AndesException {
         JDBCConnection jdbcConnection = new JDBCConnection();
-        if (isInMemoryMode) {
-            // todo: is in memory mode relevant? We have methods to store durable subscriptions
-            jdbcConnection.initialize(JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME);
-        } else {
-            // read config for data source and use
-            jdbcConnection.initialize(AndesContext.getInstance().getContextStoreDataSourceName());
-        }
+        jdbcConnection.initialize(connectionProperties);
 
         datasource = jdbcConnection.getDataSource();
         return jdbcConnection;
@@ -86,7 +73,7 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
 
             connection = getConnection();
             preparedStatement = connection.prepareStatement(JDBCConstants
-                    .PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS);
+                                                                    .PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS);
             resultSet = preparedStatement.executeQuery();
 
             // create Subscriber Map
@@ -106,7 +93,8 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
 
         } catch (SQLException e) {
             throw new AndesException(
-                    "Error occurred while " + JDBCConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
+                    "Error occurred while " + JDBCConstants
+                            .TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
         } finally {
             close(resultSet, JDBCConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
             close(preparedStatement, JDBCConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
@@ -138,7 +126,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
             throw new AndesException("Error occurred while storing durable subscription. sub id: "
-                    + subscriptionID + " destination identifier: " + destinationIdentifier, e);
+                                     + subscriptionID + " destination identifier: " +
+                                     destinationIdentifier,
+                                     e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
             close(connection, JDBCConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
@@ -146,18 +136,19 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
     }
 
     @Override
-    public void removeDurableSubscription(String destinationIdentifier, String subscriptionID) throws AndesException {
+    public void removeDurableSubscription(String destinationIdentifier, String subscriptionID)
+            throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         String task = JDBCConstants.TASK_REMOVING_DURABLE_SUBSCRIPTION + "destination: " +
-                destinationIdentifier + " sub id: " + subscriptionID;
+                      destinationIdentifier + " sub id: " + subscriptionID;
         try {
 
             connection = getConnection();
             connection.setAutoCommit(false);
 
             preparedStatement = connection.prepareStatement(JDBCConstants
-                    .PS_DELETE_DURABLE_SUBSCRIPTION);
+                                                                    .PS_DELETE_DURABLE_SUBSCRIPTION);
 
             preparedStatement.setString(1, destinationIdentifier);
             preparedStatement.setString(2, subscriptionID);
@@ -282,7 +273,8 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
     }
 
     @Override
-    public void storeExchangeInformation(String exchangeName, String exchangeInfo) throws AndesException {
+    public void storeExchangeInformation(String exchangeName, String exchangeInfo)
+            throws AndesException {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -295,10 +287,11 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
             // for existence before insertion.
             // This check is done here rather than inside Qpid code which will be updated in
             // future.
-            if(!isExchangeExist(connection, exchangeName)) {
+            if (!isExchangeExist(connection, exchangeName)) {
                 connection.setAutoCommit(false);
 
-                preparedStatement = connection.prepareStatement(JDBCConstants.PS_STORE_EXCHANGE_INFO);
+                preparedStatement = connection
+                        .prepareStatement(JDBCConstants.PS_STORE_EXCHANGE_INFO);
                 preparedStatement.setString(1, exchangeName);
                 preparedStatement.setString(2, exchangeInfo);
                 preparedStatement.executeUpdate();
@@ -317,24 +310,28 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
 
     /**
      * Helper method to check the existence of an exchange in database
-     * @param connection SQL Connection
-     * @param exchangeName exchange name to be checked
+     *
+     * @param connection
+     *         SQL Connection
+     * @param exchangeName
+     *         exchange name to be checked
      * @return return true if exist and wise versa
      * @throws AndesException
      */
-    private boolean isExchangeExist(Connection connection, String exchangeName) throws AndesException {
+    private boolean isExchangeExist(Connection connection, String exchangeName)
+            throws AndesException {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
         try {
             preparedStatement = connection.prepareStatement(JDBCConstants
-                    .PS_SELECT_EXCHANGE);
+                                                                    .PS_SELECT_EXCHANGE);
 
             preparedStatement.setString(1, exchangeName);
             resultSet = preparedStatement.executeQuery();
             return resultSet.first(); // if present true
         } catch (SQLException e) {
             throw new AndesException("Error occurred retrieving exchange information for" +
-                    " exchange: " + exchangeName, e);
+                                     " exchange: " + exchangeName, e);
         } finally {
             close(resultSet, JDBCConstants.TASK_IS_EXCHANGE_EXIST);
             close(preparedStatement, JDBCConstants.TASK_IS_EXCHANGE_EXIST);
@@ -350,7 +347,8 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
             List<AndesExchange> exchangeList = new ArrayList<AndesExchange>();
 
             connection = getConnection();
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_ALL_EXCHANGE_INFO);
+            preparedStatement = connection
+                    .prepareStatement(JDBCConstants.PS_SELECT_ALL_EXCHANGE_INFO);
             resultSet = preparedStatement.executeQuery();
 
             // traverse the result set and add it to exchange list and return the list
@@ -443,7 +441,8 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
 
             return queueList;
         } catch (SQLException e) {
-            throw new AndesException("Error occurred while " + JDBCConstants.TASK_RETRIEVING_ALL_QUEUE_INFO);
+            throw new AndesException(
+                    "Error occurred while " + JDBCConstants.TASK_RETRIEVING_ALL_QUEUE_INFO);
         } finally {
             close(resultSet, JDBCConstants.TASK_RETRIEVING_ALL_QUEUE_INFO);
             close(preparedStatement, JDBCConstants.TASK_RETRIEVING_ALL_QUEUE_INFO);
@@ -478,7 +477,8 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
     }
 
     @Override
-    public void storeBindingInformation(String exchange, String boundQueueName, String bindingInfo) throws AndesException {
+    public void storeBindingInformation(String exchange, String boundQueueName, String bindingInfo)
+            throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
@@ -497,7 +497,7 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
 
         } catch (SQLException e) {
             String errMsg = JDBCConstants.TASK_STORING_BINDING + " exchange: " + exchange +
-                    " queue: " + boundQueueName + " routing key: " + bindingInfo;
+                            " queue: " + boundQueueName + " routing key: " + bindingInfo;
             rollback(connection, errMsg);
             throw new AndesException("Error occurred while " + errMsg, e);
         } finally {
@@ -507,7 +507,8 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
     }
 
     @Override
-    public List<AndesBinding> getBindingsStoredForExchange(String exchangeName) throws AndesException {
+    public List<AndesBinding> getBindingsStoredForExchange(String exchangeName)
+            throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
@@ -517,7 +518,7 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(JDBCConstants
-                    .PS_SELECT_BINDINGS_FOR_EXCHANGE);
+                                                                    .PS_SELECT_BINDINGS_FOR_EXCHANGE);
             preparedStatement.setString(1, exchangeName);
             resultSet = preparedStatement.executeQuery();
 
@@ -530,7 +531,8 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
 
             return bindingList;
         } catch (SQLException e) {
-            throw new AndesException("Error occurred while " + JDBCConstants.TASK_RETRIEVING_BINDING_INFO, e);
+            throw new AndesException(
+                    "Error occurred while " + JDBCConstants.TASK_RETRIEVING_BINDING_INFO, e);
         } finally {
             close(resultSet, JDBCConstants.TASK_RETRIEVING_BINDING_INFO);
             close(preparedStatement, JDBCConstants.TASK_RETRIEVING_BINDING_INFO);
@@ -539,7 +541,8 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
     }
 
     @Override
-    public void deleteBindingInformation(String exchangeName, String boundQueueName) throws AndesException {
+    public void deleteBindingInformation(String exchangeName, String boundQueueName)
+            throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
@@ -555,7 +558,7 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
             connection.commit();
         } catch (SQLException e) {
             String errMsg = JDBCConstants.TASK_DELETING_BINDING + " exchange: " + exchangeName +
-                    " bound queue: " + boundQueueName;
+                            " bound queue: " + boundQueueName;
             rollback(connection, errMsg);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_DELETING_BINDING);
@@ -570,6 +573,7 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
 
     /**
      * Creates a connection using a thread pooled data source object and returns the connection
+     *
      * @return Connection
      * @throws SQLException
      */
@@ -580,7 +584,8 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
     /**
      * Closes the provided connection. on failure log the error;
      *
-     * @param connection Connection
+     * @param connection
+     *         Connection
      */
     private void close(Connection connection, String task) {
         if (connection != null) {
@@ -594,8 +599,11 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
 
     /**
      * On database update failure tries to rollback
-     * @param connection database connection
-     * @param task explanation of the task done when the rollback was triggered
+     *
+     * @param connection
+     *         database connection
+     * @param task
+     *         explanation of the task done when the rollback was triggered
      */
     private void rollback(Connection connection, String task) {
         if (connection != null) {
@@ -609,8 +617,11 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
 
     /**
      * close the prepared statement resource
-     * @param preparedStatement PreparedStatement
-     * @param task task that was done by the closed prepared statement.
+     *
+     * @param preparedStatement
+     *         PreparedStatement
+     * @param task
+     *         task that was done by the closed prepared statement.
      */
     private void close(PreparedStatement preparedStatement, String task) {
         if (preparedStatement != null) {
@@ -624,8 +635,11 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
 
     /**
      * closes the result set resources
-     * @param resultSet ResultSet
-     * @param task task that was done by the closed result set.
+     *
+     * @param resultSet
+     *         ResultSet
+     * @param task
+     *         task that was done by the closed result set.
      */
     private void close(ResultSet resultSet, String task) {
         if (resultSet != null) {
