@@ -144,7 +144,9 @@ public class ClusterManager {
             clearAllPersistedStatesOfDisappearedNode(deletedNodeId);
 
             //Reassign the slot to free slots pool
-            slotManager.reAssignSlotsWhenMemberLeaves(deletedNodeId);
+            if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
+                slotManager.reAssignSlotsWhenMemberLeaves(deletedNodeId);
+            }
             // check and copy back messages of node queue belonging to disappeared node
             checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(AndesUtils.getNodeQueueNameForNodeId(deletedNodeId));
         }

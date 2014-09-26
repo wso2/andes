@@ -53,9 +53,11 @@ public class SlotDeliveryWorker extends Thread {
     private static MBThriftClient mbThriftClient;
     private boolean running = true;
     private String nodeId;
+    private QueueDeliveryWorker queueDeliveryWorker;
 
     public SlotDeliveryWorker() {
         log.info("SlotDeliveryWorker Initialized.");
+        queueDeliveryWorker = QueueDeliveryWorker.getInstance();
         this.queueList = new ArrayList<String>();
         this.messageStore = MessagingEngine.getInstance().getDurableMessageStore();
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
@@ -76,99 +78,131 @@ public class SlotDeliveryWorker extends Thread {
         /**
          * This while loop is necessary since whenever there are messages this thread should deliver them
          */
-        while (running) {
-            //iterate through all the queues registered in this thread
-            for (String queue : queueList) {
+        while (true) {
+            if (running) {
+                //iterate through all the queues registered in this thread
                 int emptyQueueCounter = 0;
-                Collection<LocalSubscription> subscriptions4Queue;
-                List<Slot> slotsListForThisQueue = new ArrayList<Slot>();
-                try {
-                    subscriptions4Queue = subscriptionStore.getActiveLocalSubscribers(queue, false);
-                    if (subscriptions4Queue != null && !subscriptions4Queue.isEmpty()) {
-
-                        if (isClusteringEnabled) {
-                            mbThriftClient = MBThriftUtils.getMBThriftClient();
-                            Slot currentSlot = mbThriftClient.getSlot(queue, nodeId);
-                            if (0 == currentSlot.getEndMessageId()) {
-                                //no available free slots
-                                emptyQueueCounter++;
-                                try {
-                                    if (emptyQueueCounter == queueList.size()) {
-                                        Thread.sleep(2000);
-                                    }
-                                } catch (InterruptedException ignored) {
-                                    //silently ignore
-                                }
-                            } else {
-                                if (log.isDebugEnabled()) {
-                                    log.debug("Received slot for queue " + queue + " is: " + currentSlot.getStartMessageId() +
-                                            " - " + currentSlot.getEndMessageId());
-                                }
-                                //  slotManager.updateSlotAssignmentMap(queue, currentSlot);
-                                writeLock.lock();
-                                //update in-memory slot assignment map
-                                try {
-                                    if (slotsOwnedByMe.get(queue) != null) {
-                                        slotsOwnedByMe.get(queue).add(currentSlot);
-
+                for (String queueName : queueList) {
+                    Collection<LocalSubscription> subscriptions4Queue;
+                    List<Slot> slotsListForThisQueue = new ArrayList<Slot>();
+                    try {
+                        subscriptions4Queue = subscriptionStore.getActiveLocalSubscribers(queueName,
+                                false);
+                        if (subscriptions4Queue != null && !subscriptions4Queue.isEmpty()) {
+                            //check has room
+                            if (queueDeliveryWorker.getQueueDeliveryInfo(queueName).hasRoom()) {
+                                if (isClusteringEnabled) {
+                                    mbThriftClient = MBThriftUtils.getMBThriftClient();
+                                    Slot currentSlot = mbThriftClient.getSlot(queueName, nodeId);
+                                    if (0 == currentSlot.getEndMessageId()) {
+                                        //no available free slots
+                                        emptyQueueCounter++;
+                                        if (!queueDeliveryWorker.isMessageBufferEmpty(queueName)) {
+                                            queueDeliveryWorker.sendMessagesInBuffer();
+                                        } else {
+                                            if (emptyQueueCounter == queueList.size()) {
+                                                try {
+                                                    Thread.sleep(2000);
+                                                } catch (InterruptedException ignored) {
+                                                    //silently ignore
+                                                }
+                                            }
+                                        }
                                     } else {
-                                        slotsListForThisQueue.add(currentSlot);
-                                        slotsOwnedByMe.put(queue, slotsListForThisQueue);
+                                        if (log.isDebugEnabled()) {
+                                            log.debug("Received slot for queue " + queueName + " " +
+                                                    "is: " + currentSlot.getStartMessageId() +
+                                                    " - " + currentSlot.getEndMessageId());
+                                        }
+                                        writeLock.lock();
+                                        //update in-memory slot assignment map
+                                        try {
+                                            if (slotsOwnedByMe.get(queueName) != null) {
+                                                slotsOwnedByMe.get(queueName).add(currentSlot);
 
+                                            } else {
+                                                slotsListForThisQueue.add(currentSlot);
+                                                slotsOwnedByMe.put(queueName, slotsListForThisQueue);
+
+                                            }
+                                        } finally {
+                                            writeLock.unlock();
+                                        }
+                                        long firstMsgId = currentSlot.getStartMessageId();
+                                        long lastMsgId = currentSlot.getEndMessageId();
+                                        //read messages in the slot
+                                        List<AndesMessageMetadata> messagesReadByLeadingThread =
+                                                messageStore.getMetaDataList(
+                                                        queueName, firstMsgId, lastMsgId);
+                                        if (messagesReadByLeadingThread != null &&
+                                                !messagesReadByLeadingThread.isEmpty()) {
+                                            if (log.isDebugEnabled()) {
+                                                log.info("Number of messages read from slot " +
+                                                        currentSlot.getStartMessageId() + " - " +
+                                                        currentSlot.getEndMessageId() + " is " +
+                                                        messagesReadByLeadingThread.size());
+                                            }
+                                            QueueDeliveryWorker.getInstance().sendMessageToFlusher(
+                                                    messagesReadByLeadingThread);
+                                        } else {
+                                            if (!queueDeliveryWorker.isMessageBufferEmpty(queueName)) {
+                                                QueueDeliveryWorker.getInstance()
+                                                        .sendMessagesInBuffer();
+                                            }
+                                        }
                                     }
-                                } finally {
-                                    writeLock.unlock();
-                                }
-                                long firstMsgId = currentSlot.getStartMessageId();
-                                long lastMsgId = currentSlot.getEndMessageId();
-                                //read messages in the slot
-                                List<AndesMessageMetadata> messagesReadByLeadingThread = messageStore.getMetaDataList(queue, firstMsgId, lastMsgId);
-                                if (messagesReadByLeadingThread != null && !messagesReadByLeadingThread.isEmpty()) {
-                                    if (log.isDebugEnabled()) {
-                                        log.info("Number of messages read from slot " + currentSlot.getStartMessageId() + " - " +
-                                                currentSlot.getEndMessageId() + " is " + messagesReadByLeadingThread.size());
+                                } else {
+                                    long startMessageId = 0;
+                                    if (localLastProcessedIdMap.get(queueName) != null) {
+                                        startMessageId = localLastProcessedIdMap.get(queueName) + 1;
                                     }
-                                    QueueDeliveryWorker.getInstance().startSendingMessages(messagesReadByLeadingThread);
-                                }
-                            }
-                        } else {
-                            long startMessageId = 0;
-                            if (localLastProcessedIdMap.get(queue) != null) {
-                                startMessageId = localLastProcessedIdMap.get(queue) + 1;
-                            }
-                            List<AndesMessageMetadata> messagesReadByLeadingThread = messageStore.getNextNMessageMetadataFromQueue
-                                    (queue, startMessageId, SlotCoordinationConstants.STANDALONE_SLOT_THRESHOLD);
-                            if (messagesReadByLeadingThread == null || messagesReadByLeadingThread.isEmpty()) {
-                                emptyQueueCounter++;
-                                try {
-                                    //there are no messages to read
-                                    if (emptyQueueCounter == queueList.size()) {
-                                        Thread.sleep(2000);
+                                    List<AndesMessageMetadata> messagesReadByLeadingThread =
+                                            messageStore.getNextNMessageMetadataFromQueue
+                                                    (queueName, startMessageId,
+                                                            SlotCoordinationConstants
+                                                                    .STANDALONE_SLOT_THRESHOLD);
+                                    if (messagesReadByLeadingThread == null ||
+                                            messagesReadByLeadingThread.isEmpty()) {
+                                        emptyQueueCounter++;
+                                        try {
+                                            //there are no messages to read
+                                            if (emptyQueueCounter == queueList.size()) {
+                                                Thread.sleep(2000);
+                                            }
+                                        } catch (InterruptedException ignored) {
+                                            //silently ignore
+                                        }
+                                    } else {
+                                        if (log.isDebugEnabled()) {
+                                            log.info(messagesReadByLeadingThread.size() + " " +
+                                                    "number of messages read from slot");
+                                        }
+                                        localLastProcessedIdMap.put(queueName,
+                                                messagesReadByLeadingThread.get(
+                                                        messagesReadByLeadingThread
+                                                                .size() - 1).getMessageID());
+                                        queueDeliveryWorker.sendMessageToFlusher
+                                                (messagesReadByLeadingThread);
                                     }
-                                } catch (InterruptedException ignored) {
-                                    //silently ignore
                                 }
                             } else {
-                                if (log.isDebugEnabled()) {
-                                    log.info(messagesReadByLeadingThread.size() + " number of messages read from slot");
+                                if (!queueDeliveryWorker.isMessageBufferEmpty(queueName)) {
+                                    queueDeliveryWorker.sendMessagesInBuffer();
                                 }
-                                localLastProcessedIdMap.put(queue, messagesReadByLeadingThread.
-                                        get(messagesReadByLeadingThread.size() - 1).getMessageID());
-                                QueueDeliveryWorker.getInstance().startSendingMessages(messagesReadByLeadingThread);
                             }
                         }
-                    }
-                } catch (AndesException e) {
-                    log.error("Error running Cassandra Message Reader " + e.getMessage(), e);
-                } catch (TException e) {
-                    log.error("Error occurred while connecting to the thrift coordinator " + e.getMessage(), e);
-                    //stop the current thread
-                    setRunning(false);
-                    MBThriftUtils.resetMBThriftClient();
-                    SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
-                    //if reconnecting is not happening now try to reconnect
-                    if (!slotDeliveryWorkerManager.isReconnectingToServerStarted()) {
-                        slotDeliveryWorkerManager.setReconnectingFlag(true);
+                    } catch (AndesException e) {
+                        log.error("Error running Cassandra Message Reader " + e.getMessage(), e);
+                    } catch (TException e) {
+                        log.error("Error occurred while connecting to the thrift coordinator " +
+                                e.getMessage(), e);
+                        //stop the current thread
+                        setRunning(false);
+                        MBThriftUtils.resetMBThriftClient();
+                        //if reconnecting is not happening now try to reconnect
+                        if (!MBThriftUtils.isReconnectingStarted()) {
+                            MBThriftUtils.setReconnectingFlag(true);
+                        }
                     }
                 }
             }

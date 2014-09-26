@@ -294,11 +294,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 Insert insert = CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE, CassandraConstants.META_DATA_COLUMN_FAMILY, md.getDestination(),
                         md.getMessageID(), md.getMetadata(), false);
 
-//                if (incomingMessagesMap.get(md.getDestination()) == null) {
-//                    incomingMessagesMap.put(md.getDestination(), 1);
-//                } else {
-//                    incomingMessagesMap.put(md.getDestination(), incomingMessagesMap.get(md.getDestination()) + 1);
-//                }
                 inserts.add(insert);
                 PerformanceCounter.recordIncomingMessageWrittenToCassandra();
                 //log.info("Wrote message " + md.getMessageID() + " to Global Queue " + queueAddress.queueName);
@@ -306,10 +301,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             }
             long start = System.currentTimeMillis();
             GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
-            if (isClusteringEnabled) {
-                SlotMessageCounter.getInstance().recordMetaDataCountInSlot(metadataList);
 
-            }
             PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency((int) (System.currentTimeMillis() - start));
 
             if (isMessageCountingAllowed) {

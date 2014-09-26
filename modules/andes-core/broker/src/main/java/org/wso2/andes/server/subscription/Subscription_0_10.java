@@ -22,6 +22,7 @@ package org.wso2.andes.server.subscription;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.BasicContentHeaderProperties;
 import org.wso2.andes.framing.FieldTable;
@@ -665,18 +666,14 @@ public class Subscription_0_10 implements Subscription, FlowCreditManager.FlowCr
         _creditManager.restoreCredit(1, queueEntry.getSize());
     }
 
-    public void onDequeue(QueueEntry queueEntry)
-    {
-     /**
-      * When the message is acknowledged, this method adds an entry to db indicating that
-      * content of this message can be removed after a particular time interval
-     */
-        try {
-            MessagingEngine.getInstance().ackReceived(new AndesAckData(queueEntry.getMessage().getMessageNumber(),
-                    queueEntry.getQueue().getName(),queueEntry.getQueue().checkIfBoundToTopicExchange()));
-        } catch (AndesException e) {
-            e.printStackTrace();
-        }
+    public void onDequeue(QueueEntry queueEntry) {
+        /**
+         * When the message is acknowledged it is informed to Andes Kernel
+         */
+        QpidAMQPBridge.getInstance().ackReceived(queueEntry.getMessage().getMessageNumber(),
+                                                 queueEntry.getQueue().getName(),
+                                                 queueEntry.getQueue()
+                                                           .checkIfBoundToTopicExchange());
     }
 
     public void setStateListener(StateListener listener)

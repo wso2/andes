@@ -35,11 +35,14 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
             Slot slot = slotManager.getSlot(queueName, nodeId);
             SlotInfo slotInfo = new SlotInfo();
             if (null != slot) {
-                slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(), slot.getQueueName());
+                slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(),
+                                        slot.getQueueName());
             }
             return slotInfo;
         } else {
-            throw new TException("I'm not the coordinator right now. Please update the thrift server details cache");
+            throw new TException(
+                    "I'm not the coordinator right now. Please update the thrift server details " +
+                    "cache");
         }
     }
 
@@ -48,7 +51,9 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
         if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
             slotManager.updateMessageID(queueName, messageId);
         } else {
-            throw new TException("I'm not the coordinator right now. Please update the thrift server details cache");
+            throw new TException(
+                    "I'm not the coordinator right now. Please update the thrift server details " +
+                    "cache");
         }
     }
 
@@ -61,7 +66,18 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
             slot.setQueueName(slotInfo.getQueueName());
             slotManager.deleteSlot(queueName, slot, nodeId);
         } else {
-            throw new TException("I'm not the coordinator right now. Please update the thrift server details cache");
+            throw new TException(
+                    "I'm not the coordinator right now. Please update the thrift server details cache");
+        }
+    }
+
+    @Override
+    public void reAssignSlotWhenNoSubscribers(String nodeId, String queueName) throws TException {
+        if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
+          slotManager.reAssignSlotWhenNoSubscribers(nodeId,queueName);
+        } else {
+            throw new TException(
+                    "I'm not the coordinator right now. Please update the thrift server details cache");
         }
     }
 

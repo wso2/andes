@@ -29,10 +29,11 @@ public final class SlotCoordinationConstants {
 
 
     /**
-     * timeout in milliseconds for messages in the slot. When this timeout is exceeded
-     * slot will be submitted to the coordinator
+     * timeout in milliseconds for messages in the slot. When this timeout is exceeded slot will be
+     * submitted to the coordinator
      */
     public static long SLOT_SUBMIT_TIMEOUT = 1000;
+
     /**
      * IP of the coordinator's thrift server
      */

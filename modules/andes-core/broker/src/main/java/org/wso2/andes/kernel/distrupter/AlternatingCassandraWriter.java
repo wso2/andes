@@ -23,11 +23,13 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.MessageStore;
 
 import com.lmax.disruptor.EventHandler;
+import org.wso2.andes.server.slot.SlotMessageCounter;
 
 /**
  * We do this to make Listener take turns while running. So we can run many copies of these and control number
@@ -86,6 +88,10 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
             if (metaList.size() > 0) {
                 //messageStore.addMessageMetaData(null, metaList);
                 messageStore.addMetaData(metaList);
+                //record message data count
+                if (AndesContext.getInstance().isClusteringEnabled()) {
+                    SlotMessageCounter.getInstance().recordMetaDataCountInSlot(metaList);
+                }
                 metaList.clear();
             }
             totalPendingEventLength = 0;

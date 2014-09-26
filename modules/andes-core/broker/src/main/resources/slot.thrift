@@ -29,6 +29,10 @@ service SlotManagementService {
 
     /*delete empty slots
     */
-    void deleteSlot(1: string queueName, 2: SlotInfo slotInfo, 3: string nodeId)
+    void deleteSlot(1: string queueName, 2: SlotInfo slotInfo, 3: string nodeId),
+
+    /*re-assign the slot when there are no local subscribers in the node
+    */
+    void reAssignSlotWhenNoSubscribers(1: string nodeId, 2: string queueName)
 
 }

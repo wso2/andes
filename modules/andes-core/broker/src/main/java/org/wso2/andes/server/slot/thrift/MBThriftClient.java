@@ -19,6 +19,8 @@
 package org.wso2.andes.server.slot.thrift;
 
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.thrift.TException;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.slot.thrift.gen.SlotInfo;
@@ -31,6 +33,8 @@ import org.wso2.andes.server.slot.thrift.gen.SlotManagementService;
 public class MBThriftClient {
 
     SlotManagementService.Client client;
+    private static Log log = LogFactory.getLog(MBThriftClient.class);
+
 
     public MBThriftClient(SlotManagementService.Client client) {
         this.client = client;
@@ -38,13 +42,16 @@ public class MBThriftClient {
 
 
     /**
-     * getSlot method. Returns SlotInfo Object which will contain the slot information, when the queue name is given
+     * getSlot method. Returns SlotInfo Object which will contain the slot information, when the
+     * queue name is given
      *
-     * @param queueName name of the queue
+     * @param queueName
+     *         name of the queue
      * @return SlotInfo object
-     * @throws TException in case of an connection error
+     * @throws TException
+     *         in case of an connection error
      */
-    public Slot getSlot(String queueName, String nodeId) throws TException {
+    public synchronized Slot getSlot(String queueName, String nodeId) throws TException {
         SlotInfo slotInfo = client.getSlotInfo(queueName, nodeId);
         Slot slot = new Slot();
         slot.setStartMessageId(slotInfo.getStartMessageId());
@@ -57,11 +64,14 @@ public class MBThriftClient {
     /**
      * updateMessageId method. This method will update the message ID list in the SlotManager
      *
-     * @param queueName name of the queue
-     * @param messageId a known message ID
-     * @throws TException in case of an connection error
+     * @param queueName
+     *         name of the queue
+     * @param messageId
+     *         a known message ID
+     * @throws TException
+     *         in case of an connection error
      */
-    public void updateMessageId(String queueName, long messageId) throws TException {
+    public synchronized void updateMessageId(String queueName, long messageId) throws TException {
         client.updateMessageId(queueName, messageId);
     }
 
@@ -69,11 +79,23 @@ public class MBThriftClient {
      * delete the slot from SlotAssignmentMap
      *
      * @param queueName
-     * @param slot      to be deleted
+     * @param slot
+     *         to be deleted
      * @throws TException
      */
-    public void deleteSlot(String queueName, Slot slot, String nodeId) throws TException {
-        SlotInfo slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(), slot.getQueueName());
+    public synchronized void deleteSlot(String queueName, Slot slot, String nodeId) throws TException {
+        SlotInfo slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(),
+                                         slot.getQueueName());
         client.deleteSlot(queueName, slotInfo, nodeId);
+    }
+
+    /**
+     * re-assign the slot when the last subscriber leaves the node
+     * @param nodeId
+     * @param queueName
+     * @throws TException
+     */
+    public synchronized void reAssignSlotWhenNoSubscribers(String nodeId, String queueName) throws TException {
+       client.reAssignSlotWhenNoSubscribers(nodeId,queueName);
     }
 }

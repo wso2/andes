@@ -30,15 +30,23 @@ public class SlotManagementService {
 
     public void deleteSlot(String queueName, SlotInfo slotInfo, String nodeId) throws org.apache.thrift.TException;
 
+    public void reAssignSlotWhenNoSubscribers(String nodeId, String queueName) throws org.apache.thrift.TException;
+
   }
 
   public interface AsyncIface {
 
-    public void getSlotInfo(String queueName, String nodeId, org.apache.thrift.async.AsyncMethodCallback<AsyncClient.getSlotInfo_call> resultHandler) throws org.apache.thrift.TException;
+    public void getSlotInfo(String queueName, String nodeId,
+                            org.apache.thrift.async.AsyncMethodCallback<AsyncClient.getSlotInfo_call> resultHandler) throws org.apache.thrift.TException;
 
-    public void updateMessageId(String queueName, long messageId, org.apache.thrift.async.AsyncMethodCallback<AsyncClient.updateMessageId_call> resultHandler) throws org.apache.thrift.TException;
+    public void updateMessageId(String queueName, long messageId,
+                                org.apache.thrift.async.AsyncMethodCallback<AsyncClient.updateMessageId_call> resultHandler) throws org.apache.thrift.TException;
 
-    public void deleteSlot(String queueName, SlotInfo slotInfo, String nodeId, org.apache.thrift.async.AsyncMethodCallback<AsyncClient.deleteSlot_call> resultHandler) throws org.apache.thrift.TException;
+    public void deleteSlot(String queueName, SlotInfo slotInfo, String nodeId,
+                           org.apache.thrift.async.AsyncMethodCallback<AsyncClient.deleteSlot_call> resultHandler) throws org.apache.thrift.TException;
+
+    public void reAssignSlotWhenNoSubscribers(String nodeId, String queueName,
+                                              org.apache.thrift.async.AsyncMethodCallback<AsyncClient.reAssignSlotWhenNoSubscribers_call> resultHandler) throws org.apache.thrift.TException;
 
   }
 
@@ -126,6 +134,27 @@ public class SlotManagementService {
     {
       deleteSlot_result result = new deleteSlot_result();
       receiveBase(result, "deleteSlot");
+      return;
+    }
+
+    public void reAssignSlotWhenNoSubscribers(String nodeId, String queueName) throws org.apache.thrift.TException
+    {
+      send_reAssignSlotWhenNoSubscribers(nodeId, queueName);
+      recv_reAssignSlotWhenNoSubscribers();
+    }
+
+    public void send_reAssignSlotWhenNoSubscribers(String nodeId, String queueName) throws org.apache.thrift.TException
+    {
+      reAssignSlotWhenNoSubscribers_args args = new reAssignSlotWhenNoSubscribers_args();
+      args.setNodeId(nodeId);
+      args.setQueueName(queueName);
+      sendBase("reAssignSlotWhenNoSubscribers", args);
+    }
+
+    public void recv_reAssignSlotWhenNoSubscribers() throws org.apache.thrift.TException
+    {
+      reAssignSlotWhenNoSubscribers_result result = new reAssignSlotWhenNoSubscribers_result();
+      receiveBase(result, "reAssignSlotWhenNoSubscribers");
       return;
     }
 
@@ -255,6 +284,41 @@ public class SlotManagementService {
       }
     }
 
+    public void reAssignSlotWhenNoSubscribers(String nodeId, String queueName, org.apache.thrift.async.AsyncMethodCallback<reAssignSlotWhenNoSubscribers_call> resultHandler) throws org.apache.thrift.TException {
+      checkReady();
+      reAssignSlotWhenNoSubscribers_call method_call = new reAssignSlotWhenNoSubscribers_call(nodeId, queueName, resultHandler, this, ___protocolFactory, ___transport);
+      this.___currentMethod = method_call;
+      ___manager.call(method_call);
+    }
+
+    public static class reAssignSlotWhenNoSubscribers_call extends org.apache.thrift.async.TAsyncMethodCall {
+      private String nodeId;
+      private String queueName;
+      public reAssignSlotWhenNoSubscribers_call(String nodeId, String queueName, org.apache.thrift.async.AsyncMethodCallback<reAssignSlotWhenNoSubscribers_call> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+        super(client, protocolFactory, transport, resultHandler, false);
+        this.nodeId = nodeId;
+        this.queueName = queueName;
+      }
+
+      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
+        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("reAssignSlotWhenNoSubscribers", org.apache.thrift.protocol.TMessageType.CALL, 0));
+        reAssignSlotWhenNoSubscribers_args args = new reAssignSlotWhenNoSubscribers_args();
+        args.setNodeId(nodeId);
+        args.setQueueName(queueName);
+        args.write(prot);
+        prot.writeMessageEnd();
+      }
+
+      public void getResult() throws org.apache.thrift.TException {
+        if (getState() != State.RESPONSE_READ) {
+          throw new IllegalStateException("Method call not finished!");
+        }
+        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        (new Client(prot)).recv_reAssignSlotWhenNoSubscribers();
+      }
+    }
+
   }
 
   public static class Processor<I extends Iface> extends org.apache.thrift.TBaseProcessor implements org.apache.thrift.TProcessor {
@@ -271,6 +335,7 @@ public class SlotManagementService {
       processMap.put("getSlotInfo", new getSlotInfo());
       processMap.put("updateMessageId", new updateMessageId());
       processMap.put("deleteSlot", new deleteSlot());
+      processMap.put("reAssignSlotWhenNoSubscribers", new reAssignSlotWhenNoSubscribers());
       return processMap;
     }
 
@@ -318,6 +383,22 @@ public class SlotManagementService {
       protected deleteSlot_result getResult(I iface, deleteSlot_args args) throws org.apache.thrift.TException {
         deleteSlot_result result = new deleteSlot_result();
         iface.deleteSlot(args.queueName, args.slotInfo, args.nodeId);
+        return result;
+      }
+    }
+
+    private static class reAssignSlotWhenNoSubscribers<I extends Iface> extends org.apache.thrift.ProcessFunction<I, reAssignSlotWhenNoSubscribers_args> {
+      public reAssignSlotWhenNoSubscribers() {
+        super("reAssignSlotWhenNoSubscribers");
+      }
+
+      protected reAssignSlotWhenNoSubscribers_args getEmptyArgsInstance() {
+        return new reAssignSlotWhenNoSubscribers_args();
+      }
+
+      protected reAssignSlotWhenNoSubscribers_result getResult(I iface, reAssignSlotWhenNoSubscribers_args args) throws org.apache.thrift.TException {
+        reAssignSlotWhenNoSubscribers_result result = new reAssignSlotWhenNoSubscribers_result();
+        iface.reAssignSlotWhenNoSubscribers(args.nodeId, args.queueName);
         return result;
       }
     }
@@ -2243,6 +2324,593 @@ public class SlotManagementService {
     @Override
     public String toString() {
       StringBuilder sb = new StringBuilder("deleteSlot_result(");
+      boolean first = true;
+
+      sb.append(")");
+      return sb.toString();
+    }
+
+    public void validate() throws org.apache.thrift.TException {
+      // check for required fields
+    }
+
+    private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
+      try {
+        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (org.apache.thrift.TException te) {
+        throw new java.io.IOException(te);
+      }
+    }
+
+    private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, ClassNotFoundException {
+      try {
+        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (org.apache.thrift.TException te) {
+        throw new java.io.IOException(te);
+      }
+    }
+
+  }
+
+  public static class reAssignSlotWhenNoSubscribers_args implements org.apache.thrift.TBase<reAssignSlotWhenNoSubscribers_args, reAssignSlotWhenNoSubscribers_args._Fields>, java.io.Serializable, Cloneable   {
+    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("reAssignSlotWhenNoSubscribers_args");
+
+    private static final org.apache.thrift.protocol.TField NODE_ID_FIELD_DESC = new org.apache.thrift.protocol.TField("nodeId", org.apache.thrift.protocol.TType.STRING, (short)1);
+    private static final org.apache.thrift.protocol.TField QUEUE_NAME_FIELD_DESC = new org.apache.thrift.protocol.TField("queueName", org.apache.thrift.protocol.TType.STRING, (short)2);
+
+    public String nodeId; // required
+    public String queueName; // required
+
+    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+      NODE_ID((short)1, "nodeId"),
+      QUEUE_NAME((short)2, "queueName");
+
+      private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
+
+      static {
+        for (_Fields field : EnumSet.allOf(_Fields.class)) {
+          byName.put(field.getFieldName(), field);
+        }
+      }
+
+      /**
+       * Find the _Fields constant that matches fieldId, or null if its not found.
+       */
+      public static _Fields findByThriftId(int fieldId) {
+        switch(fieldId) {
+          case 1: // NODE_ID
+            return NODE_ID;
+          case 2: // QUEUE_NAME
+            return QUEUE_NAME;
+          default:
+            return null;
+        }
+      }
+
+      /**
+       * Find the _Fields constant that matches fieldId, throwing an exception
+       * if it is not found.
+       */
+      public static _Fields findByThriftIdOrThrow(int fieldId) {
+        _Fields fields = findByThriftId(fieldId);
+        if (fields == null) throw new IllegalArgumentException("Field " + fieldId + " doesn't exist!");
+        return fields;
+      }
+
+      /**
+       * Find the _Fields constant that matches name, or null if its not found.
+       */
+      public static _Fields findByName(String name) {
+        return byName.get(name);
+      }
+
+      private final short _thriftId;
+      private final String _fieldName;
+
+      _Fields(short thriftId, String fieldName) {
+        _thriftId = thriftId;
+        _fieldName = fieldName;
+      }
+
+      public short getThriftFieldId() {
+        return _thriftId;
+      }
+
+      public String getFieldName() {
+        return _fieldName;
+      }
+    }
+
+    // isset id assignments
+
+    public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    static {
+      Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.NODE_ID, new org.apache.thrift.meta_data.FieldMetaData("nodeId", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
+      tmpMap.put(_Fields.QUEUE_NAME, new org.apache.thrift.meta_data.FieldMetaData("queueName", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
+      metaDataMap = Collections.unmodifiableMap(tmpMap);
+      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(reAssignSlotWhenNoSubscribers_args.class, metaDataMap);
+    }
+
+    public reAssignSlotWhenNoSubscribers_args() {
+    }
+
+    public reAssignSlotWhenNoSubscribers_args(
+      String nodeId,
+      String queueName)
+    {
+      this();
+      this.nodeId = nodeId;
+      this.queueName = queueName;
+    }
+
+    /**
+     * Performs a deep copy on <i>other</i>.
+     */
+    public reAssignSlotWhenNoSubscribers_args(reAssignSlotWhenNoSubscribers_args other) {
+      if (other.isSetNodeId()) {
+        this.nodeId = other.nodeId;
+      }
+      if (other.isSetQueueName()) {
+        this.queueName = other.queueName;
+      }
+    }
+
+    public reAssignSlotWhenNoSubscribers_args deepCopy() {
+      return new reAssignSlotWhenNoSubscribers_args(this);
+    }
+
+    @Override
+    public void clear() {
+      this.nodeId = null;
+      this.queueName = null;
+    }
+
+    public String getNodeId() {
+      return this.nodeId;
+    }
+
+    public reAssignSlotWhenNoSubscribers_args setNodeId(String nodeId) {
+      this.nodeId = nodeId;
+      return this;
+    }
+
+    public void unsetNodeId() {
+      this.nodeId = null;
+    }
+
+    /** Returns true if field nodeId is set (has been assigned a value) and false otherwise */
+    public boolean isSetNodeId() {
+      return this.nodeId != null;
+    }
+
+    public void setNodeIdIsSet(boolean value) {
+      if (!value) {
+        this.nodeId = null;
+      }
+    }
+
+    public String getQueueName() {
+      return this.queueName;
+    }
+
+    public reAssignSlotWhenNoSubscribers_args setQueueName(String queueName) {
+      this.queueName = queueName;
+      return this;
+    }
+
+    public void unsetQueueName() {
+      this.queueName = null;
+    }
+
+    /** Returns true if field queueName is set (has been assigned a value) and false otherwise */
+    public boolean isSetQueueName() {
+      return this.queueName != null;
+    }
+
+    public void setQueueNameIsSet(boolean value) {
+      if (!value) {
+        this.queueName = null;
+      }
+    }
+
+    public void setFieldValue(_Fields field, Object value) {
+      switch (field) {
+      case NODE_ID:
+        if (value == null) {
+          unsetNodeId();
+        } else {
+          setNodeId((String)value);
+        }
+        break;
+
+      case QUEUE_NAME:
+        if (value == null) {
+          unsetQueueName();
+        } else {
+          setQueueName((String)value);
+        }
+        break;
+
+      }
+    }
+
+    public Object getFieldValue(_Fields field) {
+      switch (field) {
+      case NODE_ID:
+        return getNodeId();
+
+      case QUEUE_NAME:
+        return getQueueName();
+
+      }
+      throw new IllegalStateException();
+    }
+
+    /** Returns true if field corresponding to fieldID is set (has been assigned a value) and false otherwise */
+    public boolean isSet(_Fields field) {
+      if (field == null) {
+        throw new IllegalArgumentException();
+      }
+
+      switch (field) {
+      case NODE_ID:
+        return isSetNodeId();
+      case QUEUE_NAME:
+        return isSetQueueName();
+      }
+      throw new IllegalStateException();
+    }
+
+    @Override
+    public boolean equals(Object that) {
+      if (that == null)
+        return false;
+      if (that instanceof reAssignSlotWhenNoSubscribers_args)
+        return this.equals((reAssignSlotWhenNoSubscribers_args)that);
+      return false;
+    }
+
+    public boolean equals(reAssignSlotWhenNoSubscribers_args that) {
+      if (that == null)
+        return false;
+
+      boolean this_present_nodeId = true && this.isSetNodeId();
+      boolean that_present_nodeId = true && that.isSetNodeId();
+      if (this_present_nodeId || that_present_nodeId) {
+        if (!(this_present_nodeId && that_present_nodeId))
+          return false;
+        if (!this.nodeId.equals(that.nodeId))
+          return false;
+      }
+
+      boolean this_present_queueName = true && this.isSetQueueName();
+      boolean that_present_queueName = true && that.isSetQueueName();
+      if (this_present_queueName || that_present_queueName) {
+        if (!(this_present_queueName && that_present_queueName))
+          return false;
+        if (!this.queueName.equals(that.queueName))
+          return false;
+      }
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      return 0;
+    }
+
+    public int compareTo(reAssignSlotWhenNoSubscribers_args other) {
+      if (!getClass().equals(other.getClass())) {
+        return getClass().getName().compareTo(other.getClass().getName());
+      }
+
+      int lastComparison = 0;
+      reAssignSlotWhenNoSubscribers_args typedOther = (reAssignSlotWhenNoSubscribers_args)other;
+
+      lastComparison = Boolean.valueOf(isSetNodeId()).compareTo(typedOther.isSetNodeId());
+      if (lastComparison != 0) {
+        return lastComparison;
+      }
+      if (isSetNodeId()) {
+        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.nodeId, typedOther.nodeId);
+        if (lastComparison != 0) {
+          return lastComparison;
+        }
+      }
+      lastComparison = Boolean.valueOf(isSetQueueName()).compareTo(typedOther.isSetQueueName());
+      if (lastComparison != 0) {
+        return lastComparison;
+      }
+      if (isSetQueueName()) {
+        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.queueName, typedOther.queueName);
+        if (lastComparison != 0) {
+          return lastComparison;
+        }
+      }
+      return 0;
+    }
+
+    public _Fields fieldForId(int fieldId) {
+      return _Fields.findByThriftId(fieldId);
+    }
+
+    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+      org.apache.thrift.protocol.TField field;
+      iprot.readStructBegin();
+      while (true)
+      {
+        field = iprot.readFieldBegin();
+        if (field.type == org.apache.thrift.protocol.TType.STOP) { 
+          break;
+        }
+        switch (field.id) {
+          case 1: // NODE_ID
+            if (field.type == org.apache.thrift.protocol.TType.STRING) {
+              this.nodeId = iprot.readString();
+            } else { 
+              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
+            }
+            break;
+          case 2: // QUEUE_NAME
+            if (field.type == org.apache.thrift.protocol.TType.STRING) {
+              this.queueName = iprot.readString();
+            } else { 
+              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
+            }
+            break;
+          default:
+            org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
+        }
+        iprot.readFieldEnd();
+      }
+      iprot.readStructEnd();
+
+      // check for required fields of primitive type, which can't be checked in the validate method
+      validate();
+    }
+
+    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+      validate();
+
+      oprot.writeStructBegin(STRUCT_DESC);
+      if (this.nodeId != null) {
+        oprot.writeFieldBegin(NODE_ID_FIELD_DESC);
+        oprot.writeString(this.nodeId);
+        oprot.writeFieldEnd();
+      }
+      if (this.queueName != null) {
+        oprot.writeFieldBegin(QUEUE_NAME_FIELD_DESC);
+        oprot.writeString(this.queueName);
+        oprot.writeFieldEnd();
+      }
+      oprot.writeFieldStop();
+      oprot.writeStructEnd();
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder sb = new StringBuilder("reAssignSlotWhenNoSubscribers_args(");
+      boolean first = true;
+
+      sb.append("nodeId:");
+      if (this.nodeId == null) {
+        sb.append("null");
+      } else {
+        sb.append(this.nodeId);
+      }
+      first = false;
+      if (!first) sb.append(", ");
+      sb.append("queueName:");
+      if (this.queueName == null) {
+        sb.append("null");
+      } else {
+        sb.append(this.queueName);
+      }
+      first = false;
+      sb.append(")");
+      return sb.toString();
+    }
+
+    public void validate() throws org.apache.thrift.TException {
+      // check for required fields
+    }
+
+    private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
+      try {
+        write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
+      } catch (org.apache.thrift.TException te) {
+        throw new java.io.IOException(te);
+      }
+    }
+
+    private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, ClassNotFoundException {
+      try {
+        read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
+      } catch (org.apache.thrift.TException te) {
+        throw new java.io.IOException(te);
+      }
+    }
+
+  }
+
+  public static class reAssignSlotWhenNoSubscribers_result implements org.apache.thrift.TBase<reAssignSlotWhenNoSubscribers_result, reAssignSlotWhenNoSubscribers_result._Fields>, java.io.Serializable, Cloneable   {
+    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("reAssignSlotWhenNoSubscribers_result");
+
+
+
+    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+;
+
+      private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
+
+      static {
+        for (_Fields field : EnumSet.allOf(_Fields.class)) {
+          byName.put(field.getFieldName(), field);
+        }
+      }
+
+      /**
+       * Find the _Fields constant that matches fieldId, or null if its not found.
+       */
+      public static _Fields findByThriftId(int fieldId) {
+        switch(fieldId) {
+          default:
+            return null;
+        }
+      }
+
+      /**
+       * Find the _Fields constant that matches fieldId, throwing an exception
+       * if it is not found.
+       */
+      public static _Fields findByThriftIdOrThrow(int fieldId) {
+        _Fields fields = findByThriftId(fieldId);
+        if (fields == null) throw new IllegalArgumentException("Field " + fieldId + " doesn't exist!");
+        return fields;
+      }
+
+      /**
+       * Find the _Fields constant that matches name, or null if its not found.
+       */
+      public static _Fields findByName(String name) {
+        return byName.get(name);
+      }
+
+      private final short _thriftId;
+      private final String _fieldName;
+
+      _Fields(short thriftId, String fieldName) {
+        _thriftId = thriftId;
+        _fieldName = fieldName;
+      }
+
+      public short getThriftFieldId() {
+        return _thriftId;
+      }
+
+      public String getFieldName() {
+        return _fieldName;
+      }
+    }
+    public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    static {
+      Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      metaDataMap = Collections.unmodifiableMap(tmpMap);
+      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(reAssignSlotWhenNoSubscribers_result.class, metaDataMap);
+    }
+
+    public reAssignSlotWhenNoSubscribers_result() {
+    }
+
+    /**
+     * Performs a deep copy on <i>other</i>.
+     */
+    public reAssignSlotWhenNoSubscribers_result(reAssignSlotWhenNoSubscribers_result other) {
+    }
+
+    public reAssignSlotWhenNoSubscribers_result deepCopy() {
+      return new reAssignSlotWhenNoSubscribers_result(this);
+    }
+
+    @Override
+    public void clear() {
+    }
+
+    public void setFieldValue(_Fields field, Object value) {
+      switch (field) {
+      }
+    }
+
+    public Object getFieldValue(_Fields field) {
+      switch (field) {
+      }
+      throw new IllegalStateException();
+    }
+
+    /** Returns true if field corresponding to fieldID is set (has been assigned a value) and false otherwise */
+    public boolean isSet(_Fields field) {
+      if (field == null) {
+        throw new IllegalArgumentException();
+      }
+
+      switch (field) {
+      }
+      throw new IllegalStateException();
+    }
+
+    @Override
+    public boolean equals(Object that) {
+      if (that == null)
+        return false;
+      if (that instanceof reAssignSlotWhenNoSubscribers_result)
+        return this.equals((reAssignSlotWhenNoSubscribers_result)that);
+      return false;
+    }
+
+    public boolean equals(reAssignSlotWhenNoSubscribers_result that) {
+      if (that == null)
+        return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      return 0;
+    }
+
+    public int compareTo(reAssignSlotWhenNoSubscribers_result other) {
+      if (!getClass().equals(other.getClass())) {
+        return getClass().getName().compareTo(other.getClass().getName());
+      }
+
+      int lastComparison = 0;
+      reAssignSlotWhenNoSubscribers_result typedOther = (reAssignSlotWhenNoSubscribers_result)other;
+
+      return 0;
+    }
+
+    public _Fields fieldForId(int fieldId) {
+      return _Fields.findByThriftId(fieldId);
+    }
+
+    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+      org.apache.thrift.protocol.TField field;
+      iprot.readStructBegin();
+      while (true)
+      {
+        field = iprot.readFieldBegin();
+        if (field.type == org.apache.thrift.protocol.TType.STOP) { 
+          break;
+        }
+        switch (field.id) {
+          default:
+            org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
+        }
+        iprot.readFieldEnd();
+      }
+      iprot.readStructEnd();
+
+      // check for required fields of primitive type, which can't be checked in the validate method
+      validate();
+    }
+
+    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+      oprot.writeStructBegin(STRUCT_DESC);
+
+      oprot.writeFieldStop();
+      oprot.writeStructEnd();
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder sb = new StringBuilder("reAssignSlotWhenNoSubscribers_result(");
       boolean first = true;
 
       sb.append(")");

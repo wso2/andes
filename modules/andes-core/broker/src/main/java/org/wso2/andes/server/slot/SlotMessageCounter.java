@@ -61,12 +61,16 @@ public class SlotMessageCounter {
         submitSlotToCoordinatorTimer.scheduleAtFixedRate(new TimerTask() {
             public void run() {
                 for (Map.Entry<String, Long> entry : slotTimeOutMap.entrySet()) {
-                    if ((System.currentTimeMillis() - entry.getValue()) > timeOutForMessagesInQueue) {
+                    if ((System.currentTimeMillis() - entry
+                            .getValue()) > timeOutForMessagesInQueue) {
                         try {
                             submitSlot(entry.getKey());
                         } catch (AndesException e) {
-                            //we do not do anything here since this thread will be run every 3 seconds
-                            log.error("Error occurred while connecting to the thrift coordinator " + e.getMessage(), e);
+                            //we do not do anything here since this thread will be run every 3
+                            // seconds
+                            log.error(
+                                    "Error occurred while connecting to the thrift coordinator " + e
+                                            .getMessage(), e);
                         }
                     }
                 }
@@ -77,7 +81,8 @@ public class SlotMessageCounter {
     /**
      * Record metadata count in the slot so far
      *
-     * @param metadataList metadata list to be record
+     * @param metadataList
+     *         metadata list to be record
      */
     public void recordMetaDataCountInSlot(List<AndesMessageMetadata> metadataList) {
         //if metadata list is null this method is called from time out thread
@@ -92,8 +97,10 @@ public class SlotMessageCounter {
                 try {
                     submitSlot(queueName);
                 } catch (AndesException e) {
-                    //we do not do anything here since this operation will be run by timeout thread also
-                    log.error("Error occurred while connecting to the thrift coordinator " + e.getMessage(), e);
+                    //we do not do anything here since this operation will be run by timeout
+                    // thread also
+                    log.error("Error occurred while connecting to the thrift coordinator " + e
+                            .getMessage(), e);
                 }
             }
         }
@@ -137,9 +144,11 @@ public class SlotMessageCounter {
                 slotTimeOutMap.remove(queueName);
 
             } catch (TException e) {
-                //we only reset the mbThrift client here since this thread will be run every 3 seconds
+                //we only reset the mbThrift client here since this thread will be run every 3
+                // seconds
                 MBThriftUtils.resetMBThriftClient();
-                log.error("Error occurred while connecting to the thrift coordinator " + e.getMessage(), e);
+                log.error("Error occurred while connecting to the thrift coordinator " + e
+                        .getMessage(), e);
 
             }
         }

@@ -25,6 +25,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.common.AMQPFilterTypes;
 import org.wso2.andes.common.ClientProperties;
 import org.wso2.andes.framing.AMQShortString;
@@ -681,12 +682,13 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
 
     public void onDequeue(final QueueEntry queueEntry) {
         restoreCredit(queueEntry);
-        try {
-            MessagingEngine.getInstance().ackReceived(new AndesAckData(queueEntry.getMessage().getMessageNumber(),
-                    queueEntry.getQueue().getName(),queueEntry.getQueue().checkIfBoundToTopicExchange()));
-        } catch (AndesException e) {
-            log.error("Error while handling the acknowledgement for messageID " + queueEntry.getMessage().getMessageNumber());
-        }
+        /**
+         * When the message is acknowledged it is informed to Andes Kernel
+         */
+        QpidAMQPBridge.getInstance().ackReceived(queueEntry.getMessage().getMessageNumber(),
+                                                 queueEntry.getQueue().getName(),
+                                                 queueEntry.getQueue()
+                                                           .checkIfBoundToTopicExchange());
     }
 
     public void restoreCredit(final QueueEntry queueEntry)
