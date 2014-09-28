@@ -53,6 +53,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         datasource = null;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public DurableStoreConnection init(ConfigurationProperties connectionProperties) throws
                                                                                      AndesException {
@@ -63,6 +66,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         return jdbcConnection;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Map<String, List<String>> getAllStoredDurableSubscriptions() throws AndesException {
         Connection connection = null;
@@ -102,6 +108,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void storeDurableSubscription(String destinationIdentifier, String subscriptionID,
                                          String subscriptionEncodeAsStr) throws AndesException {
@@ -135,6 +144,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void removeDurableSubscription(String destinationIdentifier, String subscriptionID)
             throws AndesException {
@@ -166,6 +178,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void storeNodeDetails(String nodeID, String data) throws AndesException {
         Connection connection = null;
@@ -194,6 +209,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Map<String, String> getAllStoredNodeData() throws AndesException {
         Connection connection = null;
@@ -224,6 +242,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void removeNodeData(String nodeID) throws AndesException {
         Connection connection = null;
@@ -249,6 +270,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void addMessageCounterForQueue(String destinationQueueName) throws AndesException {
         // todo: no counters needed in JDBC.
@@ -257,6 +281,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
 
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public long getMessageCountForQueue(String destinationQueueName) throws AndesException {
         // todo: no counters needed in JDBC
@@ -265,6 +292,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         return 0;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void removeMessageCounterForQueue(String destinationQueueName) throws AndesException {
         // todo: no counters needed in JDBC
@@ -272,6 +302,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         // message count for queues?
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void storeExchangeInformation(String exchangeName, String exchangeInfo)
             throws AndesException {
@@ -338,6 +371,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<AndesExchange> getAllExchangesStored() throws AndesException {
         Connection connection = null;
@@ -369,6 +405,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void deleteExchangeInformation(String exchangeName) throws AndesException {
         Connection connection = null;
@@ -395,6 +434,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
 
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void storeQueueInformation(String queueName, String queueInfo) throws AndesException {
         Connection connection = null;
@@ -420,6 +462,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<AndesQueue> getAllQueuesStored() throws AndesException {
         Connection connection = null;
@@ -450,6 +495,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void deleteQueueInformation(String queueName) throws AndesException {
         Connection connection = null;
@@ -476,6 +524,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void storeBindingInformation(String exchange, String boundQueueName, String bindingInfo)
             throws AndesException {
@@ -506,6 +557,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<AndesBinding> getBindingsStoredForExchange(String exchangeName)
             throws AndesException {
@@ -540,6 +594,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void deleteBindingInformation(String exchangeName, String boundQueueName)
             throws AndesException {
@@ -566,6 +623,9 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void close() {
         // nothing to do here.

@@ -68,9 +68,13 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         contentRemovalScheduler = Executors.newScheduledThreadPool(threadPoolCount);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public DurableStoreConnection initializeMessageStore(ConfigurationProperties
-                                                       connectionProperties) throws AndesException {
+                                                                 connectionProperties)
+            throws AndesException {
 
         JDBCConnection jdbcConnection = new JDBCConnection();
         // read data source name from config and use
@@ -84,9 +88,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
 //                ClusterResourceHolder.getInstance().getClusterConfiguration()
 //                        .getContentRemovalTaskInterval();
         contentRemovalScheduler.scheduleAtFixedRate(messageContentRemoverTask,
-                schedulerPeriod,
-                schedulerPeriod,
-                TimeUnit.SECONDS);
+                                                    schedulerPeriod,
+                                                    schedulerPeriod,
+                                                    TimeUnit.SECONDS);
 
         return jdbcConnection;
     }
@@ -163,6 +167,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException {
         Connection connection = null;
@@ -191,6 +198,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void deleteMessageParts(List<Long> messageIdList) throws AndesException {
 
@@ -215,6 +225,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
 
@@ -239,7 +252,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
             }
         } catch (SQLException e) {
             throw new AndesException("Error occurred while retrieving message content from DB" +
-                    " [msg_id=" + messageId + "]", e);
+                                     " [msg_id=" + messageId + "]", e);
         } finally {
             close(results, JDBCConstants.TASK_RETRIEVING_MESSAGE_PARTS);
             close(preparedStatement, JDBCConstants.TASK_RETRIEVING_MESSAGE_PARTS);
@@ -248,6 +261,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         return messagePart;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void ackReceived(List<AndesAckData> ackList) throws AndesException {
         List<AndesRemovableMetadata> messagesAddressedToQueues = new ArrayList<AndesRemovableMetadata>();
@@ -262,11 +278,13 @@ public class H2BasedMessageStoreImpl implements MessageStore {
                 //schedule to remove queue and topic message content
                 long timeGapConfigured = ClusterResourceHolder.getInstance().
                         getClusterConfiguration().getPubSubMessageRemovalTaskInterval() * 1000000;
-                messageContentRemoverTask.put(System.nanoTime() + timeGapConfigured, ackData.messageID);
+                messageContentRemoverTask
+                        .put(System.nanoTime() + timeGapConfigured, ackData.messageID);
 
             } else {
                 messagesAddressedToQueues.add(ackData.convertToRemovableMetaData());
-                OnflightMessageTracker onflightMessageTracker = OnflightMessageTracker.getInstance();
+                OnflightMessageTracker onflightMessageTracker = OnflightMessageTracker
+                        .getInstance();
                 onflightMessageTracker.updateDeliveredButNotAckedMessages(ackData.messageID);
 
                 //schedule to remove queue and topic message content
@@ -283,9 +301,13 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         //remove topic message metadata now
         deleteMessages(messagesAddressedToTopics, false);
 
-        deleteMessagesFromExpiryQueue(messageIds); // hasithad This cant be done here cos topic delivery logic comes here before a delivery :(
+        deleteMessagesFromExpiryQueue(
+                messageIds); // hasithad This cant be done here cos topic delivery logic comes here before a delivery :(
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException {
 
@@ -316,6 +338,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void addMetaData(AndesMessageMetadata metadata) throws AndesException {
 
@@ -335,19 +360,24 @@ public class H2BasedMessageStoreImpl implements MessageStore {
 
             if (logger.isDebugEnabled()) {
                 logger.debug("Metadata added: msgID: " + metadata.getMessageID() +
-                        " Destination: " + metadata.getDestination());
+                             " Destination: " + metadata.getDestination());
             }
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_ADDING_METADATA);
-            throw new AndesException("Error occurred while inserting message metadata to queue ", e);
+            throw new AndesException("Error occurred while inserting message metadata to queue ",
+                                     e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_ADDING_METADATA);
             close(connection, JDBCConstants.TASK_ADDING_METADATA);
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void addMetaDataToQueue(String queueName, AndesMessageMetadata metadata) throws AndesException {
+    public void addMetaDataToQueue(String queueName, AndesMessageMetadata metadata)
+            throws AndesException {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -365,15 +395,20 @@ public class H2BasedMessageStoreImpl implements MessageStore {
             connection.commit();
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_ADDING_METADATA_TO_QUEUE + queueName);
-            throw new AndesException("Error occurred while inserting message metadata to queue " + queueName, e);
+            throw new AndesException(
+                    "Error occurred while inserting message metadata to queue " + queueName, e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_ADDING_METADATA_TO_QUEUE + queueName);
             close(connection, JDBCConstants.TASK_ADDING_METADATA_TO_QUEUE + queueName);
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void addMetadataToQueue(String queueName, List<AndesMessageMetadata> metadataList) throws AndesException {
+    public void addMetadataToQueue(String queueName, List<AndesMessageMetadata> metadataList)
+            throws AndesException {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -393,7 +428,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
             connection.commit();
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
-            throw new AndesException("Error occurred while inserting message metadata list to queue " + queueName, e);
+            throw new AndesException(
+                    "Error occurred while inserting message metadata list to queue " + queueName,
+                    e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
             close(connection, JDBCConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
@@ -447,6 +484,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         preparedStatement.addBatch();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public long getMessageCountForQueue(final String destinationQueueName) throws AndesException {
 
@@ -456,7 +496,8 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         ResultSet results = null;
         try {
             connection = getConnection();
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_QUEUE_MESSAGE_COUNT);
+            preparedStatement = connection
+                    .prepareStatement(JDBCConstants.PS_SELECT_QUEUE_MESSAGE_COUNT);
             preparedStatement.setInt(1, getCachedQueueID(destinationQueueName));
 
             results = preparedStatement.executeQuery();
@@ -474,6 +515,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         return count;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public AndesMessageMetadata getMetaData(long messageId) throws AndesException {
         AndesMessageMetadata md = null;
@@ -491,7 +535,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
             }
         } catch (SQLException e) {
             throw new AndesException("error occurred while retrieving message " +
-                    "metadata for msg id:" + messageId, e);
+                                     "metadata for msg id:" + messageId, e);
         } finally {
             String task = JDBCConstants.TASK_RETRIEVING_METADATA + messageId;
             close(results, task);
@@ -501,6 +545,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         return md;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<AndesMessageMetadata> getMetaDataList(final String queueName, long firstMsgId,
                                                       long lastMsgID) throws AndesException {
@@ -511,7 +558,8 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         ResultSet resultSet = null;
         try {
             connection = getConnection();
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_METADATA_RANGE_FROM_QUEUE);
+            preparedStatement = connection
+                    .prepareStatement(JDBCConstants.PS_SELECT_METADATA_RANGE_FROM_QUEUE);
             preparedStatement.setInt(1, getCachedQueueID(queueName));
             preparedStatement.setLong(2, firstMsgId);
             preparedStatement.setLong(3, lastMsgID);
@@ -527,12 +575,14 @@ public class H2BasedMessageStoreImpl implements MessageStore {
             }
             if (logger.isDebugEnabled()) {
                 logger.debug("request: metadata range (" + firstMsgId + " , " + lastMsgID +
-                        ") in destination queue " + queueName
-                        + "\nresponse: metadata count " + metadataList.size());
+                             ") in destination queue " + queueName
+                             + "\nresponse: metadata count " + metadataList.size());
             }
         } catch (SQLException e) {
             throw new AndesException("Error occurred while retrieving messages between msg id "
-                    + firstMsgId + " and " + lastMsgID + " from queue " + queueName, e);
+                                     + firstMsgId + " and " + lastMsgID + " from queue " + queueName,
+
+                                     e);
         } finally {
             String task = JDBCConstants.TASK_RETRIEVING_METADATA_RANGE_FROM_QUEUE + queueName;
             close(resultSet, task);
@@ -542,9 +592,13 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         return metadataList;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName,
-                                                                       long firstMsgId, int count) throws AndesException {
+                                                                       long firstMsgId, int count)
+            throws AndesException {
 
         List<AndesMessageMetadata> mdList = new ArrayList<AndesMessageMetadata>(count);
         Connection connection = null;
@@ -552,7 +606,8 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         ResultSet results = null;
         try {
             connection = getConnection();
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_METADATA_FROM_QUEUE);
+            preparedStatement = connection
+                    .prepareStatement(JDBCConstants.PS_SELECT_METADATA_FROM_QUEUE);
             preparedStatement.setLong(1, firstMsgId - 1);
             preparedStatement.setInt(2, getCachedQueueID(queueName));
 
@@ -573,7 +628,8 @@ public class H2BasedMessageStoreImpl implements MessageStore {
                 resultCount++;
             }
         } catch (SQLException e) {
-            throw new AndesException("error occurred while retrieving message metadata from queue ", e);
+            throw new AndesException("error occurred while retrieving message metadata from queue ",
+                                     e);
         } finally {
             close(results, JDBCConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
             close(preparedStatement, JDBCConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
@@ -582,8 +638,12 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         return mdList;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
+    public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove,
+                               boolean moveToDeadLetterChannel) throws AndesException {
 
         // todo: update when DLC implementation is ported to 3.0.0
 
@@ -627,8 +687,13 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void deleteMessageMetadataFromQueue(final String queueName, List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
+    public void deleteMessageMetadataFromQueue(final String queueName,
+                                               List<AndesRemovableMetadata> messagesToRemove)
+            throws AndesException {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -637,7 +702,8 @@ public class H2BasedMessageStoreImpl implements MessageStore {
 
             connection = getConnection();
             connection.setAutoCommit(false);
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_DELETE_METADATA_FROM_QUEUE);
+            preparedStatement = connection
+                    .prepareStatement(JDBCConstants.PS_DELETE_METADATA_FROM_QUEUE);
             for (AndesRemovableMetadata md : messagesToRemove) {
                 preparedStatement.setInt(1, queueID);
                 preparedStatement.setLong(2, md.messageID);
@@ -647,12 +713,14 @@ public class H2BasedMessageStoreImpl implements MessageStore {
             connection.commit();
 
             if (logger.isDebugEnabled()) {
-                logger.debug("Metadata removed. " + messagesToRemove.size() + " metadata from destination "
-                        + queueName);
+                logger.debug("Metadata removed. " + messagesToRemove
+                        .size() + " metadata from destination "
+                             + queueName);
             }
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_DELETING_METADATA_FROM_QUEUE + queueName);
-            throw new AndesException("error occurred while deleting message metadata from queue ", e);
+            throw new AndesException("error occurred while deleting message metadata from queue ",
+                                     e);
         } finally {
             String task = JDBCConstants.TASK_DELETING_METADATA_FROM_QUEUE + queueName;
             close(preparedStatement, task);
@@ -660,6 +728,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException {
 
@@ -672,7 +743,8 @@ public class H2BasedMessageStoreImpl implements MessageStore {
             connection = getConnection();
 
             // get expired message list
-            PreparedStatement prepareStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_EXPIRED_MESSAGES);
+            PreparedStatement prepareStatement = connection
+                    .prepareStatement(JDBCConstants.PS_SELECT_EXPIRED_MESSAGES);
             resultSet = prepareStatement.executeQuery();
             int resultCount = 0;
             while (resultSet.next()) {
@@ -681,9 +753,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
                     break;
                 }
                 list.add(new AndesRemovableMetadata(
-                                resultSet.getLong(JDBCConstants.MESSAGE_ID),
-                                resultSet.getString(JDBCConstants.DESTINATION_QUEUE)
-                        )
+                                 resultSet.getLong(JDBCConstants.MESSAGE_ID),
+                                 resultSet.getString(JDBCConstants.DESTINATION_QUEUE)
+                         )
                 );
                 resultCount++;
             }
@@ -698,6 +770,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void close() {
         try {
@@ -733,6 +808,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     }
 
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException {
         Connection connection = null;
@@ -751,7 +829,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_DELETING_FROM_EXPIRY_TABLE);
             throw new AndesException("error occurred while deleting message metadata " +
-                    "from expiration table ", e);
+                                     "from expiration table ", e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_DELETING_FROM_EXPIRY_TABLE);
             close(connection, JDBCConstants.TASK_DELETING_FROM_EXPIRY_TABLE);
