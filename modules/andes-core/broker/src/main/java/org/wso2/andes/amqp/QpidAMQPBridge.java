@@ -422,7 +422,7 @@ public class QpidAMQPBridge {
                     }
                 }
             } catch (AndesException e) {
-                log.warn("Reverting already created subscription entries for this subscription");
+                log.warn("Reverting already created subscription entries for this subscription", e);
                 for (AndesBinding b : uniqueBindings) {
                     for (Binding qpidBinding : bindingList) {
                         if (qpidBinding.getQueue().getName().equals(b.boundQueue.queueName) &&

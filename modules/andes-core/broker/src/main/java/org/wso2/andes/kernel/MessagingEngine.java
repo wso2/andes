@@ -23,9 +23,10 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
+import org.wso2.andes.kernel.storemanager.MessageStoreManagerFactory;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.store.cassandra.CQLBasedMessageStoreImpl;
-import org.wso2.andes.store.jdbc.H2BasedMessageStoreImpl;
+import org.wso2.andes.store.jdbc.JDBCMessageStoreImpl;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
@@ -36,11 +37,8 @@ import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.wso2.andes.server.util.AndesConstants;
-import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.store.jdbc.JDBCConnection;
-import org.wso2.andes.store.jdbc.JDBCConstants;
 import org.wso2.andes.subscription.SubscriptionStore;
-import org.wso2.andes.tools.utils.DisruptorBasedExecutor;
 
 
 /**
@@ -51,10 +49,15 @@ public class MessagingEngine {
     private static MessagingEngine messagingEngine;
     private MessageStore durableMessageStore;
     private MessageStore inMemoryMessageStore;
-    private DisruptorBasedExecutor disruptorBasedExecutor;
     private SubscriptionStore subscriptionStore;
     private MessageIdGenerator messageIdGenerator;
     private ClusterConfiguration config;
+
+    /**
+     * Manages how the message content is persisted. Eg in async mode or stored in memory etc
+     * Underlying implementation of this interface handles the logic
+     */
+    private MessageStoreManager messageStoreManager;
 
     private MessagingEngine() {
     }
@@ -82,29 +85,24 @@ public class MessagingEngine {
 
     public void initialise(MessageStore messageStore) throws AndesException {
 
-        if (AndesContext.getInstance().isClusteringEnabled()) {
-            // clustered mode
-
-        } else {
-            // in single node mode
-        }
-
         config = ClusterResourceHolder.getInstance().getClusterConfiguration();
         configureMessageIDGenerator();
 
         try {
+            messageStoreManager = MessageStoreManagerFactory.create(messageStore);
+
+            // todo: These message store references need to be removed. Message stores need to be
+            // accessed via MessageStoreManager
             durableMessageStore = messageStore;
             subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
 
             // in memory message store
-            inMemoryMessageStore = new H2BasedMessageStoreImpl();
+            inMemoryMessageStore = new JDBCMessageStoreImpl();
             inMemoryMessageStore
                     .initializeMessageStore(JDBCConnection.getInMemoryConnectionProperties());
-            disruptorBasedExecutor = new DisruptorBasedExecutor(durableMessageStore, null);
 
         } catch (Exception e) {
-            log.error("Cannot initialize message store", e);
-            throw new AndesException(e);
+            throw new AndesException("Cannot initialize message store", e);
         }
     }
 
@@ -113,7 +111,12 @@ public class MessagingEngine {
     }
 
     public void messageContentReceived(AndesMessagePart part) {
-        disruptorBasedExecutor.messagePartReceived(part);
+        try {
+            messageStoreManager.storeMessageContent(part);
+        } catch (AndesException e) {
+            log.error("Error occurred while storing message content. message id: " +
+                      part.getMessageID(), e);
+        }
     }
 
     public AndesMessagePart getMessageContentChunk(long messageID, int offsetInMessage) throws AndesException{
@@ -148,11 +151,9 @@ public class MessagingEngine {
                 boolean hasNonDurableSubscriptions = false;
                 for (AndesSubscription subscriberQueue : subscriptionList) {
                     if (subscriberQueue.isDurable()) {
-                        /**
-                         * If message is durable, we clone the message (if there is more than one
-                         * subscription) and send them to a queue created for with the name of the
-                         * Subscription ID by writing it to the global queue.
-                         */
+                        // If message is durable, we clone the message (if there is more than one
+                        // subscription) and send them to a queue created for with the name of the
+                        // Subscription ID by writing it to the global queue.
                         message.setDestination(subscriberQueue.getTargetQueue());
                         AndesMessageMetadata clone;
                         if (!originalMessageUsed) {
@@ -164,22 +165,16 @@ public class MessagingEngine {
                         //We must update the routing key in metadata as well
                         clone.updateMetadata(subscriberQueue.getTargetQueue());
 
-                        String globalQueueName = AndesUtils
-                                .getGlobalQueueNameForDestinationQueue(clone.getDestination());
-                        QueueAddress globalQueueAddress = new QueueAddress(
-                                QueueAddress.QueueType.GLOBAL_QUEUE, globalQueueName);
-                        sendMessageToMessageStore(globalQueueAddress, clone, channelID);
+                        messageStoreManager.storeMetadata(message, channelID);
                     } else {
                         hasNonDurableSubscriptions = true;
                     }
                 }
 
                 if (hasNonDurableSubscriptions) {
-                    /**
-                     * If there are non durable subscriptions, we write it to each node where
-                     * there is a subscription. Here we collect all nodes to which we need to
-                     * write to.
-                     */
+                    // If there are non durable subscriptions, we write it to each node where
+                    // there is a subscription. Here we collect all nodes to which we need to
+                    // write to.
                     targetAndesNodeSet = subscriptionStore
                             .getNodeQueuesHavingSubscriptionsForTopic(message.getDestination());
                     for (String hostId : targetAndesNodeSet) {
@@ -190,18 +185,11 @@ public class MessagingEngine {
                         } else {
                             clone = message.deepClone(messageIdGenerator.getNextId());
                         }
-                        QueueAddress globalQueueAddress = new QueueAddress(
-                                QueueAddress.QueueType.TOPIC_NODE_QUEUE, hostId);
-                        sendMessageToMessageStore(globalQueueAddress, clone, channelID);
+                        messageStoreManager.storeMetadata(message, channelID);
                     }
                 }
             } else {
-                //If Queue, we write the message to Global Queue
-                String globalQueueName = AndesUtils
-                        .getGlobalQueueNameForDestinationQueue(message.getDestination());
-                QueueAddress globalQueueAddress = new QueueAddress(
-                        QueueAddress.QueueType.GLOBAL_QUEUE, globalQueueName);
-                sendMessageToMessageStore(globalQueueAddress, message, channelID);
+                messageStoreManager.storeMetadata(message, channelID);
             }
         } catch (Exception e) {
             throw new AndesException("Error in storing the message to the store", e);
@@ -212,14 +200,8 @@ public class MessagingEngine {
         return durableMessageStore.getMetaData(messageID);
     }
 
-    public void ackReceived(AndesAckData ack) throws AndesException {
-        if (config.isInMemoryMode()) {
-            List<AndesAckData> ackData = new ArrayList<AndesAckData>();
-            ackData.add(ack);
-            inMemoryMessageStore.ackReceived(ackData);
-        } else {
-            disruptorBasedExecutor.ackReceived(ack);
-        }
+    public void ackReceived(AndesAckData ackData) throws AndesException {
+        messageStoreManager.ackReceived(ackData);
     }
 
     public void messageReturned(List<AndesAckData> ackList) {
@@ -293,27 +275,14 @@ public class MessagingEngine {
         return messageIdGenerator.getNextId();
     }
 
-    private void sendMessageToMessageStore(QueueAddress queueAdr, AndesMessageMetadata message,
-                                           long channelID) throws AndesException {
-        if (message.isPersistent()) {
-            disruptorBasedExecutor.messageCompleted(queueAdr, message, channelID);
-        } else {
-            //TODO stop creating this list
-            List<AndesMessageMetadata> list = new ArrayList<AndesMessageMetadata>(1);
-            list.add(message);
-            inMemoryMessageStore.addMessageMetaData(queueAdr, list);
-        }
-    }
-
     private AndesMessageMetadata cloneAndesMessageMetadataAndContent(AndesMessageMetadata message
-                                                                            ) throws AndesException {
+    ) throws AndesException {
         long newMessageId = messageIdGenerator.getNextId();
         AndesMessageMetadata clone = message.deepClone(newMessageId);
 
         //duplicate message content
         ((CQLBasedMessageStoreImpl) durableMessageStore)
                 .duplicateMessageContent(message.getMessageID(), newMessageId);
-        // get
 
         return clone;
 

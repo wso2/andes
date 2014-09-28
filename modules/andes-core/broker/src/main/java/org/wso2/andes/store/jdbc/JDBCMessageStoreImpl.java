@@ -36,12 +36,12 @@ import java.util.Map;
 import java.util.concurrent.*;
 
 /**
- * H2 based message store implementation. This can be initialised in either
- * in memory mode, embedded mode or server mode.
+ * ANSI SQL based message store implementation. Message persistence related methods are
+ * implemented in this class.
  */
-public class H2BasedMessageStoreImpl implements MessageStore {
+public class JDBCMessageStoreImpl implements MessageStore {
 
-    private static final Logger logger = Logger.getLogger(H2BasedMessageStoreImpl.class);
+    private static final Logger logger = Logger.getLogger(JDBCMessageStoreImpl.class);
     /**
      * Cache queue name to queue_id mapping to avoid extra sql queries
      */
@@ -55,14 +55,14 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     /**
      * Message content remover task thread
      */
-    MessageContentRemoverTask messageContentRemoverTask;
+    private MessageContentRemoverTask messageContentRemoverTask;
 
     /**
      * Scheduled Executor Service to run the message content remover task
      */
-    private ScheduledExecutorService contentRemovalScheduler;
+    private final ScheduledExecutorService contentRemovalScheduler;
 
-    public H2BasedMessageStoreImpl() {
+    public JDBCMessageStoreImpl() {
         queueMap = new ConcurrentHashMap<String, Integer>();
         int threadPoolCount = 1;
         contentRemovalScheduler = Executors.newScheduledThreadPool(threadPoolCount);
@@ -84,64 +84,51 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         // start periodic message removal task
         messageContentRemoverTask = new MessageContentRemoverTask(this, jdbcConnection);
 
-        int schedulerPeriod = 5;
-//                ClusterResourceHolder.getInstance().getClusterConfiguration()
-//                        .getContentRemovalTaskInterval();
+        int schedulerPeriod = ClusterResourceHolder.getInstance().getClusterConfiguration()
+                        .getContentRemovalTaskInterval();
         contentRemovalScheduler.scheduleAtFixedRate(messageContentRemoverTask,
                                                     schedulerPeriod,
                                                     schedulerPeriod,
                                                     TimeUnit.SECONDS);
 
+        if (isCreateTables(connectionProperties)) {
+            logger.info("Creating database tables if not present in database");
+            createTables();
+        }
         return jdbcConnection;
     }
 
     /**
-     * This method creates all the DB tables used by this Message Store implementation
-     * NOTE: This method is to create tables in memory mode.
-     * For persistence mode need to setup tables using -Dsetup
+     * Check whether to create tables at message store startup
+     * @param configurationProperties ConfigurationProperties for MessageStore
+     * @return return true if configuration PROP_CREATE_TABLES is not set to "false".
      *
+     */
+    private boolean isCreateTables(ConfigurationProperties configurationProperties) {
+        String isCreateTableString = configurationProperties.getProperty(JDBCConstants
+                                                                                 .PROP_CREATE_TABLES);
+
+        if (isCreateTableString.isEmpty() || !isCreateTableString.equalsIgnoreCase("false")) {
+            // if configuration not set or not explicitly set to false
+            isCreateTableString = "true";
+        }
+
+        return Boolean.parseBoolean(isCreateTableString);
+    }
+
+    /**
+     * This method creates all the DB tables used for H2 based Message Store. For other databases
+     * this table creation queries might not work. Table creation can be disabled from
+     * configurations in that case.
      * @throws AndesException
      */
     public void createTables() throws AndesException {
         String[] queries = {
-                "CREATE TABLE IF NOT EXISTS messages (" +
-                        "message_id BIGINT, " +
-                        "offset INT, " +
-                        "content BINARY NOT NULL, " +
-                        "PRIMARY KEY (message_id,offset)" +
-                        ");"
-                ,
-
-                "CREATE TABLE IF NOT EXISTS queues (" +
-                        "queue_id INT AUTO_INCREMENT, " +
-                        "name VARCHAR NOT NULL, " +
-                        "UNIQUE (name)," +
-                        "PRIMARY KEY (queue_id)" +
-                        ");",
-
-                "CREATE TABLE IF NOT EXISTS reference_counts ( " +
-                        "message_id BIGINT, " +
-                        "reference_count INT, " +
-                        "PRIMARY KEY (message_id)" +
-                        ");"
-                ,
-
-                "CREATE TABLE IF NOT EXISTS metadata (" +
-                        "message_id BIGINT, " +
-                        "queue_id INT, " +
-                        "data BINARY, " +
-                        "PRIMARY KEY (message_id, queue_id), " +
-                        "FOREIGN KEY (queue_id) " +
-                        "REFERENCES queues (queue_id) " +
-                        ");",
-
-                "CREATE TABLE IF NOT EXISTS expiration_data (" +
-                        "message_id BIGINT UNIQUE," +
-                        "expiration_time BIGINT, " +
-                        "destination VARCHAR NOT NULL, " +
-                        "FOREIGN KEY (message_id) " +
-                        "REFERENCES metadata (message_id)" +
-                        "); "
+                JDBCConstants.CREATE_MESSAGES_TABLE,
+                JDBCConstants.CREATE_QUEUES_TABLE,
+                JDBCConstants.CREATE_METADATA_TABLE,
+                JDBCConstants.CREATE_EXPIRATION_DATA_TABLE,
+                JDBCConstants.CREATE_REF_COUNT_TABLE
         };
 
         Connection connection = null;
@@ -153,17 +140,19 @@ public class H2BasedMessageStoreImpl implements MessageStore {
                 stmt.addBatch(q);
             }
             stmt.executeBatch();
+
         } catch (SQLException e) {
-            throw new AndesException("Error occurred while creating in memory DB tables", e);
+            rollback(connection, JDBCConstants.TASK_CREATING_DB_TABLES);
+            throw new AndesException("Error occurred while creating database tables", e);
         } finally {
             try {
                 if (stmt != null) {
                     stmt.close();
                 }
             } catch (SQLException e) {
-                logger.error("Failed to close connection after creating DB tables");
+                logger.error(JDBCConstants.TASK_CREATING_DB_TABLES);
             }
-            close(connection, "creating in memory DB tables");
+            close(connection, JDBCConstants.TASK_CREATING_DB_TABLES);
         }
     }
 
@@ -266,8 +255,10 @@ public class H2BasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public void ackReceived(List<AndesAckData> ackList) throws AndesException {
-        List<AndesRemovableMetadata> messagesAddressedToQueues = new ArrayList<AndesRemovableMetadata>();
-        List<AndesRemovableMetadata> messagesAddressedToTopics = new ArrayList<AndesRemovableMetadata>();
+        List<AndesRemovableMetadata> messagesAddressedToQueues = new
+                ArrayList<AndesRemovableMetadata>();
+        List<AndesRemovableMetadata> messagesAddressedToTopics = new
+                ArrayList<AndesRemovableMetadata>();
 
         List<Long> messageIds = new ArrayList<Long>(ackList.size());
 
@@ -302,7 +293,8 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         deleteMessages(messagesAddressedToTopics, false);
 
         deleteMessagesFromExpiryQueue(
-                messageIds); // hasithad This cant be done here cos topic delivery logic comes here before a delivery :(
+                messageIds); // hasithad This cant be done here cos topic delivery logic comes
+        // here before a delivery :(
     }
 
     /**
@@ -355,7 +347,6 @@ public class H2BasedMessageStoreImpl implements MessageStore {
             preparedStatement.executeBatch();
             preparedStatement.close();
             addToExpiryTable(connection, metadata);
-            incrementRefCount(connection, metadata.getMessageID());
             connection.commit();
 
             if (logger.isDebugEnabled()) {
@@ -441,12 +432,16 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     /**
      * Adds a single metadata to a batch insert of metadata
      *
-     * @param preparedStatement prepared statement to add messages to metadata table
-     * @param metadata          AndesMessageMetadata
-     * @param queueName         queue to be assigned
+     * @param preparedStatement
+     *         prepared statement to add messages to metadata table
+     * @param metadata
+     *         AndesMessageMetadata
+     * @param queueName
+     *         queue to be assigned
      * @throws SQLException
      */
-    private void addMetadataToBatch(PreparedStatement preparedStatement, AndesMessageMetadata metadata,
+    private void addMetadataToBatch(PreparedStatement preparedStatement,
+                                    AndesMessageMetadata metadata,
                                     final String queueName) throws SQLException {
         preparedStatement.setLong(1, metadata.getMessageID());
         preparedStatement.setInt(2, getCachedQueueID(queueName));
@@ -454,18 +449,22 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         preparedStatement.addBatch();
     }
 
-    private void addToExpiryTable(Connection connection, AndesMessageMetadata metadata) throws SQLException {
+    private void addToExpiryTable(Connection connection, AndesMessageMetadata metadata)
+            throws SQLException {
 
         if (metadata.getExpirationTime() > 0) {
-            PreparedStatement preparedStatement = connection.prepareStatement(JDBCConstants.PS_INSERT_EXPIRY_DATA);
+            PreparedStatement preparedStatement = connection
+                    .prepareStatement(JDBCConstants.PS_INSERT_EXPIRY_DATA);
             addExpiryTableEntryToBatch(preparedStatement, metadata);
             preparedStatement.executeBatch();
             preparedStatement.close();
         }
     }
 
-    private void addListToExpiryTable(Connection connection, List<AndesMessageMetadata> list) throws SQLException {
-        PreparedStatement preparedStatement = connection.prepareStatement(JDBCConstants.PS_INSERT_EXPIRY_DATA);
+    private void addListToExpiryTable(Connection connection, List<AndesMessageMetadata> list)
+            throws SQLException {
+        PreparedStatement preparedStatement = connection
+                .prepareStatement(JDBCConstants.PS_INSERT_EXPIRY_DATA);
 
         for (AndesMessageMetadata andesMessageMetadata : list) {
             if (andesMessageMetadata.getExpirationTime() > 0) {
@@ -580,7 +579,8 @@ public class H2BasedMessageStoreImpl implements MessageStore {
             }
         } catch (SQLException e) {
             throw new AndesException("Error occurred while retrieving messages between msg id "
-                                     + firstMsgId + " and " + lastMsgID + " from queue " + queueName,
+                                     + firstMsgId + " and " + lastMsgID + " from queue " +
+                                     queueName,
 
                                      e);
         } finally {
@@ -787,11 +787,15 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     /**
      * This method is expected to be used in a transaction based update.
      *
-     * @param connection       connection to be used
-     * @param messagesToRemove AndesRemovableMetadata
+     * @param connection
+     *         connection to be used
+     * @param messagesToRemove
+     *         AndesRemovableMetadata
      * @throws SQLException
      */
-    private void deleteFromExpiryQueue(Connection connection, List<AndesRemovableMetadata> messagesToRemove) throws SQLException {
+    private void deleteFromExpiryQueue(Connection connection,
+                                       List<AndesRemovableMetadata> messagesToRemove)
+            throws SQLException {
 
         PreparedStatement preparedStatement = null;
         try {
@@ -837,10 +841,11 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     }
 
     /**
-     * This method caches the queue ids for destination queue names. If queried destination queue
-     * is not in cache updates the cache and returns the queue id.
+     * This method caches the queue ids for destination queue names. If queried destination queue is
+     * not in cache updates the cache and returns the queue id.
      *
-     * @param destinationQueueName queue name
+     * @param destinationQueueName
+     *         queue name
      * @return corresponding queue id for the destination queue. On error -1 is returned
      * @throws SQLException
      */
@@ -873,7 +878,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         try {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_QUEUE_ID,
-                    Statement.RETURN_GENERATED_KEYS);
+                                                            Statement.RETURN_GENERATED_KEYS);
             preparedStatement.setString(1, destinationQueueName);
             resultSet = preparedStatement.executeQuery();
             if (resultSet.first()) {
@@ -881,7 +886,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
             }
         } catch (SQLException e) {
             logger.error("Error occurred while retrieving destination queue id " +
-                    "for destination queue " + destinationQueueName);
+                         "for destination queue " + destinationQueueName);
             throw e;
         } finally {
             String task = JDBCConstants.TASK_RETRIEVING_QUEUE_ID + destinationQueueName;
@@ -894,8 +899,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
 
     // creates a new queue entry in DB
     private int createNewQueue(final String destinationQueueName) throws SQLException {
-        String sqlString = "INSERT INTO " + JDBCConstants.QUEUES_TABLE + " (" + JDBCConstants.QUEUE_NAME + ")" +
-                " VALUES (?)";
+        String sqlString = "INSERT INTO " + JDBCConstants.QUEUES_TABLE + " (" + JDBCConstants
+                .QUEUE_NAME + ")" +
+                           " VALUES (?)";
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
@@ -903,7 +909,8 @@ public class H2BasedMessageStoreImpl implements MessageStore {
 
         try {
             connection = getConnection();
-            preparedStatement = connection.prepareStatement(sqlString, Statement.RETURN_GENERATED_KEYS);
+            preparedStatement = connection
+                    .prepareStatement(sqlString, Statement.RETURN_GENERATED_KEYS);
             preparedStatement.setString(1, destinationQueueName);
             preparedStatement.executeUpdate();
 
@@ -918,7 +925,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
                 queueMap.put(destinationQueueName, queueID);
             }
         } catch (SQLException e) {
-            logger.error("Error occurred while inserting destination queue [" + destinationQueueName + "] to database ");
+            logger.error(
+                    "Error occurred while inserting destination queue [" + destinationQueueName +
+                    "] to database ");
             throw e;
         } finally {
             String task = JDBCConstants.TASK_CREATING_QUEUE + destinationQueueName;
@@ -939,9 +948,11 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         // todo: ON DUPLICATE KEY UPDATE functionality requires newer version of H2 1.3.175
         // and this query is vendor specific.
         // Without vendor specific queries mean a read and a write. Triggers?
+        // Ref count update is per message. This affects performance.
+        // todo: DISCUSS IN REVIEW
         String sql = "INSERT INTO " + JDBCConstants.REF_COUNT_TABLE +
-                " (" + JDBCConstants.MESSAGE_ID + "," + JDBCConstants.REF_COUNT + ") " +
-                "VALUES (" + messageId + ", 1) ";
+                     " (" + JDBCConstants.MESSAGE_ID + "," + JDBCConstants.REF_COUNT + ") " +
+                     "VALUES (" + messageId + ", 1) ";
 
         Statement stmt = connection.createStatement();
         stmt.executeUpdate(sql);
@@ -950,7 +961,8 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     /**
      * Closes the provided connection. on failure log the error;
      *
-     * @param connection Connection
+     * @param connection
+     *         Connection
      */
     private void close(Connection connection, String task) {
         if (connection != null) {
@@ -964,8 +976,11 @@ public class H2BasedMessageStoreImpl implements MessageStore {
 
     /**
      * On database update failure tries to rollback
-     * @param connection database connection
-     * @param task explanation of the task done when the rollback was triggered
+     *
+     * @param connection
+     *         database connection
+     * @param task
+     *         explanation of the task done when the rollback was triggered
      */
     private void rollback(Connection connection, String task) {
         if (connection != null) {
@@ -979,8 +994,11 @@ public class H2BasedMessageStoreImpl implements MessageStore {
 
     /**
      * close the prepared statement resource
-     * @param preparedStatement PreparedStatement
-     * @param task task that was done by the closed prepared statement.
+     *
+     * @param preparedStatement
+     *         PreparedStatement
+     * @param task
+     *         task that was done by the closed prepared statement.
      */
     private void close(PreparedStatement preparedStatement, String task) {
         if (preparedStatement != null) {
@@ -994,8 +1012,11 @@ public class H2BasedMessageStoreImpl implements MessageStore {
 
     /**
      * closes the result set resources
-     * @param resultSet ResultSet
-     * @param task task that was done by the closed result set.
+     *
+     * @param resultSet
+     *         ResultSet
+     * @param task
+     *         task that was done by the closed result set.
      */
     private void close(ResultSet resultSet, String task) {
         if (resultSet != null) {
@@ -1013,16 +1034,21 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     ////////////////////////////////////////////////////////////
 
     @Override
-    public void deleteMessageMetadataFromQueue(QueueAddress queueAddress, List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
+    public void deleteMessageMetadataFromQueue(QueueAddress queueAddress,
+                                               List<AndesRemovableMetadata> messagesToRemove)
+            throws AndesException {
     }
 
     @Override
-    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(QueueAddress queueAddress, long startMsgID, int count) throws AndesException {
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(QueueAddress queueAddress,
+                                                                       long startMsgID, int count)
+            throws AndesException {
         return null;
     }
 
     @Override
-    public void addMessageMetaData(QueueAddress queueAddress, List<AndesMessageMetadata> messageList) throws AndesException {
+    public void addMessageMetaData(QueueAddress queueAddress,
+                                   List<AndesMessageMetadata> messageList) throws AndesException {
 //
 //        for(AndesMessageMetadata md: messageList){
 //
@@ -1030,31 +1056,39 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     }
 
     @Override
-    public void moveMessageMetaData(QueueAddress sourceAddress, QueueAddress targetAddress, List<AndesMessageMetadata> messageList) throws AndesException {
+    public void moveMessageMetaData(QueueAddress sourceAddress, QueueAddress targetAddress,
+                                    List<AndesMessageMetadata> messageList) throws AndesException {
 
     }
 
     @Override
-    public long moveAllMessageMetaDataOfQueue(QueueAddress sourceAddress, QueueAddress targetAddress, String destinationQueue) throws AndesException {
+    public long moveAllMessageMetaDataOfQueue(QueueAddress sourceAddress,
+                                              QueueAddress targetAddress, String destinationQueue)
+            throws AndesException {
 //        long movedCount = 0;
 //        try {
 //            String sqlString = "UPDATE " + JDBCConstants.METADATA_TABLE +
-//                    " SET " + JDBCConstants.TNQ_NQ_GQ_ID + "=" + String.valueOf(getMainQueueID(targetAddress.queueName)) +
-//                    " WHERE " + JDBCConstants.TNQ_NQ_GQ_ID + "=" + String.valueOf(getMainQueueID(sourceAddress.queueName)) +
-//                    " AND " + JDBCConstants.QUEUE_ID + "=" + String.valueOf(getCachedQueueID(destinationQueue));
+//                    " SET " + JDBCConstants.TNQ_NQ_GQ_ID + "=" + String.valueOf(getMainQueueID
+// (targetAddress.queueName)) +
+//                    " WHERE " + JDBCConstants.TNQ_NQ_GQ_ID + "=" + String.valueOf
+// (getMainQueueID(sourceAddress.queueName)) +
+//                    " AND " + JDBCConstants.QUEUE_ID + "=" + String.valueOf(getCachedQueueID
+// (destinationQueue));
 //
 //            Statement stmt = connection.createStatement();
 //            movedCount = stmt.executeUpdate(sqlString);
 //            stmt.close();
 //        } catch (SQLException e) {
-//            logger.error("error occurred while trying to move metadata from " + sourceAddress.queueName + " to "
+//            logger.error("error occurred while trying to move metadata from " + sourceAddress
+// .queueName + " to "
 //                            + targetAddress.queueName);
 //        }
         return 0;
     }
 
     @Override
-    public int countMessagesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch) throws AndesException {
+    public int countMessagesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch)
+            throws AndesException {
 //        String select = "SELECT COUNT(" + JDBCConstants.TNQ_NQ_GQ_ID + ") AS count" +
 //                " WHERE (" + JDBCConstants.TNQ_NQ_GQ_ID + "," + JDBCConstants.QUEUE_ID + ") = " +
 //                "(";
@@ -1073,7 +1107,9 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     }
 
     @Override
-    public void addMessageToExpiryQueue(Long messageId, Long expirationTime, boolean isMessageForTopic, String destination) throws CassandraDataAccessException {
+    public void addMessageToExpiryQueue(Long messageId, Long expirationTime,
+                                        boolean isMessageForTopic, String destination)
+            throws CassandraDataAccessException {
 
     }
 

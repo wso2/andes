@@ -19,10 +19,10 @@ import java.util.Map;
  * Unit test class for H2BasedAndesContextStoreImpl
  * Basic implementation of methods are tested in this class
  */
-public class H2BasedAndesContextStoreImplTest {
+public class JDBCAndesContextStoreImplTest {
 
     private static Connection connection;
-    private H2BasedAndesContextStoreImpl contextStore;
+    private JDBCAndesContextStoreImpl contextStore;
 
     @BeforeClass
     public static void BeforeClass() throws Exception {
@@ -49,7 +49,7 @@ public class H2BasedAndesContextStoreImplTest {
     @Before
     public void setup() throws Exception {
         createTables();
-        contextStore = new H2BasedAndesContextStoreImpl();
+        contextStore = new JDBCAndesContextStoreImpl();
 
         // start in memory mode
         ConfigurationProperties configurationProperties = new ConfigurationProperties();

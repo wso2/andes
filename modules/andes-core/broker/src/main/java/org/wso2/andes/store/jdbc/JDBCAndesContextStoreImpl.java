@@ -27,31 +27,24 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * H2 Based Message context Store. This is used to persist information of current durable
- * subscription, exchanges, queues and bindings
+ * ANSI SQL based Andes Context Store implementation. This is used to persist information of
+ * current durable subscription, exchanges, queues and bindings
  */
-public class H2BasedAndesContextStoreImpl implements AndesContextStore {
+public class JDBCAndesContextStoreImpl implements AndesContextStore {
 
-    private static final Logger logger = Logger.getLogger(H2BasedAndesContextStoreImpl.class);
+    private static final Logger logger = Logger.getLogger(JDBCAndesContextStoreImpl.class);
 
     /**
      * Connection pooled sql data source object. Used to create connections in method scope
      */
     private DataSource datasource;
-
-    /**
-     * Whether the Context store is running in memory mode or connected to a persistence storage
-     * True if in memory mode and wise versa
-     */
-    public H2BasedAndesContextStoreImpl() {
-        datasource = null;
-    }
 
     /**
      * {@inheritDoc}
@@ -63,7 +56,29 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
         jdbcConnection.initialize(connectionProperties);
 
         datasource = jdbcConnection.getDataSource();
+        if (isCreateTables(connectionProperties)) {
+            logger.info("Creating database tables if not present in database");
+            createTables();
+        }
         return jdbcConnection;
+    }
+
+    /**
+     * Check whether to create tables at andes context store startup
+     * @param configurationProperties ConfigurationProperties for AndesContextStore
+     * @return return true if configuration PROP_CREATE_TABLES is not set to "false".
+     *
+     */
+    private boolean isCreateTables(ConfigurationProperties configurationProperties) {
+        String isCreateTableString = configurationProperties.getProperty(JDBCConstants
+                                                                                 .PROP_CREATE_TABLES);
+
+        if (isCreateTableString.isEmpty() || !isCreateTableString.equalsIgnoreCase("false")) {
+            // if configuration not set or not explicitly set to false
+            isCreateTableString = "true";
+        }
+
+        return Boolean.parseBoolean(isCreateTableString);
     }
 
     /**
@@ -318,7 +333,7 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
             // NOTE: Qpid tries to create default exchanges at startup. If this
             // is not a vanilla setup DB already have the created exchanges. hence need to check
             // for existence before insertion.
-            // This check is done here rather than inside Qpid code which will be updated in
+            // This check is done here rather than inside Qpid code that will be updated in
             // future.
             if (!isExchangeExist(connection, exchangeName)) {
                 connection.setAutoCommit(false);
@@ -708,6 +723,46 @@ public class H2BasedAndesContextStoreImpl implements AndesContextStore {
             } catch (SQLException e) {
                 logger.error("Closing result set failed after " + task);
             }
+        }
+    }
+
+    /**
+     * This method creates all the DB tables used for H2 based Andes Context Store. For other
+     * databases this table creation queries might not work. Table creation can be disabled from
+     * configurations in that case.
+     * @throws AndesException
+     */
+    public void createTables() throws AndesException {
+        String[] queries = {
+                JDBCConstants.CREATE_DURABLE_SUBSCRIPTION_TABLE,
+                JDBCConstants.CREATE_NODE_INFO_TABLE,
+                JDBCConstants.CREATE_EXCHANGES_TABLE,
+                JDBCConstants.CREATE_QUEUE_INFO_TABLE,
+                JDBCConstants.CREATE_BINDINGS_TABLE
+        };
+
+        Connection connection = null;
+        Statement stmt = null;
+        try {
+            connection = getConnection();
+            stmt = connection.createStatement();
+            for (String q : queries) {
+                stmt.addBatch(q);
+            }
+            stmt.executeBatch();
+
+        } catch (SQLException e) {
+            rollback(connection, JDBCConstants.TASK_CREATING_DB_TABLES);
+            throw new AndesException("Error occurred while creating database tables", e);
+        } finally {
+            try {
+                if (stmt != null) {
+                    stmt.close();
+                }
+            } catch (SQLException e) {
+                logger.error(JDBCConstants.TASK_CREATING_DB_TABLES);
+            }
+            close(connection, JDBCConstants.TASK_CREATING_DB_TABLES);
         }
     }
 }
