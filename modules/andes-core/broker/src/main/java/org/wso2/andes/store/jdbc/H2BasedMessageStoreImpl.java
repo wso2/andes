@@ -214,7 +214,7 @@ public class H2BasedMessageStoreImpl implements MessageStore {
     }
 
     @Override
-    public AndesMessagePart getContent(String messageId, int offsetValue) throws AndesException {
+    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
 
         AndesMessagePart messagePart = null;
         Connection connection = null;
@@ -223,14 +223,14 @@ public class H2BasedMessageStoreImpl implements MessageStore {
         try {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(JDBCConstants.PS_RETRIEVE_MESSAGE_PART);
-            preparedStatement.setLong(1, Long.parseLong(messageId));
+            preparedStatement.setLong(1, messageId);
             preparedStatement.setInt(2, offsetValue);
             results = preparedStatement.executeQuery();
 
             if (results.first()) {
                 byte[] b = results.getBytes(JDBCConstants.MESSAGE_CONTENT);
                 messagePart = new AndesMessagePart();
-                messagePart.setMessageID(Long.parseLong(messageId));
+                messagePart.setMessageID(messageId);
                 messagePart.setData(b);
                 messagePart.setDataLength(b.length);
                 messagePart.setOffSet(offsetValue);

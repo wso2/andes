@@ -50,6 +50,7 @@ import me.prettyprint.hector.api.query.SliceQuery;*/
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.store.cassandra.dao.CQLQueryBuilder;
@@ -811,6 +812,66 @@ public class CQLDataAccessHelper {
             return metadataList;
         } catch (Exception e) {
             throw new CassandraDataAccessException("Error while getting data from " + columnFamilyName,e);
+        }
+    }
+
+    /**
+     * Return a message part with the given offset for the given message Id.
+     *
+     * @param rowName The row key for the message part
+     * @param columnFamilyName Name of the column Family
+     * @param keyspace Cassandra KeySpace
+     * @param messageId The message Id
+     * @param offset Message part offset to be retrieved
+     * @return The part with the given offset
+     * @throws CassandraDataAccessException
+     */
+    public static AndesMessagePart getMessageContent(String rowName,
+                                                            String columnFamilyName, String keyspace,
+                                                            long messageId, int offset) throws CassandraDataAccessException {
+        if (keyspace == null) {
+            throw new CassandraDataAccessException("Can't access Data , no keyspace provided.");
+        }
+
+        if(columnFamilyName == null || rowName == null) {
+            throw new CassandraDataAccessException("Can't access data with queueType = " + columnFamilyName +
+                    " and message part name =" + rowName);
+        }
+
+        try {
+            AndesMessagePart messagePart = new AndesMessagePart();
+            CQLQueryBuilder.CqlSelect cqlSelect = new CQLQueryBuilder.CqlSelect(columnFamilyName, 1,
+					true);
+			cqlSelect.addColumn(MSG_VALUE);
+			cqlSelect.addColumn(MSG_KEY);
+            cqlSelect.addCondition(MSG_ROW_ID, rowName, WHERE_OPERATORS.EQ);
+			cqlSelect.addCondition(MSG_KEY, offset, WHERE_OPERATORS.EQ);
+
+			Select select = CQLQueryBuilder.buildSelect(cqlSelect);
+			if(log.isDebugEnabled()){
+				log.debug(" getMessageContent : "+ select.toString());
+			}
+
+			ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
+			List<Row> rows = result.all();
+			Iterator<Row> iterator = rows.iterator();
+				Row row = iterator.next();
+				byte[] value = CQLQueryBuilder.convertToByteArray(row, MSG_VALUE);
+
+				if(value != null && value.length > 0){
+                    messagePart.setData(value);
+                    messagePart.setMessageID(messageId);
+                    messagePart.setDataLength(value.length);
+                    messagePart.setOffSet(offset);
+				} else {
+                    throw new CassandraDataAccessException("Message part with offset " + offset + " for the message " + messageId + " was not found.");
+                }
+
+
+
+            return messagePart;
+        } catch (Exception e) {
+            throw new CassandraDataAccessException("Error while getting data from " + columnFamilyName, e);
         }
     }
 

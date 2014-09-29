@@ -30,7 +30,7 @@ public interface MessageStore {
 
     public void deleteMessageParts(List<Long> messageIdList) throws AndesException;
 
-    public AndesMessagePart getContent(String messageId, int offsetValue) throws AndesException;
+    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException;
 
     public void ackReceived(List<AndesAckData> ackList) throws AndesException;
 

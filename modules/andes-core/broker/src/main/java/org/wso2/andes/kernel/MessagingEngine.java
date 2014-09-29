@@ -110,7 +110,7 @@ public class MessagingEngine {
     }
 
     public AndesMessagePart getMessageContentChunk(long messageID, int offsetInMessage) throws AndesException{
-        return durableMessageStore.getContent(messageID + "" , offsetInMessage);
+        return durableMessageStore.getContent(messageID, offsetInMessage);
     }
 
     public void messageReceived(AndesMessageMetadata message, long channelID) throws AndesException {

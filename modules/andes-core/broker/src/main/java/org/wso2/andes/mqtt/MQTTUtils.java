@@ -60,7 +60,7 @@ public class MQTTUtils {
         //Need to get the value dynamically
         ByteBuffer message = ByteBuffer.allocate(metadata.getMessageContentLength());
         try {
-            AndesMessagePart messagePart = MessagingEngine.getInstance().getDurableMessageStore().getContent(Long.toString(metadata.getMessageID()), 0);
+            AndesMessagePart messagePart = MessagingEngine.getInstance().getDurableMessageStore().getContent(metadata.getMessageID(), 0);
             message.put(messagePart.getData());
         } catch (AndesException e) {
             throw new RuntimeException("Error in getting content for message", e);
