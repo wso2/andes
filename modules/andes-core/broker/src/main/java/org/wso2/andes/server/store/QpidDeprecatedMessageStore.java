@@ -38,18 +38,19 @@ import org.wso2.andes.subscription.SubscriptionStore;
  * Class <code>CassandraMessageStore</code> is the Message Store implemented for cassandra
  * Working with andes as an alternative to Derby Message Store
  */
-public class CassandraMessageStore implements MessageStore {
+@Deprecated
+public class QpidDeprecatedMessageStore implements MessageStore {
 
     private boolean configured = false;
     private static Log log =
-            LogFactory.getLog(CassandraMessageStore.class);
+            LogFactory.getLog(QpidDeprecatedMessageStore.class);
     private SubscriptionStore subscriptionStore;
 
     /**
      * Set CassandraMessageStore at ClusterResourceHolder
      */
-    public CassandraMessageStore() {
-        ClusterResourceHolder.getInstance().setCassandraMessageStore(this);
+    public QpidDeprecatedMessageStore() {
+        ClusterResourceHolder.getInstance().setQpidDeprecatedMessageStore(this);
     }
 
     @Override

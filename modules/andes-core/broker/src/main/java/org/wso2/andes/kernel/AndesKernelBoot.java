@@ -112,18 +112,18 @@ public class AndesKernelBoot {
                                                                           .getVirtualHostsConfiguration();
         //create a andes context store and register
         String contextStoreClassName = virtualHostsConfiguration.getAndesContextStoreClassName();
-        Class clazz2 = Class.forName(contextStoreClassName);
-        Object o2 = clazz2.newInstance();
+        Class contextStoreClass = Class.forName(contextStoreClassName);
+        Object contextStoreInstance = contextStoreClass.newInstance();
 
-        if (!(o2 instanceof AndesContextStore)) {
+        if (!(contextStoreInstance instanceof AndesContextStore)) {
             throw new ClassCastException(
                     "Message store class must implement " + AndesContextStore.class + ". Class "
-                    + clazz2 +
+                    + contextStoreClass +
                     " does not.");
         }
 
-        AndesContextStore andesContextStore = (AndesContextStore) o2;
-        DurableStoreConnection contextStoreConnection = andesContextStore.init(
+        AndesContextStore andesContextStore = (AndesContextStore) contextStoreInstance;
+        andesContextStore.init(
                 virtualHostsConfiguration.getAndesContextStoreProperties()
         );
         AndesContext.getInstance().setAndesContextStore(andesContextStore);
@@ -139,18 +139,18 @@ public class AndesKernelBoot {
         // create a message store and initialise messaging engine
         DurableStoreConnection durableStoreConnection;
         String messageStoreClassName = virtualHostsConfiguration.getMessageStoreClassName();
-        Class clazz = Class.forName(messageStoreClassName);
-        Object o = clazz.newInstance();
+        Class messageStoreClass = Class.forName(messageStoreClassName);
+        Object messageStoreInstance = messageStoreClass.newInstance();
 
-        if (!(o instanceof org.wso2.andes.kernel.MessageStore)) {
+        if (!(messageStoreInstance instanceof org.wso2.andes.kernel.MessageStore)) {
             throw new ClassCastException(
                     "Message store class must implement " + MessageStore.class + ". Class " +
-                    clazz +
+                    messageStoreClass +
                     " does not.");
         }
 
-        MessageStore messageStore = (MessageStore) o;
-        durableStoreConnection = messageStore.initializeMessageStore(
+        MessageStore messageStore = (MessageStore) messageStoreInstance;
+        messageStore.initializeMessageStore(
                 virtualHostsConfiguration.getMessageStoreProperties()
         );
         MessagingEngine.getInstance().initialise(messageStore);

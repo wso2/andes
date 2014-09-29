@@ -826,7 +826,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     @Override
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDLC) throws AndesException {
         try {
-
+            // todo: Review business logic here. Remove business logic.
             HashMap<String, List<AndesRemovableMetadata>> messagesForTopics = new HashMap<String, List<AndesRemovableMetadata>>();
             HashMap<String, List<AndesRemovableMetadata>> messagesForQueues = new HashMap<String, List<AndesRemovableMetadata>>();
             HashMap<String, List<AndesRemovableMetadata>> messagesInGlobalQueues = new HashMap<String, List<AndesRemovableMetadata>>();

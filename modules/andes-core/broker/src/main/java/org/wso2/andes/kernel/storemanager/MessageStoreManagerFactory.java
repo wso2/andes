@@ -69,9 +69,9 @@ public class MessageStoreManagerFactory {
                 log.info("Message Storing strategy: direct message storing.");
                 return messageStoreManager;
             }
+            // todo: in single node mode use else block with in-memory message store for non
+            // persistent messages (This is not total in-memory mode)
         }
-        // todo: in single node mode use else block with in-memory message store for non
-        // persistent messages (This is not total in-memory mode)
 
         // setup default strategy and return
         messageStoreManager = new DurableAsyncStoringManager();

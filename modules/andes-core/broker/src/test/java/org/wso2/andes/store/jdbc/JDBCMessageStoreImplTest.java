@@ -51,7 +51,6 @@ public class JDBCMessageStoreImplTest {
         connectionProperties.addProperty(JDBCConstants.PROP_JNDI_LOOKUP_NAME,
                                             JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME);
         messageStore.initializeMessageStore(connectionProperties);
-        ((JDBCMessageStoreImpl)messageStore).createTables();
     }
 
     @After

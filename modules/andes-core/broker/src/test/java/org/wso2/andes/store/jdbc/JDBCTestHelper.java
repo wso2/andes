@@ -74,6 +74,13 @@ public class JDBCTestHelper {
         return md;
     }
 
+    /**
+     * Returns a List of AndesMessagePart including the first message id with two content chunks
+     * for each message id
+     * @param firstMsgId first message id
+     * @param lastMsgId  last message id
+     * @return
+     */
     protected static List<AndesMessagePart> getMessagePartList(long firstMsgId, long lastMsgId) {
         List<AndesMessagePart> list = new ArrayList<AndesMessagePart>();
         byte[] content = "test message".getBytes();
@@ -98,6 +105,15 @@ public class JDBCTestHelper {
         return list;
     }
 
+    /**
+     * Stores a binding in store with relevant exchange and queue information
+     * @param connection Connection
+     * @param exchange name of exchange
+     * @param boundQueue bounded queue
+     * @param routingKey routing key
+     * @param owner owner of the queue
+     * @throws Exception
+     */
     protected static void storeBindingInfo(Connection connection, String exchange,
                                            String boundQueue,
                                            String routingKey,

@@ -27,7 +27,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -51,34 +50,13 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public DurableStoreConnection init(ConfigurationProperties connectionProperties) throws
-                                                                                     AndesException {
+            AndesException {
+
         JDBCConnection jdbcConnection = new JDBCConnection();
         jdbcConnection.initialize(connectionProperties);
 
         datasource = jdbcConnection.getDataSource();
-        if (isCreateTables(connectionProperties)) {
-            logger.info("Creating database tables if not present in database");
-            createTables();
-        }
         return jdbcConnection;
-    }
-
-    /**
-     * Check whether to create tables at andes context store startup
-     * @param configurationProperties ConfigurationProperties for AndesContextStore
-     * @return return true if configuration PROP_CREATE_TABLES is not set to "false".
-     *
-     */
-    private boolean isCreateTables(ConfigurationProperties configurationProperties) {
-        String isCreateTableString = configurationProperties.getProperty(JDBCConstants
-                                                                                 .PROP_CREATE_TABLES);
-
-        if (isCreateTableString.isEmpty() || !isCreateTableString.equalsIgnoreCase("false")) {
-            // if configuration not set or not explicitly set to false
-            isCreateTableString = "true";
-        }
-
-        return Boolean.parseBoolean(isCreateTableString);
     }
 
     /**
@@ -94,7 +72,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
 
             connection = getConnection();
             preparedStatement = connection.prepareStatement(JDBCConstants
-                                                                    .PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS);
+                    .PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS);
             resultSet = preparedStatement.executeQuery();
 
             // create Subscriber Map
@@ -150,9 +128,9 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
             throw new AndesException("Error occurred while storing durable subscription. sub id: "
-                                     + subscriptionID + " destination identifier: " +
-                                     destinationIdentifier,
-                                     e);
+                    + subscriptionID + " destination identifier: " +
+                    destinationIdentifier,
+                    e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
             close(connection, JDBCConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
@@ -168,14 +146,14 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         String task = JDBCConstants.TASK_REMOVING_DURABLE_SUBSCRIPTION + "destination: " +
-                      destinationIdentifier + " sub id: " + subscriptionID;
+                destinationIdentifier + " sub id: " + subscriptionID;
         try {
 
             connection = getConnection();
             connection.setAutoCommit(false);
 
             preparedStatement = connection.prepareStatement(JDBCConstants
-                                                                    .PS_DELETE_DURABLE_SUBSCRIPTION);
+                    .PS_DELETE_DURABLE_SUBSCRIPTION);
 
             preparedStatement.setString(1, destinationIdentifier);
             preparedStatement.setString(2, subscriptionID);
@@ -359,10 +337,8 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
     /**
      * Helper method to check the existence of an exchange in database
      *
-     * @param connection
-     *         SQL Connection
-     * @param exchangeName
-     *         exchange name to be checked
+     * @param connection   SQL Connection
+     * @param exchangeName exchange name to be checked
      * @return return true if exist and wise versa
      * @throws AndesException
      */
@@ -372,14 +348,14 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         ResultSet resultSet = null;
         try {
             preparedStatement = connection.prepareStatement(JDBCConstants
-                                                                    .PS_SELECT_EXCHANGE);
+                    .PS_SELECT_EXCHANGE);
 
             preparedStatement.setString(1, exchangeName);
             resultSet = preparedStatement.executeQuery();
             return resultSet.first(); // if present true
         } catch (SQLException e) {
             throw new AndesException("Error occurred retrieving exchange information for" +
-                                     " exchange: " + exchangeName, e);
+                    " exchange: " + exchangeName, e);
         } finally {
             close(resultSet, JDBCConstants.TASK_IS_EXCHANGE_EXIST);
             close(preparedStatement, JDBCConstants.TASK_IS_EXCHANGE_EXIST);
@@ -563,7 +539,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
 
         } catch (SQLException e) {
             String errMsg = JDBCConstants.TASK_STORING_BINDING + " exchange: " + exchange +
-                            " queue: " + boundQueueName + " routing key: " + bindingInfo;
+                    " queue: " + boundQueueName + " routing key: " + bindingInfo;
             rollback(connection, errMsg);
             throw new AndesException("Error occurred while " + errMsg, e);
         } finally {
@@ -587,7 +563,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(JDBCConstants
-                                                                    .PS_SELECT_BINDINGS_FOR_EXCHANGE);
+                    .PS_SELECT_BINDINGS_FOR_EXCHANGE);
             preparedStatement.setString(1, exchangeName);
             resultSet = preparedStatement.executeQuery();
 
@@ -630,7 +606,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             connection.commit();
         } catch (SQLException e) {
             String errMsg = JDBCConstants.TASK_DELETING_BINDING + " exchange: " + exchangeName +
-                            " bound queue: " + boundQueueName;
+                    " bound queue: " + boundQueueName;
             rollback(connection, errMsg);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_DELETING_BINDING);
@@ -652,17 +628,17 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
      * @return Connection
      * @throws SQLException
      */
-    private Connection getConnection() throws SQLException {
+    protected Connection getConnection() throws SQLException {
         return datasource.getConnection();
     }
 
     /**
      * Closes the provided connection. on failure log the error;
      *
-     * @param connection
-     *         Connection
+     * @param connection Connection
+     * @param task       task that was done before closing
      */
-    private void close(Connection connection, String task) {
+    protected void close(Connection connection, String task) {
         if (connection != null) {
             try {
                 connection.close();
@@ -675,12 +651,10 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
     /**
      * On database update failure tries to rollback
      *
-     * @param connection
-     *         database connection
-     * @param task
-     *         explanation of the task done when the rollback was triggered
+     * @param connection database connection
+     * @param task       explanation of the task done when the rollback was triggered
      */
-    private void rollback(Connection connection, String task) {
+    protected void rollback(Connection connection, String task) {
         if (connection != null) {
             try {
                 connection.rollback();
@@ -693,12 +667,10 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
     /**
      * close the prepared statement resource
      *
-     * @param preparedStatement
-     *         PreparedStatement
-     * @param task
-     *         task that was done by the closed prepared statement.
+     * @param preparedStatement PreparedStatement
+     * @param task              task that was done by the closed prepared statement.
      */
-    private void close(PreparedStatement preparedStatement, String task) {
+    protected void close(PreparedStatement preparedStatement, String task) {
         if (preparedStatement != null) {
             try {
                 preparedStatement.close();
@@ -711,58 +683,16 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
     /**
      * closes the result set resources
      *
-     * @param resultSet
-     *         ResultSet
-     * @param task
-     *         task that was done by the closed result set.
+     * @param resultSet ResultSet
+     * @param task      task that was done by the closed result set.
      */
-    private void close(ResultSet resultSet, String task) {
+    protected void close(ResultSet resultSet, String task) {
         if (resultSet != null) {
             try {
                 resultSet.close();
             } catch (SQLException e) {
                 logger.error("Closing result set failed after " + task);
             }
-        }
-    }
-
-    /**
-     * This method creates all the DB tables used for H2 based Andes Context Store. For other
-     * databases this table creation queries might not work. Table creation can be disabled from
-     * configurations in that case.
-     * @throws AndesException
-     */
-    public void createTables() throws AndesException {
-        String[] queries = {
-                JDBCConstants.CREATE_DURABLE_SUBSCRIPTION_TABLE,
-                JDBCConstants.CREATE_NODE_INFO_TABLE,
-                JDBCConstants.CREATE_EXCHANGES_TABLE,
-                JDBCConstants.CREATE_QUEUE_INFO_TABLE,
-                JDBCConstants.CREATE_BINDINGS_TABLE
-        };
-
-        Connection connection = null;
-        Statement stmt = null;
-        try {
-            connection = getConnection();
-            stmt = connection.createStatement();
-            for (String q : queries) {
-                stmt.addBatch(q);
-            }
-            stmt.executeBatch();
-
-        } catch (SQLException e) {
-            rollback(connection, JDBCConstants.TASK_CREATING_DB_TABLES);
-            throw new AndesException("Error occurred while creating database tables", e);
-        } finally {
-            try {
-                if (stmt != null) {
-                    stmt.close();
-                }
-            } catch (SQLException e) {
-                logger.error(JDBCConstants.TASK_CREATING_DB_TABLES);
-            }
-            close(connection, JDBCConstants.TASK_CREATING_DB_TABLES);
         }
     }
 }

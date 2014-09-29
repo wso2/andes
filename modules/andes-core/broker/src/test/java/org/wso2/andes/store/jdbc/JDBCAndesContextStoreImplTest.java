@@ -657,7 +657,7 @@ public class JDBCAndesContextStoreImplTest {
                 "CREATE TABLE IF NOT EXISTS bindings (" +
                         "exchange_name VARCHAR NOT NULL," +
                         "queue_name VARCHAR NOT NULL," +
-                        "routing_key VARCHAR NOT NULL," +
+                        "binding_info VARCHAR NOT NULL," +
                         "FOREIGN KEY (exchange_name) REFERENCES exchanges (name)," +
                         "FOREIGN KEY (queue_name) REFERENCES queue_info (name)" +
                         ");"

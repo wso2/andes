@@ -335,7 +335,7 @@ public class VirtualHostImpl implements VirtualHost {
 
         // this is considered as an internal impl now, so hard coding
         // qpid related messagestore
-        MessageStore messageStore = new CassandraMessageStore();
+        MessageStore messageStore = new QpidDeprecatedMessageStore();
         VirtualHostConfigRecoveryHandler recoveryHandler = new VirtualHostConfigRecoveryHandler(this);
 
         MessageStoreLogSubject storeLogSubject = new MessageStoreLogSubject(this, messageStore);

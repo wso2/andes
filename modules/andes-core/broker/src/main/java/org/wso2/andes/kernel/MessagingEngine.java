@@ -26,7 +26,6 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.storemanager.MessageStoreManagerFactory;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.store.cassandra.CQLBasedMessageStoreImpl;
-import org.wso2.andes.store.jdbc.JDBCMessageStoreImpl;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
@@ -37,7 +36,7 @@ import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.wso2.andes.server.util.AndesConstants;
-import org.wso2.andes.store.jdbc.JDBCConnection;
+import org.wso2.andes.store.jdbc.h2.H2MemMessageStoreImpl;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 
@@ -45,12 +44,38 @@ import org.wso2.andes.subscription.SubscriptionStore;
  * This class will handle all message related functions of WSO2 Message Broker
  */
 public class MessagingEngine {
+
+    /**
+     * Logger for MessagingEngine
+     */
     private static final Logger log;
+
+    /**
+     * Static instance of MessagingEngine
+     */
     private static MessagingEngine messagingEngine;
-    private MessageStore durableMessageStore;
-    private MessageStore inMemoryMessageStore;
-    private SubscriptionStore subscriptionStore;
+
+    /**
+     * Cluster wide unique message id generator
+     */
     private MessageIdGenerator messageIdGenerator;
+
+    // todo: remove referring to this from MessagingEngine. Use within MessageStoreManager
+    // implmentations
+    private MessageStore durableMessageStore;
+
+    // todo: remove referring to this from MessagingEngine. Use within MessageStoreManager
+    // implmentations
+    private MessageStore inMemoryMessageStore;
+
+    /**
+     * reference to subscription store
+     */
+    private SubscriptionStore subscriptionStore;
+
+    /**
+     * Cluster related configurations
+     */
     private ClusterConfiguration config;
 
     /**
@@ -59,6 +84,7 @@ public class MessagingEngine {
      */
     private MessageStoreManager messageStoreManager;
 
+    // private constructor for singleton pattern
     private MessagingEngine() {
     }
 
@@ -67,22 +93,36 @@ public class MessagingEngine {
         messagingEngine = new MessagingEngine();
     }
 
+    /**
+     * MessagingEngine is used for executing operations related to messages. (Storing,
+     * retrieving etc) This works as an API for different transports implemented by MB
+     * @return MessagingEngine
+     */
     public static MessagingEngine getInstance() {
         return messagingEngine;
     }
 
+    @Deprecated
     public MessageStore getDurableMessageStore() {
         return durableMessageStore;
     }
 
+    @Deprecated
     public MessageStore getInMemoryMessageStore() {
         return inMemoryMessageStore;
     }
 
+    @Deprecated
     public SubscriptionStore getSubscriptionStore() {
         return subscriptionStore;
     }
 
+    /**
+     * Initialises the MessagingEngine with a given durableMessageStore. Message retrieval and
+     * storing strategy will be set accoridng to the configurations by calling this.
+     * @param messageStore MessageStore
+     * @throws AndesException
+     */
     public void initialise(MessageStore messageStore) throws AndesException {
 
         config = ClusterResourceHolder.getInstance().getClusterConfiguration();
@@ -97,9 +137,8 @@ public class MessagingEngine {
             subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
 
             // in memory message store
-            inMemoryMessageStore = new JDBCMessageStoreImpl();
-            inMemoryMessageStore
-                    .initializeMessageStore(JDBCConnection.getInMemoryConnectionProperties());
+            inMemoryMessageStore = new H2MemMessageStoreImpl();
+            inMemoryMessageStore.initializeMessageStore(null);
 
         } catch (Exception e) {
             throw new AndesException("Cannot initialize message store", e);
@@ -110,6 +149,11 @@ public class MessagingEngine {
         return config;
     }
 
+    /**
+     * Message content is stored in database as chunks. Call this method for all the message
+     * content received for a given message before calling messageReceived method with metadata
+     * @param part AndesMessagePart
+     */
     public void messageContentReceived(AndesMessagePart part) {
         try {
             messageStoreManager.storeMessageContent(part);
@@ -123,12 +167,20 @@ public class MessagingEngine {
         return durableMessageStore.getContent(messageID, offsetInMessage);
     }
 
+    /**
+     * Once all the message content is stored through messageContentReceived method call this
+     * method with metadata
+     * @param message AndesMessageMetadata
+     * @param channelID channel id
+     * @throws AndesException
+     */
     public void messageReceived(AndesMessageMetadata message, long channelID)
             throws AndesException {
         try {
 
             if (message.getExpirationTime() > 0l) {
                 //store message in MESSAGES_FOR_EXPIRY_COLUMN_FAMILY Queue
+                // todo: MessageStoreManager needs to replace the deprecated method
                 durableMessageStore.addMessageToExpiryQueue(message.getMessageID(),
                                                             message.getExpirationTime(),
                                                             message.isTopic(),
@@ -185,7 +237,7 @@ public class MessagingEngine {
                         } else {
                             clone = message.deepClone(messageIdGenerator.getNextId());
                         }
-                        messageStoreManager.storeMetadata(message, channelID);
+                        messageStoreManager.storeMetadata(clone, channelID);
                     }
                 }
             } else {
@@ -211,8 +263,7 @@ public class MessagingEngine {
     /**
      * remove messages of the queue matching to some destination queue
      *
-     * @param destinationQueue
-     *         destination queue name to match
+     * @param destinationQueue destination queue name to match
      * @return number of messages removed
      * @throws AndesException
      */
@@ -253,8 +304,7 @@ public class MessagingEngine {
     /**
      * remove in-memory messages tracked for this queue
      *
-     * @param destinationQueueName
-     *         name of queue messages should be removed
+     * @param destinationQueueName name of queue messages should be removed
      * @throws AndesException
      */
     public void removeInMemoryMessagesAccumulated(String destinationQueueName)

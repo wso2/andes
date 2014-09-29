@@ -6,6 +6,9 @@ import me.prettyprint.cassandra.serializers.IntegerSerializer;
 import me.prettyprint.cassandra.serializers.LongSerializer;
 import me.prettyprint.cassandra.serializers.StringSerializer;
 
+/**
+ * Constants used by Cassandra Stores related classes
+ */
 public class CassandraConstants {
 
     // connection properties
@@ -40,22 +43,24 @@ public class CassandraConstants {
      */
     protected static final String PROP_STRATEGY_CLASS = "strategyClass";
 
-
-	public static final String USERNAME_KEY = "username";
-    public static final String PASSWORD_KEY = "password";
-    public static final String CONNECTION_STRING = "connectionString";
-    public static final String REPLICATION_FACTOR = "advanced.replicationFactor";
-    public static final String READ_CONSISTENCY_LEVEL = "advanced.readConsistencyLevel";
-    public static final String WRITE_CONSISTENCY_LEVEL = "advanced.writeConsistencyLevel";
-    public static final String STRATERGY_CLASS = "advanced.strategyClass";
-    public static final String GC_GRACE_SECONDS = "advanced.GCGraceSeconds";
-    public static final String CLUSTER_KEY = "cluster";
-    public static final String ID_GENENRATOR = "idGenerator";
-
+    /**
+     * Keysapce to be used by MB
+     */
     public final static String KEYSPACE = "QpidKeySpace";
+
+    /**
+     * Long data type for Cassandra
+     */
     public final static String LONG_TYPE = "LongType";
-    public final static String UTF8_TYPE = "UTF8Type";
+
+    /**
+     * Integer Data type for Cassandra
+     */
     public final static String INTEGER_TYPE = "IntegerType";
+
+    /**
+     * String data type for Cassandra
+     */
     public final static String STRING_TYPE = "StringType";
 
     public static StringSerializer stringSerializer = StringSerializer.get();

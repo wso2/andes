@@ -52,12 +52,13 @@ public class JDBCConnection implements DurableStoreConnection {
             isConnected = true; // if no errors
             logger.info("JDBC connection established with jndi config " + jndiLookupName);
         } catch (SQLException e) {
-            throw new AndesException("Connecting to H2 database failed!", e);
+            throw new AndesException("Connecting to database failed with jndi lookup", e);
         } catch (NamingException e) {
             throw new AndesException("Couldn't look up jndi entry for " +
                                      "\"" + jndiLookupName + "\"" + e);
         } finally {
-            close(connection, "Initialising database");
+            String task = "Initialising database";
+            close(connection, task);
         }
     }
 
@@ -91,6 +92,7 @@ public class JDBCConnection implements DurableStoreConnection {
      *
      * @param connection
      *         Connection
+     * @param task task that was done before closing
      */
     private void close(Connection connection, String task) {
         if (connection != null) {

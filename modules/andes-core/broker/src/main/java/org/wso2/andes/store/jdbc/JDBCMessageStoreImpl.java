@@ -36,8 +36,8 @@ import java.util.Map;
 import java.util.concurrent.*;
 
 /**
- * ANSI SQL based message store implementation. Message persistence related methods are
- * implemented in this class.
+ * ANSI SQL based message store implementation. Message persistence related methods are implemented
+ * in this class.
  */
 public class JDBCMessageStoreImpl implements MessageStore {
 
@@ -85,75 +85,13 @@ public class JDBCMessageStoreImpl implements MessageStore {
         messageContentRemoverTask = new MessageContentRemoverTask(this, jdbcConnection);
 
         int schedulerPeriod = ClusterResourceHolder.getInstance().getClusterConfiguration()
-                        .getContentRemovalTaskInterval();
+                .getContentRemovalTaskInterval();
         contentRemovalScheduler.scheduleAtFixedRate(messageContentRemoverTask,
-                                                    schedulerPeriod,
-                                                    schedulerPeriod,
-                                                    TimeUnit.SECONDS);
+                schedulerPeriod,
+                schedulerPeriod,
+                TimeUnit.SECONDS);
 
-        if (isCreateTables(connectionProperties)) {
-            logger.info("Creating database tables if not present in database");
-            createTables();
-        }
         return jdbcConnection;
-    }
-
-    /**
-     * Check whether to create tables at message store startup
-     * @param configurationProperties ConfigurationProperties for MessageStore
-     * @return return true if configuration PROP_CREATE_TABLES is not set to "false".
-     *
-     */
-    private boolean isCreateTables(ConfigurationProperties configurationProperties) {
-        String isCreateTableString = configurationProperties.getProperty(JDBCConstants
-                                                                                 .PROP_CREATE_TABLES);
-
-        if (isCreateTableString.isEmpty() || !isCreateTableString.equalsIgnoreCase("false")) {
-            // if configuration not set or not explicitly set to false
-            isCreateTableString = "true";
-        }
-
-        return Boolean.parseBoolean(isCreateTableString);
-    }
-
-    /**
-     * This method creates all the DB tables used for H2 based Message Store. For other databases
-     * this table creation queries might not work. Table creation can be disabled from
-     * configurations in that case.
-     * @throws AndesException
-     */
-    public void createTables() throws AndesException {
-        String[] queries = {
-                JDBCConstants.CREATE_MESSAGES_TABLE,
-                JDBCConstants.CREATE_QUEUES_TABLE,
-                JDBCConstants.CREATE_METADATA_TABLE,
-                JDBCConstants.CREATE_EXPIRATION_DATA_TABLE,
-                JDBCConstants.CREATE_REF_COUNT_TABLE
-        };
-
-        Connection connection = null;
-        Statement stmt = null;
-        try {
-            connection = getConnection();
-            stmt = connection.createStatement();
-            for (String q : queries) {
-                stmt.addBatch(q);
-            }
-            stmt.executeBatch();
-
-        } catch (SQLException e) {
-            rollback(connection, JDBCConstants.TASK_CREATING_DB_TABLES);
-            throw new AndesException("Error occurred while creating database tables", e);
-        } finally {
-            try {
-                if (stmt != null) {
-                    stmt.close();
-                }
-            } catch (SQLException e) {
-                logger.error(JDBCConstants.TASK_CREATING_DB_TABLES);
-            }
-            close(connection, JDBCConstants.TASK_CREATING_DB_TABLES);
-        }
     }
 
     /**
@@ -241,7 +179,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             }
         } catch (SQLException e) {
             throw new AndesException("Error occurred while retrieving message content from DB" +
-                                     " [msg_id=" + messageId + "]", e);
+                    " [msg_id=" + messageId + "]", e);
         } finally {
             close(results, JDBCConstants.TASK_RETRIEVING_MESSAGE_PARTS);
             close(preparedStatement, JDBCConstants.TASK_RETRIEVING_MESSAGE_PARTS);
@@ -255,10 +193,8 @@ public class JDBCMessageStoreImpl implements MessageStore {
      */
     @Override
     public void ackReceived(List<AndesAckData> ackList) throws AndesException {
-        List<AndesRemovableMetadata> messagesAddressedToQueues = new
-                ArrayList<AndesRemovableMetadata>();
-        List<AndesRemovableMetadata> messagesAddressedToTopics = new
-                ArrayList<AndesRemovableMetadata>();
+        List<AndesRemovableMetadata> messagesAddressedToQueues = new ArrayList<AndesRemovableMetadata>();
+        List<AndesRemovableMetadata> messagesAddressedToTopics = new ArrayList<AndesRemovableMetadata>();
 
         List<Long> messageIds = new ArrayList<Long>(ackList.size());
 
@@ -351,12 +287,12 @@ public class JDBCMessageStoreImpl implements MessageStore {
 
             if (logger.isDebugEnabled()) {
                 logger.debug("Metadata added: msgID: " + metadata.getMessageID() +
-                             " Destination: " + metadata.getDestination());
+                        " Destination: " + metadata.getDestination());
             }
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_ADDING_METADATA);
             throw new AndesException("Error occurred while inserting message metadata to queue ",
-                                     e);
+                    e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_ADDING_METADATA);
             close(connection, JDBCConstants.TASK_ADDING_METADATA);
@@ -432,12 +368,9 @@ public class JDBCMessageStoreImpl implements MessageStore {
     /**
      * Adds a single metadata to a batch insert of metadata
      *
-     * @param preparedStatement
-     *         prepared statement to add messages to metadata table
-     * @param metadata
-     *         AndesMessageMetadata
-     * @param queueName
-     *         queue to be assigned
+     * @param preparedStatement prepared statement to add messages to metadata table
+     * @param metadata          AndesMessageMetadata
+     * @param queueName         queue to be assigned
      * @throws SQLException
      */
     private void addMetadataToBatch(PreparedStatement preparedStatement,
@@ -534,7 +467,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             }
         } catch (SQLException e) {
             throw new AndesException("error occurred while retrieving message " +
-                                     "metadata for msg id:" + messageId, e);
+                    "metadata for msg id:" + messageId, e);
         } finally {
             String task = JDBCConstants.TASK_RETRIEVING_METADATA + messageId;
             close(results, task);
@@ -574,15 +507,15 @@ public class JDBCMessageStoreImpl implements MessageStore {
             }
             if (logger.isDebugEnabled()) {
                 logger.debug("request: metadata range (" + firstMsgId + " , " + lastMsgID +
-                             ") in destination queue " + queueName
-                             + "\nresponse: metadata count " + metadataList.size());
+                        ") in destination queue " + queueName
+                        + "\nresponse: metadata count " + metadataList.size());
             }
         } catch (SQLException e) {
             throw new AndesException("Error occurred while retrieving messages between msg id "
-                                     + firstMsgId + " and " + lastMsgID + " from queue " +
-                                     queueName,
+                    + firstMsgId + " and " + lastMsgID + " from queue " +
+                    queueName,
 
-                                     e);
+                    e);
         } finally {
             String task = JDBCConstants.TASK_RETRIEVING_METADATA_RANGE_FROM_QUEUE + queueName;
             close(resultSet, task);
@@ -629,7 +562,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             }
         } catch (SQLException e) {
             throw new AndesException("error occurred while retrieving message metadata from queue ",
-                                     e);
+                    e);
         } finally {
             close(results, JDBCConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
             close(preparedStatement, JDBCConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
@@ -715,12 +648,12 @@ public class JDBCMessageStoreImpl implements MessageStore {
             if (logger.isDebugEnabled()) {
                 logger.debug("Metadata removed. " + messagesToRemove
                         .size() + " metadata from destination "
-                             + queueName);
+                        + queueName);
             }
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_DELETING_METADATA_FROM_QUEUE + queueName);
             throw new AndesException("error occurred while deleting message metadata from queue ",
-                                     e);
+                    e);
         } finally {
             String task = JDBCConstants.TASK_DELETING_METADATA_FROM_QUEUE + queueName;
             close(preparedStatement, task);
@@ -753,9 +686,9 @@ public class JDBCMessageStoreImpl implements MessageStore {
                     break;
                 }
                 list.add(new AndesRemovableMetadata(
-                                 resultSet.getLong(JDBCConstants.MESSAGE_ID),
-                                 resultSet.getString(JDBCConstants.DESTINATION_QUEUE)
-                         )
+                                resultSet.getLong(JDBCConstants.MESSAGE_ID),
+                                resultSet.getString(JDBCConstants.DESTINATION_QUEUE)
+                        )
                 );
                 resultCount++;
             }
@@ -787,10 +720,8 @@ public class JDBCMessageStoreImpl implements MessageStore {
     /**
      * This method is expected to be used in a transaction based update.
      *
-     * @param connection
-     *         connection to be used
-     * @param messagesToRemove
-     *         AndesRemovableMetadata
+     * @param connection       connection to be used
+     * @param messagesToRemove AndesRemovableMetadata
      * @throws SQLException
      */
     private void deleteFromExpiryQueue(Connection connection,
@@ -833,7 +764,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_DELETING_FROM_EXPIRY_TABLE);
             throw new AndesException("error occurred while deleting message metadata " +
-                                     "from expiration table ", e);
+                    "from expiration table ", e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_DELETING_FROM_EXPIRY_TABLE);
             close(connection, JDBCConstants.TASK_DELETING_FROM_EXPIRY_TABLE);
@@ -844,8 +775,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
      * This method caches the queue ids for destination queue names. If queried destination queue is
      * not in cache updates the cache and returns the queue id.
      *
-     * @param destinationQueueName
-     *         queue name
+     * @param destinationQueueName queue name
      * @return corresponding queue id for the destination queue. On error -1 is returned
      * @throws SQLException
      */
@@ -878,7 +808,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
         try {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_QUEUE_ID,
-                                                            Statement.RETURN_GENERATED_KEYS);
+                    Statement.RETURN_GENERATED_KEYS);
             preparedStatement.setString(1, destinationQueueName);
             resultSet = preparedStatement.executeQuery();
             if (resultSet.first()) {
@@ -886,7 +816,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             }
         } catch (SQLException e) {
             logger.error("Error occurred while retrieving destination queue id " +
-                         "for destination queue " + destinationQueueName);
+                    "for destination queue " + destinationQueueName);
             throw e;
         } finally {
             String task = JDBCConstants.TASK_RETRIEVING_QUEUE_ID + destinationQueueName;
@@ -901,7 +831,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
     private int createNewQueue(final String destinationQueueName) throws SQLException {
         String sqlString = "INSERT INTO " + JDBCConstants.QUEUES_TABLE + " (" + JDBCConstants
                 .QUEUE_NAME + ")" +
-                           " VALUES (?)";
+                " VALUES (?)";
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
@@ -927,7 +857,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
         } catch (SQLException e) {
             logger.error(
                     "Error occurred while inserting destination queue [" + destinationQueueName +
-                    "] to database ");
+                            "] to database ");
             throw e;
         } finally {
             String task = JDBCConstants.TASK_CREATING_QUEUE + destinationQueueName;
@@ -938,33 +868,23 @@ public class JDBCMessageStoreImpl implements MessageStore {
         return queueID;
     }
 
-    private Connection getConnection() throws SQLException {
+    /**
+     * Returns SQL Connection object from connection pooled data source.
+     *
+     * @return Connection
+     * @throws SQLException
+     */
+    protected Connection getConnection() throws SQLException {
         return datasource.getConnection();
-    }
-
-
-    private void incrementRefCount(Connection connection, long messageId) throws SQLException {
-
-        // todo: ON DUPLICATE KEY UPDATE functionality requires newer version of H2 1.3.175
-        // and this query is vendor specific.
-        // Without vendor specific queries mean a read and a write. Triggers?
-        // Ref count update is per message. This affects performance.
-        // todo: DISCUSS IN REVIEW
-        String sql = "INSERT INTO " + JDBCConstants.REF_COUNT_TABLE +
-                     " (" + JDBCConstants.MESSAGE_ID + "," + JDBCConstants.REF_COUNT + ") " +
-                     "VALUES (" + messageId + ", 1) ";
-
-        Statement stmt = connection.createStatement();
-        stmt.executeUpdate(sql);
     }
 
     /**
      * Closes the provided connection. on failure log the error;
      *
-     * @param connection
-     *         Connection
+     * @param connection Connection
+     * @param task       task that was done before closing
      */
-    private void close(Connection connection, String task) {
+    protected void close(Connection connection, String task) {
         if (connection != null) {
             try {
                 connection.close();
@@ -977,12 +897,10 @@ public class JDBCMessageStoreImpl implements MessageStore {
     /**
      * On database update failure tries to rollback
      *
-     * @param connection
-     *         database connection
-     * @param task
-     *         explanation of the task done when the rollback was triggered
+     * @param connection database connection
+     * @param task       explanation of the task done when the rollback was triggered
      */
-    private void rollback(Connection connection, String task) {
+    protected void rollback(Connection connection, String task) {
         if (connection != null) {
             try {
                 connection.rollback();
@@ -995,12 +913,10 @@ public class JDBCMessageStoreImpl implements MessageStore {
     /**
      * close the prepared statement resource
      *
-     * @param preparedStatement
-     *         PreparedStatement
-     * @param task
-     *         task that was done by the closed prepared statement.
+     * @param preparedStatement PreparedStatement
+     * @param task              task that was done by the closed prepared statement.
      */
-    private void close(PreparedStatement preparedStatement, String task) {
+    protected void close(PreparedStatement preparedStatement, String task) {
         if (preparedStatement != null) {
             try {
                 preparedStatement.close();
@@ -1013,12 +929,10 @@ public class JDBCMessageStoreImpl implements MessageStore {
     /**
      * closes the result set resources
      *
-     * @param resultSet
-     *         ResultSet
-     * @param task
-     *         task that was done by the closed result set.
+     * @param resultSet ResultSet
+     * @param task      task that was done by the closed result set.
      */
-    private void close(ResultSet resultSet, String task) {
+    protected void close(ResultSet resultSet, String task) {
         if (resultSet != null) {
             try {
                 resultSet.close();

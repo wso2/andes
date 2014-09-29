@@ -28,13 +28,34 @@ import java.util.ArrayList;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+/**
+ * This class is used as a task to delete message content at scheduled period
+ */
 public class MessageContentRemoverTask implements Runnable {
 
-    private SortedMap<Long, Long> contentDeletionTasksMap;
-    private MessageStore messageStore;
-    private DurableStoreConnection connectionToMessageStore;
     private static Log log = LogFactory.getLog(MessageContentRemoverTask.class);
 
+    /**
+     * to be deleted contents map
+     */
+    private SortedMap<Long, Long> contentDeletionTasksMap;
+
+    /**
+     *  reference to message store
+     */
+    private MessageStore messageStore;
+
+    /**
+     * message store connection to check whether the connection is live before deleting.
+     */
+    private DurableStoreConnection connectionToMessageStore;
+
+    /**
+     * Setup the content deletion task with the reference to MessageStore and
+     * DurableStoreConnection to message store
+     * @param messageStore MessageStore
+     * @param connectionToMessageStore DurableStoreConnection
+     */
     public MessageContentRemoverTask(MessageStore messageStore, DurableStoreConnection connectionToMessageStore) {
         this.contentDeletionTasksMap = new ConcurrentSkipListMap<Long, Long>();
         this.messageStore = messageStore;
@@ -72,7 +93,7 @@ public class MessageContentRemoverTask implements Runnable {
     /**
      * Data is put into the concurrent skip list map for deletion
      * @param currentNanoTime current time in nano seconds
-     * @param messageId messae id of the content
+     * @param messageId message id of the content
      */
     public void put(Long currentNanoTime, Long messageId) {
         contentDeletionTasksMap.put(currentNanoTime, messageId);

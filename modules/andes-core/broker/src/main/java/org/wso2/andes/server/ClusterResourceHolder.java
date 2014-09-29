@@ -24,7 +24,7 @@ import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cassandra.TopicDeliveryWorker;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
-import org.wso2.andes.server.store.CassandraMessageStore;
+import org.wso2.andes.server.store.QpidDeprecatedMessageStore;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 
 /**
@@ -38,7 +38,7 @@ public class ClusterResourceHolder {
     /**
      * Holds the Cassandra MessageStore instance to use throughout the broker
      */
-    private CassandraMessageStore cassandraMessageStore;
+    private QpidDeprecatedMessageStore qpidDeprecatedMessageStore;
 
 
     /**
@@ -95,16 +95,16 @@ public class ClusterResourceHolder {
     }
 
 
-    public CassandraMessageStore getCassandraMessageStore() {
-        return cassandraMessageStore;
+    public QpidDeprecatedMessageStore getQpidDeprecatedMessageStore() {
+        return qpidDeprecatedMessageStore;
     }
 
     public AndesSubscriptionManager getSubscriptionManager() {
         return subscriptionManager;
     }
 
-    public void setCassandraMessageStore(CassandraMessageStore cassandraMessageStore) {
-        this.cassandraMessageStore = cassandraMessageStore;
+    public void setQpidDeprecatedMessageStore(QpidDeprecatedMessageStore qpidDeprecatedMessageStore) {
+        this.qpidDeprecatedMessageStore = qpidDeprecatedMessageStore;
     }
 
     public void setSubscriptionManager(AndesSubscriptionManager subscriptionManager) {
