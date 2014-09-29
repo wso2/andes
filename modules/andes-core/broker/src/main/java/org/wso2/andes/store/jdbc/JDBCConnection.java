@@ -18,8 +18,8 @@
 
 package org.wso2.andes.store.jdbc;
 
-import org.apache.commons.configuration.Configuration;
 import org.apache.log4j.Logger;
+import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
 
@@ -29,44 +29,46 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-// todo: need to implement with reading cassandra data source from master-datasources.xml
-public class H2Connection implements DurableStoreConnection {
+/**
+ * JDBC connection class. Connection is made using the jndi lookup name provided and connection
+ * pooled data source is used to create new connections
+ */
+public class JDBCConnection implements DurableStoreConnection {
 
-    private static final Logger logger = Logger.getLogger(H2Connection.class);
+    private static final Logger logger = Logger.getLogger(JDBCConnection.class);
     private boolean isConnected;
-    private String jndiLookupName;
     private DataSource datasource;
 
-
-    public H2Connection(boolean isInMemoryMode) {
-        if(isInMemoryMode) {
-            jndiLookupName = JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME;
-        } else {
-            jndiLookupName = JDBCConstants.H2_JNDI_LOOKUP_NAME;
-        }
-        isConnected = false;
-    }
-
-    // todo: remove argument
     @Override
-    public void initialize(Configuration configuration) throws AndesException {
+    public void initialize(ConfigurationProperties connectionProperties) throws AndesException {
         Connection connection = null;
+        String jndiLookupName = "";
         isConnected = false;
         try {
+            // try to get the lookup name. If error empty string will be returned
+            jndiLookupName = connectionProperties.getProperty(JDBCConstants.PROP_JNDI_LOOKUP_NAME);
             datasource = InitialContext.doLookup(jndiLookupName);
             connection = datasource.getConnection();
             isConnected = true; // if no errors
+            logger.info("JDBC connection established with jndi config " + jndiLookupName);
         } catch (SQLException e) {
-            throw new AndesException("Connecting to H2 database failed!", e);
+            throw new AndesException("Connecting to database failed with jndi lookup", e);
         } catch (NamingException e) {
             throw new AndesException("Couldn't look up jndi entry for " +
-                    "\"" + jndiLookupName + "\"" + e);
+                                     "\"" + jndiLookupName + "\"" + e);
         } finally {
-            close(connection, "initialising database");
+            String task = "Initialising database";
+            close(connection, task);
         }
     }
 
-    public DataSource getDatasource() {
+    /**
+     * connection pooled data source object is returned. Connections to database can be created
+     * using the data source.
+     *
+     * @return DataSource
+     */
+    public DataSource getDataSource() {
         return datasource;
     }
 
@@ -82,20 +84,15 @@ public class H2Connection implements DurableStoreConnection {
 
     @Override
     public Object getConnection() {
-        return this; //
+        return this;
     }
-
-
-
-    void setIsConnected(boolean isConnected) {
-        this.isConnected = isConnected;
-    }
-
 
     /**
      * Closes the provided connection. on failure log the error;
      *
-     * @param connection Connection
+     * @param connection
+     *         Connection
+     * @param task task that was done before closing
      */
     private void close(Connection connection, String task) {
         if (connection != null) {
@@ -105,5 +102,16 @@ public class H2Connection implements DurableStoreConnection {
                 logger.error("Failed to close connection after " + task);
             }
         }
+    }
+
+    /**
+     * Returns a ConfigurationProperties to create a in-memory JDBC connection
+     * @return ConfigurationProperties
+     */
+    public static ConfigurationProperties getInMemoryConnectionProperties() {
+        ConfigurationProperties connectionProperties = new ConfigurationProperties();
+        connectionProperties.addProperty(JDBCConstants.PROP_JNDI_LOOKUP_NAME,
+                                         JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME);
+        return connectionProperties;
     }
 }

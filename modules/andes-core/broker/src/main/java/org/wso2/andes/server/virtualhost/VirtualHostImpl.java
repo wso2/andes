@@ -30,9 +30,7 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.AMQBrokerManagerMBean;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.BindingFactory;
-import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.configuration.*;
 import org.wso2.andes.server.connection.ConnectionRegistry;
 import org.wso2.andes.server.connection.IConnectionRegistry;
@@ -55,10 +53,8 @@ import org.wso2.andes.server.registry.IApplicationRegistry;
 import org.wso2.andes.server.security.SecurityManager;
 import org.wso2.andes.server.security.auth.manager.AuthenticationManager;
 import org.wso2.andes.server.stats.StatisticsCounter;
-import org.wso2.andes.server.store.ConfigurationRecoveryHandler;
-import org.wso2.andes.server.store.DurableConfigurationStore;
+import org.wso2.andes.server.store.*;
 import org.wso2.andes.server.store.MessageStore;
-import org.wso2.andes.server.store.TransactionLog;
 import org.wso2.andes.server.virtualhost.plugins.VirtualHostPlugin;
 import org.wso2.andes.server.virtualhost.plugins.VirtualHostPluginFactory;
 
@@ -212,7 +208,7 @@ public class VirtualHostImpl implements VirtualHost {
             _messageStore = store;
             _durableConfigurationStore = store;
         } else {
-            initialiseMessageStore(hostConfig);
+            initialiseAndesStores(hostConfig);
         }
 
         // This needs to be after the RT has been defined as it creates the default durable exchanges.
@@ -332,22 +328,14 @@ public class VirtualHostImpl implements VirtualHost {
      * @param hostConfig VirtualHost Configuration
      * @throws Exception
      */
-    private void initialiseMessageStore(VirtualHostConfiguration hostConfig) throws Exception {
+    private void initialiseAndesStores(VirtualHostConfiguration hostConfig) throws Exception {
 
         //kernel will start message stores for Andes
         AndesKernelBoot.startAndesStores(hostConfig.getStoreConfiguration(), this);
 
-        //this is considered as an internal impl now, so hard coding
-        String qpidMessageStoreClass = "org.wso2.andes.server.store.CassandraMessageStore";
-
-        Class clazz = Class.forName(qpidMessageStoreClass);
-        Object o = clazz.newInstance();
-
-        if (!(o instanceof MessageStore)) {
-            throw new ClassCastException("Message store class must implement " + MessageStore.class + ". Class " + clazz +
-                    " does not.");
-        }
-        MessageStore messageStore = (MessageStore) o;
+        // this is considered as an internal impl now, so hard coding
+        // qpid related messagestore
+        MessageStore messageStore = new QpidDeprecatedMessageStore();
         VirtualHostConfigRecoveryHandler recoveryHandler = new VirtualHostConfigRecoveryHandler(this);
 
         MessageStoreLogSubject storeLogSubject = new MessageStoreLogSubject(this, messageStore);

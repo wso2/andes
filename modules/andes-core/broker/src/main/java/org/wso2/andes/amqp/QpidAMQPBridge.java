@@ -158,7 +158,7 @@ public class QpidAMQPBridge {
      * @throws AMQException
      */
     public StorableMessageMetaData getMessageMetaData(long messageID) throws AMQException {
-        StorableMessageMetaData metaData = null;
+        StorableMessageMetaData metaData;
         try {
             metaData = AMQPUtils.convertAndesMetadataToAMQMetadata
                     (MessagingEngine.getInstance().getMessageMetaData(messageID));
@@ -203,7 +203,7 @@ public class QpidAMQPBridge {
      * @throws AMQException
      */
     public int getMessageContentChunk(long messageID, int offsetInMessage, ByteBuffer dst) throws AMQException {
-        int contentLenWritten = 0;
+        int contentLenWritten;
         try {
             contentLenWritten = AMQPUtils.getMessageContentChunkConvertedCorrectly(messageID, offsetInMessage, dst);
         } catch (AndesException e) {
@@ -422,7 +422,7 @@ public class QpidAMQPBridge {
                     }
                 }
             } catch (AndesException e) {
-                log.warn("Reverting already created subscription entries for this subscription");
+                log.warn("Reverting already created subscription entries for this subscription", e);
                 for (AndesBinding b : uniqueBindings) {
                     for (Binding qpidBinding : bindingList) {
                         if (qpidBinding.getQueue().getName().equals(b.boundQueue.queueName) &&

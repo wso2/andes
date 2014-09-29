@@ -208,7 +208,6 @@
         <dependency>
             <groupId>com.googlecode.disruptor.wso2</groupId>
             <artifactId>disruptor</artifactId>
-            <version>2.10.4-wso2v2</version>
         </dependency>
 
         <dependency>
@@ -423,6 +422,7 @@
             <artifactId>naming-factory</artifactId>
         </dependency>
 
+        <!--database unit testing-->
         <dependency>
             <groupId>tomcat</groupId>
             <artifactId>naming-resources</artifactId>
@@ -432,6 +432,12 @@
               <groupId>org.wso2.carbon</groupId>
               <artifactId>org.wso2.carbon.core</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+        </dependency>
+
        <!--Thrift Dependency-->
         <dependency>
             <groupId>libthrift.wso2</groupId>

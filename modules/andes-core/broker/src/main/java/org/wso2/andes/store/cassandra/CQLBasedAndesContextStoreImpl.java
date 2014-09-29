@@ -23,6 +23,7 @@ import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Row;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
@@ -34,38 +35,55 @@ import java.util.Map;
 
 import static org.wso2.andes.store.cassandra.CassandraConstants.*;
 
-
+/**
+ * CQL based Andes context store implementation.
+ */
 public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
 
+    /**
+     * logger for CQLBasedAndesContextStoreImpl class
+     */
     private static Log log = LogFactory.getLog(CQLBasedAndesContextStoreImpl.class);
-    private DurableStoreConnection connection;
-    private Cluster cluster;
 
+    /**
+     * DurableStoreConnection to connect to Cassandra database
+     */
+    private DurableStoreConnection connection;
+
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void init(DurableStoreConnection storeConnection) throws AndesException {
+    public DurableStoreConnection init(ConfigurationProperties connectionProperties) throws
+            AndesException {
 
         try {
-
-            connection = storeConnection;
-            this.cluster = ((CQLConnection) connection).getCluster();
+            CQLConnection cqlConnection = new CQLConnection();
+            cqlConnection.initialize(connectionProperties);
+            connection = cqlConnection;
+            Cluster cluster = cqlConnection.getCluster();
             //create needed column families
-            CQLDataAccessHelper.createColumnFamily(SUBSCRIPTIONS_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
+            CQLDataAccessHelper.createColumnFamily(SUBSCRIPTIONS_COLUMN_FAMILY, KEYSPACE, cluster, CassandraConstants.STRING_TYPE, DataType.text(),
                     ((CQLConnection) connection.getConnection()).getGcGraceSeconds());
-            CQLDataAccessHelper.createColumnFamily(EXCHANGE_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
+            CQLDataAccessHelper.createColumnFamily(EXCHANGE_COLUMN_FAMILY, KEYSPACE, cluster, CassandraConstants.STRING_TYPE, DataType.text(),
                     ((CQLConnection) connection.getConnection()).getGcGraceSeconds());
-            CQLDataAccessHelper.createColumnFamily(QUEUE_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
+            CQLDataAccessHelper.createColumnFamily(QUEUE_COLUMN_FAMILY, KEYSPACE, cluster, CassandraConstants.STRING_TYPE, DataType.text(),
                     ((CQLConnection) connection.getConnection()).getGcGraceSeconds());
-            CQLDataAccessHelper.createColumnFamily(BINDING_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
+            CQLDataAccessHelper.createColumnFamily(BINDING_COLUMN_FAMILY, KEYSPACE, cluster, CassandraConstants.STRING_TYPE, DataType.text(),
                     ((CQLConnection) connection.getConnection()).getGcGraceSeconds());
-            CQLDataAccessHelper.createColumnFamily(NODE_DETAIL_COLUMN_FAMILY, KEYSPACE, this.cluster, CassandraConstants.STRING_TYPE, DataType.text(),
+            CQLDataAccessHelper.createColumnFamily(NODE_DETAIL_COLUMN_FAMILY, KEYSPACE, cluster, CassandraConstants.STRING_TYPE, DataType.text(),
                     ((CQLConnection) connection.getConnection()).getGcGraceSeconds());
+            return cqlConnection;
         } catch (CassandraDataAccessException e) {
-            log.error("Error while creating column spaces during subscription store init. ", e);
-            throw new AndesException(e);
+            throw new AndesException("Error while creating column spaces during subscription " +
+                    "store init. ", e);
         }
-
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Map<String, List<String>> getAllStoredDurableSubscriptions() throws AndesException {
         try {
@@ -76,6 +94,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void storeDurableSubscription(String destinationIdentifier, String subscriptionID, String subscriptionEncodeAsStr) throws AndesException {
         try {
@@ -86,6 +107,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void removeDurableSubscription(String destinationIdentifier, String subscriptionID) throws AndesException {
         try {
@@ -96,6 +120,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void storeNodeDetails(String nodeID, String data) throws AndesException {
         try {
@@ -106,6 +133,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Map<String, String> getAllStoredNodeData() throws AndesException {
         try {
@@ -128,6 +158,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void removeNodeData(String nodeID) throws AndesException {
         try {
@@ -138,6 +171,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void addMessageCounterForQueue(String destinationQueueName) throws AndesException {
         try {
@@ -148,11 +184,17 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public long getMessageCountForQueue(String destinationQueueName) throws AndesException {
         return 0;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void removeMessageCounterForQueue(String destinationQueueName) throws AndesException {
         try {
@@ -163,6 +205,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void storeExchangeInformation(String exchangeName, String exchangeInfo) throws AndesException {
         try {
@@ -173,6 +218,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<AndesExchange> getAllExchangesStored() throws AndesException {
         try {
@@ -192,6 +240,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void deleteExchangeInformation(String exchangeName) throws AndesException {
         try {
@@ -202,6 +253,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void storeQueueInformation(String queueName, String queueInfo) throws AndesException {
         try {
@@ -212,6 +266,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<AndesQueue> getAllQueuesStored() throws AndesException {
         try {
@@ -230,6 +287,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void deleteQueueInformation(String queueName) throws AndesException {
         try {
@@ -240,16 +300,22 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void storeBindingInformation(String exchange, String boundQueueName, String routingKey) throws AndesException {
+    public void storeBindingInformation(String exchange, String boundQueueName, String bindingInfo) throws AndesException {
         try {
-            CQLDataAccessHelper.addMappingToRaw(KEYSPACE, BINDING_COLUMN_FAMILY, exchange, boundQueueName, routingKey, true);
+            CQLDataAccessHelper.addMappingToRaw(KEYSPACE, BINDING_COLUMN_FAMILY, exchange, boundQueueName, bindingInfo, true);
         } catch (CassandraDataAccessException e) {
             log.error("error while storing binding information to cassandra context store", e);
             throw new AndesException(e);
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<AndesBinding> getBindingsStoredForExchange(String exchangeName) throws AndesException {
         try {
@@ -268,6 +334,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void deleteBindingInformation(String exchangeName, String boundQueueName) throws AndesException {
         try {
@@ -278,6 +347,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void close() {
         connection.close();

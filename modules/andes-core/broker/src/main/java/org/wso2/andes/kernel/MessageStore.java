@@ -18,13 +18,15 @@
 
 package org.wso2.andes.kernel;
 
+import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 
 import java.util.List;
 
 public interface MessageStore {
 
-    public void initializeMessageStore(DurableStoreConnection durableConnection) throws AndesException;
+    public DurableStoreConnection initializeMessageStore(ConfigurationProperties
+                                                        connectionProperties) throws AndesException;
 
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException;
 

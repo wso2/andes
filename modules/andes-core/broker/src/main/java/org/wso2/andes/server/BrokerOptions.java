@@ -57,7 +57,6 @@ public class BrokerOptions
     private String _bind;
     private Integer _jmxPort;
     private Integer _mqttPort = DEFAULT_MQTT_PORT;
-    private Integer _cassandraPort;
 
     private Integer _logWatchFrequency = 0;
 
@@ -155,15 +154,6 @@ public class BrokerOptions
     public void setLogWatchFrequency(final int logWatchFrequency)
     {
         _logWatchFrequency = logWatchFrequency;
-    }
-
-    public Integer get_cassandraPort() {
-        return _cassandraPort;
-    }
-
-    public void set_cassandraPort(Integer _cassandraPort) {
-        this._cassandraPort = _cassandraPort;
-        AndesUtils.getInstance().setCassandraPort(_cassandraPort);
     }
 
     public void setMQTTPort(Integer _mqttPort) {

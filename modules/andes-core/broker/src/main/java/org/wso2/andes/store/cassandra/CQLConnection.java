@@ -18,12 +18,9 @@
 
 package org.wso2.andes.store.cassandra;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.commons.configuration.Configuration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
@@ -33,11 +30,12 @@ import org.wso2.andes.store.cassandra.dao.GenericCQLDAO;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.GlobalQueueManager;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
-import org.wso2.andes.server.store.util.CQLDataAccessHelper.ClusterConfiguration;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
-import org.wso2.andes.server.util.AndesUtils;
 
 import com.datastax.driver.core.Cluster;
+
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
 
 import static org.wso2.andes.store.cassandra.CassandraConstants.*;
 
@@ -47,74 +45,75 @@ public class CQLConnection implements DurableStoreConnection {
     private static Log log = LogFactory.getLog(CQLConnection.class);
     private boolean isCassandraConnectionLive = false;
     private int gcGraceSeconds;
-    private final static int DEFAULT_GC_GRAE_SECOND_VALUE = 864000;
+    private final static String DEFAULT_GC_GRACE_SECONDS = "864000";
+    private final static String DEFAULT_REPLICATION_FACTOR = "1";
+    private final static String DEFAULT_STRATEGY_CLASS = "org.apache.cassandra.locator" +
+                                                         ".SimpleStrategy";
+
+    private final static String DEFAULT_READ_CONSISTENCY = "QUORUM";
+    private final static String DEFAULT_WRITE_CONSISTENCY = "QUORUM";
+
 
 
     @Override
-    public void initialize(Configuration configuration) throws AndesException {
-
+    public void initialize(ConfigurationProperties connectionProperties) throws AndesException {
+        String jndiLookupName = "";
         try {
-            String userName = (String) configuration.getProperty(USERNAME_KEY);
-            String password = (String) configuration.getProperty(PASSWORD_KEY);
-            Object connections = configuration.getProperty(CONNECTION_STRING);
-            int replicationFactor = configuration.getInt(REPLICATION_FACTOR, 1);
-            String strategyClass = configuration.getString(STRATERGY_CLASS);
-            String readConsistancyLevel = configuration.getString(READ_CONSISTENCY_LEVEL);
-            String writeConsistancyLevel = configuration.getString(WRITE_CONSISTENCY_LEVEL);
-            String gcGraceSecondsString = (String) configuration.getProperty(GC_GRACE_SECONDS);
-            if (gcGraceSecondsString != null) {
-                setGcGraceSeconds(Integer.parseInt(gcGraceSecondsString));
-            } else {
-                setGcGraceSeconds(DEFAULT_GC_GRAE_SECOND_VALUE);
+
+            jndiLookupName = connectionProperties.getProperty(CassandraConstants
+                                                                      .PROP_JNDI_LOOKUP_NAME);
+
+            String replicationFactor = connectionProperties.getProperty(CassandraConstants
+                                                                                .PROP_REPLICATION_FACTOR);
+            if(replicationFactor.isEmpty()){
+                replicationFactor = DEFAULT_REPLICATION_FACTOR;
+            }
+            String strategyClass = connectionProperties.getProperty(CassandraConstants
+                                                                            .PROP_STRATEGY_CLASS);
+
+            if (strategyClass.isEmpty()){
+                strategyClass = DEFAULT_STRATEGY_CLASS;
+            }
+            String readConsistancyLevel = connectionProperties.getProperty(CassandraConstants.PROP_READ_CONSISTENCY);
+            if (readConsistancyLevel.isEmpty()) {
+                readConsistancyLevel = DEFAULT_READ_CONSISTENCY;
             }
 
-            int port = 9042;
-            boolean isExternalCassandraServerRequired = ClusterResourceHolder.getInstance().
-                    getClusterConfiguration().getIsExternalCassandraserverRequired();
-
-            List<String> hosts = new ArrayList<String>();
-
-            if (connections instanceof ArrayList && isExternalCassandraServerRequired) {
-                List<String> cons = (ArrayList<String>) connections;
-                for (String connection : cons) {
-                    String host = connection.split(":")[0];
-                    port = Integer.parseInt(connection.split(":")[1]);
-                    hosts.add(host);
-                }
-
-            } else if (connections instanceof String && isExternalCassandraServerRequired) {
-                String connectionString = (String) connections;
-                if (connectionString.indexOf(":") > 0) {
-                    String host = connectionString.split(":")[0];
-                    hosts.add(host);
-                    port = Integer.parseInt(connectionString.split(":")[1]);
-                }
-            } else {
-                String defaultHost = "localhost";
-                int defaultPort = AndesUtils.getInstance().getCassandraPort();
-                port = defaultPort;
-                hosts.add(defaultHost);
+            String writeConsistancyLevel = connectionProperties.getProperty(CassandraConstants
+                                                                                    .PROP_WRITE_CONSISTENCY);
+            if(writeConsistancyLevel.isEmpty()) {
+                writeConsistancyLevel = DEFAULT_WRITE_CONSISTENCY;
             }
 
-            String clusterName = (String) configuration.getProperty(CLUSTER_KEY);
-            ClusterConfiguration clusterConfig = new ClusterConfiguration(userName, password, clusterName, hosts, port);
+            String gcGraceSeconds = connectionProperties.getProperty(CassandraConstants
+                                                                                   .PROP_GC_GRACE_SECONDS);
 
-            log.info("Initializing Cassandra Message Store: HOSTS=" + hosts + " PORT=" + port);
+            if(gcGraceSeconds.isEmpty()) {
+                gcGraceSeconds = DEFAULT_GC_GRACE_SECONDS;
+            }
 
-            cluster = CQLDataAccessHelper.createCluster(clusterConfig);
+            setGcGraceSeconds(Integer.parseInt(gcGraceSeconds));
+
+            cluster = InitialContext.doLookup(jndiLookupName);
+
             GenericCQLDAO.setCluster(cluster);
-            createKeySpace(replicationFactor, strategyClass);
+            createKeySpace(Integer.parseInt(replicationFactor), strategyClass);
 
-            /*ConfigurableConsistencyLevel configurableConsistencyLevel = new ConfigurableConsistencyLevel();
+            /*ConfigurableConsistencyLevel configurableConsistencyLevel = new
+            ConfigurableConsistencyLevel();
             if (readConsistancyLevel == null || readConsistancyLevel.isEmpty()) {
-                configurableConsistencyLevel.setDefaultReadConsistencyLevel(HConsistencyLevel.QUORUM);
+                configurableConsistencyLevel.setDefaultReadConsistencyLevel(HConsistencyLevel
+                .QUORUM);
             } else {
-                configurableConsistencyLevel.setDefaultReadConsistencyLevel(HConsistencyLevel.valueOf(readConsistancyLevel));
+                configurableConsistencyLevel.setDefaultReadConsistencyLevel(HConsistencyLevel
+                .valueOf(readConsistancyLevel));
             }
             if (writeConsistancyLevel == null || writeConsistancyLevel.isEmpty()) {
-                configurableConsistencyLevel.setDefaultWriteConsistencyLevel(HConsistencyLevel.QUORUM);
+                configurableConsistencyLevel.setDefaultWriteConsistencyLevel(HConsistencyLevel
+                .QUORUM);
             } else {
-                configurableConsistencyLevel.setDefaultWriteConsistencyLevel(HConsistencyLevel.valueOf(writeConsistancyLevel));
+                configurableConsistencyLevel.setDefaultWriteConsistencyLevel(HConsistencyLevel
+                .valueOf(writeConsistancyLevel));
             }
 
             keyspace.setConsistencyLevelPolicy(configurableConsistencyLevel);
@@ -123,10 +122,13 @@ public class CQLConnection implements DurableStoreConnection {
             isCassandraConnectionLive = true;
             checkCassandraConnection();
 
+        } catch (NamingException e) {
+            throw new AndesException("Couldn't look up jndi entry for " +
+                                     "\"" + jndiLookupName + "\"" + e);
         } catch (CassandraDataAccessException e) {
-            log.error("Cannot Initialize Cassandra Connection", e);
-            throw new AndesException(e);
+            throw new AndesException("Cannot Initialize Cassandra Connection", e);
         }
+
     }
 
     @Override
@@ -151,8 +153,11 @@ public class CQLConnection implements DurableStoreConnection {
         return this;
     }
 
-    private void createKeySpace(int replicationFactor, String strategyClass) throws CassandraDataAccessException {
-        CQLDataAccessHelper.createKeySpace(cluster, GenericCQLDAO.CLUSTER_SESSION, KEYSPACE, replicationFactor, strategyClass);
+    private void createKeySpace(int replicationFactor, String strategyClass)
+            throws CassandraDataAccessException {
+        CQLDataAccessHelper
+                .createKeySpace(cluster, GenericCQLDAO.CLUSTER_SESSION, KEYSPACE, replicationFactor,
+                                strategyClass);
     }
 
     public Cluster getCluster() {
@@ -169,7 +174,7 @@ public class CQLConnection implements DurableStoreConnection {
         //TODO: Hasitha - review what to start
         try {
             if (MessagingEngine.getInstance().getDurableMessageStore() != null
-                    && AndesContext.getInstance().getSubscriptionStore() != null) {
+                && AndesContext.getInstance().getSubscriptionStore() != null) {
 
                 MessagingEngine.getInstance().startMessageDelivery();
 
@@ -181,10 +186,6 @@ public class CQLConnection implements DurableStoreConnection {
                         log.info("Starting all global queue workers locally");
                         gqm.startAllQueueWorkersLocally();
                     }
-                }
-                if (ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer() != null) {
-                    log.info("Starting syncing exchanges, queues and bindings");
-                    ClusterResourceHolder.getInstance().getAndesRecoveryTask().startRunning();
                 }
             }
         } catch (Exception e) {
@@ -209,15 +210,10 @@ public class CQLConnection implements DurableStoreConnection {
                 gqm.stopAllQueueWorkersLocally();
             }
         }
-        if (ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer() != null) {
-            log.info("Stopping syncing exchanges, queues and bindings");
-            ClusterResourceHolder.getInstance().getAndesRecoveryTask().stopRunning();
-        }
     }
 
     /**
-     * exponential backoff thread to
-     * check if cassandra connection is live
+     * exponential backoff thread to check if cassandra connection is live
      */
     private void checkCassandraConnection() {
         Thread cassandraConnectionCheckerThread = new Thread(new Runnable() {
@@ -238,7 +234,9 @@ public class CQLConnection implements DurableStoreConnection {
                         }
                     } catch (CassandraDataAccessException e) {
                         try {
-                            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+                            if (e.getMessage().contains(
+                                    "All host pools marked down. Retry burden pushed out to " +
+                                    "client")) {
 
                                 isCassandraConnectionLive = false;
                                 //print the error log several times
@@ -251,7 +249,9 @@ public class CQLConnection implements DurableStoreConnection {
                                     log.error("Cassandra Message Store is Inaccessible....");
                                     stopTasks();
                                 }
-                                log.info("Waiting for Cassandra connection configured to become live...");
+                                log.info(
+                                        "Waiting for Cassandra connection configured to become " +
+                                        "live...");
 
                                 if (retriedCount <= 10) {
                                     Thread.sleep(6000);

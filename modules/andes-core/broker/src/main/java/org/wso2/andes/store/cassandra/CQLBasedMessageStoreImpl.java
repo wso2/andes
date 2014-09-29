@@ -1,13 +1,13 @@
 package org.wso2.andes.store.cassandra;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.*;
 
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.querybuilder.Select;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
@@ -32,32 +32,57 @@ import com.datastax.driver.core.querybuilder.Insert;
 public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageStore {
     private static Log log = LogFactory.getLog(CQLBasedMessageStoreImpl.class);
 
-    private ConcurrentSkipListMap<Long, Long> contentDeletionTasks = new ConcurrentSkipListMap<Long, Long>();
-    private MessageContentRemoverTask messageContentRemoverTask;
+    // todo: move this schedulers to MessagingEngine level
+    private ScheduledExecutorService contentRemovalScheduler;
+
     private AlreadyProcessedMessageTracker alreadyMovedMessageTracker;
+    // todo: move this schedulers to MessagingEngine level
+    MessageContentRemoverTask messageContentRemoverTask;
     private boolean isMessageCountingAllowed;
-    private DurableStoreConnection connection;
+
+    /**
+     * Cassandra cluster object.
+     */
     private Cluster cluster;
-    private static boolean isClusteringEnabled;
+    /**
+     * CQLConnection object which tracks the Cassandra connection
+     */
+    private CQLConnection cqlConnection;
 
     public CQLBasedMessageStoreImpl() {
+        int threadPoolCount = 1;
+        contentRemovalScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         isMessageCountingAllowed = ClusterResourceHolder.getInstance().getClusterConfiguration().getViewMessageCounts();
-        isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
     }
 
-    public void initializeMessageStore(DurableStoreConnection cassandraconnection) throws AndesException {
-        connection = cassandraconnection;
-        initializeCassandraMessageStore(cassandraconnection);
+    public DurableStoreConnection initializeMessageStore(ConfigurationProperties
+                                                       connectionProperties) throws AndesException {
+
+        // create connection object
+        cqlConnection = new CQLConnection();
+        cqlConnection.initialize(connectionProperties);
+
+        // get cassandra cluster and create column families
+        initializeCassandraMessageStore(cqlConnection);
+
         alreadyMovedMessageTracker = new AlreadyProcessedMessageTracker("Message-move-tracker", 15000000000L, 10);
-        messageContentRemoverTask = new MessageContentRemoverTask(ClusterResourceHolder.getInstance().getClusterConfiguration().
-                getContentRemovalTaskInterval(), contentDeletionTasks, this, cassandraconnection);
-        messageContentRemoverTask.start();
+
+        // start periodic message removal task
+        messageContentRemoverTask = new MessageContentRemoverTask(this, cqlConnection);
+        int schedulerPeriod = ClusterResourceHolder.getInstance().getClusterConfiguration()
+                .getContentRemovalTaskInterval();
+        contentRemovalScheduler.scheduleAtFixedRate(messageContentRemoverTask,
+                schedulerPeriod,
+                schedulerPeriod,
+                TimeUnit.SECONDS);
+        return cqlConnection;
     }
 
-    private void initializeCassandraMessageStore(DurableStoreConnection cassandraconnection) throws AndesException {
+    private void initializeCassandraMessageStore(CQLConnection cqlConnection) throws
+            AndesException {
         try {
-            cluster = ((CQLConnection) cassandraconnection).getCluster();
-            createColumnFamilies();
+            cluster = cqlConnection.getCluster();
+            createColumnFamilies(cqlConnection);
         } catch (CassandraDataAccessException e) {
             log.error("Error while initializing cassandra message store", e);
             throw new AndesException(e);
@@ -69,8 +94,8 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
      *
      * @throws CassandraDataAccessException
      */
-    private void createColumnFamilies() throws CassandraDataAccessException {
-        int gcGraceSeconds = ((CQLConnection) connection.getConnection()).getGcGraceSeconds();
+    private void createColumnFamilies(CQLConnection connection) throws CassandraDataAccessException {
+        int gcGraceSeconds = connection.getGcGraceSeconds();
         CQLDataAccessHelper.createColumnFamily(CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY, CassandraConstants.KEYSPACE, this.cluster, CassandraConstants.LONG_TYPE, DataType.blob(), gcGraceSeconds);
         CQLDataAccessHelper.createColumnFamily(CassandraConstants.NODE_QUEUES_COLUMN_FAMILY, CassandraConstants.KEYSPACE, this.cluster, CassandraConstants.LONG_TYPE, DataType.blob(), gcGraceSeconds);
         CQLDataAccessHelper.createColumnFamily(CassandraConstants.GLOBAL_QUEUES_COLUMN_FAMILY, CassandraConstants.KEYSPACE, this.cluster, CassandraConstants.LONG_TYPE, DataType.blob(), gcGraceSeconds);
@@ -333,7 +358,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     private void addContentDeletionTask(long currentNanoTime, long messageID) {
-        contentDeletionTasks.put(currentNanoTime, messageID);
+        messageContentRemoverTask.put(currentNanoTime, messageID);
     }
 
     public void addMessageMetaData(QueueAddress queueAddress, List<AndesMessageMetadata> messageList) throws AndesException {
@@ -679,11 +704,15 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     public void close() {
-        if (messageContentRemoverTask != null && messageContentRemoverTask.isRunning()) {
-            this.messageContentRemoverTask.setRunning(false);
+        try {
+            contentRemovalScheduler.shutdown();
+            contentRemovalScheduler.awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            contentRemovalScheduler.shutdownNow();
+            log.warn("Content remover task forcefully shutdown.");
         }
         alreadyMovedMessageTracker.shutDownMessageTracker();
-        connection.close();
+        cqlConnection.close();
     }
 
     @Override
@@ -804,7 +833,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     @Override
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDLC) throws AndesException {
         try {
-
+            // todo: Review business logic here. Remove business logic.
             HashMap<String, List<AndesRemovableMetadata>> messagesForTopics = new HashMap<String, List<AndesRemovableMetadata>>();
             HashMap<String, List<AndesRemovableMetadata>> messagesForQueues = new HashMap<String, List<AndesRemovableMetadata>>();
             HashMap<String, List<AndesRemovableMetadata>> messagesInGlobalQueues = new HashMap<String, List<AndesRemovableMetadata>>();

@@ -18,9 +18,13 @@
 
 package org.wso2.andes.store.jdbc;
 
+import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.AndesQueue;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -70,6 +74,13 @@ public class JDBCTestHelper {
         return md;
     }
 
+    /**
+     * Returns a List of AndesMessagePart including the first message id with two content chunks
+     * for each message id
+     * @param firstMsgId first message id
+     * @param lastMsgId  last message id
+     * @return
+     */
     protected static List<AndesMessagePart> getMessagePartList(long firstMsgId, long lastMsgId) {
         List<AndesMessagePart> list = new ArrayList<AndesMessagePart>();
         byte[] content = "test message".getBytes();
@@ -92,5 +103,66 @@ public class JDBCTestHelper {
             list.add(p);
         }
         return list;
+    }
+
+    /**
+     * Stores a binding in store with relevant exchange and queue information
+     * @param connection Connection
+     * @param exchange name of exchange
+     * @param boundQueue bounded queue
+     * @param routingKey routing key
+     * @param owner owner of the queue
+     * @throws Exception
+     */
+    protected static void storeBindingInfo(Connection connection, String exchange,
+                                           String boundQueue,
+                                           String routingKey,
+                                           String owner  ) throws Exception {
+        // store queue and exchange information accordingly in db before storing binging.
+        AndesQueue andesQueue = new AndesQueue(boundQueue, "owner1", true, false);
+        AndesBinding andesBinding = new AndesBinding(exchange, andesQueue, routingKey);
+        // setup database with queue information
+        String insert = "INSERT INTO " + JDBCConstants.QUEUE_INFO_TABLE + " (" +
+                JDBCConstants.QUEUE_NAME + "," + JDBCConstants.QUEUE_INFO + " ) " +
+                " VALUES (?,?)";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(insert);
+        preparedStatement.setString(1, andesQueue.queueName);
+        preparedStatement.setString(2, andesQueue.encodeAsString());
+        preparedStatement.addBatch();
+
+        preparedStatement.executeBatch();
+        preparedStatement.close();
+
+        // setup database with exchange information
+        String exchangeInfo = "exchangeName=" + exchange + ",type=none," +
+                "autoDelete=false";
+
+        insert = "INSERT INTO " + JDBCConstants.EXCHANGES_TABLE + " ( " +
+                JDBCConstants.EXCHANGE_NAME + "," +
+                JDBCConstants.EXCHANGE_DATA + ") " +
+                " VALUES (?, ?)";
+
+        preparedStatement = connection.prepareStatement(insert);
+        preparedStatement.setString(1, exchange);
+        preparedStatement.setString(2, exchangeInfo);
+        preparedStatement.addBatch();
+        preparedStatement.executeBatch();
+        preparedStatement.close();
+
+        // setup database with binding information
+        insert = "INSERT INTO " + JDBCConstants.BINDINGS_TABLE + " (" +
+                JDBCConstants.BINDING_EXCHANGE_NAME + "," +
+                JDBCConstants.BINDING_QUEUE_NAME + "," +
+                JDBCConstants.BINDING_INFO + " ) " +
+                " VALUES (?,?,?)";
+
+        preparedStatement = connection.prepareStatement(insert);
+        preparedStatement.setString(1, exchange);
+        preparedStatement.setString(2, andesQueue.queueName);
+        preparedStatement.setString(3, andesBinding.encodeAsString());
+        preparedStatement.addBatch();
+        preparedStatement.executeBatch();
+
     }
 }

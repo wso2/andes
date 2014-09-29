@@ -69,7 +69,7 @@ public class DisruptorBasedExecutor {
         ringBuffer.publish(sequence);
     }
 
-    public void messageCompleted(QueueAddress queueAddress, AndesMessageMetadata metadata, long channelID) {
+    public void messageCompleted(AndesMessageMetadata metadata, long channelID) {
         //This count how many jobs has finished
         synchronized (pendingJobsTracker) {
             PendingJob pendingJob = pendingJobsTracker.get(channelID);
@@ -86,7 +86,6 @@ public class DisruptorBasedExecutor {
         event.isPart = false;
         event.metadata = metadata;
         event.metadata.setPendingJobsTracker(pendingJobsTracker);
-        event.metadata.queueAddress = queueAddress;
         // make the event available to EventProcessors
         ringBuffer.publish(sequence);
     }

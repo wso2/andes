@@ -19,16 +19,17 @@
 package org.wso2.andes.kernel;
 
 import org.apache.commons.configuration.Configuration;
+import org.wso2.andes.configuration.ConfigurationProperties;
 
 public interface DurableStoreConnection {
 
     /**
      * Initialize database connection
      *
-     * @param configuration storage configuration
+     * @param connectionProperties ConfigurationProperties
      * @throws AndesException
      */
-    public void initialize(Configuration configuration) throws AndesException;
+    public void initialize(ConfigurationProperties connectionProperties) throws AndesException;
 
     /**
      * Close database connection

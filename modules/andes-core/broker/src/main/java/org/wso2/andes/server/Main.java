@@ -207,11 +207,6 @@ public class Main {
             options.setMQTTPort(Server.DEFAULT_MQTT_PORT);
         }
 
-        String cassandraPort = commandLine.getOptionValue(BrokerOptions.CASSANDRA_PORT);
-        if (cassandraPort != null) {
-            options.set_cassandraPort(Integer.parseInt(cassandraPort));
-        }
-
         startBroker(options);
     }
 

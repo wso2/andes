@@ -31,7 +31,7 @@ public class AndesQueue {
      * create an instance of andes queue
      *
      * @param queueName   name of the queue
-     * @param queueOwner  owner of the queue (virtualhost)
+     * @param queueOwner  owner of the queue (virtual host)
      * @param isExclusive is queue exclusive
      * @param isDurable   is queue durable
      */
@@ -54,7 +54,7 @@ public class AndesQueue {
             String[] tokens = pt.split("=");
             if (tokens[0].equals("queueName")) {
                 this.queueName = tokens[1];
-            } else if (tokens[0].equals("isExclusive")) {
+            } else if (tokens[0].equals("queueOwner")) {
                 this.queueOwner = tokens[1].equals("null") ? null : tokens[1];
             } else if (tokens[0].equals("isExclusive")) {
                 this.isExclusive = Boolean.parseBoolean(tokens[1]);
@@ -65,21 +65,17 @@ public class AndesQueue {
     }
 
     public String toString() {
-        StringBuffer buf = new StringBuffer();
-        buf.append("[").append(queueName)
-                .append("] OW=").append(queueOwner)
-                .append("/X=").append(isExclusive)
-                .append("/D").append(isDurable);
-        return buf.toString();
+        return "[" + queueName + "] " +
+                "OW=" + queueOwner +
+                "/X=" + isExclusive +
+                "/D" + isDurable;
     }
 
     public String encodeAsString() {
-        StringBuffer buf = new StringBuffer();
-        buf.append("queueName=").append(queueName)
-                .append(",queueOwner=").append(queueOwner)
-                .append(",isExclusive=").append(isExclusive)
-                .append(",isDurable=").append(isDurable);
-        return buf.toString();
+        return "queueName=" + queueName +
+                ",queueOwner=" + queueOwner +
+                ",isExclusive=" + isExclusive +
+                ",isDurable=" + isDurable;
     }
 
     public boolean equals(Object o) {

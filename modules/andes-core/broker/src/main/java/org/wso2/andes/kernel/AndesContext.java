@@ -2,15 +2,15 @@ package org.wso2.andes.kernel;
 
 import com.hazelcast.core.HazelcastInstance;
 import org.apache.axis2.clustering.ClusteringAgent;
+import org.wso2.andes.configuration.VirtualHostsConfiguration;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Map;
 
 public class AndesContext {
-    private String messageStoreClass;
-    private String andesContextStoreClass;
     private SubscriptionStore subscriptionStore;
     private AndesContextStore andesContextStore;
+    private VirtualHostsConfiguration virtualHostsConfiguration;
 	private Map<String, AndesSubscription> dataSenderMap;
     private HazelcastInstance hazelcastInstance;
     private ClusteringAgent agent;
@@ -18,46 +18,25 @@ public class AndesContext {
     private boolean isClusteringEnabled;
     private AMQPConstructStore AMQPConstructStore;
     private static AndesContext instance = new AndesContext();
-    private String messageStoreDataSourceName;
-    private String contextStoreDataSourceName;
     private String thriftServerHost;
     private int thriftServerPort;
     private String thriftCoordinatorServerIP;
     private int thriftCoordinatorServerPort;
 
-
- 	/**
-     * @return fully qualified class name of a MessageStore interface implementation
+    /**
+     * Set virtual host configuration
+     * @param configuration VirtualHostsConfiguration
      */
-    public String getMessageStoreClass() {
-        return messageStoreClass;
+    public void setVirtualHostConfiguration(VirtualHostsConfiguration configuration) {
+        this.virtualHostsConfiguration = configuration;
     }
 
     /**
-     * Method works as a placeholder for fully qualified class name for the MessageStore implementation.
-     * This is used to create the relevant MessageStore object
-     *
-     * @param messageStoreClass fully qualified class name of the MessageStore interface implementation
+     * Get virtual host configuration object
+     * @return VirtualHostsConfiguration
      */
-    public void setMessageStoreClass(String messageStoreClass) {
-        this.messageStoreClass = messageStoreClass;
-    }
-
-    /**
-     * Used as a placeholder for fully qualified class name for the MessageStore implementation.
-     * This is used to create the relevant context store object
-     *
-     * @param andesContextStoreClass fully qualified class name of a MessageStore interface implementation
-     */
-    public void setAndesContextStoreClass(String andesContextStoreClass) {
-        this.andesContextStoreClass = andesContextStoreClass;
-    }
-
-    /**
-     * @return fully qualified class name of a MessageStore interface implementation
-     */
-    public String getAndesContextStoreClass() {
-        return andesContextStoreClass;
+    public VirtualHostsConfiguration getVirtualHostsConfiguration() {
+        return virtualHostsConfiguration;
     }
 
     /**
@@ -113,8 +92,6 @@ public class AndesContext {
         return instance;
     }
 
-
-
     /**
      * get if clustering is enabled
      *
@@ -149,30 +126,6 @@ public class AndesContext {
      */
     public AMQPConstructStore getAMQPConstructStore() {
         return AMQPConstructStore;
-    }
-
-    public String getMessageStoreDataSourceName() {
-        return messageStoreDataSourceName;
-    }
-
-    /**
-     *
-     * @param messageStoreDataSourceName data source name according to jndi config
-     */
-    public void setMessageStoreDataSourceName(String messageStoreDataSourceName) {
-        this.messageStoreDataSourceName = messageStoreDataSourceName;
-    }
-
-    public String getContextStoreDataSourceName() {
-        return contextStoreDataSourceName;
-    }
-
-    /**
-     *
-     * @param contextStoreDataSourceName data source name according to jndi config
-     */
-    public void setContextStoreDataSourceName(String contextStoreDataSourceName) {
-        this.contextStoreDataSourceName = contextStoreDataSourceName;
     }
 
     public void setClusteringAgent(ClusteringAgent clusteringAgent){
