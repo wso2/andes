@@ -192,28 +192,19 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         }
     }
 
-    public AndesMessagePart getContent(String messageId, int offsetValue) throws AndesException {
-        //log.info("REQUEST GET CONTENT >> id " + messageId + " offset " + offsetValue);
-        byte[] content;
+    /**
+     * Get message content part of a message.
+     *
+     * @param messageId The message Id
+     * @param offsetValue Message content offset value
+     * @return Message content part
+     * @throws AndesException
+     */
+    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
         AndesMessagePart messagePart;
         try {
-            String rowKey = "mid" + messageId;
-            List<AndesMessageMetadata> messages = CQLDataAccessHelper.getMessagesFromQueue(rowKey.trim(), CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY, CassandraConstants.KEYSPACE, 0, 0, 10, false, false);
-            if (!messages.isEmpty()) {
-                AndesMessageMetadata msg = messages.iterator().next();
-                int offset = (int) msg.getMessageID();//column.getName();
-                content = msg.getMetadata();//bytesArraySerializer.fromByteBuffer(column.getValue());
-
-                messagePart = new AndesMessagePart();
-                messagePart.setData(content);
-                messagePart.setMessageID(Long.parseLong(messageId));
-                messagePart.setOffSet(offset);
-                messagePart.setDataLength(content.length);
-
-            } else {
-                throw new RuntimeException("Unexpected Error , content not available for message id :" + messageId);
-            }
-
+            String rowKey = AndesConstants.MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX + messageId;
+            messagePart = CQLDataAccessHelper.getMessageContent(rowKey.trim(), CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY, CassandraConstants.KEYSPACE, messageId, offsetValue);
         } catch (Exception e) {
             log.error("Error in reading content messageID= " + messageId + " offset=" + offsetValue, e);
             throw new AndesException("Error in reading content messageID=" + messageId + " offset=" + offsetValue, e);
