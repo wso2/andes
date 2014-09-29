@@ -35,15 +35,28 @@ import java.util.Map;
 
 import static org.wso2.andes.store.cassandra.CassandraConstants.*;
 
-
+/**
+ * CQL based Andes context store implementation.
+ */
 public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
 
+    /**
+     * logger for CQLBasedAndesContextStoreImpl class
+     */
     private static Log log = LogFactory.getLog(CQLBasedAndesContextStoreImpl.class);
+
+    /**
+     * DurableStoreConnection to connect to Cassandra database
+     */
     private DurableStoreConnection connection;
 
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public DurableStoreConnection init(ConfigurationProperties connectionProperties) throws
-                                                                              AndesException {
+            AndesException {
 
         try {
             CQLConnection cqlConnection = new CQLConnection();
@@ -68,6 +81,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Map<String, List<String>> getAllStoredDurableSubscriptions() throws AndesException {
         try {
@@ -78,6 +94,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void storeDurableSubscription(String destinationIdentifier, String subscriptionID, String subscriptionEncodeAsStr) throws AndesException {
         try {
@@ -88,6 +107,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void removeDurableSubscription(String destinationIdentifier, String subscriptionID) throws AndesException {
         try {
@@ -98,6 +120,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void storeNodeDetails(String nodeID, String data) throws AndesException {
         try {
@@ -108,6 +133,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Map<String, String> getAllStoredNodeData() throws AndesException {
         try {
@@ -130,6 +158,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void removeNodeData(String nodeID) throws AndesException {
         try {
@@ -140,6 +171,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void addMessageCounterForQueue(String destinationQueueName) throws AndesException {
         try {
@@ -150,11 +184,17 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public long getMessageCountForQueue(String destinationQueueName) throws AndesException {
         return 0;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void removeMessageCounterForQueue(String destinationQueueName) throws AndesException {
         try {
@@ -165,6 +205,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void storeExchangeInformation(String exchangeName, String exchangeInfo) throws AndesException {
         try {
@@ -175,6 +218,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<AndesExchange> getAllExchangesStored() throws AndesException {
         try {
@@ -194,6 +240,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void deleteExchangeInformation(String exchangeName) throws AndesException {
         try {
@@ -204,6 +253,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void storeQueueInformation(String queueName, String queueInfo) throws AndesException {
         try {
@@ -214,6 +266,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<AndesQueue> getAllQueuesStored() throws AndesException {
         try {
@@ -232,6 +287,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void deleteQueueInformation(String queueName) throws AndesException {
         try {
@@ -242,6 +300,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void storeBindingInformation(String exchange, String boundQueueName, String bindingInfo) throws AndesException {
         try {
@@ -252,6 +313,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<AndesBinding> getBindingsStoredForExchange(String exchangeName) throws AndesException {
         try {
@@ -270,6 +334,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void deleteBindingInformation(String exchangeName, String boundQueueName) throws AndesException {
         try {
@@ -280,6 +347,9 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void close() {
         connection.close();
