@@ -32,20 +32,27 @@ import com.datastax.driver.core.querybuilder.Insert;
 public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageStore {
     private static Log log = LogFactory.getLog(CQLBasedMessageStoreImpl.class);
 
-
+    // todo: move this schedulers to MessagingEngine level
     private ScheduledExecutorService contentRemovalScheduler;
+
     private AlreadyProcessedMessageTracker alreadyMovedMessageTracker;
+    // todo: move this schedulers to MessagingEngine level
     MessageContentRemoverTask messageContentRemoverTask;
     private boolean isMessageCountingAllowed;
+
+    /**
+     * Cassandra cluster object.
+     */
     private Cluster cluster;
+    /**
+     * CQLConnection object which tracks the Cassandra connection
+     */
     private CQLConnection cqlConnection;
-    private static boolean isClusteringEnabled;
 
     public CQLBasedMessageStoreImpl() {
         int threadPoolCount = 1;
         contentRemovalScheduler = Executors.newScheduledThreadPool(threadPoolCount);
         isMessageCountingAllowed = ClusterResourceHolder.getInstance().getClusterConfiguration().getViewMessageCounts();
-        isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
     }
 
     public DurableStoreConnection initializeMessageStore(ConfigurationProperties

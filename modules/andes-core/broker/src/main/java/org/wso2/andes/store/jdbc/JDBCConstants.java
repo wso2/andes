@@ -30,21 +30,17 @@ public class JDBCConstants {
 
     // Configuration properties
     protected static final String PROP_JNDI_LOOKUP_NAME = "dataSource";
-    protected static final String PROP_CREATE_TABLES = "createTables";
 
     // Message Store tables
-
     protected static final String MESSAGES_TABLE = "messages";
     protected static final String METADATA_TABLE = "metadata";
     protected static final String QUEUES_TABLE = "queues";
-    protected static final String REF_COUNT_TABLE = "reference_counts";
     protected static final String EXPIRATION_TABLE = "expiration_data";
 
     // Message Store table columns
     protected static final String MESSAGE_ID = "message_id";
     protected static final String QUEUE_ID = "queue_id";
     protected static final String QUEUE_NAME = "name";
-    protected static final String REF_COUNT = "reference_count";
     protected static final String METADATA = "data";
     protected static final String MSG_OFFSET = "offset";
     protected static final String MESSAGE_CONTENT = "content";
@@ -70,7 +66,6 @@ public class JDBCConstants {
     protected static final String BINDING_QUEUE_NAME = "queue_name";
     protected static final String BINDING_EXCHANGE_NAME = "exchange_name";
     protected static final String QUEUE_INFO = "data";
-
 
     // prepared statements for Message Store
     protected static final String PS_INSERT_MESSAGE_PART =
