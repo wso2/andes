@@ -33,6 +33,9 @@ import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Collection;
 
+/**
+ * This class will reassign the slots own by this node when its last subscriber leaves
+ */
 public class OrphanedSlotHandler implements SubscriptionListener {
 
     private static Log log = LogFactory
@@ -59,6 +62,12 @@ public class OrphanedSlotHandler implements SubscriptionListener {
         }
     }
 
+
+    /**
+     *Reassign slots back to the slot manager
+     * @param subscription
+     * @throws AndesException
+     */
     private void reAssignSlots(AndesSubscription subscription) throws AndesException {
         if (!subscription.isBoundToTopic()) {
             // problem happens only with Queues
