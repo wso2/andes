@@ -89,7 +89,7 @@ public class SlotDeliveryWorker extends Thread {
                         subscriptions4Queue = subscriptionStore.getActiveLocalSubscribers(queueName,
                                 false);
                         if (subscriptions4Queue != null && !subscriptions4Queue.isEmpty()) {
-                            //check has room
+                            //check in memory buffer in QueueDeliveryWorker has room
                             if (queueDeliveryWorker.getQueueDeliveryInfo(queueName).hasRoom()) {
                                 if (isClusteringEnabled) {
                                     mbThriftClient = MBThriftUtils.getMBThriftClient();
@@ -131,6 +131,7 @@ public class SlotDeliveryWorker extends Thread {
                                         long firstMsgId = currentSlot.getStartMessageId();
                                         long lastMsgId = currentSlot.getEndMessageId();
                                         //read messages in the slot
+                                        //todo make this to read twice
                                         List<AndesMessageMetadata> messagesReadByLeadingThread =
                                                 messageStore.getMetaDataList(
                                                         queueName, firstMsgId, lastMsgId);

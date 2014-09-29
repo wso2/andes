@@ -33,12 +33,11 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
-
+/**
+ * This class is responsible of counting messages in a slot for each queue
+ */
 public class SlotMessageCounter {
 
-    /**
-     * This class is responsible of counting messages in a slot for each queue
-     */
     private ConcurrentHashMap<String, Slot> queueToSlotMap = new ConcurrentHashMap<String, Slot>();
     private ConcurrentHashMap<String, Long> slotTimeOutMap = new ConcurrentHashMap<String, Long>();
     private long timeOutForMessagesInQueue = SlotCoordinationConstants.SLOT_SUBMIT_TIMEOUT;

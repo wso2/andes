@@ -17,14 +17,14 @@
 */
 package org.wso2.andes.server.slot;
 
-import org.apache.thrift.transport.TTransportException;
-import org.wso2.andes.server.slot.thrift.MBThriftUtils;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * This class is responsible of allocating SloDeliveryWorker threads to each queue
+ */
 public class SlotDeliveryWorkerManager {
 
     private Map<Integer, SlotDeliveryWorker> slotDeliveryWorkerMap = new
@@ -32,7 +32,6 @@ public class SlotDeliveryWorkerManager {
 
     private ExecutorService slotDeliveryWorkerExecutor;
     private int numberOfThreads;
-    private boolean reconnectingStarted = false;
     private static SlotDeliveryWorkerManager slotDeliveryWorkerManagerManager =
             new SlotDeliveryWorkerManager();
 

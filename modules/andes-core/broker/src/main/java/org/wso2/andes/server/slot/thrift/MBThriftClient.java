@@ -33,8 +33,6 @@ import org.wso2.andes.server.slot.thrift.gen.SlotManagementService;
 public class MBThriftClient {
 
     SlotManagementService.Client client;
-    private static Log log = LogFactory.getLog(MBThriftClient.class);
-
 
     public MBThriftClient(SlotManagementService.Client client) {
         this.client = client;
