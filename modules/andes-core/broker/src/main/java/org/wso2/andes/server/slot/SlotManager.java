@@ -82,8 +82,7 @@ public class SlotManager {
      * get a slot by giving the queue name. This method first lookup the free slot pool for slots
      * and if there are no slots in the free slot pool then return a newly created slot
      *
-     * @param queueName
-     *         name of the queue
+     * @param queueName name of the queue
      * @return Slot object
      */
     public Slot getSlot(String queueName, String nodeId) {
@@ -109,8 +108,7 @@ public class SlotManager {
     }
 
     /**
-     * @param queueName
-     *         name of the queue
+     * @param queueName name of the queue
      * @return slot object //todo check if the range is inclusive in message store
      */
     private Slot getFreshSlot(String queueName) {
@@ -137,10 +135,8 @@ public class SlotManager {
     /**
      * update the slot assignment map when a slot is assigned
      *
-     * @param queueName
-     *         name of the queue
-     * @param allocatedSlot
-     *         slot object which is allocated to a particular node
+     * @param queueName     name of the queue
+     * @param allocatedSlot slot object which is allocated to a particular node
      */
     private void updateSlotAssignmentMap(String queueName, Slot allocatedSlot, String nodeId) {
         ArrayList<Slot> currentSlotList;
@@ -220,7 +216,7 @@ public class SlotManager {
                     //reassign only if the slot is not empty
                     if (!SlotUtils.checkSlotEmptyFromMessageStore(slotToBeReAssigned)) {
                         unAssignedSlotMap.putIfAbsent(slotToBeReAssigned.getQueueName(),
-                                                      freeSlotTreeSet);
+                                freeSlotTreeSet);
                         //lock key is queuName + SlotManager Class
                         String lockKey = (entry.getKey() + SlotManager.class).intern();
                         synchronized (lockKey) {
@@ -230,10 +226,10 @@ public class SlotManager {
                             unAssignedSlotMap
                                     .set(slotToBeReAssigned.getQueueName(), freeSlotTreeSet);
                             if (log.isDebugEnabled()) {
-                                log.info("Reassigned slot " + slotToBeReAssigned
+                                log.debug("Reassigned slot " + slotToBeReAssigned
                                         .getStartMessageId() + " - " +
-                                         slotToBeReAssigned
-                                                 .getEndMessageId() + "from node " + nodeId);
+                                        slotToBeReAssigned
+                                                .getEndMessageId() + "from node " + nodeId);
                             }
                         }
                     }
@@ -259,8 +255,9 @@ public class SlotManager {
                 queueToSlotMap.put(queueName, currentSlotList);
                 slotAssignmentMap.set(nodeId, queueToSlotMap);
                 if (log.isDebugEnabled()) {
-                    log.info("Unassigned slot " + emptySlot.getStartMessageId() + " - " + emptySlot
-                            .getEndMessageId() + "owned by node: " + nodeId + "");
+                    log.debug("Unassigned slot " + emptySlot.getStartMessageId() + " - " +
+                            emptySlot
+                                    .getEndMessageId() + "owned by node: " + nodeId + "");
                 }
             }
 
@@ -270,6 +267,7 @@ public class SlotManager {
 
     /**
      * re-assign the slot when there are no local subscribers in the node
+     *
      * @param nodeId
      * @param queueName
      */
@@ -287,7 +285,7 @@ public class SlotManager {
             String lockKey2 = (queueName + SlotManager.class).intern();
             synchronized (lockKey2) {
                 TreeSet<Slot> unAssignedSlotSet = unAssignedSlotMap.get(queueName);
-                if(unAssignedSlotSet == null){
+                if (unAssignedSlotSet == null) {
                     unAssignedSlotSet = new TreeSet<Slot>();
                 }
                 for (Slot slotToBeReAssigned : assignedSlotList) {

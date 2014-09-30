@@ -30,6 +30,9 @@ import org.wso2.andes.server.slot.thrift.gen.SlotManagementService;
 
 import java.net.InetSocketAddress;
 
+/**
+ * This class is responsible of handling the thrift server
+ */
 public class MBThriftServer {
 
     private static Log log = LogFactory.getLog(MBThriftServer.class);

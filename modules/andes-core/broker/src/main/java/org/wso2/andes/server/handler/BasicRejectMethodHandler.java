@@ -70,7 +70,7 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
         /**Reject message is received when ack_wait_timeout happened in client side
          * We need to inform onflightMessageTracker to resend the message again
          */
-        OnflightMessageTracker.getInstance().stampMessageAsAckTimedOut(deliveryTag,channel.getId());
+        OnflightMessageTracker.getInstance().handleFailure(deliveryTag, channel.getId());
 
 
         QueueEntry message = channel.getUnacknowledgedMessageMap().get(deliveryTag);

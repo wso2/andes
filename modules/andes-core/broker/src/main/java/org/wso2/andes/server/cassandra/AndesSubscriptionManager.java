@@ -59,7 +59,9 @@ public class AndesSubscriptionManager {
         addSubscriptionListener(new MessageDeliveryThreadHandler());
         addSubscriptionListener(new OrphanedMessageHandler());
         addSubscriptionListener(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
-        addSubscriptionListener(new OrphanedSlotHandler());
+        if (AndesContext.getInstance().isClusteringEnabled()) {
+            addSubscriptionListener(new OrphanedSlotHandler());
+        }
     }
 
 

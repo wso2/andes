@@ -20,6 +20,9 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Auto generated code
+ */
 public class SlotManagementService {
 
   public interface Iface {

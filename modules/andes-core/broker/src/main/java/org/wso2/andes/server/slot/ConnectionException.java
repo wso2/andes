@@ -17,19 +17,26 @@
 */
 package org.wso2.andes.server.slot;
 
-/**
- * This class contains all constants used in slot management
- */
-public final class SlotCoordinationConstants {
+import org.apache.thrift.TException;
 
-    /**
-     * IP of the coordinator's thrift server
-     */
-    public static String THRIFT_COORDINATOR_SERVER_IP = "thriftCoordinatorServerIP";
+import java.lang.Exception;
+import java.lang.String;
 
-    /**
-     * Port of the coordinator's thrift server
-     */
-    public static String THRIFT_COORDINATOR_SERVER_PORT = "thriftCoordinatorServerPort";
+public class ConnectionException extends Exception{
+
+    public ConnectionException() {
+    }
+
+    public ConnectionException(String message) {
+        super(message);
+    }
+
+    public ConnectionException(String message, TException cause) {
+        super(message, cause);
+    }
+
+    public ConnectionException(Throwable cause) {
+        super(cause);
+    }
 
 }

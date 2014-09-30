@@ -25,6 +25,7 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.ContentHeaderBody;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.server.AMQChannel;
+import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.server.configuration.SessionConfig;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -124,6 +125,10 @@ public class AMQMessage implements ServerMessage
     public Long getMessageId()
     {
         return _handle.getMessageNumber();
+    }
+
+    public Slot getSlot(){
+        return _handle.getSlot();
     }
 
     /**

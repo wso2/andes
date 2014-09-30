@@ -44,7 +44,7 @@ public class SlotUtils {
         try {
             List<AndesMessageMetadata> messagesReturnedFromCassandra =
                     messageStore.getMetaDataList(slot.getQueueName(), slot.getStartMessageId(),
-                                                 slot.getEndMessageId());
+                            slot.getEndMessageId());
             if (messagesReturnedFromCassandra == null || messagesReturnedFromCassandra.isEmpty()) {
                 return true;
             } else {

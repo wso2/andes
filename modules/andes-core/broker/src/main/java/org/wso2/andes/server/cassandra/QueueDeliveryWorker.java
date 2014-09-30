@@ -1,3 +1,21 @@
+/*
+*  Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+*
+*  WSO2 Inc. licenses this file to you under the Apache License,
+*  Version 2.0 (the "License"); you may not use this file except
+*  in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/
+
 package org.wso2.andes.server.cassandra;
 
 import org.apache.commons.logging.Log;
@@ -5,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
+import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.*;
@@ -158,7 +177,8 @@ public class QueueDeliveryWorker {
         return subscriptionCursar4QueueMap.get(queueName).readButUndeliveredMessages.isEmpty();
     }
 
-    public void sendMessageToFlusher(List<AndesMessageMetadata> messagesReadByLeadingThread) {
+    public void sendMessageToFlusher(List<AndesMessageMetadata> messagesReadByLeadingThread,
+                                     Slot slot) {
         iterations = 0;
         workqueueSize = 0;
         lastRestTime = System.currentTimeMillis();
@@ -184,6 +204,7 @@ public class QueueDeliveryWorker {
             int msgReadThisTime = 0;
             List<AndesMessageMetadata> messagesFromMessageStore;
             messagesFromMessageStore = new ArrayList<AndesMessageMetadata>();
+            //todo is this needed now
             for (AndesMessageMetadata message : messagesReadByLeadingThread) {
                 Long messageID = message.getMessageID();
                 if (!onflightMessageTracker.checkIfAlreadyReadFromNodeQueue(message.getMessageID())) {
@@ -209,8 +230,8 @@ public class QueueDeliveryWorker {
                 }
 
                 String queueName = message.getDestination();
+                message.setSlot(slot);
                 QueueDeliveryInfo queueDeliveryInfo = getQueueDeliveryInfo(queueName);
-                long currentMessageId = message.getMessageID();
                 queueDeliveryInfo.readButUndeliveredMessages.add(message);
             }
             /**
@@ -231,7 +252,8 @@ public class QueueDeliveryWorker {
 
             if (iterations % 20 == 0) {
                 if (log.isDebugEnabled()) {
-                    log.info("[Flusher" + this + "]readNow=" + msgReadThisTime + " totRead=" + totMsgRead + " totprocessed= " + totMsgSent + ", totalReadButNotSent=" +
+                    log.debug("[Flusher" + this + "]readNow=" + msgReadThisTime + " totRead=" +
+                            totMsgRead + " totprocessed= " + totMsgSent + ", totalReadButNotSent=" +
                             totalReadButUndeliveredMessages + ". workQueue= " + workqueueSize + " lastID=" + lastProcessedId);
                 }
             }
@@ -262,6 +284,7 @@ public class QueueDeliveryWorker {
      *Read messages from the buffer and send messages to subscribers
      */
     public void sendMessagesInBuffer() throws AndesException {
+        //todo stop iterate through all the queues
         for (QueueDeliveryInfo queueDeliveryInfo : subscriptionCursar4QueueMap.values()) {
             if (log.isDebugEnabled()) {
                 log.debug("TRACING>> delivering read but undelivered message list with size: " +
@@ -276,6 +299,7 @@ public class QueueDeliveryWorker {
             }
         }
     }
+
 
 
     private void sleep4waitInterval(long sleepInterval) {

@@ -17,6 +17,8 @@
 */
 package org.wso2.andes.server.slot;
 
+import org.wso2.andes.server.ClusterResourceHolder;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -31,13 +33,20 @@ public class SlotDeliveryWorkerManager {
             ConcurrentHashMap<Integer, SlotDeliveryWorker>();
 
     private ExecutorService slotDeliveryWorkerExecutor;
+     /*
+     number of slot delivery worker threads running inn one MB node
+      */
     private int numberOfThreads;
+    /*
+    slotDeliveryWorker instance
+     */
     private static SlotDeliveryWorkerManager slotDeliveryWorkerManagerManager =
             new SlotDeliveryWorkerManager();
 
 
     private SlotDeliveryWorkerManager() {
-        numberOfThreads = SlotCoordinationConstants.NUMBER_OF_SLOT_DELIVERY_WORKER_THREADS;
+        numberOfThreads = ClusterResourceHolder.getInstance().getClusterConfiguration()
+                .getNumberOFSlotDeliveryWorkerThreads();
         this.slotDeliveryWorkerExecutor = Executors.newFixedThreadPool(numberOfThreads);
     }
 
@@ -78,7 +87,7 @@ public class SlotDeliveryWorkerManager {
      * @param queueName
      * @return slot delivery worker ID
      */
-    private int getIdForSlotDeliveryWorker(String queueName) {
+    public int getIdForSlotDeliveryWorker(String queueName) {
         return queueName.hashCode() % numberOfThreads;
     }
 
@@ -105,14 +114,24 @@ public class SlotDeliveryWorkerManager {
     /**
      * Start workers if not running
      */
-    public void StartAllSlotDeliveryWorkers(){
+    public void startAllSlotDeliveryWorkers(){
         for (Map.Entry<Integer, SlotDeliveryWorker> entry :
                 slotDeliveryWorkerMap.entrySet()) {
             SlotDeliveryWorker slotDeliveryWorker = entry.getValue();
             if (!slotDeliveryWorker.isRunning()) {
-                slotDeliveryWorker.setRunning(true);
+                slotDeliveryWorkerExecutor.execute(slotDeliveryWorker);
             }
         }
     }
+
+    /**
+     * Returns SlotDeliveryWorker mapped to a given queue
+     * @param queueName
+     * @return SlotDeliveryWorker instance
+     */
+    public SlotDeliveryWorker getSlotWorker(String queueName){
+        return slotDeliveryWorkerMap.get(getIdForSlotDeliveryWorker(queueName));
+    }
+
 
 }

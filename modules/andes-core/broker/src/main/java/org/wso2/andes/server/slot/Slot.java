@@ -29,6 +29,7 @@ public class Slot implements Serializable {
      */
     private long messageCount;
 
+
     /**
      * start message ID of the slot
      */
@@ -77,9 +78,43 @@ public class Slot implements Serializable {
         this.startMessageId = startMessageId;
     }
 
-    public void setMessageRange(long startMessageId, long endMessageId) {
-        this.startMessageId = startMessageId;
-        this.endMessageId = endMessageId;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Slot slot = (Slot) o;
+
+        if (endMessageId != slot.endMessageId) return false;
+        if (startMessageId != slot.startMessageId) return false;
+        if (!queueName.equals(slot.queueName)) return false;
+
+        return true;
     }
 
+    @Override
+    public int hashCode() {
+        int result = (int) (startMessageId ^ (startMessageId >>> 32));
+        result = 31 * result + (int) (endMessageId ^ (endMessageId >>> 32));
+        result = 31 * result + queueName.hashCode();
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "Slot{" +
+                "startMessageId=" + startMessageId +
+                ", queueName='" + queueName + '\'' +
+                ", endMessageId=" + endMessageId +
+                '}';
+    }
+
+    /**
+     * return uniqueue id for the slot
+     *
+     * @return slot message id
+     */
+    public String getId() {
+        return queueName + "|" + startMessageId + "-" + endMessageId;
+    }
 }

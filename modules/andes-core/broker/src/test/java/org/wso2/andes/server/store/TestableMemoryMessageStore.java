@@ -23,6 +23,7 @@ package org.wso2.andes.server.store;
 import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.queue.AMQQueue;
+import org.wso2.andes.server.slot.Slot;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -161,6 +162,16 @@ public class TestableMemoryMessageStore extends MemoryMessageStore
         }
 
         public void setExchange(String exchange) {
+            //To change body of implemented methods use File | Settings | File Templates.
+        }
+
+        @Override
+        public Slot getSlot() {
+            return null;  //To change body of implemented methods use File | Settings | File Templates.
+        }
+
+        @Override
+        public void setSlot(Slot slot) {
             //To change body of implemented methods use File | Settings | File Templates.
         }
     }

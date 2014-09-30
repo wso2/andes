@@ -22,6 +22,7 @@
 package org.wso2.andes.server.store;
 
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.server.slot.Slot;
 
 import java.nio.ByteBuffer;
 
@@ -87,6 +88,16 @@ public class StoredMemoryMessage implements StoredMessage
     }
 
     public void setExchange(String exchange) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Slot getSlot() {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public void setSlot(Slot slot) {
         //To change body of implemented methods use File | Settings | File Templates.
     }
 }

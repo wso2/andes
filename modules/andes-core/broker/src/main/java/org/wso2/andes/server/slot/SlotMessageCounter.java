@@ -19,13 +19,11 @@ package org.wso2.andes.server.slot;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.thrift.TException;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
-import org.wso2.andes.server.slot.thrift.MBThriftUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -40,17 +38,23 @@ public class SlotMessageCounter {
 
     private ConcurrentHashMap<String, Slot> queueToSlotMap = new ConcurrentHashMap<String, Slot>();
     private ConcurrentHashMap<String, Long> slotTimeOutMap = new ConcurrentHashMap<String, Long>();
-    private long timeOutForMessagesInQueue = SlotCoordinationConstants.SLOT_SUBMIT_TIMEOUT;
+    /**
+     * timeout in milliseconds for messages in the slot. When this timeout is exceeded slot will be
+     * submitted to the coordinator
+     */
+    private long timeOutForMessagesInQueue = ClusterResourceHolder.getInstance()
+            .getClusterConfiguration().getSlotSubmitTimeOut();
     private Timer submitSlotToCoordinatorTimer = new Timer();
     private Log log = LogFactory.getLog(SlotMessageCounter.class);
-    private MBThriftClient mbThriftClient;
     private ClusterConfiguration clusterConfiguration;
     private static SlotMessageCounter slotMessageCounter = new SlotMessageCounter();
+    private int slotWindowSize;
 
     private SlotMessageCounter() {
         clusterConfiguration = ClusterResourceHolder.getInstance().getClusterConfiguration();
         scheduleSubmitSlotToCoordinatorTimer();
-
+        slotWindowSize = clusterConfiguration.getSlotWindowSize();
+        timeOutForMessagesInQueue = clusterConfiguration.getSlotSubmitTimeOut();
     }
 
     /**
@@ -80,8 +84,7 @@ public class SlotMessageCounter {
     /**
      * Record metadata count in the slot so far
      *
-     * @param metadataList
-     *         metadata list to be record
+     * @param metadataList metadata list to be record
      */
     public void recordMetaDataCountInSlot(List<AndesMessageMetadata> metadataList) {
         //if metadata list is null this method is called from time out thread
@@ -92,7 +95,7 @@ public class SlotMessageCounter {
             synchronized (this) {
                 currentSlot = updateQueueToSlotMap(md);
             }
-            if (currentSlot.getMessageCount() >= clusterConfiguration.getSlotWindowSize()) {
+            if (currentSlot.getMessageCount() >= slotWindowSize) {
                 try {
                     submitSlot(queueName);
                 } catch (AndesException e) {
@@ -107,7 +110,7 @@ public class SlotMessageCounter {
 
     /**
      * @param metadata
-     * @return
+     * @return current slot which this metadata belongs to
      */
     private synchronized Slot updateQueueToSlotMap(AndesMessageMetadata metadata) {
         String queueName = metadata.getDestination();
@@ -137,18 +140,15 @@ public class SlotMessageCounter {
         Slot slot = queueToSlotMap.get(queueName);
         if (null != slot) {
             try {
-                mbThriftClient = MBThriftUtils.getMBThriftClient();
-                mbThriftClient.updateMessageId(queueName, slot.getEndMessageId());
+                MBThriftClient.updateMessageId(queueName, slot.getEndMessageId());
                 queueToSlotMap.remove(queueName);
                 slotTimeOutMap.remove(queueName);
 
-            } catch (TException e) {
-                //we only reset the mbThrift client here since this thread will be run every 3
-                // seconds
-                MBThriftUtils.resetMBThriftClient();
+            } catch (ConnectionException e) {
+                 /* we only log here since this thread will be run every 3
+                seconds*/
                 log.error("Error occurred while connecting to the thrift coordinator " + e
                         .getMessage(), e);
-
             }
         }
     }

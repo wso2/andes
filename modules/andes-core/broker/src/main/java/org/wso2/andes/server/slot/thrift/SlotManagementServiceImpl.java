@@ -25,6 +25,10 @@ import org.wso2.andes.server.slot.SlotManager;
 import org.wso2.andes.server.slot.thrift.gen.SlotInfo;
 import org.wso2.andes.server.slot.thrift.gen.SlotManagementService;
 
+/**
+ * This is the implementation of SlotManagementService interface
+ */
+
 public class SlotManagementServiceImpl implements SlotManagementService.Iface {
 
     private static SlotManager slotManager = SlotManager.getInstance();
@@ -36,13 +40,13 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
             SlotInfo slotInfo = new SlotInfo();
             if (null != slot) {
                 slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(),
-                                        slot.getQueueName());
+                        slot.getQueueName());
             }
             return slotInfo;
         } else {
             throw new TException(
                     "I'm not the coordinator right now. Please update the thrift server details " +
-                    "cache");
+                            "cache");
         }
     }
 
@@ -53,7 +57,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
         } else {
             throw new TException(
                     "I'm not the coordinator right now. Please update the thrift server details " +
-                    "cache");
+                            "cache");
         }
     }
 
@@ -74,7 +78,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     @Override
     public void reAssignSlotWhenNoSubscribers(String nodeId, String queueName) throws TException {
         if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
-          slotManager.reAssignSlotWhenNoSubscribers(nodeId,queueName);
+            slotManager.reAssignSlotWhenNoSubscribers(nodeId, queueName);
         } else {
             throw new TException(
                     "I'm not the coordinator right now. Please update the thrift server details cache");
