@@ -7,6 +7,7 @@ import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.mqtt.MQTTMessageMetaData;
 import org.wso2.andes.server.message.CustomMessagePublishInfo;
 import org.wso2.andes.server.message.MessageMetaData;
+import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.util.AndesUtils;
@@ -28,6 +29,9 @@ public class AndesMessageMetadata {
     public QueueAddress queueAddress;
     //Added for MQTT usage
     private int messageContentLength;
+
+    //slotID which this metadata belongs
+    private Slot slot;
 
     public AndesMessageMetadata(){}
 
@@ -214,5 +218,13 @@ public class AndesMessageMetadata {
 
     public void setMessageContentLength(int messageContentLength) {
         this.messageContentLength = messageContentLength;
+    }
+
+    public Slot getSlot() {
+        return slot;
+    }
+
+    public void setSlot(Slot slot) {
+        this.slot = slot;
     }
 }

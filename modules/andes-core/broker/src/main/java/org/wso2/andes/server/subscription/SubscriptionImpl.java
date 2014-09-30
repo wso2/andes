@@ -52,6 +52,7 @@ import org.wso2.andes.server.output.ProtocolOutputConverter;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
+import org.wso2.andes.server.slot.Slot;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -268,6 +269,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
 
             //no point of trying to deliver if channel is closed
             if(getChannel().isClosing()) {
+                OnflightMessageTracker.getInstance().handleFailure(deliveryTag,getChannel().getId());
                 return;
             }
 
@@ -323,6 +325,8 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                                 sendToClient(entry, deliveryTag);
                                 break;
                             } else {
+                                //This happens when message has expired or maximum number of
+                                // retries are done fro queues
                                 if (log.isDebugEnabled()) {
                                     log.info("sent3 stopped for " + entry.getMessage().getMessageNumber());
                                 }
@@ -332,13 +336,20 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                                 long messageId = entry.getMessage().getMessageNumber();
                                 String destinationQueue = ((AMQMessage)entry.getMessage()).getMessageMetaData().getMessagePublishInfo()
                                         .getRoutingKey().toString();
+                                //todo send to dead letter channel
                                 OnflightMessageTracker.getInstance().removeNodeQueueMessageFromStorePermanentlyAndDecrementMsgCount(messageId,destinationQueue);
+                                Slot slot = ((AMQMessage) entry.getMessage()).getSlot();
+                                OnflightMessageTracker.getInstance()
+                                        .decrementMessageCountInSlotandCheckToResend(slot,destinationQueue);
                                 break;
                             }
                         } catch (Exception e) {
                             //undo any changes in the message tracker
                             log.warn("SEND FAILED >> Exception occurred while sending message out. Retrying " + retryCount + " times. Current " + i ,e);
-                            OnflightMessageTracker.getInstance().removeMessage(getChannel(), deliveryTag, entry.getMessage().getMessageNumber());
+                            OnflightMessageTracker.getInstance().removeMessage(getChannel(),
+                                    deliveryTag, entry.getMessage().getMessageNumber());
+                            OnflightMessageTracker.getInstance().handleFailure(deliveryTag,
+                                    getChannel().getId());
                             if(i < retryCount -1){
                                 //will try again
                                 if (log.isDebugEnabled()) {

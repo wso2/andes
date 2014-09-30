@@ -21,14 +21,13 @@ package org.wso2.andes.server.slot;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.thrift.TException;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.SubscriptionListener;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.server.slot.thrift.MBThriftUtils;
+import org.wso2.andes.server.slot.thrift.MBThriftClient;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Collection;
@@ -54,21 +53,22 @@ public class OrphanedSlotHandler implements SubscriptionListener {
             throws AndesException {
         switch (changeType) {
             case Deleted:
-                reAssignSlots(subscription);
+                reAssignSlotsIfNeeded(subscription);
                 break;
             case Disconnected:
-                reAssignSlots(subscription);
+                reAssignSlotsIfNeeded(subscription);
                 break;
         }
     }
 
 
     /**
-     *Reassign slots back to the slot manager
+     * Reassign slots back to the slot manager if this is the last subscriber of this node.
+     *
      * @param subscription
      * @throws AndesException
      */
-    private void reAssignSlots(AndesSubscription subscription) throws AndesException {
+    private void reAssignSlotsIfNeeded(AndesSubscription subscription) throws AndesException {
         if (!subscription.isBoundToTopic()) {
             // problem happens only with Queues
             SubscriptionStore subscriptionStore = AndesContext
@@ -80,9 +80,9 @@ public class OrphanedSlotHandler implements SubscriptionListener {
             if (localSubscribersForQueue.size() == 0) {
                 String nodeId = HazelcastAgent.getInstance().getNodeId();
                 try {
-                    MBThriftUtils.getMBThriftClient().reAssignSlotWhenNoSubscribers(nodeId,
+                    MBThriftClient.reAssignSlotWhenNoSubscribers(nodeId,
                             subscription.getTargetQueue());
-                } catch (TException e) {
+                } catch (ConnectionException e) {
                     log.error("Error occurred while re-assigning the slot to slot manager", e);
                     throw new AndesException(
                             "Error occurred while re-assigning the slot to slot manager", e);

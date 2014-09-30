@@ -21,6 +21,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.DirectExchange;
@@ -97,9 +98,12 @@ public class AMQPUtils {
      */
     public static AMQMessage getAMQMessageFromAndesMetaData(AndesMessageMetadata metadata) {
         long messageId = metadata.getMessageID();
+        Slot slot = metadata.getSlot();
+
         StorableMessageMetaData metaData = convertAndesMetadataToAMQMetadata(metadata);
         //create message with meta data. This has access to message content
         StoredAMQPMessage message = new StoredAMQPMessage(messageId, metaData);
+        message.setSlot(slot);
         AMQMessage amqMessage = new AMQMessage(message);
         return amqMessage;
     }
@@ -158,6 +162,7 @@ public class AMQPUtils {
         metadata.setDestination(queue);
         metadata.setPersistent(amqMetadata.isPersistent());
         metadata.setTopic(amqMetadata.getMessagePublishInfo().getExchange().equals("amq.topic"));
+        metadata.setSlot(amqMessage.getSlot());
 
         return metadata;
     }

@@ -21,6 +21,7 @@
 package org.wso2.andes.server.queue;
 
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.store.MessageStore;
 import org.wso2.andes.server.store.TransactionLog;
 import org.wso2.andes.server.store.StoredMessage;
@@ -97,6 +98,16 @@ public class MockStoredMessage implements StoredMessage<MessageMetaData>
     }
 
     public void setExchange(String exchange) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Slot getSlot() {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public void setSlot(Slot slot) {
         //To change body of implemented methods use File | Settings | File Templates.
     }
 }

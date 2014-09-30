@@ -25,6 +25,7 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.storemanager.MessageStoreManagerFactory;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
+import org.wso2.andes.server.slot.thrift.MBThriftClient;
 import org.wso2.andes.store.cassandra.CQLBasedMessageStoreImpl;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
@@ -426,6 +427,10 @@ public class MessagingEngine {
 
         //stop all slotDeliveryWorkers
         SlotDeliveryWorkerManager.getInstance().stopSlotDeliveryWorkers();
+        //stop thrift reconnecting thread if started
+        if(MBThriftClient.isReconnectingStarted()){
+            MBThriftClient.setReconnectingFlag(false);
+        }
         log.info("Stopping Disruptor writing messages to store");
 
     }
