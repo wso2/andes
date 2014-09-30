@@ -118,7 +118,6 @@ public class SlotDeliveryWorker extends Thread {
                                     long firstMsgId = currentSlot.getStartMessageId();
                                     long lastMsgId = currentSlot.getEndMessageId();
                                     //read messages in the slot
-                                    //todo make this to read twice
                                     List<AndesMessageMetadata> messagesReadByLeadingThread =
                                             messageStore.getMetaDataList(
                                                     queueName, firstMsgId, lastMsgId);
@@ -133,6 +132,7 @@ public class SlotDeliveryWorker extends Thread {
                                         QueueDeliveryWorker.getInstance().sendMessageToFlusher(
                                                 messagesReadByLeadingThread, currentSlot);
                                     } else {
+                                        MBThriftClient.deleteSlot(queueName,currentSlot,nodeId);
                                             /*if there are messages to be sent in the message
                                             buffer in QueueDeliveryWorker send them */
                                         sendFromMessageBuffer(queueName);
