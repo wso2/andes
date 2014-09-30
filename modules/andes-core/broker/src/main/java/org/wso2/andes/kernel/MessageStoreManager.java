@@ -1,4 +1,4 @@
-package org.wso2.andes.kernel;/*
+/*
 *  Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 *  WSO2 Inc. licenses this file to you under the Apache License,
@@ -15,6 +15,7 @@ package org.wso2.andes.kernel;/*
 * specific language governing permissions and limitations
 * under the License.
 */
+package org.wso2.andes.kernel;
 
 /**
  * This interface works as an abstraction for the actual implementation of how a message is
