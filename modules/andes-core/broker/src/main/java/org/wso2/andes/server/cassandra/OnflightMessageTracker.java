@@ -1,20 +1,22 @@
 /*
-*  Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
-*
-*  WSO2 Inc. licenses this file to you under the Apache License,
-*  Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/
+ *
+ *   Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ *   WSO2 Inc. licenses this file to you under the Apache License,
+ *   Version 2.0 (the "License"); you may not use this file except
+ *   in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing,
+ *  software distributed under the License is distributed on an
+ *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ *  KIND, either express or implied.  See the License for the
+ *  specific language governing permissions and limitations
+ *  under the License.
+ * /
+ */
 
 package org.wso2.andes.server.cassandra;
 
@@ -102,11 +104,10 @@ public class OnflightMessageTracker {
         final AMQChannel channel;
         int numOfDeliveries;
         boolean ackWaitTimedOut;
-        Slot slot;
 
         public MsgData(long msgID, boolean ackreceived, String queue, long timestamp,
                        String deliveryID, AMQChannel channel, int numOfDeliveries,
-                       boolean ackWaitTimedOut,Slot slot) {
+                       boolean ackWaitTimedOut) {
             this.msgID = msgID;
             this.ackreceived = ackreceived;
             this.queue = queue;
@@ -115,14 +116,6 @@ public class OnflightMessageTracker {
             this.channel = channel;
             this.numOfDeliveries = numOfDeliveries;
             this.ackWaitTimedOut = ackWaitTimedOut;
-            this.slot = slot;
-            AtomicInteger pendingMessageCount = pendingMessagesBySlot.get(slot);
-            if (pendingMessageCount == null) {
-                pendingMessagesBySlot.putIfAbsent(slot, new AtomicInteger());
-                pendingMessageCount = pendingMessagesBySlot.get(slot);
-            }
-            pendingMessageCount.incrementAndGet();
-
         }
     }
 
@@ -241,8 +234,6 @@ public class OnflightMessageTracker {
                 msgData.ackWaitTimedOut = true;
                 //re-queue the message to send again
                 reQueueMessage(messageId);
-                AtomicInteger pendingMessageCount = pendingMessagesBySlot.get(msgData.slot);
-                pendingMessageCount.decrementAndGet();
                 unMarkMessageAsAlreadyReadFromNodeQueueMessageInstantly(messageId);
             } catch (AndesException e) {
                 log.warn("Message " + messageId + "re-queueing failed");
@@ -389,8 +380,7 @@ public class OnflightMessageTracker {
         deliveryTag2MsgID.put(deliveryID, messageId);
         msgId2MsgData.put(messageId,
                 new MsgData(messageId, false, nodeSpecificQueueName, currentTime,
-                        deliveryID, channel, numOfDeliveriesOfCurrentMsg, false,
-                        andesMetaDataEntry.getSlot()));
+                        deliveryID, channel, numOfDeliveriesOfCurrentMsg, false));
         sendButNotAckedMessageCount.incrementAndGet();
 
         HashSet<Long> messagesDeliveredThroughThisChannel = channelToMsgIDMap.get(channel.getId());
@@ -439,12 +429,13 @@ public class OnflightMessageTracker {
             PerformanceCounter.recordAckReceived(msgData.queue, (int) timeTook);
             sendButNotAckedMessageCount.decrementAndGet();
             channelToMsgIDMap.get(channelID).remove(messageId);
-            messageIdToAndesMessagesMap.remove(messageId);
+            AndesMessageMetadata metadata = messageIdToAndesMessagesMap.remove(messageId);
+
             /*
             decrement pending message count and check whether the slot is empty. If so read the
             slot again from message store.
              */
-            decrementMessageCountInSlotandCheckToResend(msgData.slot,msgData.queue);
+            decrementMessageCountInSlotAndCheckToResend(metadata.getSlot(), msgData.queue);
 
         } else {
             throw new RuntimeException("No message data found for messageId " + messageId);
@@ -563,7 +554,13 @@ public class OnflightMessageTracker {
         return queueTosentButNotAckedMessageMap.remove(queueName);
     }
 
-    public void decrementMessageCountInSlotandCheckToResend(Slot slot, String queueName) throws AndesException {
+    /**
+     * decrement message count in slot and if it is zerocheck the slot again to resend
+     * @param slot
+     * @param queueName
+     * @throws AndesException
+     */
+    public void decrementMessageCountInSlotAndCheckToResend(Slot slot, String queueName) throws AndesException {
         AtomicInteger pendingMessageCount = pendingMessagesBySlot.get(slot);
         int messageCount = pendingMessageCount.decrementAndGet();
         if(messageCount == 0){
@@ -576,5 +573,18 @@ public class OnflightMessageTracker {
             slotWorker.checkForSlotCompletionAndResend(slot);
         }
 
+    }
+
+    /**
+     * increment the message count in a slot
+     * @param slot
+     */
+    public void incrementMessageCountInSlot(Slot slot){
+        AtomicInteger pendingMessageCount = pendingMessagesBySlot.get(slot);
+        if (pendingMessageCount == null) {
+            pendingMessagesBySlot.putIfAbsent(slot, new AtomicInteger());
+            pendingMessageCount = pendingMessagesBySlot.get(slot);
+        }
+        pendingMessageCount.incrementAndGet();
     }
 }

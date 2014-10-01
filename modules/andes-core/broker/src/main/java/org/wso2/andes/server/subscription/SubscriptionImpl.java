@@ -30,8 +30,6 @@ import org.wso2.andes.common.AMQPFilterTypes;
 import org.wso2.andes.common.ClientProperties;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.AndesAckData;
-import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -340,7 +338,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                                 OnflightMessageTracker.getInstance().removeNodeQueueMessageFromStorePermanentlyAndDecrementMsgCount(messageId,destinationQueue);
                                 Slot slot = ((AMQMessage) entry.getMessage()).getSlot();
                                 OnflightMessageTracker.getInstance()
-                                        .decrementMessageCountInSlotandCheckToResend(slot,destinationQueue);
+                                        .decrementMessageCountInSlotAndCheckToResend(slot, destinationQueue);
                                 break;
                             }
                         } catch (Exception e) {

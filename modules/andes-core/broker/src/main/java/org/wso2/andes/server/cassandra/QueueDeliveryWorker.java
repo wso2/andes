@@ -177,8 +177,14 @@ public class QueueDeliveryWorker {
         return subscriptionCursar4QueueMap.get(queueName).readButUndeliveredMessages.isEmpty();
     }
 
+    /**
+     *  send the messages to deliver
+     * @param messagesReadByLeadingThread  AndesMetadata list
+     * @param slot these messages are belonged to
+     */
     public void sendMessageToFlusher(List<AndesMessageMetadata> messagesReadByLeadingThread,
                                      Slot slot) {
+
         iterations = 0;
         workqueueSize = 0;
         lastRestTime = System.currentTimeMillis();
@@ -204,7 +210,6 @@ public class QueueDeliveryWorker {
             int msgReadThisTime = 0;
             List<AndesMessageMetadata> messagesFromMessageStore;
             messagesFromMessageStore = new ArrayList<AndesMessageMetadata>();
-            //todo is this needed now
             for (AndesMessageMetadata message : messagesReadByLeadingThread) {
                 Long messageID = message.getMessageID();
                 if (!onflightMessageTracker.checkIfAlreadyReadFromNodeQueue(message.getMessageID())) {
@@ -233,6 +238,8 @@ public class QueueDeliveryWorker {
                 message.setSlot(slot);
                 QueueDeliveryInfo queueDeliveryInfo = getQueueDeliveryInfo(queueName);
                 queueDeliveryInfo.readButUndeliveredMessages.add(message);
+                //increment the message count in the slot
+                OnflightMessageTracker.getInstance().incrementMessageCountInSlot(slot);
             }
             /**
              * If no messages to read sleep more

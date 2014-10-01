@@ -1,20 +1,23 @@
 /*
-*  Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
-*
-*  WSO2 Inc. licenses this file to you under the Apache License,
-*  Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/
+ *
+ *   Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ *   WSO2 Inc. licenses this file to you under the Apache License,
+ *   Version 2.0 (the "License"); you may not use this file except
+ *   in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing,
+ *  software distributed under the License is distributed on an
+ *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ *  KIND, either express or implied.  See the License for the
+ *  specific language governing permissions and limitations
+ *  under the License.
+ * /
+ */
+
 package org.wso2.andes.server.slot;
 
 import org.apache.commons.logging.Log;
@@ -28,7 +31,6 @@ import org.wso2.andes.subscription.SubscriptionStore;
 
 
 import java.util.*;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -47,11 +49,7 @@ public class SlotDeliveryWorker extends Thread {
     /**
      * this map contains slotId to slot hashmap against queue name
      */
-    // private ConcurrentHashMap<String, HashMap<String,Slot>> slotsOwnedByMe;
     private static final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
-    private static final Lock writeLock = readWriteLock.writeLock();
-    private Timer slotDeletingTimer = new Timer();
-    private static MBThriftClient mbThriftClient;
     private boolean running;
     private String nodeId;
     private QueueDeliveryWorker queueDeliveryWorker;
@@ -132,7 +130,7 @@ public class SlotDeliveryWorker extends Thread {
                                         QueueDeliveryWorker.getInstance().sendMessageToFlusher(
                                                 messagesReadByLeadingThread, currentSlot);
                                     } else {
-                                        MBThriftClient.deleteSlot(queueName,currentSlot,nodeId);
+                                        MBThriftClient.deleteSlot(queueName, currentSlot, nodeId);
                                             /*if there are messages to be sent in the message
                                             buffer in QueueDeliveryWorker send them */
                                         sendFromMessageBuffer(queueName);
@@ -261,7 +259,9 @@ public class SlotDeliveryWorker extends Thread {
     public void checkForSlotCompletionAndResend(Slot slot) throws AndesException {
         if (SlotUtils.checkSlotEmptyFromMessageStore(slot)) {
             try {
-                MBThriftClient.deleteSlot(slot.getQueueName(), slot, nodeId);
+                if (AndesContext.getInstance().isClusteringEnabled()) {
+                    MBThriftClient.deleteSlot(slot.getQueueName(), slot, nodeId);
+                }
             } catch (ConnectionException e) {
                 throw new AndesException(e);
             }
