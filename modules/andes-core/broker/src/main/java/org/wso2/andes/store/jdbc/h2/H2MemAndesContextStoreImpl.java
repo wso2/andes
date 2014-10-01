@@ -36,6 +36,7 @@ import java.sql.Statement;
 public class H2MemAndesContextStoreImpl extends JDBCAndesContextStoreImpl {
 
     private static final Logger logger = Logger.getLogger(H2MemAndesContextStoreImpl.class);
+
     /**
      * Creates durable subscriptions table in H2 database
      */

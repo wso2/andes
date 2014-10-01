@@ -46,6 +46,9 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
     private List<AndesMessageMetadata> metaList = new ArrayList<AndesMessageMetadata>();
 
     private List<AndesMessagePart> partList = new ArrayList<AndesMessagePart>();
+    /**
+     * Maximum data length for a single write to data base
+     */
     private static final int MAX_DATA_LENGTH = 128000;
 
     public AlternatingCassandraWriter(int writerCount, int turn, MessageStoreManager messageStoreManager) {

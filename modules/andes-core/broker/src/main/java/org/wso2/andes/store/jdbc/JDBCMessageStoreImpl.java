@@ -693,7 +693,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             return id;
         }
 
-        // not in map query from DB (some other node might have created it)
+        // not in map. query from DB (some other node might have created it)
         int queueID = getQueueID(destinationQueueName);
 
         if (queueID != -1) {
