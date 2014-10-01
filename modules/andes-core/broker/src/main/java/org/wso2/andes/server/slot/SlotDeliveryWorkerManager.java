@@ -1,20 +1,23 @@
 /*
-*  Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
-*
-*  WSO2 Inc. licenses this file to you under the Apache License,
-*  Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/
+ *
+ *   Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ *   WSO2 Inc. licenses this file to you under the Apache License,
+ *   Version 2.0 (the "License"); you may not use this file except
+ *   in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing,
+ *  software distributed under the License is distributed on an
+ *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ *  KIND, either express or implied.  See the License for the
+ *  specific language governing permissions and limitations
+ *  under the License.
+ * /
+ */
+
 package org.wso2.andes.server.slot;
 
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -33,9 +36,9 @@ public class SlotDeliveryWorkerManager {
             ConcurrentHashMap<Integer, SlotDeliveryWorker>();
 
     private ExecutorService slotDeliveryWorkerExecutor;
-     /*
-     number of slot delivery worker threads running inn one MB node
-      */
+    /*
+    number of slot delivery worker threads running inn one MB node
+     */
     private int numberOfThreads;
     /*
     slotDeliveryWorker instance
@@ -98,13 +101,12 @@ public class SlotDeliveryWorkerManager {
     public void stopSlotDeliveryWorkers() {
         for (Map.Entry<Integer, SlotDeliveryWorker> slotDeliveryWorkerEntry :
                 getSlotDeliveryWorkerMap()
-                .entrySet()) {
+                        .entrySet()) {
             slotDeliveryWorkerEntry.getValue().setRunning(false);
         }
     }
 
     /**
-     *
      * @return slotDeliveryWorkerMap
      */
     private Map<Integer, SlotDeliveryWorker> getSlotDeliveryWorkerMap() {
@@ -114,7 +116,7 @@ public class SlotDeliveryWorkerManager {
     /**
      * Start workers if not running
      */
-    public void startAllSlotDeliveryWorkers(){
+    public void startAllSlotDeliveryWorkers() {
         for (Map.Entry<Integer, SlotDeliveryWorker> entry :
                 slotDeliveryWorkerMap.entrySet()) {
             SlotDeliveryWorker slotDeliveryWorker = entry.getValue();
@@ -126,10 +128,11 @@ public class SlotDeliveryWorkerManager {
 
     /**
      * Returns SlotDeliveryWorker mapped to a given queue
+     *
      * @param queueName
      * @return SlotDeliveryWorker instance
      */
-    public SlotDeliveryWorker getSlotWorker(String queueName){
+    public SlotDeliveryWorker getSlotWorker(String queueName) {
         return slotDeliveryWorkerMap.get(getIdForSlotDeliveryWorker(queueName));
     }
 
