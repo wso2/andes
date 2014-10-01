@@ -278,11 +278,19 @@ public class CQLConnection implements DurableStoreConnection {
         cassandraConnectionCheckerThread.start();
     }
 
-
+    /**
+     *
+     * @return gcGraceSeconds
+     */
     public int getGcGraceSeconds() {
         return gcGraceSeconds;
     }
 
+    /**
+     *set gcGraceSeconds which is an upper bound on the amount of time the cluster had to
+     * propagate tombstones.
+     * @param gcGraceSeconds
+     */
     public void setGcGraceSeconds(int gcGraceSeconds) {
         this.gcGraceSeconds = gcGraceSeconds;
     }
