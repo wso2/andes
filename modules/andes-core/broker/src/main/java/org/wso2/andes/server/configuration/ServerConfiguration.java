@@ -596,7 +596,7 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
     }
 
     public int getNumberOFSlotDeliveryWorkerThreads(){
-        return getIntValue("clustering.NumberOFSlotDeliveryWorkerThreads",5);
+        return getIntValue("clustering.NumberOfSlotDeliveryWorkerThreads",5);
     }
 
     public int getGlobalQueueWorkerMessageBatchSize() {
