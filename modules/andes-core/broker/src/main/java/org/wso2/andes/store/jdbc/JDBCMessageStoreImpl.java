@@ -839,10 +839,17 @@ public class JDBCMessageStoreImpl implements MessageStore {
 
         try {
             connection = getConnection();
+
+            /* This has been changed to a transaction since in H2 Database this call asynchronously returns if
+            transactions are not used, leading to inconsistent DB. this is done to avoid that. */
+            connection.setAutoCommit(false);
+
             preparedStatement = connection
                     .prepareStatement(sqlString, Statement.RETURN_GENERATED_KEYS);
             preparedStatement.setString(1, destinationQueueName);
             preparedStatement.executeUpdate();
+
+            connection.commit();
 
             results = preparedStatement.getGeneratedKeys();
             if (results.first()) {
