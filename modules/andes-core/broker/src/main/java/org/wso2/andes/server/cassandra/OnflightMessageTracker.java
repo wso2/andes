@@ -440,9 +440,7 @@ public class OnflightMessageTracker {
                 while (iterator.hasNext()) {
                     long messageId = (Long) iterator.next();
                     if (msgId2MsgData.get(messageId) != null) {
-                        String nodeIDAppendedQueueName = msgId2MsgData.remove(messageId).queue;
-                        String destinationQueueName = nodeIDAppendedQueueName
-                                .substring(0, nodeIDAppendedQueueName.lastIndexOf("_"));
+                        String destinationQueueName = msgId2MsgData.remove(messageId).queue;
                         sendButNotAckedMessageCount.decrementAndGet();
                         AndesMessageMetadata queueEntry = messageIdToAndesMessagesMap
                                 .remove(messageId);
