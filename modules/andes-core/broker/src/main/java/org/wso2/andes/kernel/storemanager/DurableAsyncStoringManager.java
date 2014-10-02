@@ -125,6 +125,7 @@ public class DurableAsyncStoringManager implements MessageStoreManager {
                                     entry.getKey(),
                                     entry.getValue().get());
                         }
+                        entry.getValue().set(0);
                     } catch (AndesException e) {
                         log.error("Error while updating message counts for queue " + entry.getKey());
                     }
@@ -226,6 +227,7 @@ public class DurableAsyncStoringManager implements MessageStoreManager {
                 AndesContext.getInstance().getAndesContextStore().decrementMessageCountForQueue(
                         queueName, msgCount.get());
             }
+            msgCount.set(0);
         }
 
     }
@@ -255,6 +257,7 @@ public class DurableAsyncStoringManager implements MessageStoreManager {
                 AndesContext.getInstance().getAndesContextStore().decrementMessageCountForQueue(
                         queueName, msgCount.get());
             }
+            msgCount.set(0);
         }
     }
 

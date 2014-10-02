@@ -24,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.VirtualHostsConfiguration;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
+import org.wso2.andes.server.cassandra.TopicDeliveryWorker;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
@@ -294,6 +295,8 @@ public class AndesKernelBoot {
      * @throws Exception
      */
     public static void startMessaging() throws Exception {
+        // TODO: Remove this
+        ClusterResourceHolder.getInstance().setTopicDeliveryWorker(new TopicDeliveryWorker());
         MessagingEngine.getInstance().startMessageDelivery();
         MessagingEngine.getInstance().startMessageExpirationWorker();
     }

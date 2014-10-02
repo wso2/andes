@@ -494,7 +494,7 @@ public class CQLDataAccessHelper {
 			List<Row> rows = result.all();
 			Iterator<Row> iter = rows.iterator();
 			if(iter.hasNext()){
-				count = iter.next().getInt(MSG_COUNTER_COLUMN);
+				count = iter.next().getLong(MSG_COUNTER_COLUMN);
 			}
     		
             return count;

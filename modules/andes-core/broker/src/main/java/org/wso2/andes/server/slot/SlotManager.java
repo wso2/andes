@@ -242,30 +242,30 @@ public class SlotManager {
     }
 
     /**
-     * remove slot entry from slotAssignment map
+     * Remove slot entry from slotAssignment map
      *
      * @param queueName
      * @param emptySlot
      */
     public void deleteSlot(String queueName, Slot emptySlot, String nodeId) {
-        HashMap<String, List<Slot>> queueToSlotMap = slotAssignmentMap.get(nodeId);
-        if (queueToSlotMap != null) {
-            String lockKey = (nodeId + SlotManager.class).intern();
-            synchronized (lockKey) {
+        String lockKey = (nodeId + SlotManager.class).intern();
+        synchronized (lockKey) {
+            HashMap<String, List<Slot>> queueToSlotMap = slotAssignmentMap.get(nodeId);
+            if (queueToSlotMap != null) {
                 queueToSlotMap = slotAssignmentMap.get(nodeId);
                 ArrayList<Slot> currentSlotList = (ArrayList<Slot>) queueToSlotMap.get(queueName);
-                currentSlotList.remove(emptySlot);
-                queueToSlotMap.put(queueName, currentSlotList);
-                slotAssignmentMap.set(nodeId, queueToSlotMap);
+                if (currentSlotList != null) {
+                    currentSlotList.remove(emptySlot);
+                    queueToSlotMap.put(queueName, currentSlotList);
+                    slotAssignmentMap.set(nodeId, queueToSlotMap);
+                }
                 if (log.isDebugEnabled()) {
                     log.debug("Unassigned slot " + emptySlot.getStartMessageId() + " - " +
-                            emptySlot
-                                    .getEndMessageId() + "owned by node: " + nodeId + "");
+                              emptySlot
+                                      .getEndMessageId() + "owned by node: " + nodeId + "");
                 }
             }
-
         }
-
     }
 
     /**
