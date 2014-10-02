@@ -109,7 +109,8 @@ public class SlotDeliveryWorker extends Thread {
                                     if (log.isDebugEnabled()) {
                                         log.debug("Received slot for queue " + queueName + " " +
                                                 "is: " + currentSlot.getStartMessageId() +
-                                                " - " + currentSlot.getEndMessageId());
+                                                " - " + currentSlot.getEndMessageId() +
+                                                "Thread Id:" + Thread.currentThread().getId());
                                     }
                                     long firstMsgId = currentSlot.getStartMessageId();
                                     long lastMsgId = currentSlot.getEndMessageId();

@@ -66,7 +66,7 @@ public class SlotDeliveryWorkerManager {
      *
      * @param queueName
      */
-    public void startSlotDeliveryWorker(String queueName) {
+    public synchronized void startSlotDeliveryWorker(String queueName) {
         int slotDeliveryWorkerId = getIdForSlotDeliveryWorker(queueName);
         if (getSlotDeliveryWorkerMap().containsKey(slotDeliveryWorkerId)) {
             //if this queue is not already in the queue

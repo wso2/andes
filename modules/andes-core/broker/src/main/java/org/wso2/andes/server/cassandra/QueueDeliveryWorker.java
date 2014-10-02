@@ -29,6 +29,7 @@ import org.wso2.andes.subscription.SubscriptionStore;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * <code>QueueDeliveryWorker</code> Handles the task of polling the user queues and flushing
@@ -277,20 +278,20 @@ public class QueueDeliveryWorker {
     }
 
     /**
-     *Read messages from the buffer and send messages to subscribers
+     * Read messages from the buffer and send messages to subscribers
      */
     public void sendMessagesInBuffer(String queueName) throws AndesException {
         QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(queueName);
         if (log.isDebugEnabled()) {
             log.debug("TRACING>> delivering read but undelivered message list with size: " +
-                      queueDeliveryInfo.readButUndeliveredMessages.size());
+                    queueDeliveryInfo.readButUndeliveredMessages.size());
         }
         try {
             sendMessagesToSubscriptions(queueDeliveryInfo.queueName,
-                                        queueDeliveryInfo.readButUndeliveredMessages);
+                    queueDeliveryInfo.readButUndeliveredMessages);
         } catch (Exception e) {
             throw new AndesException("Error occurred while sending messages to subscribers " +
-                                     "from message buffer" + e);
+                    "from message buffer" + e);
         }
     }
 
@@ -474,48 +475,6 @@ public class QueueDeliveryWorker {
         log.debug("staring queue message flusher for " + nodeQueue);
         running = true;
     }
-
-//    private boolean resetOffsetAtCassadraQueueIfNeeded(boolean force) {
-//        resetCounter++;
-//        if (force || (resetCounter > maxRestCounter && (System.currentTimeMillis() - lastRestTime) > queueMsgDeliveryCurserResetTimeInterval)) {
-//            resetCounter = 0;
-//            lastRestTime = System.currentTimeMillis();
-//            lastProcessedId = getStartingIndex();
-//            if (log.isDebugEnabled()) {
-//                log.debug("TRACING>> QDW-Reset offset called and Updated lastProcessedId is= " + lastProcessedId);
-//            }
-//            return true;
-//        }
-//        return false;
-//    }
-
-//    private long getStartingIndex() {
-//        long startingIndex = lastProcessedId;
-//        if (subscriptionCursar4QueueMap.values().size() == 0) {
-//            startingIndex = 0;
-//        }
-//        for (QueueDeliveryInfo queueDeliveryInfo : subscriptionCursar4QueueMap.values()) {
-//
-//            if (queueDeliveryInfo.hasQueueFullAndMessagesIgnored) {
-//                if (startingIndex > queueDeliveryInfo.ignoredFirstMessageId && queueDeliveryInfo.ignoredFirstMessageId != -1) {
-//                    startingIndex = queueDeliveryInfo.ignoredFirstMessageId;
-//                }
-//                if (queueDeliveryInfo.readButUndeliveredMessages.size() < maxNumberOfReadButUndeliveredMessages / 2) {
-//                    queueDeliveryInfo.hasQueueFullAndMessagesIgnored = false;
-//                }
-//            }
-//            if (queueDeliveryInfo.needToReset) {
-//                if (startingIndex > queueDeliveryInfo.ignoredFirstMessageId) {
-//                    startingIndex = queueDeliveryInfo.ignoredFirstMessageId;
-//                }
-//                queueDeliveryInfo.setNeedToReset(false);
-//            }
-//        }
-//        if (startingIndex > 0) {
-//            startingIndex--;
-//        }
-//        return startingIndex;
-//    }
 
     public void clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(String destinationQueueName) throws AndesException {
         undeliveredMessagesMap.remove(destinationQueueName);

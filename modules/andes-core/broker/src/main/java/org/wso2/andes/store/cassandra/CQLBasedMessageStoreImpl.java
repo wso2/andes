@@ -311,7 +311,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             for (long messageId : messageIdList) {
                 rows2Remove.add(new StringBuffer(
                         AndesConstants.MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX).append(messageId).toString());
-                System.out.println("REMOVE CONTENT>> id " + messageId);
             }
             //remove content
             if (!rows2Remove.isEmpty()) {
