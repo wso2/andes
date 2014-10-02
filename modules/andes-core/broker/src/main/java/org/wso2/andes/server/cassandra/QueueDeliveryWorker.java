@@ -190,7 +190,7 @@ public class QueueDeliveryWorker {
                 if (workqueueSize > 5000) {
                     log.error("Flusher queue is growing, and this should not happen. Please check cassandra Flusher");
                 }
-                log.info("skipping content cassandra reading thread as flusher queue has " + workqueueSize + " tasks");
+                log.warn("skipping content cassandra reading thread as flusher queue has " + workqueueSize + " tasks");
                 sleep4waitInterval(queueWorkerWaitInterval);
             }
 
