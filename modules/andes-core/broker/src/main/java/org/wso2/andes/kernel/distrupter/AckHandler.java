@@ -9,6 +9,7 @@ import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.MessageStore;
 
 import com.lmax.disruptor.EventHandler;
+import org.wso2.andes.kernel.MessageStoreManager;
 
 /**
  * We do this to make Listener take turns while running. So we can run many copies of these and control number
@@ -16,17 +17,17 @@ import com.lmax.disruptor.EventHandler;
  */
 
 public class AckHandler implements EventHandler<AndesAckData> {
-    private MessageStore messageStore;
+    private MessageStoreManager messageStoreManager;
     private List<AndesAckData> ackList = new ArrayList<AndesAckData>();
 
-    public AckHandler(MessageStore messageStore) {
-        this.messageStore = messageStore;
+    public AckHandler(MessageStoreManager messageStoreManager) {
+        this.messageStoreManager = messageStoreManager;
     }
 
     public void onEvent(final AndesAckData event, final long sequence, final boolean endOfBatch) throws Exception {
         ackList.add(event);
         if (endOfBatch) {
-            messageStore.ackReceived(ackList);
+            messageStoreManager.processAckReceived(ackList);
             ackList.clear();
         }
     }

@@ -36,10 +36,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
  * TODO handle message timeouts
  */
 public class QueueSubscriptionAcknowledgementHandler {
-    /** 
-     * this is a delivery performance counter
-     */
-    private MessageStore messageStore;
 
     private Map<Long, QueueMessageTag> deliveryTagMessageMap = new ConcurrentHashMap<Long, QueueMessageTag>();
 
@@ -60,11 +56,6 @@ public class QueueSubscriptionAcknowledgementHandler {
     private static Log log = LogFactory.getLog(QueueSubscriptionAcknowledgementHandler.class);
 
     private OnflightMessageTracker messageTracker = OnflightMessageTracker.getInstance();
-
-
-    public QueueSubscriptionAcknowledgementHandler(MessageStore messageStore, String queue) {
-        this.messageStore = messageStore;
-    }
 
     /**
      * Check the eligibility of message to be sent to the client
@@ -89,8 +80,10 @@ public class QueueSubscriptionAcknowledgementHandler {
                 QpidAMQPBridge.getInstance().ackReceived(queueEntry.getMessage().getMessageNumber(),
                                                          queueEntry.getQueue().getName(),
                                                          false);
-                // We first delete the message so even this fails in tracker, no harm done. Also decrement message count.
+
+                //TODO: hasitha - we should clear tracks when actual ack processing happens (if via disruptor)?
                 messageTracker.ackReceived(channel.getId(), queueEntry.getMessage().getMessageNumber());
+
                 channel.decrementNonAckedMessageCount();
 
             } catch (AMQStoreException e) {
@@ -142,7 +135,6 @@ public class QueueSubscriptionAcknowledgementHandler {
 
             while (running) {
                 try {
-                    synchronized (messageStore) {
                         // Here timeStampMessageIdMap.firstKey() is the oldest
                         if (timeStampMessageIdMap.firstKey() + timeOutInMills <= currentTime) {
                             // we should handle timeout
@@ -186,8 +178,6 @@ public class QueueSubscriptionAcknowledgementHandler {
                             }
 
                         }
-
-                    }
                 } catch (Exception e) {
                     log.error("Error while running Queue Message Tag Cleanup Task", e);
                 } finally {

@@ -18,9 +18,6 @@ public class MessageExpirationWorker extends Thread {
     private static Log log = LogFactory.getLog(MessageExpirationWorker.class);
     private volatile boolean working = false;
 
-    //references
-    private MessageStore messageStore;
-
     //configurations
     private final int workerWaitInterval;
     private final int messageBatchSize;
@@ -38,12 +35,6 @@ public class MessageExpirationWorker extends Thread {
         messageBatchSize = clusterConfiguration.getExpirationMessageBatchSize();
         saveExpiredToDLC = clusterConfiguration.getSaveExpiredToDLC();
 
-        if (ClusterResourceHolder.getInstance().getClusterConfiguration().isInMemoryMode()) {
-            messageStore = MessagingEngine.getInstance().getInMemoryMessageStore();
-        } else {
-            messageStore = MessagingEngine.getInstance().getDurableMessageStore();
-        }
-
         this.start();
         this.setWorking();
     }
@@ -57,15 +48,14 @@ public class MessageExpirationWorker extends Thread {
             if (working) {
                 try {
                     //Get Expired messages
-                    List<AndesRemovableMetadata> expiredMessages = messageStore.getExpiredMessages(messageBatchSize);
-//                            CQLDataAccessHelper.getExpiredMessages(messageBatchSize, CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY,CassandraConstants.KEYSPACE);
+                    List<AndesRemovableMetadata> expiredMessages = MessagingEngine.getInstance().getExpiredMessages(messageBatchSize);
 
                     if (expiredMessages == null || expiredMessages.size() == 0 )  {
 
                         sleepForWaitInterval(workerWaitInterval);
 
                     } else {
-                        messageStore.deleteMessages(expiredMessages, saveExpiredToDLC);
+                        MessagingEngine.getInstance().deleteMessages(expiredMessages, saveExpiredToDLC);
                         sleepForWaitInterval(workerWaitInterval);
                     }
 

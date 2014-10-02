@@ -45,13 +45,8 @@ public class MessageDeliveryThreadHandler implements SubscriptionListener {
 
         switch (changeType) {
             case Added:
-                //reset global queue worker
-                if (localSubscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.DIRECT_EXCHANGE_NAME) && localSubscription.hasExternalSubscriptions()) {
-                    String globalQueueName = AndesUtils.getGlobalQueueNameForDestinationQueue(localSubscription.getTargetQueue());
-                    ClusterResourceHolder.getInstance().getClusterManager().getGlobalQueueManager().resetGlobalQueueWorkerIfRunning(globalQueueName);
-                }
                 //if it is a topic subscription, start a topicDeliveryWorker if one has not started
-                else if (localSubscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME) && localSubscription.hasExternalSubscriptions()) {
+                if (localSubscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME) && localSubscription.hasExternalSubscriptions()) {
                     if (!ClusterResourceHolder.getInstance().getTopicDeliveryWorker().isWorking()) {
                         ClusterResourceHolder.getInstance().getTopicDeliveryWorker().setWorking();
                     }

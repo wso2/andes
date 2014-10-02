@@ -18,20 +18,31 @@
 
 package org.wso2.andes.kernel.storemanager;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.MessageStoreManager;
+import org.wso2.andes.server.cassandra.OnflightMessageTracker;
+import org.wso2.andes.server.stats.PerformanceCounter;
+import org.wso2.andes.server.util.AndesConstants;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This DurableDirectStoringManager stores directly to the durable message store
  */
 public class DurableDirectStoringManager implements MessageStoreManager{
+
+    private static Log log = LogFactory.getLog(DurableDirectStoringManager.class);
 
     /**
      * Durable message store which is used to persist messages
@@ -79,10 +90,128 @@ public class DurableDirectStoringManager implements MessageStoreManager{
      */
     @Override
     public void ackReceived(AndesAckData ackData) throws AndesException{
-        // todo: ack handling will be moved out of message store and this list business will be
-        // taken out.
-        List<AndesAckData> ackDataList = new ArrayList<AndesAckData>(1); // only 1 entry
+        List<AndesAckData> ackDataList = new ArrayList<AndesAckData>();
         ackDataList.add(ackData);
-        durableMessageStore.ackReceived(ackDataList);
+        processAckReceived(ackDataList);
+
+    }
+
+    @Override
+    public void deleteMessageParts(List<Long> messageIdList) throws AndesException {
+         durableMessageStore.deleteMessageParts(messageIdList);
+    }
+
+    @Override
+    public void processAckReceived(List<AndesAckData> ackList) throws AndesException {
+        List<AndesRemovableMetadata> removableMetadata = new ArrayList<AndesRemovableMetadata>();
+        for (AndesAckData ack : ackList) {
+            removableMetadata.add(new AndesRemovableMetadata(ack.messageID, ack.qName));
+            //record ack received
+            PerformanceCounter.recordMessageRemovedAfterAck();
+        }
+        //remove messages permanently from store
+        deleteMessages(removableMetadata, false);
+    }
+
+    @Override
+    public void decrementQueueCount(String queueName) throws AndesException {
+        AndesContext.getInstance().getAndesContextStore().decrementMessageCountForQueue(queueName, 1);
+    }
+
+    @Override
+    public void incrementQueueCount(String queueName) throws AndesException {
+        AndesContext.getInstance().getAndesContextStore().incrementMessageCountForQueue(queueName, 1);
+    }
+
+    @Override
+    public void storeMessagePart(List<AndesMessagePart> messageParts) throws AndesException {
+         durableMessageStore.storeMessagePart(messageParts);
+    }
+
+    @Override
+    public void storeMetaData(List<AndesMessageMetadata> messageMetadata) throws AndesException {
+         durableMessageStore.addMetaData(messageMetadata);
+    }
+
+    @Override
+    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
+        return durableMessageStore.getContent(messageId, offsetValue);
+    }
+
+    @Override
+    public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove,
+                               boolean moveToDeadLetterChannel) throws AndesException {
+        List<Long> idsOfMessagesToRemove = new ArrayList<Long>();
+        Map<String, List<AndesRemovableMetadata>> queueSeparatedRemoveMessages = new HashMap<String, List<AndesRemovableMetadata>>();
+
+        for (AndesRemovableMetadata message : messagesToRemove) {
+            idsOfMessagesToRemove.add(message.messageID);
+
+            List<AndesRemovableMetadata> messages = queueSeparatedRemoveMessages
+                    .get(message.destination);
+            if (messages == null) {
+                messages = new ArrayList
+                        <AndesRemovableMetadata>();
+            }
+            messages.add(message);
+            queueSeparatedRemoveMessages.put(message.destination, messages);
+
+            //decrement message count of queue
+            decrementQueueCount(message.destination);
+
+            //update server side message trackings
+            OnflightMessageTracker onflightMessageTracker = OnflightMessageTracker.getInstance();
+            onflightMessageTracker.updateDeliveredButNotAckedMessages(message.messageID);
+
+
+            //if to move, move to DLC
+            if (moveToDeadLetterChannel) {
+                AndesMessageMetadata metadata = durableMessageStore.getMetaData(message.messageID);
+                durableMessageStore
+                        .addMetaDataToQueue(AndesConstants.DEAD_LETTER_QUEUE_NAME, metadata);
+                //increment message count of DLC
+                incrementQueueCount(AndesConstants.DEAD_LETTER_QUEUE_NAME);
+            }
+        }
+
+        //remove metadata
+        for (String queueName : queueSeparatedRemoveMessages.keySet()) {
+            durableMessageStore.deleteMessageMetadataFromQueue(queueName,
+                                                               queueSeparatedRemoveMessages
+                                                                       .get(queueName));
+        }
+
+        if (!moveToDeadLetterChannel) {
+            //remove content
+            //TODO: - hasitha if a topic message be careful as it is shared
+            deleteMessageParts(idsOfMessagesToRemove);
+        }
+
+        //remove these message ids from expiration tracking
+        durableMessageStore.deleteMessagesFromExpiryQueue(idsOfMessagesToRemove);
+
+    }
+
+    @Override
+    public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException {
+        return durableMessageStore.getExpiredMessages(limit);
+    }
+
+    @Override
+    public List<AndesMessageMetadata> getMetaDataList(String queueName, long firstMsgId,
+                                                      long lastMsgID) throws AndesException {
+        return durableMessageStore.getMetaDataList(queueName, firstMsgId, lastMsgID);
+    }
+
+    @Override
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String queueName,
+                                                                       long firstMsgId, int count)
+            throws AndesException {
+        return durableMessageStore.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
+    }
+
+    @Override
+    public void close() {
+        durableMessageStore.close();
     }
 }

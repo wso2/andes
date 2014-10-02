@@ -22,11 +22,6 @@ package org.wso2.andes.store.jdbc;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.server.stats.PerformanceCounter;
-import org.wso2.andes.server.store.util.CassandraDataAccessException;
-import org.wso2.andes.store.MessageContentRemoverTask;
 
 import javax.sql.DataSource;
 import java.sql.*;
@@ -52,20 +47,8 @@ public class JDBCMessageStoreImpl implements MessageStore {
      */
     private DataSource datasource;
 
-    /**
-     * Message content remover task thread
-     */
-    private MessageContentRemoverTask messageContentRemoverTask;
-
-    /**
-     * Scheduled Executor Service to run the message content remover task
-     */
-    private final ScheduledExecutorService contentRemovalScheduler;
-
     public JDBCMessageStoreImpl() {
         queueMap = new ConcurrentHashMap<String, Integer>();
-        int threadPoolCount = 1;
-        contentRemovalScheduler = Executors.newScheduledThreadPool(threadPoolCount);
     }
 
     /**
@@ -80,16 +63,6 @@ public class JDBCMessageStoreImpl implements MessageStore {
         // read data source name from config and use
         jdbcConnection.initialize(connectionProperties);
         datasource = jdbcConnection.getDataSource();
-
-        // start periodic message removal task
-        messageContentRemoverTask = new MessageContentRemoverTask(this, jdbcConnection);
-
-        int schedulerPeriod = ClusterResourceHolder.getInstance().getClusterConfiguration()
-                .getContentRemovalTaskInterval();
-        contentRemovalScheduler.scheduleAtFixedRate(messageContentRemoverTask,
-                schedulerPeriod,
-                schedulerPeriod,
-                TimeUnit.SECONDS);
 
         return jdbcConnection;
     }
@@ -186,51 +159,6 @@ public class JDBCMessageStoreImpl implements MessageStore {
             close(connection, JDBCConstants.TASK_RETRIEVING_MESSAGE_PARTS);
         }
         return messagePart;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void ackReceived(List<AndesAckData> ackList) throws AndesException {
-        List<AndesRemovableMetadata> messagesAddressedToQueues = new ArrayList<AndesRemovableMetadata>();
-        List<AndesRemovableMetadata> messagesAddressedToTopics = new ArrayList<AndesRemovableMetadata>();
-
-        List<Long> messageIds = new ArrayList<Long>(ackList.size());
-
-        for (AndesAckData ackData : ackList) {
-            if (!ackData.isTopic) {
-                messagesAddressedToTopics.add(ackData.convertToRemovableMetaData());
-
-                //schedule to remove queue and topic message content
-                long timeGapConfigured = ClusterResourceHolder.getInstance().
-                        getClusterConfiguration().getPubSubMessageRemovalTaskInterval() * 1000000;
-                messageContentRemoverTask
-                        .put(System.nanoTime() + timeGapConfigured, ackData.messageID);
-
-            } else {
-                messagesAddressedToQueues.add(ackData.convertToRemovableMetaData());
-                OnflightMessageTracker onflightMessageTracker = OnflightMessageTracker
-                        .getInstance();
-                onflightMessageTracker.updateDeliveredButNotAckedMessages(ackData.messageID);
-
-                //schedule to remove queue and topic message content
-                messageContentRemoverTask.put(System.nanoTime(), ackData.messageID);
-            }
-
-            PerformanceCounter.recordMessageRemovedAfterAck();
-            messageIds.add(ackData.messageID);
-        }
-
-        //remove queue message metadata now
-        deleteMessages(messagesAddressedToQueues, false);
-
-        //remove topic message metadata now
-        deleteMessages(messagesAddressedToTopics, false);
-
-        deleteMessagesFromExpiryQueue(
-                messageIds); // hasithad This cant be done here cos topic delivery logic comes
-        // here before a delivery :(
     }
 
     /**
@@ -420,37 +348,6 @@ public class JDBCMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public long getMessageCountForQueue(final String destinationQueueName) throws AndesException {
-
-        long count = 0;
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-        ResultSet results = null;
-        try {
-            connection = getConnection();
-            preparedStatement = connection
-                    .prepareStatement(JDBCConstants.PS_SELECT_QUEUE_MESSAGE_COUNT);
-            preparedStatement.setInt(1, getCachedQueueID(destinationQueueName));
-
-            results = preparedStatement.executeQuery();
-            if (results.first()) {
-                count = results.getLong(JDBCConstants.PS_ALIAS_FOR_COUNT);
-            }
-        } catch (SQLException e) {
-            throw new AndesException("error occurred while retrieving message count for queue ", e);
-        } finally {
-            String task = JDBCConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT + destinationQueueName;
-            close(results, task);
-            close(preparedStatement, task);
-            close(connection, task);
-        }
-        return count;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public AndesMessageMetadata getMetaData(long messageId) throws AndesException {
         AndesMessageMetadata md = null;
         Connection connection = null;
@@ -575,55 +472,6 @@ public class JDBCMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove,
-                               boolean moveToDeadLetterChannel) throws AndesException {
-
-        // todo: update when DLC implementation is ported to 3.0.0
-
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-        try {
-            connection = getConnection();
-            connection.setAutoCommit(false);
-
-            // delete from expiry queue first.
-            deleteFromExpiryQueue(connection, messagesToRemove);
-
-            // remove from metadata table
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_DELETE_METADATA);
-            for (AndesRemovableMetadata md : messagesToRemove) {
-                preparedStatement.setInt(1, getCachedQueueID(md.destination));
-                preparedStatement.setLong(2, md.messageID);
-                preparedStatement.addBatch();
-            }
-            preparedStatement.executeBatch();
-            preparedStatement.close();
-
-            // commit
-            connection.commit();
-
-            // finally add to remove content task
-            // NOTE: This is done outside transaction intentionally. To Delete ack received
-            // content in chunks as a scheduled task.
-            for (AndesRemovableMetadata md : messagesToRemove) {
-                messageContentRemoverTask.put(System.nanoTime(), md.messageID);
-            }
-            if (logger.isDebugEnabled()) {
-                logger.debug(messagesToRemove.size() + " messages scheduled to be removed.");
-            }
-        } catch (SQLException e) {
-            rollback(connection, JDBCConstants.TASK_DELETING_MESSAGE_LIST);
-            throw new AndesException("error occurred while deleting messages ", e);
-        } finally {
-            close(preparedStatement, JDBCConstants.TASK_DELETING_MESSAGE_LIST);
-            close(connection, JDBCConstants.TASK_DELETING_MESSAGE_LIST);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void deleteMessageMetadataFromQueue(final String queueName,
                                                List<AndesRemovableMetadata> messagesToRemove)
             throws AndesException {
@@ -708,13 +556,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
      */
     @Override
     public void close() {
-        try {
-            contentRemovalScheduler.shutdown();
-            contentRemovalScheduler.awaitTermination(5, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            contentRemovalScheduler.shutdownNow();
-            logger.warn("Content remover task forcefully shutdown.");
-        }
+
     }
 
     /**
@@ -949,99 +791,10 @@ public class JDBCMessageStoreImpl implements MessageStore {
         }
     }
 
-
-    /////////////////////////////////////////////////////////////
-    // DEPRECATED METHODS
-    ////////////////////////////////////////////////////////////
-
-    @Override
-    public void deleteMessageMetadataFromQueue(QueueAddress queueAddress,
-                                               List<AndesRemovableMetadata> messagesToRemove)
-            throws AndesException {
-    }
-
-    @Override
-    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(QueueAddress queueAddress,
-                                                                       long startMsgID, int count)
-            throws AndesException {
-        return null;
-    }
-
-    @Override
-    public void addMessageMetaData(QueueAddress queueAddress,
-                                   List<AndesMessageMetadata> messageList) throws AndesException {
-//
-//        for(AndesMessageMetadata md: messageList){
-//
-//        }
-    }
-
-    @Override
-    public void moveMessageMetaData(QueueAddress sourceAddress, QueueAddress targetAddress,
-                                    List<AndesMessageMetadata> messageList) throws AndesException {
-
-    }
-
-    @Override
-    public long moveAllMessageMetaDataOfQueue(QueueAddress sourceAddress,
-                                              QueueAddress targetAddress, String destinationQueue)
-            throws AndesException {
-//        long movedCount = 0;
-//        try {
-//            String sqlString = "UPDATE " + JDBCConstants.METADATA_TABLE +
-//                    " SET " + JDBCConstants.TNQ_NQ_GQ_ID + "=" + String.valueOf(getMainQueueID
-// (targetAddress.queueName)) +
-//                    " WHERE " + JDBCConstants.TNQ_NQ_GQ_ID + "=" + String.valueOf
-// (getMainQueueID(sourceAddress.queueName)) +
-//                    " AND " + JDBCConstants.QUEUE_ID + "=" + String.valueOf(getCachedQueueID
-// (destinationQueue));
-//
-//            Statement stmt = connection.createStatement();
-//            movedCount = stmt.executeUpdate(sqlString);
-//            stmt.close();
-//        } catch (SQLException e) {
-//            logger.error("error occurred while trying to move metadata from " + sourceAddress
-// .queueName + " to "
-//                            + targetAddress.queueName);
-//        }
-        return 0;
-    }
-
-    @Override
-    public int countMessagesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch)
-            throws AndesException {
-//        String select = "SELECT COUNT(" + JDBCConstants.TNQ_NQ_GQ_ID + ") AS count" +
-//                " WHERE (" + JDBCConstants.TNQ_NQ_GQ_ID + "," + JDBCConstants.QUEUE_ID + ") = " +
-//                "(";
-//
-//        int count = 0;
-//        try {
-//            Statement stmt = connection.createStatement();
-//            ResultSet results =stmt.executeQuery(select);
-//            while (results.next()){
-//                count = results.getInt("count");
-//            }
-//        } catch (SQLException e) {
-//            logger.error("error occurred while retrieving message count of queue");
-//        }
-        return 0;
-    }
-
     @Override
     public void addMessageToExpiryQueue(Long messageId, Long expirationTime,
                                         boolean isMessageForTopic, String destination)
-            throws CassandraDataAccessException {
+            throws AndesException {
 
-    }
-
-    @Override
-    public void moveToDeadLetterChannel(List<AndesRemovableMetadata> messageList) {
-
-    }
-
-    @Override
-    public List<AndesRemovableMetadata> getExpiredMessages(Long limit, String columnFamilyName,
-                                                           String keySpace) {
-        return null;
     }
 }

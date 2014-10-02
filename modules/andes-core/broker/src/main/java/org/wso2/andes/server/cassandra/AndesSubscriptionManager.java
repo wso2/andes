@@ -26,7 +26,6 @@ import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.slot.OrphanedSlotHandler;
 import org.wso2.andes.subscription.BasicSubscription;
-import org.wso2.andes.subscription.OrphanedMessageHandler;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.*;
@@ -57,7 +56,6 @@ public class AndesSubscriptionManager {
         subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         //adding subscription listeners
         addSubscriptionListener(new MessageDeliveryThreadHandler());
-        addSubscriptionListener(new OrphanedMessageHandler());
         addSubscriptionListener(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
         if (AndesContext.getInstance().isClusteringEnabled()) {
             addSubscriptionListener(new OrphanedSlotHandler());

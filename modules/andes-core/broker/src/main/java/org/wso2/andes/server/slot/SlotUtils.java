@@ -42,10 +42,9 @@ public class SlotUtils {
      * @return whether the slot is empty or not
      */
     public static boolean checkSlotEmptyFromMessageStore(Slot slot) {
-        MessageStore messageStore = MessagingEngine.getInstance().getDurableMessageStore();
         try {
             List<AndesMessageMetadata> messagesReturnedFromCassandra =
-                    messageStore.getMetaDataList(slot.getQueueName(), slot.getStartMessageId(),
+                    MessagingEngine.getInstance().getMetaDataList(slot.getQueueName(), slot.getStartMessageId(),
                             slot.getEndMessageId());
             if (messagesReturnedFromCassandra == null || messagesReturnedFromCassandra.isEmpty()) {
                 return true;

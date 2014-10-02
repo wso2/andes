@@ -41,8 +41,6 @@ public class TopicDeliveryWorker extends Thread {
     private String topicNodeQueueName;
     private SubscriptionStore subscriptionStore;
 
-    private MessageStore messageStore;
-
     private SequentialThreadPoolExecutor messagePublishingExecutor = null;
 
     private static Log log = LogFactory.getLog(TopicDeliveryWorker.class);
@@ -52,11 +50,6 @@ public class TopicDeliveryWorker extends Thread {
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         this.topicNodeQueueName = AndesUtils.getTopicNodeQueueName();
         this.id = topicNodeQueueName;
-        if (ClusterResourceHolder.getInstance().getClusterConfiguration().isInMemoryMode()) {
-            messageStore = MessagingEngine.getInstance().getInMemoryMessageStore();
-        } else {
-            messageStore = MessagingEngine.getInstance().getDurableMessageStore();
-        }
         messagePublishingExecutor = new SequentialThreadPoolExecutor((ClusterResourceHolder.getInstance().getClusterConfiguration().
                 getPublisherPoolSize()), "TopicMessagePublishingExecutor");
         this.start();
@@ -70,55 +63,7 @@ public class TopicDeliveryWorker extends Thread {
      */
     @Override
     public void run() {
-        while (true) {
-            if (working) {
-                try {
-                    QueueAddress queueAddress = new QueueAddress(QueueAddress.QueueType.TOPIC_NODE_QUEUE, topicNodeQueueName);
-                    List<AndesMessageMetadata> messages = messageStore.getNextNMessageMetadataFromQueue(queueAddress, lastDeliveredMessageID++, 400);
-                    if (messages != null) {
-                        log.debug("TRACING>> TDW - read " + messages.size() + " messages from " + topicNodeQueueName);
-                    }
-                    if (messages != null && messages.size() > 0) {
-                        List<AndesAckData> publishedMessages = new ArrayList<AndesAckData>();
-                        for (AndesMessageMetadata message : messages) {
-                            try {
-                                if (!MessageExpirationWorker.isExpired(message.getExpirationTime())) {
-                                    enqueueMessage(message);
-                                    publishedMessages.add(new AndesAckData(message.getMessageID(), message.getDestination(), true));
-                                    lastDeliveredMessageID = message.getMessageID();
-                                    if (log.isDebugEnabled()) {
-                                        log.debug("Sending message  " + lastDeliveredMessageID + "from cassandra topic publisher");
-                                    }
-                                }
-                            } catch (Exception e) {
-                                log.error("Error on enqueue messages to relevant queue:" + e.getMessage(), e);
-                            }
-                        }
-                        //we have already read metadata and scheduled to deliver.
-                        //we consider them as acked
-                        messageStore.ackReceived(publishedMessages);
-                    } else {
-                        try {
-                            Thread.sleep(ClusterResourceHolder.getInstance().getClusterConfiguration().
-                                    getQueueWorkerInterval());
-                        } catch (InterruptedException e) {
-                            //silently ignore
-                        }
-                    }
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    //silently ignore
-                } catch (AndesException e) {
-                    e.printStackTrace();
-                }
-            } else {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    //silently ignore
-                }
-            }
-        }
+           //todo: hasitha - reimplement or merge with Queue Delivery Worker
     }
 
     /**

@@ -103,21 +103,6 @@ public class MessagingEngine {
         return messagingEngine;
     }
 
-    @Deprecated
-    public MessageStore getDurableMessageStore() {
-        return durableMessageStore;
-    }
-
-    @Deprecated
-    public MessageStore getInMemoryMessageStore() {
-        return inMemoryMessageStore;
-    }
-
-    @Deprecated
-    public SubscriptionStore getSubscriptionStore() {
-        return subscriptionStore;
-    }
-
     /**
      * Initialises the MessagingEngine with a given durableMessageStore. Message retrieval and
      * storing strategy will be set accoridng to the configurations by calling this.
@@ -257,8 +242,14 @@ public class MessagingEngine {
         messageStoreManager.ackReceived(ackData);
     }
 
-    public void messageReturned(List<AndesAckData> ackList) {
+    //todo: hasitha - to implement
+    public void messageRejected() throws AndesException{
 
+    }
+
+    public void moveMessagesToDeadLetterChannel(List<AndesRemovableMetadata> messagesToRemove)
+            throws AndesException {
+        messageStoreManager.deleteMessages(messagesToRemove,true);
     }
 
     /**
@@ -268,7 +259,8 @@ public class MessagingEngine {
      * @return number of messages removed
      * @throws AndesException
      */
-    public int removeMessagesOfQueue(String destinationQueue) throws AndesException {
+    //TODO: hasitha - reimplement 1. get all message ids  2.remove all in one go 3. shedule to remove content 4. make counter delete
+    public int removeAllMessagesOfQueue(String destinationQueue) throws AndesException {
         long lastProcessedMessageID = 0;
         int messageCount = 0;
         List<AndesMessageMetadata> messageList = durableMessageStore
@@ -300,6 +292,31 @@ public class MessagingEngine {
                                                       500);
         }
         return messageCount;
+    }
+
+    public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
+        messageStoreManager.deleteMessages(messagesToRemove,moveToDeadLetterChannel);
+    }
+
+    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException{
+        return messageStoreManager.getContent(messageId, offsetValue);
+    }
+
+    public int getMessageCountOfQueue(String queueName) throws AndesException {
+        return (int) AndesContext.getInstance().getAndesContextStore().getMessageCountForQueue(
+                queueName);
+    }
+
+    public List<AndesMessageMetadata> getMetaDataList(final String queueName, long firstMsgId, long lastMsgID) throws AndesException{
+        return messageStoreManager.getMetaDataList(queueName, firstMsgId, lastMsgID);
+    }
+
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId, int count) throws AndesException {
+        return messageStoreManager.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
+    }
+
+    public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException {
+        return messageStoreManager.getExpiredMessages(limit);
     }
 
     /**

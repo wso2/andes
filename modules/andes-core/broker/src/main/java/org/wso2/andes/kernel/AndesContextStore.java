@@ -103,6 +103,24 @@ public interface AndesContextStore {
      */
     public void removeMessageCounterForQueue(String destinationQueueName) throws AndesException;
 
+
+    /**
+     * increment message counter for a queue
+     * @param destinationQueueName name of the queue
+     * @param incrementBy  increment counter by
+     * @throws AndesException
+     */
+    public void incrementMessageCountForQueue(String destinationQueueName, long incrementBy) throws AndesException;
+
+
+    /**
+     * decrement message counter for a queue
+     * @param destinationQueueName  name of the queue
+     * @param decrementBy decrement counter by
+     * @throws AndesException
+     */
+    public void decrementMessageCountForQueue(String destinationQueueName, long decrementBy) throws AndesException;
+
     /**
      * store exchange information (amqp)
      *

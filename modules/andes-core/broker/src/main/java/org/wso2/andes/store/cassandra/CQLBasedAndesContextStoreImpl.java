@@ -189,7 +189,15 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public long getMessageCountForQueue(String destinationQueueName) throws AndesException {
-        return 0;
+        long msgCount;
+        try {
+            msgCount = CQLDataAccessHelper.getCountValue(CassandraConstants.KEYSPACE, CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, destinationQueueName,
+                                                         CassandraConstants.MESSAGE_COUNTERS_RAW_NAME);
+        } catch (Exception e) {
+            log.error("Error while getting message count for queue " + destinationQueueName);
+            throw new AndesException(e);
+        }
+        return msgCount;
     }
 
     /**
@@ -201,6 +209,33 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
             CQLDataAccessHelper.removeCounterColumn(MESSAGE_COUNTERS_COLUMN_FAMILY, MESSAGE_COUNTERS_RAW_NAME, destinationQueueName, KEYSPACE);
         } catch (CassandraDataAccessException e) {
             log.error("error while removing message counter to cassandra context store", e);
+            throw new AndesException(e);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void incrementMessageCountForQueue(String destinationQueueName, long incrementBy) throws AndesException {
+
+        try {
+            CQLDataAccessHelper.incrementCounter(destinationQueueName, CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, CassandraConstants.MESSAGE_COUNTERS_RAW_NAME, CassandraConstants.KEYSPACE, incrementBy);
+        } catch (CassandraDataAccessException e) {
+            log.error("Error while incrementing message counter", e);
+            throw new AndesException(e);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void decrementMessageCountForQueue(String destinationQueueName, long decrementBy) throws AndesException {
+
+        try {
+            CQLDataAccessHelper.decrementCounter(destinationQueueName, CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, CassandraConstants.MESSAGE_COUNTERS_RAW_NAME,
+                                                 CassandraConstants.KEYSPACE, decrementBy);
+        } catch (CassandraDataAccessException e) {
+            log.error("Error while decrementing message counter", e);
             throw new AndesException(e);
         }
     }

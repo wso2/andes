@@ -112,11 +112,11 @@ public class PerformanceCounter {
         messageWrittenToCassandraLatencyCounter.notifyEvent(latency, false); 
     }
     
-    public static void recordIncomingMessageWrittenToCassandra(){
+    public static void recordIncomingMessageWrittenToStore(){
         boolean log = messageWrittenToCassandraCounter.notifyEvent(false);
         if(log){
             printLine("MsgRecived", messageReceivedCounter, null);
-            printLine("MsgWritten2Cassandra", messageWrittenToCassandraCounter, messageWrittenToCassandraLatencyCounter);
+            printLine("MsgWritten2Store", messageWrittenToCassandraCounter, messageWrittenToCassandraLatencyCounter);
         }
     }
 

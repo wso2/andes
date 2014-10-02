@@ -335,25 +335,6 @@ public class JDBCMessageStoreImplTest {
     }
 
     @Test
-    public void testGetMessageCountForQueue() throws Exception {
-
-        String[] destQueues = {"queue_1", "queue_2"};
-        int firstMsgId = 10;
-        int lastMsgId = firstMsgId + 10;
-
-        List<AndesMessageMetadata> lst = JDBCTestHelper.getMetadataForMultipleQueues(destQueues, 2, firstMsgId, lastMsgId);
-        messageStore.addMetaData(lst);
-
-        //TEST
-        long count = messageStore.getMessageCountForQueue(destQueues[0] + "noQueue");
-        Assert.assertEquals(0, count); // no such queue
-        count = messageStore.getMessageCountForQueue(destQueues[0]);
-        Assert.assertEquals(5, count);
-        count = messageStore.getMessageCountForQueue(destQueues[1]);
-        Assert.assertEquals(5, count);
-    }
-
-    @Test
     public void testGetMetaData() throws Exception {
 
         int firstMsgId = 1;
@@ -423,7 +404,7 @@ public class JDBCMessageStoreImplTest {
         }
 
         // delete them
-        messageStore.deleteMessages(list, false);
+        //messageStore.deleteMessages(list, false);
 
         // get second batch
         list = messageStore.getExpiredMessages(2);

@@ -21,6 +21,7 @@
 package org.wso2.andes.server.handler;
 
 import org.wso2.andes.AMQException;
+import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.BasicRejectBody;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
@@ -67,10 +68,10 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
         long deliveryTag = body.getDeliveryTag();
 
 
-        /**Reject message is received when ack_wait_timeout happened in client side
-         * We need to inform onflightMessageTracker to resend the message again
+        /**
+         * Inform kernel that message has been rejected by AMQP transport
          */
-        OnflightMessageTracker.getInstance().handleFailure(deliveryTag, channel.getId());
+        QpidAMQPBridge.getInstance().rejectMessage(deliveryTag, channel.getId());
 
 
         QueueEntry message = channel.getUnacknowledgedMessageMap().get(deliveryTag);

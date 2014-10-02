@@ -64,8 +64,6 @@ public class QueueBrowserDeliveryWorker {
     private int defaultMessageCount = Integer.MAX_VALUE;
     private int messageCount;
     private int messageBatchSize;
-    private boolean isInMemoryMode = false;
-    private MessageStore messageStore;
 
     private static Log log = LogFactory.getLog(QueueBrowserDeliveryWorker.class);
 
@@ -80,15 +78,9 @@ public class QueueBrowserDeliveryWorker {
         this.queue = queue;
         this.session = session;
         this.id = "" + subscription.getSubscriptionID();
-        this.isInMemoryMode = isInMemoryMode;
         this.messageCount = defaultMessageCount;
         this.messageBatchSize = ClusterResourceHolder.getInstance().getClusterConfiguration().
                 getMessageBatchSizeForBrowserSubscriptions();
-        if(isInMemoryMode) {
-            messageStore = MessagingEngine.getInstance().getInMemoryMessageStore();
-        } else {
-            messageStore = MessagingEngine.getInstance().getDurableMessageStore();
-        }
 
     }
 
@@ -133,47 +125,12 @@ public class QueueBrowserDeliveryWorker {
             }
     }
 
-/*    private List<QueueEntry> getSortedMessagesForInMemoryQueue(AMQQueue queue) throws AMQStoreException {
-        List<IncomingMessage> messages = new ArrayList<IncomingMessage>();
-        CassandraMessageStore messageStore = ClusterResourceHolder.getInstance().
-                getCassandraMessageStore();
-        Hashtable<Long, IncomingMessage> incomingQueueMessageHashtable = messageStore.getIncomingQueueMessageHashtable();
-        Enumeration<IncomingMessage> enu = incomingQueueMessageHashtable.elements();
-        while (enu.hasMoreElements()){
-            IncomingMessage inMessage = enu.nextElement();
-            if(inMessage.getRoutingKey().equals(queue.getName())){
-                messages.add(inMessage);
-            }
-        }
-        InMemoryMessageComparator orderComparator = new InMemoryMessageComparator();
-        Collections.sort(messages, orderComparator);
-        return getBrowserMessagesForInMemoryMode(queue, messages);
-    }*/
-
-
-/*    private List<QueueEntry> getBrowserMessagesForInMemoryMode(AMQQueue queue, List<IncomingMessage> incomingMessages) throws AMQStoreException {
-        List<QueueEntry> amqMessageList = new ArrayList<QueueEntry>();
-        SimpleQueueEntryList list = new SimpleQueueEntryList(queue);
-        AMQMessage message;
-        for(IncomingMessage incomingMessage: incomingMessages){
-            message = new AMQMessage(incomingMessage.getStoredMessage());
-            amqMessageList.add(list.add(message));
-        }
-        return amqMessageList;
-    }*/
-
     private List<QueueEntry> getSortedMessages() throws Exception {
 
         List<AndesMessageMetadata> queueMessageMetaData = new ArrayList<AndesMessageMetadata>();
-        queueMessageMetaData = readMessages(queueMessageMetaData, messageBatchSize);
-        int retryCount = 2;
-        while (queueMessageMetaData.size() < messageBatchSize && retryCount < 5) {
-            queueMessageMetaData = readMessages(queueMessageMetaData, messageBatchSize * retryCount);
-            retryCount++;
-        }
-        if(queueMessageMetaData.size() < messageBatchSize){
-            queueMessageMetaData = readMessagesFromGlobalQueue(queueMessageMetaData,messageBatchSize);
-        }
+
+        //todo: hasitha to implement we need to read chunk by chunk until max num of messages are filled
+
         CustomComparator orderComparator = new CustomComparator();
         Collections.sort(queueMessageMetaData, orderComparator);
         //todo: hasitha - what abt setting client identifier (it is skipped)?
@@ -185,52 +142,10 @@ public class QueueBrowserDeliveryWorker {
         return queueEntries;
     }
 
-    private List<AndesMessageMetadata> readMessages(List<AndesMessageMetadata> messageMetadataList, int messageBatchSize) throws Exception {
-        SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-        List<String> nodeQueuesHavingSubscriptionsForQueue = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForQueue(queue.getName()));
-        if (nodeQueuesHavingSubscriptionsForQueue != null &&
-                nodeQueuesHavingSubscriptionsForQueue.size() > 0) {
-            long lastReadMessageId = 0;
-            for (String nodeQueue : nodeQueuesHavingSubscriptionsForQueue) {
-                if(lastReadMessageIdMap.get(nodeQueue) != null){
-                    lastReadMessageId = lastReadMessageIdMap.get(nodeQueue);
-                }
-                List<AndesMessageMetadata> allMessages = messageStore.getNextNMessageMetadataFromQueue(queue.getName(), lastReadMessageId, messageBatchSize);
-                for (AndesMessageMetadata messageMetaData : allMessages) {
-                    if (messageMetaData.getDestination().equals(queue.getResourceName())) {
-                        messageMetadataList.add(messageMetaData);
-                    }
-                    lastReadMessageIdMap.put(nodeQueue,messageMetaData.getMessageID());
-                }
-            }
-        }
-        return messageMetadataList;
-    }
-
-    private List<AndesMessageMetadata> readMessagesFromGlobalQueue(List<AndesMessageMetadata> messages, int messageBatchSize) throws Exception {
-        String globalQueueName = AndesUtils.getGlobalQueueNameForDestinationQueue(queue.getResourceName());
-        QueueAddress globalQueueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE,globalQueueName);
-        List<AndesMessageMetadata> messageMetaDataList = messageStore.getNextNMessageMetadataFromQueue(globalQueueAddress, 0L, messageBatchSize);
-        for (AndesMessageMetadata messageMetaData : messageMetaDataList) {
-            if (messageMetaData.getDestination().equals(queue.getResourceName())) {
-                messages.add(messageMetaData);
-            }
-        }
-        return messages;
-    }
-
     public class CustomComparator implements Comparator<AndesMessageMetadata>{
 
         public int compare(AndesMessageMetadata message1, AndesMessageMetadata message2) {
             return (int) (message1.getMessageID()-message2.getMessageID());
         }
     }
-
-/*    public class InMemoryMessageComparator implements Comparator<IncomingMessage>{
-
-        public int compare(IncomingMessage message1, IncomingMessage message2) {
-            return (int) (message1.getMessageNumber()-message2.getMessageNumber());
-        }
-    }*/
-
 }
