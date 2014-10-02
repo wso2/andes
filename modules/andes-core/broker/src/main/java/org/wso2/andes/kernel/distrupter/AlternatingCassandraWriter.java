@@ -26,9 +26,9 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.MessageStore;
 
 import com.lmax.disruptor.EventHandler;
+import org.wso2.andes.kernel.MessageStoreManager;
 import org.wso2.andes.server.slot.SlotMessageCounter;
 
 /**
@@ -42,16 +42,16 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
     int totalPendingEventLength = 0;
     private int writerCount;
     private int turn;
-    private MessageStore messageStore;
+    private MessageStoreManager messageStoreManager;
     private List<AndesMessageMetadata> metaList = new ArrayList<AndesMessageMetadata>();
 
     private List<AndesMessagePart> partList = new ArrayList<AndesMessagePart>();
     private static final int MAX_DATA_LENGTH = 128000;
 
-    public AlternatingCassandraWriter(int writerCount, int turn, MessageStore messageStore) {
+    public AlternatingCassandraWriter(int writerCount, int turn, MessageStoreManager messageStoreManager) {
         this.writerCount = writerCount;
         this.turn = turn;
-        this.messageStore = messageStore;
+        this.messageStoreManager = messageStoreManager;
     }
 
     public void onEvent(final CassandraDataEvent event, final long sequence, final boolean endOfBatch) throws Exception {
@@ -78,13 +78,13 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
         if (totalPendingEventLength > MAX_DATA_LENGTH || (endOfBatch)) {
             // Write message part list to database
             if (partList.size() > 0) {
-                messageStore.storeMessagePart(partList);
+                messageStoreManager.storeMessagePart(partList);
                 partList.clear();
             }
 
             // Write message meta list to cassandra
             if (metaList.size() > 0) {
-                messageStore.addMetaData(metaList);
+                messageStoreManager.storeMetaData(metaList);
                 //record message data count
                 if (AndesContext.getInstance().isClusteringEnabled()) {
                     SlotMessageCounter.getInstance().recordMetaDataCountInSlot(metaList);

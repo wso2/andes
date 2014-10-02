@@ -55,9 +55,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
                 for (AndesSubscription s : subscriptions) {
 
-                    QueueAddress nodeQueueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE,s.getSubscribedNode());
-
-                    int pendingMessageCount = MessagingEngine.getInstance().getDurableMessageStore().countMessagesOfQueue(nodeQueueAddress,queue);
+                    int pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(queue);
 
                     if (!isDurable.equals("*") && (Boolean.parseBoolean(isDurable) != s.isDurable())) {
                         continue;
@@ -89,9 +87,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
                 for (AndesSubscription s : subscriptions) {
 
-                    QueueAddress nodeQueueAddress = new QueueAddress(QueueAddress.QueueType.TOPIC_NODE_QUEUE,s.getSubscribedNode());
-
-                    int pendingMessageCount = MessagingEngine.getInstance().getDurableMessageStore().countMessagesOfQueue(nodeQueueAddress,topic);
+                    int pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(s.getTargetQueue());
 
                     if (!isDurable.equals("*") && (Boolean.parseBoolean(isDurable) != s.isDurable())) {
                         continue;
@@ -112,24 +108,24 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
     @Override
     public int getMessageCount(String subscribedNode, String msgPattern ,String destinationName) {
-
+        int messageCount = 0;
         try {
             QueueAddress.QueueType queueType = null;
 
             if (msgPattern.equals("topic")) {
                 queueType = QueueAddress.QueueType.TOPIC_NODE_QUEUE;
+                //TODO: implement - hasitha
+                messageCount = 0;
             }
             if (msgPattern.equals("queue")) {
                 queueType = QueueAddress.QueueType.QUEUE_NODE_QUEUE;
+                messageCount =  MessagingEngine.getInstance().getMessageCountOfQueue(destinationName);
             }
-
-            QueueAddress nodeQueueAddress = new QueueAddress(queueType,subscribedNode);
-
-            return MessagingEngine.getInstance().getDurableMessageStore().countMessagesOfQueue(nodeQueueAddress,destinationName);
 
         }catch (Exception e) {
             throw new RuntimeException("Error in retrieving pending message count", e);
         }
+        return messageCount;
     }
 
     private static String renderSubscriptionForUI(AndesSubscription subscription, int pendingMessageCount) {

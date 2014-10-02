@@ -46,25 +46,18 @@ public class MessageContentRemoverTask implements Runnable {
     private MessageStore messageStore;
 
     /**
-     * message store connection to check whether the connection is live before deleting.
-     */
-    private DurableStoreConnection connectionToMessageStore;
-
-    /**
      * Setup the content deletion task with the reference to MessageStore and
      * DurableStoreConnection to message store
      * @param messageStore MessageStore
-     * @param connectionToMessageStore DurableStoreConnection
      */
-    public MessageContentRemoverTask(MessageStore messageStore, DurableStoreConnection connectionToMessageStore) {
+    public MessageContentRemoverTask(MessageStore messageStore) {
         this.contentDeletionTasksMap = new ConcurrentSkipListMap<Long, Long>();
         this.messageStore = messageStore;
-        this.connectionToMessageStore = connectionToMessageStore;
     }
 
     public void run() {
             try {
-                if (!contentDeletionTasksMap.isEmpty() && connectionToMessageStore.isLive()) {
+                if (!contentDeletionTasksMap.isEmpty()) {
                     long currentTime = System.nanoTime();
 
                     //remove content for timeout messages

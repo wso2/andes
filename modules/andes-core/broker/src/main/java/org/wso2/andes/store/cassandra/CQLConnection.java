@@ -28,7 +28,6 @@ import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.store.cassandra.dao.GenericCQLDAO;
 import org.wso2.andes.server.cluster.ClusterManager;
-import org.wso2.andes.server.cluster.GlobalQueueManager;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 
@@ -173,21 +172,8 @@ public class CQLConnection implements DurableStoreConnection {
     private void startTasks() {
         //TODO: Hasitha - review what to start
         try {
-            if (MessagingEngine.getInstance().getDurableMessageStore() != null
-                && AndesContext.getInstance().getSubscriptionStore() != null) {
+            MessagingEngine.getInstance().startMessageDelivery();
 
-                MessagingEngine.getInstance().startMessageDelivery();
-
-                ClusterManager cm = ClusterResourceHolder.getInstance().getClusterManager();
-
-                if (cm != null) {
-                    GlobalQueueManager gqm = cm.getGlobalQueueManager();
-                    if (gqm != null) {
-                        log.info("Starting all global queue workers locally");
-                        gqm.startAllQueueWorkersLocally();
-                    }
-                }
-            }
         } catch (Exception e) {
             log.error("Error while starting broker tasks back. Not retrying...", e);
             throw new RuntimeException(e);
@@ -201,15 +187,6 @@ public class CQLConnection implements DurableStoreConnection {
         //TODO: Hasitha - review what to stop
 
         MessagingEngine.getInstance().stopMessageDelivery();
-
-        ClusterManager cm = ClusterResourceHolder.getInstance().getClusterManager();
-        if (cm != null) {
-            GlobalQueueManager gqm = cm.getGlobalQueueManager();
-            if (gqm != null) {
-                log.info("Stopping all global queue workers locally");
-                gqm.stopAllQueueWorkersLocally();
-            }
-        }
     }
 
     /**

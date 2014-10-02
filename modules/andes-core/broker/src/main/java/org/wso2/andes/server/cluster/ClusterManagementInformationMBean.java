@@ -108,7 +108,7 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
     public int getMessageCount(@MBeanOperationParameter(name = "queueName", description = "Name of the queue which message count is required") String queueName) {
         int count;
         try {
-            count = clusterManager.numberOfMessagesInGlobalQueue(queueName);
+            count = MessagingEngine.getInstance().getMessageCountOfQueue(queueName);
         } catch (AndesException e) {
             throw new RuntimeException(e);
         }
@@ -146,19 +146,14 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
         return queueList;
     }
 
-    /**
-     * Get the message count in particular destination queue have in a node queue
-     *
-     * @param nodeId           Id of the node
-     * @param destinationQueue destination queue name
-     * @return the message count
-     */
-    public int getNodeQueueMessageCount(String nodeId, String destinationQueue) {
-        try {
-            return clusterManager.getNodeQueueMessageCount(nodeId, destinationQueue);
-        } catch (AndesException e) {
-            throw new RuntimeException(e);
-        }
+    @Override
+    public int getNodeQueueMessageCount(@MBeanOperationParameter(name = "nodeId",
+                                                                 description = "node id") String
+                                                    nodeId,
+                                        @MBeanOperationParameter(name = "destinationQueue",
+                                                                 description = "destination queue" +
+                                                                                      " name") String destinationQueue) {
+        return 0;
     }
 
     public int getNodeQueueSubscriberCount(String nodeId, String destinationQueue) {

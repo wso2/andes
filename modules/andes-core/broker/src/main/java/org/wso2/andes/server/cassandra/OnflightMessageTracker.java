@@ -75,9 +75,6 @@ public class OnflightMessageTracker {
     private static final ScheduledExecutorService addedMessagedDeletionScheduler = Executors
             .newSingleThreadScheduledExecutor();
 
-    private boolean isInMemoryMode = false;
-
-
     private AtomicLong sendMessageCount = new AtomicLong();
     private AtomicLong sendButNotAckedMessageCount = new AtomicLong();
     private ConcurrentHashMap<String, ArrayList<AndesMessageMetadata>>
@@ -88,8 +85,6 @@ public class OnflightMessageTracker {
     private long startTime = -1;
     private ConcurrentHashMap<Long, Long> alreadyReadFromNodeQueueMessages = new
             ConcurrentHashMap<Long, Long>();
-
-    private MessageStore messageStore;
 
     /**
      * Class to keep tracking data of a message
@@ -214,13 +209,6 @@ public class OnflightMessageTracker {
             }
         }, 5, 10, TimeUnit.SECONDS);
 
-        isInMemoryMode = ClusterResourceHolder.getInstance().getClusterConfiguration()
-                .isInMemoryMode();
-        if (isInMemoryMode) {
-            messageStore = MessagingEngine.getInstance().getInMemoryMessageStore();
-        } else {
-            messageStore = MessagingEngine.getInstance().getInMemoryMessageStore();
-        }
     }
 
     public void handleFailure(long deliveryTag, UUID channelId) throws AMQException {
@@ -420,13 +408,13 @@ public class OnflightMessageTracker {
         if (msgData != null) {
             msgData.ackreceived = true;
 
-            //TODO we have to revisit the topics case
-            handleMessageRemovalWhenAcked(msgData);
+            //how much time took between delivery and ack receive
+            long timeTook = (System.currentTimeMillis() - msgData.timestamp);
+            PerformanceCounter.recordAckReceived(msgData.queue, (int) timeTook);
+
             // then update the tracker
             log.debug("TRACING>> OFMT-Ack received for MessageID-" + msgData.msgID);
 
-            long timeTook = (System.currentTimeMillis() - msgData.timestamp);
-            PerformanceCounter.recordAckReceived(msgData.queue, (int) timeTook);
             sendButNotAckedMessageCount.decrementAndGet();
             channelToMsgIDMap.get(channelID).remove(messageId);
             AndesMessageMetadata metadata = messageIdToAndesMessagesMap.remove(messageId);
@@ -483,30 +471,6 @@ public class OnflightMessageTracker {
         deliveredButNotAckedMessages.remove(messageID);
     }
 
-
-    private void handleMessageRemovalWhenAcked(MsgData msgData)
-            throws AMQStoreException, AndesException {
-        if (deliveredButNotAckedMessages.contains(msgData.msgID)) {
-            //String destinationQueueName = msgData.queue.substring(0,
-            // msgData.queue.lastIndexOf("_"));
-            String destinationQueueName = msgData.queue;
-            //schedule to remove message from message store
-            if (isInMemoryMode) {
-                List<AndesAckData> ackData = new ArrayList<AndesAckData>();
-                ackData.add(new AndesAckData(msgData.msgID, destinationQueueName, false));
-                MessagingEngine.getInstance().getInMemoryMessageStore().ackReceived(ackData);
-            } else {
-                //TODO if this message is inmemeory message, we need to update without  putting
-                // to Cassandara
-                //Following schedule with Distrupter to delete messages
-                MessagingEngine.getInstance().ackReceived(
-                        new AndesAckData(msgData.msgID, destinationQueueName, false));
-            }
-        }
-
-    }
-
-
     /**
      * Delete a given message with all its properties and trackings from Message store
      *
@@ -518,22 +482,10 @@ public class OnflightMessageTracker {
                                                                                        destinationQueueName) {
 
         try {
-            MessageStore messageStore = MessagingEngine.getInstance().getDurableMessageStore();
-            //we need to remove message from the store. At this moment message is at node queue space, not at global space
-            //remove message from node queue instantly (prevent redelivery)
-            String nodeQueueName = MessagingEngine.getMyNodeQueueName();
-            QueueAddress nodeQueueAddress = new QueueAddress(
-                    QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueueName);
-            List<AndesRemovableMetadata> messagesToRemove = new ArrayList<AndesRemovableMetadata>();
-            List<Long> messageIdsToRemoveContent = new ArrayList<Long>();
-            messagesToRemove.add(new AndesRemovableMetadata(messageId, destinationQueueName));
-            messageIdsToRemoveContent.add(messageId);
-            messageStore.deleteMessageMetadataFromQueue(destinationQueueName, messagesToRemove);
-            messageStore.deleteMessageParts(messageIdsToRemoveContent);
 
-            //cassandraMessageStore.removeMessageFromNodeQueue(nodeQueueName, messageId);
-            log.info(
-                    "Removed message " + messageId + "from" + nodeQueueName + " when removeNodeQueueMessageFromStorePermanentlyAndDecrementMsgCount");
+            List<AndesRemovableMetadata> removableMessages = new ArrayList<AndesRemovableMetadata>();
+            removableMessages.add(new AndesRemovableMetadata(messageId,destinationQueueName));
+            MessagingEngine.getInstance().deleteMessages(removableMessages,true);
 
             //if it is an already sent but not acked message we will not decrement message count again
             MsgData messageData = msgId2MsgData.get(messageId);

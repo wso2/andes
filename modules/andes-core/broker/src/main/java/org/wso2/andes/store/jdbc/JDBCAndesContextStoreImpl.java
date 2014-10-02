@@ -299,6 +299,24 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
+    public void incrementMessageCountForQueue(String destinationQueueName, long incrementBy)
+            throws AndesException {
+
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void decrementMessageCountForQueue(String destinationQueueName, long decrementBy)
+            throws AndesException {
+
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void storeExchangeInformation(String exchangeName, String exchangeInfo)
             throws AndesException {
 

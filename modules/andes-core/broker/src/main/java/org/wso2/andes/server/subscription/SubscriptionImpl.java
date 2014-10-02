@@ -30,6 +30,7 @@ import org.wso2.andes.common.AMQPFilterTypes;
 import org.wso2.andes.common.ClientProperties;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
+import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -53,6 +54,8 @@ import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.slot.Slot;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -292,9 +295,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                                 .getAcknowledgementHandlerMap().get(getChannel());
 
                         if (ackHandler == null) {
-                            QueueSubscriptionAcknowledgementHandler handler = new QueueSubscriptionAcknowledgementHandler(
-                                    MessagingEngine.getInstance().getDurableMessageStore(), entry.getQueue()
-                                            .getResourceName());
+                            QueueSubscriptionAcknowledgementHandler handler = new QueueSubscriptionAcknowledgementHandler();
                             ClusterResourceHolder.getInstance().getSubscriptionManager().getAcknowledgementHandlerMap()
                                     .put(getChannel(), handler);
                             ackHandler = handler;
@@ -329,12 +330,19 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                                     log.info("sent3 stopped for " + entry.getMessage().getMessageNumber());
                                 }
                                 /**
-                                 * message tracker rejected this message from sending. Hence removing from store
+                                 * message tracker rejected this message from sending. Hence moving to dead letter channel
                                  */
                                 long messageId = entry.getMessage().getMessageNumber();
                                 String destinationQueue = ((AMQMessage)entry.getMessage()).getMessageMetaData().getMessagePublishInfo()
                                         .getRoutingKey().toString();
-                                //todo send to dead letter channel
+
+                                //move message to DLC
+                                List<AndesRemovableMetadata>  messagesToMove = new ArrayList
+                                        <AndesRemovableMetadata>();
+                                messagesToMove.add(new AndesRemovableMetadata(messageId,destinationQueue));
+                                MessagingEngine.getInstance().moveMessagesToDeadLetterChannel(messagesToMove);
+
+                                //remove tracking of the message
                                 OnflightMessageTracker.getInstance().removeNodeQueueMessageFromStorePermanentlyAndDecrementMsgCount(messageId,destinationQueue);
                                 Slot slot = ((AMQMessage) entry.getMessage()).getSlot();
                                 OnflightMessageTracker.getInstance()
@@ -344,10 +352,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                         } catch (Exception e) {
                             //undo any changes in the message tracker
                             log.warn("SEND FAILED >> Exception occurred while sending message out. Retrying " + retryCount + " times. Current " + i ,e);
-                            OnflightMessageTracker.getInstance().removeMessage(getChannel(),
-                                    deliveryTag, entry.getMessage().getMessageNumber());
-                            OnflightMessageTracker.getInstance().handleFailure(deliveryTag,
-                                    getChannel().getId());
+
                             if(i < retryCount -1){
                                 //will try again
                                 if (log.isDebugEnabled()) {

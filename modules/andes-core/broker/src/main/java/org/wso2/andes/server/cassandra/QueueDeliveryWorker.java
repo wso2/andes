@@ -62,7 +62,7 @@ public class QueueDeliveryWorker {
     private Map<String, QueueDeliveryInfo> subscriptionCursar4QueueMap = new HashMap<String, QueueDeliveryInfo>();
 
     private long failureCount = 0;
-    private MessageStore messageStore;
+
     private SubscriptionStore subscriptionStore;
 
     private OnflightMessageTracker onflightMessageTracker;
@@ -87,17 +87,6 @@ public class QueueDeliveryWorker {
         this.maxNumberOfReadButUndeliveredMessages = clusterConfiguration.getMaxNumberOfReadButUndeliveredMessages();
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         this.onflightMessageTracker = OnflightMessageTracker.getInstance();
-
-        if (isInMemoryMode) {
-            this.messageStore = MessagingEngine.getInstance().getInMemoryMessageStore();
-        } else {
-            this.messageStore = MessagingEngine.getInstance().getDurableMessageStore();
-        }
-
-        // this.start();
-        //  this.setWorking();
-        //   startLaggardsThread();
-        //
 
         log.info("Queue worker started Listening for " + nodeQueue + " with on flight message checks");
     }
@@ -430,7 +419,8 @@ public class QueueDeliveryWorker {
                             }
                         }
                     } catch (Throwable e) {
-                        log.error("Error while delivering message ", e);
+                        log.error("Error while delivering message. Moving to Dead Letter Queue ", e);
+                        //todo - hasitha - here we have already tried three times to deliver.
                     }
                 }
             };

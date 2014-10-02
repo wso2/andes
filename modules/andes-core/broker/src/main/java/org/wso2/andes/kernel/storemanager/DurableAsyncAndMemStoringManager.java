@@ -22,11 +22,14 @@ import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.MessageStoreManager;
 import org.wso2.andes.store.jdbc.JDBCMessageStoreImpl;
 import org.wso2.andes.store.jdbc.JDBCConnection;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor;
+
+import java.util.List;
 
 /**
  * This message store manager stores persistent messages through durable asynchronous calls through
@@ -54,7 +57,7 @@ public class DurableAsyncAndMemStoringManager implements MessageStoreManager {
     @Override
     public void initialise(MessageStore durableMessageStore) throws AndesException {
         // initialise disruptor with durableMessageStore
-        disruptorBasedExecutor = new DisruptorBasedExecutor(durableMessageStore, null);
+        disruptorBasedExecutor = new DisruptorBasedExecutor(this, null);
         // initialise in-memory message store
         inMemoryMessageStore = new JDBCMessageStoreImpl();
         inMemoryMessageStore.initializeMessageStore(JDBCConnection
@@ -85,5 +88,69 @@ public class DurableAsyncAndMemStoringManager implements MessageStoreManager {
     @Override
     public void ackReceived(AndesAckData ackData) throws AndesException {
         // todo where to ack? persistence store?
+    }
+
+    @Override
+    public void deleteMessageParts(List<Long> messageIdList) throws AndesException {
+
+    }
+
+    @Override
+    public void processAckReceived(List<AndesAckData> ackList) throws AndesException {
+
+    }
+
+    @Override
+    public void decrementQueueCount(String queueName) throws AndesException {
+
+    }
+
+    @Override
+    public void incrementQueueCount(String queueName) throws AndesException {
+
+    }
+
+    @Override
+    public void storeMessagePart(List<AndesMessagePart> messageParts) throws AndesException {
+
+    }
+
+    @Override
+    public void storeMetaData(List<AndesMessageMetadata> messageMetadata) throws AndesException {
+
+    }
+
+    @Override
+    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
+        return null;
+    }
+
+    @Override
+    public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove,
+                               boolean moveToDeadLetterChannel) throws AndesException {
+
+    }
+
+    @Override
+    public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException {
+        return null;
+    }
+
+    @Override
+    public List<AndesMessageMetadata> getMetaDataList(String queueName, long firstMsgId,
+                                                      long lastMsgID) throws AndesException {
+        return null;
+    }
+
+    @Override
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String queueName,
+                                                                       long firstMsgId, int count)
+            throws AndesException {
+        return null;
+    }
+
+    @Override
+    public void close() {
+
     }
 }

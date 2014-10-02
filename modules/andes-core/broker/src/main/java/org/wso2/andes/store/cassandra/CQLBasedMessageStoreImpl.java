@@ -1,18 +1,11 @@
 package org.wso2.andes.store.cassandra;
 
 import java.util.*;
-import java.util.concurrent.*;
-
 import com.datastax.driver.core.*;
-import com.datastax.driver.core.querybuilder.Select;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.server.slot.Slot;
-import org.wso2.andes.server.slot.SlotMessageCounter;
 import org.wso2.andes.store.cassandra.dao.CQLQueryBuilder;
 import org.wso2.andes.store.cassandra.dao.CassandraHelper;
 import org.wso2.andes.store.cassandra.dao.GenericCQLDAO;
@@ -21,9 +14,6 @@ import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 import org.wso2.andes.server.util.AlreadyProcessedMessageTracker;
 import org.wso2.andes.server.util.AndesConstants;
-import org.wso2.andes.server.util.AndesUtils;
-import org.wso2.andes.store.MessageContentRemoverTask;
-import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 
 import com.datastax.driver.core.querybuilder.Delete;
@@ -32,13 +22,7 @@ import com.datastax.driver.core.querybuilder.Insert;
 public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageStore {
     private static Log log = LogFactory.getLog(CQLBasedMessageStoreImpl.class);
 
-    // todo: move this schedulers to MessagingEngine level
-    private ScheduledExecutorService contentRemovalScheduler;
-
     private AlreadyProcessedMessageTracker alreadyMovedMessageTracker;
-    // todo: move this schedulers to MessagingEngine level
-    MessageContentRemoverTask messageContentRemoverTask;
-    private boolean isMessageCountingAllowed;
 
     /**
      * Cassandra cluster object.
@@ -50,9 +34,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     private CQLConnection cqlConnection;
 
     public CQLBasedMessageStoreImpl() {
-        int threadPoolCount = 1;
-        contentRemovalScheduler = Executors.newScheduledThreadPool(threadPoolCount);
-        isMessageCountingAllowed = ClusterResourceHolder.getInstance().getClusterConfiguration().getViewMessageCounts();
     }
 
     public DurableStoreConnection initializeMessageStore(ConfigurationProperties
@@ -67,14 +48,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
         alreadyMovedMessageTracker = new AlreadyProcessedMessageTracker("Message-move-tracker", 15000000000L, 10);
 
-        // start periodic message removal task
-        messageContentRemoverTask = new MessageContentRemoverTask(this, cqlConnection);
-        int schedulerPeriod = ClusterResourceHolder.getInstance().getClusterConfiguration()
-                .getContentRemovalTaskInterval();
-        contentRemovalScheduler.scheduleAtFixedRate(messageContentRemoverTask,
-                schedulerPeriod,
-                schedulerPeriod,
-                TimeUnit.SECONDS);
         return cqlConnection;
     }
 
@@ -128,35 +101,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             log.error(e);
             throw new AndesException("Error in adding the message part to the store", e);
         }
-    }
-
-    /**
-     * get andes message meta-data staring from startMsgID + 1
-     *
-     * @param queueAddress source address to read metadata
-     * @param startMsgID   starting message ID
-     * @param count        message count to read
-     * @return list of andes message meta-data
-     * @throws AndesException
-     */
-    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(QueueAddress queueAddress, long startMsgID, int count) throws AndesException {
-
-        try {
-            List<AndesMessageMetadata> metadataList = CQLDataAccessHelper.getMessagesFromQueue(queueAddress.queueName,
-                    getColumnFamilyFromQueueAddress(queueAddress), CassandraConstants.KEYSPACE, startMsgID + 1, Long.MAX_VALUE, count, true, true);
-            //combining metadata with message properties create QueueEntries
-            /*for (Object column : messagesColumnSlice.getColumns()) {
-                if (column instanceof HColumn) {
-                    long messageId = ((HColumn<Long, byte[]>) column).getName();
-                    byte[] value = ((HColumn<Long, byte[]>) column).getValue();
-                    metadataList.add(new AndesMessageMetadata(messageId, value));
-                }
-            }*/
-            return metadataList;
-        } catch (CassandraDataAccessException e) {
-            throw new AndesException(e);
-        }
-
     }
 
     public void duplicateMessageContent(long messageId, long messageIdOfClone) throws AndesException {
@@ -240,91 +184,21 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     public void deleteMessageParts(long messageID, byte[] data) {
     }
 
-    public void ackReceived(List<AndesAckData> ackList) throws AndesException {
-        try {
-
-            List<AndesRemovableMetadata> messagesAddressedToQueues = new ArrayList<AndesRemovableMetadata>();
-            List<AndesRemovableMetadata> messagesAddressedToTopics = new ArrayList<AndesRemovableMetadata>();
-
-            List<Long> messageIds = new ArrayList<Long>();
-
-            for (AndesAckData ackData : ackList) {
-                if (ackData.isTopic) {
-
-                    messagesAddressedToTopics.add(ackData.convertToRemovableMetaData());
-
-                    //schedule to remove queue and topic message content
-                    long timeGapConfigured = ClusterResourceHolder.getInstance().
-                            getClusterConfiguration().getPubSubMessageRemovalTaskInterval() * 1000000;
-                    addContentDeletionTask(System.nanoTime() + timeGapConfigured, ackData.messageID);
-
-                } else {
-
-                    messagesAddressedToQueues.add(ackData.convertToRemovableMetaData());
-                    OnflightMessageTracker onflightMessageTracker = OnflightMessageTracker.getInstance();
-                    onflightMessageTracker.updateDeliveredButNotAckedMessages(ackData.messageID);
-
-                    //decrement message count
-                    if (isMessageCountingAllowed) {
-                        decrementQueueCount(ackData.qName, 1);
-                    }
-
-                    //schedule to remove queue and topic message content
-                    addContentDeletionTask(System.nanoTime(), ackData.messageID);
-                }
-
-                PerformanceCounter.recordMessageRemovedAfterAck();
-
-                messageIds.add(ackData.messageID);
-            }
-
-            //remove queue message metadata now
-            String nodeQueueName = MessagingEngine.getMyNodeQueueName();
-            QueueAddress nodeQueueAddress = new QueueAddress
-                    (QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueueName);
-            deleteMessageMetadataFromQueue(nodeQueueAddress, messagesAddressedToQueues);
-
-            //remove topic message metadata now
-            String topicNodeQueueName = AndesUtils.getTopicNodeQueueName();
-            QueueAddress topicNodeQueueAddress = new QueueAddress
-                    (QueueAddress.QueueType.TOPIC_NODE_QUEUE, topicNodeQueueName);
-            deleteMessageMetadataFromQueue(topicNodeQueueAddress, messagesAddressedToTopics);
-
-            deleteMessagesFromExpiryQueue(messageIds);      // hasithad This cant be done here cos topic delivery logic comes here before a delivery :(
-
-        } catch (CassandraDataAccessException e) {
-            //TODO: hasitha - handle Cassandra failures
-            log.error(e);
-            throw new AndesException("Error in handling acknowledgments ", e);
-        }
-    }
-
     @Override
     public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException {
         try {
-            //  HashMap<String, Integer> incomingMessagesMap = new HashMap<String, Integer>();
             List<Insert> inserts = new ArrayList<Insert>();
-            ConcurrentHashMap<String, Slot> queueSlotMap = new ConcurrentHashMap<String, Slot>();
             for (AndesMessageMetadata md : metadataList) {
 
                 Insert insert = CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE, CassandraConstants.META_DATA_COLUMN_FAMILY, md.getDestination(),
                         md.getMessageID(), md.getMetadata(), false);
 
                 inserts.add(insert);
-                PerformanceCounter.recordIncomingMessageWrittenToCassandra();
-                //log.info("Wrote message " + md.getMessageID() + " to Global Queue " + queueAddress.queueName);
-
             }
             long start = System.currentTimeMillis();
             GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
 
             PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency((int) (System.currentTimeMillis() - start));
-
-            if (isMessageCountingAllowed) {
-                for (AndesMessageMetadata md : metadataList) {
-                    incrementQueueCount(md.getDestination(), 1);
-                }
-            }
 
             // Client waits for these message ID to be written, this signal those, if there is a error
             //we will not signal and client who tries to close the connection will timeout.
@@ -355,168 +229,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
     @Override
     public void addMetadataToQueue(String queueName, List<AndesMessageMetadata> metadataList) throws AndesException {
-    }
-
-    private void addContentDeletionTask(long currentNanoTime, long messageID) {
-        messageContentRemoverTask.put(currentNanoTime, messageID);
-    }
-
-    public void addMessageMetaData(QueueAddress queueAddress, List<AndesMessageMetadata> messageList) throws AndesException {
-        try {
-/*            Mutator<String> messageMutator = HFactory.createMutator(KEYSPACE, stringSerializer);*/
-            HashMap<String, Integer> incomingMessagesMap = new HashMap<String, Integer>();
-            List<Insert> inserts = new ArrayList<Insert>();
-            for (AndesMessageMetadata md : messageList) {
-
-                //TODO Stop deleting from QMD_ROW_NAME and GLOBAL_QUEUE_LIST_COLUMN_FAMILY
-
-                //TODO this is to avoid having to group messages in AlternatingCassandraWriter
-                if (queueAddress == null) {
-                    queueAddress = md.queueAddress;
-                }
-                Insert insert = CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE, getColumnFamilyFromQueueAddress(queueAddress), queueAddress.queueName,
-                        md.getMessageID(), md.getMetadata(), false);
-                if (incomingMessagesMap.get(md.getDestination()) == null) {
-                    incomingMessagesMap.put(md.getDestination(), 1);
-                } else {
-                    incomingMessagesMap.put(md.getDestination(), incomingMessagesMap.get(md.getDestination()) + 1);
-                }
-                inserts.add(insert);
-                PerformanceCounter.recordIncomingMessageWrittenToCassandra();
-                //log.info("Wrote message " + md.getMessageID() + " to Global Queue " + queueAddress.queueName);
-
-            }
-            long start = System.currentTimeMillis();
-            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
-
-/*            for (AndesMessageMetadata md : messageList) {
-                log.info("METADATA STORED ID " + md.getMessageID());
-            }*/
-            //messageMutator.execute();
-
-            PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency((int) (System.currentTimeMillis() - start));
-
-            if (isMessageCountingAllowed) {
-                for (AndesMessageMetadata md : messageList) {
-                    incrementQueueCount(md.getDestination(), 1);
-                }
-            }
-
-            // Client waits for these message ID to be written, this signal those, if there is a error
-            //we will not signal and client who tries to close the connection will timeout.
-            //We can do this better, but leaving this as is or now.
-            for (AndesMessageMetadata md : messageList) {
-                PendingJob jobData = md.getPendingJobsTracker().get(md.getMessageID());
-                if (jobData != null) {
-                    jobData.semaphore.release();
-                }
-            }
-        } catch (Exception e) {
-            //TODO handle Cassandra failures
-            //TODO may be we can write those message to a disk, or do something. Currently we will just loose them
-            log.error("Error writing incoming messages to Cassandra", e);
-            throw new AndesException("Error writing incoming messages to Cassandra", e);
-        }
-    }
-
-
-    /**
-     * Here if target address is null, we will try to find the address from each AndesMessageMetadata
-     */
-    public void moveMessageMetaData(QueueAddress sourceAddress, QueueAddress targetAddress, List<AndesMessageMetadata> messageList) throws AndesException {
-        /*Mutator<String> messageMutator = HFactory.createMutator(KEYSPACE, stringSerializer);*/
-        try {
-            List<Statement> statements = new ArrayList<Statement>();
-            List<Long> messageIDsSuccessfullyMoved = new ArrayList<Long>();
-            for (AndesMessageMetadata messageMetaData : messageList) {
-                if (targetAddress == null) {
-                    targetAddress = messageMetaData.queueAddress;
-                }
-                if (msgOKToMove(messageMetaData.getMessageID(), sourceAddress, targetAddress)) {
-                    Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(CassandraConstants.KEYSPACE, getColumnFamilyFromQueueAddress(sourceAddress), sourceAddress.queueName, messageMetaData.getMessageID(), false);
-                    Insert insert = CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE, getColumnFamilyFromQueueAddress(targetAddress), targetAddress.queueName,
-                            messageMetaData.getMessageID(), messageMetaData.getMetadata(), false);
-                    if (log.isDebugEnabled()) {
-                        log.debug("TRACING>> CMS-Removing messageID-" + messageMetaData.getMessageID() + "-from source Queue-" + sourceAddress.queueName
-                                + "- to target Queue " + targetAddress.queueName);
-                    }
-                    statements.add(insert);
-                    statements.add(delete);
-                    messageIDsSuccessfullyMoved.add(messageMetaData.getMessageID());
-                }
-            }
-            // messageMutator.execute();
-            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, statements.toArray(new Statement[statements.size()]));
-
-            for (Long msgID : messageIDsSuccessfullyMoved) {
-                alreadyMovedMessageTracker.addTaskToRemoveMessageFromTracking(msgID);
-            }
-
-        } catch (CassandraDataAccessException e) {
-            log.error("Error in moving messages ", e);
-            throw new AndesException("Error in moving messages from source -" + getColumnFamilyFromQueueAddress(sourceAddress) + " - to target -" + getColumnFamilyFromQueueAddress(targetAddress), e);
-        }
-
-    }
-
-    public long moveAllMessageMetaDataOfQueue(QueueAddress sourceAddress, QueueAddress targetAddress, String destinationQueue) throws AndesException {
-        //Mutator<String> messageMutator = HFactory.createMutator(KEYSPACE, stringSerializer);
-        try {
-            long ignoredFirstMessageId = Long.MAX_VALUE;
-            int numberOfMessagesMoved = 0;
-            long lastProcessedMessageID = 0;
-            List<AndesMessageMetadata> messageList = getNextNMessageMetadataFromQueue(sourceAddress, lastProcessedMessageID, 40);
-            List<Statement> statements = new ArrayList<Statement>();
-            while (messageList.size() != 0) {
-                int numberOfMessagesMovedInIteration = 0;
-                List<Long> messageIDsSuccessfullyMoved = new ArrayList<Long>();
-                for (AndesMessageMetadata messageMetaData : messageList) {
-                    if (messageMetaData.getDestination().equals(destinationQueue)) {
-                        if (targetAddress == null) {
-                            targetAddress = messageMetaData.queueAddress;
-                        }
-                        if (msgOKToMove(messageMetaData.getMessageID(), sourceAddress, targetAddress)) {
-                            Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(CassandraConstants.KEYSPACE, getColumnFamilyFromQueueAddress(sourceAddress),
-                                    sourceAddress.queueName, messageMetaData.getMessageID(), false);
-
-                            Insert insert = CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE, getColumnFamilyFromQueueAddress(targetAddress), targetAddress.queueName,
-                                    messageMetaData.getMessageID(), messageMetaData.getMetadata(), false);
-
-                            statements.add(insert);
-                            statements.add(delete);
-
-                            messageIDsSuccessfullyMoved.add(messageMetaData.getMessageID());
-                            numberOfMessagesMovedInIteration++;
-                        }
-
-                        if (log.isDebugEnabled()) {
-                            log.debug("TRACING>> CMS-Removed messageID-" + messageMetaData.getMessageID() + "-from Node Queue-" + sourceAddress.queueName
-                                    + "- to GlobalQueue " + targetAddress.queueName);
-                        }
-                    }
-                    lastProcessedMessageID = messageMetaData.getMessageID();
-                    if (ignoredFirstMessageId > lastProcessedMessageID) {
-                        ignoredFirstMessageId = lastProcessedMessageID;
-                    }
-                }
-                GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, statements.toArray(new Statement[statements.size()]));
-                for (Long msgID : messageIDsSuccessfullyMoved) {
-                    alreadyMovedMessageTracker.addTaskToRemoveMessageFromTracking(msgID);
-                }
-
-                //messageMutator.execute();
-                numberOfMessagesMoved = numberOfMessagesMoved + numberOfMessagesMovedInIteration;
-                messageList = getNextNMessageMetadataFromQueue(sourceAddress, lastProcessedMessageID, 40);
-            }
-            log.info("moved " + numberOfMessagesMoved + "number of messages from source -"
-                    + getColumnFamilyFromQueueAddress(sourceAddress) + "- to target -" + getColumnFamilyFromQueueAddress(targetAddress) + "-");
-
-            return lastProcessedMessageID;
-        } catch (CassandraDataAccessException e) {
-            log.error("Error in moving messages ", e);
-            throw new AndesException("Error in moving messages from source -"
-                    + getColumnFamilyFromQueueAddress(sourceAddress) + " - to target -" + getColumnFamilyFromQueueAddress(targetAddress), e);
-        }
     }
 
     @Override
@@ -574,7 +286,22 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
     @Override
     public void deleteMessageMetadataFromQueue(String queueName, List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
+        try {
+            // Mutator<String> mutator = HFactory.createMutator(keyspace, stringSerializer);
+            List<Statement> statements = new ArrayList<Statement>();
+            for (AndesRemovableMetadata message : messagesToRemove) {
+                //mutator.addDeletion(queueAddress.queueName, getColumnFamilyFromQueueAddress(queueAddress), message.messageID, longSerializer);
+                //Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(KEYSPACE, getColumnFamilyFromQueueAddress(queueAddress), queueAddress.queueName, message.messageID, false);
+                Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(CassandraConstants.KEYSPACE, CassandraConstants.META_DATA_COLUMN_FAMILY, queueName , message.messageID, false);
+                statements.add(delete);
+            }
+            //mutator.execute();
+            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, statements.toArray(new Statement[statements.size()]));
 
+        } catch (Exception e) {
+            log.error("Error while deleting messages", e);
+            throw new AndesException(e);
+        }
     }
 
     @Override
@@ -593,69 +320,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         } catch (CassandraDataAccessException e) {
             throw new AndesException(e);
         }
-
-    }
-
-    @Override
-    public void deleteMessageMetadataFromQueue(QueueAddress queueAddress,
-                                               List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
-        try {
-            // Mutator<String> mutator = HFactory.createMutator(keyspace, stringSerializer);
-            List<Statement> statements = new ArrayList<Statement>();
-            for (AndesRemovableMetadata message : messagesToRemove) {
-                //mutator.addDeletion(queueAddress.queueName, getColumnFamilyFromQueueAddress(queueAddress), message.messageID, longSerializer);
-                //Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(KEYSPACE, getColumnFamilyFromQueueAddress(queueAddress), queueAddress.queueName, message.messageID, false);
-                Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(CassandraConstants.KEYSPACE, CassandraConstants.META_DATA_COLUMN_FAMILY, message.destination, message.messageID, false);
-                statements.add(delete);
-            }
-            //mutator.execute();
-            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, statements.toArray(new Statement[statements.size()]));
-            if (isMessageCountingAllowed) {
-                for (AndesRemovableMetadata message : messagesToRemove) {
-                    decrementQueueCount(message.destination, message.messageID);
-                }
-            }
-        } catch (Exception e) {
-            log.error("Error while deleting messages", e);
-            throw new AndesException(e);
-        }
-    }
-
-    public int countMessagesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch) throws AndesException {
-        long lastProcessedMessageID = 0;
-        int messageCount = 0;
-        List<AndesMessageMetadata> messageList = getNextNMessageMetadataFromQueue(destinationQueueNameToMatch, lastProcessedMessageID, 500);
-        while (messageList.size() != 0) {
-            Iterator<AndesMessageMetadata> metadataIterator = messageList.iterator();
-            while (metadataIterator.hasNext()) {
-                AndesMessageMetadata metadata = metadataIterator.next();
-                String destinationQueue = metadata.getDestination();
-                if (destinationQueueNameToMatch != null) {
-                    if (destinationQueue.equals(destinationQueueNameToMatch)) {
-                        messageCount++;
-                    } else {
-                        metadataIterator.remove();
-                    }
-                } else {
-                    messageCount++;
-                }
-
-                lastProcessedMessageID = metadata.getMessageID();
-
-            }
-            messageList = getNextNMessageMetadataFromQueue(destinationQueueNameToMatch, lastProcessedMessageID, 500);
-        }
-        return messageCount;
-    }
-
-    private void incrementQueueCount(String destinationQueueName, long incrementBy) throws CassandraDataAccessException {
-        CQLDataAccessHelper.incrementCounter(destinationQueueName, CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, CassandraConstants.MESSAGE_COUNTERS_RAW_NAME, CassandraConstants.KEYSPACE, incrementBy);
-    }
-
-    private void decrementQueueCount(String destinationQueueName, long decrementBy) throws CassandraDataAccessException {
-
-        CQLDataAccessHelper.decrementCounter(destinationQueueName, CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, CassandraConstants.MESSAGE_COUNTERS_RAW_NAME,
-                CassandraConstants.KEYSPACE, decrementBy);
     }
 
     private String getColumnFamilyFromQueueAddress(QueueAddress address) {
@@ -670,18 +334,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             columnFamilyName = null;
         }
         return columnFamilyName;
-    }
-
-    public long getMessageCountForQueue(String destinationQueueName) throws AndesException {
-        long msgCount = 0;
-        try {
-            msgCount = CQLDataAccessHelper.getCountValue(CassandraConstants.KEYSPACE, CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, destinationQueueName,
-                    CassandraConstants.MESSAGE_COUNTERS_RAW_NAME);
-        } catch (Exception e) {
-            log.error("Error while getting message count for queue " + destinationQueueName);
-            throw new AndesException(e);
-        }
-        return msgCount;
     }
 
     private boolean msgOKToMove(long msgID, QueueAddress sourceAddress, QueueAddress targetAddress) throws CassandraDataAccessException {
@@ -704,13 +356,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     public void close() {
-        try {
-            contentRemovalScheduler.shutdown();
-            contentRemovalScheduler.awaitTermination(5, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            contentRemovalScheduler.shutdownNow();
-            log.warn("Content remover task forcefully shutdown.");
-        }
         alreadyMovedMessageTracker.shutDownMessageTracker();
         cqlConnection.close();
     }
@@ -722,52 +367,39 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         return new ArrayList<AndesRemovableMetadata>();
     }
 
-/*    public int removeMessaesOfQueue(QueueAddress queueAddress, String destinationQueueNameToMatch) throws AndesException {
-        long lastProcessedMessageID = 0;
-        int messageCount = 0;
-        List<AndesMessageMetadata>  messageList = getNextNMessageMetadataFromQueue(queueAddress, lastProcessedMessageID, 500);
-        while (messageList.size() != 0) {
-            Iterator<AndesMessageMetadata> metadataIterator = messageList.iterator();
-            while (metadataIterator.hasNext()) {
-                AndesMessageMetadata metadata = metadataIterator.next();
-                String destinationQueue = metadata.getDestination();
-                if(destinationQueueNameToMatch != null) {
-                    if (destinationQueue.equals(destinationQueueNameToMatch)) {
-                        messageCount++;
-                    } else {
-                        metadataIterator.remove();
-                    }
-                }  else {
-                    messageCount++;
-                }
+    @Override
+/**
+ * Adds the received JMS Message ID along with its expiration time to "MESSAGES_FOR_EXPIRY_COLUMN_FAMILY" queue
+ * @param messageId
+ * @param expirationTime
+ * @throws CassandraDataAccessException
+ */
+    public void addMessageToExpiryQueue(Long messageId, Long expirationTime, boolean isMessageForTopic, String destination) throws AndesException {
 
-                lastProcessedMessageID = metadata.getMessageID();
+        final String columnFamily = CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY;
+        //final String rowKey = CassandraConstants.MESSAGES_FOR_EXPIRY_ROW_NAME;
 
-            }
-            messageList = getNextNMessageMetadataFromQueue(queueAddress, lastProcessedMessageID, 500);
+        if (columnFamily == null || messageId == 0) {
+            throw new AndesException("Can't add data with queueType = " + columnFamily +
+                    " and messageId  = " + messageId + " expirationTime = " + expirationTime);
         }
-        return messageCount;
-    } */
 
-    /**
-     * utility method to remove message metadata from either topic, queue or global column families
-     *
-     * @param messagesToRemove
-     * @param queueType
-     */
-    private void deleteMessageMetadataFromColumnFamily(HashMap<String, List<AndesRemovableMetadata>> messagesToRemove, QueueAddress.QueueType queueType) throws AndesException, CassandraDataAccessException {
-        for (Map.Entry<String, List<AndesRemovableMetadata>> rowEntry : messagesToRemove.entrySet()) {
-            //remove message metadata now
-            QueueAddress rowAddress = new QueueAddress(queueType, rowEntry.getKey());
-            deleteMessageMetadataFromQueue(rowAddress, rowEntry.getValue());
+        try {
+            Map<String, Object> keyValueMap = new HashMap<String, Object>();
+            keyValueMap.put(CQLDataAccessHelper.MESSAGE_ID, messageId);
+            keyValueMap.put(CQLDataAccessHelper.MESSAGE_EXPIRATION_TIME, expirationTime);
+            keyValueMap.put(CQLDataAccessHelper.MESSAGE_DESTINATION, destination);
+            keyValueMap.put(CQLDataAccessHelper.MESSAGE_IS_FOR_TOPIC, isMessageForTopic);
 
-            if (isMessageCountingAllowed) {
-                decrementQueueCount(rowEntry.getKey(), 1);
-            }
+            Insert insert = CQLQueryBuilder.buildSingleInsert(CassandraConstants.KEYSPACE, columnFamily, keyValueMap);
+
+            GenericCQLDAO.execute(CassandraConstants.KEYSPACE, insert.getQueryString());
+
+        } catch (CassandraDataAccessException e) {
+            log.error("Error while adding message to expiry queue" , e);
+            throw new AndesException(e);
         }
-    }
 
-    public void deleteMessageMetadata(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDLC) throws AndesException {
     }
 
     @Override
@@ -799,169 +431,4 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         }
     }
 
-    @Override
-/**
- * Adds the received JMS Message ID along with its expiration time to "MESSAGES_FOR_EXPIRY_COLUMN_FAMILY" queue
- * @param messageId
- * @param expirationTime
- * @throws CassandraDataAccessException
- */
-    public void addMessageToExpiryQueue(Long messageId, Long expirationTime, boolean isMessageForTopic, String destination) throws CassandraDataAccessException {
-
-        final String columnFamily = CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY;
-        //final String rowKey = CassandraConstants.MESSAGES_FOR_EXPIRY_ROW_NAME;
-
-        if (columnFamily == null || messageId == 0) {
-            throw new CassandraDataAccessException("Can't add data with queueType = " + columnFamily +
-                    " and messageId  = " + messageId + " expirationTime = " + expirationTime);
-        }
-
-        Map<String, Object> keyValueMap = new HashMap<String, Object>();
-        keyValueMap.put(CQLDataAccessHelper.MESSAGE_ID, messageId);
-        keyValueMap.put(CQLDataAccessHelper.MESSAGE_EXPIRATION_TIME, expirationTime);
-        keyValueMap.put(CQLDataAccessHelper.MESSAGE_DESTINATION, destination);
-        keyValueMap.put(CQLDataAccessHelper.MESSAGE_IS_FOR_TOPIC, isMessageForTopic);
-
-        Insert insert = CQLQueryBuilder.buildSingleInsert(CassandraConstants.KEYSPACE, columnFamily, keyValueMap);
-
-        GenericCQLDAO.execute(CassandraConstants.KEYSPACE, insert.getQueryString());
-
-        log.info("Wrote message " + messageId + " to Column Family " + CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY);
-
-    }
-
-    @Override
-    public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDLC) throws AndesException {
-        try {
-            // todo: Review business logic here. Remove business logic.
-            HashMap<String, List<AndesRemovableMetadata>> messagesForTopics = new HashMap<String, List<AndesRemovableMetadata>>();
-            HashMap<String, List<AndesRemovableMetadata>> messagesForQueues = new HashMap<String, List<AndesRemovableMetadata>>();
-            HashMap<String, List<AndesRemovableMetadata>> messagesInGlobalQueues = new HashMap<String, List<AndesRemovableMetadata>>();
-
-            SubscriptionStore subscriptionStore = MessagingEngine.getInstance().getSubscriptionStore();
-
-            List<Long> messageIds = new ArrayList<Long>();
-
-            for (AndesRemovableMetadata msg : messagesToRemove) {
-
-                List<String> associatedQueueRows = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForQueue(msg.destination));
-                List<String> associatedTopicRows = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForTopic(msg.destination));
-
-            /* Find message inside global queues */
-                String associatedGlobalQueue = AndesUtils.getGlobalQueueNameForDestinationQueue(msg.destination);
-
-                if (!messagesInGlobalQueues.containsKey(associatedGlobalQueue)) {
-                    messagesInGlobalQueues.put(associatedGlobalQueue, new ArrayList<AndesRemovableMetadata>());
-                }
-                messagesInGlobalQueues.get(associatedGlobalQueue).add(msg);
-            /*------------------------------------*/
-
-                if (msg.isForTopic) {
-
-                    for (String nodeRowName : associatedTopicRows) {
-                        if (!messagesForTopics.containsKey(nodeRowName)) {
-                            messagesForTopics.put(nodeRowName, new ArrayList<AndesRemovableMetadata>());
-                        }
-                        messagesForTopics.get(nodeRowName).add(msg);
-                    }
-
-                    if (!moveToDLC) {
-                        //schedule to remove queue and topic message content
-                        long timeGapConfigured = ClusterResourceHolder.getInstance().
-                                getClusterConfiguration().getPubSubMessageRemovalTaskInterval() * 1000000;
-                        addContentDeletionTask(System.nanoTime() + timeGapConfigured, msg.messageID);
-                    }
-
-                } else {
-
-                    for (String nodeRowName : associatedQueueRows) {
-                        if (!messagesForQueues.containsKey(nodeRowName)) {
-                            messagesForQueues.put(nodeRowName, new ArrayList<AndesRemovableMetadata>());
-                        }
-                        messagesForQueues.get(nodeRowName).add(msg);
-                    }
-
-                    if (!moveToDLC) {
-                        //schedule to remove queue and message content
-                        addContentDeletionTask(System.nanoTime(), msg.messageID);
-                    }
-                }
-                messageIds.add(msg.messageID);
-            }
-
-            deleteMessageMetadataFromColumnFamily(messagesForQueues, QueueAddress.QueueType.QUEUE_NODE_QUEUE);
-            deleteMessageMetadataFromColumnFamily(messagesForTopics, QueueAddress.QueueType.TOPIC_NODE_QUEUE);
-            deleteMessageMetadataFromColumnFamily(messagesInGlobalQueues, QueueAddress.QueueType.GLOBAL_QUEUE);
-            deleteMessagesFromExpiryQueue(messageIds);
-
-            if (moveToDLC) {
-                moveToDeadLetterChannel(messagesToRemove);
-            }
-
-        } catch (Exception e) {
-            log.error(e);
-            throw new AndesException("Error during message deletion ", e);
-        }
-    }
-
-    @Override
-    public List<AndesRemovableMetadata> getExpiredMessages(Long limit, String columnFamilyName, String keyspace) {
-
-        if (keyspace == null) {
-            log.error("Can't access Data , no keyspace provided ");
-        }
-
-        if (columnFamilyName == null) {
-            log.error("Can't access data with queueType = " + columnFamilyName);
-        }
-
-        List<AndesRemovableMetadata> expiredMessages = new ArrayList<AndesRemovableMetadata>();
-
-        try {
-
-            Long currentTimestamp = System.currentTimeMillis();
-
-            CQLQueryBuilder.CqlSelect cqlSelect = new CQLQueryBuilder.CqlSelect(columnFamilyName, limit, true);
-            cqlSelect.addColumn(CQLDataAccessHelper.MESSAGE_ID);
-            cqlSelect.addColumn(CQLDataAccessHelper.MESSAGE_DESTINATION);
-            cqlSelect.addColumn(CQLDataAccessHelper.MESSAGE_IS_FOR_TOPIC);
-            cqlSelect.addColumn(CQLDataAccessHelper.MESSAGE_EXPIRATION_TIME);
-
-            cqlSelect.addCondition(CQLDataAccessHelper.MESSAGE_EXPIRATION_TIME, currentTimestamp, CassandraHelper.WHERE_OPERATORS.LTE);
-
-            Select select = CQLQueryBuilder.buildSelect(cqlSelect);
-
-            if (log.isDebugEnabled()) {
-                log.debug(" getExpiredMessages : " + select.toString());
-            }
-
-            ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
-            List<Row> rows = result.all();
-            Iterator<Row> iter = rows.iterator();
-
-            while (iter.hasNext()) {
-                Row row = iter.next();
-
-                AndesRemovableMetadata arm = new AndesRemovableMetadata(row.getLong(CQLDataAccessHelper.MESSAGE_ID), row.getString(CQLDataAccessHelper.MESSAGE_DESTINATION));
-                arm.isForTopic = row.getBool(CQLDataAccessHelper.MESSAGE_IS_FOR_TOPIC);
-
-                if (arm.messageID > 0) {
-                    expiredMessages.add(arm);
-                }
-            }
-
-            return expiredMessages;
-
-        } catch (Exception e) {
-            log.error("Error while getting data from " + columnFamilyName, e);
-        }
-
-        return expiredMessages;
-
-    }
-
-    @Override
-    public void moveToDeadLetterChannel(List<AndesRemovableMetadata> messageList) {
-        //To change body of implemented methods use File | Settings | File Templates.
-    }
 }

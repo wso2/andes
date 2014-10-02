@@ -29,6 +29,7 @@ import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
+import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cassandra.QueueBrowserDeliveryWorker;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
@@ -219,6 +220,22 @@ public class QpidAMQPBridge {
         MessagingEngine.getInstance().ackReceived(andesAckData);
         } catch (AndesException e) {
             log.error("Exception occurred while handling ack", e);
+        }
+    }
+
+    public void rejectMessage(long deliveryTag, UUID channelID) throws AMQException {
+        try {
+
+            //todo: hasitha - implement a non-amqp specific way to do this. For now doing nothing
+            MessagingEngine.getInstance().messageRejected();
+
+            /**Reject message is received when ack_wait_timeout happened in client side
+             * We need to inform onflightMessageTracker to resend the message again
+             */
+            OnflightMessageTracker.getInstance().handleFailure(deliveryTag, channelID);
+
+        } catch (AndesException e) {
+            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while handling rejected message", e);
         }
     }
 

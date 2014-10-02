@@ -62,11 +62,6 @@ public class ClusterManager {
     private int globalQueueSyncId;
 
     /**
-     * GlobalQueueManager to manage global queues
-     */
-    private GlobalQueueManager globalQueueManager;
-
-    /**
      * in memory map keeping global queues assigned to the this node
      */
     private List<String> globalQueuesAssignedToMe = Collections.synchronizedList(new ArrayList<String>());
@@ -82,10 +77,7 @@ public class ClusterManager {
      */
     public ClusterManager() {
         this.andesContextStore = AndesContext.getInstance().getAndesContextStore();
-        this.globalQueueManager = new GlobalQueueManager(MessagingEngine.getInstance().getDurableMessageStore());
         this.slotManager = SlotManager.getInstance();
-
-
     }
 
     /**
@@ -106,15 +98,6 @@ public class ClusterManager {
             log.error("Error while initializing the Hazelcast coordination ", e);
             throw e;
         }
-    }
-
-    /**
-     * get global queue manager working in the current node
-     *
-     * @return global queue manager
-     */
-    public GlobalQueueManager getGlobalQueueManager() {
-        return this.globalQueueManager;
     }
 
     /**
@@ -147,8 +130,6 @@ public class ClusterManager {
             if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
                 slotManager.reAssignSlotsWhenMemberLeaves(deletedNodeId);
             }
-            // check and copy back messages of node queue belonging to disappeared node
-            checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(AndesUtils.getNodeQueueNameForNodeId(deletedNodeId));
         }
 
         //update thrift coordinator server details
@@ -195,16 +176,6 @@ public class ClusterManager {
         return globalQueuesToBeAssigned.toArray(new String[globalQueuesToBeAssigned.size()]);
     }
 
-    /**
-     * get how many messages in the given global queue
-     *
-     * @param globalQueue global queue name
-     * @return number of messages in the global queue
-     */
-    public int numberOfMessagesInGlobalQueue(String globalQueue) throws AndesException {
-        return globalQueueManager.getMessageCountOfGlobalQueue(globalQueue);
-    }
-
     //TODO:hasitha can we implement moving global queue workers?
     public boolean updateWorkerForQueue(String queueToBeMoved, String newNodeToAssign) {
         boolean successful = false;
@@ -237,30 +208,11 @@ public class ClusterManager {
 
             //clear stored node IDS and mark subscriptions of node as closed
             clearAllPersistedStatesOfDisappearedNode(nodeId);
-            //stop all global queue Workers
-            log.info("Stopping all global queue workers locally");
-            globalQueueManager.removeAllQueueWorkersLocally();
-            //if in clustered mode copy back node queue messages back to global queue
-            if (AndesContext.getInstance().isClusteringEnabled()) {
-                checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(MessagingEngine.getMyNodeQueueName());
-            }
+
         } catch (Exception e) {
-            log.error("Error stopping global queues while shutting down", e);
+            log.error("Error while clearing states when shutting down", e);
         }
 
-    }
-
-    /**
-     * get message count of node queue belonging to given node
-     *
-     * @param nodeId           ID of the node
-     * @param destinationQueue destination queue name
-     * @return message count
-     */
-    public int getNodeQueueMessageCount(String nodeId, String destinationQueue) throws AndesException {
-        String nodeQueueName = AndesUtils.getNodeQueueNameForNodeId(nodeId);
-        QueueAddress nodeQueueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueueName);
-        return MessagingEngine.getInstance().getDurableMessageStore().countMessagesOfQueue(nodeQueueAddress, destinationQueue);
     }
 
     public int getUniqueIdForLocalNode() {
@@ -284,29 +236,6 @@ public class ClusterManager {
         }
         //remove sent but not acked messages
         OnflightMessageTracker.getInstance().getSentButNotAckedMessagesOfQueue(destinationQueueName);
-    }
-
-    /**
-     * check and move all metadata of messages of node queue to global queue
-     */
-    private void checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(String nodeQueueName) throws AndesException {
-        MessageStore messageStore = MessagingEngine.getInstance().getDurableMessageStore();
-        QueueAddress nodeQueueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE, nodeQueueName);
-        long lastProcessedMessageID = 0;
-        int numberOfMessagesMoved = 0;
-        List<AndesMessageMetadata> messageList = messageStore.getNextNMessageMetadataFromQueue(nodeQueueAddress, lastProcessedMessageID, 40);
-        while (messageList.size() != 0) {
-            for (AndesMessageMetadata metadata : messageList) {
-                lastProcessedMessageID = metadata.getMessageID();
-            }
-            messageStore.moveMessageMetaData(nodeQueueAddress, null, messageList);
-            numberOfMessagesMoved += messageList.size();
-            messageList = messageStore.getNextNMessageMetadataFromQueue(nodeQueueAddress, lastProcessedMessageID, 40);
-        }
-
-        log.info("Moved " + numberOfMessagesMoved
-                + " Number of Messages from Node Queue "
-                + nodeQueueName + "to Global Queues ");
     }
 
     private void initStandaloneMode() throws Exception {
@@ -353,7 +282,6 @@ public class ClusterManager {
         for (String storedNodeId : storedNodes) {
             if (!availableNodeIds.contains(storedNodeId)) {
                 clearAllPersistedStatesOfDisappearedNode(storedNodeId);
-                checkAndCopyMessagesOfNodeQueueBackToGlobalQueue(AndesUtils.getNodeQueueNameForNodeId(storedNodeId));
             }
         }
         memberAdded(hazelcastAgent.getLocalMember());
@@ -383,18 +311,6 @@ public class ClusterManager {
         this.globalQueuesAssignedToMe.clear();
         for (String q : globalQueuesToBeAssigned) {
             globalQueuesAssignedToMe.add(q);
-        }
-    }
-
-    /**
-     * Start all global queues and workers
-     */
-    private void startAllGlobalQueueWorkers() {
-        if (!AndesContext.getInstance().isClusteringEnabled()) {
-            List<String> globalQueueNames = AndesUtils.getAllGlobalQueueNames();
-            for (String globalQueueName : globalQueueNames) {
-                globalQueueManager.scheduleWorkForGlobalQueue(globalQueueName);
-            }
         }
     }
 

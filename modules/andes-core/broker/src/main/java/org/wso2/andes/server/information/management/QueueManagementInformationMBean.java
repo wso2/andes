@@ -22,10 +22,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
-import org.wso2.andes.server.cluster.GlobalQueueManager;
 import org.wso2.andes.server.management.AMQManagedObject;
-import org.wso2.andes.server.util.AndesUtils;
-import org.wso2.andes.subscription.SubscriptionStore;
 
 import javax.management.NotCompliantMBeanException;
 
@@ -36,13 +33,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     private static Log log = LogFactory.getLog(QueueManagementInformationMBean.class);
 
-    GlobalQueueManager globalQueueManager;
-    MessageStore messageStore;
-
     public QueueManagementInformationMBean() throws NotCompliantMBeanException {
         super(QueueManagementInformation.class, QueueManagementInformation.TYPE);
-        this.messageStore = MessagingEngine.getInstance().getDurableMessageStore();
-        this.globalQueueManager = new GlobalQueueManager(messageStore);
     }
 
     public String getObjectInstanceName() {
@@ -110,7 +102,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
 /*        int messageCount = (int) messageStore.getCassandraMessageCountForQueue(queueName);
         if (messageCount < 0) {
-            messageStore.incrementQueueCount(queueName, Math.abs(messageCount));
+            messageStore.incrementMessageCountForQueue(queueName, Math.abs(messageCount));
             messageCount = 0;
         }
         return messageCount;*/
@@ -119,37 +111,11 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
         int messageCount = 0;
         try {
-        /**
-         * Get message count from all node queues having subscriptions
-         * plus the number of messages in respective global queue
-         */
-        SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-
         if (msgPattern.equals("queue")) {
-            List<String> nodeQueuesHavingSubscriptionsForQueue = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForQueue(queueName));
-            if (nodeQueuesHavingSubscriptionsForQueue.size() > 0) {
-                for (String nodeQueue : nodeQueuesHavingSubscriptionsForQueue) {
-                    QueueAddress nodeQueueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE,nodeQueue);
-                    messageCount += messageStore.countMessagesOfQueue(nodeQueueAddress,queueName);
-                    log.debug("Counting Messages at : " + nodeQueue + "  : " + messageCount);
-                }
-            }
+            messageCount = MessagingEngine.getInstance().getMessageCountOfQueue(queueName);
         } else if (msgPattern.equals("topic")) {
-            List<String> nodeQueuesHavingSubscriptionsForQueue = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForTopic(queueName));
-            if (nodeQueuesHavingSubscriptionsForQueue.size() > 0) {
-                for (String nodeQueue : nodeQueuesHavingSubscriptionsForQueue) {
-                    QueueAddress nodeQueueAddress = new QueueAddress(QueueAddress.QueueType.TOPIC_NODE_QUEUE,nodeQueue);
-                    messageCount += messageStore.countMessagesOfQueue(nodeQueueAddress,queueName);
-                    log.debug("Counting Messages at : " + nodeQueue + "  : " + messageCount);
-                }
-            }
+            //TODO: hasitha - to implement
         }
-
-        String globalQueue = AndesUtils.getGlobalQueueNameForDestinationQueue(queueName);
-        QueueAddress globalQueueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE,globalQueue);
-        messageCount += messageStore.countMessagesOfQueue(globalQueueAddress,queueName);
-        log.debug("Counting Messages at : " + globalQueue + "  : " + messageCount);
-        log.debug("END");
 
         } catch (AndesException e) {
             throw new RuntimeException(e);

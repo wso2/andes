@@ -41,7 +41,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class SlotDeliveryWorker extends Thread {
 
     private List<String> queueList;
-    private MessageStore messageStore;
     private SubscriptionStore subscriptionStore;
     private HashMap<String, Long> localLastProcessedIdMap;
     private static boolean isClusteringEnabled;
@@ -58,7 +57,6 @@ public class SlotDeliveryWorker extends Thread {
         log.info("SlotDeliveryWorker Initialized.");
         queueDeliveryWorker = QueueDeliveryWorker.getInstance();
         this.queueList = new ArrayList<String>();
-        this.messageStore = MessagingEngine.getInstance().getDurableMessageStore();
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
         localLastProcessedIdMap = new HashMap<String, Long>();
@@ -117,7 +115,7 @@ public class SlotDeliveryWorker extends Thread {
                                     long lastMsgId = currentSlot.getEndMessageId();
                                     //read messages in the slot
                                     List<AndesMessageMetadata> messagesReadByLeadingThread =
-                                            messageStore.getMetaDataList(
+                                            MessagingEngine.getInstance().getMetaDataList(
                                                     queueName, firstMsgId, lastMsgId);
                                     if (messagesReadByLeadingThread != null &&
                                             !messagesReadByLeadingThread.isEmpty()) {
@@ -144,7 +142,7 @@ public class SlotDeliveryWorker extends Thread {
                                 int slotWindowSize = ClusterResourceHolder.getInstance()
                                         .getClusterConfiguration().getSlotWindowSize();
                                 List<AndesMessageMetadata> messagesReadByLeadingThread =
-                                        messageStore.getNextNMessageMetadataFromQueue
+                                        MessagingEngine.getInstance().getNextNMessageMetadataFromQueue
                                                 (queueName, startMessageId, slotWindowSize);
                                 if (messagesReadByLeadingThread == null ||
                                         messagesReadByLeadingThread.isEmpty()) {
@@ -273,7 +271,7 @@ public class SlotDeliveryWorker extends Thread {
             order. Therefore we resend those messages.
              */
             List<AndesMessageMetadata> messagesReadByLeadingThread =
-                    messageStore.getMetaDataList(
+                    MessagingEngine.getInstance().getMetaDataList(
                             slot.getQueueName(), slot.getStartMessageId(), slot.getEndMessageId());
             if (messagesReadByLeadingThread != null &&
                     !messagesReadByLeadingThread.isEmpty()) {
