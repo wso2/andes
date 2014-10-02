@@ -25,7 +25,7 @@ import java.io.Serializable;
 /**
  * This class stores all the data related to a slot
  */
-public class Slot implements Serializable {
+public class Slot implements Serializable, Comparable<Slot> {
 
     /**
      * number of messages in the slot
@@ -119,5 +119,14 @@ public class Slot implements Serializable {
      */
     public String getId() {
         return queueName + "|" + startMessageId + "-" + endMessageId;
+    }
+
+    @Override
+    public int compareTo(Slot other) {
+        if(this.getStartMessageId() == other.getStartMessageId()) {
+            return 0;
+        } else {
+            return this.getStartMessageId() > other.getStartMessageId() ? 1 : -1;
+        }
     }
 }

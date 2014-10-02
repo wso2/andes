@@ -232,6 +232,8 @@ public class MBThriftClient {
                 hazelcastAgent.getThriftServerDetailsMap().
                         get(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT));
         transport = new TSocket(thriftCoordinatorServerIP, thriftCoordinatorServerPort);
+        log.info("Reconnecting to Slot Coordinator " + thriftCoordinatorServerIP + ":"
+                 + thriftCoordinatorServerPort);
         try {
             transport.open();
             TProtocol protocol = new TBinaryProtocol(transport);

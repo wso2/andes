@@ -371,6 +371,8 @@ public class ClusterManager {
         String thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerHost();
         int thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerPort();
         if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
+            log.info("This node is elected as the Slot Coordinator. Registering " +
+                     thriftCoordinatorServerIP + ":" + thriftCoordinatorServerPort);
             hazelcastAgent.getThriftServerDetailsMap().put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP, thriftCoordinatorServerIP);
             hazelcastAgent.getThriftServerDetailsMap().put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT,
                     Integer.toString(thriftCoordinatorServerPort));

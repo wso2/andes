@@ -244,7 +244,7 @@ public class QueueDeliveryWorker {
              */
             int sentMessageCount = 0;
 
-            sendMessagesInBuffer();
+            sendMessagesInBuffer(slot.getQueueName());
 
             if (iterations % 20 == 0) {
                 if (log.isDebugEnabled()) {
@@ -279,23 +279,20 @@ public class QueueDeliveryWorker {
     /**
      *Read messages from the buffer and send messages to subscribers
      */
-    public void sendMessagesInBuffer() throws AndesException {
-        //todo stop iterate through all the queues
-        for (QueueDeliveryInfo queueDeliveryInfo : subscriptionCursar4QueueMap.values()) {
-            if (log.isDebugEnabled()) {
-                log.debug("TRACING>> delivering read but undelivered message list with size: " +
-                        queueDeliveryInfo.readButUndeliveredMessages.size());
-            }
-            try {
-                sendMessagesToSubscriptions(queueDeliveryInfo.queueName,
-                        queueDeliveryInfo.readButUndeliveredMessages);
-            } catch (Exception e) {
-                throw new AndesException("Error occurred while sending messages to subscribers " +
-                        "from message buffer" + e);
-            }
+    public void sendMessagesInBuffer(String queueName) throws AndesException {
+        QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(queueName);
+        if (log.isDebugEnabled()) {
+            log.debug("TRACING>> delivering read but undelivered message list with size: " +
+                      queueDeliveryInfo.readButUndeliveredMessages.size());
+        }
+        try {
+            sendMessagesToSubscriptions(queueDeliveryInfo.queueName,
+                                        queueDeliveryInfo.readButUndeliveredMessages);
+        } catch (Exception e) {
+            throw new AndesException("Error occurred while sending messages to subscribers " +
+                                     "from message buffer" + e);
         }
     }
-
 
 
     private void sleep4waitInterval(long sleepInterval) {

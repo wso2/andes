@@ -206,7 +206,7 @@ public class SlotDeliveryWorker extends Thread {
     private boolean sendFromMessageBuffer(String queueName) throws AndesException {
         boolean sentFromMessageBuffer = false;
         if (!queueDeliveryWorker.isMessageBufferEmpty(queueName)) {
-            queueDeliveryWorker.sendMessagesInBuffer();
+            queueDeliveryWorker.sendMessagesInBuffer(queueName);
             sentFromMessageBuffer = true;
         }
         return sentFromMessageBuffer;
