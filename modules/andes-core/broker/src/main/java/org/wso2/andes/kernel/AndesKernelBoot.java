@@ -323,7 +323,7 @@ public class AndesKernelBoot {
                     AndesContext.getInstance().getThriftServerPort(),"MB-ThriftServer-main-thread");
 
         } catch (AndesException e) {
-            throw new AndesException("Could not start the MB Thrift Server" + e);
+            throw new AndesException("Could not start the MB Thrift Server" , e);
         }
     }
 
