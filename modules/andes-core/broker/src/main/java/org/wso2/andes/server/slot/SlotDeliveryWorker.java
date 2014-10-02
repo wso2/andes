@@ -49,7 +49,7 @@ public class SlotDeliveryWorker extends Thread {
      * this map contains slotId to slot hashmap against queue name
      */
     private static final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
-    private boolean running;
+    private volatile boolean running;
     private String nodeId;
     private QueueDeliveryWorker queueDeliveryWorker;
 
@@ -79,7 +79,6 @@ public class SlotDeliveryWorker extends Thread {
             int emptyQueueCounter = 0;
             for (String queueName : queueList) {
                 Collection<LocalSubscription> subscriptions4Queue;
-                HashMap<String, Slot> slotsMapForThisQueue = new HashMap<String, Slot>();
                 try {
                     subscriptions4Queue = subscriptionStore.getActiveLocalSubscribers(queueName,
                             false);
@@ -109,7 +108,8 @@ public class SlotDeliveryWorker extends Thread {
                                     if (log.isDebugEnabled()) {
                                         log.debug("Received slot for queue " + queueName + " " +
                                                 "is: " + currentSlot.getStartMessageId() +
-                                                " - " + currentSlot.getEndMessageId());
+                                                " - " + currentSlot.getEndMessageId() +
+                                                "Thread Id:" + Thread.currentThread().getId());
                                     }
                                     long firstMsgId = currentSlot.getStartMessageId();
                                     long lastMsgId = currentSlot.getEndMessageId();

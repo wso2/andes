@@ -888,9 +888,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      * @param multiple    if true will acknowledge all messages up to an including the delivery tag. if false only
      *                    acknowledges the single message specified by the delivery tag
      *
-     * @throws AMQException if the delivery t
-     *
-     * ag is unknown (e.g. not outstanding) on this channel
+     * @throws AMQException if the delivery tag is unknown (e.g. not outstanding) on this channel
      */
     public void acknowledgeMessage(long deliveryTag, boolean multiple) throws AMQException
     {

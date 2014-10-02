@@ -22,6 +22,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.server.AMQChannel;
@@ -72,7 +73,7 @@ public class QueueSubscriptionAcknowledgementHandler {
     }
 
     public void handleAcknowledgement(AMQChannel channel, QueueEntry queueEntry) {
-        try {
+
             try {
                 /**
                  * When the message is acknowledged it is informed to Andes Kernel
@@ -88,10 +89,10 @@ public class QueueSubscriptionAcknowledgementHandler {
 
             } catch (AMQStoreException e) {
                 log.error("Error while handling the ack for " + queueEntry.getMessage().getMessageNumber(), e);
+            } catch (AndesException e) {
+                log.error("Error while handling the ack for " + queueEntry.getMessage().getMessageNumber(), e);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }        
+
     }
 
     private class QueueMessageTag {
