@@ -321,7 +321,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                                     ByteBuffer buf = ByteBuffer.allocate(100);
                                     int readCount = entry.getMessage().getContent(buf, 0);
                                     if(log.isDebugEnabled()) {
-                                        log.debug("sent2(" + entry.getMessage().getMessageNumber() + ")"
+                                        log.debug("sent message(" + entry.getMessage().getMessageNumber() + ")"
                                                 + new String(buf.array(), 0, readCount) + " channel="+ getChannel().getChannelId());
                                     }
                                 }
@@ -331,7 +331,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                                 //This happens when message has expired or maximum number of
                                 // retries are done fro queues
                                 if (log.isDebugEnabled()) {
-                                    log.info("sent3 stopped for " + entry.getMessage().getMessageNumber());
+                                    log.debug("Giving up sending.Sent stopped for " + entry.getMessage().getMessageNumber());
                                 }
                                 /**
                                  * message tracker rejected this message from sending. Hence moving to dead letter channel
@@ -357,7 +357,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                             if(i < retryCount -1){
                                 //will try again
                                 if (log.isDebugEnabled()) {
-                                    log.info("sent4 failed for " + entry.getMessage().getMessageNumber() + " retrying");
+                                    log.debug("sent4 failed for " + entry.getMessage().getMessageNumber() + " retrying");
                                 }
                                 Thread.sleep(waitTime);
                             }else{

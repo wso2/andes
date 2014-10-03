@@ -301,13 +301,13 @@ public class HazelcastAgent {
 
 
     public void notifySubscriptionsChanged(ClusterNotification clusterNotification) {
-        log.info("GOSSIP: " + clusterNotification.getDescription());
+        log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
         this.subscriptionChangedNotifierChannel.publish(clusterNotification);
     }
 
 
     public void notifyQueuesChanged(ClusterNotification clusterNotification) throws AndesException {
-        log.info("GOSSIP: " + clusterNotification.getDescription());
+        log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
         try {
             this.queueChangedNotifierChannel.publish(clusterNotification);
         } catch (Exception e) {
@@ -317,7 +317,7 @@ public class HazelcastAgent {
     }
 
     public void notifyExchangesChanged(ClusterNotification clusterNotification) throws AndesException {
-        log.info("GOSSIP: " + clusterNotification.getDescription());
+        log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
         try {
             this.exchangeChangeNotifierChannel.publish(clusterNotification);
         } catch (Exception e) {
@@ -327,7 +327,7 @@ public class HazelcastAgent {
     }
 
     public void notifyBindingsChanged(ClusterNotification clusterNotification) throws AndesException {
-        log.info("GOSSIP: " + clusterNotification.getDescription());
+        log.debug("GOSSIP: " + clusterNotification.getDescription());
         try {
             this.bindingChangeNotifierChannel.publish(clusterNotification);
         } catch (Exception e) {

@@ -63,9 +63,7 @@ public class SlotDeliveryWorker extends Thread {
         //start slot deleting thread only if clustering is enabled. Otherwise slots assignment will not happen
         if (isClusteringEnabled) {
             nodeId = HazelcastAgent.getInstance().getNodeId();
-        } else {
         }
-
     }
 
     @Override
@@ -89,7 +87,7 @@ public class SlotDeliveryWorker extends Thread {
                                 Slot currentSlot = MBThriftClient.getSlot(queueName, nodeId);
                                 if (0 == currentSlot.getEndMessageId()) {
                                         /*
-                                        if the message buffer in QueueDEliveryWorker is not empty
+                                        if the message buffer in QueueDeliveryWorker is not empty
                                          send those messages
                                          */
                                     boolean sentFromMessageBuffer = sendFromMessageBuffer(queueName);
@@ -146,13 +144,16 @@ public class SlotDeliveryWorker extends Thread {
                                                 (queueName, startMessageId, slotWindowSize);
                                 if (messagesReadByLeadingThread == null ||
                                         messagesReadByLeadingThread.isEmpty()) {
+                                    log.debug("No messages are read from the leading thread...");
                                     boolean sentFromMessageBuffer = sendFromMessageBuffer
                                             (queueName);
+                                    log.debug("Sent messages from buffer = " + sentFromMessageBuffer);
                                     if (!sentFromMessageBuffer) {
                                         emptyQueueCounter++;
                                         try {
                                             //there are no messages to read
                                             if (emptyQueueCounter == queueList.size()) {
+                                                log.debug("Sleeping Slot Delivery Worker");
                                                 Thread.sleep(2000);
                                             }
                                         } catch (InterruptedException ignored) {
@@ -165,14 +166,17 @@ public class SlotDeliveryWorker extends Thread {
                                         log.debug(messagesReadByLeadingThread.size() + " " +
                                                 "number of messages read from slot");
                                     }
+                                    log.debug("Messages from the leading thread count= " + messagesReadByLeadingThread.size());
                                     long lastMessageId = messagesReadByLeadingThread.get(
                                             messagesReadByLeadingThread
                                                     .size() - 1).getMessageID();
+                                    log.debug("Last message id from the leading thread = " + lastMessageId);
                                     localLastProcessedIdMap.put(queueName, lastMessageId);
                                     Slot currentSlot = new Slot();
                                     currentSlot.setQueueName(queueName);
                                     currentSlot.setStartMessageId(startMessageId);
                                     currentSlot.setEndMessageId(lastMessageId);
+                                    log.debug("sending read messages to flusher << " + currentSlot.toString() + " >>");
                                     queueDeliveryWorker.sendMessageToFlusher
                                             (messagesReadByLeadingThread, currentSlot);
                                 }
@@ -180,6 +184,7 @@ public class SlotDeliveryWorker extends Thread {
                         } else {
                                 /*if there are messages to be sent in the message
                                             buffer in QueueDeliveryWorker send them */
+                            log.debug("The queue" + queueName + " has no room. Thus sending from buffer.");
                             sendFromMessageBuffer(queueName);
                         }
                     }
