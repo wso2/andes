@@ -179,7 +179,7 @@ public class MessagingEngine {
                         .getActiveClusterSubscribersForDestination(message.getDestination(), true);
                 if (subscriptionList.size() == 0) {
                     log.info("Message routing key: " + message
-                            .getDestination() + " No routes in cluster.");
+                            .getDestination() + " No routes in cluster. Ignoring Message");
                     List<Long> messageIdList = new ArrayList<Long>();
                     messageIdList.add(message.getMessageID());
                     durableMessageStore.deleteMessageParts(messageIdList);

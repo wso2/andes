@@ -1,5 +1,7 @@
 package org.wso2.andes.kernel;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.ContentHeaderBody;
@@ -27,6 +29,7 @@ public class AndesMessageMetadata {
     private boolean reDelivered;
     Map<Long, PendingJob> pendingJobsTracker;
     public QueueAddress queueAddress;
+    private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
     //Added for MQTT usage
     private int messageContentLength;
 
@@ -123,6 +126,7 @@ public class AndesMessageMetadata {
     
     public void updateMetadata(String newDestination){
     	this.metadata = createNewMetadata(this.metadata, newDestination, this.messageID);
+        log.debug("updated andes message metadata id= " + messageID + " new destination = " + newDestination);
     }
 
     public void setRedelivered() {
