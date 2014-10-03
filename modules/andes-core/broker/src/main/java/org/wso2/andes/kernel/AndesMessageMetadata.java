@@ -18,7 +18,7 @@ import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-public class AndesMessageMetadata {
+public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 
     long messageID;
     byte[] metadata;
@@ -229,5 +229,14 @@ public class AndesMessageMetadata {
 
     public void setSlot(Slot slot) {
         this.slot = slot;
+    }
+
+    @Override
+    public int compareTo(AndesMessageMetadata other) {
+        if(this.getMessageID() == other.getMessageID()) {
+            return 0;
+        } else {
+            return this.getMessageID() > other.getMessageID() ? 1 : -1;
+        }
     }
 }

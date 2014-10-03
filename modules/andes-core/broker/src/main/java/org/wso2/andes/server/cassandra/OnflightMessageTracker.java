@@ -444,7 +444,12 @@ public class OnflightMessageTracker {
                         sendButNotAckedMessageCount.decrementAndGet();
                         AndesMessageMetadata queueEntry = messageIdToAndesMessagesMap
                                 .remove(messageId);
-                        ArrayList<AndesMessageMetadata> undeliveredMessages =
+
+
+                        //re-queue message to the buffer
+                        QueueDeliveryWorker.getInstance().storeUndeliveredMessagesDueToInactiveSubscriptions(queueEntry);
+
+/*                        ArrayList<AndesMessageMetadata> undeliveredMessages =
                                 queueTosentButNotAckedMessageMap
                                         .get(destinationQueueName);
                         if (undeliveredMessages == null) {
@@ -457,7 +462,7 @@ public class OnflightMessageTracker {
                                             " but not acked list");
                         } else {
                             undeliveredMessages.add(queueEntry);
-                        }
+                        }*/
                     }
                 }
             }
