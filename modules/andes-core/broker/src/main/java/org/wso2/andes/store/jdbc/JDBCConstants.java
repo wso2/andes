@@ -53,6 +53,7 @@ public class JDBCConstants {
     protected static final String EXCHANGES_TABLE = "exchanges";
     protected static final String BINDINGS_TABLE = "bindings";
     protected static final String QUEUE_INFO_TABLE = "queue_info";
+    protected static final String QUEUE_COUNTER_TABLE = "queue_counter";
 
     // Andes Context Store table columns
     protected static final String DURABLE_SUB_ID = "sub_id";
@@ -66,6 +67,7 @@ public class JDBCConstants {
     protected static final String BINDING_QUEUE_NAME = "queue_name";
     protected static final String BINDING_EXCHANGE_NAME = "exchange_name";
     protected static final String QUEUE_INFO = "data";
+    protected static final String QUEUE_COUNT = "count";
 
     // prepared statements for Message Store
     protected static final String PS_INSERT_MESSAGE_PART =
@@ -233,21 +235,38 @@ public class JDBCConstants {
                     " AND " + BINDING_QUEUE_NAME + "=?";
 
     protected static final String PS_UPDATE_METADATA_QUEUE =
-            "UPDATE " + METADATA_TABLE + " SET " +
-                    QUEUE_ID + " = ? " +
-                    "WHERE " +
-                    MESSAGE_ID +" = ? " +
-                    "AND " + QUEUE_ID +
-                    " = ?";
+            "UPDATE " + METADATA_TABLE +
+                    " SET " + QUEUE_ID + " = ? " +
+                    "WHERE " + MESSAGE_ID +" = ? " +
+                    "AND " + QUEUE_ID + " = ?";
 
     protected static final String PS_UPDATE_METADATA =
-            "UPDATE " + METADATA_TABLE + " SET " +
-                    QUEUE_ID + " = ?," +
-                    METADATA + " = ?" +
-                    " WHERE " +
-                    MESSAGE_ID +" = ?" +
-                    " AND " + QUEUE_ID +
-                    " = ?";
+            "UPDATE " + METADATA_TABLE +
+                    " SET " + QUEUE_ID + " = ?," + METADATA + " = ?" +
+                    " WHERE " + MESSAGE_ID +" = ?" +
+                    " AND " + QUEUE_ID + " = ?";
+    /**
+     * Prepared Statement to insert a new queue counter.
+     */
+    protected static final String PS_INSERT_QUEUE_COUNTER =
+            "INSERT INTO " + QUEUE_COUNTER_TABLE + " (" +
+                    QUEUE_NAME + "," + QUEUE_COUNT + " ) " +
+                    " VALUES ( ?,? )";
+
+    /**
+     * Prepared Statement to select count for a queue prepared statement
+     */
+    protected static final String PS_SELECT_QUEUE_COUNT =
+            "SELECT " + QUEUE_COUNT +
+                    " FROM " + QUEUE_COUNTER_TABLE +
+                    " WHERE " + QUEUE_NAME + "=?";
+
+    /**
+     * Prepared Statement to delete queue counter with a given queue name
+     */
+    protected static final String PS_DELETE_QUEUE_COUNTER =
+            "DELETE FROM " + QUEUE_COUNTER_TABLE +
+                    " WHERE " + QUEUE_NAME + "=?";
 
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";
@@ -300,4 +319,8 @@ public class JDBCConstants {
     protected static final String TASK_DELETING_BINDING = "deleting binding information. ";
     protected static final String TASK_UPDATING_META_DATA_QUEUE = "updating message meta data queue.";
     protected static final String TASK_UPDATING_META_DATA = "updating message meta data.";
+    protected static final String TASK_ADDING_QUEUE_COUNTER = "adding counter for queue";
+    protected static final String TASK_CHECK_QUEUE_COUNTER_EXIST = "checking queue counter exist";
+    protected static final String TASK_RETRIEVING_QUEUE_COUNT = "retrieving queue count";
+    protected static final String TASK_DELETING_QUEUE_COUNTER = "deleting queue counter";
 }
