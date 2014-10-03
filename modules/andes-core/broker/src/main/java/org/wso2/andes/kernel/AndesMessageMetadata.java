@@ -207,7 +207,6 @@ public class AndesMessageMetadata {
 		buf.position(1);
 		buf = buf.slice();
 		modifiedMetaData.writeToBuffer(0, buf);
-		System.out.println("Metadata updated for "+ messageID + " "+ routingKey);
 		
 		return underlying;
     }

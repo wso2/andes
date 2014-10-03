@@ -24,6 +24,7 @@ import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.storemanager.MessageStoreManagerFactory;
+import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
 import org.wso2.andes.store.cassandra.CQLBasedMessageStoreImpl;
@@ -247,9 +248,20 @@ public class MessagingEngine {
 
     }
 
-    public void moveMessagesToDeadLetterChannel(List<AndesRemovableMetadata> messagesToRemove)
+    /**
+     * Move the messages meta data in the given message to the Dead Letter Channel and
+     * remove those meta data from the original queue.
+     *
+     * @param messageId            The message Id to be removed
+     * @param destinationQueueName The original destination queue of the message
+     * @throws AndesException
+     */
+    public void moveMessageToDeadLetterChannel(long messageId, String destinationQueueName)
             throws AndesException {
-        messageStoreManager.deleteMessages(messagesToRemove,true);
+        String deadLetterQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString
+                (destinationQueueName, AndesConstants.DEAD_LETTER_QUEUE_NAME);
+
+        messageStoreManager.moveMetaDataToQueue(messageId, destinationQueueName, deadLetterQueueName);
     }
 
     /**
@@ -317,6 +329,32 @@ public class MessagingEngine {
 
     public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException {
         return messageStoreManager.getExpiredMessages(limit);
+    }
+
+    /**
+     * Store a message in a different Queue without altering the meta data.
+     *
+     * @param messageId        The message Id to move
+     * @param currentQueueName The current destination of the message
+     * @param targetQueueName  The target destination Queue name
+     * @throws AndesException
+     */
+    public void moveMetaDataToQueue(long messageId, String currentQueueName,
+                                    String targetQueueName) throws AndesException{
+        messageStoreManager.moveMetaDataToQueue(messageId, currentQueueName, targetQueueName);
+    }
+
+    /**
+     * Update the meta data for the given message with the given information in the AndesMetaData. Update destination
+     * and meta data bytes.
+     *
+     * @param currentQueueName The queue the Meta Data currently in
+     * @param metadataList     The updated meta data list.
+     * @throws AndesException
+     */
+    public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
+            AndesException{
+        messageStoreManager.updateMetaDataInformation(currentQueueName, metadataList);
     }
 
     /**

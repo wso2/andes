@@ -292,6 +292,83 @@ public class JDBCMessageStoreImpl implements MessageStore {
         }
     }
 
+    /**
+     * Update the destination queue of a message meta data to point to a different destination.
+     *
+     * @param messageId        The message Id to move
+     * @param currentQueueName The current destination of the message
+     * @param targetQueueName  The target destination Queue name
+     * @throws org.wso2.andes.kernel.AndesException
+     */
+    @Override
+    public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName) throws
+            AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        try {
+            connection = getConnection();
+            connection.setAutoCommit(false);
+            preparedStatement = connection.prepareStatement(JDBCConstants.PS_UPDATE_METADATA_QUEUE);
+
+            preparedStatement.setInt(1, getCachedQueueID(targetQueueName));
+            preparedStatement.setLong(2, messageId);
+            preparedStatement.setInt(3, getCachedQueueID(currentQueueName));
+
+            preparedStatement.execute();
+            preparedStatement.close();
+
+            connection.commit();
+        } catch (SQLException e) {
+            rollback(connection, JDBCConstants.TASK_UPDATING_META_DATA_QUEUE + targetQueueName);
+            throw new AndesException(
+                    "Error occurred while updating message metadata to destination queue " + targetQueueName,
+                    e);
+        } finally {
+            close(preparedStatement, JDBCConstants.TASK_UPDATING_META_DATA_QUEUE + targetQueueName);
+            close(connection, JDBCConstants.TASK_UPDATING_META_DATA_QUEUE + targetQueueName);
+        }
+    }
+
+    /**
+     * Update message meta data information from the given AndesMetaData using the message Id in the given meta data.
+     *
+     * @param currentQueueName The queue the Meta Data currently in
+     * @param metadataList     The updated meta data list.
+     * @throws AndesException
+     */
+    @Override
+    public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
+            AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        try {
+            connection = getConnection();
+            connection.setAutoCommit(false);
+            preparedStatement = connection.prepareStatement(JDBCConstants.PS_UPDATE_METADATA);
+
+            for (AndesMessageMetadata metadata : metadataList) {
+                preparedStatement.setInt(1, getCachedQueueID(metadata.getDestination()));
+                preparedStatement.setBytes(2, metadata.getMetadata());
+                preparedStatement.setLong(3, metadata.getMessageID());
+                preparedStatement.setInt(4, getCachedQueueID(currentQueueName));
+                preparedStatement.addBatch();
+            }
+
+            preparedStatement.executeBatch();
+            preparedStatement.close();
+            addListToExpiryTable(connection, metadataList);
+
+            connection.commit();
+        } catch (SQLException e) {
+            rollback(connection, JDBCConstants.TASK_UPDATING_META_DATA);
+            throw new AndesException(
+                    "Error occurred while updating message metadata list.",
+                    e);
+        } finally {
+            close(preparedStatement, JDBCConstants.TASK_UPDATING_META_DATA);
+            close(connection, JDBCConstants.TASK_UPDATING_META_DATA);
+        }
+    }
 
     /**
      * Adds a single metadata to a batch insert of metadata

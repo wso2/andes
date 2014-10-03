@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel;
 
 import org.wso2.andes.configuration.ConfigurationProperties;
-import org.wso2.andes.server.store.util.CassandraDataAccessException;
 
 import java.util.List;
 
@@ -100,6 +99,28 @@ public interface MessageStore {
      */
     public void addMetadataToQueue(final String queueName, List<AndesMessageMetadata> metadata)
             throws AndesException;
+
+    /**
+     * Store a message in a different Queue without altering the meta data.
+     *
+     * @param messageId        The message Id to move
+     * @param currentQueueName The current destination of the message
+     * @param targetQueueName  The target destination Queue name
+     * @throws AndesException
+     */
+    public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName) throws
+            AndesException;
+
+    /**
+     * Update the meta data for the given message with the given information in the AndesMetaData. Update destination
+     * and meta data bytes.
+     *
+     * @param currentQueueName The queue the Meta Data currently in
+     * @param metadataList     The updated meta data list.
+     * @throws AndesException
+     */
+    public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
+            AndesException;
 
     /**
      * read metadata from store

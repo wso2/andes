@@ -36,7 +36,7 @@ public interface QueueManagementInformation {
             description = "Name of the queue to be deleted") String queueName);
 
     @MBeanAttribute(name="MessageCount",description = "Message count of the queue")
-    int getMessageCount(String queueName,String msgPattern);
+    long getMessageCount(String queueName,String msgPattern);
 
     @MBeanAttribute(name="SubscriptionCount", description = "Number of subscriptions for the queue")
     int getSubscriptionCount(String queueName);
@@ -48,5 +48,41 @@ public interface QueueManagementInformation {
     @MBeanAttribute(name = " Delete All Messages In Queue ", description = "Delete all the messages in the queue without removing queue bindings.")
     void deleteAllMessagesInQueue(@MBeanOperationParameter(name = "queueName" ,
             description = "Name of the queue to delete messages from") String queueName);
+
+    /**
+     * Delete a selected message list from a given Dead Letter Queue of a tenant.
+     *
+     * @param messageIDs          The browser message Ids
+     * @param deadLetterQueueName The Dead Letter Queue Name for the tenant
+     */
+    @MBeanAttribute(name = " DeleteMessages In Dead Letter Queue ", description = "Will Delete Messages From Dead Letter Queue")
+    void deleteMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "messageIDs",
+            description = "ID of the Messages to Be Deleted") String[] messageIDs, @MBeanOperationParameter(name = "deadLetterQueueName",
+            description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName);
+
+    /**
+     * Restore a given browser message Id list from the Dead Letter Queue to the same queue it was previous in before moving to the Dead Letter Queue
+     * and remove them from the Dead Letter Queue.
+     *
+     * @param messageIDs          The browser message Ids
+     * @param deadLetterQueueName The Dead Letter Queue Name for the tenant
+     */
+    @MBeanAttribute(name = " Restore Back a Specific set of Messages ", description = "Will Restore a Specific Set of Messages Back to Its Original Queue")
+    void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "messageIDs",
+            description = "IDs of the Messages to Be Restored") String[] messageIDs, @MBeanOperationParameter(name = "deadLetterQueueName",
+            description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName);
+
+    /**
+     * Restore a given browser message Id list from the Dead Letter Queue to a different given queue in the same tenant and remove them from the Dead Letter Queue.
+     *
+     * @param messageIDs          The browser message Ids
+     * @param destination         The new destination
+     * @param deadLetterQueueName The Dead Letter Queue Name for the tenant
+     */
+    @MBeanAttribute(name = " Restore Back a Specific set of Messages ", description = "Will Restore a Specific Set of Messages Back to a Queue differnt from the original")
+    void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "messageIDs",
+            description = "IDs of the Messages to Be Restored") String[] messageIDs,@MBeanOperationParameter(name = "destination",
+            description = "Destination of the message to be restored") String destination, @MBeanOperationParameter(name = "deadLetterQueueName",
+            description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName);
 
 }

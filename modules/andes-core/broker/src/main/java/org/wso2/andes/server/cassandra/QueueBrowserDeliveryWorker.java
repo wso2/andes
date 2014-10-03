@@ -19,7 +19,6 @@ package org.wso2.andes.server.cassandra;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -29,13 +28,10 @@ import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
-import org.wso2.andes.server.util.AndesUtils;
-import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -67,8 +63,6 @@ public class QueueBrowserDeliveryWorker {
 
     private static Log log = LogFactory.getLog(QueueBrowserDeliveryWorker.class);
 
-    private HashMap<String,Long> lastReadMessageIdMap = new HashMap<String,Long>();
-
     public QueueBrowserDeliveryWorker(Subscription subscription, AMQQueue queue, AMQProtocolSession session){
         this(subscription,queue,session,false);
     }
@@ -90,10 +84,8 @@ public class QueueBrowserDeliveryWorker {
         try {
             messages = getSortedMessages();
             sendMessagesToClient(messages);
-        } catch (AMQStoreException e) {
+        } catch (AndesException e) {
             log.error("Error while sending message for Browser subscription", e);
-        } catch (Exception e) {
-            e.printStackTrace();
         } finally {
             // It is essential to confirm auto close , since in the client side it waits to know the end of the messages
             subscription.confirmAutoClose();
@@ -125,11 +117,29 @@ public class QueueBrowserDeliveryWorker {
             }
     }
 
-    private List<QueueEntry> getSortedMessages() throws Exception {
+    /**
+     * Get message queue entries sorted using the message Id in the ascending order.
+     *
+     * @return Sorted QueueEntry List
+     * @throws AndesException
+     */
+    private List<QueueEntry> getSortedMessages() throws AndesException {
+
+        String queueName = queue.getResourceName();
+        long lastReadMessageId = 0L;
 
         List<AndesMessageMetadata> queueMessageMetaData = new ArrayList<AndesMessageMetadata>();
+        List<AndesMessageMetadata> currentlyReadMessageMetaData = MessagingEngine.getInstance().getNextNMessageMetadataFromQueue(queueName, lastReadMessageId, messageBatchSize);
+        int currentBatchSize = currentlyReadMessageMetaData.size();
 
-        //todo: hasitha to implement we need to read chunk by chunk until max num of messages are filled
+        queueMessageMetaData.addAll(currentlyReadMessageMetaData);
+
+        while (currentBatchSize == messageBatchSize) {
+            lastReadMessageId = currentlyReadMessageMetaData.get(currentBatchSize -1).getMessageID();
+            currentlyReadMessageMetaData = MessagingEngine.getInstance().getNextNMessageMetadataFromQueue(queueName, lastReadMessageId, messageBatchSize);
+            queueMessageMetaData.addAll(currentlyReadMessageMetaData);
+            currentBatchSize = currentlyReadMessageMetaData.size();
+        }
 
         CustomComparator orderComparator = new CustomComparator();
         Collections.sort(queueMessageMetaData, orderComparator);
@@ -148,4 +158,5 @@ public class QueueBrowserDeliveryWorker {
             return (int) (message1.getMessageID()-message2.getMessageID());
         }
     }
+
 }

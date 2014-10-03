@@ -204,9 +204,12 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             //we will not signal and client who tries to close the connection will timeout.
             //We can do this better, but leaving this as is or now.
             for (AndesMessageMetadata md : metadataList) {
-                PendingJob jobData = md.getPendingJobsTracker().get(md.getMessageID());
-                if (jobData != null) {
-                    jobData.semaphore.release();
+                Map<Long, PendingJob> pendingJobMap = md.getPendingJobsTracker();
+                if (pendingJobMap != null) {
+                    PendingJob jobData = pendingJobMap.get(md.getMessageID());
+                    if (jobData != null) {
+                        jobData.semaphore.release();
+                    }
                 }
             }
         } catch (Exception e) {
@@ -222,13 +225,111 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
     }
 
+    /**
+     * Add the given andes meta data to the given queue row in META_DATA_COLUMN_FAMILY. This can be used
+     * when inserting meta data to a different queue row than it's destination eg:- Dead Letter Queue.
+     *
+     * @param queueName The queue name to add meta data to
+     * @param metadata  The andes meta data to add
+     * @throws AndesException
+     */
     @Override
     public void addMetaDataToQueue(String queueName, AndesMessageMetadata metadata) throws AndesException {
+        String destination;
+
+        if (queueName == null) {
+            destination = metadata.getDestination();
+        } else {
+            destination = queueName;
+        }
+
+        try {
+            Insert insert = CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE, CassandraConstants.META_DATA_COLUMN_FAMILY, destination,
+                    metadata.getMessageID(), metadata.getMetadata(), false);
+
+            GenericCQLDAO.execute(CassandraConstants.KEYSPACE, insert.getQueryString());
+        } catch (CassandraDataAccessException e) {
+            String errorString = "Error writing incoming message to cassandra.";
+            log.error(errorString, e);
+            throw new AndesException(errorString, e);
+        }
 
     }
 
     @Override
     public void addMetadataToQueue(String queueName, List<AndesMessageMetadata> metadataList) throws AndesException {
+    }
+
+    /**
+     * Remove message meta from the current column family and move it to a different column family without
+     * altering the meta data.
+     *
+     * @param messageId        The message Id to move
+     * @param currentQueueName The current destination of the message
+     * @param targetQueueName  The target destination Queue name
+     * @throws AndesException
+     */
+    @Override
+    public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName) throws
+            AndesException {
+        List<AndesMessageMetadata> messageMetadataList = getMetaDataList(currentQueueName, messageId, messageId);
+
+        if (messageMetadataList == null || messageMetadataList.size() == 0) {
+            throw new AndesException("Message MetaData not found to move the message to Dead Letter Channel");
+        }
+        ArrayList<AndesRemovableMetadata> removableMetaDataList = new ArrayList<AndesRemovableMetadata>();
+        removableMetaDataList.add(new AndesRemovableMetadata(messageId, currentQueueName));
+
+        addMetaDataToQueue(targetQueueName, messageMetadataList.get(0));
+        deleteMessageMetadataFromQueue(currentQueueName, removableMetaDataList);
+    }
+
+    /**
+     * Remove the meta data from the current column family and insert the new meta in it's place in the new
+     * destination column family.
+     *
+     * @param currentQueueName The queue the Meta Data currently in
+     * @param metadataList     The updated meta data list.
+     * @throws AndesException
+     */
+    @Override
+    public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
+            AndesException {
+        try {
+            // Step 1 - Insert the new meta data
+            List<Insert> inserts = new ArrayList<Insert>();
+            for (AndesMessageMetadata metadata : metadataList) {
+                Insert insert = CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE,
+                        CassandraConstants.META_DATA_COLUMN_FAMILY, metadata.getDestination(),
+                        metadata.getMessageID(), metadata.getMetadata(), false);
+
+                inserts.add(insert);
+            }
+
+
+            long start = System.currentTimeMillis();
+            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
+
+            PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency((int) (System.currentTimeMillis() -
+                    start));
+
+            // Step 2 - Delete the old meta data when inserting new meta is complete to avoid losing messages
+            List<Statement> statements = new ArrayList<Statement>();
+            for (AndesMessageMetadata metadata : metadataList) {
+
+                Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(CassandraConstants.KEYSPACE,
+                        CassandraConstants.META_DATA_COLUMN_FAMILY, currentQueueName, metadata.getMessageID(), false);
+                statements.add(delete);
+            }
+
+            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, statements.toArray(new Statement[statements.size
+                    ()]));
+
+        } catch (Exception e) {
+            String errorString = "Error updating message meta data";
+            log.error(errorString, e);
+            throw new AndesException(errorString, e);
+        }
     }
 
     @Override
@@ -284,6 +385,13 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
     }
 
+    /**
+     * Delete a given message meta data list from the the given queueName row in META_DATA_COLUMN_FAMILY.
+     *
+     * @param queueName        queue from which metadata to be removed ignoring the destination of metadata
+     * @param messagesToRemove AndesMessageMetadata list to be removed from given queue
+     * @throws AndesException
+     */
     @Override
     public void deleteMessageMetadataFromQueue(String queueName, List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
         try {

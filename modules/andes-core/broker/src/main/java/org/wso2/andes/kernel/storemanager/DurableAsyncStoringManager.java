@@ -361,4 +361,30 @@ public class DurableAsyncStoringManager implements MessageStoreManager {
     private void addContentDeletionTask(long nanoTimeToWait, long messageID) {
         messageContentRemoverTask.put(nanoTimeToWait, messageID);
     }
+
+    /**
+     * Store a message in a different Queue without altering the meta data.
+     *
+     * @param messageId        The message Id to move
+     * @param currentQueueName The current destination of the message
+     * @param targetQueueName  The target destination Queue name
+     * @throws AndesException
+     */
+    public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName) throws
+            AndesException {
+        durableMessageStore.moveMetaDataToQueue(messageId, currentQueueName, targetQueueName);
+    }
+
+    /**
+     * Update the meta data for the given message with the given information in the AndesMetaData. Update destination
+     * and meta data bytes.
+     *
+     * @param currentQueueName The queue the Meta Data currently in
+     * @param metadataList     The updated meta data list.
+     * @throws AndesException
+     */
+    public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
+            AndesException {
+        durableMessageStore.updateMetaDataInformation(currentQueueName, metadataList);
+    }
 }
