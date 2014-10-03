@@ -30,7 +30,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * <code>QueueDeliveryWorker</code> Handles the task of polling the user queues and flushing
@@ -52,7 +51,6 @@ public class QueueDeliveryWorker {
     private long totMsgRead = 0;
     private int totalReadButUndeliveredMessages = 0;
 
-    private long lastRestTime = 0;
 
     private SequentialThreadPoolExecutor executor;
 
@@ -178,7 +176,6 @@ public class QueueDeliveryWorker {
 
         iterations = 0;
         workqueueSize = 0;
-        lastRestTime = System.currentTimeMillis();
         failureCount = 0;
         try {
             /**
@@ -339,21 +336,6 @@ public class QueueDeliveryWorker {
         }
 
         /**
-         * see if there are some messages scheduled to deliver but failed earlier and add to the read message list
-         * and sort all to the order
-         */
-        //ArrayList<AndesMessageMetadata> previouslyUndeliveredMessages = getUndeliveredMessagesOfQueue(targetQueue);
-/*        if (previouslyUndeliveredMessages != null && previouslyUndeliveredMessages.size() > 0) {
-            log.debug("TRACING >> previously undelivered messages count: " + previouslyUndeliveredMessages.size());
-            messages.addAll(previouslyUndeliveredMessages);
-            Collections.sort(messages, new Comparator<AndesMessageMetadata>() {
-                public int compare(AndesMessageMetadata m1, AndesMessageMetadata m2) {
-                    return Long.toString(m1.getMessageID()).compareTo(Long.toString(m2.getMessageID()));
-                }
-            });
-        }*/
-
-        /**
          * deliver messages to subscriptions
          */
         int sentMessageCount = 0;
@@ -412,7 +394,7 @@ public class QueueDeliveryWorker {
                             }
                             (subscription).sendMessageToSubscriber(message);
                         } else {
-                            storeUndeliveredMessagesDueToInactiveSubscriptions(message);
+                            reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
                             if (log.isDebugEnabled()) {
                                 log.debug("TRACING>> QDW- storing due to subscription vanish - message messageID:" + message.getMessageID() + " for subscription " + subscription.getSubscriptionID());
                             }
@@ -431,52 +413,14 @@ public class QueueDeliveryWorker {
         }
     }
 
-    public void storeUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message) {
+    public void reQueueUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message) {
         String queueName = message.getDestination();
-
-/*        ArrayList<AndesMessageMetadata> undeliveredMessages = undeliveredMessagesMap.get(queueName);
-        if (undeliveredMessages == null) {
-            undeliveredMessages = new ArrayList<AndesMessageMetadata>();
-            undeliveredMessages.add(message);
-            undeliveredMessagesMap.put(queueName, undeliveredMessages);
-        } else {
-            undeliveredMessages.add(message);
-        }*/
         subscriptionCursar4QueueMap.get(queueName).readButUndeliveredMessages.add(message);
     }
-
-    private ArrayList<AndesMessageMetadata> getUndeliveredMessagesOfQueue(String queueName) {
-
-        ArrayList<AndesMessageMetadata> processedButUndeliveredMessages = new ArrayList<AndesMessageMetadata>();
-
-/*        *//**
-         * get sent but not acked messages
-         *//*
-        ArrayList<AndesMessageMetadata> undeliveredMessagesOfQueue = onflightMessageTracker.getSentButNotAckedMessagesOfQueue(queueName);
-        if (undeliveredMessagesOfQueue != null && !undeliveredMessagesOfQueue.isEmpty()) {
-            processedButUndeliveredMessages.addAll(undeliveredMessagesOfQueue);
-        }*/
-
-/*        *//**
-         * get messages undelivered due to sudden subscription close
-         *//*
-        ArrayList<AndesMessageMetadata> messagesUndeliveredDueToInactiveSubscriptions = undeliveredMessagesMap.remove(queueName);
-        if (messagesUndeliveredDueToInactiveSubscriptions != null && !messagesUndeliveredDueToInactiveSubscriptions.isEmpty()) {
-            processedButUndeliveredMessages.addAll(messagesUndeliveredDueToInactiveSubscriptions);
-        }*/
-
-        return processedButUndeliveredMessages;
-    }
-
 
     public void stopFlusher() {
         running = false;
         log.debug("Shutting down the queue message flusher for the queue " + nodeQueue);
-    }
-
-    public void setWorking() {
-        log.debug("staring queue message flusher for " + nodeQueue);
-        running = true;
     }
 
     public void clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(String destinationQueueName) throws AndesException {
