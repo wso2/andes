@@ -46,9 +46,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
             }
             return slotInfo;
         } else {
-            throw new TException(
-                    "I'm not the coordinator right now. Please update the thrift server details " +
-                            "cache");
+            throw new TException("This node is not the slot coordinator right now");
         }
     }
 
@@ -57,9 +55,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
         if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
             slotManager.updateMessageID(queueName, messageId);
         } else {
-            throw new TException(
-                    "I'm not the coordinator right now. Please update the thrift server details " +
-                            "cache");
+            throw new TException("This node is not the slot coordinator right now");
         }
     }
 
@@ -72,8 +68,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
             slot.setQueueName(slotInfo.getQueueName());
             slotManager.deleteSlot(queueName, slot, nodeId);
         } else {
-            throw new TException(
-                    "I'm not the coordinator right now. Please update the thrift server details cache");
+            throw new TException("This node is not the slot coordinator right now");
         }
     }
 
@@ -82,8 +77,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
         if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
             slotManager.reAssignSlotWhenNoSubscribers(nodeId, queueName);
         } else {
-            throw new TException(
-                    "I'm not the coordinator right now. Please update the thrift server details cache");
+            throw new TException("This node is not the slot coordinator right now");
         }
     }
 
