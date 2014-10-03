@@ -470,29 +470,17 @@ public class OnflightMessageTracker {
     }
 
     /**
-     * Delete a given message with all its properties and trackings from Message store
+     * Remove all tracking information from a message moved to Dead Letter Channel.
      *
-     * @param messageId            message ID
-     * @param destinationQueueName destination queue name
+     * @param messageId message ID
      */
-    public void removeNodeQueueMessageFromStorePermanentlyAndDecrementMsgCount(long messageId,
-                                                                               String
-                                                                                       destinationQueueName) {
+    public void removeTrackingInformationForDeadMessages(long messageId) {
 
-        try {
-
-            List<AndesRemovableMetadata> removableMessages = new ArrayList<AndesRemovableMetadata>();
-            removableMessages.add(new AndesRemovableMetadata(messageId,destinationQueueName));
-            MessagingEngine.getInstance().deleteMessages(removableMessages,true);
-
-            //if it is an already sent but not acked message we will not decrement message count again
-            MsgData messageData = msgId2MsgData.get(messageId);
-            if (messageData != null) {
-                //we do following to stop trying to delete message again when acked someday
-                deliveredButNotAckedMessages.remove(messageId);
-            }
-        } catch (AndesException e) {
-            log.error("Error In Removing Message From Node Queue. ID: " + messageId);
+        //if it is an already sent but not acked message we will not decrement message count again
+        MsgData messageData = msgId2MsgData.get(messageId);
+        if (messageData != null) {
+            //we do following to stop trying to delete message again when acked someday
+            deliveredButNotAckedMessages.remove(messageId);
         }
     }
 

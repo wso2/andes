@@ -29,8 +29,10 @@ import org.wso2.andes.framing.*;
 import org.wso2.andes.framing.abstraction.ContentChunk;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.server.queue.*;
 import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
@@ -57,10 +59,6 @@ import org.wso2.andes.server.protocol.AMQConnectionModel;
 import org.wso2.andes.server.protocol.AMQProtocolEngine;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.protocol.AMQSessionModel;
-import org.wso2.andes.server.queue.AMQQueue;
-import org.wso2.andes.server.queue.BaseQueue;
-import org.wso2.andes.server.queue.IncomingMessage;
-import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.store.MessageStore;
 import org.wso2.andes.server.store.StorableMessageMetaData;
@@ -266,8 +264,9 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
     public void setPublishFrame(MessagePublishInfo info, final Exchange e) throws AMQSecurityException
     {
-        if (!getVirtualHost().getSecurityManager().authorisePublish(info.isImmediate(), info.getRoutingKey().asString(), e.getName()))
-        {
+        if (!getVirtualHost().getSecurityManager().authorisePublish(info.isImmediate(),
+                info.getRoutingKey().asString(), e.getName()) ||
+                DLCQueueUtils.isDeadLetterQueue(info.getRoutingKey().asString())) {
             throw new AMQSecurityException("Permission denied: " + e.getName());
         }
         _currentMessage = new IncomingMessage(info);
@@ -515,6 +514,14 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         // So to keep things straight we put before the call and catch all exceptions from the register and tidy up.
 
         _tag2SubscriptionMap.put(tag, subscription);
+
+        try {
+            //Will finally create a DLC queue for the domain if it has not being created before
+            DLCQueueUtils.createDLCQueue(queue.getResourceName(), getVirtualHost(),
+                    ((AMQProtocolEngine) _session).getAuthId().toString());
+        } catch (AndesException e) {
+            throw new AMQException("Error creating Dead Letter Queue.", e);
+        }
         return tag;
     }
 

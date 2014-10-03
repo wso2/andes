@@ -687,7 +687,7 @@
                 <updatePolicy>daily</updatePolicy>
             </snapshots>
             <releases>
-                <enabled>false</enabled>
+                <enabled>true</enabled>
             </releases>
         </repository>
     </repositories>

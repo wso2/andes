@@ -52,6 +52,7 @@ import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.slot.Slot;
+import org.wso2.andes.server.util.AndesUtils;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -143,6 +144,9 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
 
             synchronized (getChannel())
             {
+                // Register the mapping between andes message Id and delivery protocol message Id
+                AndesUtils.registerBrowserMessageId(msg.getMessageHeader().getMessageId(),
+                        msg.getMessage().getMessageNumber());
                 long deliveryTag = getChannel().getNextDeliveryTag();
                 sendToClient(msg, deliveryTag);
             }
@@ -337,13 +341,10 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                                         .getRoutingKey().toString();
 
                                 //move message to DLC
-                                List<AndesRemovableMetadata>  messagesToMove = new ArrayList
-                                        <AndesRemovableMetadata>();
-                                messagesToMove.add(new AndesRemovableMetadata(messageId,destinationQueue));
-                                MessagingEngine.getInstance().moveMessagesToDeadLetterChannel(messagesToMove);
+                                MessagingEngine.getInstance().moveMessageToDeadLetterChannel(messageId, destinationQueue);
 
                                 //remove tracking of the message
-                                OnflightMessageTracker.getInstance().removeNodeQueueMessageFromStorePermanentlyAndDecrementMsgCount(messageId,destinationQueue);
+                                OnflightMessageTracker.getInstance().removeTrackingInformationForDeadMessages(messageId);
                                 Slot slot = ((AMQMessage) entry.getMessage()).getSlot();
                                 OnflightMessageTracker.getInstance()
                                         .decrementMessageCountInSlotAndCheckToResend(slot, destinationQueue);

@@ -232,6 +232,23 @@ public class JDBCConstants {
                     " WHERE " + BINDING_EXCHANGE_NAME + "=? " +
                     " AND " + BINDING_QUEUE_NAME + "=?";
 
+    protected static final String PS_UPDATE_METADATA_QUEUE =
+            "UPDATE " + METADATA_TABLE + " SET " +
+                    QUEUE_ID + " = ? " +
+                    "WHERE " +
+                    MESSAGE_ID +" = ? " +
+                    "AND " + QUEUE_ID +
+                    " = ?";
+
+    protected static final String PS_UPDATE_METADATA =
+            "UPDATE " + METADATA_TABLE + " SET " +
+                    QUEUE_ID + " = ?," +
+                    METADATA + " = ?" +
+                    " WHERE " +
+                    MESSAGE_ID +" = ?" +
+                    " AND " + QUEUE_ID +
+                    " = ?";
+
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";
     protected static final String TASK_DELETING_MESSAGE_PARTS = "deleting message parts.";
@@ -281,4 +298,6 @@ public class JDBCConstants {
     protected static final String TASK_STORING_BINDING = "storing binding information. ";
     protected static final String TASK_RETRIEVING_BINDING_INFO = "retrieving binding information.";
     protected static final String TASK_DELETING_BINDING = "deleting binding information. ";
+    protected static final String TASK_UPDATING_META_DATA_QUEUE = "updating message meta data queue.";
+    protected static final String TASK_UPDATING_META_DATA = "updating message meta data.";
 }

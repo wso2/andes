@@ -453,7 +453,7 @@ public class CQLDataAccessHelper {
         try {
         	CQLQueryBuilder.CqlUpdate update = new CQLQueryBuilder.CqlUpdate(keyspace, columnFamily);
     		update.addColumnAndValue(MSG_COUNTER_COLUMN, MSG_COUNTER_COLUMN);
-    		update.addCounterColumnAndValue(MSG_COUNTER_COLUMN, -1);
+    		update.addCounterColumnAndValue(MSG_COUNTER_COLUMN, - decrementBy);
     		update.addCondition(MSG_COUNTER_ROW, rawID, WHERE_OPERATORS.EQ);
     		update.addCondition(MSG_COUNTER_QUEUE, columnName, WHERE_OPERATORS.EQ);
     		GenericCQLDAO.update(keyspace, update);
@@ -478,7 +478,7 @@ public class CQLDataAccessHelper {
     public static long getCountValue(String keyspace, String columnFamily, String cloumnName, String key)
             throws CassandraDataAccessException {
         try {
-            long count =0;
+            long count = 0;
             //sql = "select value from complex.MB_COUNTER where message_id='rocky'  ALLOW FILTERING ;";    		
     		CQLQueryBuilder.CqlSelect cqlSelect = new CQLQueryBuilder.CqlSelect(columnFamily, 0,
 					true);
@@ -805,22 +805,22 @@ public class CQLDataAccessHelper {
     /**
      * Return a message part with the given offset for the given message Id.
      *
-     * @param rowName The row key for the message part
+     * @param rowName          The row key for the message part
      * @param columnFamilyName Name of the column Family
-     * @param keyspace Cassandra KeySpace
-     * @param messageId The message Id
-     * @param offset Message part offset to be retrieved
+     * @param keyspace         Cassandra KeySpace
+     * @param messageId        The message Id
+     * @param offset           Message part offset to be retrieved
      * @return The part with the given offset
      * @throws CassandraDataAccessException
      */
     public static AndesMessagePart getMessageContent(String rowName,
-                                                            String columnFamilyName, String keyspace,
-                                                            long messageId, int offset) throws CassandraDataAccessException {
+                                                     String columnFamilyName, String keyspace,
+                                                     long messageId, int offset) throws CassandraDataAccessException {
         if (keyspace == null) {
             throw new CassandraDataAccessException("Can't access Data , no keyspace provided.");
         }
 
-        if(columnFamilyName == null || rowName == null) {
+        if (columnFamilyName == null || rowName == null) {
             throw new CassandraDataAccessException("Can't access data with queueType = " + columnFamilyName +
                     " and message part name =" + rowName);
         }
@@ -828,32 +828,32 @@ public class CQLDataAccessHelper {
         try {
             AndesMessagePart messagePart = new AndesMessagePart();
             CQLQueryBuilder.CqlSelect cqlSelect = new CQLQueryBuilder.CqlSelect(columnFamilyName, 1,
-					true);
-			cqlSelect.addColumn(MSG_VALUE);
-			cqlSelect.addColumn(MSG_KEY);
+                    true);
+            cqlSelect.addColumn(MSG_VALUE);
+            cqlSelect.addColumn(MSG_KEY);
             cqlSelect.addCondition(MSG_ROW_ID, rowName, WHERE_OPERATORS.EQ);
-			cqlSelect.addCondition(MSG_KEY, offset, WHERE_OPERATORS.EQ);
+            cqlSelect.addCondition(MSG_KEY, offset, WHERE_OPERATORS.EQ);
 
-			Select select = CQLQueryBuilder.buildSelect(cqlSelect);
-			if(log.isDebugEnabled()){
-				log.debug(" getMessageContent : "+ select.toString());
-			}
+            Select select = CQLQueryBuilder.buildSelect(cqlSelect);
+            if (log.isDebugEnabled()) {
+                log.debug(" getMessageContent : " + select.toString());
+            }
 
-			ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
-			List<Row> rows = result.all();
-			Iterator<Row> iterator = rows.iterator();
-				Row row = iterator.next();
-				byte[] value = CQLQueryBuilder.convertToByteArray(row, MSG_VALUE);
+            ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
+            List<Row> rows = result.all();
+            Iterator<Row> iterator = rows.iterator();
+            Row row = iterator.next();
+            byte[] value = CQLQueryBuilder.convertToByteArray(row, MSG_VALUE);
 
-				if(value != null && value.length > 0){
-                    messagePart.setData(value);
-                    messagePart.setMessageID(messageId);
-                    messagePart.setDataLength(value.length);
-                    messagePart.setOffSet(offset);
-				} else {
-                    throw new CassandraDataAccessException("Message part with offset " + offset + " for the message " + messageId + " was not found.");
-                }
-
+            if (value != null && value.length > 0) {
+                messagePart.setData(value);
+                messagePart.setMessageID(messageId);
+                messagePart.setDataLength(value.length);
+                messagePart.setOffSet(offset);
+            } else {
+                throw new CassandraDataAccessException("Message part with offset " + offset + " for the message " +
+                        messageId + " was not found.");
+            }
 
 
             return messagePart;
