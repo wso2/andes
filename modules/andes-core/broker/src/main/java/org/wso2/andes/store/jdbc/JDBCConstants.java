@@ -1,21 +1,19 @@
 /*
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
- *   Copyright (c) 2005-2011, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *   WSO2 Inc. licenses this file to you under the Apache License,
- *   Version 2.0 (the "License"); you may not use this file except
- *   in compliance with the License.
- *   You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing,
- *  software distributed under the License is distributed on an
- *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- *  KIND, either express or implied.  See the License for the
- *  specific language governing permissions and limitations
- *  under the License.
- *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License. and limitations under the License.
  */
 package org.wso2.andes.store.jdbc;
 
@@ -237,13 +235,13 @@ public class JDBCConstants {
     protected static final String PS_UPDATE_METADATA_QUEUE =
             "UPDATE " + METADATA_TABLE +
                     " SET " + QUEUE_ID + " = ? " +
-                    "WHERE " + MESSAGE_ID +" = ? " +
+                    "WHERE " + MESSAGE_ID + " = ? " +
                     "AND " + QUEUE_ID + " = ?";
 
     protected static final String PS_UPDATE_METADATA =
             "UPDATE " + METADATA_TABLE +
                     " SET " + QUEUE_ID + " = ?," + METADATA + " = ?" +
-                    " WHERE " + MESSAGE_ID +" = ?" +
+                    " WHERE " + MESSAGE_ID + " = ?" +
                     " AND " + QUEUE_ID + " = ?";
     /**
      * Prepared Statement to insert a new queue counter.
@@ -266,6 +264,22 @@ public class JDBCConstants {
      */
     protected static final String PS_DELETE_QUEUE_COUNTER =
             "DELETE FROM " + QUEUE_COUNTER_TABLE +
+                    " WHERE " + QUEUE_NAME + "=?";
+
+    /**
+     * Increments the queue count by a given value in a atomic db update
+     */
+    protected static final String PS_INCREMENT_QUEUE_COUNT =
+            "UPDATE " + QUEUE_COUNTER_TABLE +
+                    " SET " + QUEUE_COUNT + "=" + QUEUE_COUNT + "+? " +
+                    " WHERE " + QUEUE_NAME + "=?";
+
+    /**
+     * Decrement the queue count by a given value in a atomic db update
+     */
+    protected static final String PS_DECREMENT_QUEUE_COUNT =
+            "UPDATE " + QUEUE_COUNTER_TABLE +
+                    " SET " + QUEUE_COUNT + "=" + QUEUE_COUNT + "-? " +
                     " WHERE " + QUEUE_NAME + "=?";
 
     // Message Store related jdbc tasks executed
@@ -323,4 +337,7 @@ public class JDBCConstants {
     protected static final String TASK_CHECK_QUEUE_COUNTER_EXIST = "checking queue counter exist";
     protected static final String TASK_RETRIEVING_QUEUE_COUNT = "retrieving queue count";
     protected static final String TASK_DELETING_QUEUE_COUNTER = "deleting queue counter";
+    protected static final String TASK_INCREMENTING_QUEUE_COUNT = "incrementing queue count";
+    protected static final String TASK_DECREMENTING_QUEUE_COUNT = "decrementing queue count";
+
 }

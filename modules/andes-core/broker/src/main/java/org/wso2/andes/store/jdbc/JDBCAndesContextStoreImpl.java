@@ -1,25 +1,24 @@
 /*
-*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
-*
-*  WSO2 Inc. licenses this file to you under the Apache License,
-*  Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License. and limitations under the License.
+ */
 
 package org.wso2.andes.store.jdbc;
 
 import org.apache.log4j.Logger;
-import org.wso2.andes.configuration.Configuration;
 import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
 
@@ -397,7 +396,27 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void incrementMessageCountForQueue(String destinationQueueName, long incrementBy)
             throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
 
+        try {
+            connection = getConnection();
+            connection.setAutoCommit(false);
+
+            preparedStatement = connection.prepareStatement(JDBCConstants.PS_INCREMENT_QUEUE_COUNT);
+            preparedStatement.setLong(1, incrementBy);
+            preparedStatement.setString(2, destinationQueueName);
+            preparedStatement.executeUpdate();
+
+            connection.commit();
+        } catch (SQLException e) {
+            rollback(connection, JDBCConstants.TASK_INCREMENTING_QUEUE_COUNT);
+            throw new AndesException("Error occurred while " + JDBCConstants
+                    .TASK_INCREMENTING_QUEUE_COUNT + " queue name: " + destinationQueueName);
+        } finally {
+            close(preparedStatement, JDBCConstants.TASK_INCREMENTING_QUEUE_COUNT);
+            close(connection, JDBCConstants.TASK_INCREMENTING_QUEUE_COUNT);
+        }
     }
 
     /**
@@ -407,6 +426,27 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
     public void decrementMessageCountForQueue(String destinationQueueName, long decrementBy)
             throws AndesException {
 
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+            connection = getConnection();
+            connection.setAutoCommit(false);
+
+            preparedStatement = connection.prepareStatement(JDBCConstants.PS_DECREMENT_QUEUE_COUNT);
+            preparedStatement.setLong(1, decrementBy);
+            preparedStatement.setString(2, destinationQueueName);
+            preparedStatement.executeUpdate();
+
+            connection.commit();
+        } catch (SQLException e) {
+            rollback(connection, JDBCConstants.TASK_DECREMENTING_QUEUE_COUNT);
+            throw new AndesException("Error occurred while " + JDBCConstants
+                    .TASK_DECREMENTING_QUEUE_COUNT + " queue name: " + destinationQueueName);
+        } finally {
+            close(preparedStatement, JDBCConstants.TASK_DECREMENTING_QUEUE_COUNT);
+            close(connection, JDBCConstants.TASK_DECREMENTING_QUEUE_COUNT);
+        }
     }
 
     /**

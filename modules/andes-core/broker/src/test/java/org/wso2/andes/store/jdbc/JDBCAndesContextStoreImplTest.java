@@ -1,3 +1,21 @@
+/*
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License. and limitations under the License.
+ */
+
 package org.wso2.andes.store.jdbc;
 
 import junit.framework.Assert;
@@ -160,7 +178,7 @@ public class JDBCAndesContextStoreImplTest {
     }
 
     /**
-     * RTest remove the counter for the given queue. Add multiple queue counters to table and
+     * Test remove the counter for the given queue. Add multiple queue counters to table and
      * test for deletion of the given queue
      *
      * @throws Exception
@@ -213,6 +231,73 @@ public class JDBCAndesContextStoreImplTest {
 
     }
 
+    /**
+     * Test increment message queue count through context store method and then test the DB state
+     */
+    @Test
+    public void testIncrementMessageCountForQueue() throws Exception {
+        String queueName = "queue1";
+        long startValue = 0;
+        long incrementBy = 20;
+
+        // add counter for queue and update the data base for test
+        String insert = "INSERT INTO " + JDBCConstants.QUEUE_COUNTER_TABLE + " (" +
+                JDBCConstants.QUEUE_NAME + "," +
+                JDBCConstants.QUEUE_COUNT + ") " +
+                " VALUES ( ?,?)";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(insert);
+        preparedStatement.setString(1, queueName);
+        preparedStatement.setLong(2, startValue);
+        preparedStatement.executeUpdate();
+
+        // increment message count
+        contextStore.incrementMessageCountForQueue(queueName, incrementBy);
+
+        // test for database state
+        String select = "SELECT *  FROM " + JDBCConstants.QUEUE_COUNTER_TABLE + " WHERE " +
+                JDBCConstants.QUEUE_NAME + "=?";
+        preparedStatement = connection.prepareStatement(select);
+        preparedStatement.setString(1, queueName); // try to retrieve queueName1
+        ResultSet resultSet = preparedStatement.executeQuery();
+
+        resultSet.first();
+        Assert.assertEquals(startValue + incrementBy, resultSet.getLong(JDBCConstants.QUEUE_COUNT));
+    }
+
+    /**
+     * Test increment message queue count through context store method and then test the DB state
+     */
+    @Test
+    public void testDecrementMessageCountForQueue() throws Exception {
+        String queueName = "queue1";
+        long startValue = 50;
+        long decrementBy = 20;
+
+        // add counter for queue and update the data base for test
+        String insert = "INSERT INTO " + JDBCConstants.QUEUE_COUNTER_TABLE + " (" +
+                JDBCConstants.QUEUE_NAME + "," +
+                JDBCConstants.QUEUE_COUNT + ") " +
+                " VALUES ( ?,?)";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(insert);
+        preparedStatement.setString(1, queueName);
+        preparedStatement.setLong(2, startValue);
+        preparedStatement.executeUpdate();
+
+        // increment message count
+        contextStore.decrementMessageCountForQueue(queueName, decrementBy);
+
+        // test for database state
+        String select = "SELECT *  FROM " + JDBCConstants.QUEUE_COUNTER_TABLE + " WHERE " +
+                JDBCConstants.QUEUE_NAME + "=?";
+        preparedStatement = connection.prepareStatement(select);
+        preparedStatement.setString(1, queueName); // try to retrieve queueName1
+        ResultSet resultSet = preparedStatement.executeQuery();
+
+        resultSet.first();
+        Assert.assertEquals(startValue - decrementBy, resultSet.getLong(JDBCConstants.QUEUE_COUNT));
+    }
 
     @Test
     public void testGetAllDurableSubscriptions() throws Exception {
@@ -255,40 +340,6 @@ public class JDBCAndesContextStoreImplTest {
 
         subscriberList = subscriberMap.get(destinationIdTwo);
         Assert.assertEquals(dataTwo, subscriberList.get(0));
-    }
-
-    /**
-     * Test increment message queue count
-     */
-    @Test
-    public void testIncrementMessageCountForQueue() throws Exception {
-        String queueName = "queue1";
-        long startValue = 0;
-        long incrementBy = 20;
-
-        // add counter for queue and update the data base for test
-        String insert = "INSERT INTO " + JDBCConstants.QUEUE_COUNTER_TABLE + " (" +
-                JDBCConstants.QUEUE_NAME + "," +
-                JDBCConstants.QUEUE_COUNT + ") " +
-                " VALUES ( ?,?)";
-
-        PreparedStatement preparedStatement = connection.prepareStatement(insert);
-        preparedStatement.setString(1, queueName);
-        preparedStatement.setLong(2, startValue);
-        preparedStatement.executeUpdate();
-
-        // increment message count
-        contextStore.incrementMessageCountForQueue(queueName, incrementBy);
-
-        // test for database state
-        String select = "SELECT *  FROM " + JDBCConstants.QUEUE_COUNTER_TABLE + " WHERE " +
-                JDBCConstants.QUEUE_NAME + "=?";
-        preparedStatement = connection.prepareStatement(select);
-        preparedStatement.setString(1, queueName); // try to retrieve queueName1
-        ResultSet resultSet = preparedStatement.executeQuery();
-
-        resultSet.first();
-        Assert.assertEquals(startValue+incrementBy, resultSet.getLong(JDBCConstants.QUEUE_COUNT));
     }
 
     @Test
