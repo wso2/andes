@@ -440,24 +440,15 @@ public class OnflightMessageTracker {
                 while (iterator.hasNext()) {
                     long messageId = (Long) iterator.next();
                     if (msgId2MsgData.get(messageId) != null) {
-                        String destinationQueueName = msgId2MsgData.remove(messageId).queue;
                         sendButNotAckedMessageCount.decrementAndGet();
                         AndesMessageMetadata queueEntry = messageIdToAndesMessagesMap
                                 .remove(messageId);
-                        ArrayList<AndesMessageMetadata> undeliveredMessages =
-                                queueTosentButNotAckedMessageMap
-                                        .get(destinationQueueName);
-                        if (undeliveredMessages == null) {
-                            undeliveredMessages = new ArrayList<AndesMessageMetadata>();
-                            undeliveredMessages.add(queueEntry);
-                            queueTosentButNotAckedMessageMap
-                                    .put(destinationQueueName, undeliveredMessages);
-                            log.debug(
-                                    "TRACING>> OFMT- Added message-" + messageId + "-to delivered" +
-                                            " but not acked list");
-                        } else {
-                            undeliveredMessages.add(queueEntry);
-                        }
+
+
+                        //re-queue message to the buffer
+                        QueueDeliveryWorker.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(
+                                queueEntry);
+                        log.debug("TRACING>> OFMT- re-queued message-" + messageId + "- since delivered but not acked");
                     }
                 }
             }
@@ -482,10 +473,6 @@ public class OnflightMessageTracker {
             //we do following to stop trying to delete message again when acked someday
             deliveredButNotAckedMessages.remove(messageId);
         }
-    }
-
-    public long getSentButNotAckedMessageCount() {
-        return sendButNotAckedMessageCount.get();
     }
 
     public ArrayList<AndesMessageMetadata> getSentButNotAckedMessagesOfQueue(String queueName) {
