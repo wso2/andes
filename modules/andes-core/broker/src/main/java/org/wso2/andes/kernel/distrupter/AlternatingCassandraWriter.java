@@ -78,12 +78,20 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
         if (totalPendingEventLength > MAX_DATA_LENGTH || (endOfBatch)) {
             // Write message part list to database
             if (partList.size() > 0) {
+                if(log.isDebugEnabled()){
+                    log.debug("Number of message content sent to message store: " + partList.size
+                            ());
+                }
                 messageStoreManager.storeMessagePart(partList);
                 partList.clear();
             }
 
             // Write message meta list to cassandra
             if (metaList.size() > 0) {
+                if(log.isDebugEnabled()){
+                    log.debug("Number of message metadata sent to message store: " + partList.size
+                            ());
+                }
                 messageStoreManager.storeMetaData(metaList);
                 //record message data count
                 if (AndesContext.getInstance().isClusteringEnabled()) {

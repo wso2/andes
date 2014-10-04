@@ -240,6 +240,9 @@ public class OnflightMessageTracker {
         AndesMessageMetadata metadata = messageIdToAndesMessagesMap.get(messageId);
         QueueDeliveryWorker.QueueDeliveryInfo queueDeliveryInfo = QueueDeliveryWorker.getInstance().
                 getQueueDeliveryInfo(metadata.getDestination());
+        if(log.isDebugEnabled()){
+            log.debug("Re-Queueing message " + messageId + " to readButUndeliveredMessages map");
+        }
         queueDeliveryInfo.readButUndeliveredMessages.add(metadata);
         messageIdToAndesMessagesMap.remove(messageId);
     }

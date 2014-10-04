@@ -103,7 +103,9 @@ public class QueueDeliveryWorker {
 
         Iterator<LocalSubscription> iterator;
         //in-memory message list scheduled to be delivered
-        Set<AndesMessageMetadata> readButUndeliveredMessages = new ConcurrentSkipListSet<AndesMessageMetadata>();
+
+        Set<AndesMessageMetadata> readButUndeliveredMessages = new
+                ConcurrentSkipListSet<AndesMessageMetadata>();
 
         /**
          * Returns boolean variable saying whether this queue has room or not
@@ -127,7 +129,9 @@ public class QueueDeliveryWorker {
      * @return subscription to deliver
      * @throws AndesException
      */
-    private LocalSubscription findNextSubscriptionToSent(String queueName, Collection<LocalSubscription> subscriptions4Queue) throws AndesException {
+    private LocalSubscription findNextSubscriptionToSent(String queueName,
+                                                         Collection<LocalSubscription>
+                                                                 subscriptions4Queue) throws AndesException {
         if (subscriptions4Queue == null || subscriptions4Queue.size() == 0) {
             subscriptionCursar4QueueMap.remove(queueName);
             return null;
@@ -280,6 +284,7 @@ public class QueueDeliveryWorker {
      */
     public void sendMessagesInBuffer(String queueName) throws AndesException {
         QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(queueName);
+
         if (log.isDebugEnabled()) {
             log.debug("TRACING>> delivering read but undelivered message list with size: " +
                     queueDeliveryInfo.readButUndeliveredMessages.size());
@@ -324,7 +329,8 @@ public class QueueDeliveryWorker {
     }
 
 
-    public int sendMessagesToSubscriptions(String targetQueue, Set<AndesMessageMetadata> messages) throws Exception {
+    public int sendMessagesToSubscriptions(String targetQueue, Set<AndesMessageMetadata> messages)
+            throws Exception {
 
         /**
          * check if this queue has any subscription
@@ -395,6 +401,7 @@ public class QueueDeliveryWorker {
                             (subscription).sendMessageToSubscriber(message);
                         } else {
                             reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
+
                             if (log.isDebugEnabled()) {
                                 log.debug("TRACING>> QDW- storing due to subscription vanish - message messageID:" + message.getMessageID() + " for subscription " + subscription.getSubscriptionID());
                             }

@@ -253,10 +253,6 @@ public class ClusterManager {
         clearAllPersistedStatesOfDisappearedNode(nodeId);
         log.info("NodeID:" + this.nodeId);
         andesContextStore.storeNodeDetails(nodeId, config.getBindIpAddress());
-
-        //start all global queue workers on the node
-        //TODO commented by sajini
-        //startAllGlobalQueueWorkers();
     }
 
     private void initClusterMode() throws Exception {
