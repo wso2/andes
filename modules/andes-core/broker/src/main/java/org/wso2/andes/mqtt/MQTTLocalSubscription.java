@@ -1,64 +1,105 @@
+/*
+*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+*
+*  WSO2 Inc. licenses this file to you under the Apache License,
+*  Version 2.0 (the "License"); you may not use this file except
+*  in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/
 package org.wso2.andes.mqtt;
 
 import org.apache.commons.lang.builder.HashCodeBuilder;
-import org.dna.mqtt.wso2.AndesBridge;
+import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.BasicSubscription;
-
 import java.nio.ByteBuffer;
 
-
+/**
+ * Cluster wide subscriptions relavent per topic will be maintained through this class
+ * Per topic there will be only one subscripion just on indicate that the subcription relys on the spcific node
+ * Each time a message is published to a specific node the Andes kernal will call this subscription object
+ * The subscriber will contain a reference to the relavent bridge connection where the bridge will notify the protocol
+ * engine to inform the relavant subscriptions which are channel bound
+ */
 public class MQTTLocalSubscription extends BasicSubscription implements LocalSubscription {
-    private AndesBridge mqqtServerChannel;
+    //The reference to the bridge object
+    private AndesMQTTBridge mqqtServerChannel;
+    private static final String MQTT_TARGET_BOUND_EXCHANGE = "MQQT";
 
-
-    public MQTTLocalSubscription(String subscriptionAsStr) {
-        super(subscriptionAsStr);
+    /**
+     * The relavant subscritption will be registered
+     * @param mqttTopicSubscription the name of the topic the subscription will be bound to
+     */
+    public MQTTLocalSubscription(String mqttTopicSubscription) {
+        super(mqttTopicSubscription);
         setTargetBoundExchange();
         setIsTopic();
         setNodeInfo();
         setIsActive(true);
-
-
     }
 
-    public AndesBridge getMqqtServerChannel() {
-        return mqqtServerChannel;
-    }
-
-    public void setMqqtServerChannel(AndesBridge mqqtServerChannel) {
+    /**
+     * Will set the server channel that will maintain the connectivity between the mqtt protocol realm
+     * @param mqqtServerChannel the bridge connection that will be maintained between the protocol and andes
+     */
+    public void setMqqtServerChannel(AndesMQTTBridge mqqtServerChannel) {
         this.mqqtServerChannel = mqqtServerChannel;
     }
 
-    /*Will include the MQTT topic name*/
+    /**
+     * Will include the destination topic name the message should be given to
+     * @param dest the destination the message should be delivered to
+     */
     public void setTopic(String dest) {
         this.destination = dest;
     }
 
-    /*Will inclue a subscription id*/
+    /**
+     * Will set the unique identification for the subscription reference
+     * @param id the identity of the subscriber
+     */
     public void setSubscriptionID(String id) {
         this.subscriptionID = id;
     }
 
-    /*Will override the target bound exchange*/
+    /**
+     * Will set the target bound exchange
+     */
     public void setTargetBoundExchange() {
-        this.targetQueueBoundExchange = "MQQT";
+       this.targetQueueBoundExchange = MQTT_TARGET_BOUND_EXCHANGE;
     }
 
-    /*Will set the topic stuff*/
+    /**
+     * In MQTT all the messages will be exchanged through topics
+     * So will overide the is bound to always have the value true
+     */
     public void setIsTopic() {
         this.isBoundToTopic = true;
     }
 
-    /*Will add the node information*/
+    /**
+     * Should inform the purticuler node the subcriber is bound to, This mehod would set the node id to the current
+     */
     public void setNodeInfo() {
         this.subscribedNode = AndesUtils.getTopicNodeQueueName();
     }
 
-    /*Provide the external subscriptions*/
+    /**
+     * Will indicate whether the given request is to active the subscription or deactivate it
+     * @param isActive the connection status
+     */
     public void setIsActive(boolean isActive) {
         this.hasExternalSubscriptions = isActive;
     }
@@ -75,7 +116,8 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
         ByteBuffer message = MQTTUtils.getContentFromMetaInformation(messageMetadata);
         //Will publish the message to the respective queue
         if (mqqtServerChannel != null) {
-            mqqtServerChannel.sendMessageToLocalProcessorForSubscription(messageMetadata.getDestination(), "MOST_ONE", message, false, messageMetadata.getMessageID());
+            //TODO QOS level should be persisted and correlated in the Andes Bridge itself
+            mqqtServerChannel.notifySubscriptions(messageMetadata.getDestination(), 0, message, false, messageMetadata.getMessageID());
         }
     }
 
