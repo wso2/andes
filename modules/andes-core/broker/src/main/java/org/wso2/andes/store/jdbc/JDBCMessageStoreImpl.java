@@ -1,21 +1,19 @@
 /*
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
- *   Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *   WSO2 Inc. licenses this file to you under the Apache License,
- *   Version 2.0 (the "License"); you may not use this file except
- *   in compliance with the License.
- *   You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing,
- *  software distributed under the License is distributed on an
- *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- *  KIND, either express or implied.  See the License for the
- *  specific language governing permissions and limitations
- *  under the License.
- *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License. and limitations under the License.
  */
 package org.wso2.andes.store.jdbc;
 
@@ -284,8 +282,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
             throw new AndesException(
-                    "Error occurred while inserting message metadata list to queue " + queueName,
-                    e);
+                    "Error occurred while inserting message metadata list to queue " + queueName, e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
             close(connection, JDBCConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
@@ -293,16 +290,12 @@ public class JDBCMessageStoreImpl implements MessageStore {
     }
 
     /**
-     * Update the destination queue of a message meta data to point to a different destination.
-     *
-     * @param messageId        The message Id to move
-     * @param currentQueueName The current destination of the message
-     * @param targetQueueName  The target destination Queue name
-     * @throws org.wso2.andes.kernel.AndesException
+     * {@inheritDoc}
      */
     @Override
-    public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName) throws
-            AndesException {
+    public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName)
+            throws AndesException {
+
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         try {
@@ -321,8 +314,8 @@ public class JDBCMessageStoreImpl implements MessageStore {
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_UPDATING_META_DATA_QUEUE + targetQueueName);
             throw new AndesException(
-                    "Error occurred while updating message metadata to destination queue " + targetQueueName,
-                    e);
+                    "Error occurred while updating message metadata to destination queue "
+                            + targetQueueName, e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_UPDATING_META_DATA_QUEUE + targetQueueName);
             close(connection, JDBCConstants.TASK_UPDATING_META_DATA_QUEUE + targetQueueName);
@@ -330,11 +323,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
     }
 
     /**
-     * Update message meta data information from the given AndesMetaData using the message Id in the given meta data.
-     *
-     * @param currentQueueName The queue the Meta Data currently in
-     * @param metadataList     The updated meta data list.
-     * @throws AndesException
+     * {@inheritDoc}
      */
     @Override
     public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
@@ -361,9 +350,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             connection.commit();
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_UPDATING_META_DATA);
-            throw new AndesException(
-                    "Error occurred while updating message metadata list.",
-                    e);
+            throw new AndesException("Error occurred while updating message metadata list.", e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_UPDATING_META_DATA);
             close(connection, JDBCConstants.TASK_UPDATING_META_DATA);

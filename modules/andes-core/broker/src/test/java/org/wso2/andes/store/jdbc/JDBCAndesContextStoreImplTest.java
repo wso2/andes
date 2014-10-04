@@ -1,3 +1,21 @@
+/*
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License. and limitations under the License.
+ */
+
 package org.wso2.andes.store.jdbc;
 
 import junit.framework.Assert;
@@ -83,6 +101,202 @@ public class JDBCAndesContextStoreImplTest {
         Assert.assertEquals(destIdentifier, resultSet.getString(JDBCConstants.DESTINATION_IDENTIFIER));
         Assert.assertEquals(subEncodedAsStr, resultSet.getString(JDBCConstants.DURABLE_SUB_DATA));
 
+    }
+
+    /**
+     * Test whether the the queue counter is added with the count of 0
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testAddQueueCounter() throws Exception {
+
+        String queueName = "queue1";
+        int count = 0;
+        contextStore.addMessageCounterForQueue(queueName);
+
+        String select = "SELECT *  FROM " + JDBCConstants.QUEUE_COUNTER_TABLE + " WHERE " +
+                JDBCConstants.QUEUE_NAME + "=?";
+        PreparedStatement preparedStatement = connection.prepareStatement(select);
+        preparedStatement.setString(1, queueName);
+        ResultSet resultSet = preparedStatement.executeQuery();
+
+        Assert.assertTrue("Entry should exist on DB for queue counter", resultSet.first());
+        Assert.assertEquals(queueName, resultSet.getString(JDBCConstants.QUEUE_NAME));
+        Assert.assertEquals(count, resultSet.getInt(JDBCConstants.QUEUE_COUNT));
+    }
+
+    /**
+     * Test with two counter creation calls. This should only create the counter once and for the
+     * second call should do nothing
+     */
+    @Test
+    public void testAddCounterTwiceWithSameQueueName() throws Exception {
+
+        String queueName = "queue1";
+        int count = 0;
+        // try to add twice
+        contextStore.addMessageCounterForQueue(queueName);
+        contextStore.addMessageCounterForQueue(queueName);
+
+        String select = "SELECT *  FROM " + JDBCConstants.QUEUE_COUNTER_TABLE + " WHERE " +
+                JDBCConstants.QUEUE_NAME + "=?";
+        PreparedStatement preparedStatement = connection.prepareStatement(select);
+        preparedStatement.setString(1, queueName);
+        ResultSet resultSet = preparedStatement.executeQuery();
+
+        Assert.assertTrue("Entry should exist on DB for queue counter", resultSet.first());
+        Assert.assertEquals(queueName, resultSet.getString(JDBCConstants.QUEUE_NAME));
+        Assert.assertEquals(count, resultSet.getInt(JDBCConstants.QUEUE_COUNT));
+        Assert.assertFalse("Only one entry should exist on table", resultSet.next());
+    }
+
+    /**
+     * Test message count for queue using the queue counter
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testGetMessageCountForQueue() throws Exception {
+
+        String queueName = "queue1";
+        int count = 20;
+
+        // add counter for queue and update the data base for test
+        String insert = "INSERT INTO " + JDBCConstants.QUEUE_COUNTER_TABLE + " (" +
+                JDBCConstants.QUEUE_NAME + "," +
+                JDBCConstants.QUEUE_COUNT + ") " +
+                " VALUES ( ?,?)";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(insert);
+        preparedStatement.setString(1, queueName);
+        preparedStatement.setLong(2, count);
+        preparedStatement.executeUpdate();
+
+        // test for correct queue count
+        Assert.assertEquals(count, contextStore.getMessageCountForQueue(queueName));
+    }
+
+    /**
+     * Test remove the counter for the given queue. Add multiple queue counters to table and
+     * test for deletion of the given queue
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testRemoveMessageCounterForQueue() throws Exception {
+
+        String queueName1 = "queue1";
+        String queueName2 = "queue2";
+        int count = 20;
+
+        // add counter for queue and update the data base for test
+        String insert = "INSERT INTO " + JDBCConstants.QUEUE_COUNTER_TABLE + " (" +
+                JDBCConstants.QUEUE_NAME + "," +
+                JDBCConstants.QUEUE_COUNT + ") " +
+                " VALUES ( ?,?)";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(insert);
+        preparedStatement.setString(1, queueName1);
+        preparedStatement.setLong(2, count);
+        preparedStatement.addBatch();
+
+        preparedStatement.setString(1, queueName2);
+        preparedStatement.setLong(2, count);
+        preparedStatement.addBatch();
+        preparedStatement.executeBatch();
+
+
+        // delete queueName1
+        contextStore.removeMessageCounterForQueue(queueName1);
+
+        // test for database state
+        String select = "SELECT *  FROM " + JDBCConstants.QUEUE_COUNTER_TABLE + " WHERE " +
+                JDBCConstants.QUEUE_NAME + "=?";
+        preparedStatement = connection.prepareStatement(select);
+        preparedStatement.setString(1, queueName1); // try to retrieve queueName1
+        ResultSet resultSet = preparedStatement.executeQuery();
+
+        // test whether deleted queueName1 still exist in DB
+        Assert.assertFalse("Error: Entry available for already deleted counter", resultSet.first());
+
+        preparedStatement = connection.prepareStatement(select);
+        preparedStatement.setString(1, queueName2); // try to retrieve queueName2
+        resultSet = preparedStatement.executeQuery();
+
+        // test for queueName2 existence
+        Assert.assertTrue("Entry should exist in DB for not deleted counter", resultSet.first());
+        Assert.assertEquals(queueName2, resultSet.getString(JDBCConstants.QUEUE_NAME));
+        Assert.assertEquals(count, resultSet.getLong(JDBCConstants.QUEUE_COUNT));
+
+    }
+
+    /**
+     * Test increment message queue count through context store method and then test the DB state
+     */
+    @Test
+    public void testIncrementMessageCountForQueue() throws Exception {
+        String queueName = "queue1";
+        long startValue = 0;
+        long incrementBy = 20;
+
+        // add counter for queue and update the data base for test
+        String insert = "INSERT INTO " + JDBCConstants.QUEUE_COUNTER_TABLE + " (" +
+                JDBCConstants.QUEUE_NAME + "," +
+                JDBCConstants.QUEUE_COUNT + ") " +
+                " VALUES ( ?,?)";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(insert);
+        preparedStatement.setString(1, queueName);
+        preparedStatement.setLong(2, startValue);
+        preparedStatement.executeUpdate();
+
+        // increment message count
+        contextStore.incrementMessageCountForQueue(queueName, incrementBy);
+
+        // test for database state
+        String select = "SELECT *  FROM " + JDBCConstants.QUEUE_COUNTER_TABLE + " WHERE " +
+                JDBCConstants.QUEUE_NAME + "=?";
+        preparedStatement = connection.prepareStatement(select);
+        preparedStatement.setString(1, queueName); // try to retrieve queueName1
+        ResultSet resultSet = preparedStatement.executeQuery();
+
+        resultSet.first();
+        Assert.assertEquals(startValue + incrementBy, resultSet.getLong(JDBCConstants.QUEUE_COUNT));
+    }
+
+    /**
+     * Test increment message queue count through context store method and then test the DB state
+     */
+    @Test
+    public void testDecrementMessageCountForQueue() throws Exception {
+        String queueName = "queue1";
+        long startValue = 50;
+        long decrementBy = 20;
+
+        // add counter for queue and update the data base for test
+        String insert = "INSERT INTO " + JDBCConstants.QUEUE_COUNTER_TABLE + " (" +
+                JDBCConstants.QUEUE_NAME + "," +
+                JDBCConstants.QUEUE_COUNT + ") " +
+                " VALUES ( ?,?)";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(insert);
+        preparedStatement.setString(1, queueName);
+        preparedStatement.setLong(2, startValue);
+        preparedStatement.executeUpdate();
+
+        // increment message count
+        contextStore.decrementMessageCountForQueue(queueName, decrementBy);
+
+        // test for database state
+        String select = "SELECT *  FROM " + JDBCConstants.QUEUE_COUNTER_TABLE + " WHERE " +
+                JDBCConstants.QUEUE_NAME + "=?";
+        preparedStatement = connection.prepareStatement(select);
+        preparedStatement.setString(1, queueName); // try to retrieve queueName1
+        ResultSet resultSet = preparedStatement.executeQuery();
+
+        resultSet.first();
+        Assert.assertEquals(startValue - decrementBy, resultSet.getLong(JDBCConstants.QUEUE_COUNT));
     }
 
     @Test
@@ -660,7 +874,14 @@ public class JDBCAndesContextStoreImplTest {
                         "binding_info VARCHAR NOT NULL," +
                         "FOREIGN KEY (exchange_name) REFERENCES exchanges (name)," +
                         "FOREIGN KEY (queue_name) REFERENCES queue_info (name)" +
+                        ");",
+
+                "CREATE TABLE IF NOT EXISTS " + JDBCConstants.QUEUE_COUNTER_TABLE + " (" +
+                        JDBCConstants.QUEUE_NAME + " VARCHAR NOT NULL," +
+                        JDBCConstants.QUEUE_COUNT + " BIGINT, " +
+                        " PRIMARY KEY (" + JDBCConstants.QUEUE_NAME + ") " +
                         ");"
+
         };
         Statement stmt = connection.createStatement();
         for (String q : queries) {
@@ -676,7 +897,8 @@ public class JDBCAndesContextStoreImplTest {
                 "DROP TABLE node_info;",
                 "DROP TABLE exchanges",
                 "DROP TABLE queue_info",
-                "DROP TABLE bindings"
+                "DROP TABLE bindings",
+                "DROP TABLE " + JDBCConstants.QUEUE_COUNTER_TABLE
         };
         Statement stmt = connection.createStatement();
         for (String q : queries) {

@@ -1,20 +1,20 @@
 /*
-*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
-*
-*  WSO2 Inc. licenses this file to you under the Apache License,
-*  Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License. and limitations under the License.
+ */
 
 package org.wso2.andes.store.jdbc;
 
@@ -268,10 +268,66 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public void addMessageCounterForQueue(String destinationQueueName) throws AndesException {
-        // todo: no counters needed in JDBC.
-        // NOTE: In a case of a JDBC context store and a cassandra message store how to update
-        // message count for queues?
 
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        try {
+            connection = getConnection();
+
+            if (!isCounter4QueueExist(connection, destinationQueueName)) {
+                // if queue counter does not exist
+                connection.setAutoCommit(false);
+
+                preparedStatement = connection.prepareStatement(JDBCConstants
+                        .PS_INSERT_QUEUE_COUNTER);
+
+                preparedStatement.setString(1, destinationQueueName);
+                preparedStatement.setLong(2, 0); // initial count is set to zero for parameter two
+                preparedStatement.executeUpdate();
+                connection.commit();
+            } else {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("counter for queue: " + destinationQueueName + " already exists.");
+                }
+            }
+
+        } catch (SQLException e) {
+            rollback(connection, JDBCConstants.TASK_ADDING_QUEUE_COUNTER);
+            throw new AndesException("Error occurred while " + JDBCConstants
+                    .TASK_ADDING_QUEUE_COUNTER);
+        } finally {
+            close(preparedStatement, JDBCConstants.TASK_ADDING_QUEUE_COUNTER);
+            close(connection, JDBCConstants.TASK_ADDING_QUEUE_COUNTER);
+        }
+    }
+
+    /**
+     * Check whether the queue counter already exists. Provided connection is not closed
+     *
+     * @param connection SQL Connection
+     * @param queueName  queue name
+     * @return returns true if the queue counter exists
+     * @throws AndesException
+     */
+    private boolean isCounter4QueueExist(Connection connection,
+                                         String queueName) throws AndesException {
+
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        try {
+            // check if queue already exist
+            preparedStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_QUEUE_COUNT);
+            preparedStatement.setString(1, queueName);
+            resultSet = preparedStatement.executeQuery();
+
+            return resultSet.first();
+        } catch (SQLException e) {
+            throw new AndesException("Error occurred while " + JDBCConstants
+                    .TASK_ADDING_QUEUE_COUNTER);
+        } finally {
+            close(resultSet, JDBCConstants.TASK_CHECK_QUEUE_COUNTER_EXIST);
+            close(preparedStatement, JDBCConstants.TASK_CHECK_QUEUE_COUNTER_EXIST);
+        }
     }
 
     /**
@@ -279,10 +335,31 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public long getMessageCountForQueue(String destinationQueueName) throws AndesException {
-        // todo: no counters needed in JDBC
-        // NOTE: In a case of a JDBC context store and a cassandra message store how to update
-        // message count for queues? Separate call for each count update?
-        return 0;
+
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_QUEUE_COUNT);
+            preparedStatement.setString(1, destinationQueueName);
+
+            resultSet = preparedStatement.executeQuery();
+
+            long count = 0;
+            if (resultSet.first()) {
+                count = resultSet.getLong(JDBCConstants.QUEUE_COUNT);
+            }
+            return count;
+        } catch (SQLException e) {
+            throw new AndesException("Error occurred while " + JDBCConstants
+                    .TASK_RETRIEVING_QUEUE_COUNT);
+        } finally {
+            close(resultSet, JDBCConstants.TASK_RETRIEVING_QUEUE_COUNT);
+            close(preparedStatement, JDBCConstants.TASK_RETRIEVING_QUEUE_COUNT);
+            close(connection, JDBCConstants.TASK_RETRIEVING_QUEUE_COUNT);
+        }
     }
 
     /**
@@ -290,9 +367,27 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public void removeMessageCounterForQueue(String destinationQueueName) throws AndesException {
-        // todo: no counters needed in JDBC
-        // NOTE: In a case of a JDBC context store and a cassandra message store how to update
-        // message count for queues?
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+            connection = getConnection();
+            connection.setAutoCommit(false);
+
+            preparedStatement = connection.prepareStatement(JDBCConstants.PS_DELETE_QUEUE_COUNTER);
+            preparedStatement.setString(1, destinationQueueName);
+            preparedStatement.executeUpdate();
+
+            connection.commit();
+
+        } catch (SQLException e) {
+            rollback(connection, JDBCConstants.TASK_DELETING_QUEUE_COUNTER);
+            throw new AndesException("Error occurred while " + JDBCConstants
+                    .TASK_DELETING_QUEUE_COUNTER + " queue: " + destinationQueueName);
+        } finally {
+            close(preparedStatement, JDBCConstants.TASK_DELETING_QUEUE_COUNTER);
+            close(connection, JDBCConstants.TASK_DELETING_QUEUE_COUNTER);
+        }
     }
 
     /**
@@ -301,7 +396,27 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void incrementMessageCountForQueue(String destinationQueueName, long incrementBy)
             throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
 
+        try {
+            connection = getConnection();
+            connection.setAutoCommit(false);
+
+            preparedStatement = connection.prepareStatement(JDBCConstants.PS_INCREMENT_QUEUE_COUNT);
+            preparedStatement.setLong(1, incrementBy);
+            preparedStatement.setString(2, destinationQueueName);
+            preparedStatement.executeUpdate();
+
+            connection.commit();
+        } catch (SQLException e) {
+            rollback(connection, JDBCConstants.TASK_INCREMENTING_QUEUE_COUNT);
+            throw new AndesException("Error occurred while " + JDBCConstants
+                    .TASK_INCREMENTING_QUEUE_COUNT + " queue name: " + destinationQueueName);
+        } finally {
+            close(preparedStatement, JDBCConstants.TASK_INCREMENTING_QUEUE_COUNT);
+            close(connection, JDBCConstants.TASK_INCREMENTING_QUEUE_COUNT);
+        }
     }
 
     /**
@@ -311,6 +426,27 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
     public void decrementMessageCountForQueue(String destinationQueueName, long decrementBy)
             throws AndesException {
 
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+            connection = getConnection();
+            connection.setAutoCommit(false);
+
+            preparedStatement = connection.prepareStatement(JDBCConstants.PS_DECREMENT_QUEUE_COUNT);
+            preparedStatement.setLong(1, decrementBy);
+            preparedStatement.setString(2, destinationQueueName);
+            preparedStatement.executeUpdate();
+
+            connection.commit();
+        } catch (SQLException e) {
+            rollback(connection, JDBCConstants.TASK_DECREMENTING_QUEUE_COUNT);
+            throw new AndesException("Error occurred while " + JDBCConstants
+                    .TASK_DECREMENTING_QUEUE_COUNT + " queue name: " + destinationQueueName);
+        } finally {
+            close(preparedStatement, JDBCConstants.TASK_DECREMENTING_QUEUE_COUNT);
+            close(connection, JDBCConstants.TASK_DECREMENTING_QUEUE_COUNT);
+        }
     }
 
     /**

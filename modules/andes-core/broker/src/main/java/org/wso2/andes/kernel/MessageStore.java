@@ -22,6 +22,10 @@ import org.wso2.andes.configuration.ConfigurationProperties;
 
 import java.util.List;
 
+/**
+ * Message meta data and content storing related data base types specific logic is abstracted out
+ * using this interface.
+ */
 public interface MessageStore {
 
     public DurableStoreConnection initializeMessageStore(ConfigurationProperties
@@ -31,8 +35,7 @@ public interface MessageStore {
     /**
      * store a message content chunk set
      *
-     * @param partList
-     *         message content chunk list
+     * @param partList message content chunk list
      * @throws AndesException
      */
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException;
@@ -40,8 +43,7 @@ public interface MessageStore {
     /**
      * delete message contents of messages from store
      *
-     * @param messageIdList
-     *         ids of messages
+     * @param messageIdList ids of messages
      * @throws AndesException
      */
     public void deleteMessageParts(List<Long> messageIdList) throws AndesException;
@@ -49,10 +51,8 @@ public interface MessageStore {
     /**
      * read content chunk from store
      *
-     * @param messageId
-     *         id of the message chunk belongs
-     * @param offsetValue
-     *         chunk offset
+     * @param messageId id of the message chunk belongs
+     * @param offsetValue chunk offset
      * @return message content part
      * @throws AndesException
      */
@@ -61,8 +61,7 @@ public interface MessageStore {
     /**
      * store mata data of messages
      *
-     * @param metadataList
-     *         metadata list to store
+     * @param metadataList metadata list to store
      * @throws AndesException
      */
     public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException;
@@ -70,8 +69,7 @@ public interface MessageStore {
     /**
      * store metadata of a single message
      *
-     * @param metadata
-     *         metadata to store
+     * @param metadata metadata to store
      * @throws AndesException
      */
     public void addMetaData(AndesMessageMetadata metadata) throws AndesException;
@@ -79,10 +77,8 @@ public interface MessageStore {
     /**
      * store metadata specifically under a queue
      *
-     * @param queueName
-     *         name of the queue to store metadata
-     * @param metadata
-     *         metadata to store
+     * @param queueName name of the queue to store metadata
+     * @param metadata metadata to store
      * @throws AndesException
      */
     public void addMetaDataToQueue(final String queueName, AndesMessageMetadata metadata)
@@ -91,10 +87,8 @@ public interface MessageStore {
     /**
      * store metadata list specifically under a queue
      *
-     * @param queueName
-     *         name of the queue to store metadata
-     * @param metadata
-     *         metadata list to store
+     * @param queueName name of the queue to store metadata
+     * @param metadata metadata list to store
      * @throws AndesException
      */
     public void addMetadataToQueue(final String queueName, List<AndesMessageMetadata> metadata)
@@ -125,8 +119,7 @@ public interface MessageStore {
     /**
      * read metadata from store
      *
-     * @param messageId
-     *         id of the message
+     * @param messageId id of the message
      * @return metadata of the message
      * @throws AndesException
      */
@@ -135,12 +128,9 @@ public interface MessageStore {
     /**
      * read a metadata list from store specifying a message id range
      *
-     * @param queueName
-     *         name of the queue
-     * @param firstMsgId
-     *         first id of the range
-     * @param lastMsgID
-     *         last id of the range
+     * @param queueName name of the queue
+     * @param firstMsgId first id of the range
+     * @param lastMsgID last id of the range
      * @return list of metadata
      * @throws AndesException
      */
@@ -150,12 +140,9 @@ public interface MessageStore {
     /**
      * read  a metadata list from store specifying a starting message id and a count
      *
-     * @param queueName
-     *         name of the queue
-     * @param firstMsgId
-     *         first id
-     * @param count
-     *         how many messages to read
+     * @param queueName name of the queue
+     * @param firstMsgId first id
+     * @param count how many messages to read
      * @return list of metadata
      * @throws AndesException
      */
@@ -166,10 +153,8 @@ public interface MessageStore {
     /**
      * delete message metadata of messages for a queue
      *
-     * @param queueName
-     *         name of the queue
-     * @param messagesToRemove
-     *         messages to remove
+     * @param queueName name of the queue
+     * @param messagesToRemove messages to remove
      * @throws AndesException
      */
     public void deleteMessageMetadataFromQueue(final String queueName,
@@ -179,8 +164,7 @@ public interface MessageStore {
     /**
      * get expired messages from store
      *
-     * @param limit
-     *         max num of messages to read
+     * @param limit max num of messages to read
      * @return AndesRemovableMetadata
      * @throws AndesException
      */
@@ -189,8 +173,7 @@ public interface MessageStore {
     /**
      * delete messages from expiry queue
      *
-     * @param messagesToRemove
-     *         messages to remove
+     * @param messagesToRemove messages to remove
      * @throws AndesException
      */
     public void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException;
@@ -198,14 +181,10 @@ public interface MessageStore {
     /**
      * add messages to expiry queue
      *
-     * @param messageId
-     *         id of the message to add
-     * @param expirationTime
-     *         expiration time
-     * @param isMessageForTopic
-     *         is message addressed to topic
-     * @param destination
-     *         destination message is addressed to
+     * @param messageId id of the message to add
+     * @param expirationTime expiration time
+     * @param isMessageForTopic is message addressed to topic
+     * @param destination destination message is addressed to
      * @throws AndesException
      */
     public void addMessageToExpiryQueue(Long messageId, Long expirationTime,
