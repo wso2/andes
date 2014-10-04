@@ -184,7 +184,9 @@ public class SlotDeliveryWorker extends Thread {
                         } else {
                                 /*if there are messages to be sent in the message
                                             buffer in QueueDeliveryWorker send them */
-                            log.debug("The queue" + queueName + " has no room. Thus sending from buffer.");
+                            if (log.isDebugEnabled()) {
+                                log.debug("The queue" + queueName + " has no room. Thus sending from buffer.");
+                            }
                             sendFromMessageBuffer(queueName);
                         }
                     }
