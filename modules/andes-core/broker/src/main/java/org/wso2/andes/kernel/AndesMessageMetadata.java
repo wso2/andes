@@ -20,6 +20,7 @@ import java.util.Map;
 
 public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 
+
     long messageID;
     byte[] metadata;
     long expirationTime;
