@@ -7,13 +7,15 @@ import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Map;
 
+/**
+ * AndesContext is used to pass instances created and configurations read through component level
+ * to Andes. A place holder class.
+ */
 public class AndesContext {
     private SubscriptionStore subscriptionStore;
     private AndesContextStore andesContextStore;
     private VirtualHostsConfiguration virtualHostsConfiguration;
 	private Map<String, AndesSubscription> dataSenderMap;
-    private HazelcastInstance hazelcastInstance;
-    private ClusteringAgent agent;
     private ClusteringAgent clusteringAgent;
     private boolean isClusteringEnabled;
     private AMQPConstructStore AMQPConstructStore;

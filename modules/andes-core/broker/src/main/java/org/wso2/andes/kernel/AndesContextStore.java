@@ -23,6 +23,10 @@ import org.wso2.andes.configuration.ConfigurationProperties;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AndesContextStore is an abstraction of underlying data base to store information related to
+ * exchanges, queues, bindings, durable subscriptions and queue message counts.
+ */
 public interface AndesContextStore {
 
     /**
@@ -81,7 +85,10 @@ public interface AndesContextStore {
     public void removeNodeData(String nodeID) throws AndesException;
 
     /**
-     * add message counting entry for queue
+     * add message counting entry for queue. queue count is initialised to zero. The counter for
+     * created queue can then be incremented and decremented.
+     * @see this.removeMessageCounterForQueue this.incrementMessageCountForQueue,
+     * this.decrementMessageCountForQueue
      *
      * @param destinationQueueName name of queue
      */
@@ -105,7 +112,7 @@ public interface AndesContextStore {
 
 
     /**
-     * increment message counter for a queue
+     * increment message counter for a queue by a given incrementBy value
      * @param destinationQueueName name of the queue
      * @param incrementBy  increment counter by
      * @throws AndesException

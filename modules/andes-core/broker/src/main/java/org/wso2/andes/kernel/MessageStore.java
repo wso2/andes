@@ -28,6 +28,12 @@ import java.util.List;
  */
 public interface MessageStore {
 
+    /**
+     * Initialise the MessageStore and returns the DurableStoreConnection used by store
+     * @param connectionProperties ConfigurationProperties to be used to create the connection
+     * @return DurableStoreConnection object created to make the connection to store
+     * @throws AndesException
+     */
     public DurableStoreConnection initializeMessageStore(ConfigurationProperties
                                                                  connectionProperties)
             throws AndesException;

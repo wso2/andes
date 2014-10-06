@@ -31,7 +31,6 @@ import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.wso2.andes.server.information.management.QueueManagementInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
 import org.wso2.andes.server.slot.thrift.MBThriftServer;
-import org.wso2.andes.server.slot.thrift.SlotManagementServiceImpl;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 import org.wso2.andes.subscription.SubscriptionStore;
@@ -40,6 +39,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Andes kernel startup/shutdown related work is done through this class.
+ */
 public class AndesKernelBoot {
     private static Log log = LogFactory.getLog(AndesKernelBoot.class);
     private static Configuration storeConfiguration;
@@ -89,8 +91,7 @@ public class AndesKernelBoot {
     /**
      * load configurations to andes kernel
      *
-     * @param configuration
-     *         configuration to load
+     * @param configuration configuration to load
      */
     public static void loadConfigurations(ClusterConfiguration configuration) {
         clusterConfiguration = configuration;
@@ -99,10 +100,8 @@ public class AndesKernelBoot {
     /**
      * start all andes stores message store/context store and AMQP construct store
      *
-     * @param configuration
-     *         store configurations
-     * @param virtualHost
-     *         virtual host to relate
+     * @param configuration store configurations
+     * @param virtualHost virtual host to relate
      * @throws Exception
      */
     public static void startAndesStores(Configuration configuration, VirtualHost virtualHost)
@@ -138,7 +137,6 @@ public class AndesKernelBoot {
         AndesContext.getInstance().setAMQPConstructStore(amqpConstructStore);
 
         // create a message store and initialise messaging engine
-        DurableStoreConnection durableStoreConnection;
         String messageStoreClassName = virtualHostsConfiguration.getMessageStoreClassName();
         Class messageStoreClass = Class.forName(messageStoreClassName);
         Object messageStoreInstance = messageStoreClass.newInstance();
