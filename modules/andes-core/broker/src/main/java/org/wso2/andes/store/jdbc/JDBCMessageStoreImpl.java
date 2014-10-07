@@ -217,8 +217,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             }
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_ADDING_METADATA);
-            throw new AndesException("Error occurred while inserting message metadata to queue ",
-                    e);
+            throw new AndesException("Error occurred while inserting message metadata to queue ", e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_ADDING_METADATA);
             close(connection, JDBCConstants.TASK_ADDING_METADATA);
@@ -473,10 +472,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             }
         } catch (SQLException e) {
             throw new AndesException("Error occurred while retrieving messages between msg id "
-                    + firstMsgId + " and " + lastMsgID + " from queue " +
-                    queueName,
-
-                    e);
+                    + firstMsgId + " and " + lastMsgID + " from queue " + queueName, e);
         } finally {
             String task = JDBCConstants.TASK_RETRIEVING_METADATA_RANGE_FROM_QUEUE + queueName;
             close(resultSet, task);
@@ -558,9 +554,8 @@ public class JDBCMessageStoreImpl implements MessageStore {
             connection.commit();
 
             if (logger.isDebugEnabled()) {
-                logger.debug("Metadata removed. " + messagesToRemove
-                        .size() + " metadata from destination "
-                        + queueName);
+                logger.debug("Metadata removed. " + messagesToRemove.size() +
+                        " metadata from destination " + queueName);
             }
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_DELETING_METADATA_FROM_QUEUE + queueName);
@@ -722,7 +717,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             }
         } catch (SQLException e) {
             logger.error("Error occurred while retrieving destination queue id " +
-                    "for destination queue " + destinationQueueName);
+                    "for destination queue " + destinationQueueName, e);
             throw e;
         } finally {
             String task = JDBCConstants.TASK_RETRIEVING_QUEUE_ID + destinationQueueName;
@@ -802,7 +797,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             try {
                 connection.close();
             } catch (SQLException e) {
-                logger.error("Failed to close connection after " + task);
+                logger.error("Failed to close connection after " + task, e);
             }
         }
     }
@@ -817,8 +812,8 @@ public class JDBCMessageStoreImpl implements MessageStore {
         if (connection != null) {
             try {
                 connection.rollback();
-            } catch (SQLException e1) {
-                logger.warn("Rollback failed on " + task);
+            } catch (SQLException e) {
+                logger.warn("Rollback failed on " + task, e);
             }
         }
     }
@@ -834,7 +829,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             try {
                 preparedStatement.close();
             } catch (SQLException e) {
-                logger.error("Closing prepared statement failed after " + task);
+                logger.error("Closing prepared statement failed after " + task, e);
             }
         }
     }
@@ -850,15 +845,18 @@ public class JDBCMessageStoreImpl implements MessageStore {
             try {
                 resultSet.close();
             } catch (SQLException e) {
-                logger.error("Closing result set failed after " + task);
+                logger.error("Closing result set failed after " + task, e);
             }
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void addMessageToExpiryQueue(Long messageId, Long expirationTime,
                                         boolean isMessageForTopic, String destination)
             throws AndesException {
-
+        // todo: need to be implemented with changes done to topic messages.
     }
 }

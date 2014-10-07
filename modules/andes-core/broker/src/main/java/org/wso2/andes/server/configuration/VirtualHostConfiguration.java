@@ -130,7 +130,7 @@ public class VirtualHostConfiguration extends ConfigurationPlugin {
         } else {
             try {
                 return new QueueConfiguration(queueName, this);
-            } catch (ConfigurationException e) {
+            } catch (ConfigurationException ignored) {
                 // The configuration is empty so there can't be an error.
                 return null;
             }
@@ -210,7 +210,7 @@ public class VirtualHostConfiguration extends ConfigurationPlugin {
             queueConfig.setConfiguration("virtualhosts.virtualhost.queues", mungedConf);
         } catch (ConfigurationException e) {
             // This will not occur as queues only require a name.
-            _logger.error("QueueConfiguration requirements have changed.");
+            _logger.error("QueueConfiguration requirements have changed.", e);
         }
 
         // Merge any configuration the Exchange wishes to apply        

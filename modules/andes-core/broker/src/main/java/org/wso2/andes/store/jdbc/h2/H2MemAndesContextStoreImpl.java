@@ -146,7 +146,7 @@ public class H2MemAndesContextStoreImpl extends JDBCAndesContextStoreImpl {
                     stmt.close();
                 }
             } catch (SQLException e) {
-                logger.error(TASK_CREATING_DB_TABLES);
+                logger.error(TASK_CREATING_DB_TABLES, e);
             }
             close(connection, TASK_CREATING_DB_TABLES);
         }

@@ -91,9 +91,8 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             return subscriberMap;
 
         } catch (SQLException e) {
-            throw new AndesException(
-                    "Error occurred while " + JDBCConstants
-                            .TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
+            throw new AndesException("Error occurred while " + JDBCConstants
+                            .TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION, e);
         } finally {
             close(resultSet, JDBCConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
             close(preparedStatement, JDBCConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
@@ -128,9 +127,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
             throw new AndesException("Error occurred while storing durable subscription. sub id: "
-                    + subscriptionID + " destination identifier: " +
-                    destinationIdentifier,
-                    e);
+                    + subscriptionID + " destination identifier: " + destinationIdentifier, e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
             close(connection, JDBCConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
@@ -195,7 +192,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
 
         } catch (SQLException e) {
             rollback(connection, task);
-            throw new AndesException("Error occurred while " + task);
+            throw new AndesException("Error occurred while " + task, e);
         } finally {
             close(preparedStatement, task);
             close(connection, task);
@@ -227,7 +224,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             return nodeInfoMap;
         } catch (SQLException e) {
             throw new AndesException("Error occurred while " + JDBCConstants
-                    .TASK_RETRIEVING_ALL_NODE_DETAILS);
+                    .TASK_RETRIEVING_ALL_NODE_DETAILS, e);
         } finally {
             close(resultSet, JDBCConstants.TASK_RETRIEVING_ALL_NODE_DETAILS);
             close(preparedStatement, JDBCConstants.TASK_RETRIEVING_ALL_NODE_DETAILS);
@@ -294,7 +291,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_ADDING_QUEUE_COUNTER);
             throw new AndesException("Error occurred while " + JDBCConstants
-                    .TASK_ADDING_QUEUE_COUNTER);
+                    .TASK_ADDING_QUEUE_COUNTER, e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_ADDING_QUEUE_COUNTER);
             close(connection, JDBCConstants.TASK_ADDING_QUEUE_COUNTER);
@@ -323,7 +320,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             return resultSet.first();
         } catch (SQLException e) {
             throw new AndesException("Error occurred while " + JDBCConstants
-                    .TASK_ADDING_QUEUE_COUNTER);
+                    .TASK_ADDING_QUEUE_COUNTER, e);
         } finally {
             close(resultSet, JDBCConstants.TASK_CHECK_QUEUE_COUNTER_EXIST);
             close(preparedStatement, JDBCConstants.TASK_CHECK_QUEUE_COUNTER_EXIST);
@@ -354,7 +351,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             return count;
         } catch (SQLException e) {
             throw new AndesException("Error occurred while " + JDBCConstants
-                    .TASK_RETRIEVING_QUEUE_COUNT);
+                    .TASK_RETRIEVING_QUEUE_COUNT, e);
         } finally {
             close(resultSet, JDBCConstants.TASK_RETRIEVING_QUEUE_COUNT);
             close(preparedStatement, JDBCConstants.TASK_RETRIEVING_QUEUE_COUNT);
@@ -383,7 +380,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_DELETING_QUEUE_COUNTER);
             throw new AndesException("Error occurred while " + JDBCConstants
-                    .TASK_DELETING_QUEUE_COUNTER + " queue: " + destinationQueueName);
+                    .TASK_DELETING_QUEUE_COUNTER + " queue: " + destinationQueueName, e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_DELETING_QUEUE_COUNTER);
             close(connection, JDBCConstants.TASK_DELETING_QUEUE_COUNTER);
@@ -412,7 +409,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_INCREMENTING_QUEUE_COUNT);
             throw new AndesException("Error occurred while " + JDBCConstants
-                    .TASK_INCREMENTING_QUEUE_COUNT + " queue name: " + destinationQueueName);
+                    .TASK_INCREMENTING_QUEUE_COUNT + " queue name: " + destinationQueueName, e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_INCREMENTING_QUEUE_COUNT);
             close(connection, JDBCConstants.TASK_INCREMENTING_QUEUE_COUNT);
@@ -442,7 +439,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_DECREMENTING_QUEUE_COUNT);
             throw new AndesException("Error occurred while " + JDBCConstants
-                    .TASK_DECREMENTING_QUEUE_COUNT + " queue name: " + destinationQueueName);
+                    .TASK_DECREMENTING_QUEUE_COUNT + " queue name: " + destinationQueueName, e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_DECREMENTING_QUEUE_COUNT);
             close(connection, JDBCConstants.TASK_DECREMENTING_QUEUE_COUNT);
@@ -632,7 +629,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             return queueList;
         } catch (SQLException e) {
             throw new AndesException(
-                    "Error occurred while " + JDBCConstants.TASK_RETRIEVING_ALL_QUEUE_INFO);
+                    "Error occurred while " + JDBCConstants.TASK_RETRIEVING_ALL_QUEUE_INFO, e);
         } finally {
             close(resultSet, JDBCConstants.TASK_RETRIEVING_ALL_QUEUE_INFO);
             close(preparedStatement, JDBCConstants.TASK_RETRIEVING_ALL_QUEUE_INFO);
@@ -762,6 +759,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             String errMsg = JDBCConstants.TASK_DELETING_BINDING + " exchange: " + exchangeName +
                     " bound queue: " + boundQueueName;
             rollback(connection, errMsg);
+            throw new AndesException("Error occurred while " + errMsg, e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_DELETING_BINDING);
             close(connection, JDBCConstants.TASK_DELETING_BINDING);
@@ -797,7 +795,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             try {
                 connection.close();
             } catch (SQLException e) {
-                logger.error("Failed to close connection after " + task);
+                logger.error("Failed to close connection after " + task, e);
             }
         }
     }
@@ -812,8 +810,8 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         if (connection != null) {
             try {
                 connection.rollback();
-            } catch (SQLException e1) {
-                logger.warn("Rollback failed on " + task);
+            } catch (SQLException e) {
+                logger.warn("Rollback failed on " + task, e);
             }
         }
     }
@@ -829,7 +827,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             try {
                 preparedStatement.close();
             } catch (SQLException e) {
-                logger.error("Closing prepared statement failed after " + task);
+                logger.error("Closing prepared statement failed after " + task, e);
             }
         }
     }
@@ -845,7 +843,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             try {
                 resultSet.close();
             } catch (SQLException e) {
-                logger.error("Closing result set failed after " + task);
+                logger.error("Closing result set failed after " + task, e);
             }
         }
     }
