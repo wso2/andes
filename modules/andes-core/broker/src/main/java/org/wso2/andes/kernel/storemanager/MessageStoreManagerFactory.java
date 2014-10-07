@@ -19,6 +19,7 @@
 package org.wso2.andes.kernel.storemanager;
 
 import org.apache.log4j.Logger;
+import org.wso2.andes.configuration.MBConfiguration;
 import org.wso2.andes.configuration.VirtualHostsConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
@@ -44,10 +45,11 @@ public class MessageStoreManagerFactory {
     public static MessageStoreManager create(MessageStore durableMessageStore) throws
                                                                                AndesException {
 
+        boolean isAsyncStoring = MBConfiguration.isAsyncStoringEnabled();
         MessageStoreManager messageStoreManager;
         if (AndesContext.getInstance().isClusteringEnabled()) { // clustered mode.
             // NOTE: No in memory stores
-            if (isAsyncStoringEnabled()) {
+            if (isAsyncStoring) {
                 // clustered setup with asynchronous message storing
                 messageStoreManager = new DurableAsyncStoringManager();
                 messageStoreManager.initialise(durableMessageStore);
@@ -63,7 +65,7 @@ public class MessageStoreManagerFactory {
         } else {
             // single node deployment
             // todo: add proper in memory included MessageStoreManager with async and direct
-            if(!isAsyncStoringEnabled()) {
+            if(!isAsyncStoring) {
                 messageStoreManager = new DurableDirectStoringManager();
                 messageStoreManager.initialise(durableMessageStore);
                 log.info("Message Storing strategy: direct message storing.");
@@ -80,20 +82,5 @@ public class MessageStoreManagerFactory {
         return messageStoreManager;
     }
 
-    /**
-     * read from configurations determine is asynchronous storing is enabled
-     *
-     * @return true if asynchronous storing is enabled and false otherwise
-     */
-    private static boolean isAsyncStoringEnabled() {
-        String asyncStoringProperty = "asyncStoring";
-        VirtualHostsConfiguration virtualHostsConfiguration = AndesContext.getInstance()
-                                                                          .getVirtualHostsConfiguration();
-        String isAsyncString = virtualHostsConfiguration.getMessageStoreProperties()
-                                                        .getProperty(asyncStoringProperty);
-        if (isAsyncString.isEmpty()) { // if value is not set
-            isAsyncString = "true"; // default to true
-        }
-        return Boolean.parseBoolean(isAsyncString);
-    }
+
 }

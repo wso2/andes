@@ -99,7 +99,7 @@ public class JDBCConnection implements DurableStoreConnection {
             try {
                 connection.close();
             } catch (SQLException e) {
-                logger.error("Failed to close connection after " + task);
+                logger.error("Failed to close connection after " + task, e);
             }
         }
     }

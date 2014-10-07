@@ -155,7 +155,7 @@ public class H2MemMessageStoreImpl extends JDBCMessageStoreImpl {
                     stmt.close();
                 }
             } catch (SQLException e) {
-                logger.error(TASK_CREATING_DB_TABLES);
+                logger.error(TASK_CREATING_DB_TABLES, e);
             }
             close(connection, TASK_CREATING_DB_TABLES);
         }
