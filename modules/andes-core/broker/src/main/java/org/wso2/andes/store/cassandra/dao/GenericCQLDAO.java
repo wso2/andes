@@ -134,14 +134,20 @@ public class GenericCQLDAO {
 			writeLock.unlock();
 		}
 	}
-		
-	
-	public static ResultSet execute(String keySpace ,String query) throws CassandraDataAccessException{
-		ResultSet result = getSession(keySpace).execute(query);
-		return result;		
-	}
-	
-	public static ResultSetFuture executeAsync(String keySpace , String query) throws CassandraDataAccessException{
+
+
+    public static ResultSet execute(String keySpace, String query)
+            throws CassandraDataAccessException {
+        ResultSet result;
+        try {
+            result = getSession(keySpace).execute(query);
+        } catch (Exception e) {
+            throw new CassandraDataAccessException("Error while executing statement", e);
+        }
+        return result;
+    }
+
+    public static ResultSetFuture executeAsync(String keySpace , String query) throws CassandraDataAccessException{
 		ResultSetFuture result = getSession(keySpace).executeAsync(query);
 		return result;
 	}

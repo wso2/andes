@@ -479,6 +479,7 @@ public class SubscriptionStore {
 
         } else if (type == SubscriptionChange.Deleted) {
             removeLocalSubscription(subscription);
+            log.info("Local Subscription Removed " + subscription.toString());
         }
 
         log.debug("===============Updated local subscription maps================");
