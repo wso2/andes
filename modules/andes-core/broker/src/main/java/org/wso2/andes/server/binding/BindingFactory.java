@@ -244,7 +244,6 @@ public class BindingFactory
             getConfigStore().addConfiguredObject(b);
             b.logCreation();
 
-            System.out.println("Added Local Binding:  binding key: " + b.getBindingKey() + " queue:" + b.getQueue().getName());
             return true;
         }
         else
