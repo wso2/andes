@@ -20,6 +20,7 @@ package org.wso2.andes.store.jdbc.h2;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.ConfigurationProperties;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.store.jdbc.JDBCConnection;
@@ -110,6 +111,11 @@ public class H2MemMessageStoreImpl extends JDBCMessageStoreImpl {
     @Override
     public DurableStoreConnection initializeMessageStore(ConfigurationProperties connectionProperties)
             throws AndesException {
+
+        // in memory mode should only run in single node mode
+        if(AndesContext.getInstance().isClusteringEnabled()) {
+            throw new AndesException("In memory mode is not supported in cluster setup");
+        }
 
         // use the initialisation logic of JDBC MessageStore
         DurableStoreConnection durableStoreConnection = super.initializeMessageStore(JDBCConnection
