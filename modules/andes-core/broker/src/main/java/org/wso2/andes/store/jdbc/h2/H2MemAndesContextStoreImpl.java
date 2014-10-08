@@ -20,6 +20,7 @@ package org.wso2.andes.store.jdbc.h2;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.ConfigurationProperties;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.store.jdbc.JDBCAndesContextStoreImpl;
@@ -86,6 +87,16 @@ public class H2MemAndesContextStoreImpl extends JDBCAndesContextStoreImpl {
                     ");";
 
     /**
+     * Creates queue counter table in H2 database
+     */
+    protected static final String CREATE_QUEUE_COUNTER_TABLE =
+            "CREATE TABLE IF NOT EXISTS queue_counter ( " +
+                    "name VARCHAR NOT NULL," +
+                    "count BIGINT, " +
+                    "PRIMARY KEY (name) " +
+                    ");";
+
+    /**
      * logging string for task of creating database tables
      */
     protected static final String TASK_CREATING_DB_TABLES = "creating database tables";
@@ -104,6 +115,12 @@ public class H2MemAndesContextStoreImpl extends JDBCAndesContextStoreImpl {
      */
     public DurableStoreConnection init(ConfigurationProperties connectionProperties) throws
             AndesException {
+
+        // in memory mode should only run in single node mode
+        if (AndesContext.getInstance().isClusteringEnabled()) {
+            throw new AndesException("In memory mode is not supported in cluster setup");
+        }
+
         DurableStoreConnection durableStoreConnection = super.init(JDBCConnection
                 .getInMemoryConnectionProperties());
 
@@ -124,7 +141,8 @@ public class H2MemAndesContextStoreImpl extends JDBCAndesContextStoreImpl {
                 CREATE_NODE_INFO_TABLE,
                 CREATE_EXCHANGES_TABLE,
                 CREATE_QUEUE_INFO_TABLE,
-                CREATE_BINDINGS_TABLE
+                CREATE_BINDINGS_TABLE,
+                CREATE_QUEUE_COUNTER_TABLE
         };
 
         Connection connection = null;

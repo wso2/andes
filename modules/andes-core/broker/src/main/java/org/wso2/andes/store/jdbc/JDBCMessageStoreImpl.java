@@ -583,9 +583,9 @@ public class JDBCMessageStoreImpl implements MessageStore {
             connection = getConnection();
 
             // get expired message list
-            PreparedStatement prepareStatement = connection
+            preparedStatement = connection
                     .prepareStatement(JDBCConstants.PS_SELECT_EXPIRED_MESSAGES);
-            resultSet = prepareStatement.executeQuery();
+            resultSet = preparedStatement.executeQuery();
             int resultCount = 0;
             while (resultSet.next()) {
 
@@ -599,7 +599,6 @@ public class JDBCMessageStoreImpl implements MessageStore {
                 );
                 resultCount++;
             }
-            prepareStatement.close();
             return list;
         } catch (SQLException e) {
             throw new AndesException("error occurred while retrieving expired messages.", e);
@@ -692,6 +691,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
         int queueID = getQueueID(destinationQueueName);
 
         if (queueID != -1) {
+            queueMap.put(destinationQueueName, queueID);
             return queueID;
         }
 
