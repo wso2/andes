@@ -143,7 +143,7 @@ public class AMQPUtils {
      * @return andes message metadata
      * @throws AndesException
      */
-    public static AndesMessageMetadata convertAMQMessageToAndesMetadata(AMQMessage amqMessage) throws AndesException {
+    public static AndesMessageMetadata convertAMQMessageToAndesMetadata(AMQMessage amqMessage, int channelID) throws AndesException {
         MessageMetaData amqMetadata = amqMessage.getMessageMetaData();
         String queue = amqMetadata.getMessagePublishInfo().getRoutingKey().toString();
 
@@ -161,6 +161,7 @@ public class AMQPUtils {
         metadata.setMetadata(underlying);
         metadata.setDestination(queue);
         metadata.setPersistent(amqMetadata.isPersistent());
+        metadata.setChannelId(channelID);
         metadata.setTopic(amqMetadata.getMessagePublishInfo().getExchange().equals("amq.topic"));
         metadata.setSlot(amqMessage.getSlot());
 

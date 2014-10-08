@@ -30,31 +30,47 @@ public interface MessageStoreManager {
     /**
      * Initialisation of MessageStoreManager
      *
-     * @param durableMessageStore
-     *         MessageStore implementation to be used as the durable message store.
+     * @param messageStore
+     *         MessageStore implementation to be used as the message store.
      * @throws AndesException
      */
-    public void initialise(MessageStore durableMessageStore) throws AndesException;
+    public void initialise(MessageStore messageStore) throws AndesException;
 
     /**
      * Store Metadata of the message
      *
      * @param metadata
      *         AndesMessageMetadata
-     * @param channelID
-     *         channel ID
      * @throws AndesException
      */
-    public void storeMetadata(AndesMessageMetadata metadata, long channelID) throws AndesException;
+    public void storeMetadata(AndesMessageMetadata metadata) throws AndesException;
 
     /**
-     * Store Message Content as parts (chunks)
+     * store metadata for message
      *
-     * @param messagePart
-     *         AndesMessagePart
+     * @param messageMetadata
+     *         metadata list to store
      * @throws AndesException
      */
-    public void storeMessageContent(AndesMessagePart messagePart) throws AndesException;
+    public void storeMetaData(List<AndesMessageMetadata> messageMetadata) throws AndesException;
+
+    /**
+     * Store a chuck of a message
+     *
+     * @param messagePart
+     *         AndesMessagePart to store
+     * @throws AndesException
+     */
+    public void storeMessagePart(AndesMessagePart messagePart) throws AndesException;
+
+    /**
+     * Store a message content parts of a message
+     *
+     * @param messageParts
+     *         message parts to store
+     * @throws AndesException
+     */
+    public void storeMessagePart(List<AndesMessagePart> messageParts) throws AndesException;
 
     /**
      * Handle ack received event
@@ -66,6 +82,15 @@ public interface MessageStoreManager {
     public void ackReceived(AndesAckData ackData) throws AndesException;
 
     /**
+     * process the ack received messages
+     *
+     * @param ackList
+     *         ack message list to process
+     * @throws AndesException
+     */
+    public void ackReceived(List<AndesAckData> ackList) throws AndesException;
+
+    /**
      * remove message content chunks of messages
      *
      * @param messageIdList
@@ -74,15 +99,6 @@ public interface MessageStoreManager {
      */
     public void deleteMessageParts(List<Long> messageIdList) throws AndesException;
 
-
-    /**
-     * process the ack received messages
-     *
-     * @param ackList
-     *         ack message list to process
-     * @throws AndesException
-     */
-    public void processAckReceived(List<AndesAckData> ackList) throws AndesException;
 
     /**
      * decrement message count of queue
@@ -103,26 +119,6 @@ public interface MessageStoreManager {
      */
     public void incrementQueueCount(String queueName) throws AndesException;
 
-
-    /**
-     * store a message content part
-     *
-     * @param messageParts
-     *         message parts to store
-     * @throws AndesException
-     */
-    public void storeMessagePart(List<AndesMessagePart> messageParts) throws AndesException;
-
-
-    /**
-     * store metadata for message
-     *
-     * @param messageMetadata
-     *         metadata list to store
-     * @throws AndesException
-     */
-    public void storeMetaData(List<AndesMessageMetadata> messageMetadata) throws AndesException;
-
     /**
      * get message content from store
      *
@@ -133,7 +129,7 @@ public interface MessageStoreManager {
      * @return message content part
      * @throws AndesException
      */
-    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException;
+    public AndesMessagePart getMessagePart(long messageId, int offsetValue) throws AndesException;
 
     /**
      * delete messages and optionally send to DLC

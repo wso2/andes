@@ -3,10 +3,7 @@ package org.wso2.andes.kernel.distrupter;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesAckData;
-import org.wso2.andes.kernel.MessageStore;
 
 import com.lmax.disruptor.EventHandler;
 import org.wso2.andes.kernel.MessageStoreManager;
@@ -27,7 +24,7 @@ public class AckHandler implements EventHandler<AndesAckData> {
     public void onEvent(final AndesAckData event, final long sequence, final boolean endOfBatch) throws Exception {
         ackList.add(event);
         if (endOfBatch) {
-            messageStoreManager.processAckReceived(ackList);
+            messageStoreManager.ackReceived(ackList);
             ackList.clear();
         }
     }

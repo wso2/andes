@@ -23,7 +23,7 @@ public class DisruptorBasedExecutor {
     //private static DisruptorRuntime<SubscriptionDataEvent> dataDeliveryDisruptorRuntime;
     private static Map<Long, PendingJob> pendingJobsTracker = new ConcurrentHashMap<Long, PendingJob>();
 
-    public DisruptorBasedExecutor(MessageStoreManager messageStoreManager, AndesSubscription delivery) {
+    public DisruptorBasedExecutor(MessageStoreManager messageStoreManager) {
         int MAX_WRITE_HANDLERS = 10;
         AlternatingCassandraWriter[] writerHandlers = new AlternatingCassandraWriter[MAX_WRITE_HANDLERS];
         for (int i = 0; i < writerHandlers.length; i++) {
@@ -69,7 +69,8 @@ public class DisruptorBasedExecutor {
         ringBuffer.publish(sequence);
     }
 
-    public void messageCompleted(AndesMessageMetadata metadata, long channelID) {
+    public void messageCompleted(AndesMessageMetadata metadata) {
+        long channelID = metadata.getChannelId();
         //This count how many jobs has finished
         synchronized (pendingJobsTracker) {
             PendingJob pendingJob = pendingJobsTracker.get(channelID);
