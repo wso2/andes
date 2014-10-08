@@ -233,11 +233,14 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 inserts.add(insert);
             }
             long start = System.currentTimeMillis();
-            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE,
-                                       inserts.toArray(new Insert[inserts.size()]));
 
-            PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(
-                    (int) (System.currentTimeMillis() - start));
+            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
+            int latency = (int) (System.currentTimeMillis() - start);
+            if(latency > 1000){
+                log.warn("Cassandra writing took " + latency + " millisecoonds for batch of " +
+                        metadataList.size());
+            }
+            PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(latency);
 
             // Client waits for these message ID to be written, this signal those,
             // if there is a error

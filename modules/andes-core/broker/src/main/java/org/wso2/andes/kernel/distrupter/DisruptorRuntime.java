@@ -18,14 +18,18 @@
 
 package org.wso2.andes.kernel.distrupter;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.*;
 import com.lmax.disruptor.dsl.Disruptor;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 public class DisruptorRuntime<T> {
-    private ExecutorService executorPool = Executors.newCachedThreadPool();
+    private static ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat
+            ("DisruptorBasedExecutor-%d").build();
+    private ExecutorService executorPool = Executors.newCachedThreadPool(namedThreadFactory);
     private Disruptor<T> disruptor;
     private final RingBuffer<T> ringBuffer;
 

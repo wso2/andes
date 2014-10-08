@@ -20,12 +20,14 @@
 
 package org.wso2.andes.server.slot;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 /**
  * This class is responsible of allocating SloDeliveryWorker threads to each queue
@@ -37,8 +39,17 @@ public class SlotDeliveryWorkerManager {
 
     private ExecutorService slotDeliveryWorkerExecutor;
 
+
     /**
      * Number of slot delivery worker threads running inn one MB node
+     */
+
+    private static ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat
+            ("SlotDeliveryWorkerExecutor-%d").build();
+
+
+    /*
+    number of slot delivery worker threads running inn one MB node
      */
     private int numberOfThreads;
 
@@ -52,7 +63,7 @@ public class SlotDeliveryWorkerManager {
     private SlotDeliveryWorkerManager() {
         numberOfThreads = ClusterResourceHolder.getInstance().getClusterConfiguration()
                 .getNumberOFSlotDeliveryWorkerThreads();
-        this.slotDeliveryWorkerExecutor = Executors.newFixedThreadPool(numberOfThreads);
+        this.slotDeliveryWorkerExecutor = Executors.newFixedThreadPool(numberOfThreads, namedThreadFactory);
     }
 
     /**

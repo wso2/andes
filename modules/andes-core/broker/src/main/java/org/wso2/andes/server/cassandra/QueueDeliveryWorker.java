@@ -30,6 +30,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * <code>QueueDeliveryWorker</code> Handles the task of polling the user queues and flushing
@@ -41,27 +43,28 @@ public class QueueDeliveryWorker {
     private boolean running = true;
     private static Log log = LogFactory.getLog(QueueDeliveryWorker.class);
 
-    private int maxNumberOfUnAckedMessages = 20000;
+    private int maxNumberOfUnAckedMessages = 100000;
     //per queue
     private int maxNumberOfReadButUndeliveredMessages = 5000;
 
-    private long lastProcessedId = 0;
+    // private long lastProcessedId = 0;
 
-    private long totMsgSent = 0;
-    private long totMsgRead = 0;
-    private int totalReadButUndeliveredMessages = 0;
+    // private long totMsgSent = 0;
+    //  private long totMsgRead = 0;
+
+    private static final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
 
     private SequentialThreadPoolExecutor executor;
 
     private final int queueWorkerWaitInterval;
 
-    private long iterations = 0;
-    private int workqueueSize = 0;
+    //private long iterations = 0;
+    // private int workqueueSize = 0;
 
     private Map<String, QueueDeliveryInfo> subscriptionCursar4QueueMap = new HashMap<String, QueueDeliveryInfo>();
 
-    private long failureCount = 0;
+    // private long failureCount = 0;
 
     private SubscriptionStore subscriptionStore;
 
@@ -112,7 +115,7 @@ public class QueueDeliveryWorker {
          *
          * @return whether this queue has room or not
          */
-        public boolean hasRoom() {
+        public boolean isMessageBufferFull() {
             boolean hasRoom = true;
             if (readButUndeliveredMessages.size() >= maxNumberOfReadButUndeliveredMessages) {
                 hasRoom = false;
@@ -171,16 +174,23 @@ public class QueueDeliveryWorker {
     }
 
     /**
+<<<<<<< HEAD
      *  Send the messages to deliver
      * @param messagesReadByLeadingThread  AndesMetadata list
      * @param slot these messages are belonged to
+=======
+     * send the messages to deliver
+     *
+     * @param messagesReadByLeadingThread AndesMetadata list
+     * @param slot                        these messages are belonged to
+>>>>>>> Changes did after profiling
      */
     public void sendMessageToFlusher(List<AndesMessageMetadata> messagesReadByLeadingThread,
                                      Slot slot) {
 
-        iterations = 0;
-        workqueueSize = 0;
-        failureCount = 0;
+        int workqueueSize;
+        long failureCount = 0;
+        long lastProcessedId = 0;
         try {
             /**
              *    Following check is to avoid the worker queue been full with too many pending tasks.
@@ -193,7 +203,7 @@ public class QueueDeliveryWorker {
                     log.error("Flusher queue is growing, and this should not happen. Please check cassandra Flusher");
                 }
                 log.warn("skipping content cassandra reading thread as flusher queue has " + workqueueSize + " tasks");
-                sleep4waitInterval(queueWorkerWaitInterval);
+                // sleep4waitInterval(queueWorkerWaitInterval);
             }
 
             /**
@@ -204,13 +214,18 @@ public class QueueDeliveryWorker {
             messagesFromMessageStore = new ArrayList<AndesMessageMetadata>();
             for (AndesMessageMetadata message : messagesReadByLeadingThread) {
                 Long messageID = message.getMessageID();
-                if (!onflightMessageTracker.checkIfAlreadyReadFromNodeQueue(message.getMessageID())) {
-                    onflightMessageTracker.markMessageAsReadFromNodeQueue(messageID);
-                    if (log.isDebugEnabled()) {
-                        log.debug("TRACING>> QDW------Adding " + messageID + " From Leading Thread to Deliver");
-                    }
-                    messagesFromMessageStore.add(message);
+                // if (!onflightMessageTracker.checkIfAlreadyReadFromNodeQueue(message.getMessageID
+                // ())) {
+                // onflightMessageTracker.markMessageAsReadFromNodeQueue(messageID);
+//                    if (log.isDebugEnabled()) {
+//                        log.debug("TRACING>> QDW------Adding " + messageID + " From Leading Thread to Deliver");
+//                    }
+                messagesFromMessageStore.add(message);
+                if (log.isTraceEnabled()) {
+                    log.trace("TRACING>> CMS>> read from message store " + message
+                            .getMessageID());
                 }
+                //}
                 lastProcessedId = messageID;
             }
 
@@ -219,12 +234,12 @@ public class QueueDeliveryWorker {
             }
             for (AndesMessageMetadata message : messagesFromMessageStore) {
 
-                /**
-                 * If this is a message that had sent already, just drop them.
-                 */
-                if (!onflightMessageTracker.testMessage(message.getMessageID())) {
-                    continue;
-                }
+//                /**
+//                 * If this is a message that had sent already, just drop them.
+//                 */
+//                if (!onflightMessageTracker.testMessage(message.getMessageID())) {
+//                    continue;
+//                }
 
                 String queueName = message.getDestination();
                 message.setSlot(slot);
@@ -236,10 +251,10 @@ public class QueueDeliveryWorker {
             /**
              * If no messages to read sleep more
              */
-            if (messagesFromMessageStore.size() == 0) {
-                sleep4waitInterval(queueWorkerWaitInterval);
-            }
-            totMsgRead = totMsgRead + messagesFromMessageStore.size();
+//            if (messagesFromMessageStore.size() == 0) {
+//                sleep4waitInterval(queueWorkerWaitInterval);
+//            }
+            //   totMsgRead = totMsgRead + messagesFromMessageStore.size();
             msgReadThisTime = messagesFromMessageStore.size();
 
             /**
@@ -249,33 +264,35 @@ public class QueueDeliveryWorker {
 
             sendMessagesInBuffer(slot.getQueueName());
 
-            if (iterations % 20 == 0) {
-                if (log.isDebugEnabled()) {
-                    log.debug("[Flusher" + this + "]readNow=" + msgReadThisTime + " totRead=" +
-                            totMsgRead + " totprocessed= " + totMsgSent + ", totalReadButNotSent=" +
-                            totalReadButUndeliveredMessages + ". workQueue= " + workqueueSize + " lastID=" + lastProcessedId);
-                }
-            }
-            iterations++;
+//            if (iterations % 20 == 0) {
+//                if (log.isDebugEnabled()) {
+//                    log.debug("[Flusher" + this + "]readNow=" + msgReadThisTime + " totRead=" +
+//                            totMsgRead + " totprocessed= " + totMsgSent + ", totalReadButNotSent=" +
+//                            totalReadButUndeliveredMessages + ". workQueue= " + workqueueSize + " lastID=" + lastProcessedId);
+//                }
+//            }
+            // iterations++;
 
             //on every 10th, we sleep a bit to give cassandra a break, we do the same if we have not sent any messages
-            if (sentMessageCount == 0 || iterations % 10 == 0) {
-                sleep4waitInterval(queueWorkerWaitInterval);
-            }
+//            if (sentMessageCount == 0 || iterations % 10 == 0) {
+//                sleep4waitInterval(queueWorkerWaitInterval);
+//            }
             failureCount = 0;
         } catch (Throwable e) {
             /**
              * When there is a error, we will wait to avoid looping.
              */
-            long waitTime = queueWorkerWaitInterval;
-            failureCount++;
-            long faultWaitTime = Math.max(waitTime * 5, failureCount * waitTime);
-            try {
-                Thread.sleep(faultWaitTime);
-            } catch (InterruptedException e1) {
-                //silently ignore
-            }
-            log.error("Error running Cassandra Message Flusher" + e.getMessage(), e);
+
+//            long waitTime = queueWorkerWaitInterval;
+//            failureCount++;
+//            long faultWaitTime = Math.max(waitTime * 5, failureCount * waitTime);
+//            try {
+//                Thread.sleep(faultWaitTime);
+//            } catch (InterruptedException e1) {
+//                //silently ignore
+//            }
+            //todo handle
+            log.fatal("Error running Cassandra Message Flusher" + e.getMessage(), e);
         }
     }
 
@@ -284,11 +301,16 @@ public class QueueDeliveryWorker {
      */
     public void sendMessagesInBuffer(String queueName) throws AndesException {
         QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(queueName);
-
         if (log.isDebugEnabled()) {
-            log.debug("TRACING>> delivering read but undelivered message list with size: " +
-                    queueDeliveryInfo.readButUndeliveredMessages.size());
+            for (String queue : subscriptionCursar4QueueMap.keySet()) {
+                log.debug("Queue Size of queue " + queue + " is :"
+                        + subscriptionCursar4QueueMap.get(queue).readButUndeliveredMessages.size());
+            }
+
         }
+//            log.debug("TRACING>> delivering read but undelivered message list with size: " +
+//                    queueDeliveryInfo.readButUndeliveredMessages.size());
+
         try {
             sendMessagesToSubscriptions(queueDeliveryInfo.queueName,
                     queueDeliveryInfo.readButUndeliveredMessages);
@@ -316,13 +338,14 @@ public class QueueDeliveryWorker {
         //
         int notAckedMsgCount = localSubscription.getnotAckedMsgCount();
 
+
         //Here we ignore messages that has been scheduled but not executed, so it might send few messages than maxNumberOfUnAckedMessages
         if (notAckedMsgCount < maxNumberOfUnAckedMessages) {
             return true;
         } else {
 
             if (log.isDebugEnabled()) {
-                log.debug("Not selected, channel =" + localSubscription + " pending count =" + (notAckedMsgCount + workqueueSize));
+                log.debug("Not selected, channel =" + localSubscription + " pending count =" + (notAckedMsgCount + executor.getSize()));
             }
             return false;
         }
@@ -356,33 +379,27 @@ public class QueueDeliveryWorker {
             boolean messageSent = false;
             Collection<LocalSubscription> subscriptions4Queue = subscriptionStore
                     .getActiveLocalSubscribers(targetQueue, false);
-            if (subscriptions4Queue != null) {
                 /*
                  * We do this in a for loop to avoid iterating for a subscriptions for ever. We
                  * only iterate as
                  * once for each subscription
                  */
-                for (int j = 0; j < subscriptions4Queue.size(); j++) {
-                    LocalSubscription localSubscription = findNextSubscriptionToSent(targetQueue, subscriptions4Queue);
-                    if (isThisSubscriptionHasRoom(localSubscription)) {
-                        if (log.isDebugEnabled()) {
-                            log.debug("TRACING>> scheduled to deliver - messageID: " + message.getMessageID() + " for queue: " + message.getDestination());
-                        }
-                        iterator.remove();
-                        deliverAsynchronously(localSubscription, message);
-                        totMsgSent++;
-                        sentMessageCount++;
-                        totalReadButUndeliveredMessages--;
-                        messageSent = true;
-                        break;
-                    }
+            for (int j = 0; j < subscriptions4Queue.size(); j++) {
+                LocalSubscription localSubscription = findNextSubscriptionToSent(targetQueue, subscriptions4Queue);
+                if (isThisSubscriptionHasRoom(localSubscription)) {
+//                        if (log.isDebugEnabled()) {
+//                            log.debug("TRACING>> scheduled to deliver - messageID: " + message.getMessageID() + " for queue: " + message.getDestination());
+//                        }
+                    iterator.remove();
+                    deliverAsynchronously(localSubscription, message);
+                    sentMessageCount++;
+                    //totalReadButUndeliveredMessages--;
+                    messageSent = true;
+                    break;
                 }
-                if (!messageSent) {
-                    log.debug("All subscriptions for queue " + targetQueue + " have max Unacked messages " + message.getDestination());
-                }
-            } else {
-                // TODO : Malinga do something here. All subscriptions deleted for the queue, should we move messages back to global queue?
-                //todo return the slot
+            }
+            if (!messageSent) {
+                log.debug("All subscriptions for queue " + targetQueue + " have max Unacked messages " + message.getDestination());
             }
         }
         return sentMessageCount;
@@ -390,35 +407,36 @@ public class QueueDeliveryWorker {
 
 
     private void deliverAsynchronously(final LocalSubscription subscription, final AndesMessageMetadata message) {
-        if (onflightMessageTracker.testMessage(message.getMessageID())) {
-            Runnable r = new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        if (subscription.isActive()) {
-                            if (MessageExpirationWorker.isExpired(message.getExpirationTime())) {
-                                return;
-                            }
-                            (subscription).sendMessageToSubscriber(message);
-                        } else {
-                            reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
-
-                            if (log.isDebugEnabled()) {
-                                log.debug("TRACING>> QDW- storing due to subscription vanish - message messageID:" + message.getMessageID() + " for subscription " + subscription.getSubscriptionID());
-                            }
+//        if (onflightMessageTracker.testMessage(message.getMessageID())) {
+        Runnable r = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (subscription.isActive()) {
+                        if (MessageExpirationWorker.isExpired(message.getExpirationTime())) {
+                            return;
                         }
-                    } catch (Throwable e) {
-                        log.error("Error while delivering message. Moving to Dead Letter Queue ", e);
-                        //todo - hasitha - here we have already tried three times to deliver.
+                        (subscription).sendMessageToSubscriber(message);
+                    } else {
+                        reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
+
+//                            if (log.isDebugEnabled()) {
+//                              //  log.debug("TRACING>> QDW- storing due to subscription vanish -
+//                              // message messageID:" + message.getMessageID() + " for subscription " + subscription.getSubscriptionID());
+//                            }
                     }
+                } catch (Throwable e) {
+                    log.error("Error while delivering message. Moving to Dead Letter Queue ", e);
+                    //todo - hasitha - here we have already tried three times to deliver.
                 }
-            };
-            executor.submit(r, (subscription.getTargetQueue() + subscription.getSubscriptionID()).hashCode());
-        } else {
-            if (log.isDebugEnabled()) {
-                log.debug("Rejecting message: messageID " + message.getMessageID());
             }
-        }
+        };
+        executor.submit(r, (subscription.getTargetQueue() + subscription.getSubscriptionID()).hashCode());
+//        } else {
+//            if (log.isDebugEnabled()) {
+//                log.debug("Rejecting message: messageID " + message.getMessageID());
+//            }
+//        }
     }
 
     public void reQueueUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message) {

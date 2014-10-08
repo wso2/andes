@@ -18,6 +18,7 @@ public class PerformanceCounter {
     private static AtomicLong queueDeliveryCount =  new AtomicLong();
     private static AtomicLong queueReceiveCount =  new AtomicLong();
     private static AtomicLong queueGlobalQueueMoveCount =  new AtomicLong();
+    private static AtomicLong pendingMessagesToBeWrittenToCassandra = new AtomicLong();
     
     private static long startTime = -1; 
     private static AtomicLong ackLatency = new AtomicLong();
@@ -75,8 +76,12 @@ public class PerformanceCounter {
     private static ConcurrentHashMap< String, QueuePerfData> perfMap = new ConcurrentHashMap<String, PerformanceCounter.QueuePerfData>(); 
     
     public static void recordMessageReceived(String qName, long sizeInChuncks){
-        totMessagesReceived.incrementAndGet(); 
-        QueuePerfData perfData = perfMap.get(qName); 
+        totMessagesReceived.incrementAndGet();
+        long pendingMessageCount = pendingMessagesToBeWrittenToCassandra.incrementAndGet();
+        if((pendingMessageCount > 10000) && (pendingMessageCount % 1000 == 0)){
+           log.warn("Pending " + pendingMessageCount + " messages to be written to cassandra");
+        }
+        QueuePerfData perfData = perfMap.get(qName);
         
         synchronized (perfMap) {
             if(perfData == null){
@@ -113,6 +118,7 @@ public class PerformanceCounter {
     }
     
     public static void recordIncomingMessageWrittenToStore(){
+        pendingMessagesToBeWrittenToCassandra.decrementAndGet();
         boolean log = messageWrittenToCassandraCounter.notifyEvent(false);
         if(log){
             printLine("MsgRecived", messageReceivedCounter, null);

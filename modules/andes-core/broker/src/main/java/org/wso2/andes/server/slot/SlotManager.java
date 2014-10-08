@@ -106,6 +106,8 @@ public class SlotManager {
             }
             if (null != slotToBeAssigned) {
                 updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
+            }else {
+                log.debug("Slot Manager - returns empty slot fro the queue: " + queueName );
             }
             return slotToBeAssigned;
         }
@@ -117,22 +119,27 @@ public class SlotManager {
      * @return Slot object //todo check if the range is inclusive in message store
      */
     private Slot getFreshSlot(String queueName) {
-        Slot slotImpToBeAssigned = null;
+        Slot slotToBeAssigned = null;
         TreeSet<Long> messageIDSet = slotIDMap.get(queueName);
         if (messageIDSet != null && !messageIDSet.isEmpty()) {
-            slotImpToBeAssigned = new Slot();
+            slotToBeAssigned = new Slot();
             Long lastAssignedId = queueToLastAssignedIDMap.get(queueName);
             if (lastAssignedId != null) {
-                slotImpToBeAssigned.setStartMessageId(lastAssignedId + 1);
+                slotToBeAssigned.setStartMessageId(lastAssignedId + 1);
             } else {
-                slotImpToBeAssigned.setStartMessageId(0L);
+                slotToBeAssigned.setStartMessageId(0L);
             }
-            slotImpToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
-            slotImpToBeAssigned.setQueueName(queueName);
+            slotToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
+            slotToBeAssigned.setQueueName(queueName);
             slotIDMap.set(queueName, messageIDSet);
-            queueToLastAssignedIDMap.set(queueName, slotImpToBeAssigned.getEndMessageId());
+            if(log.isDebugEnabled()){
+                log.debug(slotToBeAssigned.getEndMessageId() + " removed to slotIdMap. Current " +
+                        "values in " +
+                        "map " + messageIDSet);
+            }
+            queueToLastAssignedIDMap.set(queueName, slotToBeAssigned.getEndMessageId());
         }
-        return slotImpToBeAssigned;
+        return slotToBeAssigned;
 
     }
 
@@ -200,6 +207,10 @@ public class SlotManager {
             if (!isMessageIdRangeOutdated) {
                 messageIdSet.add(lastMessageIdInTheSlot);
                 slotIDMap.set(queueName, messageIdSet);
+                if(log.isDebugEnabled()){
+                    log.debug(lastMessageIdInTheSlot + " added to slotIdMap. CUrrent values in " +
+                            "map " + messageIdSet);
+                }
             }
         }
 

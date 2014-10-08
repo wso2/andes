@@ -23,9 +23,21 @@ public class AckHandler implements EventHandler<AndesAckData> {
 
     public void onEvent(final AndesAckData event, final long sequence, final boolean endOfBatch) throws Exception {
         ackList.add(event);
-        if (endOfBatch) {
-            messageStoreManager.ackReceived(ackList);
-            ackList.clear();
+        if (endOfBatch || ackList.size() > 100) {
+            final List<AndesAckData> tempList = ackList;
+            messageStoreManager.ackReceived(tempList);
+            ackList = new ArrayList<AndesAckData>();
+//            AndesExecuter.runAsync(new Runnable() {
+//                @Override
+//                public void run() {
+//                    try {
+//                        messageStoreManager.processAckReceived(tempList);
+//                    } catch (AndesException e) {
+//                        e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+//                    }
+//                }
+//
+//            });
         }
     }
 }

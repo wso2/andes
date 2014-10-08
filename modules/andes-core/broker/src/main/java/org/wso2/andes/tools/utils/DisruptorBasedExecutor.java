@@ -1,5 +1,7 @@
 package org.wso2.andes.tools.utils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
@@ -9,6 +11,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.distrupter.*;
+import org.wso2.andes.pool.AndesExecuter;
 import org.wso2.andes.server.cassandra.SequentialThreadPoolExecutor;
 
 import com.lmax.disruptor.RingBuffer;
@@ -22,8 +25,11 @@ public class DisruptorBasedExecutor {
     private static DisruptorRuntime<AndesAckData> ackDataEvenRuntime;
     //private static DisruptorRuntime<SubscriptionDataEvent> dataDeliveryDisruptorRuntime;
     private static Map<Long, PendingJob> pendingJobsTracker = new ConcurrentHashMap<Long, PendingJob>();
+     private MessageStoreManager messageStoreManager;
 
     public DisruptorBasedExecutor(MessageStoreManager messageStoreManager) {
+        log.info("Changed v1 ");
+        this.messageStoreManager = messageStoreManager;
         int MAX_WRITE_HANDLERS = 10;
         AlternatingCassandraWriter[] writerHandlers = new AlternatingCassandraWriter[MAX_WRITE_HANDLERS];
         for (int i = 0; i < writerHandlers.length; i++) {
