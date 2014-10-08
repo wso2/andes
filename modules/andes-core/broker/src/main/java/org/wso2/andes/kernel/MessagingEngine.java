@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.storemanager.MessageStoreManagerFactory;
 import org.wso2.andes.server.configuration.BrokerConfiguration;
@@ -378,7 +379,7 @@ public class MessagingEngine {
     public long generateNewMessageId() {
         long messageId = messageIdGenerator.getNextId();
         if (log.isTraceEnabled()) {
-            log.trace("=== TRACING>> CMS - MessageID generated: " + messageId + " ===");
+            log.trace("MessageID generated: " + messageId );
         }
         return messageId;
     }

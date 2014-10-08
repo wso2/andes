@@ -105,7 +105,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
     private UUID _id;
     private final AtomicLong _deliveredCount = new AtomicLong(0);
     private long _createTime = System.currentTimeMillis();
-    private static Map<Integer, AtomicLong> deliveryTagMap = new ConcurrentHashMap<Integer, AtomicLong>();
+    private static ConcurrentHashMap<Integer, AtomicLong> deliveryTagMap = new ConcurrentHashMap<Integer, AtomicLong>();
 
 
     public static final class BrowserSubscription extends SubscriptionImpl
