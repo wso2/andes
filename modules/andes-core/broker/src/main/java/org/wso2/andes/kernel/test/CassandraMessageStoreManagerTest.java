@@ -20,7 +20,7 @@ package org.wso2.andes.kernel.test;
 
 import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.kernel.storemanager.DurableAsyncStoringManager;
+import org.wso2.andes.kernel.storemanager.AsyncStoringManager;
 import org.wso2.andes.store.cassandra.CQLBasedMessageStoreImpl;
 
 import java.util.List;
@@ -42,7 +42,7 @@ public class CassandraMessageStoreManagerTest {
         MessageStore messageStore = new CQLBasedMessageStoreImpl();
         try {
             messageStore.initializeMessageStore(connectionProperties);
-            messageStoreManager = new DurableAsyncStoringManager();
+            messageStoreManager = new AsyncStoringManager();
             messageStoreManager.initialise(messageStore);
 
         } catch (AndesException e) {
