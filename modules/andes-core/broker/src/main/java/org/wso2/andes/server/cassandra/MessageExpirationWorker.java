@@ -15,7 +15,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.wso2.andes.server.cassandra;
 
 import org.apache.commons.logging.Log;
@@ -40,10 +39,6 @@ public class MessageExpirationWorker extends Thread {
     private final int messageBatchSize;
     private final boolean saveExpiredToDLC;
 
-    //for measuring purposes
-    private long failureCount = 0l;
-    private long iterations = 0l;
-
     public MessageExpirationWorker() {
 
         BrokerConfiguration clusterConfiguration = ClusterResourceHolder.getInstance().getClusterConfiguration();
@@ -53,7 +48,7 @@ public class MessageExpirationWorker extends Thread {
         saveExpiredToDLC = clusterConfiguration.getSaveExpiredToDLC();
 
         this.start();
-        this.setWorking();
+        this.startWorking();
     }
 
     @Override
@@ -61,31 +56,54 @@ public class MessageExpirationWorker extends Thread {
 
         int failureCount = 0;
 
+        // The purpose of the "while true" loop here is to ensure that once the worker is started, it will verify the "working" volatile variable by itself
+        // and be able to wake up if the working state is changed to "false" and then "true".
+        // If we remove the "while (true)" part, we will need to re-initialize the MessageExpirationChecker from various methods outside
+        // once we set the "working" variable to false (since the thread will close).
         while (true) {
             if (working) {
                 try {
-                    //Get Expired messages
+                    //Get Expired message IDs from the database with the massageBatchSize as the limit
+                    // we cannot delegate a cascaded delete to cassandra since it doesn't maintain associations between columnfamilies.
                     List<AndesRemovableMetadata> expiredMessages = MessagingEngine.getInstance().getExpiredMessages(messageBatchSize);
 
                     if (expiredMessages == null || expiredMessages.size() == 0 )  {
-
                         sleepForWaitInterval(workerWaitInterval);
-
                     } else {
+
+                        //for debugging purposes
+                        log.debug("Expired message count : " + expiredMessages.size());
+
+                        //for tracing purposes
+                        if (log.isTraceEnabled()) {
+
+                            String messagesQueuedForExpiry = "";
+
+                            for (AndesRemovableMetadata arm : expiredMessages) {
+                                messagesQueuedForExpiry += arm.messageID + ",";
+                            }
+                            log.trace("Expired messages queued for deletion : " + messagesQueuedForExpiry);
+                        }
+
                         MessagingEngine.getInstance().deleteMessages(expiredMessages, saveExpiredToDLC);
                         sleepForWaitInterval(workerWaitInterval);
+
+                        // Note : We had a different alternative to employ cassandra column level TTLs to automatically handle
+                        // deletion of expired message references. But since we need to abstract database specific logic to
+                        // support different data models (like RDBMC) in future, the above approach is followed.
                     }
 
                 } catch (Throwable e) {
-                    /**
-                     * When there is a error, we will wait to avoid looping.
-                     */
+                    // The wait time here is designed to increase per failure to avoid unnecessary attempts to wake up the thread.
+                    // However, given that the most probable error here could be a timeout during the database call, it could recover in the next few attempts.
+                    // Therefore, no need to keep on delaying the worker.
+                    // So the maximum interval between the startup attempt will be 5 * regular wait time.
                     long waitTime = workerWaitInterval;
                     failureCount++;
                     long faultWaitTime = Math.max(waitTime * 5, failureCount * waitTime);
                     try {
                         Thread.sleep(faultWaitTime);
-                    } catch (InterruptedException e1) {
+                    } catch (InterruptedException ignore) {
                         //silently ignore
                     }
                     log.error("Error running Message Expiration Checker" + e.getMessage(), e);
@@ -108,19 +126,23 @@ public class MessageExpirationWorker extends Thread {
     /**
      * set Message Expiration Worker active
      */
-    public void setWorking() {
+    public void startWorking() {
+        log.debug("Starting message expiration checker.");
         working = true;
     }
 
+    /**
+     * Stop Message expiration Worker
+     */
     public void stopWorking() {
+        log.debug("Shutting down message expiration checker.");
         working = false;
-        log.info("Shutting down message expiration checker.");
     }
 
     private void sleepForWaitInterval(int sleepInterval) {
         try {
             Thread.sleep(sleepInterval);
-        } catch (InterruptedException e) {
+        } catch (InterruptedException ignore) {
             //ignored
         }
     }
