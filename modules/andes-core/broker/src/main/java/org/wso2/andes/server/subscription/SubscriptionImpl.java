@@ -315,7 +315,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                         try {
 
                             if (entry.getQueue().checkIfBoundToTopicExchange()
-                                    || ackHandler.checkAndRegisterSent(AMQPUtils.convertAMQMessageToAndesMetadata(((AMQMessage) entry.getMessage())), deliveryTag, getChannel())) {
+                                    || ackHandler.checkAndRegisterSent(AMQPUtils.convertAMQMessageToAndesMetadata(((AMQMessage) entry.getMessage()), getChannel().getChannelId()), deliveryTag, getChannel())) {
 
                                 if (log.isDebugEnabled()) {
                                     ByteBuffer buf = ByteBuffer.allocate(100);

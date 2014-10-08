@@ -32,7 +32,7 @@ public class MQTTChannel {
     /*Will insert the message header to the kernal*/
     private void addMessageHeader(AndesMessageMetadata messageHeader) {
         try {
-            MessagingEngine.getInstance().messageReceived(messageHeader, (long) 1.0);
+            MessagingEngine.getInstance().messageReceived(messageHeader);
         } catch (AndesException e) {
             e.printStackTrace();
         }

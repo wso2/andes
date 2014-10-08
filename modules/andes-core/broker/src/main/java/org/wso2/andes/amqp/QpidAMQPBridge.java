@@ -127,14 +127,14 @@ public class QpidAMQPBridge {
         try {
             log.debug("AMQP BRIDGE: Message id= " + incomingMessage.getMessageNumber() + "received");
             AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
-            AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message);
+            AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message, channelID);
             String queue = message.getRoutingKey();
 
             if (queue == null) {
                 log.error("Queue cannot be null, for " + incomingMessage.getMessageNumber());
             }
 
-            MessagingEngine.getInstance().messageReceived(metadata, channelID);
+            MessagingEngine.getInstance().messageReceived(metadata);
 
             PerformanceCounter.recordMessageReceived(queue, incomingMessage.getReceivedChunkCount());
         } catch (AndesException e) {

@@ -143,7 +143,7 @@ public class MessagingEngine {
      */
     public void messageContentReceived(AndesMessagePart part) {
         try {
-            messageStoreManager.storeMessageContent(part);
+            messageStoreManager.storeMessagePart(part);
         } catch (AndesException e) {
             log.error("Error occurred while storing message content. message id: " +
                       part.getMessageID(), e);
@@ -158,10 +158,9 @@ public class MessagingEngine {
      * Once all the message content is stored through messageContentReceived method call this
      * method with metadata
      * @param message AndesMessageMetadata
-     * @param channelID channel id
      * @throws AndesException
      */
-    public void messageReceived(AndesMessageMetadata message, long channelID)
+    public void messageReceived(AndesMessageMetadata message)
             throws AndesException {
         try {
 
@@ -204,7 +203,7 @@ public class MessagingEngine {
                         //We must update the routing key in metadata as well
                         clone.updateMetadata(subscriberQueue.getTargetQueue());
 
-                        messageStoreManager.storeMetadata(message, channelID);
+                        messageStoreManager.storeMetadata(message);
                     } else {
                         hasNonDurableSubscriptions = true;
                     }
@@ -224,11 +223,11 @@ public class MessagingEngine {
                         } else {
                             clone = message.deepClone(messageIdGenerator.getNextId());
                         }
-                        messageStoreManager.storeMetadata(clone, channelID);
+                        messageStoreManager.storeMetadata(clone);
                     }
                 }
             } else {
-                messageStoreManager.storeMetadata(message, channelID);
+                messageStoreManager.storeMetadata(message);
             }
         } catch (Exception e) {
             throw new AndesException("Error in storing the message to the store", e);
@@ -311,7 +310,7 @@ public class MessagingEngine {
     }
 
     public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException{
-        return messageStoreManager.getContent(messageId, offsetValue);
+        return messageStoreManager.getMessagePart(messageId, offsetValue);
     }
 
     public int getMessageCountOfQueue(String queueName) throws AndesException {

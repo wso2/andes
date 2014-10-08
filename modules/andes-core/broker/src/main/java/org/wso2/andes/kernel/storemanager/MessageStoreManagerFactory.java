@@ -37,50 +37,37 @@ public class MessageStoreManagerFactory {
     /**
      * Creates a MessageStoreManager according to the configurations for message storing
      *
-     * @param durableMessageStore
-     *         durableMessageStore
+     * @param messageStore
+     *         messageStore
      * @return MessageStoreManager implementation
      * @throws AndesException
      */
-    public static MessageStoreManager create(MessageStore durableMessageStore) throws
+    public static MessageStoreManager create(MessageStore messageStore) throws
                                                                                AndesException {
 
         boolean isAsyncStoring = MBConfiguration.isAsyncStoringEnabled();
         MessageStoreManager messageStoreManager;
-        if (AndesContext.getInstance().isClusteringEnabled()) { // clustered mode.
-            // NOTE: No in memory stores
-            if (isAsyncStoring) {
-                // clustered setup with asynchronous message storing
-                messageStoreManager = new DurableAsyncStoringManager();
-                messageStoreManager.initialise(durableMessageStore);
-                log.info("Message Storing strategy: Asynchronous message storing.");
-                return messageStoreManager;
-            } else {
-                // clustered setup with direct message storing
-                messageStoreManager = new DurableDirectStoringManager();
-                messageStoreManager.initialise(durableMessageStore);
-                log.info("Message Storing strategy: direct message storing.");
-                return messageStoreManager;
-            }
+        if (isAsyncStoring) {
+            // clustered setup with asynchronous message storing
+            messageStoreManager = new AsyncStoringManager();
+            messageStoreManager.initialise(messageStore);
+            log.info("Message Storing strategy: Asynchronous message storing.");
+            return messageStoreManager;
         } else {
-            // single node deployment
-            // todo: add proper in memory included MessageStoreManager with async and direct
-            if(!isAsyncStoring) {
-                messageStoreManager = new DurableDirectStoringManager();
-                messageStoreManager.initialise(durableMessageStore);
-                log.info("Message Storing strategy: direct message storing.");
-                return messageStoreManager;
-            }
-            // todo: in single node mode use else block with in-memory message store for non
-            // persistent messages (This is not total in-memory mode)
+            // clustered setup with direct message storing
+            messageStoreManager = new DirectStoringManager();
+            messageStoreManager.initialise(messageStore);
+            log.info("Message Storing strategy: direct message storing.");
+            return messageStoreManager;
         }
-
-        // setup default strategy and return
-        messageStoreManager = new DurableAsyncStoringManager();
-        messageStoreManager.initialise(durableMessageStore);
-        log.info("Message Storing strategy: (Default) Asynchronous message storing.");
-        return messageStoreManager;
     }
 
-
+    public static MessageStoreManager createDirectMessageStoreManager(MessageStore messageStore)
+            throws AndesException {
+        MessageStoreManager messageStoreManager;
+        messageStoreManager = new DirectStoringManager();
+        messageStoreManager.initialise(messageStore);
+        log.info("Message Storing strategy: direct message storing.");
+        return messageStoreManager;
+    }
 }

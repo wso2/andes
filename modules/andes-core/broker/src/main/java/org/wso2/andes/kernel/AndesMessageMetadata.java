@@ -25,6 +25,10 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
     byte[] metadata;
     long expirationTime;
     boolean isTopic;
+
+    //through which connection this message came into broker
+    int channelId;
+
     private String destination;
     private boolean isPersistent;
     private boolean reDelivered;
@@ -105,6 +109,14 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         isPersistent = persistent;
     }
 
+    public int getChannelId() {
+        return channelId;
+    }
+
+    public void setChannelId(int channelId) {
+        this.channelId = channelId;
+    }
+
     
     /**
      * Create a clone, with new message ID
@@ -115,12 +127,14 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
     	AndesMessageMetadata clone = new AndesMessageMetadata();
     	clone.messageID = messageId;
     	clone.metadata = metadata;
+        clone.channelId = channelId;
     	clone.expirationTime = expirationTime;
         clone.isTopic = isTopic;
         clone.destination = destination; 
         clone.isPersistent = isPersistent;
         clone.pendingJobsTracker = pendingJobsTracker; 
         clone.queueAddress = queueAddress;
+        clone.slot = slot;
         return clone;
     }
     

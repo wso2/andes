@@ -46,6 +46,7 @@ public class MQTTUtils {
         messageHeader.setTopic(true);
         messageHeader.setDestination(topic);
         messageHeader.setPersistent(true);
+        messageHeader.setChannelId(1);
         messageHeader.setMessageContentLength(messageContentLength);
 
         byte[] meta_data = ConstructMetaInformation(dummy_meta_info, messageHeader.getMessageID(), messageHeader.isTopic(),
