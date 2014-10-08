@@ -49,13 +49,8 @@ public class DirectStoringManager extends BasicStoringManager implements Message
      */
     private MessageStore messageStore;
 
-    /**
-     * Message store is used directly to store.
-     * @param messageStore MessageStore implementation to be used as the durable message
-     * @throws AndesException
-     */
-    @Override
-    public void initialise(MessageStore messageStore) throws AndesException{
+    public DirectStoringManager(MessageStore messageStore) {
+        super(messageStore);
         this.messageStore = messageStore;
     }
 

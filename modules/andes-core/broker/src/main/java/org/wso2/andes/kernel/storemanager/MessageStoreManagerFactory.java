@@ -49,14 +49,12 @@ public class MessageStoreManagerFactory {
         MessageStoreManager messageStoreManager;
         if (isAsyncStoring) {
             // clustered setup with asynchronous message storing
-            messageStoreManager = new AsyncStoringManager();
-            messageStoreManager.initialise(messageStore);
+            messageStoreManager = new AsyncStoringManager(messageStore);
             log.info("Message Storing strategy: Asynchronous message storing.");
             return messageStoreManager;
         } else {
             // clustered setup with direct message storing
-            messageStoreManager = new DirectStoringManager();
-            messageStoreManager.initialise(messageStore);
+            messageStoreManager = new DirectStoringManager(messageStore);
             log.info("Message Storing strategy: direct message storing.");
             return messageStoreManager;
         }
@@ -65,8 +63,7 @@ public class MessageStoreManagerFactory {
     public static MessageStoreManager createDirectMessageStoreManager(MessageStore messageStore)
             throws AndesException {
         MessageStoreManager messageStoreManager;
-        messageStoreManager = new DirectStoringManager();
-        messageStoreManager.initialise(messageStore);
+        messageStoreManager = new DirectStoringManager(messageStore);
         log.info("Message Storing strategy: direct message storing.");
         return messageStoreManager;
     }

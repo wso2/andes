@@ -38,11 +38,7 @@ public abstract class BasicStoringManager implements MessageStoreManager{
 
     private MessageStore messageStore;
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void initialise(MessageStore messageStore) throws AndesException {
+    public BasicStoringManager (MessageStore messageStore){
         this.messageStore = messageStore;
     }
 

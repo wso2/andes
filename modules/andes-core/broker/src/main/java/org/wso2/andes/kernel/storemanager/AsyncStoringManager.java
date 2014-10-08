@@ -92,6 +92,13 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
     private Map<String, AtomicInteger> messageCountDifferenceMap = new HashMap<String,
             AtomicInteger>();
 
+
+    public AsyncStoringManager(MessageStore messageStore) throws AndesException {
+        super(messageStore);
+        this.messageStore = messageStore;
+        initialise(messageStore);
+    }
+
     /**
      * Initialise Disruptor with the durable message store as persistent storage
      *
@@ -99,8 +106,7 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
      *         MessageStore implementation to be used as the durable message
      * @throws AndesException
      */
-    @Override
-    public void initialise(final MessageStore messageStore) throws AndesException {
+    private void initialise(final MessageStore messageStore) throws AndesException {
 
         this.messageStore = messageStore;
         disruptorBasedExecutor = new DisruptorBasedExecutor

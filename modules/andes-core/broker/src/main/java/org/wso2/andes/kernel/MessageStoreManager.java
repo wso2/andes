@@ -28,15 +28,6 @@ import java.util.List;
 public interface MessageStoreManager {
 
     /**
-     * Initialisation of MessageStoreManager
-     *
-     * @param messageStore
-     *         MessageStore implementation to be used as the message store.
-     * @throws AndesException
-     */
-    public void initialise(MessageStore messageStore) throws AndesException;
-
-    /**
      * Store Metadata of the message
      *
      * @param metadata
