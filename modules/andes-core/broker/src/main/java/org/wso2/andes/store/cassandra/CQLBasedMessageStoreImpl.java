@@ -40,12 +40,20 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     public CQLBasedMessageStoreImpl() {
     }
 
+    //todo remove this method after testing
+    public void setCQLConnection(CQLConnection cqlConnection){
+        this.cqlConnection = cqlConnection;
+    }
+
     public DurableStoreConnection initializeMessageStore(ConfigurationProperties
                                                                  connectionProperties)
             throws AndesException {
 
         // create connection object
-        cqlConnection = new CQLConnection();
+        //todo remove this if after testing
+        if (cqlConnection == null) {
+            cqlConnection = new CQLConnection();
+        }
         cqlConnection.initialize(connectionProperties);
 
         // get cassandra cluster and create column families

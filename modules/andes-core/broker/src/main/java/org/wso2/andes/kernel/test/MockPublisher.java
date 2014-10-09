@@ -19,6 +19,8 @@
 package org.wso2.andes.kernel.test;
 
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
@@ -36,6 +38,7 @@ public class MockPublisher implements Runnable {
     //todo size of the byte array 65534 chunk size
     private byte[] content = null;
     private int numberOfChunkPerMessage = 4;
+    private static Log log = LogFactory.getLog(MockPublisher.class);
 
 
     public MockPublisher(MessageStoreManager messageStoreManager, AtomicLong messageCount) {
@@ -54,8 +57,9 @@ public class MockPublisher implements Runnable {
             List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>();
             metadataList.add(andesMessageMetadata);
             messageStoreManager.storeMetaData(metadataList);
+            System.out.println("store metadata ....");
         } catch (AndesException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            log.error("Error while saving message to message store", e);
         }
 
     }

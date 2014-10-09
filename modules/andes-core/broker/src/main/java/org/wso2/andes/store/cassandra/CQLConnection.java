@@ -92,8 +92,10 @@ public class CQLConnection implements DurableStoreConnection {
             }
 
             setGcGraceSeconds(Integer.parseInt(gcGraceSeconds));
-
-            cluster = InitialContext.doLookup(jndiLookupName);
+            //todo remove this if elsee condtions after testing
+            if (cluster == null) {
+                cluster = InitialContext.doLookup(jndiLookupName);
+            }
 
             GenericCQLDAO.setCluster(cluster);
             createKeySpace(Integer.parseInt(replicationFactor), strategyClass);
@@ -270,5 +272,9 @@ public class CQLConnection implements DurableStoreConnection {
      */
     public void setGcGraceSeconds(int gcGraceSeconds) {
         this.gcGraceSeconds = gcGraceSeconds;
+    }
+
+    public void setCluster(Cluster cluster){
+        this.cluster = cluster;
     }
 }

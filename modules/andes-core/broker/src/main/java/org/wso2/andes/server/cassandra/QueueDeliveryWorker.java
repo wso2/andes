@@ -225,7 +225,6 @@ public class QueueDeliveryWorker {
                     log.trace("TRACING>> CMS>> read from message store " + message
                             .getMessageID());
                 }
-                //}
                 lastProcessedId = messageID;
             }
 
