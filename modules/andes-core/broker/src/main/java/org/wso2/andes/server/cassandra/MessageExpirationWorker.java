@@ -71,10 +71,10 @@ public class MessageExpirationWorker extends Thread {
                         sleepForWaitInterval(workerWaitInterval);
                     } else {
 
-                        //for debugging purposes
-                        log.debug("Expired message count : " + expiredMessages.size());
+                        if (log.isDebugEnabled()) {
+                            log.debug("Expired message count : " + expiredMessages.size());
+                        }
 
-                        //for tracing purposes
                         if (log.isTraceEnabled()) {
 
                             String messagesQueuedForExpiry = "";
@@ -127,7 +127,9 @@ public class MessageExpirationWorker extends Thread {
      * set Message Expiration Worker active
      */
     public void startWorking() {
-        log.debug("Starting message expiration checker.");
+        if (log.isDebugEnabled()) {
+            log.debug("Starting message expiration checker.");
+        }
         working = true;
     }
 
@@ -135,7 +137,9 @@ public class MessageExpirationWorker extends Thread {
      * Stop Message expiration Worker
      */
     public void stopWorking() {
-        log.debug("Shutting down message expiration checker.");
+        if (log.isDebugEnabled()) {
+            log.debug("Shutting down message expiration checker.");
+        }
         working = false;
     }
 
