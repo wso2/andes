@@ -162,8 +162,8 @@ public class CQLDataAccessHelper {
                     "Can't create cluster with empty connection string");
         }
 
-        int maxConnections = 5;
-        int concurrency = 5;
+        int maxConnections = 1000;
+        int concurrency = 1000;
         boolean async = true;
         String compression = "";
 
@@ -180,11 +180,23 @@ public class CQLDataAccessHelper {
         try {
             PoolingOptions pools = new PoolingOptions();
             pools.setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL, concurrency);
+            pools.setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE,
+                    concurrency);
+            pools.setMinSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL,
+                    concurrency);
+            pools.setMinSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE,
+                    concurrency);
             pools.setCoreConnectionsPerHost(HostDistance.LOCAL, maxConnections);
             pools.setMaxConnectionsPerHost(HostDistance.LOCAL, maxConnections);
             pools.setCoreConnectionsPerHost(HostDistance.REMOTE, maxConnections);
             pools.setMaxConnectionsPerHost(HostDistance.REMOTE, maxConnections);
 
+
+            SocketOptions soketOptions = new SocketOptions();
+            soketOptions.setConnectTimeoutMillis(10000);
+            soketOptions.setReadTimeoutMillis(15000);
+            soketOptions.setTcpNoDelay(true);
+            soketOptions.setKeepAlive(true);
             // Create cluster
 
             Builder builder = Cluster.builder();
@@ -192,7 +204,7 @@ public class CQLDataAccessHelper {
                 builder.addContactPoints(con);
             }
             builder.withPoolingOptions(pools)
-                   .withSocketOptions(new SocketOptions().setTcpNoDelay(true))
+                   .withSocketOptions(soketOptions)
                    .withRetryPolicy(DefaultRetryPolicy.INSTANCE)
                    .withReconnectionPolicy(new ConstantReconnectionPolicy(200L)).withPort(port)
                    .withCredentials(userName, password);

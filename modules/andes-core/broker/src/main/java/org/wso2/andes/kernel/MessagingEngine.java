@@ -494,6 +494,7 @@ public class MessagingEngine {
         stopMessageExpirationWorker();
         durableMessageStore.close();
 
+
     }
 
     /**

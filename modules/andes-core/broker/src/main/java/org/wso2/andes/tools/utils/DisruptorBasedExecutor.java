@@ -75,7 +75,7 @@ public class DisruptorBasedExecutor {
         ringBuffer.publish(sequence);
     }
 
-    public void messageCompleted(AndesMessageMetadata metadata) {
+    public void messageCompleted(final AndesMessageMetadata metadata) {
         long channelID = metadata.getChannelId();
         //This count how many jobs has finished
         synchronized (pendingJobsTracker) {
@@ -94,7 +94,20 @@ public class DisruptorBasedExecutor {
         event.metadata = metadata;
         event.metadata.setPendingJobsTracker(pendingJobsTracker);
         // make the event available to EventProcessors
-        ringBuffer.publish(sequence);
+        //todo uncomment this and comment executer
+       // ringBuffer.publish(sequence);
+          final AndesMessageMetadata mdata = metadata;
+                    AndesExecuter.runAsync(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        messageStoreManager.storeMetadata(mdata);
+                    } catch (AndesException e) {
+                        e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                    }
+                }
+
+            });
     }
 
     public void ackReceived(AndesAckData ackData) {

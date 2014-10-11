@@ -211,8 +211,8 @@
         </dependency>
 
         <dependency>
-           <groupId>com.datastax.cassandra</groupId>
-	 <artifactId>cassandra-driver-core</artifactId>
+           <groupId>com.datastax.cassandra.wso2</groupId>
+	 <artifactId>cql-driver</artifactId>
         </dependency>
 
         <!--eclipse set-->
