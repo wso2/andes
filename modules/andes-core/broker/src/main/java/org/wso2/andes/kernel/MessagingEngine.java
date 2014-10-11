@@ -66,10 +66,6 @@ public class MessagingEngine {
     // implmentations
     private MessageStore durableMessageStore;
 
-    // todo: remove referring to this from MessagingEngine. Use within MessageStoreManager
-    // implmentations
-    private MessageStore inMemoryMessageStore;
-
     /**
      * reference to subscription store
      */
@@ -122,10 +118,6 @@ public class MessagingEngine {
             // accessed via MessageStoreManager
             durableMessageStore = messageStore;
             subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-
-            // in memory message store
-            inMemoryMessageStore = new H2MemMessageStoreImpl();
-            inMemoryMessageStore.initializeMessageStore(null);
 
         } catch (Exception e) {
             throw new AndesException("Cannot initialize message store", e);
@@ -495,7 +487,6 @@ public class MessagingEngine {
         //todo: hasitha - we need to wait all jobs are finished, all executors have no future tasks
         stopMessageExpirationWorker();
         durableMessageStore.close();
-        inMemoryMessageStore.close();
 
     }
 
