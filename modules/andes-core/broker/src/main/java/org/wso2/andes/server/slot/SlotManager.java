@@ -34,6 +34,7 @@ import java.util.*;
  */
 public class SlotManager {
 
+
     private static SlotManager slotManager = new SlotManager();
 
     /**

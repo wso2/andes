@@ -36,12 +36,14 @@ public class SlotDeliveryWorkerManager {
             ConcurrentHashMap<Integer, SlotDeliveryWorker>();
 
     private ExecutorService slotDeliveryWorkerExecutor;
-    /*
-    number of slot delivery worker threads running inn one MB node
+
+    /**
+     * number of slot delivery worker threads running inn one MB node
      */
     private int numberOfThreads;
-    /*
-    slotDeliveryWorker instance
+
+    /**
+     * slotDeliveryWorker instance
      */
     private static SlotDeliveryWorkerManager slotDeliveryWorkerManagerManager =
             new SlotDeliveryWorkerManager();

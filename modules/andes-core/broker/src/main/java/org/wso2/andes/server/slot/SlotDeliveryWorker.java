@@ -45,6 +45,7 @@ public class SlotDeliveryWorker extends Thread {
     private HashMap<String, Long> localLastProcessedIdMap;
     private static boolean isClusteringEnabled;
     private static Log log = LogFactory.getLog(SlotDeliveryWorker.class);
+
     /**
      * this map contains slotId to slot hashmap against queue name
      */
