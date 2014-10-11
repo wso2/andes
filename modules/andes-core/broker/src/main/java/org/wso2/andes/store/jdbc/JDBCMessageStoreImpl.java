@@ -24,6 +24,7 @@ import org.wso2.andes.kernel.*;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -479,6 +480,9 @@ public class JDBCMessageStoreImpl implements MessageStore {
             close(preparedStatement, task);
             close(connection, task);
         }
+        //sort metadata list to increasing oder of message ids
+        Collections.sort(metadataList);
+
         return metadataList;
     }
 
