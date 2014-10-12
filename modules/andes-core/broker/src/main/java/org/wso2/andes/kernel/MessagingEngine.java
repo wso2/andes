@@ -164,7 +164,7 @@ public class MessagingEngine {
 
             if (message.getExpirationTime() > 0l) {
                 //store message in MESSAGES_FOR_EXPIRY_COLUMN_FAMILY Queue
-                // todo: MessageStoreManager needs to replace the deprecated method
+                // todo: MessageStoreManager needs to replace the method
                 durableMessageStore.addMessageToExpiryQueue(message.getMessageID(),
                         message.getExpirationTime(),
                         message.isTopic(),

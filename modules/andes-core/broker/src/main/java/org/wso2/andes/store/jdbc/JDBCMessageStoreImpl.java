@@ -61,7 +61,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
         // read data source name from config and use
         jdbcConnection.initialize(connectionProperties);
         datasource = jdbcConnection.getDataSource();
-
+        logger.info("Message Store initialised");
         return jdbcConnection;
     }
 
@@ -373,32 +373,59 @@ public class JDBCMessageStoreImpl implements MessageStore {
         preparedStatement.addBatch();
     }
 
+    /**
+     * Add metadata entry to expiry table
+     * @param connection SQLConnection. Connection resource is not closed within the method
+     * @param metadata AndesMessageMetadata
+     * @throws SQLException
+     */
     private void addToExpiryTable(Connection connection, AndesMessageMetadata metadata)
             throws SQLException {
-
-        if (metadata.getExpirationTime() > 0) {
-            PreparedStatement preparedStatement = connection
-                    .prepareStatement(JDBCConstants.PS_INSERT_EXPIRY_DATA);
-            addExpiryTableEntryToBatch(preparedStatement, metadata);
-            preparedStatement.executeBatch();
-            preparedStatement.close();
+        PreparedStatement preparedStatement = null;
+        try {
+            if (metadata.getExpirationTime() > 0) {
+                preparedStatement = connection.prepareStatement(JDBCConstants.PS_INSERT_EXPIRY_DATA);
+                addExpiryTableEntryToBatch(preparedStatement, metadata);
+                preparedStatement.executeBatch();
+            }
+        } finally {
+            close(preparedStatement, "adding entry to expiry table");
         }
     }
 
+    /**
+     * Add a list of metadata entries to expiry table
+     * @param connection SQLConnection. Connection resource is not closed within the method
+     * @param list AndesMessageMetadata list
+     * @throws SQLException
+     */
     private void addListToExpiryTable(Connection connection, List<AndesMessageMetadata> list)
             throws SQLException {
-        PreparedStatement preparedStatement = connection
-                .prepareStatement(JDBCConstants.PS_INSERT_EXPIRY_DATA);
 
-        for (AndesMessageMetadata andesMessageMetadata : list) {
-            if (andesMessageMetadata.getExpirationTime() > 0) {
-                addExpiryTableEntryToBatch(preparedStatement, andesMessageMetadata);
+        PreparedStatement preparedStatement = null;
+
+        try {
+            preparedStatement = connection
+                    .prepareStatement(JDBCConstants.PS_INSERT_EXPIRY_DATA);
+
+            for (AndesMessageMetadata andesMessageMetadata : list) {
+                if (andesMessageMetadata.getExpirationTime() > 0) {
+                    addExpiryTableEntryToBatch(preparedStatement, andesMessageMetadata);
+                }
             }
+            preparedStatement.executeBatch();
+        } finally {
+            close(preparedStatement, "adding list to expiry table");
         }
-        preparedStatement.executeBatch();
-        preparedStatement.close();
     }
 
+    /**
+     * Does a batch update on the given prepared statement to add entries to expiry table.
+     *
+     * @param preparedStatement PreparedStatement. Object is not closed within the method
+     * @param metadata AndesMessageMetadata
+     * @throws SQLException
+     */
     private void addExpiryTableEntryToBatch(PreparedStatement preparedStatement,
                                             AndesMessageMetadata metadata) throws SQLException {
         preparedStatement.setLong(1, metadata.getMessageID());
@@ -741,8 +768,9 @@ public class JDBCMessageStoreImpl implements MessageStore {
         try {
             connection = getConnection();
 
-            /* This has been changed to a transaction since in H2 Database this call asynchronously returns if
-            transactions are not used, leading to inconsistent DB. this is done to avoid that. */
+            /* This has been changed to a transaction since in H2 Database this call asynchronously
+            returns if transactions are not used, leading to inconsistent DB. this is done to avoid
+            that. */
             connection.setAutoCommit(false);
 
             preparedStatement = connection

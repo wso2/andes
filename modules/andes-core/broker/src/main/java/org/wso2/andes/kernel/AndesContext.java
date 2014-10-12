@@ -18,7 +18,6 @@
 
 package org.wso2.andes.kernel;
 
-import com.hazelcast.core.HazelcastInstance;
 import org.apache.axis2.clustering.ClusteringAgent;
 import org.wso2.andes.configuration.VirtualHostsConfiguration;
 import org.wso2.andes.subscription.SubscriptionStore;

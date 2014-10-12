@@ -37,6 +37,11 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
     private static Log log = LogFactory.getLog(AlternatingCassandraWriter.class);
     //int totalPendingEventLength = 0;
     int totalPendingItems = 0; // To segment batches using record count instead of byte length
+
+    /**
+     * current pending events total data length.
+     */
+    int totalPendingEventLength = 0;
     private int writerCount;
     private int turn;
     private MessageStoreManager messageStoreManager;
@@ -62,11 +67,8 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
             int calculatedTurn = (int) Math.abs(event.part.getMessageID() % writerCount);
 
             if (calculatedTurn == turn) {
-                /*
-                Message parts we write on the fly. It is tradeoff of memory vs. batching.
-                May be we need better handling .. batch that data as well
-                 */
-
+                //Message parts we write on the fly. It is trade off of memory vs. batching
+                //May be we need better handling .. batch that data as well
                 partList.add(event.part);
                 //totalPendingEventLength += event.part.getDataLength();
                 totalPendingItems += 1;

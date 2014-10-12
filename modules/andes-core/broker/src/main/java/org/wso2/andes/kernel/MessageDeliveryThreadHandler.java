@@ -24,7 +24,6 @@ import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.mqtt.MQTTLocalSubscription;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
-import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.BasicSubscription;
 
 /**
