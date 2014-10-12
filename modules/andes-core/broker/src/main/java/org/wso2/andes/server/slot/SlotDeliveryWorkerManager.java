@@ -38,12 +38,12 @@ public class SlotDeliveryWorkerManager {
     private ExecutorService slotDeliveryWorkerExecutor;
 
     /**
-     * number of slot delivery worker threads running inn one MB node
+     * Number of slot delivery worker threads running inn one MB node
      */
     private int numberOfThreads;
 
     /**
-     * slotDeliveryWorker instance
+     * SlotDeliveryWorker instance
      */
     private static SlotDeliveryWorkerManager slotDeliveryWorkerManagerManager =
             new SlotDeliveryWorkerManager();
@@ -98,7 +98,7 @@ public class SlotDeliveryWorkerManager {
 
 
     /**
-     * stop all stop delivery workers in the thread pool
+     * Stop all stop delivery workers in the thread pool
      */
     public void stopSlotDeliveryWorkers() {
         for (Map.Entry<Integer, SlotDeliveryWorker> slotDeliveryWorkerEntry :
@@ -109,14 +109,14 @@ public class SlotDeliveryWorkerManager {
     }
 
     /**
-     * @return slotDeliveryWorkerMap
+     * @return SlotDeliveryWorkerMap
      */
     private Map<Integer, SlotDeliveryWorker> getSlotDeliveryWorkerMap() {
         return slotDeliveryWorkerMap;
     }
 
     /**
-     * Start workers if not running
+     * Start all the SlotDeliveryWorkers if not already in running state.
      */
     public void startAllSlotDeliveryWorkers() {
         for (Map.Entry<Integer, SlotDeliveryWorker> entry :

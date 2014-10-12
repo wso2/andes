@@ -167,12 +167,13 @@ public class TestableMemoryMessageStore extends MemoryMessageStore
 
         @Override
         public Slot getSlot() {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
+            return null;
         }
 
         @Override
         public void setSlot(Slot slot) {
-            //To change body of implemented methods use File | Settings | File Templates.
+            //this method will not be used by instances of this class. This is only to set slot
+            // in  AMQP messages
         }
     }
 }

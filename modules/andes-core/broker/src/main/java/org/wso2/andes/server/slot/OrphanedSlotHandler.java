@@ -46,7 +46,7 @@ public class OrphanedSlotHandler implements SubscriptionListener {
     public void handleClusterSubscriptionsChanged(AndesSubscription subscription,
                                                   SubscriptionChange changeType)
             throws AndesException {
-        //To change body of implemented methods use File | Settings | File Templates.
+        //No need to do anything here since changes are done by handleLocalSubscriptionsChanged
     }
 
     @Override

@@ -34,7 +34,8 @@ import org.wso2.andes.server.slot.thrift.gen.SlotManagementService;
 import java.net.InetSocketAddress;
 
 /**
- * This class is responsible of handling the thrift server
+ * This class is take cares of starting and stopping the thrift server which is used to do slot
+ * communication.
  */
 public class MBThriftServer {
 
