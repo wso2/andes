@@ -28,7 +28,6 @@ public class DisruptorBasedExecutor {
      private MessageStoreManager messageStoreManager;
 
     public DisruptorBasedExecutor(MessageStoreManager messageStoreManager) {
-        log.info("Changed v1 ");
         this.messageStoreManager = messageStoreManager;
         int MAX_WRITE_HANDLERS = 10;
         AlternatingCassandraWriter[] writerHandlers = new AlternatingCassandraWriter[MAX_WRITE_HANDLERS];
