@@ -97,17 +97,17 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
 
         if (totalPendingEventLength > MAX_DATA_LENGTH || (endOfBatch)) {
             // Write message part list to database
-//            if (partList.size() > 0) {
-//                if(log.isDebugEnabled()){
-//                    log.debug("Number of message content sent to message store: " + partList.size
-//                            ());
-//                }
-//                long startTime = System.currentTimeMillis();
-//                messageStoreManager.storeMessagePart(partList);
-//                log.info("@@@@@@@@@@@@@@@@@@ latency message parts: " + (System.currentTimeMillis
-//                        () - startTime));
-//                partList.clear();
-//            }
+            if (partList.size() > 0) {
+                if(log.isDebugEnabled()){
+                    log.debug("Number of message content sent to message store: " + partList.size
+                            ());
+                }
+                long startTime = System.currentTimeMillis();
+                messageStoreManager.storeMessagePart(partList);
+                log.info("@@@@@@@@@@@@@@@@@@ latency message parts: " + (System.currentTimeMillis
+                        () - startTime) + "  length = " + event.part.getDataLength());
+                partList.clear();
+            }
 
             // Write message meta list to cassandra
             if (metaList.size() > 0) {
@@ -125,7 +125,7 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
                 messageStoreManager.storeMetaData(metaList);
                 log.info("@@@@@@@@@@@@@@@@@@ latency message metadata: " + (System
                         .currentTimeMillis
-                        () - startTime));
+                        () - startTime)+ "  length = " + event.metadata.getMetadata().length);
 
 //                final List<AndesMessageMetadata> mdatalist = metaList;
 //                metadataExecutor.submit(new Runnable() {
