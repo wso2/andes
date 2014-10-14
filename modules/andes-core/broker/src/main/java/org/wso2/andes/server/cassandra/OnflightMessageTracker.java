@@ -228,6 +228,67 @@ public class OnflightMessageTracker {
     }
 
     /**
+<<<<<<< HEAD
+=======
+     * Message is allowed to be sent if and only if it is a new message or an already sent message
+     * whose ack wait time out has happened
+     *
+     * @param
+     * @return boolean if the message should be sent
+     */
+//    public synchronized boolean testMessage(long messageId) {
+//        long currentTime = System.currentTimeMillis();
+//        MsgData mdata = msgId2MsgData.get(messageId);
+//        //we do not redeliver the message until ack-timeout is breached
+//        if (mdata == null || (!mdata.ackreceived && mdata.ackWaitTimedOut)) {
+//            if (mdata != null) {
+//                mdata.channel.decrementNonAckedMessageCount();
+//            }
+//            return true;
+//        } else {
+//            return false;
+//        }
+//    }
+
+
+    public boolean testMessage(long messageId){
+       if(msgId2MsgData.get(messageId)!= null){
+          return false;
+       } else{
+           return true;
+       }
+    }
+
+//    public boolean checkIfAlreadyReadFromNodeQueue(long messageID) {
+//        synchronized (this) {
+//            if (alreadyReadFromNodeQueueMessages.get(messageID) == null) {
+//                log.debug("TRACING>> OFMT-There is no item with messageID -" + messageID);
+//                return false;
+//            } else {
+//                log.debug("TRACING>> OFMT-There exists an item with messageID -" + messageID);
+//                return true;
+//            }
+//        }
+//    }
+
+//    public void markMessageAsReadFromNodeQueue(long messageID) {
+//        synchronized (this) {
+//            alreadyReadFromNodeQueueMessages.put(messageID, 0L);
+//        }
+//    }
+
+//    public void scheduleToDeleteMessageFromReadMessageFromNodeQueueMap(long messageID) {
+//        synchronized (this) {
+//            alreadyReadFromNodeQueueMessages.put(messageID, System.currentTimeMillis());
+//        }
+//    }
+
+//    public void unMarkMessageAsAlreadyReadFromNodeQueueMessageInstantly(long messageId) {
+//        alreadyReadFromNodeQueueMessages.remove(messageId);
+//    }
+
+    /**
+>>>>>>> cassandra issue testing code
      * This cleanup the current message ID form tracking. Useful for undo changes in case of a
      * failure
      *

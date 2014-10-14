@@ -3,9 +3,7 @@ package org.wso2.andes.tools.utils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -25,7 +23,8 @@ public class DisruptorBasedExecutor {
     private static DisruptorRuntime<AndesAckData> ackDataEvenRuntime;
     //private static DisruptorRuntime<SubscriptionDataEvent> dataDeliveryDisruptorRuntime;
     private static Map<Long, PendingJob> pendingJobsTracker = new ConcurrentHashMap<Long, PendingJob>();
-     private MessageStoreManager messageStoreManager;
+    private MessageStoreManager messageStoreManager;
+
 
     public DisruptorBasedExecutor(MessageStoreManager messageStoreManager) {
         this.messageStoreManager = messageStoreManager;
@@ -94,19 +93,8 @@ public class DisruptorBasedExecutor {
         event.metadata.setPendingJobsTracker(pendingJobsTracker);
         // make the event available to EventProcessors
         //todo uncomment this and comment executer
-       // ringBuffer.publish(sequence);
-          final AndesMessageMetadata mdata = metadata;
-                    AndesExecuter.runAsync(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        messageStoreManager.storeMetadata(mdata);
-                    } catch (AndesException e) {
-                        e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-                    }
-                }
+        ringBuffer.publish(sequence);
 
-            });
     }
 
     public void ackReceived(AndesAckData ackData) {

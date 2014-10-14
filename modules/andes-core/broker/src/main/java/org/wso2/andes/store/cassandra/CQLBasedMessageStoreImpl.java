@@ -243,26 +243,26 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             long start = System.currentTimeMillis();
 
             GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
-            int latency = (int) (System.currentTimeMillis() - start);
-            if(latency > 1000){
-                log.warn("Cassandra writing took " + latency + " millisecoonds for batch of " +
-                        metadataList.size());
-            }
-            PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(latency);
+//            int latency = (int) (System.currentTimeMillis() - start);
+//            if(latency > 1000){
+//                log.warn("Cassandra writing took " + latency + " millisecoonds for batch of " +
+//                        metadataList.size());
+//            }
+           // PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(latency);
 
             // Client waits for these message ID to be written, this signal those,
             // if there is a error
             //we will not signal and client who tries to close the connection will timeout.
             //We can do this better, but leaving this as is or now.
-            for (AndesMessageMetadata md : metadataList) {
-                Map<Long, PendingJob> pendingJobMap = md.getPendingJobsTracker();
-                if (pendingJobMap != null) {
-                    PendingJob jobData = pendingJobMap.get(md.getMessageID());
-                    if (jobData != null) {
-                        jobData.semaphore.release();
-                    }
-                }
-            }
+//            for (AndesMessageMetadata md : metadataList) {
+//                Map<Long, PendingJob> pendingJobMap = md.getPendingJobsTracker();
+//                if (pendingJobMap != null) {
+//                    PendingJob jobData = pendingJobMap.get(md.getMessageID());
+//                    if (jobData != null) {
+//                        jobData.semaphore.release();
+//                    }
+//                }
+//            }
         } catch (Exception e) {
             //TODO handle Cassandra failures
             //TODO may be we can write those message to a disk, or do something. Currently we

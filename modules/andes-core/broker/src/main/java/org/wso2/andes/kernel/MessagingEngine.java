@@ -21,12 +21,16 @@ package org.wso2.andes.kernel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.Logger;
+import org.wso2.andes.kernel.storemanager.DirectStoringManager;
 import org.wso2.andes.kernel.storemanager.MessageStoreManagerFactory;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
+import org.wso2.andes.server.slot.SlotMessageCounter;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
 import org.wso2.andes.store.cassandra.CQLBasedMessageStoreImpl;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -84,6 +88,10 @@ public class MessagingEngine {
      */
     private MessageStoreManager messageStoreManager;
 
+    private MessageStoreManager directStoreManager;
+
+    private ExecutorService metadataExecutor;
+
     // private constructor for singleton pattern
     private MessagingEngine() {
     }
@@ -96,6 +104,7 @@ public class MessagingEngine {
     /**
      * MessagingEngine is used for executing operations related to messages. (Storing,
      * retrieving etc) This works as an API for different transports implemented by MB
+     *
      * @return MessagingEngine
      */
     public static MessagingEngine getInstance() {
@@ -105,16 +114,20 @@ public class MessagingEngine {
     /**
      * Initialises the MessagingEngine with a given durableMessageStore. Message retrieval and
      * storing strategy will be set accoridng to the configurations by calling this.
+     *
      * @param messageStore MessageStore
      * @throws AndesException
      */
     public void initialise(MessageStore messageStore) throws AndesException {
-
+        metadataExecutor = Executors.newFixedThreadPool(100);
         config = ClusterResourceHolder.getInstance().getClusterConfiguration();
         configureMessageIDGenerator();
 
         try {
             messageStoreManager = MessageStoreManagerFactory.create(messageStore);
+
+            directStoreManager = MessageStoreManagerFactory.createDirectMessageStoreManager
+                    (messageStore);
 
             // todo: These message store references need to be removed. Message stores need to be
             // accessed via MessageStoreManager
@@ -133,28 +146,43 @@ public class MessagingEngine {
     /**
      * Message content is stored in database as chunks. Call this method for all the message
      * content received for a given message before calling messageReceived method with metadata
+     *
      * @param part AndesMessagePart
      */
     public void messageContentReceived(AndesMessagePart part) {
         try {
             messageStoreManager.storeMessagePart(part);
+//            final AndesMessagePart mPart = part;
+//            metadataExecutor.submit(new Runnable() {
+//                @Override
+//                public void run() {
+//                    try {
+//                        directStoreManager.storeMessagePart(mPart);
+//                    } catch (AndesException e) {
+//                        log.error("Error occurred while storing message content. message id: " +
+//                                mPart.getMessageID(), e);
+//                    }
+//                }
+//
+//            });
         } catch (AndesException e) {
             log.error("Error occurred while storing message content. message id: " +
-                      part.getMessageID(), e);
+                    part.getMessageID(), e);
         }
     }
 
-    public AndesMessagePart getMessageContentChunk(long messageID, int offsetInMessage) throws AndesException{
+    public AndesMessagePart getMessageContentChunk(long messageID, int offsetInMessage) throws AndesException {
         return durableMessageStore.getContent(messageID, offsetInMessage);
     }
 
     /**
      * Once all the message content is stored through messageContentReceived method call this
      * method with metadata
+     *
      * @param message AndesMessageMetadata
      * @throws AndesException
      */
-    public void messageReceived(AndesMessageMetadata message)
+    public void messageReceived(final AndesMessageMetadata message)
             throws AndesException {
         try {
 
@@ -162,9 +190,9 @@ public class MessagingEngine {
                 //store message in MESSAGES_FOR_EXPIRY_COLUMN_FAMILY Queue
                 // todo: MessageStoreManager needs to replace the deprecated method
                 durableMessageStore.addMessageToExpiryQueue(message.getMessageID(),
-                                                            message.getExpirationTime(),
-                                                            message.isTopic(),
-                                                            message.getDestination());
+                        message.getExpirationTime(),
+                        message.isTopic(),
+                        message.getDestination());
             }
 
             if (message.isTopic) {
@@ -222,6 +250,24 @@ public class MessagingEngine {
                 }
             } else {
                 messageStoreManager.storeMetadata(message);
+//                final AndesMessageMetadata mdata = message;
+//                metadataExecutor.submit(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        try {
+//                            directStoreManager.storeMetadata(mdata);
+//                            if (AndesContext.getInstance().isClusteringEnabled()) {
+//                                List<AndesMessageMetadata> metaList = new
+//                                        ArrayList<AndesMessageMetadata>();
+//                                metaList.add(message);
+//                                SlotMessageCounter.getInstance().recordMetaDataCountInSlot(metaList);
+//                            }
+//                        } catch (AndesException e) {
+//                            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+//                        }
+//                    }
+//
+//                });
             }
         } catch (Exception e) {
             throw new AndesException("Error in storing the message to the store", e);
@@ -237,7 +283,7 @@ public class MessagingEngine {
     }
 
     //todo: hasitha - to implement
-    public void messageRejected() throws AndesException{
+    public void messageRejected() throws AndesException {
 
     }
 
@@ -277,7 +323,7 @@ public class MessagingEngine {
             // update metadata lists.
             for (AndesMessageMetadata metadata : messageList) {
                 messageMetaDataList.add(new AndesRemovableMetadata(metadata.getMessageID(),
-                                                                   metadata.getDestination()));
+                        metadata.getDestination()));
                 messageIdList.add(metadata.getMessageID());
             }
 
@@ -294,16 +340,16 @@ public class MessagingEngine {
             messageIdList.clear();
             messageList = durableMessageStore
                     .getNextNMessageMetadataFromQueue(destinationQueue, lastProcessedMessageID,
-                                                      500);
+                            500);
         }
         return messageCount;
     }
 
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
-        messageStoreManager.deleteMessages(messagesToRemove,moveToDeadLetterChannel);
+        messageStoreManager.deleteMessages(messagesToRemove, moveToDeadLetterChannel);
     }
 
-    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException{
+    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
         return messageStoreManager.getMessagePart(messageId, offsetValue);
     }
 
@@ -312,7 +358,7 @@ public class MessagingEngine {
                 queueName);
     }
 
-    public List<AndesMessageMetadata> getMetaDataList(final String queueName, long firstMsgId, long lastMsgID) throws AndesException{
+    public List<AndesMessageMetadata> getMetaDataList(final String queueName, long firstMsgId, long lastMsgID) throws AndesException {
         return messageStoreManager.getMetaDataList(queueName, firstMsgId, lastMsgID);
     }
 
@@ -333,7 +379,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public void moveMetaDataToQueue(long messageId, String currentQueueName,
-                                    String targetQueueName) throws AndesException{
+                                    String targetQueueName) throws AndesException {
         messageStoreManager.moveMetaDataToQueue(messageId, currentQueueName, targetQueueName);
     }
 
@@ -346,7 +392,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
-            AndesException{
+            AndesException {
         messageStoreManager.updateMetaDataInformation(currentQueueName, metadataList);
     }
 
@@ -360,20 +406,20 @@ public class MessagingEngine {
             throws AndesException {
         //remove in-memory messages accumulated due to sudden subscription closing
         QueueDeliveryWorker queueDeliveryWorker = ClusterResourceHolder.getInstance()
-                                                                       .getQueueDeliveryWorker();
+                .getQueueDeliveryWorker();
         if (queueDeliveryWorker != null) {
             queueDeliveryWorker.clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(
                     destinationQueueName);
         }
         //remove sent but not acked messages
         OnflightMessageTracker.getInstance()
-                              .getSentButNotAckedMessagesOfQueue(destinationQueueName);
+                .getSentButNotAckedMessagesOfQueue(destinationQueueName);
     }
 
     public long generateNewMessageId() {
         long messageId = messageIdGenerator.getNextId();
-        if(log.isTraceEnabled()){
-           log.trace("=== TRACING>> CMS - MessageID generated: " + messageId + " ===");
+        if (log.isTraceEnabled()) {
+            log.trace("=== TRACING>> CMS - MessageID generated: " + messageId + " ===");
         }
         return messageId;
     }
@@ -409,8 +455,8 @@ public class MessagingEngine {
             } catch (Exception e) {
                 log.error(
                         "Error while loading Message id generator implementation : " +
-                        idGeneratorImpl +
-                        " adding TimeStamp based implementation as the default", e);
+                                idGeneratorImpl +
+                                " adding TimeStamp based implementation as the default", e);
                 messageIdGenerator = new TimeStampBasedMessageIdGenerator();
             }
         } else {
@@ -480,7 +526,7 @@ public class MessagingEngine {
         //stop all slotDeliveryWorkers
         SlotDeliveryWorkerManager.getInstance().stopSlotDeliveryWorkers();
         //stop thrift reconnecting thread if started
-        if(MBThriftClient.isReconnectingStarted()){
+        if (MBThriftClient.isReconnectingStarted()) {
             MBThriftClient.setReconnectingFlag(false);
         }
         log.info("Stopping Disruptor writing messages to store");
@@ -528,7 +574,7 @@ public class MessagingEngine {
         log.info("Stopping Message Expiration Checker");
 
         MessageExpirationWorker mew = ClusterResourceHolder.getInstance()
-                                                           .getMessageExpirationWorker();
+                .getMessageExpirationWorker();
         if (mew != null && mew.isWorking()) {
             mew.stopWorking();
         }

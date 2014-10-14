@@ -220,7 +220,10 @@ public class QueueDeliveryWorker {
 //                    if (log.isDebugEnabled()) {
 //                        log.debug("TRACING>> QDW------Adding " + messageID + " From Leading Thread to Deliver");
 //                    }
-                messagesFromMessageStore.add(message);
+
+                if (onflightMessageTracker.testMessage((message.getMessageID()))) {
+                    messagesFromMessageStore.add(message);
+                }
                 if (log.isTraceEnabled()) {
                     log.trace("TRACING>> CMS>> read from message store " + message
                             .getMessageID());

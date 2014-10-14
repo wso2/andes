@@ -75,13 +75,14 @@ public class DirectStoringManager extends BasicStoringManager implements Message
      */
     @Override
     public void storeMetaData(List<AndesMessageMetadata> messageMetadata) throws AndesException {
+        long start = System.currentTimeMillis();
         messageStore.addMetaData(messageMetadata);
         //increment message count for queue
-        for (AndesMessageMetadata md : messageMetadata) {
-            incrementQueueCount(md.getDestination());
-            //record the successfully written message count
-            PerformanceCounter.recordIncomingMessageWrittenToStore();
-        }
+//        for (AndesMessageMetadata md : messageMetadata) {
+//            incrementQueueCount(md.getDestination());
+//            //record the successfully written message count
+//            PerformanceCounter.recordIncomingMessageWrittenToStore();
+//        }
     }
 
     /**
@@ -168,6 +169,7 @@ public class DirectStoringManager extends BasicStoringManager implements Message
      */
     @Override
     public void storeMessagePart(List<AndesMessagePart> messageParts) throws AndesException {
+        long start = System.currentTimeMillis();
          messageStore.storeMessagePart(messageParts);
     }
 
