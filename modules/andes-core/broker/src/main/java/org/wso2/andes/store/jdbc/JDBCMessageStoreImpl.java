@@ -480,9 +480,6 @@ public class JDBCMessageStoreImpl implements MessageStore {
             close(preparedStatement, task);
             close(connection, task);
         }
-        //sort metadata list to increasing oder of message ids
-        Collections.sort(metadataList);
-
         return metadataList;
     }
 
