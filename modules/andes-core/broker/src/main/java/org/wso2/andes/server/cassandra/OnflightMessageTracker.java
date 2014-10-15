@@ -182,6 +182,13 @@ public class OnflightMessageTracker {
 
     }
 
+    /**
+     * When messages are rejected and failed this method will be called. Rejected/failed message
+     * will be put again to the buffer in QueueDeliveryWorker
+     * @param deliveryTag
+     * @param channelId
+     * @throws AMQException
+     */
     public void handleFailure(long deliveryTag, UUID channelId) throws AMQException {
         String deliveryID = new StringBuffer(channelId.toString()).append("/").append(deliveryTag)
                 .toString();
@@ -191,10 +198,13 @@ public class OnflightMessageTracker {
                 synchronized (this) {
                     MsgData msgData = msgId2MsgData.get(messageId);
                     msgData.ackWaitTimedOut = true;
+                    if (msgData != null) {
+                        msgData.channel.decrementNonAckedMessageCount();
+                    }
                 }
                 //Re-queue the message to send again
                 reQueueMessage(messageId);
-                //UnMarkMessageAsAlreadyReadFromNodeQueueMessageInstantly(messageId);
+
             } catch (AndesException e) {
                 log.warn("Message " + messageId + "re-queueing failed");
                 throw new AMQException(AMQConstant.INTERNAL_ERROR,
@@ -226,12 +236,8 @@ public class OnflightMessageTracker {
      * @param messageId
      * @return true if message is not sent earlier, else return false
      */
-    public boolean testMessage(long messageId) {
-        if (msgId2MsgData.get(messageId) != null) {
-            return false;
-        } else {
-            return true;
-        }
+    public synchronized boolean testMessage(long messageId) {
+        return msgId2MsgData.get(messageId) == null;
     }
 
     /**

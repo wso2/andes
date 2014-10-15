@@ -85,7 +85,7 @@ public class MessagingEngine {
     private MessageStoreManager messageStoreManager;
 
     /**
-     *private constructor for singleton pattern
+     * private constructor for singleton pattern
      */
     private MessagingEngine() {
     }

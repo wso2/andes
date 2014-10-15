@@ -34,7 +34,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- * <code>QueueDeliveryWorker</code> Handles the task of polling the user queues and flushing
+ * QueueDeliveryWorker Handles the task of polling the user queues and flushing
  * the messages to subscribers
  * There will be one Flusher per Queue Per Node
  */
