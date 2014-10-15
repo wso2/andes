@@ -1,20 +1,20 @@
 /*
-*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
-*
-*  WSO2 Inc. licenses this file to you under the Apache License,
-*  Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 
 package org.wso2.andes.kernel;
 
@@ -24,13 +24,10 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.Logger;
-import org.wso2.andes.kernel.storemanager.DirectStoringManager;
 import org.wso2.andes.kernel.storemanager.MessageStoreManagerFactory;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
-import org.wso2.andes.server.slot.SlotMessageCounter;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
 import org.wso2.andes.store.cassandra.CQLBasedMessageStoreImpl;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -43,7 +40,6 @@ import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
 import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.wso2.andes.server.util.AndesConstants;
-import org.wso2.andes.store.jdbc.h2.H2MemMessageStoreImpl;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 
@@ -88,11 +84,9 @@ public class MessagingEngine {
      */
     private MessageStoreManager messageStoreManager;
 
-    private MessageStoreManager directStoreManager;
-
-    private ExecutorService metadataExecutor;
-
-    // private constructor for singleton pattern
+    /**
+     *private constructor for singleton pattern
+     */
     private MessagingEngine() {
     }
 
@@ -119,18 +113,13 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public void initialise(MessageStore messageStore) throws AndesException {
-        metadataExecutor = Executors.newFixedThreadPool(100);
         config = ClusterResourceHolder.getInstance().getClusterConfiguration();
         configureMessageIDGenerator();
 
         try {
             messageStoreManager = MessageStoreManagerFactory.create(messageStore);
-
-            directStoreManager = MessageStoreManagerFactory.createDirectMessageStoreManager
-                    (messageStore);
-
-            // todo: These message store references need to be removed. Message stores need to be
-            // accessed via MessageStoreManager
+            // TODO: These message store references need to be removed. Message stores need to be
+            // Accessed via MessageStoreManager
             durableMessageStore = messageStore;
             subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
 
@@ -152,19 +141,6 @@ public class MessagingEngine {
     public void messageContentReceived(AndesMessagePart part) {
         try {
             messageStoreManager.storeMessagePart(part);
-//            final AndesMessagePart mPart = part;
-//            metadataExecutor.submit(new Runnable() {
-//                @Override
-//                public void run() {
-//                    try {
-//                        directStoreManager.storeMessagePart(mPart);
-//                    } catch (AndesException e) {
-//                        log.error("Error occurred while storing message content. message id: " +
-//                                mPart.getMessageID(), e);
-//                    }
-//                }
-//
-//            });
         } catch (AndesException e) {
             log.error("Error occurred while storing message content. message id: " +
                     part.getMessageID(), e);
@@ -250,24 +226,6 @@ public class MessagingEngine {
                 }
             } else {
                 messageStoreManager.storeMetadata(message);
-//                final AndesMessageMetadata mdata = message;
-//                metadataExecutor.submit(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        try {
-//                            directStoreManager.storeMetadata(mdata);
-//                            if (AndesContext.getInstance().isClusteringEnabled()) {
-//                                List<AndesMessageMetadata> metaList = new
-//                                        ArrayList<AndesMessageMetadata>();
-//                                metaList.add(message);
-//                                SlotMessageCounter.getInstance().recordMetaDataCountInSlot(metaList);
-//                            }
-//                        } catch (AndesException e) {
-//                            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-//                        }
-//                    }
-//
-//                });
             }
         } catch (Exception e) {
             throw new AndesException("Error in storing the message to the store", e);
@@ -304,7 +262,7 @@ public class MessagingEngine {
     }
 
     /**
-     * remove messages of the queue matching to some destination queue
+     * Remove messages of the queue matching to some destination queue
      *
      * @param destinationQueue destination queue name to match
      * @return number of messages removed
@@ -320,7 +278,7 @@ public class MessagingEngine {
         List<Long> messageIdList = new ArrayList<Long>();
         while (messageList.size() != 0) {
 
-            // update metadata lists.
+            // Update metadata lists.
             for (AndesMessageMetadata metadata : messageList) {
                 messageMetaDataList.add(new AndesRemovableMetadata(metadata.getMessageID(),
                         metadata.getDestination()));
@@ -330,10 +288,10 @@ public class MessagingEngine {
             messageCount += messageIdList.size();
             lastProcessedMessageID = messageIdList.get(messageIdList.size() - 1);
 
-            //remove metadata
+            //Remove metadata
             durableMessageStore
                     .deleteMessageMetadataFromQueue(destinationQueue, messageMetaDataList);
-            //remove content
+            //Remove content
             durableMessageStore.deleteMessageParts(messageIdList);
 
             messageMetaDataList.clear();
@@ -397,21 +355,21 @@ public class MessagingEngine {
     }
 
     /**
-     * remove in-memory messages tracked for this queue
+     * Remove in-memory messages tracked for this queue
      *
      * @param destinationQueueName name of queue messages should be removed
      * @throws AndesException
      */
     public void removeInMemoryMessagesAccumulated(String destinationQueueName)
             throws AndesException {
-        //remove in-memory messages accumulated due to sudden subscription closing
+        //Remove in-memory messages accumulated due to sudden subscription closing
         QueueDeliveryWorker queueDeliveryWorker = ClusterResourceHolder.getInstance()
                 .getQueueDeliveryWorker();
         if (queueDeliveryWorker != null) {
             queueDeliveryWorker.clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(
                     destinationQueueName);
         }
-        //remove sent but not acked messages
+        //Remove sent but not acked messages
         OnflightMessageTracker.getInstance()
                 .getSentButNotAckedMessagesOfQueue(destinationQueueName);
     }
@@ -429,7 +387,7 @@ public class MessagingEngine {
         long newMessageId = messageIdGenerator.getNextId();
         AndesMessageMetadata clone = message.deepClone(newMessageId);
 
-        //duplicate message content
+        //Duplicate message content
         ((CQLBasedMessageStoreImpl) durableMessageStore)
                 .duplicateMessageContent(message.getMessageID(), newMessageId);
 
@@ -444,7 +402,7 @@ public class MessagingEngine {
     }
 
     private void configureMessageIDGenerator() {
-        // configure message ID generator
+        // Configure message ID generator
         String idGeneratorImpl = config.getMessageIdGeneratorClass();
         if (idGeneratorImpl != null && !"".equals(idGeneratorImpl)) {
             try {
@@ -465,55 +423,19 @@ public class MessagingEngine {
     }
 
     /**
-     * start message delivery. Start threads. If not created create.
+     * Start message delivery. Start threads. If not created create.
      *
      * @throws Exception
      */
     public void startMessageDelivery() throws Exception {
 
-
-//        log.info("Starting queue message publisher");
-//        QueueDeliveryWorker qdw =
-//                ClusterResourceHolder.getInstance().getQueueDeliveryWorker();
-//        if(qdw == null) {
-//            boolean isInMemoryMode = ClusterResourceHolder.getInstance()
-// .getClusterConfiguration().isInMemoryMode();
-//            int queueWorkerInterval = ClusterResourceHolder.getInstance()
-// .getClusterConfiguration().getQueueWorkerInterval();
-////            QueueDeliveryWorker queueDeliveryWorker = new QueueDeliveryWorker
-// (queueWorkerInterval, isInMemoryMode);
-////            ClusterResourceHolder.getInstance().setQueueDeliveryWorker(queueDeliveryWorker);
-//        }  else {
-//            if (!qdw.isWorking()) {
-//                qdw.setWorking();
-//            }
-//        }
-//
-//        log.info("Starting topic message publisher");
-//        TopicDeliveryWorker tdw =
-//                ClusterResourceHolder.getInstance().getTopicDeliveryWorker();
-//        if(tdw == null) {
-//            TopicDeliveryWorker topicDeliveryWorker = new TopicDeliveryWorker();
-//            ClusterResourceHolder.getInstance().setTopicDeliveryWorker(topicDeliveryWorker);
-//        }  else {
-//            if (!tdw.isWorking()) {
-//                tdw.setWorking();
-//            }
-//        }
-//
-//        log.info("Starting Disruptor writing messages to store");
+        //TODO: start topic delivery workers
     }
 
     /**
      * Stop message delivery threads
      */
     public void stopMessageDelivery() {
-
-        log.info("Stopping queue message publisher");
-        QueueDeliveryWorker qdw = ClusterResourceHolder.getInstance().getQueueDeliveryWorker();
-        if (qdw != null && qdw.isWorking()) {
-            qdw.stopFlusher();
-        }
 
         log.info("Stopping topic message publisher");
         TopicDeliveryWorker tdw =
@@ -522,15 +444,15 @@ public class MessagingEngine {
             tdw.stopWorking();
         }
 
-
-        //stop all slotDeliveryWorkers
+        log.info("Stopping queue message publisher");
+        //Stop all slotDeliveryWorkers
         SlotDeliveryWorkerManager.getInstance().stopSlotDeliveryWorkers();
-        //stop thrift reconnecting thread if started
+        //Stop thrift reconnecting thread if started
         if (MBThriftClient.isReconnectingStarted()) {
             MBThriftClient.setReconnectingFlag(false);
         }
         log.info("Stopping Disruptor writing messages to store");
-
+        //TODO: Stop the disrupter
     }
 
     public void close() {

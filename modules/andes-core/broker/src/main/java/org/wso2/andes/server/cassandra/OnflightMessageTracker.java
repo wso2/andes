@@ -1,21 +1,19 @@
 /*
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
- *   Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *   WSO2 Inc. licenses this file to you under the Apache License,
- *   Version 2.0 (the "License"); you may not use this file except
- *   in compliance with the License.
- *   You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing,
- *  software distributed under the License is distributed on an
- *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- *  KIND, either express or implied.  See the License for the
- *  specific language governing permissions and limitations
- *  under the License.
- * /
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.wso2.andes.server.cassandra;
@@ -41,6 +39,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * This class is responsible of keeping track of message delivery and their status throughout
+ * delivery, rejection, retry etc.
+ */
 public class OnflightMessageTracker {
 
     private static Log log = LogFactory.getLog(OnflightMessageTracker.class);
@@ -71,19 +73,11 @@ public class OnflightMessageTracker {
 
     private static final ScheduledExecutorService scheduler = Executors
             .newSingleThreadScheduledExecutor();
-    private static final ScheduledExecutorService addedMessagedDeletionScheduler = Executors
-            .newSingleThreadScheduledExecutor();
-
-    private AtomicLong sendMessageCount = new AtomicLong();
     private AtomicLong sendButNotAckedMessageCount = new AtomicLong();
     private ConcurrentHashMap<String, ArrayList<AndesMessageMetadata>>
             queueTosentButNotAckedMessageMap = new ConcurrentHashMap<String,
             ArrayList<AndesMessageMetadata>>();
 
-
-    private long startTime = -1;
-//    private ConcurrentHashMap<Long, Long> alreadyReadFromNodeQueueMessages = new
-//            ConcurrentHashMap<Long, Long>();
 
     /**
      * Class to keep tracking data of a message
@@ -119,7 +113,6 @@ public class OnflightMessageTracker {
         return instance;
     }
 
-
     private OnflightMessageTracker() {
 
         this.acktimeout = ClusterResourceHolder.getInstance().getClusterConfiguration()
@@ -127,7 +120,7 @@ public class OnflightMessageTracker {
         this.maximumRedeliveryTimes = ClusterResourceHolder.getInstance().getClusterConfiguration()
                 .getNumberOfMaximumDeliveryCount();
         /*
-         * for all add and remove, following is executed, and it will remove the oldest entry if
+         * For all add and remove, following is executed, and it will remove the oldest entry if
          * needed
          */
         msgId2MsgData = new LinkedHashMap<Long, MsgData>() {
@@ -140,7 +133,7 @@ public class OnflightMessageTracker {
                         * 10);
                 if (todelete) {
                     if (!msgData.ackreceived) {
-                        //reduce messages on flight on this channel
+                        //Reduce messages on flight on this channel
                         msgData.channel.decrementNonAckedMessageCount();
                         if (log.isDebugEnabled()) {
                             log.debug(
@@ -148,7 +141,7 @@ public class OnflightMessageTracker {
                                             "message id " + msgData.msgID);
                         }
                         //TODO notify the QueueDeliveryWorker to resend (it work now as well as
-                        // flusher loops around, but this will be faster)
+                        // Flusher loops around, but this will be faster)
                     }
                     if (deliveryTag2MsgID.remove(msgData.deliveryID) == null) {
                         log.error(
@@ -190,7 +183,6 @@ public class OnflightMessageTracker {
     }
 
     public void handleFailure(long deliveryTag, UUID channelId) throws AMQException {
-        long newTimeStamp = System.currentTimeMillis();
         String deliveryID = new StringBuffer(channelId.toString()).append("/").append(deliveryTag)
                 .toString();
         Long messageId = deliveryTag2MsgID.get(deliveryID);
@@ -200,9 +192,9 @@ public class OnflightMessageTracker {
                     MsgData msgData = msgId2MsgData.get(messageId);
                     msgData.ackWaitTimedOut = true;
                 }
-                //re-queue the message to send again
+                //Re-queue the message to send again
                 reQueueMessage(messageId);
-                //unMarkMessageAsAlreadyReadFromNodeQueueMessageInstantly(messageId);
+                //UnMarkMessageAsAlreadyReadFromNodeQueueMessageInstantly(messageId);
             } catch (AndesException e) {
                 log.warn("Message " + messageId + "re-queueing failed");
                 throw new AMQException(AMQConstant.INTERNAL_ERROR,
@@ -229,72 +221,40 @@ public class OnflightMessageTracker {
 
     /**
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
      * Message is allowed to be sent if and only if it is a new message or an already sent message
      * whose ack wait time out has happened
+=======
+     * Test whether the given message ID is sent before
+>>>>>>> Refactored the code
      *
-     * @param
-     * @return boolean if the message should be sent
+     * @param messageId
+     * @return true if message is not sent earlier, else return false
      */
-//    public synchronized boolean testMessage(long messageId) {
-//        long currentTime = System.currentTimeMillis();
-//        MsgData mdata = msgId2MsgData.get(messageId);
-//        //we do not redeliver the message until ack-timeout is breached
-//        if (mdata == null || (!mdata.ackreceived && mdata.ackWaitTimedOut)) {
-//            if (mdata != null) {
-//                mdata.channel.decrementNonAckedMessageCount();
-//            }
-//            return true;
-//        } else {
-//            return false;
-//        }
-//    }
-
-
-    public boolean testMessage(long messageId){
-       if(msgId2MsgData.get(messageId)!= null){
-          return false;
-       } else{
-           return true;
-       }
+    public boolean testMessage(long messageId) {
+        if (msgId2MsgData.get(messageId) != null) {
+            return false;
+        } else {
+            return true;
+        }
     }
 
-//    public boolean checkIfAlreadyReadFromNodeQueue(long messageID) {
-//        synchronized (this) {
-//            if (alreadyReadFromNodeQueueMessages.get(messageID) == null) {
-//                log.debug("TRACING>> OFMT-There is no item with messageID -" + messageID);
-//                return false;
-//            } else {
-//                log.debug("TRACING>> OFMT-There exists an item with messageID -" + messageID);
-//                return true;
-//            }
-//        }
-//    }
-
-//    public void markMessageAsReadFromNodeQueue(long messageID) {
-//        synchronized (this) {
-//            alreadyReadFromNodeQueueMessages.put(messageID, 0L);
-//        }
-//    }
-
-//    public void scheduleToDeleteMessageFromReadMessageFromNodeQueueMap(long messageID) {
-//        synchronized (this) {
-//            alreadyReadFromNodeQueueMessages.put(messageID, System.currentTimeMillis());
-//        }
-//    }
-
-//    public void unMarkMessageAsAlreadyReadFromNodeQueueMessageInstantly(long messageId) {
-//        alreadyReadFromNodeQueueMessages.remove(messageId);
-//    }
-
     /**
+<<<<<<< HEAD
 >>>>>>> cassandra issue testing code
      * This cleanup the current message ID form tracking. Useful for undo changes in case of a
      * failure
      *
+=======
+     * Register message as delivered through transport. If the message has not sent up to maximum
+     * number of re-delivery tries, resend it.
+     * @param andesMetaDataEntry
+>>>>>>> Refactored the code
      * @param deliveryTag
-     * @param
      * @param channel
+     * @return
+     * @throws AMQException
      */
     public boolean testAndAddMessage(AndesMessageMetadata andesMetaDataEntry,
                                      long deliveryTag, AMQChannel channel)
@@ -305,7 +265,6 @@ public class OnflightMessageTracker {
         long messageId = andesMetaDataEntry.getMessageID();
         String queue = andesMetaDataEntry.getDestination();
         String nodeSpecificQueueName = queue;
-
         String deliveryID = new StringBuffer(channel.getId().toString()).append("/")
                 .append(deliveryTag)
                 .toString();
@@ -321,7 +280,11 @@ public class OnflightMessageTracker {
                         "Delivery Tag " + deliveryID + " reused, this should not happen");
             }
             if (mdata == null) {
+<<<<<<< HEAD
                 //this is a new message
+=======
+                //This is a new message
+>>>>>>> Refactored the code
                 deliveredButNotAckedMessages.put(messageId, messageId);
                 if (log.isTraceEnabled()) {
                     log.trace(
@@ -329,13 +292,14 @@ public class OnflightMessageTracker {
                                     + messageId);
                 }
             }
-            //this is an already sent but ack wait time expired message
+            //This is an already sent but ack wait time expired message
             else {
                 numOfDeliveriesOfCurrentMsg = mdata.numOfDeliveries;
-                // entry should have "ReDelivery" header
+                // Entry should have "ReDelivery" header
                 andesMetaDataEntry.setRedelivered();
-                // message has sent once, we will clean lists and consider it a new message,
-                // but with delivery times tracked
+                /*
+                Message has sent once, we will clean lists and consider it a new message,but with delivery times tracked
+                 */
                 deliveryTag2MsgID.remove(mdata.deliveryID);
                 msgId2MsgData.remove(messageId);
                 if (log.isTraceEnabled()) {
@@ -362,10 +326,17 @@ public class OnflightMessageTracker {
             messagesDeliveredThroughThisChannel.add(messageId);
         }
         messageIdToAndesMessagesMap.put(messageId, andesMetaDataEntry);
+<<<<<<< HEAD
         /**
          * Any custom checks or procedures that should be executed before message delivery should
          * happen here. Any message
          * rejected at this stage will be dropped from the node queue permanently.
+=======
+        /*
+          Any custom checks or procedures that should be executed before message delivery should
+          happen here. Any message
+          rejected at this stage will be dropped from the node queue permanently.
+>>>>>>> Refactored the code
          */
 
         //Check if number of redelivery tries has breached.
@@ -384,10 +355,17 @@ public class OnflightMessageTracker {
         return true;
     }
 
+    /**
+     * This method will update message tracking maps when an ack received.
+     * @param channelID
+     * @param messageId
+     * @throws AMQStoreException
+     * @throws AndesException
+     */
     public void ackReceived(UUID channelID, long messageId)
             throws AMQStoreException, AndesException {
         AndesMessageMetadata metadata = null;
-        MsgData msgData = null;
+        MsgData msgData ;
         synchronized (this) {
             msgData = msgId2MsgData.get(messageId);
             if (msgData != null) {
@@ -401,8 +379,11 @@ public class OnflightMessageTracker {
                 if (log.isTraceEnabled()) {
                     log.trace("TRACING>> OFMT-Ack received for MessageID-" + msgData.msgID);
                 }
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> Refactored the code
                 sendButNotAckedMessageCount.decrementAndGet();
                 channelToMsgIDMap.get(channelID).remove(messageId);
                 metadata = messageIdToAndesMessagesMap.remove(messageId);
@@ -419,6 +400,10 @@ public class OnflightMessageTracker {
 
     }
 
+    /**
+     * Clear channelToMsgIDMap and messageIdToAndesMessagesMap due to channel close.
+     * @param channel
+     */
     public void releaseAckTrackingSinceChannelClosed(AMQChannel channel) {
         HashSet<Long> sentButNotAckedMessages = channelToMsgIDMap.get(channel.getId());
 
@@ -432,7 +417,10 @@ public class OnflightMessageTracker {
                             sendButNotAckedMessageCount.decrementAndGet();
                             AndesMessageMetadata queueEntry = messageIdToAndesMessagesMap
                                     .remove(messageId);
+<<<<<<< HEAD
 
+=======
+>>>>>>> Refactored the code
                             //Re-queue message to the buffer
                             QueueDeliveryWorker.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(
                                     queueEntry);
