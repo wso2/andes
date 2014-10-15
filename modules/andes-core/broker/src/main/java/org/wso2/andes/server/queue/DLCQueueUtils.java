@@ -86,7 +86,7 @@ public class DLCQueueUtils {
      * @param owner     The tenant owner.
      * @throws AndesException
      */
-    public static void createDLCQueue(String queueName, VirtualHost host, String owner) throws AndesException {
+    public static synchronized void createDLCQueue(String queueName, VirtualHost host, String owner) throws AndesException {
         String dlcQueueName = identifyTenantInformationAndGenerateDLCString(queueName,
                 AndesConstants.DEAD_LETTER_QUEUE_NAME);
         QueueRegistry queueRegistry = host.getQueueRegistry();
