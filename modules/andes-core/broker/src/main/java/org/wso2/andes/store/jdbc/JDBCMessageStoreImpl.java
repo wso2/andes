@@ -24,10 +24,9 @@ import org.wso2.andes.kernel.*;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * ANSI SQL based message store implementation. Message persistence related methods are implemented
@@ -141,7 +140,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             preparedStatement.setInt(2, offsetValue);
             results = preparedStatement.executeQuery();
 
-            if (results.first()) {
+            if (results.next()) {
                 byte[] b = results.getBytes(JDBCConstants.MESSAGE_CONTENT);
                 messagePart = new AndesMessagePart();
                 messagePart.setMessageID(messageId);
@@ -422,7 +421,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             preparedStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_METADATA);
             preparedStatement.setLong(1, messageId);
             results = preparedStatement.executeQuery();
-            if (results.first()) {
+            if (results.next()) {
                 byte[] b = results.getBytes(JDBCConstants.METADATA);
                 md = new AndesMessageMetadata(messageId, b, true);
             }
@@ -713,7 +712,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
                     Statement.RETURN_GENERATED_KEYS);
             preparedStatement.setString(1, destinationQueueName);
             resultSet = preparedStatement.executeQuery();
-            if (resultSet.first()) {
+            if (resultSet.next()) {
                 queueID = resultSet.getInt(JDBCConstants.QUEUE_ID);
             }
         } catch (SQLException e) {
@@ -754,7 +753,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             connection.commit();
 
             results = preparedStatement.getGeneratedKeys();
-            if (results.first()) {
+            if (results.next()) {
                 queueID = results.getInt(1);
             }
             preparedStatement.close();
