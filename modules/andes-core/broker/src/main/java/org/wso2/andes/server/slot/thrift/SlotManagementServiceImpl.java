@@ -28,7 +28,9 @@ import org.wso2.andes.server.slot.thrift.gen.SlotInfo;
 import org.wso2.andes.server.slot.thrift.gen.SlotManagementService;
 
 /**
- * This is the implementation of SlotManagementService interface
+ * This is the implementation of SlotManagementService interface. This class contains operations
+ * does on slots through slot manager.When thrift client calls the services on
+ * SlotManagementService interface, methods in this class will be triggered.
  */
 
 public class SlotManagementServiceImpl implements SlotManagementService.Iface {

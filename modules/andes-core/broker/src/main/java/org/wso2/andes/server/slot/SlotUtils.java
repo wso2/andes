@@ -24,7 +24,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.MessagingEngine;
 
 import java.util.List;
@@ -38,8 +37,10 @@ public class SlotUtils {
 
 
     /**
+     * Check whether there  are any messages left in the slot after all the acks are received.
+     * Returns false  if there are any.
      * @param slot
-     * @return whether the slot is empty or not
+     * @return Whether the slot is empty or not
      */
     public static boolean checkSlotEmptyFromMessageStore(Slot slot) {
         try {

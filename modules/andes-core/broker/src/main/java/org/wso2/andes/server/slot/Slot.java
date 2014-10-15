@@ -28,23 +28,23 @@ import java.io.Serializable;
 public class Slot implements Serializable, Comparable<Slot> {
 
     /**
-     * number of messages in the slot
+     * Number of messages in the slot
      */
     private long messageCount;
 
 
     /**
-     * start message ID of the slot
+     * Start message ID of the slot
      */
     private long startMessageId;
 
     /**
-     * end message ID of the slot
+     * End message ID of the slot
      */
     private long endMessageId;
 
     /**
-     * queueName which the slot belongs to. This is set when the slot is assigned to a subscriber
+     * QueueName which the slot belongs to. This is set when the slot is assigned to a subscriber
      */
     private String queueName;
 
@@ -113,7 +113,7 @@ public class Slot implements Serializable, Comparable<Slot> {
     }
 
     /**
-     * return uniqueue id for the slot
+     * Return uniqueue id for the slot
      *
      * @return slot message id
      */

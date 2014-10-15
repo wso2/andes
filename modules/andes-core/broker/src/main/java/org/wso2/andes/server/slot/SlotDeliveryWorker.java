@@ -45,6 +45,7 @@ public class SlotDeliveryWorker extends Thread {
     private HashMap<String, Long> localLastProcessedIdMap;
     private static boolean isClusteringEnabled;
     private static Log log = LogFactory.getLog(SlotDeliveryWorker.class);
+
     /**
      * this map contains slotId to slot hashmap against queue name
      */
@@ -73,7 +74,7 @@ public class SlotDeliveryWorker extends Thread {
          */
         running = true;
         while (running) {
-            //iterate through all the queues registered in this thread
+            //Iterate through all the queues registered in this thread
             int emptyQueueCounter = 0;
             for (String queueName : queueList) {
                 Collection<LocalSubscription> subscriptions4Queue;
@@ -87,18 +88,18 @@ public class SlotDeliveryWorker extends Thread {
                                 Slot currentSlot = MBThriftClient.getSlot(queueName, nodeId);
                                 if (0 == currentSlot.getEndMessageId()) {
                                         /*
-                                        if the message buffer in QueueDeliveryWorker is not empty
+                                        If the message buffer in QueueDeliveryWorker is not empty
                                          send those messages
                                          */
                                     boolean sentFromMessageBuffer = sendFromMessageBuffer(queueName);
                                     if (!sentFromMessageBuffer) {
-                                        //no available free slots
+                                        //No available free slots
                                         emptyQueueCounter++;
                                         if (emptyQueueCounter == queueList.size()) {
                                             try {
                                                 Thread.sleep(2000);
                                             } catch (InterruptedException ignored) {
-                                                //silently ignore
+                                                //Silently ignore
                                             }
                                         }
                                     }
@@ -111,7 +112,7 @@ public class SlotDeliveryWorker extends Thread {
                                     }
                                     long firstMsgId = currentSlot.getStartMessageId();
                                     long lastMsgId = currentSlot.getEndMessageId();
-                                    //read messages in the slot
+                                    //Read messages in the slot
                                     List<AndesMessageMetadata> messagesReadByLeadingThread =
                                             MessagingEngine.getInstance().getMetaDataList(
                                                     queueName, firstMsgId, lastMsgId);
@@ -127,7 +128,7 @@ public class SlotDeliveryWorker extends Thread {
                                                 messagesReadByLeadingThread, currentSlot);
                                     } else {
                                         MBThriftClient.deleteSlot(queueName, currentSlot, nodeId);
-                                            /*if there are messages to be sent in the message
+                                            /*If there are messages to be sent in the message
                                             buffer in QueueDeliveryWorker send them */
                                         sendFromMessageBuffer(queueName);
                                     }
@@ -157,7 +158,7 @@ public class SlotDeliveryWorker extends Thread {
                                                 Thread.sleep(2000);
                                             }
                                         } catch (InterruptedException ignored) {
-                                            //silently ignore
+                                            //Silently ignore
                                         }
 
                                     }
@@ -182,7 +183,7 @@ public class SlotDeliveryWorker extends Thread {
                                 }
                             }
                         } else {
-                                /*if there are messages to be sent in the message
+                                /*If there are messages to be sent in the message
                                             buffer in QueueDeliveryWorker send them */
                             if (log.isDebugEnabled()) {
                                 log.debug("The queue" + queueName + " has no room. Thus sending from buffer.");
@@ -204,7 +205,7 @@ public class SlotDeliveryWorker extends Thread {
 
 
     /**
-     * send messages from buffer in QueueDeliveryWorker if the buffer is not empty
+     * Send messages from buffer in QueueDeliveryWorker if the buffer is not empty
      *
      * @param queueName
      * @return whether the messages are sent from message buffer or not
@@ -229,7 +230,7 @@ public class SlotDeliveryWorker extends Thread {
     }
 
     /**
-     * get queue list belongs to this thread
+     * Get queue list belongs to this thread
      *
      * @return queue list
      */
@@ -239,14 +240,14 @@ public class SlotDeliveryWorker extends Thread {
 
 
     /**
-     * @return whether the worker thread is in running state or not
+     * @return Whether the worker thread is in running state or not
      */
     public boolean isRunning() {
         return running;
     }
 
     /**
-     * set state of the worker thread
+     * Set state of the worker thread
      *
      * @param running
      */
@@ -255,7 +256,7 @@ public class SlotDeliveryWorker extends Thread {
     }
 
     /**
-     * check whether the slot is empty and if not resend the remaining messages. If the slot is
+     * Check whether the slot is empty and if not resend the remaining messages. If the slot is
      * empty delete the slot from slot manager
      *
      * @param slot to be checked for emptiness

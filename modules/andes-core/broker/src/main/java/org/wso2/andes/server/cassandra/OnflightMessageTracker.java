@@ -143,9 +143,11 @@ public class OnflightMessageTracker {
                     if (!msgData.ackreceived) {
                         //reduce messages on flight on this channel
                         msgData.channel.decrementNonAckedMessageCount();
-                        log.debug(
-                                "No ack received for delivery tag " + msgData.deliveryID + " and " +
-                                        "message id " + msgData.msgID);
+                        if (log.isDebugEnabled()) {
+                            log.debug(
+                                    "No ack received for delivery tag " + msgData.deliveryID + " and " +
+                                            "message id " + msgData.msgID);
+                        }
                         //TODO notify the QueueDeliveryWorker to resend (it work now as well as
                         // flusher loops around, but this will be faster)
                     }
@@ -272,10 +274,14 @@ public class OnflightMessageTracker {
     public boolean checkIfAlreadyReadFromNodeQueue(long messageID) {
         synchronized (this) {
             if (alreadyReadFromNodeQueueMessages.get(messageID) == null) {
-                log.debug("TRACING>> OFMT-There is no item with messageID -" + messageID);
+                if (log.isDebugEnabled()) {
+                    log.debug("TRACING>> OFMT-There is no item with messageID -" + messageID);
+                }
                 return false;
             } else {
-                log.debug("TRACING>> OFMT-There exists an item with messageID -" + messageID);
+                if (log.isDebugEnabled()) {
+                    log.debug("TRACING>> OFMT-There exists an item with messageID -" + messageID);
+                }
                 return true;
             }
         }
@@ -350,22 +356,26 @@ public class OnflightMessageTracker {
         if (mdata == null) {
             //this is a new message
             deliveredButNotAckedMessages.add(messageId);
-            log.debug(
-                    "TRACING>> OFMT-testAndAdd-scheduling new message to deliver with MessageID-"
-                            + messageId);
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "TRACING>> OFMT-testAndAdd-scheduling new message to deliver with MessageID-"
+                                + messageId);
+            }
         }
-        //this is an already sent but ack wait time expired message
+        //This is an already sent but ack wait time expired message
         else {
             numOfDeliveriesOfCurrentMsg = mdata.numOfDeliveries;
             // entry should have "ReDelivery" header
             andesMetaDataEntry.setRedelivered();
-            // message has sent once, we will clean lists and consider it a new message,
+            // Message has sent once, we will clean lists and consider it a new message,
             // but with delivery times tracked
             deliveryTag2MsgID.remove(mdata.deliveryID);
             msgId2MsgData.remove(messageId);
-            log.debug(
-                    "TRACING>> OFMT- testAndAdd-scheduling ack expired message to deliver with " +
-                            "MessageID-" + messageId);
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "TRACING>> OFMT- testAndAdd-scheduling ack expired message to deliver with " +
+                                "MessageID-" + messageId);
+            }
         }
         numOfDeliveriesOfCurrentMsg++;
         deliveryTag2MsgID.put(deliveryID, messageId);
@@ -384,12 +394,12 @@ public class OnflightMessageTracker {
         }
         messageIdToAndesMessagesMap.put(messageId, andesMetaDataEntry);
         /**
-         * any custom checks or procedures that should be executed before message delivery should
+         * Any custom checks or procedures that should be executed before message delivery should
          * happen here. Any message
          * rejected at this stage will be dropped from the node queue permanently.
          */
 
-        //check if number of redelivery tries has breached.
+        //Check if number of redelivery tries has breached.
         if (numOfDeliveriesOfCurrentMsg > ClusterResourceHolder.getInstance()
                 .getClusterConfiguration()
                 .getNumberOfMaximumDeliveryCount()) {
@@ -397,7 +407,7 @@ public class OnflightMessageTracker {
                     "Number of Maximum Redelivery Tries Has Breached. Dropping The Message: " +
                             messageId + "From Queue " + queue);
             return false;
-            //check if queue entry has expired. Any expired message will not be delivered
+            //Check if queue entry has expired. Any expired message will not be delivered
         } else if (andesMetaDataEntry.isExpired()) {
             log.warn("Message is expired. Dropping The Message: " + messageId);
             return false;
@@ -411,19 +421,21 @@ public class OnflightMessageTracker {
         if (msgData != null) {
             msgData.ackreceived = true;
 
-            //how much time took between delivery and ack receive
+            //How much time took between delivery and ack receive
             long timeTook = (System.currentTimeMillis() - msgData.timestamp);
             PerformanceCounter.recordAckReceived(msgData.queue, (int) timeTook);
 
-            // then update the tracker
-            log.debug("TRACING>> OFMT-Ack received for MessageID-" + msgData.msgID);
+            // Then update the tracker
+            if (log.isDebugEnabled()) {
+                log.debug("TRACING>> OFMT-Ack received for MessageID-" + msgData.msgID);
+            }
 
             sendButNotAckedMessageCount.decrementAndGet();
             channelToMsgIDMap.get(channelID).remove(messageId);
             AndesMessageMetadata metadata = messageIdToAndesMessagesMap.remove(messageId);
 
             /*
-            decrement pending message count and check whether the slot is empty. If so read the
+            Decrement pending message count and check whether the slot is empty. If so read the
             slot again from message store.
              */
             decrementMessageCountInSlotAndCheckToResend(metadata.getSlot(), msgData.queue);
@@ -448,10 +460,12 @@ public class OnflightMessageTracker {
                                 .remove(messageId);
 
 
-                        //re-queue message to the buffer
+                        //Re-queue message to the buffer
                         QueueDeliveryWorker.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(
                                 queueEntry);
-                        log.debug("TRACING>> OFMT- re-queued message-" + messageId + "- since delivered but not acked");
+                        if (log.isDebugEnabled()) {
+                            log.debug("TRACING>> OFMT- re-queued message-" + messageId + "- since delivered but not acked");
+                        }
                     }
                 }
             }
@@ -470,10 +484,10 @@ public class OnflightMessageTracker {
      */
     public void removeTrackingInformationForDeadMessages(long messageId) {
 
-        //if it is an already sent but not acked message we will not decrement message count again
+        //If it is an already sent but not acked message we will not decrement message count again
         MsgData messageData = msgId2MsgData.get(messageId);
         if (messageData != null) {
-            //we do following to stop trying to delete message again when acked someday
+            //We do following to stop trying to delete message again when acked someday
             deliveredButNotAckedMessages.remove(messageId);
         }
     }
@@ -483,7 +497,7 @@ public class OnflightMessageTracker {
     }
 
     /**
-     * decrement message count in slot and if it is zerocheck the slot again to resend
+     * Decrement message count in slot and if it is zerocheck the slot again to resend
      * @param slot
      * @param queueName
      * @throws AndesException
@@ -504,7 +518,7 @@ public class OnflightMessageTracker {
     }
 
     /**
-     * increment the message count in a slot
+     * Increment the message count in a slot
      * @param slot
      */
     public void incrementMessageCountInSlot(Slot slot){

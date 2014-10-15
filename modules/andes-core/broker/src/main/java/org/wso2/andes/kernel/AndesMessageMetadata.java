@@ -26,7 +26,9 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
     long expirationTime;
     boolean isTopic;
 
-    //through which connection this message came into broker
+    /**
+     *through which connection this message came into broker
+     */
     int channelId;
 
     private String destination;
@@ -35,10 +37,15 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
     Map<Long, PendingJob> pendingJobsTracker;
     public QueueAddress queueAddress;
     private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
-    //Added for MQTT usage
+
+    /**
+     *Added for MQTT usage
+     */
     private int messageContentLength;
 
-    //slotID which this metadata belongs
+    /**
+     *slotID which this metadata belongs
+     */
     private Slot slot;
 
     public AndesMessageMetadata(){}

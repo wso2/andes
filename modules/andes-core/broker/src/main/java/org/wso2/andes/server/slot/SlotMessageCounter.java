@@ -42,7 +42,7 @@ public class SlotMessageCounter {
     private ConcurrentHashMap<String, Slot> queueToSlotMap = new ConcurrentHashMap<String, Slot>();
     private ConcurrentHashMap<String, Long> slotTimeOutMap = new ConcurrentHashMap<String, Long>();
     /**
-     * timeout in milliseconds for messages in the slot. When this timeout is exceeded slot will be
+     * Timeout in milliseconds for messages in the slot. When this timeout is exceeded slot will be
      * submitted to the coordinator
      */
     private long timeOutForMessagesInQueue = ClusterResourceHolder.getInstance()
@@ -85,7 +85,7 @@ public class SlotMessageCounter {
     }
 
     /**
-     * Record metadata count in the slot so far
+     * Record metadata count in the current slot related to a particular queue.
      *
      * @param metadataList metadata list to be record
      */
@@ -112,8 +112,10 @@ public class SlotMessageCounter {
     }
 
     /**
+     * Update in-memory queue to slot map. This method is synchronized since many publishers can
+     * be access this thread simultaneously.
      * @param metadata
-     * @return current slot which this metadata belongs to
+     * @return Current slot which this metadata belongs to
      */
     private synchronized Slot updateQueueToSlotMap(AndesMessageMetadata metadata) {
         String queueName = metadata.getDestination();
@@ -135,7 +137,7 @@ public class SlotMessageCounter {
     }
 
     /**
-     * Record last message ID in the slot in the distributed map
+     * Submit last message ID in the slot to SlotManager.
      *
      * @param queueName
      */

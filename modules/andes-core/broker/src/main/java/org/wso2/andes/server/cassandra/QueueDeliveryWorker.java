@@ -171,7 +171,7 @@ public class QueueDeliveryWorker {
     }
 
     /**
-     *  send the messages to deliver
+     *  Send the messages to deliver
      * @param messagesReadByLeadingThread  AndesMetadata list
      * @param slot these messages are belonged to
      */
@@ -307,7 +307,7 @@ public class QueueDeliveryWorker {
     }
 
     /**
-     * does that queue has too many messages pending
+     * Does that queue has too many messages pending
      *
      * @param localSubscription local subscription
      * @return is subscription ready to accept messages
@@ -333,7 +333,7 @@ public class QueueDeliveryWorker {
             throws Exception {
 
         /**
-         * check if this queue has any subscription
+         * Check if this queue has any subscription
          */
 
         //todo return the slot
@@ -342,7 +342,7 @@ public class QueueDeliveryWorker {
         }
 
         /**
-         * deliver messages to subscriptions
+         * Deliver messages to subscriptions
          */
         int sentMessageCount = 0;
         Iterator<AndesMessageMetadata> iterator = messages.iterator();
@@ -358,7 +358,8 @@ public class QueueDeliveryWorker {
                     .getActiveLocalSubscribers(targetQueue, false);
             if (subscriptions4Queue != null) {
                 /*
-                 * we do this in a for loop to avoid iterating for a subscriptions for ever. We only iterate as
+                 * We do this in a for loop to avoid iterating for a subscriptions for ever. We
+                 * only iterate as
                  * once for each subscription
                  */
                 for (int j = 0; j < subscriptions4Queue.size(); j++) {
