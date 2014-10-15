@@ -220,14 +220,8 @@ public class OnflightMessageTracker {
     }
 
     /**
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
      * Message is allowed to be sent if and only if it is a new message or an already sent message
      * whose ack wait time out has happened
-=======
-     * Test whether the given message ID is sent before
->>>>>>> Refactored the code
      *
      * @param messageId
      * @return true if message is not sent earlier, else return false
@@ -241,16 +235,10 @@ public class OnflightMessageTracker {
     }
 
     /**
-<<<<<<< HEAD
->>>>>>> cassandra issue testing code
-     * This cleanup the current message ID form tracking. Useful for undo changes in case of a
-     * failure
-     *
-=======
      * Register message as delivered through transport. If the message has not sent up to maximum
      * number of re-delivery tries, resend it.
+     *
      * @param andesMetaDataEntry
->>>>>>> Refactored the code
      * @param deliveryTag
      * @param channel
      * @return
@@ -280,11 +268,8 @@ public class OnflightMessageTracker {
                         "Delivery Tag " + deliveryID + " reused, this should not happen");
             }
             if (mdata == null) {
-<<<<<<< HEAD
-                //this is a new message
-=======
+
                 //This is a new message
->>>>>>> Refactored the code
                 deliveredButNotAckedMessages.put(messageId, messageId);
                 if (log.isTraceEnabled()) {
                     log.trace(
@@ -326,17 +311,10 @@ public class OnflightMessageTracker {
             messagesDeliveredThroughThisChannel.add(messageId);
         }
         messageIdToAndesMessagesMap.put(messageId, andesMetaDataEntry);
-<<<<<<< HEAD
-        /**
-         * Any custom checks or procedures that should be executed before message delivery should
-         * happen here. Any message
-         * rejected at this stage will be dropped from the node queue permanently.
-=======
         /*
           Any custom checks or procedures that should be executed before message delivery should
           happen here. Any message
           rejected at this stage will be dropped from the node queue permanently.
->>>>>>> Refactored the code
          */
 
         //Check if number of redelivery tries has breached.
@@ -357,6 +335,7 @@ public class OnflightMessageTracker {
 
     /**
      * This method will update message tracking maps when an ack received.
+     *
      * @param channelID
      * @param messageId
      * @throws AMQStoreException
@@ -365,7 +344,7 @@ public class OnflightMessageTracker {
     public void ackReceived(UUID channelID, long messageId)
             throws AMQStoreException, AndesException {
         AndesMessageMetadata metadata = null;
-        MsgData msgData ;
+        MsgData msgData;
         synchronized (this) {
             msgData = msgId2MsgData.get(messageId);
             if (msgData != null) {
@@ -379,11 +358,6 @@ public class OnflightMessageTracker {
                 if (log.isTraceEnabled()) {
                     log.trace("TRACING>> OFMT-Ack received for MessageID-" + msgData.msgID);
                 }
-<<<<<<< HEAD
-
-
-=======
->>>>>>> Refactored the code
                 sendButNotAckedMessageCount.decrementAndGet();
                 channelToMsgIDMap.get(channelID).remove(messageId);
                 metadata = messageIdToAndesMessagesMap.remove(messageId);
@@ -402,6 +376,7 @@ public class OnflightMessageTracker {
 
     /**
      * Clear channelToMsgIDMap and messageIdToAndesMessagesMap due to channel close.
+     *
      * @param channel
      */
     public void releaseAckTrackingSinceChannelClosed(AMQChannel channel) {
@@ -417,10 +392,6 @@ public class OnflightMessageTracker {
                             sendButNotAckedMessageCount.decrementAndGet();
                             AndesMessageMetadata queueEntry = messageIdToAndesMessagesMap
                                     .remove(messageId);
-<<<<<<< HEAD
-
-=======
->>>>>>> Refactored the code
                             //Re-queue message to the buffer
                             QueueDeliveryWorker.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(
                                     queueEntry);

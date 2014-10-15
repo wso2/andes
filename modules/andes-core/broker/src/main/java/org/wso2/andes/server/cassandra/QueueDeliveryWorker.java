@@ -151,16 +151,10 @@ public class QueueDeliveryWorker {
     }
 
     /**
-     * <<<<<<< HEAD
-     * Send the messages to deliver
+     * send the messages to deliver
      *
      * @param messagesReadByLeadingThread AndesMetadata list
      * @param slot                        these messages are belonged to
-     *                                    =======
-     *                                    send the messages to deliver
-     * @param messagesReadByLeadingThread AndesMetadata list
-     * @param slot                        these messages are belonged to
-     *                                    >>>>>>> Changes did after profiling
      */
     public void sendMessageToFlusher(List<AndesMessageMetadata> messagesReadByLeadingThread,
                                      Slot slot) {
@@ -261,7 +255,14 @@ public class QueueDeliveryWorker {
         }
     }
 
-
+    /**
+     * Check whether there are active subscribers and send
+     *
+     * @param targetQueue queue name
+     * @param messages    metadata set
+     * @return how many messages sent
+     * @throws Exception
+     */
     public int sendMessagesToSubscriptions(String targetQueue, Set<AndesMessageMetadata> messages)
             throws Exception {
 

@@ -113,14 +113,9 @@ public class SlotManager {
     }
 
     /**
-<<<<<<< HEAD
-     * @param queueName Name of the queue
-     * @return Slot object //todo check if the range is inclusive in message store
-=======
      * Get a new slot from slotIDMap
      * @param queueName name of the queue
      * @return slot object
->>>>>>> Refactored the code
      */
     private Slot getFreshSlot(String queueName) {
         Slot slotToBeAssigned = null;
