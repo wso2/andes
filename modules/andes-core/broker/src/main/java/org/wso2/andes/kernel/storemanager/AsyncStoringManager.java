@@ -1,20 +1,20 @@
 /*
-*  Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
-*
-*  WSO2 Inc. licenses this file to you under the Apache License,
-*  Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 
 package org.wso2.andes.kernel.storemanager;
 
@@ -102,8 +102,7 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
     /**
      * Initialise Disruptor with the durable message store as persistent storage
      *
-     * @param messageStore
-     *         MessageStore implementation to be used as the durable message
+     * @param messageStore MessageStore implementation to be used as the durable message
      * @throws AndesException
      */
     private void initialise(final MessageStore messageStore) throws AndesException {
@@ -119,11 +118,11 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
         //this task will periodically remove message contents from store
         messageContentRemoverTask = new MessageContentRemoverTask(messageStore);
         int schedulerPeriod = ClusterResourceHolder.getInstance().getClusterConfiguration()
-                                                   .getContentRemovalTaskInterval();
+                .getContentRemovalTaskInterval();
         asyncStoreTasksScheduler.scheduleAtFixedRate(messageContentRemoverTask,
-                                                     schedulerPeriod,
-                                                     schedulerPeriod,
-                                                     TimeUnit.SECONDS);
+                schedulerPeriod,
+                schedulerPeriod,
+                TimeUnit.SECONDS);
 
         messageCountFlushInterval = 15;
         messageCountFlushNumberGap = 100;
@@ -139,13 +138,13 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
                     try {
                         if (entry.getValue().get() > 0) {
                             AndesContext.getInstance().getAndesContextStore()
-                                        .incrementMessageCountForQueue(entry.getKey(),
-                                                                       entry.getValue().get());
+                                    .incrementMessageCountForQueue(entry.getKey(),
+                                            entry.getValue().get());
                         } else if (entry.getValue().get() < 0) {
                             AndesContext.getInstance().getAndesContextStore()
-                                        .incrementMessageCountForQueue(
-                                                entry.getKey(),
-                                                entry.getValue().get());
+                                    .incrementMessageCountForQueue(
+                                            entry.getKey(),
+                                            entry.getValue().get());
                         }
                         entry.getValue().set(0);
                     } catch (AndesException e) {
@@ -157,17 +156,16 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
         });
 
         asyncStoreTasksScheduler.scheduleAtFixedRate(messageCountFlusher,
-                                                     10,
-                                                     messageCountFlushInterval,
-                                                     TimeUnit.SECONDS);
+                10,
+                messageCountFlushInterval,
+                TimeUnit.SECONDS);
 
     }
 
     /**
      * store metadata to persistent storage asynchronously through disruptor
      *
-     * @param metadata
-     *         AndesMessageMetadata
+     * @param metadata AndesMessageMetadata
      * @throws AndesException
      */
     @Override
@@ -177,7 +175,7 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
 
     @Override
     public void storeMetaData(List<AndesMessageMetadata> messageMetadata) throws AndesException {
-        for (AndesMessageMetadata metadata : messageMetadata) {
+        for (AndesMessageMetadata metadata: messageMetadata){
             disruptorBasedExecutor.messageCompleted(metadata);
         }
     }
@@ -185,8 +183,7 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
     /**
      * store message content to persistent storage asynchronously through disruptor
      *
-     * @param messagePart
-     *         AndesMessagePart
+     * @param messagePart AndesMessagePart
      * @throws AndesException
      */
     @Override
@@ -197,8 +194,7 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
     /**
      * Acknowledgement is parsed through to persistent storage through Disruptor
      *
-     * @param ackData
-     *         AndesAckData
+     * @param ackData AndesAckData
      * @throws AndesException
      */
     @Override
@@ -209,22 +205,20 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
     /**
      * schedule to remove message content chunks of messages
      *
-     * @param messageIdList
-     *         list of message ids whose content should be removed
+     * @param messageIdList list of message ids whose content should be removed
      * @throws AndesException
      */
     public void deleteMessageParts(List<Long> messageIdList) throws AndesException {
         for (Long messageId : messageIdList) {
             addContentDeletionTask(System.nanoTime() + contentRemovalTimeDifference * 1000000000,
-                                   messageId);
+                    messageId);
         }
     }
 
     /**
      * Acknowledgement list is parsed through to persistent storage through Disruptor
      *
-     * @param ackList
-     *         ack message list to process
+     * @param ackList ack message list to process
      * @throws AndesException
      */
     public void ackReceived(List<AndesAckData> ackList) throws AndesException {
@@ -236,8 +230,7 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
     /**
      * decrement queue count by 1. Flush if difference is in tab
      *
-     * @param queueName
-     *         name of queue to decrement count
+     * @param queueName name of queue to decrement count
      * @throws AndesException
      */
     public void decrementQueueCount(String queueName) throws AndesException {
@@ -253,7 +246,7 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
         if (msgCount.get() % messageCountFlushNumberGap == 0) {
             if (msgCount.get() > 0) {
                 AndesContext.getInstance().getAndesContextStore()
-                            .incrementMessageCountForQueue(queueName, msgCount.get());
+                        .incrementMessageCountForQueue(queueName, msgCount.get());
             } else {
                 AndesContext.getInstance().getAndesContextStore().decrementMessageCountForQueue(
                         queueName, msgCount.get());
@@ -266,8 +259,7 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
     /**
      * increment message count of queue by 1.Flush if difference is in tab
      *
-     * @param queueName
-     *         name of queue to increment count
+     * @param queueName name of queue to increment count
      * @throws AndesException
      */
     public void incrementQueueCount(String queueName) throws AndesException {
@@ -295,8 +287,7 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
     /**
      * Store message parts through Disruptor
      *
-     * @param messageParts
-     *         message parts to store
+     * @param messageParts message parts to store
      * @throws AndesException
      */
     public void storeMessagePart(List<AndesMessagePart> messageParts) throws AndesException {
@@ -308,10 +299,8 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
     /**
      * Delete messages in async way and optionally move to DLC
      *
-     * @param messagesToRemove
-     *         messages to remove
-     * @param moveToDeadLetterChannel
-     *         whether to send to DLC
+     * @param messagesToRemove        messages to remove
+     * @param moveToDeadLetterChannel whether to send to DLC
      * @throws AndesException
      */
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove,
@@ -354,8 +343,8 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
         //remove metadata
         for (String queueName : queueSeparatedRemoveMessages.keySet()) {
             messageStore.deleteMessageMetadataFromQueue(queueName,
-                                                        queueSeparatedRemoveMessages
-                                                                .get(queueName));
+                    queueSeparatedRemoveMessages
+                            .get(queueName));
         }
 
         if (!moveToDeadLetterChannel) {
@@ -371,10 +360,8 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
     /**
      * schedule to delete messages
      *
-     * @param nanoTimeToWait
-     *         time gap to elapse from now until delete all is triggered
-     * @param messageID
-     *         id of the message to be removed
+     * @param nanoTimeToWait time gap to elapse from now until delete all is triggered
+     * @param messageID      id of the message to be removed
      */
     private void addContentDeletionTask(long nanoTimeToWait, long messageID) {
         messageContentRemoverTask.put(nanoTimeToWait, messageID);

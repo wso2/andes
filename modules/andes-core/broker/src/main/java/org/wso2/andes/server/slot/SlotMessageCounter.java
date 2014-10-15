@@ -1,21 +1,19 @@
 /*
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
- *   Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *   WSO2 Inc. licenses this file to you under the Apache License,
- *   Version 2.0 (the "License"); you may not use this file except
- *   in compliance with the License.
- *   You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing,
- *  software distributed under the License is distributed on an
- *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- *  KIND, either express or implied.  See the License for the
- *  specific language governing permissions and limitations
- *  under the License.
- * /
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.wso2.andes.server.slot;
@@ -72,8 +70,10 @@ public class SlotMessageCounter {
                         try {
                             submitSlot(entry.getKey());
                         } catch (AndesException e) {
-                            //we do not do anything here since this thread will be run every 3
-                            // seconds
+                           /*
+                            We do not do anything here since this thread will be run every 3
+                            seconds
+                             */
                             log.error(
                                     "Error occurred while connecting to the thrift coordinator " + e
                                             .getMessage(), e);
@@ -90,10 +90,10 @@ public class SlotMessageCounter {
      * @param metadataList metadata list to be record
      */
     public void recordMetaDataCountInSlot(List<AndesMessageMetadata> metadataList) {
-        //if metadata list is null this method is called from time out thread
+        //If metadata list is null this method is called from time out thread
         for (AndesMessageMetadata md : metadataList) {
             String queueName = md.getDestination();
-            //if this is the first message to that queue
+            //If this is the first message to that queue
             Slot currentSlot;
             synchronized (this) {
                 currentSlot = updateQueueToSlotMap(md);
@@ -102,8 +102,9 @@ public class SlotMessageCounter {
                 try {
                     submitSlot(queueName);
                 } catch (AndesException e) {
-                    //we do not do anything here since this operation will be run by timeout
-                    // thread also
+                    /*
+                    We do not do anything here since this operation will be run by timeout thread also
+                     */
                     log.error("Error occurred while connecting to the thrift coordinator " + e
                             .getMessage(), e);
                 }

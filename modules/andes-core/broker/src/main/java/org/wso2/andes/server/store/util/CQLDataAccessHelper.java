@@ -1,20 +1,20 @@
 /*
-*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
-*
-*  WSO2 Inc. licenses this file to you under the Apache License,
-*  Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.wso2.andes.server.store.util;
 
 
@@ -162,8 +162,8 @@ public class CQLDataAccessHelper {
                     "Can't create cluster with empty connection string");
         }
 
-        int maxConnections = 5;
-        int concurrency = 5;
+        int maxConnections = 1000;
+        int concurrency = 1000;
         boolean async = true;
         String compression = "";
 
@@ -180,11 +180,23 @@ public class CQLDataAccessHelper {
         try {
             PoolingOptions pools = new PoolingOptions();
             pools.setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL, concurrency);
+            pools.setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE,
+                    concurrency);
+            pools.setMinSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL,
+                    concurrency);
+            pools.setMinSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE,
+                    concurrency);
             pools.setCoreConnectionsPerHost(HostDistance.LOCAL, maxConnections);
             pools.setMaxConnectionsPerHost(HostDistance.LOCAL, maxConnections);
             pools.setCoreConnectionsPerHost(HostDistance.REMOTE, maxConnections);
             pools.setMaxConnectionsPerHost(HostDistance.REMOTE, maxConnections);
 
+
+            SocketOptions soketOptions = new SocketOptions();
+            soketOptions.setConnectTimeoutMillis(10000);
+            soketOptions.setReadTimeoutMillis(15000);
+            soketOptions.setTcpNoDelay(true);
+            soketOptions.setKeepAlive(true);
             // Create cluster
 
             Builder builder = Cluster.builder();
@@ -192,7 +204,7 @@ public class CQLDataAccessHelper {
                 builder.addContactPoints(con);
             }
             builder.withPoolingOptions(pools)
-                   .withSocketOptions(new SocketOptions().setTcpNoDelay(true))
+                   .withSocketOptions(soketOptions)
                    .withRetryPolicy(DefaultRetryPolicy.INSTANCE)
                    .withReconnectionPolicy(new ConstantReconnectionPolicy(200L)).withPort(port)
                    .withCredentials(userName, password);

@@ -1,14 +1,33 @@
+/*
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.wso2.andes.tools.utils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.distrupter.*;
+import org.wso2.andes.pool.AndesExecuter;
 import org.wso2.andes.server.cassandra.SequentialThreadPoolExecutor;
 
 import com.lmax.disruptor.RingBuffer;
@@ -22,8 +41,11 @@ public class DisruptorBasedExecutor {
     private static DisruptorRuntime<AndesAckData> ackDataEvenRuntime;
     //private static DisruptorRuntime<SubscriptionDataEvent> dataDeliveryDisruptorRuntime;
     private static Map<Long, PendingJob> pendingJobsTracker = new ConcurrentHashMap<Long, PendingJob>();
+    private MessageStoreManager messageStoreManager;
+
 
     public DisruptorBasedExecutor(MessageStoreManager messageStoreManager) {
+        this.messageStoreManager = messageStoreManager;
         int MAX_WRITE_HANDLERS = 10;
         AlternatingCassandraWriter[] writerHandlers = new AlternatingCassandraWriter[MAX_WRITE_HANDLERS];
         for (int i = 0; i < writerHandlers.length; i++) {
@@ -34,26 +56,8 @@ public class DisruptorBasedExecutor {
         ackDataEvenRuntime = new DisruptorRuntime<AndesAckData>(AndesAckData.getFactory(), new AckHandler[]{new AckHandler(
                 messageStoreManager)});
 
-        int MAX_SEND_HANDLERS = 10;
-//        SubscriptionDataSender[] subscriptionHandlers = new SubscriptionDataSender[MAX_SEND_HANDLERS];
-//        for (int i = 0; i < subscriptionHandlers.length; i++) {
-//            subscriptionHandlers[i] = new SubscriptionDataSender(MAX_SEND_HANDLERS, i, delivery);
-//        }
-//        dataDeliveryDisruptorRuntime = new DisruptorRuntime<SubscriptionDataEvent>(SubscriptionDataEvent.getFactory(), subscriptionHandlers);
     }
 
-//    public void messagesReadyToBeSent(final Subscription subscription, final QueueEntry message){
-//        // Get the Disruptor ring from the runtime
-//        RingBuffer<SubscriptionDataEvent> ringBuffer = dataDeliveryDisruptorRuntime.getRingBuffer();
-//        // Publishers claim events in sequence
-//        long sequence = ringBuffer.next();
-//        SubscriptionDataEvent event = ringBuffer.get(sequence);
-//
-//        event.subscription = subscription;
-//        event.message = message;
-//        // make the event available to EventProcessors
-//        ringBuffer.publish(sequence);
-//    }
 
     // TODO : Disruptor - pass the buffer and reuse
     public void messagePartReceived(AndesMessagePart part) {
@@ -69,7 +73,7 @@ public class DisruptorBasedExecutor {
         ringBuffer.publish(sequence);
     }
 
-    public void messageCompleted(AndesMessageMetadata metadata) {
+    public void messageCompleted(final AndesMessageMetadata metadata) {
         long channelID = metadata.getChannelId();
         //This count how many jobs has finished
         synchronized (pendingJobsTracker) {
@@ -88,7 +92,9 @@ public class DisruptorBasedExecutor {
         event.metadata = metadata;
         event.metadata.setPendingJobsTracker(pendingJobsTracker);
         // make the event available to EventProcessors
+        //todo uncomment this and comment executer
         ringBuffer.publish(sequence);
+
     }
 
     public void ackReceived(AndesAckData ackData) {

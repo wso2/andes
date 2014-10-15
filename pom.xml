@@ -231,9 +231,9 @@
             </dependency>
 
             <dependency>
-                <groupId>com.datastax.cassandra.wso2</groupId>
-                <artifactId>cql-driver</artifactId>
-                <version>1.0.5.wso2v2</version>
+               <groupId>com.datastax.cassandra.wso2</groupId>
+ <artifactId>cql-driver</artifactId>
+ <version>1.0.5.wso2v1</version>
                 <exclusions>
                     <exclusion>
                         <groupId>org.apache.thrift</groupId>

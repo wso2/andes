@@ -1,21 +1,19 @@
 /*
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
- *   Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *   WSO2 Inc. licenses this file to you under the Apache License,
- *   Version 2.0 (the "License"); you may not use this file except
- *   in compliance with the License.
- *   You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing,
- *  software distributed under the License is distributed on an
- *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- *  KIND, either express or implied.  See the License for the
- *  specific language governing permissions and limitations
- *  under the License.
- * /
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.wso2.andes.server.slot;
@@ -31,8 +29,6 @@ import org.wso2.andes.subscription.SubscriptionStore;
 
 
 import java.util.*;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * SlotDelivery worker is responsible of distributing messages to subscribers.
@@ -47,9 +43,8 @@ public class SlotDeliveryWorker extends Thread {
     private static Log log = LogFactory.getLog(SlotDeliveryWorker.class);
 
     /**
-     * this map contains slotId to slot hashmap against queue name
+     * This map contains slotId to slot hashmap against queue name
      */
-    private static final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
     private volatile boolean running;
     private String nodeId;
     private QueueDeliveryWorker queueDeliveryWorker;
@@ -61,7 +56,10 @@ public class SlotDeliveryWorker extends Thread {
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
         localLastProcessedIdMap = new HashMap<String, Long>();
-        //start slot deleting thread only if clustering is enabled. Otherwise slots assignment will not happen
+        /*
+        Start slot deleting thread only if clustering is enabled. Otherwise slots assignment will
+         not happen
+         */
         if (isClusteringEnabled) {
             nodeId = HazelcastAgent.getInstance().getNodeId();
         }
@@ -74,30 +72,50 @@ public class SlotDeliveryWorker extends Thread {
          */
         running = true;
         while (running) {
+
             //Iterate through all the queues registered in this thread
-            int emptyQueueCounter = 0;
+            int idleQueueCounter = 0;
+
             for (String queueName : queueList) {
                 Collection<LocalSubscription> subscriptions4Queue;
                 try {
                     subscriptions4Queue = subscriptionStore.getActiveLocalSubscribers(queueName,
                             false);
                     if (subscriptions4Queue != null && !subscriptions4Queue.isEmpty()) {
-                        //check in memory buffer in QueueDeliveryWorker has room
-                        if (queueDeliveryWorker.getQueueDeliveryInfo(queueName).hasRoom()) {
+                        //Check in memory buffer in QueueDeliveryWorker has room
+                        if (queueDeliveryWorker.getQueueDeliveryInfo(queueName).isMessageBufferFull()) {
                             if (isClusteringEnabled) {
+                                long startTime = System.currentTimeMillis();
                                 Slot currentSlot = MBThriftClient.getSlot(queueName, nodeId);
+                                long endTime = System.currentTimeMillis();
+
+                                if (log.isDebugEnabled()) {
+                                    log.debug((endTime - startTime) + " milliSec took to get a slot" +
+                                            " from slot manager");
+                                }
+                                /**
+                                 * If the slot is empty
+                                 */
                                 if (0 == currentSlot.getEndMessageId()) {
+
                                         /*
                                         If the message buffer in QueueDeliveryWorker is not empty
                                          send those messages
                                          */
+                                    if (log.isDebugEnabled()) {
+                                        log.debug("Recieved an empty slot from slot manager in " +
+                                                "cluster mode");
+                                    }
                                     boolean sentFromMessageBuffer = sendFromMessageBuffer(queueName);
                                     if (!sentFromMessageBuffer) {
                                         //No available free slots
-                                        emptyQueueCounter++;
-                                        if (emptyQueueCounter == queueList.size()) {
+                                        idleQueueCounter++;
+                                        if (idleQueueCounter == queueList.size()) {
                                             try {
-                                                Thread.sleep(2000);
+                                                if (log.isDebugEnabled()) {
+                                                    log.debug("Sleeping Slot Delivery Worker");
+                                                }
+                                                Thread.sleep(100);
                                             } catch (InterruptedException ignored) {
                                                 //Silently ignore
                                             }
@@ -150,11 +168,13 @@ public class SlotDeliveryWorker extends Thread {
                                             (queueName);
                                     log.debug("Sent messages from buffer = " + sentFromMessageBuffer);
                                     if (!sentFromMessageBuffer) {
-                                        emptyQueueCounter++;
+                                        idleQueueCounter++;
                                         try {
-                                            //there are no messages to read
-                                            if (emptyQueueCounter == queueList.size()) {
-                                                log.debug("Sleeping Slot Delivery Worker");
+                                            //There are no messages to read
+                                            if (idleQueueCounter == queueList.size()) {
+                                                if (log.isDebugEnabled()) {
+                                                    log.debug("Sleeping Slot Delivery Worker");
+                                                }
                                                 Thread.sleep(2000);
                                             }
                                         } catch (InterruptedException ignored) {
@@ -190,9 +210,21 @@ public class SlotDeliveryWorker extends Thread {
                             }
                             sendFromMessageBuffer(queueName);
                         }
+                    } else {
+                        idleQueueCounter++;
+                        if (idleQueueCounter == queueList.size()) {
+                            try {
+                                if (log.isDebugEnabled()) {
+                                    log.debug("Sleeping Slot Delivery Worker");
+                                }
+                                Thread.sleep(100);
+                            } catch (InterruptedException ignored) {
+                                //Silently ignore
+                            }
+                        }
                     }
                 } catch (AndesException e) {
-                    log.error("Error running Cassandra Message Reader " + e.getMessage(), e);
+                    log.error("Error running Message Store Reader " + e.getMessage(), e);
                 } catch (ConnectionException e) {
                     log.error("Error occurred while connecting to the thrift coordinator " +
                             e.getMessage(), e);
