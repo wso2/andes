@@ -56,26 +56,8 @@ public class DisruptorBasedExecutor {
         ackDataEvenRuntime = new DisruptorRuntime<AndesAckData>(AndesAckData.getFactory(), new AckHandler[]{new AckHandler(
                 messageStoreManager)});
 
-        int MAX_SEND_HANDLERS = 10;
-//        SubscriptionDataSender[] subscriptionHandlers = new SubscriptionDataSender[MAX_SEND_HANDLERS];
-//        for (int i = 0; i < subscriptionHandlers.length; i++) {
-//            subscriptionHandlers[i] = new SubscriptionDataSender(MAX_SEND_HANDLERS, i, delivery);
-//        }
-//        dataDeliveryDisruptorRuntime = new DisruptorRuntime<SubscriptionDataEvent>(SubscriptionDataEvent.getFactory(), subscriptionHandlers);
     }
 
-//    public void messagesReadyToBeSent(final Subscription subscription, final QueueEntry message){
-//        // Get the Disruptor ring from the runtime
-//        RingBuffer<SubscriptionDataEvent> ringBuffer = dataDeliveryDisruptorRuntime.getRingBuffer();
-//        // Publishers claim events in sequence
-//        long sequence = ringBuffer.next();
-//        SubscriptionDataEvent event = ringBuffer.get(sequence);
-//
-//        event.subscription = subscription;
-//        event.message = message;
-//        // make the event available to EventProcessors
-//        ringBuffer.publish(sequence);
-//    }
 
     // TODO : Disruptor - pass the buffer and reuse
     public void messagePartReceived(AndesMessagePart part) {
