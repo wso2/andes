@@ -317,7 +317,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             preparedStatement.setString(1, queueName);
             resultSet = preparedStatement.executeQuery();
 
-            return resultSet.first();
+            return resultSet.next();
         } catch (SQLException e) {
             throw new AndesException("Error occurred while " + JDBCConstants
                     .TASK_ADDING_QUEUE_COUNTER, e);
@@ -345,7 +345,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             resultSet = preparedStatement.executeQuery();
 
             long count = 0;
-            if (resultSet.first()) {
+            if (resultSet.next()) {
                 count = resultSet.getLong(JDBCConstants.QUEUE_COUNT);
             }
             return count;
@@ -464,6 +464,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             // for existence before insertion.
             // This check is done here rather than inside Qpid code that will be updated in
             // future.
+
             if (!isExchangeExist(connection, exchangeName)) {
                 connection.setAutoCommit(false);
 
@@ -503,7 +504,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement.setString(1, exchangeName);
             resultSet = preparedStatement.executeQuery();
-            return resultSet.first(); // if present true
+            return resultSet.next(); // if present true
         } catch (SQLException e) {
             throw new AndesException("Error occurred retrieving exchange information for" +
                     " exchange: " + exchangeName, e);
