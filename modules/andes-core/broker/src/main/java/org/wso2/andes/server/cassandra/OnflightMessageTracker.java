@@ -348,7 +348,7 @@ public class OnflightMessageTracker {
      * @throws AndesException
      */
     public void ackReceived(UUID channelID, long messageId)
-            throws AMQStoreException, AndesException {
+            throws AndesException {
         AndesMessageMetadata metadata = null;
         MsgData msgData;
         synchronized (this) {
@@ -365,7 +365,13 @@ public class OnflightMessageTracker {
                     log.trace("TRACING>> OFMT-Ack received for MessageID-" + msgData.msgID);
                 }
                 sendButNotAckedMessageCount.decrementAndGet();
-                channelToMsgIDMap.get(channelID).remove(messageId);
+
+                //when subscriber is closed these tracks are removed immediately. When ack
+                //is handled via disruptor this key might be already removed in such a situation
+                //in that case channel id can be null as well
+                if(channelID != null &&  channelToMsgIDMap.get(channelID) != null) {
+                    channelToMsgIDMap.get(channelID).remove(messageId);
+                }
                 metadata = messageIdToAndesMessagesMap.remove(messageId);
 
             } else {

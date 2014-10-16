@@ -664,13 +664,6 @@ public class Subscription_0_10 implements Subscription, FlowCreditManager.FlowCr
     }
 
     public void onDequeue(QueueEntry queueEntry) {
-        /**
-         * When the message is acknowledged it is informed to Andes Kernel
-         */
-        QpidAMQPBridge.getInstance().ackReceived(queueEntry.getMessage().getMessageNumber(),
-                                                 queueEntry.getQueue().getName(),
-                                                 queueEntry.getQueue()
-                                                           .checkIfBoundToTopicExchange());
     }
 
     public void setStateListener(StateListener listener)

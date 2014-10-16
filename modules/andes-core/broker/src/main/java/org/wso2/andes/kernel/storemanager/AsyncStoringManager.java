@@ -223,18 +223,24 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
 
     /**
      * decrement queue count by 1. Flush if difference is in tab
-     *
-     * @param queueName name of queue to decrement count
+     * @param queueName
+     *         name of the queue to decrement count
+     * @param decrementBy
+     *         decrement count by this value
      * @throws AndesException
      */
-    public void decrementQueueCount(String queueName) throws AndesException {
+    public void decrementQueueCount(String queueName, int decrementBy) throws AndesException {
         AtomicInteger msgCount = messageCountDifferenceMap.get(queueName);
         if (msgCount == null) {
             msgCount = new AtomicInteger(0);
             messageCountDifferenceMap.put(queueName, msgCount);
         }
 
-        msgCount.decrementAndGet();
+        synchronized (this) {
+            int currentVal = msgCount.get();
+            int newVal = currentVal - decrementBy;
+            msgCount.set(newVal);
+        }
 
         //we flush this value to store in 100 message tabs
         if (msgCount.get() % messageCountFlushNumberGap == 0) {
@@ -251,19 +257,23 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
     }
 
     /**
-     * increment message count of queue by 1.Flush if difference is in tab
-     *
-     * @param queueName name of queue to increment count
+     * increment message count of queue. Flush if difference is in tab
+     * @param queueName name of the queue to increment count
+     * @param incrementBy increment count by this value
      * @throws AndesException
      */
-    public void incrementQueueCount(String queueName) throws AndesException {
+    public void incrementQueueCount(String queueName, int incrementBy) throws AndesException {
         AtomicInteger msgCount = messageCountDifferenceMap.get(queueName);
         if (msgCount == null) {
             msgCount = new AtomicInteger(0);
             messageCountDifferenceMap.put(queueName, msgCount);
         }
 
-        msgCount.incrementAndGet();
+        synchronized (this) {
+            int currentVal = msgCount.get();
+            int newVal = currentVal + incrementBy;
+            msgCount.set(newVal);
+        }
 
         //we flush this value to store in 100 message tabs
         if (msgCount.get() % messageCountFlushNumberGap == 0) {
@@ -299,10 +309,8 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
      */
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove,
                                boolean moveToDeadLetterChannel) throws AndesException {
-
         List<Long> idsOfMessagesToRemove = new ArrayList<Long>();
-        Map<String, List<AndesRemovableMetadata>> queueSeparatedRemoveMessages = new HashMap
-                <String, List<AndesRemovableMetadata>>();
+        Map<String, List<AndesRemovableMetadata>> queueSeparatedRemoveMessages = new HashMap<String, List<AndesRemovableMetadata>>();
 
         for (AndesRemovableMetadata message : messagesToRemove) {
             idsOfMessagesToRemove.add(message.messageID);
@@ -316,39 +324,43 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
             messages.add(message);
             queueSeparatedRemoveMessages.put(message.destination, messages);
 
-            //decrement message count of queue
-            decrementQueueCount(message.destination);
-
             //update server side message trackings
             OnflightMessageTracker onflightMessageTracker = OnflightMessageTracker.getInstance();
             onflightMessageTracker.updateDeliveredButNotAckedMessages(message.messageID);
 
 
-            //if to move, move to DLC
+            //if to move, move to DLC. This is costy. Involves per message read and writes
             if (moveToDeadLetterChannel) {
                 AndesMessageMetadata metadata = messageStore.getMetaData(message.messageID);
                 messageStore
                         .addMetaDataToQueue(AndesConstants.DEAD_LETTER_QUEUE_NAME, metadata);
-                //increment message count of DLC
-                incrementQueueCount(AndesConstants.DEAD_LETTER_QUEUE_NAME);
             }
         }
 
         //remove metadata
         for (String queueName : queueSeparatedRemoveMessages.keySet()) {
             messageStore.deleteMessageMetadataFromQueue(queueName,
-                    queueSeparatedRemoveMessages
-                            .get(queueName));
+                                                        queueSeparatedRemoveMessages
+                                                                .get(queueName));
+            //decrement message count of queue
+            decrementQueueCount(queueName, queueSeparatedRemoveMessages
+                    .get(queueName).size());
         }
 
         if (!moveToDeadLetterChannel) {
-            //schedule to remove content
+            //remove content
             //TODO: - hasitha if a topic message be careful as it is shared
             deleteMessageParts(idsOfMessagesToRemove);
         }
 
+        if(moveToDeadLetterChannel) {
+            //increment message count of DLC
+            incrementQueueCount(AndesConstants.DEAD_LETTER_QUEUE_NAME, messagesToRemove.size());
+        }
+
         //remove these message ids from expiration tracking
         messageStore.deleteMessagesFromExpiryQueue(idsOfMessagesToRemove);
+
     }
 
     /**

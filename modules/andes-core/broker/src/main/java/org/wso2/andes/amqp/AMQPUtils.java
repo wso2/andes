@@ -302,13 +302,14 @@ public class AMQPUtils {
 
     /**
      * create andes ack data message
+     * @param channelID id of the connection message was received
      * @param messageID id of the message
      * @param queueName  queue name
      * @param isTopic is ack comes from a topic subscriber
      * @return Andes Ack Data
      */
-    public static AndesAckData generateAndesAckMessage(long messageID, String queueName, boolean isTopic) {
-        return new AndesAckData(messageID,queueName,isTopic);
+    public static AndesAckData generateAndesAckMessage(UUID channelID, long messageID, String queueName, boolean isTopic) {
+        return new AndesAckData(channelID, messageID,queueName,isTopic);
     }
 
     /**
