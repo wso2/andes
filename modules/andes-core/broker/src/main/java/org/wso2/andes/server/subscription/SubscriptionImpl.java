@@ -694,13 +694,6 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
 
     public void onDequeue(final QueueEntry queueEntry) {
         restoreCredit(queueEntry);
-        /**
-         * When the message is acknowledged it is informed to Andes Kernel
-         */
-        QpidAMQPBridge.getInstance().ackReceived(queueEntry.getMessage().getMessageNumber(),
-                                                 queueEntry.getQueue().getName(),
-                                                 queueEntry.getQueue()
-                                                           .checkIfBoundToTopicExchange());
     }
 
     public void restoreCredit(final QueueEntry queueEntry)
