@@ -35,7 +35,8 @@ import org.wso2.andes.server.slot.SlotMessageCounter;
 public class AlternatingCassandraWriter implements EventHandler<CassandraDataEvent> {
 
     private static Log log = LogFactory.getLog(AlternatingCassandraWriter.class);
-    int totalPendingEventLength = 0;
+    //int totalPendingEventLength = 0;
+    int totalPendingItems = 0; // To segment batches using record count instead of byte length
     private int writerCount;
     private int turn;
     private MessageStoreManager messageStoreManager;
@@ -46,7 +47,8 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
     /**
      * Maximum data length for a single write to data base
      */
-    private static final int MAX_DATA_LENGTH = 128000;
+    //private static final int MAX_DATA_LENGTH = 128000; // Before Item count based segmentation, this was used to partition cassandra writes.
+    private static final int MAX_ITEM_COUNT = 50; // Max Item count allowed in a single Cassandra write
 
     public AlternatingCassandraWriter(int writerCount, int turn, MessageStoreManager messageStoreManager) {
         this.writerCount = writerCount;
@@ -57,7 +59,7 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
     public void onEvent(final CassandraDataEvent event, final long sequence, final boolean endOfBatch) throws Exception {
         if (event.isPart) {
             //If part, we write randomly
-           int calculatedTurn = (int) Math.abs(event.part.getMessageID() % writerCount);
+            int calculatedTurn = (int) Math.abs(event.part.getMessageID() % writerCount);
 
             if (calculatedTurn == turn) {
                 /*
@@ -66,39 +68,45 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
                  */
 
                 partList.add(event.part);
-                totalPendingEventLength += event.part.getDataLength();
-           }
+                //totalPendingEventLength += event.part.getDataLength();
+                totalPendingItems += 1;
+            }
         } else {
 
 
             //If messageID, we write in sequence per queue
             int calculatedTurn = Math.abs(event.metadata.getDestination().hashCode() %
-                   writerCount);
+                    writerCount);
 
-           if (calculatedTurn == turn) {
+            if (calculatedTurn == turn) {
                 metaList.add(event.metadata);
-                totalPendingEventLength += event.metadata.getMetadata().length;
-           }
+                //totalPendingEventLength += event.metadata.getMetadata().length;
+                totalPendingItems += 1;
+            }
         }
 
-        if (totalPendingEventLength > MAX_DATA_LENGTH || (endOfBatch)) {
+        //if (totalPendingEventLength > MAX_DATA_LENGTH || (endOfBatch)) {
+        if (totalPendingItems > MAX_ITEM_COUNT || (endOfBatch)) {
             // Write message part list to database
             if (partList.size() > 0) {
-                if(log.isDebugEnabled()){
+                if (log.isDebugEnabled()) {
                     log.debug("Number of message content sent to message store: " + partList.size
                             ());
                 }
                 messageStoreManager.storeMessagePart(partList);
+
                 partList.clear();
             }
 
             // Write message meta list to cassandra
             if (metaList.size() > 0) {
-                if(log.isDebugEnabled()){
+                if (log.isDebugEnabled()) {
                     log.debug("Number of message metadata sent to message store: " + partList.size
-                            () );
+                            ());
                 }
+
                 messageStoreManager.storeMetaData(metaList);
+
                 //Record message data count
                 if (AndesContext.getInstance().isClusteringEnabled()) {
                     SlotMessageCounter.getInstance().recordMetaDataCountInSlot(metaList);
@@ -106,7 +114,8 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
                 metaList = new ArrayList<AndesMessageMetadata>();
             }
 
-            totalPendingEventLength = 0;
+            //totalPendingEventLength = 0;
+            totalPendingItems = 0;
         }
     }
 }

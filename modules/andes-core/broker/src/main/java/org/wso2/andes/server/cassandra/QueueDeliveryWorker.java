@@ -46,6 +46,9 @@ public class QueueDeliveryWorker {
     //per queue
     private int maxNumberOfReadButUndeliveredMessages = 5000;
 
+    private static final int THREADPOOL_RECOVERY_INTERVAL = 2000;
+    private static final int SAFE_THREAD_COUNT = 300;
+
     // private long lastProcessedId = 0;
 
     // private long totMsgSent = 0;
@@ -171,6 +174,14 @@ public class QueueDeliveryWorker {
             if (workqueueSize > 1000) {
                 if (workqueueSize > 5000) {
                     log.error("Flusher queue is growing, and this should not happen. Please check cassandra Flusher");
+
+                    // Must give some time for the threads to clean up. Thus, following conditional loop.
+                    // Once the thread count is below 300, other tasks can resume. Until then this worker is held hostage with <THREADPOOL_RECOVERY_INTERVAL> millisecond sleeps.
+                    while(executor.getSize() > SAFE_THREAD_COUNT) {
+                        log.info("Current Threadpool size : " + executor.getSize());
+                        Thread.sleep(THREADPOOL_RECOVERY_INTERVAL);
+                        log.info("Current Threadpool size after sleep: " + executor.getSize());
+                    }
                 }
                 log.warn("skipping content cassandra reading thread as flusher queue has " + workqueueSize + " tasks");
             }
@@ -279,32 +290,43 @@ public class QueueDeliveryWorker {
         int sentMessageCount = 0;
         Iterator<AndesMessageMetadata> iterator = messages.iterator();
         while (iterator.hasNext()) {
-            AndesMessageMetadata message = iterator.next();
 
-            if (MessageExpirationWorker.isExpired(message.getExpirationTime())) {
-                continue;
-            }
+            try {
+                AndesMessageMetadata message = iterator.next();
 
-            boolean messageSent = false;
-            Collection<LocalSubscription> subscriptions4Queue = subscriptionStore
-                    .getActiveLocalSubscribers(targetQueue, false);
-                /*
-                 * We do this in a for loop to avoid iterating for a subscriptions for ever. We
-                 * only iterate as
-                 * once for each subscription
-                 */
-            for (int j = 0; j < subscriptions4Queue.size(); j++) {
-                LocalSubscription localSubscription = findNextSubscriptionToSent(targetQueue, subscriptions4Queue);
-                if (isThisSubscriptionHasRoom(localSubscription)) {
-                    iterator.remove();
-                    deliverAsynchronously(localSubscription, message);
-                    sentMessageCount++;
-                    messageSent = true;
-                    break;
+                if (MessageExpirationWorker.isExpired(message.getExpirationTime())) {
+                    continue;
                 }
-            }
-            if (!messageSent) {
-                log.debug("All subscriptions for queue " + targetQueue + " have max Unacked messages " + message.getDestination());
+
+                boolean messageSent = false;
+                Collection<LocalSubscription> subscriptions4Queue = subscriptionStore
+                        .getActiveLocalSubscribers(targetQueue, false);
+                    /*
+                     * We do this in a for loop to avoid iterating for a subscriptions for ever. We
+                     * only iterate as
+                     * once for each subscription
+                     */
+                for (int j = 0; j < subscriptions4Queue.size(); j++) {
+                    LocalSubscription localSubscription = findNextSubscriptionToSent(targetQueue, subscriptions4Queue);
+                    if (isThisSubscriptionHasRoom(localSubscription)) {
+                        iterator.remove();
+                        deliverAsynchronously(localSubscription, message);
+                        sentMessageCount++;
+                        messageSent = true;
+                        break;
+                    }
+                }
+                if (!messageSent) {
+                    log.debug("All subscriptions for queue " + targetQueue + " have max Unacked messages " + message.getDestination());
+                }
+            } catch (NoSuchElementException ex) {
+                //This exception can occur because the iterator of ConcurrentSkipListSet loads the at-the-time snapshot.
+                // Some records could be deleted by the time the iterator reaches them.
+                // However, this can only happen at the tail of the collection, not in middle, and it would cause the loop
+                // to blindly check for a batch of deleted records.
+                // Given this situation, this loop should break so the sendFlusher can re-trigger it.
+                //for tracing purposes can use this : log.warn("NoSuchElementException thrown",ex);
+                break;
             }
         }
         return sentMessageCount;
