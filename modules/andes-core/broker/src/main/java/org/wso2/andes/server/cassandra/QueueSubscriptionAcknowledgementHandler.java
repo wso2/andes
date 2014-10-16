@@ -72,27 +72,16 @@ public class QueueSubscriptionAcknowledgementHandler {
 
     }
 
-    public void handleAcknowledgement(AMQChannel channel, QueueEntry queueEntry) {
-
-            try {
-                /**
-                 * When the message is acknowledged it is informed to Andes Kernel
-                 */
-                QpidAMQPBridge.getInstance().ackReceived(queueEntry.getMessage().getMessageNumber(),
-                                                         queueEntry.getQueue().getName(),
-                                                         false);
-
-                //TODO: hasitha - we should clear tracks when actual ack processing happens (if via disruptor)?
-                messageTracker.ackReceived(channel.getId(), queueEntry.getMessage().getMessageNumber());
-
-                channel.decrementNonAckedMessageCount();
-
-            } catch (AMQStoreException e) {
-                log.error("Error while handling the ack for " + queueEntry.getMessage().getMessageNumber(), e);
-            } catch (AndesException e) {
-                log.error("Error while handling the ack for " + queueEntry.getMessage().getMessageNumber(), e);
-            }
-
+    public void handleAcknowledgement(AMQChannel channel, QueueEntry queueEntry)
+            throws AMQException {
+        /**
+         * When the message is acknowledged it is informed to Andes Kernel
+         */
+        QpidAMQPBridge.getInstance()
+                      .ackReceived(channel.getId(), queueEntry.getMessage().getMessageNumber(),
+                                   queueEntry.getQueue().getName(),
+                                   false);
+        channel.decrementNonAckedMessageCount();
     }
 
     private class QueueMessageTag {

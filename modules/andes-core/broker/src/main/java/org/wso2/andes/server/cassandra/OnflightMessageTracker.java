@@ -348,7 +348,7 @@ public class OnflightMessageTracker {
      * @throws AndesException
      */
     public void ackReceived(UUID channelID, long messageId)
-            throws AMQStoreException, AndesException {
+            throws AndesException {
         AndesMessageMetadata metadata = null;
         MsgData msgData;
         synchronized (this) {

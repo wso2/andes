@@ -214,13 +214,14 @@ public class QpidAMQPBridge {
         return contentLenWritten;
     }
 
-    public void ackReceived(long messageID, String queueName, boolean isTopic){
+    public void ackReceived(UUID channelID, long messageID, String queueName, boolean isTopic) throws AMQException{
         try {
         log.debug("AMQP BRIDGE: ack received for message id= " + messageID);
-        AndesAckData andesAckData = AMQPUtils.generateAndesAckMessage(messageID,queueName,isTopic);
+        AndesAckData andesAckData = AMQPUtils.generateAndesAckMessage(channelID, messageID,queueName,isTopic);
         MessagingEngine.getInstance().ackReceived(andesAckData);
         } catch (AndesException e) {
             log.error("Exception occurred while handling ack", e);
+            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error in getting handling ack for " + messageID, e);
         }
     }
 

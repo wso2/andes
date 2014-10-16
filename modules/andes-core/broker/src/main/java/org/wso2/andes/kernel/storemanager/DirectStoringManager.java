@@ -62,7 +62,7 @@ public class DirectStoringManager extends BasicStoringManager implements Message
     @Override
     public void storeMetadata(AndesMessageMetadata metadata) throws AndesException{
         messageStore.addMetaData(metadata);
-        incrementQueueCount(metadata.getDestination());
+        incrementQueueCount(metadata.getDestination(), 1);
         //record the successfully written message count
         PerformanceCounter.recordIncomingMessageWrittenToStore();
     }
@@ -75,14 +75,27 @@ public class DirectStoringManager extends BasicStoringManager implements Message
      */
     @Override
     public void storeMetaData(List<AndesMessageMetadata> messageMetadata) throws AndesException {
-        long start = System.currentTimeMillis();
         messageStore.addMetaData(messageMetadata);
-        //increment message count for queue
-//        for (AndesMessageMetadata md : messageMetadata) {
-//            incrementQueueCount(md.getDestination());
-//            //record the successfully written message count
-//            PerformanceCounter.recordIncomingMessageWrittenToStore();
-//        }
+        Map<String, List<AndesMessageMetadata>> queueSeparatedMetadata = new HashMap<String,
+                List<AndesMessageMetadata>>();
+        for (AndesMessageMetadata message : messageMetadata) {
+            //separate metadata queue-wise
+            List<AndesMessageMetadata> messages = queueSeparatedMetadata
+                    .get(message.getDestination());
+            if (messages == null) {
+                messages = new ArrayList
+                        <AndesMessageMetadata>();
+            }
+            messages.add(message);
+            queueSeparatedMetadata.put(message.getDestination(), messages);
+
+            //record the successfully written message count
+            PerformanceCounter.recordIncomingMessageWrittenToStore();
+        }
+        //increment message count for queues
+        for(String queue : queueSeparatedMetadata.keySet()) {
+            incrementQueueCount(queue, queueSeparatedMetadata.get(queue).size());
+        }
     }
 
     /**
@@ -136,29 +149,40 @@ public class DirectStoringManager extends BasicStoringManager implements Message
             PerformanceCounter.recordMessageRemovedAfterAck();
         }
         //remove messages permanently from store
-        deleteMessages(removableMetadata, false);
+        this.deleteMessages(removableMetadata, false);
+
+        //this should happen if and only if messages are removed from store
+        for (AndesAckData ack : ackList) {
+            OnflightMessageTracker.getInstance().ackReceived(ack.channelID, ack.messageID);
+            //record ack received
+            PerformanceCounter.recordMessageRemovedAfterAck();
+        }
     }
 
     /**
      * Directly increment message count for a queue in store
      * @param queueName
-     *         name of queue
+     *         name of the queue to decrement count
+     * @param decrementBy
+     *         decrement count by this value
      * @throws AndesException
      */
     @Override
-    public void decrementQueueCount(String queueName) throws AndesException {
-        AndesContext.getInstance().getAndesContextStore().decrementMessageCountForQueue(queueName, 1);
+    public void decrementQueueCount(String queueName , int decrementBy) throws AndesException {
+        AndesContext.getInstance().getAndesContextStore().decrementMessageCountForQueue(queueName,
+                                                                                        decrementBy);
     }
 
     /**
      * Directly decrement message count for a queue in store
-     * @param queueName
-     *         name of queue
+     * @param queueName name of the queue to increment count
+     * @param incrementBy increment count by this value
      * @throws AndesException
      */
     @Override
-    public void incrementQueueCount(String queueName) throws AndesException {
-        AndesContext.getInstance().getAndesContextStore().incrementMessageCountForQueue(queueName, 1);
+    public void incrementQueueCount(String queueName, int incrementBy) throws AndesException {
+        AndesContext.getInstance().getAndesContextStore().incrementMessageCountForQueue(queueName,
+                                                                                        incrementBy);
     }
 
     /**
@@ -199,21 +223,16 @@ public class DirectStoringManager extends BasicStoringManager implements Message
             messages.add(message);
             queueSeparatedRemoveMessages.put(message.destination, messages);
 
-            //decrement message count of queue
-            decrementQueueCount(message.destination);
-
             //update server side message trackings
             OnflightMessageTracker onflightMessageTracker = OnflightMessageTracker.getInstance();
             onflightMessageTracker.updateDeliveredButNotAckedMessages(message.messageID);
 
 
-            //if to move, move to DLC
+            //if to move, move to DLC. This is costy. Involves per message read and writes
             if (moveToDeadLetterChannel) {
                 AndesMessageMetadata metadata = messageStore.getMetaData(message.messageID);
                 messageStore
                         .addMetaDataToQueue(AndesConstants.DEAD_LETTER_QUEUE_NAME, metadata);
-                //increment message count of DLC
-                incrementQueueCount(AndesConstants.DEAD_LETTER_QUEUE_NAME);
             }
         }
 
@@ -222,12 +241,20 @@ public class DirectStoringManager extends BasicStoringManager implements Message
             messageStore.deleteMessageMetadataFromQueue(queueName,
                                                                queueSeparatedRemoveMessages
                                                                        .get(queueName));
+            //decrement message count of queue
+            decrementQueueCount(queueName, queueSeparatedRemoveMessages
+                    .get(queueName).size());
         }
 
         if (!moveToDeadLetterChannel) {
             //remove content
             //TODO: - hasitha if a topic message be careful as it is shared
             deleteMessageParts(idsOfMessagesToRemove);
+        }
+
+        if(moveToDeadLetterChannel) {
+            //increment message count of DLC
+            incrementQueueCount(AndesConstants.DEAD_LETTER_QUEUE_NAME, messagesToRemove.size());
         }
 
         //remove these message ids from expiration tracking

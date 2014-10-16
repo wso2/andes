@@ -96,20 +96,21 @@ public interface MessageStoreManager {
      * decrement message count of queue
      *
      * @param queueName
-     *         name of queue
+     *         name of the queue to decrement count
+     * @param decrementBy
+     *         decrement count by this value
      * @throws AndesException
      */
-    public void decrementQueueCount(String queueName) throws AndesException;
+    public void decrementQueueCount(String queueName, int decrementBy) throws AndesException;
 
 
     /**
      * increment message count of queue
-     *
-     * @param queueName
-     *         name of queue
+     * @param queueName name of the queue to increment count
+     * @param incrementBy increment count by this value
      * @throws AndesException
      */
-    public void incrementQueueCount(String queueName) throws AndesException;
+    public void incrementQueueCount(String queueName, int incrementBy) throws AndesException;
 
     /**
      * get message content from store
@@ -183,24 +184,31 @@ public interface MessageStoreManager {
     /**
      * Store a message in a different Queue without altering the meta data.
      *
-     * @param messageId        The message Id to move
-     * @param currentQueueName The current destination of the message
-     * @param targetQueueName  The target destination Queue name
+     * @param messageId
+     *         The message Id to move
+     * @param currentQueueName
+     *         The current destination of the message
+     * @param targetQueueName
+     *         The target destination Queue name
      * @throws AndesException
      */
-    public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName) throws
+    public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName)
+            throws
             AndesException;
 
     /**
-     * Update the meta data for the given message with the given information in the AndesMetaData. Update destination
-     * and meta data bytes.
+     * Update the meta data for the given message with the given information in the AndesMetaData.
+     * Update destination and meta data bytes.
      *
-     * @param currentQueueName The queue the Meta Data currently in
-     * @param metadataList     The updated meta data list.
+     * @param currentQueueName
+     *         The queue the Meta Data currently in
+     * @param metadataList
+     *         The updated meta data list.
      * @throws AndesException
      */
-    public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
-            AndesException;
+    public void updateMetaDataInformation(String currentQueueName,
+                                          List<AndesMessageMetadata> metadataList) throws
+                                                                                   AndesException;
 
 
 }

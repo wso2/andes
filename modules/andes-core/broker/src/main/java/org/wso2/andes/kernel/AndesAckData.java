@@ -20,12 +20,15 @@ package org.wso2.andes.kernel;
 
 import com.lmax.disruptor.EventFactory;
 
+import java.util.UUID;
+
 public class AndesAckData {
     
     public AndesAckData(){}
     
-    public AndesAckData(long messageID, String qName, boolean isTopic) {
+    public AndesAckData(UUID channelID, long messageID, String qName, boolean isTopic) {
         super();
+        this.channelID = channelID;
         this.messageID = messageID;
         this.qName = qName;
         this.isTopic = isTopic;
@@ -33,6 +36,7 @@ public class AndesAckData {
     public long messageID; 
     public String qName;
     public boolean isTopic;
+    public UUID channelID;
 
     public AndesRemovableMetadata convertToRemovableMetaData() {
         return new AndesRemovableMetadata(this.messageID, this.qName);
