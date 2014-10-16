@@ -15,6 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.wso2.andes.kernel;
 
 import java.util.List;
@@ -177,7 +178,7 @@ public interface MessageStoreManager {
     /**
      * close the store manager
      */
-    public void close();
+    public void close() throws InterruptedException;
 
     /**
      * Store a message in a different Queue without altering the meta data.

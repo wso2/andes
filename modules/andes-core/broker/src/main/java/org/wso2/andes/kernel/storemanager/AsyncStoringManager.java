@@ -30,14 +30,12 @@ import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.MessageStoreManager;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.store.MessageContentRemoverTask;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -131,10 +129,7 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
         Thread messageCountFlusher = new Thread(new Runnable() {
             @Override
             public void run() {
-                Iterator<Map.Entry<String, AtomicInteger>> iter = messageCountDifferenceMap
-                        .entrySet().iterator();
-                while (iter.hasNext()) {
-                    Map.Entry<String, AtomicInteger> entry = iter.next();
+                for (Map.Entry<String, AtomicInteger> entry : messageCountDifferenceMap.entrySet()) {
                     try {
                         if (entry.getValue().get() > 0) {
                             AndesContext.getInstance().getAndesContextStore()
@@ -148,8 +143,7 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
                         }
                         entry.getValue().set(0);
                     } catch (AndesException e) {
-                        log.error(
-                                "Error while updating message counts for queue " + entry.getKey());
+                        log.error("Error while updating message counts for queue " + entry.getKey());
                     }
                 }
             }
@@ -370,7 +364,7 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
     /**
      * Stop all on going threads and close message store
      */
-    public void close() {
+    public void close() throws InterruptedException {
         try {
             asyncStoreTasksScheduler.shutdown();
             asyncStoreTasksScheduler.awaitTermination(5, TimeUnit.SECONDS);
@@ -378,6 +372,7 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
         } catch (InterruptedException e) {
             asyncStoreTasksScheduler.shutdownNow();
             log.warn("Content remover task forcefully shutdown.");
+            throw e;
         }
     }
 }

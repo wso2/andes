@@ -15,6 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.wso2.andes.configuration;
 
 import org.apache.commons.cli.CommandLine;

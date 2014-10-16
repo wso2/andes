@@ -19,8 +19,6 @@
 package org.wso2.andes.kernel.distrupter;
 
 import com.lmax.disruptor.EventFactory;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.subscription.Subscription;
 

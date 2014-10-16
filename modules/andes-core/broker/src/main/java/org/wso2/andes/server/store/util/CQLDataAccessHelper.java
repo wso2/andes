@@ -134,8 +134,7 @@ public class CQLDataAccessHelper {
     /**
      * Create a Cassandra Cluster instance given the connection details
      *
-     * @param config
-     *         cluster config
+     * @param config cluster config
      * @return Cluster
      * @throws CassandraDataAccessException
      */
@@ -248,11 +247,17 @@ public class CQLDataAccessHelper {
     /**
      * Create a keySpace in a given cluster
      *
+     * @param cluster Cluster where keySpace should be created
+     * @param keySpace name of the KeySpace
+     * @throws CassandraDataAccessException
+     */
+    /**
+     *
      * @param cluster
-     *         Cluster where keySpace should be created
+     * @param clusterSession
      * @param keySpace
-     *         name of the KeySpace
-     * @return Keyspace
+     * @param replicationFactor
+     * @param strategyClass
      * @throws CassandraDataAccessException
      */
     public static void createKeySpace(Cluster cluster, String clusterSession, String keySpace,
@@ -1136,7 +1141,7 @@ public class CQLDataAccessHelper {
 
         if (columnFamilyName == null) {
             throw new CassandraDataAccessException(
-                    "Can't access data with queueType = " + columnFamilyName);
+                    "Can't access data with queueType = ");
         }
 
         try {
@@ -1162,14 +1167,11 @@ public class CQLDataAccessHelper {
 
             ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
             List<Row> rows = result.all();
-            Iterator<Row> iter = rows.iterator();
 
-            while (iter.hasNext()) {
-                Row row = iter.next();
-
+            for (Row row : rows) {
                 AndesRemovableMetadata arm = new AndesRemovableMetadata(row.getLong(MESSAGE_ID),
-                                                                        row.getString(
-                                                                                MESSAGE_DESTINATION));
+                        row.getString(
+                                MESSAGE_DESTINATION));
                 arm.isForTopic = row.getBool(MESSAGE_IS_FOR_TOPIC);
 
                 if (arm.messageID > 0) {

@@ -56,6 +56,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         jdbcConnection.initialize(connectionProperties);
 
         datasource = jdbcConnection.getDataSource();
+        logger.info("Andes Context Store initialised");
         return jdbcConnection;
     }
 
@@ -92,7 +93,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
 
         } catch (SQLException e) {
             throw new AndesException("Error occurred while " + JDBCConstants
-                            .TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION, e);
+                    .TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION, e);
         } finally {
             close(resultSet, JDBCConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
             close(preparedStatement, JDBCConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
@@ -569,7 +570,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         } catch (SQLException e) {
             String errMsg = JDBCConstants.TASK_DELETING_EXCHANGE + " exchange: " + exchangeName;
             rollback(connection, errMsg);
-            throw new AndesException(errMsg, e);
+            throw new AndesException("Error occurred while " + errMsg, e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_DELETING_EXCHANGE);
             close(connection, JDBCConstants.TASK_DELETING_EXCHANGE);

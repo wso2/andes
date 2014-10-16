@@ -20,8 +20,6 @@ package org.wso2.andes.kernel.storemanager;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.MBConfiguration;
-import org.wso2.andes.configuration.VirtualHostsConfiguration;
-import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.MessageStoreManager;
@@ -37,27 +35,25 @@ public class MessageStoreManagerFactory {
     /**
      * Creates a MessageStoreManager according to the configurations for message storing
      *
-     * @param messageStore
-     *         messageStore
+     * @param messageStore messageStore
      * @return MessageStoreManager implementation
      * @throws AndesException
      */
-    public static MessageStoreManager create(MessageStore messageStore) throws
-                                                                               AndesException {
+    public static MessageStoreManager create(MessageStore messageStore) throws AndesException {
 
         boolean isAsyncStoring = MBConfiguration.isAsyncStoringEnabled();
         MessageStoreManager messageStoreManager;
         if (isAsyncStoring) {
-            // clustered setup with asynchronous message storing
+            // Setup with asynchronous message storing
             messageStoreManager = new AsyncStoringManager(messageStore);
             log.info("Message Storing strategy: Asynchronous message storing.");
-            return messageStoreManager;
         } else {
-            // clustered setup with direct message storing
+            // Setup with direct message storing
             messageStoreManager = new DirectStoringManager(messageStore);
             log.info("Message Storing strategy: direct message storing.");
-            return messageStoreManager;
         }
+
+        return messageStoreManager;
     }
 
     public static MessageStoreManager createDirectMessageStoreManager(MessageStore messageStore)

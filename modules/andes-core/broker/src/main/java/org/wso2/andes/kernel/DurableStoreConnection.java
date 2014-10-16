@@ -18,7 +18,6 @@
 
 package org.wso2.andes.kernel;
 
-import org.apache.commons.configuration.Configuration;
 import org.wso2.andes.configuration.ConfigurationProperties;
 
 public interface DurableStoreConnection {

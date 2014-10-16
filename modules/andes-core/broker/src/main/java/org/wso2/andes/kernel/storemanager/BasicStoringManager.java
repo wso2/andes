@@ -20,25 +20,21 @@ package org.wso2.andes.kernel.storemanager;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.AndesRemovableMetadata;
-import org.wso2.andes.kernel.MessageStore;
-import org.wso2.andes.kernel.MessageStoreManager;
+import org.wso2.andes.kernel.*;
+
 import java.util.List;
 
 /**
  * This is the base class for Message Storing Manager. This class implements common methods
  * to all types of storing managers
  */
-public abstract class BasicStoringManager implements MessageStoreManager{
+public abstract class BasicStoringManager implements MessageStoreManager {
 
     private static Log log = LogFactory.getLog(DirectStoringManager.class);
 
     private MessageStore messageStore;
 
-    public BasicStoringManager (MessageStore messageStore){
+    public BasicStoringManager(MessageStore messageStore) {
         this.messageStore = messageStore;
     }
 
@@ -81,7 +77,7 @@ public abstract class BasicStoringManager implements MessageStoreManager{
      * {@inheritDoc}
      */
     public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName) throws
-                                                                                                     AndesException {
+            AndesException {
         messageStore.moveMetaDataToQueue(messageId, currentQueueName, targetQueueName);
     }
 
@@ -90,7 +86,7 @@ public abstract class BasicStoringManager implements MessageStoreManager{
      * {@inheritDoc}
      */
     public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
-                                                                                                            AndesException {
+            AndesException {
         messageStore.updateMetaDataInformation(currentQueueName, metadataList);
     }
 
@@ -98,7 +94,7 @@ public abstract class BasicStoringManager implements MessageStoreManager{
      * {@inheritDoc}
      */
     @Override
-    public void close() {
+    public void close() throws InterruptedException {
         messageStore.close();
     }
 }
