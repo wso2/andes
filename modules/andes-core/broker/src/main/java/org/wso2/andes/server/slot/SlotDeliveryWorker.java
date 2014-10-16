@@ -29,6 +29,7 @@ import org.wso2.andes.subscription.SubscriptionStore;
 
 
 import java.util.*;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
  * SlotDelivery worker is responsible of distributing messages to subscribers.
@@ -36,7 +37,7 @@ import java.util.*;
  */
 public class SlotDeliveryWorker extends Thread {
 
-    private List<String> queueList;
+    private ConcurrentSkipListSet<String> queueList;
     private SubscriptionStore subscriptionStore;
     private HashMap<String, Long> localLastProcessedIdMap;
     private static boolean isClusteringEnabled;
@@ -52,7 +53,7 @@ public class SlotDeliveryWorker extends Thread {
     public SlotDeliveryWorker() {
         log.info("SlotDeliveryWorker Initialized.");
         queueDeliveryWorker = QueueDeliveryWorker.getInstance();
-        this.queueList = new ArrayList<String>();
+        this.queueList = new ConcurrentSkipListSet<String>();
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
         localLastProcessedIdMap = new HashMap<String, Long>();
@@ -266,7 +267,7 @@ public class SlotDeliveryWorker extends Thread {
      *
      * @return queue list
      */
-    public List<String> getQueueList() {
+    public ConcurrentSkipListSet<String> getQueueList() {
         return queueList;
     }
 
