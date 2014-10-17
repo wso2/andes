@@ -22,7 +22,7 @@ import org.apache.log4j.PropertyConfigurator;
 import org.apache.log4j.xml.QpidLog4JConfigurator;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.kernel.AndesKernelBoot;
-import org.wso2.andes.server.configuration.ClusterConfiguration;
+import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.configuration.ServerConfiguration;
 import org.wso2.andes.server.configuration.ServerNetworkTransportConfiguration;
 import org.wso2.andes.server.configuration.management.ConfigurationManagementMBean;
@@ -143,7 +143,7 @@ public class Broker
         ServerConfiguration serverConfig = config.getConfiguration();
         updateManagementPort(serverConfig, options.getJmxPort());
 
-        ClusterConfiguration clusterConfiguration = new ClusterConfiguration(serverConfig);
+        BrokerConfiguration clusterConfiguration = new BrokerConfiguration(serverConfig);
         if("*".equals(serverConfig.getBind())) {
             InetAddress host = InetAddress.getLocalHost();
             clusterConfiguration.setBindIpAddress(host.getHostAddress());

@@ -21,11 +21,10 @@ package org.wso2.andes.kernel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.storemanager.MessageStoreManagerFactory;
+import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
@@ -38,7 +37,6 @@ import org.wso2.andes.server.cassandra.TopicDeliveryWorker;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
-import org.wso2.andes.server.configuration.ClusterConfiguration;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.subscription.SubscriptionStore;
 
@@ -76,7 +74,7 @@ public class MessagingEngine {
     /**
      * Cluster related configurations
      */
-    private ClusterConfiguration config;
+    private BrokerConfiguration config;
 
     /**
      * Manages how the message content is persisted. Eg in async mode or stored in memory etc
@@ -128,7 +126,7 @@ public class MessagingEngine {
         }
     }
 
-    public ClusterConfiguration getConfig() {
+    public BrokerConfiguration getConfig() {
         return config;
     }
 

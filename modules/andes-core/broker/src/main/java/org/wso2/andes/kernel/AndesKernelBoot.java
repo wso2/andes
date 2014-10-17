@@ -27,7 +27,7 @@ import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
 import org.wso2.andes.server.cassandra.TopicDeliveryWorker;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
-import org.wso2.andes.server.configuration.ClusterConfiguration;
+import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.information.management.QueueManagementInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
 import org.wso2.andes.server.slot.thrift.MBThriftServer;
@@ -45,7 +45,7 @@ import java.util.concurrent.TimeUnit;
 public class AndesKernelBoot {
     private static Log log = LogFactory.getLog(AndesKernelBoot.class);
     private static Configuration storeConfiguration;
-    private static ClusterConfiguration clusterConfiguration;
+    private static BrokerConfiguration clusterConfiguration;
 
     /**
      * Scheduled thread pool executor to run periodic andes recovery task
@@ -93,7 +93,7 @@ public class AndesKernelBoot {
      *
      * @param configuration configuration to load
      */
-    public static void loadConfigurations(ClusterConfiguration configuration) {
+    public static void loadConfigurations(BrokerConfiguration configuration) {
         clusterConfiguration = configuration;
     }
 

@@ -21,10 +21,9 @@ package org.wso2.andes.server.cassandra;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
-import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.configuration.ClusterConfiguration;
+import org.wso2.andes.server.configuration.BrokerConfiguration;
 
 import java.util.List;
 
@@ -47,7 +46,7 @@ public class MessageExpirationWorker extends Thread {
 
     public MessageExpirationWorker() {
 
-        ClusterConfiguration clusterConfiguration = ClusterResourceHolder.getInstance().getClusterConfiguration();
+        BrokerConfiguration clusterConfiguration = ClusterResourceHolder.getInstance().getClusterConfiguration();
 
         workerWaitInterval = clusterConfiguration.getJMSExpirationCheckInterval();
         messageBatchSize = clusterConfiguration.getExpirationMessageBatchSize();
