@@ -32,10 +32,7 @@ import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.stats.PerformanceCounter;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -57,8 +54,8 @@ public class OnflightMessageTracker {
     private LinkedHashMap<Long, MsgData> msgId2MsgData = new LinkedHashMap<Long, MsgData>();
 
     private Map<String, Long> deliveryTag2MsgID = new ConcurrentHashMap<String, Long>();
-    private ConcurrentHashMap<UUID, HashSet<Long>> channelToMsgIDMap = new
-            ConcurrentHashMap<UUID, HashSet<Long>>();
+    private ConcurrentHashMap<UUID, ConcurrentSkipListSet<Long>> channelToMsgIDMap = new
+            ConcurrentHashMap<UUID, ConcurrentSkipListSet<Long>>();
     private ConcurrentHashMap<Long, AndesMessageMetadata> messageIdToAndesMessagesMap = new
             ConcurrentHashMap<Long, AndesMessageMetadata>();
     private ConcurrentHashMap<Slot, AtomicInteger> pendingMessagesBySlot = new
@@ -193,6 +190,11 @@ public class OnflightMessageTracker {
         String deliveryID = new StringBuffer(channelId.toString()).append("/").append(deliveryTag)
                 .toString();
         Long messageId = deliveryTag2MsgID.get(deliveryID);
+
+        if (log.isDebugEnabled()) {
+            log.debug("Handling failed message and reQueue for deliveryTag : " + deliveryID + " messageId : " +
+                    messageId);
+        }
         if (messageId != null) {
             try {
                 synchronized (this) {
@@ -301,16 +303,21 @@ public class OnflightMessageTracker {
             }
             numOfDeliveriesOfCurrentMsg++;
             deliveryTag2MsgID.put(deliveryID, messageId);
+
+            if(log.isDebugEnabled()) {
+                log.debug("Map message to delivery Id for messageID : " + messageId + " deliveryID : " + deliveryID);
+            }
+
             msgId2MsgData.put(messageId,
                     new MsgData(messageId, false, nodeSpecificQueueName, currentTime,
                             deliveryID, channel, numOfDeliveriesOfCurrentMsg, false));
         }
         sendButNotAckedMessageCount.incrementAndGet();
 
-        HashSet<Long> messagesDeliveredThroughThisChannel = channelToMsgIDMap.get(channel.getId
+        ConcurrentSkipListSet<Long> messagesDeliveredThroughThisChannel = channelToMsgIDMap.get(channel.getId
                 ());
         if (messagesDeliveredThroughThisChannel == null) {
-            messagesDeliveredThroughThisChannel = new HashSet<Long>();
+            messagesDeliveredThroughThisChannel = new ConcurrentSkipListSet<Long>();
             messagesDeliveredThroughThisChannel.add(messageId);
             channelToMsgIDMap.put(channel.getId(), messagesDeliveredThroughThisChannel);
         } else {
@@ -396,7 +403,7 @@ public class OnflightMessageTracker {
      * @param channel
      */
     public void releaseAckTrackingSinceChannelClosed(AMQChannel channel) {
-        HashSet<Long> sentButNotAckedMessages = channelToMsgIDMap.get(channel.getId());
+        ConcurrentSkipListSet<Long> sentButNotAckedMessages = channelToMsgIDMap.get(channel.getId());
 
         if (sentButNotAckedMessages != null && sentButNotAckedMessages.size() > 0) {
             Iterator iterator = sentButNotAckedMessages.iterator();
@@ -408,9 +415,12 @@ public class OnflightMessageTracker {
                             sendButNotAckedMessageCount.decrementAndGet();
                             AndesMessageMetadata queueEntry = messageIdToAndesMessagesMap
                                     .remove(messageId);
-                            //Re-queue message to the buffer
-                            QueueDeliveryWorker.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(
-                                    queueEntry);
+
+                            if(queueEntry != null) {
+                                //Re-queue message to the buffer
+                                QueueDeliveryWorker.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(
+                                        queueEntry);
+                            }
                             log.debug("TRACING>> OFMT- re-queued message-" + messageId + "- since delivered but not acked");
                         }
                     }

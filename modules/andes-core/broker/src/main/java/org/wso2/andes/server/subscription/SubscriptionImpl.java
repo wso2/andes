@@ -323,13 +323,9 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                             }
 
                             if (log.isDebugEnabled()) {
-                                ByteBuffer buf = ByteBuffer.allocate(100);
-                                int readCount = entry.getMessage().getContent(buf, 0);
-                                if (log.isDebugEnabled()) {
-                                    log.debug("sent message(" + entry.getMessage().getMessageNumber() + ")"
-                                            + new String(buf.array(), 0, readCount) + " channel=" + getChannel()
-                                            .getChannelId());
-                                }
+                                log.debug("sent message : " + entry.getMessage().getMessageNumber() + " JMSMessageId " +
+                                        ": " + entry.getMessageHeader().getMessageId() + " channel=" + getChannel()
+                                        .getChannelId());
                             }
                             sendToClient(entry, deliveryTag);
                             break;
