@@ -22,6 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
@@ -299,11 +300,11 @@ public class SlotDeliveryWorker extends Thread {
         if (SlotUtils.checkSlotEmptyFromMessageStore(slot)) {
             try {
                 if (AndesContext.getInstance().isClusteringEnabled()) {
-                    MBThriftClient.deleteSlot(slot.getQueueName(), slot, nodeId);
-                }
-            } catch (ConnectionException e) {
-                throw new AndesException(e);
+                MBThriftClient.deleteSlot(slot.getQueueName(), slot, nodeId);
             }
+        } catch (ConnectionException e) {
+            throw new AndesException("Error deleting slot while checking for slot completion.", e);
+        }
 
         } else {
             /*
@@ -320,8 +321,32 @@ public class SlotDeliveryWorker extends Thread {
                     log.debug("Resending missing" + messagesReadByLeadingThread.size() + "messages " +
                             "for slot: " + slot.toString());
                 }
-                QueueDeliveryWorker.getInstance().sendMessageToFlusher(
-                        messagesReadByLeadingThread, slot);
+
+                boolean allMessagesAlreadySent = true;
+                for (AndesMessageMetadata messageMetadata : messagesReadByLeadingThread) {
+                    boolean messageNotSent = OnflightMessageTracker.getInstance().testMessage(messageMetadata
+                            .getMessageID());
+
+                    if (messageNotSent) {
+                        allMessagesAlreadySent = false;
+                        break;
+                    }
+                }
+
+                // Return the slot if all messages remaining in slot are already sent. Otherwise the slot will not be
+                // removed.
+                if (allMessagesAlreadySent) {
+                    try {
+                        if (AndesContext.getInstance().isClusteringEnabled()) {
+                            MBThriftClient.deleteSlot(slot.getQueueName(), slot, nodeId);
+                        }
+                    } catch (ConnectionException e) {
+                        throw new AndesException("Error deleting slot while checking for slot completion.", e);
+                    }
+                } else {
+                    QueueDeliveryWorker.getInstance().sendMessageToFlusher(
+                            messagesReadByLeadingThread, slot);
+                }
             }
         }
     }
