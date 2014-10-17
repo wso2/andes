@@ -349,9 +349,9 @@ public class OnflightMessageTracker {
     /**
      * This method will update message tracking maps when an ack received.
      *
-     * @param channelID
-     * @param messageId
-     * @throws AMQStoreException
+     * @param channelID Id of the connection which ack was received
+     * @param messageId Id of the message for which ack was received
+     * @throws AMQStoreException In case
      * @throws AndesException
      */
     public void ackReceived(UUID channelID, long messageId)
@@ -362,15 +362,7 @@ public class OnflightMessageTracker {
             msgData = msgId2MsgData.get(messageId);
             if (msgData != null) {
                 msgData.ackreceived = true;
-
-                //How much time took between delivery and ack receive
-                long timeTook = (System.currentTimeMillis() - msgData.timestamp);
-                /*
-                todo : Inside this commented method there is a synchronized block. Is this
-                appropriate to call from here
-                 */
-                //PerformanceCounter.recordAckReceived(msgData.queue, (int) timeTook);
-
+                
                 // Then update the tracker
                 if (log.isTraceEnabled()) {
                     log.trace("TRACING>> OFMT-Ack received for MessageID-" + msgData.msgID);
@@ -380,21 +372,21 @@ public class OnflightMessageTracker {
                 //when subscriber is closed these tracks are removed immediately. When ack
                 //is handled via disruptor this key might be already removed in such a situation
                 //in that case channel id can be null as well
-                if(channelID != null &&  channelToMsgIDMap.get(channelID) != null) {
+                if (channelID != null && channelToMsgIDMap.get(channelID) != null) {
                     channelToMsgIDMap.get(channelID).remove(messageId);
                 }
                 metadata = messageIdToAndesMessagesMap.remove(messageId);
 
+                // Decrement pending message count and check whether the slot is empty. If so read the slot again
+                // from message store.
+                if (metadata != null) {
+                    decrementMessageCountInSlotAndCheckToResend(metadata.getSlot(), msgData.queue);
+                }
+
             } else {
-                throw new RuntimeException("No message data found for messageId " + messageId);
+                throw new AndesException("No message data found for messageId " + messageId);
             }
         }
-        /*
-        Decrement pending message count and check whether the slot is empty. If so read the
-        slot again from message store.
-         */
-        decrementMessageCountInSlotAndCheckToResend(metadata.getSlot(), msgData.queue);
-
     }
 
     /**
@@ -421,7 +413,8 @@ public class OnflightMessageTracker {
                                 QueueDeliveryWorker.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(
                                         queueEntry);
                             }
-                            log.debug("TRACING>> OFMT- re-queued message-" + messageId + "- since delivered but not acked");
+                            log.debug("TRACING>> OFMT- re-queued message-" + messageId + "- since delivered but not " +
+                                    "acked");
                         }
                     }
                 }
