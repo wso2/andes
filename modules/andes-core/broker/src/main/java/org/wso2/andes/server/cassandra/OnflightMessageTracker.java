@@ -218,7 +218,7 @@ public class OnflightMessageTracker {
      *
      * @param messageId
      */
-    private void reQueueMessage(long messageId) throws AndesException {
+    public void reQueueMessage(long messageId) throws AndesException {
         AndesMessageMetadata metadata = messageIdToAndesMessagesMap.get(messageId);
         QueueDeliveryWorker.QueueDeliveryInfo queueDeliveryInfo = QueueDeliveryWorker.getInstance().
                 getQueueDeliveryInfo(metadata.getDestination());

@@ -244,10 +244,11 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
 
 
         /**
-         * This method can be called by each of the publisher threads. As a result all changes to the channel object must be
+         * This method can be called by each of the publisher threads. As a result all changes to the channel object
+         * must be
          * thread safe.
          *
-         * @param entry   The message to send
+         * @param entry The message to send
          * @throws AMQException
          */
         @Override
@@ -263,109 +264,125 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
             // The send may of course still fail, in which case, as
             // the message is unacked, it will be lost.
             long deliveryTag = 0;
-            
+
             //TODO move this away. We do this have a unique delivery tag per channel.
             //Otherwise, we endup creating new delivery tags every time we load the subscription from cassandra.
             //we need to cleanup the whole thing
             AtomicLong deliveryTagCounter = null;
 
-            //no point of trying to deliver if channel is closed
-            if(getChannel().isClosing()) {
-                OnflightMessageTracker.getInstance().handleFailure(deliveryTag,getChannel().getId());
-                return;
-            }
-
             synchronized (deliveryTagMap) {
-                deliveryTagCounter = deliveryTagMap.get(getChannel().getChannelId()); 
-                if(deliveryTagCounter == null){
+                deliveryTagCounter = deliveryTagMap.get(getChannel().getChannelId());
+                if (deliveryTagCounter == null) {
                     deliveryTagCounter = new AtomicLong();
                     deliveryTagMap.put(getChannel().getChannelId(), deliveryTagCounter);
                 }
             }
-            //deliveryTag = getChannel().getNextDeliveryTag();
+
             deliveryTag = deliveryTagCounter.incrementAndGet();
 
             try {
                 recordMessageDelivery(entry, deliveryTag);
 
 
-                    QueueSubscriptionAcknowledgementHandler ackHandler; 
-                    
-                    synchronized (ClusterResourceHolder.class) {
-                        ackHandler = ClusterResourceHolder.getInstance().getSubscriptionManager()
-                                .getAcknowledgementHandlerMap().get(getChannel());
+                QueueSubscriptionAcknowledgementHandler ackHandler;
 
-                        if (ackHandler == null) {
-                            QueueSubscriptionAcknowledgementHandler handler = new QueueSubscriptionAcknowledgementHandler();
-                            ClusterResourceHolder.getInstance().getSubscriptionManager().getAcknowledgementHandlerMap()
-                                    .put(getChannel(), handler);
-                            ackHandler = handler;
-                        }
+                synchronized (ClusterResourceHolder.class) {
+                    ackHandler = ClusterResourceHolder.getInstance().getSubscriptionManager()
+                            .getAcknowledgementHandlerMap().get(getChannel());
 
+                    if (ackHandler == null) {
+                        QueueSubscriptionAcknowledgementHandler handler = new QueueSubscriptionAcknowledgementHandler();
+                        ClusterResourceHolder.getInstance().getSubscriptionManager().getAcknowledgementHandlerMap()
+                                .put(getChannel(), handler);
+                        ackHandler = handler;
                     }
-                    int retryCount = 3;
-                    long waitTime = 1000;
-                    //If there is a failure, it is unlikely that any follow calls up will work. So we will try 3 times waiting
-                    // for 1 second before giving up. After giving up, messages may be delivered out of order
-                    //this often happens becouse message ID is written before all the content is written. 
-                    for (int i = 0; i < retryCount; i++) {
-                        try {
 
-                            if (entry.getQueue().checkIfBoundToTopicExchange()
-                                    || ackHandler.checkAndRegisterSent(AMQPUtils.convertAMQMessageToAndesMetadata(((AMQMessage) entry.getMessage()), getChannel().getChannelId()), deliveryTag, getChannel())) {
+                }
 
-                                if (log.isDebugEnabled()) {
-                                    ByteBuffer buf = ByteBuffer.allocate(100);
-                                    int readCount = entry.getMessage().getContent(buf, 0);
-                                    if(log.isDebugEnabled()) {
-                                        log.debug("sent message(" + entry.getMessage().getMessageNumber() + ")"
-                                                + new String(buf.array(), 0, readCount) + " channel="+ getChannel().getChannelId());
-                                    }
-                                }
-                                sendToClient(entry, deliveryTag);
-                                break;
-                            } else {
-                                //This happens when message has expired or maximum number of
-                                // retries are done fro queues
-                                if (log.isDebugEnabled()) {
-                                    log.debug("Giving up sending.Sent stopped for " + entry.getMessage().getMessageNumber());
-                                }
-                                /**
-                                 * message tracker rejected this message from sending. Hence moving to dead letter channel
-                                 */
-                                long messageId = entry.getMessage().getMessageNumber();
-                                String destinationQueue = ((AMQMessage)entry.getMessage()).getMessageMetaData().getMessagePublishInfo()
-                                        .getRoutingKey().toString();
+                int retryCount = 3;
+                long waitTime = 1000;
 
-                                //move message to DLC
-                                MessagingEngine.getInstance().moveMessageToDeadLetterChannel(messageId, destinationQueue);
+                //If there is a failure, it is unlikely that any follow calls up will work. So we will try 3 times
+                // waiting
+                // for 1 second before giving up. After giving up, messages may be delivered out of order
+                //this often happens becouse message ID is written before all the content is written.
+                for (int i = 0; i < retryCount; i++) {
+                    try {
 
-                                //remove tracking of the message
-                                OnflightMessageTracker.getInstance().removeTrackingInformationForDeadMessages(messageId);
-                                Slot slot = ((AMQMessage) entry.getMessage()).getSlot();
-                                OnflightMessageTracker.getInstance()
-                                        .decrementMessageCountInSlotAndCheckToResend(slot, destinationQueue);
-                                break;
+                        if (entry.getQueue().checkIfBoundToTopicExchange()
+                                || ackHandler.checkAndRegisterSent(AMQPUtils.convertAMQMessageToAndesMetadata((
+                                (AMQMessage) entry.getMessage()), getChannel().getChannelId()), deliveryTag,
+                                getChannel())) {
+
+                            //no point of trying to deliver if channel is closed ReQueue the message to be resent
+                            // when channel is available
+                            if (getChannel().isClosing()) {
+                                OnflightMessageTracker.getInstance().reQueueMessage(entry.getMessage()
+                                        .getMessageNumber());
+                                return;
                             }
-                        } catch (Exception e) {
-                            //undo any changes in the message tracker
-                            log.warn("SEND FAILED >> Exception occurred while sending message out. Retrying " + retryCount + " times. Current " + i ,e);
 
-                            if(i < retryCount -1){
-                                //will try again
+                            if (log.isDebugEnabled()) {
+                                ByteBuffer buf = ByteBuffer.allocate(100);
+                                int readCount = entry.getMessage().getContent(buf, 0);
                                 if (log.isDebugEnabled()) {
-                                    log.debug("sent4 failed for " + entry.getMessage().getMessageNumber() + " retrying");
+                                    log.debug("sent message(" + entry.getMessage().getMessageNumber() + ")"
+                                            + new String(buf.array(), 0, readCount) + " channel=" + getChannel()
+                                            .getChannelId());
                                 }
-                                Thread.sleep(waitTime);
-                            }else{
-                                //we are done with all retries, so giving up. This will be picked up by Cassandra message
-                                //publisher and get delivered, but then it will be done out of order
-                                throw new AMQException("Error sending message ID"+ entry.getMessage().getMessageNumber() + " "+ e.getMessage(), e);
                             }
+                            sendToClient(entry, deliveryTag);
+                            break;
+                        } else {
+                            //This happens when message has expired or maximum number of
+                            // retries are done fro queues
+                            if (log.isDebugEnabled()) {
+                                log.debug("Giving up sending.Sent stopped for " + entry.getMessage().getMessageNumber
+                                        ());
+                            }
+                            /**
+                             * message tracker rejected this message from sending. Hence moving to dead letter channel
+                             */
+                            long messageId = entry.getMessage().getMessageNumber();
+                            String destinationQueue = ((AMQMessage) entry.getMessage()).getMessageMetaData()
+                                    .getMessagePublishInfo()
+                                    .getRoutingKey().toString();
+
+                            //move message to DLC
+                            MessagingEngine.getInstance().moveMessageToDeadLetterChannel(messageId, destinationQueue);
+
+                            //remove tracking of the message
+                            OnflightMessageTracker.getInstance().removeTrackingInformationForDeadMessages(messageId);
+                            Slot slot = ((AMQMessage) entry.getMessage()).getSlot();
+                            OnflightMessageTracker.getInstance()
+                                    .decrementMessageCountInSlotAndCheckToResend(slot, destinationQueue);
+                            break;
+                        }
+                    } catch (Exception e) {
+                        //undo any changes in the message tracker
+                        log.warn("SEND FAILED >> Exception occurred while sending message out. Retrying " +
+                                retryCount + " times. Current " + i, e);
+
+                        if (i < retryCount - 1) {
+                            //will try again
+                            if (log.isDebugEnabled()) {
+                                log.debug("sent4 failed for " + entry.getMessage().getMessageNumber() + " retrying");
+                            }
+                            Thread.sleep(waitTime);
+
+                            // Renew delivery Tag since the old delivery tag is being used and will cause the
+                            // OnflightMessageTracker to drop the message
+                            deliveryTag = deliveryTagCounter.incrementAndGet();
+                        } else {
+                            //we are done with all retries, so giving up. This will be picked up by Cassandra message
+                            //publisher and get delivered, but then it will be done out of order
+                            throw new AMQException("Error sending message ID" + entry.getMessage().getMessageNumber()
+                                    + " " + e.getMessage(), e);
                         }
                     }
+                }
             } catch (Exception e) {
-                throw new AMQException(e.toString(),e);
+                throw new AMQException(e.toString(), e);
             }
         }
     }
