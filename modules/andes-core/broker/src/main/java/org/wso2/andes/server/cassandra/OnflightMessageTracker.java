@@ -358,7 +358,11 @@ public class OnflightMessageTracker {
 
                 //How much time took between delivery and ack receive
                 long timeTook = (System.currentTimeMillis() - msgData.timestamp);
-                PerformanceCounter.recordAckReceived(msgData.queue, (int) timeTook);
+                /*
+                todo : Inside this commented method there is a synchronized block. Is this
+                appropriate to call from here
+                 */
+                //PerformanceCounter.recordAckReceived(msgData.queue, (int) timeTook);
 
                 // Then update the tracker
                 if (log.isTraceEnabled()) {
