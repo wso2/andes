@@ -183,7 +183,8 @@ public class QueueDeliveryWorker {
                         log.info("Current Threadpool size after sleep: " + executor.getSize());
                     }
                 }
-                log.warn("skipping content cassandra reading thread as flusher queue has " + workqueueSize + " tasks");
+                log.warn("Skipping content cassandra reading thread as flusher queue has " +
+                        workqueueSize + " tasks");
             }
 
             /**
@@ -260,7 +261,8 @@ public class QueueDeliveryWorker {
         } else {
 
             if (log.isDebugEnabled()) {
-                log.debug("Not selected, channel =" + localSubscription + " pending count =" + (notAckedMsgCount + executor.getSize()));
+                log.debug("Not selected, channel =" + localSubscription + " pending count = " +
+                        (notAckedMsgCount + executor.getSize()));
             }
             return false;
         }

@@ -257,8 +257,5 @@ public class DirectStoringManager extends BasicStoringManager implements Message
             incrementQueueCount(AndesConstants.DEAD_LETTER_QUEUE_NAME, messagesToRemove.size());
         }
 
-        //remove these message ids from expiration tracking
-        messageStore.deleteMessagesFromExpiryQueue(idsOfMessagesToRemove);
-
     }
 }
