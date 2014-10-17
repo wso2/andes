@@ -23,7 +23,7 @@ import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cassandra.TopicDeliveryWorker;
 import org.wso2.andes.server.cluster.ClusterManager;
-import org.wso2.andes.server.configuration.ClusterConfiguration;
+import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.store.QpidDeprecatedMessageStore;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 
@@ -50,7 +50,7 @@ public class ClusterResourceHolder {
     /**
      * Holds the Cluster Configuration Data
      */
-    private ClusterConfiguration clusterConfiguration;
+    private BrokerConfiguration clusterConfiguration;
 
 
     /**
@@ -119,11 +119,11 @@ public class ClusterResourceHolder {
         return this.clusterManager;
     }
 
-    public ClusterConfiguration getClusterConfiguration() {
+    public BrokerConfiguration getClusterConfiguration() {
         return clusterConfiguration;
     }
 
-    public void setClusterConfiguration(ClusterConfiguration clusterConfiguration) {
+    public void setClusterConfiguration(BrokerConfiguration clusterConfiguration) {
         this.clusterConfiguration = clusterConfiguration;
     }
 

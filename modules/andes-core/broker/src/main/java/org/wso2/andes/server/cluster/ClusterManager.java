@@ -27,11 +27,10 @@ import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.server.configuration.ClusterConfiguration;
+import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.slot.SlotCoordinationConstants;
 import org.wso2.andes.server.slot.SlotManager;
 import org.wso2.andes.server.util.AndesConstants;
-import org.wso2.andes.server.util.AndesUtils;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
@@ -239,7 +238,7 @@ public class ClusterManager {
     }
 
     private void initStandaloneMode() throws Exception {
-        final ClusterConfiguration config = ClusterResourceHolder.getInstance().getClusterConfiguration();
+        final BrokerConfiguration config = ClusterResourceHolder.getInstance().getClusterConfiguration();
 
         this.nodeId = CoordinationConstants.NODE_NAME_PREFIX + InetAddress.getLocalHost().toString();
 
@@ -256,7 +255,7 @@ public class ClusterManager {
     }
 
     private void initClusterMode() throws Exception {
-        final ClusterConfiguration config = ClusterResourceHolder.getInstance().getClusterConfiguration();
+        final BrokerConfiguration config = ClusterResourceHolder.getInstance().getClusterConfiguration();
 
         this.hazelcastAgent = HazelcastAgent.getInstance();
         this.nodeId = this.hazelcastAgent.getNodeId();

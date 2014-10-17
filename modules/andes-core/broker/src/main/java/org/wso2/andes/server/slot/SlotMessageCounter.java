@@ -23,7 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.configuration.ClusterConfiguration;
+import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
 
 import java.util.List;
@@ -47,7 +47,7 @@ public class SlotMessageCounter {
             .getClusterConfiguration().getSlotSubmitTimeOut();
     private Timer submitSlotToCoordinatorTimer = new Timer();
     private Log log = LogFactory.getLog(SlotMessageCounter.class);
-    private ClusterConfiguration clusterConfiguration;
+    private BrokerConfiguration clusterConfiguration;
     private static SlotMessageCounter slotMessageCounter = new SlotMessageCounter();
     private int slotWindowSize;
 
