@@ -21,6 +21,7 @@ package org.wso2.andes.kernel.storemanager;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.server.stats.PerformanceCounter;
 
 import java.util.List;
 
@@ -43,7 +44,10 @@ public abstract class BasicStoringManager implements MessageStoreManager {
      */
     @Override
     public AndesMessagePart getMessagePart(long messageId, int offsetValue) throws AndesException {
-        return messageStore.getContent(messageId, offsetValue);
+        long start = System.currentTimeMillis();
+        AndesMessagePart messagePart =  messageStore.getContent(messageId, offsetValue);
+        PerformanceCounter.warnIfTookMoreTime("Read Single Message Chunk", start, 30);
+        return messagePart;
     }
 
     /**
@@ -51,7 +55,10 @@ public abstract class BasicStoringManager implements MessageStoreManager {
      */
     @Override
     public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException {
-        return messageStore.getExpiredMessages(limit);
+        long start = System.currentTimeMillis();
+        List<AndesRemovableMetadata> expiredMessages =  messageStore.getExpiredMessages(limit);
+        PerformanceCounter.warnIfTookMoreTime("Read Expired Messages", start, 100);
+        return expiredMessages;
     }
 
     /**
@@ -60,7 +67,10 @@ public abstract class BasicStoringManager implements MessageStoreManager {
     @Override
     public List<AndesMessageMetadata> getMetaDataList(String queueName, long firstMsgId,
                                                       long lastMsgID) throws AndesException {
-        return messageStore.getMetaDataList(queueName, firstMsgId, lastMsgID);
+        long start = System.currentTimeMillis();
+        List<AndesMessageMetadata> metadataList =  messageStore.getMetaDataList(queueName, firstMsgId, lastMsgID);
+        PerformanceCounter.warnIfTookMoreTime("Read Metadata With Limits", start, 300);
+        return metadataList;
     }
 
     /**
@@ -70,7 +80,10 @@ public abstract class BasicStoringManager implements MessageStoreManager {
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String queueName,
                                                                        long firstMsgId, int count)
             throws AndesException {
-        return messageStore.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
+        long start = System.currentTimeMillis();
+        List<AndesMessageMetadata> metadataList = messageStore.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
+        PerformanceCounter.warnIfTookMoreTime("Read Metadata ", start, 300);
+        return metadataList;
     }
 
     /**
@@ -78,7 +91,9 @@ public abstract class BasicStoringManager implements MessageStoreManager {
      */
     public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName) throws
             AndesException {
+        long start = System.currentTimeMillis();
         messageStore.moveMetaDataToQueue(messageId, currentQueueName, targetQueueName);
+        PerformanceCounter.warnIfTookMoreTime("Move Metadata ", start, 10);
     }
 
 
@@ -87,7 +102,9 @@ public abstract class BasicStoringManager implements MessageStoreManager {
      */
     public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
             AndesException {
+        long start = System.currentTimeMillis();
         messageStore.updateMetaDataInformation(currentQueueName, metadataList);
+        PerformanceCounter.warnIfTookMoreTime("Update Metadata ", start, 100);
     }
 
     /**

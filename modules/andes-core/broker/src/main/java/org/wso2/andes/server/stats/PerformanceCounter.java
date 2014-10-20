@@ -341,5 +341,12 @@ public class PerformanceCounter {
         }
     }
 
+    public static void warnIfTookMoreTime(String operationName, long startTime, long threshold) {
+        long timeGap = System.currentTimeMillis() - startTime;
+        if( timeGap > threshold) {
+            log.warn("Operation -" + operationName + " - took " + timeGap + " ms to complete");
+        }
+    }
+
     
 }

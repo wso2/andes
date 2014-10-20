@@ -61,7 +61,10 @@ public class DirectStoringManager extends BasicStoringManager implements Message
      */
     @Override
     public void storeMetadata(AndesMessageMetadata metadata) throws AndesException{
+        long start = System.currentTimeMillis();
         messageStore.addMetaData(metadata);
+        PerformanceCounter.warnIfTookMoreTime("Store Metadata" , start, 10);
+
         incrementQueueCount(metadata.getDestination(), 1);
         //record the successfully written message count
         PerformanceCounter.recordIncomingMessageWrittenToStore();
@@ -75,7 +78,9 @@ public class DirectStoringManager extends BasicStoringManager implements Message
      */
     @Override
     public void storeMetaData(List<AndesMessageMetadata> messageMetadata) throws AndesException {
+        long start = System.currentTimeMillis();
         messageStore.addMetaData(messageMetadata);
+        PerformanceCounter.warnIfTookMoreTime("Store Metadata", start, 200);
         Map<String, List<AndesMessageMetadata>> queueSeparatedMetadata = new HashMap<String,
                 List<AndesMessageMetadata>>();
         for (AndesMessageMetadata message : messageMetadata) {
@@ -107,7 +112,9 @@ public class DirectStoringManager extends BasicStoringManager implements Message
     public void storeMessagePart(AndesMessagePart messagePart) throws AndesException{
         List<AndesMessagePart> partList = new ArrayList<AndesMessagePart>(1);
         partList.add(messagePart);
+        long start = System.currentTimeMillis();
         messageStore.storeMessagePart(partList);
+        PerformanceCounter.warnIfTookMoreTime("Store Message Content Chunks", start, 200);
     }
 
     /**
@@ -131,7 +138,9 @@ public class DirectStoringManager extends BasicStoringManager implements Message
      */
     @Override
     public void deleteMessageParts(List<Long> messageIdList) throws AndesException {
+         long start = System.currentTimeMillis();
          messageStore.deleteMessageParts(messageIdList);
+        PerformanceCounter.warnIfTookMoreTime("Delete Message Content Chunks", start, 200);
     }
 
     /**
@@ -195,6 +204,7 @@ public class DirectStoringManager extends BasicStoringManager implements Message
     public void storeMessagePart(List<AndesMessagePart> messageParts) throws AndesException {
         long start = System.currentTimeMillis();
          messageStore.storeMessagePart(messageParts);
+        PerformanceCounter.warnIfTookMoreTime("Store Message Content Chunks", start, 200);
     }
 
     /**

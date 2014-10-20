@@ -46,6 +46,7 @@ public class MessageStoreManagerFactory {
         if (isAsyncStoring) {
             // Setup with asynchronous message storing
             messageStoreManager = new AsyncStoringManager(messageStore);
+            //messageStoreManager = new ExecutorBasedStoringManager(messageStore);
             log.info("Message Storing strategy: Asynchronous message storing.");
         } else {
             // Setup with direct message storing
