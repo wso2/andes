@@ -45,7 +45,8 @@ public class QueueDeliveryWorker {
     private int maxNumberOfReadButUndeliveredMessages = 5000;
 
     private static final int THREADPOOL_RECOVERY_INTERVAL = 2000;
-    private static final int SAFE_THREAD_COUNT = 300;
+    private static final int SAFE_THREAD_COUNT = 1000;
+    private static final int THREADPOOL_RECOVERY_ATTEMPTS = 5;
 
     // private long lastProcessedId = 0;
 
@@ -174,8 +175,13 @@ public class QueueDeliveryWorker {
                     log.error("Flusher queue is growing, and this should not happen. Please check cassandra Flusher");
 
                     // Must give some time for the threads to clean up. Thus, following conditional loop.
-                    // Once the thread count is below 300, other tasks can resume. Until then this worker is held hostage with <THREADPOOL_RECOVERY_INTERVAL> millisecond sleeps.
-                    while(executor.getSize() > SAFE_THREAD_COUNT) {
+                    // Once the thread count is below SAFE_THREAD_COUNT, other tasks can resume. Until then this worker is held hostage
+                    // with <THREADPOOL_RECOVERY_INTERVAL> millisecond sleeps for THREADPOOL_RECOVERY_ATTEMPTS times.
+                    for (int i=0; i<THREADPOOL_RECOVERY_ATTEMPTS;i++) {
+                        if (executor.getSize() > SAFE_THREAD_COUNT) {
+                            break;
+                        }
+
                         log.info("Current Threadpool size : " + executor.getSize());
                         Thread.sleep(THREADPOOL_RECOVERY_INTERVAL);
                         log.info("Current Threadpool size after sleep: " + executor.getSize());
