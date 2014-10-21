@@ -57,7 +57,7 @@ public class ClusterSubscriptionChangedListener implements MessageListener {
     @Override
     public void onMessage(Message message) {
         ClusterNotification clusterNotification = (ClusterNotification) message.getMessageObject();
-        log.info("Handling cluster gossip: received a subscription change notification " + clusterNotification.getDescription());
+        log.debug("Handling cluster gossip: received a subscription change notification " + clusterNotification.getDescription());
         AndesSubscription andesSubscription = new BasicSubscription(clusterNotification.getEncodedObjectAsString());
         SubscriptionListener.SubscriptionChange change = SubscriptionListener.SubscriptionChange.valueOf(clusterNotification.getChangeType());
         try {

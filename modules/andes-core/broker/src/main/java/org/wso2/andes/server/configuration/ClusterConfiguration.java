@@ -48,6 +48,14 @@ public class ClusterConfiguration {
         return serverConfig.getGlobalQueueCount();
     }
 
+    public int getSlotWindowSize(){
+        return serverConfig.getSlotWindowSize();
+    }
+
+    public int getNumberOFSlotDeliveryWorkerThreads(){
+        return serverConfig.getNumberOFSlotDeliveryWorkerThreads();
+    }
+
     public int getMessageBatchSizeForSubscribersQueues() {
         return serverConfig.getMessageBatchSizeForSubscribersQueues();
     }
@@ -119,6 +127,10 @@ public class ClusterConfiguration {
 
     public int getContentRemovalTimeDifference() {
         return serverConfig.getContentRemovalTimeDifference();
+    }
+
+    public int getSlotSubmitTimeOut() {
+        return serverConfig.getSlotSubmitTimeOut();
     }
 
     public int getAndesRecoveryTaskInterval() {

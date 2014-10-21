@@ -21,6 +21,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.DirectExchange;
@@ -38,8 +39,7 @@ import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class AMQPUtils {
 
@@ -50,6 +50,10 @@ public class AMQPUtils {
     public static final int DEFAULT_CONTENT_CHUNK_SIZE = 65534;
 
     private static Log log = LogFactory.getLog(AMQPUtils.class);
+
+    /* Store previously queried message part as a cache so when the same part was required
+     for the next chunk it can be retrieved without accessing the database */
+    private static Map<Long, AndesMessagePart> messagePartCache = new HashMap<Long, AndesMessagePart>();
 
     /**
      * convert Andes metadata list to qpid queue entry list
@@ -94,9 +98,12 @@ public class AMQPUtils {
      */
     public static AMQMessage getAMQMessageFromAndesMetaData(AndesMessageMetadata metadata) {
         long messageId = metadata.getMessageID();
+        Slot slot = metadata.getSlot();
+
         StorableMessageMetaData metaData = convertAndesMetadataToAMQMetadata(metadata);
         //create message with meta data. This has access to message content
         StoredAMQPMessage message = new StoredAMQPMessage(messageId, metaData);
+        message.setSlot(slot);
         AMQMessage amqMessage = new AMQMessage(message);
         return amqMessage;
     }
@@ -155,6 +162,7 @@ public class AMQPUtils {
         metadata.setDestination(queue);
         metadata.setPersistent(amqMetadata.isPersistent());
         metadata.setTopic(amqMetadata.getMessagePublishInfo().getExchange().equals("amq.topic"));
+        metadata.setSlot(amqMessage.getSlot());
 
         return metadata;
     }
@@ -204,70 +212,102 @@ public class AMQPUtils {
     }
 
     /**
-     * read a message content chunk
+     * Read message content from message store and fill the input buffer.
      *
-     * @param messageId   id of the message
-     * @param offsetValue chunk offset to read
-     * @param dst         buffet to fill bytes of content
-     * @return written byte count
+     * @param messageId   The message Id
+     * @param offsetValue Chunk offset to read
+     * @param dst         Buffer to fill bytes of content
+     * @return Written byte count
      * @throws AndesException
      */
     public static int getMessageContentChunkConvertedCorrectly(long messageId, int offsetValue, ByteBuffer dst) throws AndesException {
         int written = 0;
         int initialBufferSize = dst.remaining();
+        int currentOffsetValue = offsetValue;
 
-        double chunkIndex = (float) offsetValue / DEFAULT_CONTENT_CHUNK_SIZE;
-        int firstChunkIndex = (int) Math.floor(chunkIndex);
-        int secondChunkIndex = (int) Math.ceil(chunkIndex);
+        while (initialBufferSize > written) {
+            int chunkIndex = currentOffsetValue / DEFAULT_CONTENT_CHUNK_SIZE;
+            int indexToQuery = chunkIndex * DEFAULT_CONTENT_CHUNK_SIZE;
+            int positionToReadFromChunk = currentOffsetValue - (chunkIndex * DEFAULT_CONTENT_CHUNK_SIZE);
 
-        int firstIndexToQuery = firstChunkIndex * DEFAULT_CONTENT_CHUNK_SIZE;
-        int secondIndexToQuery = secondChunkIndex * DEFAULT_CONTENT_CHUNK_SIZE;
+            AndesMessagePart messagePart = resolveCacheAndRetrieveMessagePart(messageId, indexToQuery);
 
-        int positionToReadFromFirstChunk = offsetValue - (firstChunkIndex * DEFAULT_CONTENT_CHUNK_SIZE);
 
-        try {
+            int messagePartSize = messagePart.getDataLength();
+            int remainingSizeOfBuffer = initialBufferSize - dst.position();
+            int numOfBytesAvailableToRead = messagePartSize - positionToReadFromChunk;
+            int numOfBytesToRead;
 
-            byte[] content = null;
+            if (remainingSizeOfBuffer > numOfBytesAvailableToRead) {
+                numOfBytesToRead = numOfBytesAvailableToRead;
 
-            //first chunk might not have DEFAULT_CONTENT_CHUNK_SIZE
-            if (offsetValue == 0) {
-                AndesMessagePart messagePart = MessagingEngine.getInstance().getMessageContentChunk(messageId, offsetValue);
-                int messagePartSize = messagePart.getDataLength();
-                if (initialBufferSize > messagePartSize) {
-
-                    dst.put(messagePart.getData());
-                    written += messagePart.getDataLength();
-                } else {
-                    dst.put(messagePart.getData(), 0, initialBufferSize);
-                    written += initialBufferSize;
-                }
-                //here there will be chunks of DEFAULT_CONTENT_CHUNK_SIZE
+                // The complete message part has been read and no longer needed in the cache
+                messagePartCache.remove(messageId);
             } else {
-                //first read from first chunk from where we stopped
-                AndesMessagePart firstPart = MessagingEngine.getInstance().getMessageContentChunk(messageId, firstIndexToQuery);
-                int firstMessagePartSize = firstPart.getDataLength();
-                int numOfBytesToRead = firstMessagePartSize - positionToReadFromFirstChunk;
-                if (initialBufferSize > numOfBytesToRead) {
-                    dst.put(firstPart.getData(), positionToReadFromFirstChunk, numOfBytesToRead);
-                    written += numOfBytesToRead;
-
-                    //if we have additional size in buffer read from next chunk as well
-/*                    int remainingSizeOfBuffer = initialBufferSize - dst.position();
-                    if(remainingSizeOfBuffer > 0 ) {
-                        AndesMessagePart secondPart = MessagingEngine.getInstance().getMessageContentChunk(messageId,secondIndexToQuery);
-                        dst.put(secondPart.getData(),0,remainingSizeOfBuffer);
-                        written += remainingSizeOfBuffer;
-                    }*/
-                } else {
-                    dst.put(firstPart.getData(), positionToReadFromFirstChunk, initialBufferSize);
-                    written += initialBufferSize;
-                }
+                numOfBytesToRead = initialBufferSize - written;
             }
 
-        } catch (Exception e) {
-            log.error("Error in reading content for message id " + messageId, e);
+            dst.put(messagePart.getData(), positionToReadFromChunk, numOfBytesToRead);
+            written += numOfBytesToRead;
+
+            if (messagePartSize < DEFAULT_CONTENT_CHUNK_SIZE) { // Last message chunk has been received
+                break;
+            }
+            currentOffsetValue += numOfBytesToRead;
         }
         return written;
+    }
+
+    /**
+     * Retrieve the message part from the cache if available, otherwise retrieve it from the database and cache
+     * the retrieved value for use.
+     *
+     * @param messageId The message Id
+     * @param index The offset index value of the message part
+     * @return Message Part
+     * @throws AndesException
+     */
+    private static AndesMessagePart resolveCacheAndRetrieveMessagePart(long messageId, int index) throws AndesException {
+        AndesMessagePart messagePart = null;
+        boolean needToCache = true;
+
+        AndesMessagePart cachedMessagePart =  messagePartCache.get(messageId);
+
+        if (cachedMessagePart != null && cachedMessagePart.getOffSet() == index) {
+                messagePart = cachedMessagePart;
+                needToCache = false;
+        } else {
+            messagePart = MessagingEngine.getInstance().getMessageContentChunk(messageId, index);
+
+            if(messagePart == null) {
+                throw new AndesException("Empty message part received while retrieving message content.");
+            }
+        }
+
+        // The last part of the message content. The cache of this message part will not be useful.
+        if (messagePart.getDataLength() < DEFAULT_CONTENT_CHUNK_SIZE) {
+            needToCache = false;
+        }
+
+        /* If Message Part is not found in cache then it needs to be retrieved from the database and needs to be cached.
+           Only the last retrieved message part is required in the cache since all the other parts up to it is sent.
+        */
+        if(needToCache) {
+            messagePartCache.put(messageId, messagePart);
+        }
+
+        return messagePart;
+    }
+
+    /**
+     * create andes ack data message
+     * @param messageID id of the message
+     * @param queueName  queue name
+     * @param isTopic is ack comes from a topic subscriber
+     * @return Andes Ack Data
+     */
+    public static AndesAckData generateAndesAckMessage(long messageID, String queueName, boolean isTopic) {
+        return new AndesAckData(messageID,queueName,isTopic);
     }
 
     /**

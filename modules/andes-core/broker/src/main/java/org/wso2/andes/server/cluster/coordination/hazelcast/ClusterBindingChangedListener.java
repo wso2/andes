@@ -50,7 +50,7 @@ public class ClusterBindingChangedListener implements MessageListener {
     @Override
     public void onMessage(Message message) {
         ClusterNotification clusterNotification = (ClusterNotification) message.getMessageObject();
-        log.info("Handling cluster gossip: received a binding change notification " + clusterNotification.getDescription());
+        log.debug("Handling cluster gossip: received a binding change notification " + clusterNotification.getDescription());
         AndesBinding andesBinding = new AndesBinding(clusterNotification.getEncodedObjectAsString());
         BindingListener.BindingChange change = BindingListener.BindingChange.valueOf(clusterNotification.getChangeType());
         try {

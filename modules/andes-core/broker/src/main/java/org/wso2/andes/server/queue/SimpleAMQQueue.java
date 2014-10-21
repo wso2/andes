@@ -43,10 +43,12 @@ import org.wso2.andes.server.protocol.AMQSessionModel;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.security.AuthorizationHolder;
 import org.wso2.andes.server.subscription.Subscription;
+import org.wso2.andes.server.subscription.SubscriptionImpl;
 import org.wso2.andes.server.subscription.SubscriptionList;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
 import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
+import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 
 import javax.management.JMException;
@@ -394,7 +396,14 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
         {
             throw new AMQSecurityException("Permission denied");
         }
-        
+
+        //If the owner is DLC we should not allow subscriptions
+        //However browser subscriptions should be allowed
+        if (DLCQueueUtils.isDeadLetterQueue(getResourceName()) && !(subscription instanceof SubscriptionImpl
+                .BrowserSubscription)) {
+            throw new AMQSecurityException("Subscription to " + AndesConstants.DEAD_LETTER_QUEUE_NAME + " Queue is " +
+                    "Not Allowed !, Please use a Different Alias");
+        }
         
         if (hasExclusiveSubscriber())
         {

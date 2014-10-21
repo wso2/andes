@@ -1,8 +1,27 @@
+/*
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License. and limitations under the License.
+ */
+
 package org.wso2.andes.store.jdbc;
 
 import junit.framework.Assert;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.*;
+import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
@@ -16,7 +35,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class H2BasedMessageStoreImplTest {
+public class JDBCMessageStoreImplTest {
 
     private MessageStore messageStore;
     private static Connection connection;
@@ -34,7 +53,7 @@ public class H2BasedMessageStoreImplTest {
             ic.createSubcontext("jdbc");
             JdbcDataSource ds = new JdbcDataSource();
             ds.setURL("jdbc:h2:mem:msg_store;DB_CLOSE_ON_EXIT=FALSE");
-            ic.bind("jdbc/InMemoryMessageStoreDB", ds);
+            ic.bind(JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME, ds);
 
             Class.forName("org.h2.Driver");
             connection = DriverManager.getConnection("jdbc:h2:mem:msg_store;DB_CLOSE_ON_EXIT=FALSE");
@@ -45,8 +64,11 @@ public class H2BasedMessageStoreImplTest {
     @Before
     public void setUp() throws Exception {
         createTables();
-        messageStore = new H2BasedMessageStoreImpl(true);
-        messageStore.initializeMessageStore(null);
+        messageStore = new JDBCMessageStoreImpl();
+        ConfigurationProperties connectionProperties = new ConfigurationProperties();
+        connectionProperties.addProperty(JDBCConstants.PROP_JNDI_LOOKUP_NAME,
+                                            JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME);
+        messageStore.initializeMessageStore(connectionProperties);
     }
 
     @After
@@ -81,7 +103,7 @@ public class H2BasedMessageStoreImplTest {
 
         // retrieve
         for (AndesMessagePart msgPart : list) {
-            AndesMessagePart p = messageStore.getContent(msgPart.getMessageID() + "", msgPart.getOffSet());
+            AndesMessagePart p = messageStore.getContent(msgPart.getMessageID(), msgPart.getOffSet());
             assert p != null;
             Assert.assertEquals(msgPart.getMessageID(), p.getMessageID());
             Assert.assertEquals(true, Arrays.equals(msgPart.getData(), p.getData()));
@@ -331,25 +353,6 @@ public class H2BasedMessageStoreImplTest {
     }
 
     @Test
-    public void testGetMessageCountForQueue() throws Exception {
-
-        String[] destQueues = {"queue_1", "queue_2"};
-        int firstMsgId = 10;
-        int lastMsgId = firstMsgId + 10;
-
-        List<AndesMessageMetadata> lst = JDBCTestHelper.getMetadataForMultipleQueues(destQueues, 2, firstMsgId, lastMsgId);
-        messageStore.addMetaData(lst);
-
-        //TEST
-        long count = messageStore.getMessageCountForQueue(destQueues[0] + "noQueue");
-        Assert.assertEquals(0, count); // no such queue
-        count = messageStore.getMessageCountForQueue(destQueues[0]);
-        Assert.assertEquals(5, count);
-        count = messageStore.getMessageCountForQueue(destQueues[1]);
-        Assert.assertEquals(5, count);
-    }
-
-    @Test
     public void testGetMetaData() throws Exception {
 
         int firstMsgId = 1;
@@ -419,7 +422,7 @@ public class H2BasedMessageStoreImplTest {
         }
 
         // delete them
-        messageStore.deleteMessages(list, false);
+        //messageStore.deleteMessages(list, false);
 
         // get second batch
         list = messageStore.getExpiredMessages(2);
@@ -461,7 +464,7 @@ public class H2BasedMessageStoreImplTest {
 
     private void createTables() throws SQLException {
         String[] queries = {
-                "CREATE TABLE messages (" +
+                "CREATE TABLE IF NOT EXISTS messages (" +
                         "message_id BIGINT, " +
                         "offset INT, " +
                         "content BINARY NOT NULL, " +
@@ -469,21 +472,21 @@ public class H2BasedMessageStoreImplTest {
                         ");"
                 ,
 
-                "CREATE TABLE queues (" +
+                "CREATE TABLE IF NOT EXISTS queues (" +
                         "queue_id INT AUTO_INCREMENT, " +
                         "name VARCHAR NOT NULL, " +
                         "UNIQUE (name)," +
                         "PRIMARY KEY (queue_id)" +
                         ");",
 
-                "CREATE TABLE reference_counts ( " +
+                "CREATE TABLE IF NOT EXISTS reference_counts ( " +
                         "message_id BIGINT, " +
                         "reference_count INT, " +
                         "PRIMARY KEY (message_id)" +
                         ");"
                 ,
 
-                "CREATE TABLE metadata (" +
+                "CREATE TABLE IF NOT EXISTS metadata (" +
                         "message_id BIGINT, " +
                         "queue_id INT, " +
                         "data BINARY, " +
@@ -492,7 +495,7 @@ public class H2BasedMessageStoreImplTest {
                         "REFERENCES queues (queue_id) " +
                         ");",
 
-                "CREATE TABLE expiration_data (" +
+                "CREATE TABLE IF NOT EXISTS expiration_data (" +
                         "message_id BIGINT UNIQUE," +
                         "expiration_time BIGINT, " +
                         "destination VARCHAR NOT NULL, " +

@@ -49,7 +49,7 @@ public class ClusterQueueChangedListener implements MessageListener {
     @Override
     public void onMessage(Message message) {
         ClusterNotification clusterNotification = (ClusterNotification) message.getMessageObject();
-        log.info("Handling cluster gossip: received a queue change notification " + clusterNotification.getDescription());
+        log.debug("Handling cluster gossip: received a queue change notification " + clusterNotification.getDescription());
         AndesQueue andesQueue = new AndesQueue(clusterNotification.getEncodedObjectAsString());
         QueueListener.QueueChange change = QueueListener.QueueChange.valueOf(clusterNotification.getChangeType());
         try {

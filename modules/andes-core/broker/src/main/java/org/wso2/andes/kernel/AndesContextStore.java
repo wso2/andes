@@ -18,19 +18,21 @@
 
 package org.wso2.andes.kernel;
 
+import org.wso2.andes.configuration.ConfigurationProperties;
+
 import java.util.List;
 import java.util.Map;
 
 public interface AndesContextStore {
 
-
     /**
-     * initialize the storage with the connection
-     *
-     * @param connection connection to the storage (JDBC/Cassandra/H2)
+     * initialize the storage and makes a connection to the data base
+     * @param connectionProperties ConfigurationProperties
+     * @return returns the created DurableStoreConnection object created
      * @throws AndesException
      */
-    public void init(DurableStoreConnection connection) throws AndesException;
+    public DurableStoreConnection init(ConfigurationProperties connectionProperties) throws
+                                                                               AndesException;
 
     /**
      * get all durable encoded subscriptions as strings
@@ -101,6 +103,24 @@ public interface AndesContextStore {
      */
     public void removeMessageCounterForQueue(String destinationQueueName) throws AndesException;
 
+
+    /**
+     * increment message counter for a queue
+     * @param destinationQueueName name of the queue
+     * @param incrementBy  increment counter by
+     * @throws AndesException
+     */
+    public void incrementMessageCountForQueue(String destinationQueueName, long incrementBy) throws AndesException;
+
+
+    /**
+     * decrement message counter for a queue
+     * @param destinationQueueName  name of the queue
+     * @param decrementBy decrement counter by
+     * @throws AndesException
+     */
+    public void decrementMessageCountForQueue(String destinationQueueName, long decrementBy) throws AndesException;
+
     /**
      * store exchange information (amqp)
      *
@@ -155,10 +175,10 @@ public interface AndesContextStore {
      *
      * @param exchange       name of the exchange binding represent
      * @param boundQueueName target queue binding is done
-     * @param routingKey     routing key of the binding
+     * @param bindingInfo     binding information as a string
      * @throws AndesException
      */
-    public void storeBindingInformation(String exchange, String boundQueueName, String routingKey) throws AndesException;
+    public void storeBindingInformation(String exchange, String boundQueueName, String bindingInfo) throws AndesException;
 
     /**
      * get bindings stored for some exchange

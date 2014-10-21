@@ -1,5 +1,7 @@
 package org.wso2.andes.kernel;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.ContentHeaderBody;
@@ -7,6 +9,7 @@ import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.mqtt.MQTTMessageMetaData;
 import org.wso2.andes.server.message.CustomMessagePublishInfo;
 import org.wso2.andes.server.message.MessageMetaData;
+import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.util.AndesUtils;
@@ -15,7 +18,8 @@ import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-public class AndesMessageMetadata {
+public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
+
 
     long messageID;
     byte[] metadata;
@@ -26,8 +30,12 @@ public class AndesMessageMetadata {
     private boolean reDelivered;
     Map<Long, PendingJob> pendingJobsTracker;
     public QueueAddress queueAddress;
+    private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
     //Added for MQTT usage
     private int messageContentLength;
+
+    //slotID which this metadata belongs
+    private Slot slot;
 
     public AndesMessageMetadata(){}
 
@@ -119,6 +127,7 @@ public class AndesMessageMetadata {
     
     public void updateMetadata(String newDestination){
     	this.metadata = createNewMetadata(this.metadata, newDestination, this.messageID);
+        log.debug("updated andes message metadata id= " + messageID + " new destination = " + newDestination);
     }
 
     public void setRedelivered() {
@@ -203,7 +212,6 @@ public class AndesMessageMetadata {
 		buf.position(1);
 		buf = buf.slice();
 		modifiedMetaData.writeToBuffer(0, buf);
-		System.out.println("Metadata updated for "+ messageID + " "+ routingKey);
 		
 		return underlying;
     }
@@ -214,5 +222,22 @@ public class AndesMessageMetadata {
 
     public void setMessageContentLength(int messageContentLength) {
         this.messageContentLength = messageContentLength;
+    }
+
+    public Slot getSlot() {
+        return slot;
+    }
+
+    public void setSlot(Slot slot) {
+        this.slot = slot;
+    }
+
+    @Override
+    public int compareTo(AndesMessageMetadata other) {
+        if(this.getMessageID() == other.getMessageID()) {
+            return 0;
+        } else {
+            return this.getMessageID() > other.getMessageID() ? 1 : -1;
+        }
     }
 }

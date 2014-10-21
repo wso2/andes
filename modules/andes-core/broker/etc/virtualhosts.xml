@@ -25,7 +25,7 @@
         <name>cassandra</name>
         <cassandra>
             <store>
-                <class>org.wso2.andes.server.store.CassandraMessageStore</class>
+                <class>org.wso2.andes.server.store.QpidDeprecatedMessageStore</class>
                 <username>admin</username>
                 <password>admin</password>
                 <cluster>ClusterOne</cluster>

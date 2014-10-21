@@ -48,7 +48,7 @@ public class ClusterExchangeChangedListener implements MessageListener {
     @Override
     public void onMessage(Message message) {
         ClusterNotification clusterNotification = (ClusterNotification) message.getMessageObject();
-        log.info("Handling cluster gossip: received a exchange change notification " + clusterNotification.getDescription());
+        log.debug("Handling cluster gossip: received a exchange change notification " + clusterNotification.getDescription());
         AndesExchange andesExchange = new AndesExchange(clusterNotification.getEncodedObjectAsString());
         ExchangeListener.ExchangeChange change = ExchangeListener.ExchangeChange.valueOf(clusterNotification.getChangeType());
         try {

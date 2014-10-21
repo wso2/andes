@@ -21,9 +21,12 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQStoreException;
+import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.server.AMQChannel;
+import org.wso2.andes.server.queue.QueueEntry;
 
 import java.util.Map;
 import java.util.SortedMap;
@@ -34,10 +37,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
  * TODO handle message timeouts
  */
 public class QueueSubscriptionAcknowledgementHandler {
-    /** 
-     * this is a delivery performance counter
-     */
-    private MessageStore messageStore;
 
     private Map<Long, QueueMessageTag> deliveryTagMessageMap = new ConcurrentHashMap<Long, QueueMessageTag>();
 
@@ -59,11 +58,6 @@ public class QueueSubscriptionAcknowledgementHandler {
 
     private OnflightMessageTracker messageTracker = OnflightMessageTracker.getInstance();
 
-
-    public QueueSubscriptionAcknowledgementHandler(MessageStore messageStore, String queue) {
-        this.messageStore = messageStore;
-    }
-
     /**
      * Check the eligibility of message to be sent to the client
      * @param messageMetadata
@@ -78,18 +72,27 @@ public class QueueSubscriptionAcknowledgementHandler {
 
     }
 
-    public void handleAcknowledgement(AMQChannel channel, long messageId) {
-        try {
+    public void handleAcknowledgement(AMQChannel channel, QueueEntry queueEntry) {
+
             try {
-                // We first delete the message so even this fails in tracker, no harm done. Also decrement message count.
-                messageTracker.ackReceived(channel, messageId);
+                /**
+                 * When the message is acknowledged it is informed to Andes Kernel
+                 */
+                QpidAMQPBridge.getInstance().ackReceived(queueEntry.getMessage().getMessageNumber(),
+                                                         queueEntry.getQueue().getName(),
+                                                         false);
+
+                //TODO: hasitha - we should clear tracks when actual ack processing happens (if via disruptor)?
+                messageTracker.ackReceived(channel.getId(), queueEntry.getMessage().getMessageNumber());
+
+                channel.decrementNonAckedMessageCount();
 
             } catch (AMQStoreException e) {
-                log.error("Error while handling the ack for " + messageId, e);
+                log.error("Error while handling the ack for " + queueEntry.getMessage().getMessageNumber(), e);
+            } catch (AndesException e) {
+                log.error("Error while handling the ack for " + queueEntry.getMessage().getMessageNumber(), e);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }        
+
     }
 
     private class QueueMessageTag {
@@ -133,7 +136,6 @@ public class QueueSubscriptionAcknowledgementHandler {
 
             while (running) {
                 try {
-                    synchronized (messageStore) {
                         // Here timeStampMessageIdMap.firstKey() is the oldest
                         if (timeStampMessageIdMap.firstKey() + timeOutInMills <= currentTime) {
                             // we should handle timeout
@@ -177,8 +179,6 @@ public class QueueSubscriptionAcknowledgementHandler {
                             }
 
                         }
-
-                    }
                 } catch (Exception e) {
                     log.error("Error while running Queue Message Tag Cleanup Task", e);
                 } finally {

@@ -23,11 +23,13 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.MessageStore;
 
 import com.lmax.disruptor.EventHandler;
+import org.wso2.andes.kernel.MessageStoreManager;
+import org.wso2.andes.server.slot.SlotMessageCounter;
 
 /**
  * We do this to make Listener take turns while running. So we can run many copies of these and control number
@@ -40,16 +42,16 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
     int totalPendingEventLength = 0;
     private int writerCount;
     private int turn;
-    private MessageStore messageStore;
+    private MessageStoreManager messageStoreManager;
     private List<AndesMessageMetadata> metaList = new ArrayList<AndesMessageMetadata>();
 
     private List<AndesMessagePart> partList = new ArrayList<AndesMessagePart>();
-    private int MAX_DATA_LENGTH = 128000;
+    private static final int MAX_DATA_LENGTH = 128000;
 
-    public AlternatingCassandraWriter(int writerCount, int turn, MessageStore messageStore) {
+    public AlternatingCassandraWriter(int writerCount, int turn, MessageStoreManager messageStoreManager) {
         this.writerCount = writerCount;
         this.turn = turn;
-        this.messageStore = messageStore;
+        this.messageStoreManager = messageStoreManager;
     }
 
     public void onEvent(final CassandraDataEvent event, final long sequence, final boolean endOfBatch) throws Exception {
@@ -60,7 +62,6 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
             if (calculatedTurn == turn) {
                 //Message parts we write on the fly. It is tradeoff of memory vs. batching
                 //May be we need better handling .. batch that data as well
-                //log.info("CASSANDRA WRITER - CONTENT PART RECEIVED ID " + event.part.getMessageID() + " OFFSET: " + event.part.getOffSet());
                 partList.add(event.part);
                 totalPendingEventLength += event.part.getDataLength();
             }
@@ -69,25 +70,36 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
             int calculatedTurn = Math.abs(event.metadata.getDestination().hashCode() % writerCount);
 
             if (calculatedTurn == turn) {
-                //log.info("CASSANDRA WRITER - METADATA RECEIVED ID " + event.metadata.getMessageID());
                 metaList.add(event.metadata);
                 totalPendingEventLength += event.metadata.getMetadata().length;
             }
         }
 
         if (totalPendingEventLength > MAX_DATA_LENGTH || (endOfBatch)) {
-            // Write message part list to cassandra
+            // Write message part list to database
             if (partList.size() > 0) {
-                messageStore.storeMessagePart(partList);
+                if(log.isDebugEnabled()){
+                    log.debug("Number of message content sent to message store: " + partList.size
+                            ());
+                }
+                messageStoreManager.storeMessagePart(partList);
                 partList.clear();
             }
 
             // Write message meta list to cassandra
             if (metaList.size() > 0) {
-                //messageStore.addMessageMetaData(null, metaList);
-                messageStore.addMetaData(metaList);
+                if(log.isDebugEnabled()){
+                    log.debug("Number of message metadata sent to message store: " + partList.size
+                            ());
+                }
+                messageStoreManager.storeMetaData(metaList);
+                //record message data count
+                if (AndesContext.getInstance().isClusteringEnabled()) {
+                    SlotMessageCounter.getInstance().recordMetaDataCountInSlot(metaList);
+                }
                 metaList.clear();
             }
+
             totalPendingEventLength = 0;
         }
     }

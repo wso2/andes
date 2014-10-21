@@ -22,10 +22,8 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
-import org.wso2.andes.server.cluster.GlobalQueueManager;
 import org.wso2.andes.server.management.AMQManagedObject;
 import org.wso2.andes.server.util.AndesUtils;
-import org.wso2.andes.subscription.SubscriptionStore;
 
 import javax.management.NotCompliantMBeanException;
 
@@ -36,13 +34,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     private static Log log = LogFactory.getLog(QueueManagementInformationMBean.class);
 
-    GlobalQueueManager globalQueueManager;
-    MessageStore messageStore;
-
     public QueueManagementInformationMBean() throws NotCompliantMBeanException {
         super(QueueManagementInformation.class, QueueManagementInformation.TYPE);
-        this.messageStore = MessagingEngine.getInstance().getDurableMessageStore();
-        this.globalQueueManager = new GlobalQueueManager(messageStore);
     }
 
     public String getObjectInstanceName() {
@@ -79,6 +72,140 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         //todo: what happens if all messages were not copied to the node queue at the moment?
     }
 
+    /**
+     * Delete a selected message list from a given Dead Letter Queue of a tenant.
+     *
+     * @param messageIDs          The browser message Ids
+     * @param deadLetterQueueName The Dead Letter Queue Name for the tenant
+     */
+    @Override
+    public void deleteMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "messageIDs",
+            description = "ID of the Messages to Be Deleted") String[] messageIDs,
+                                                  @MBeanOperationParameter(name = "deadLetterQueueName",
+            description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName) {
+        List<Long> andesMessageIdList = getValidAndesMessageIdList(messageIDs);
+        List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>(messageIDs.length);
+        for (Long messageId : andesMessageIdList) {
+            removableMetadataList.add(new AndesRemovableMetadata(messageId, deadLetterQueueName));
+        }
+        try {
+            MessagingEngine.getInstance().deleteMessages(removableMetadataList, false);
+        } catch (AndesException e) {
+            throw new RuntimeException("Error deleting messages from Dead Letter Channel", e);
+        }
+
+        AndesUtils.unregisterBrowserMessageIds(messageIDs);
+
+    }
+
+    /**
+     * Restore a given browser message Id list from the Dead Letter Queue to the same queue it was previous in before
+     * moving to the Dead Letter Queue
+     * and remove them from the Dead Letter Queue.
+     *
+     * @param messageIDs          The browser message Ids
+     * @param deadLetterQueueName The Dead Letter Queue Name for the tenant
+     */
+    @Override
+    public void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "messageIDs",
+            description = "IDs of the Messages to Be Restored") String[] messageIDs,
+                                                   @MBeanOperationParameter(name = "deadLetterQueueName",
+            description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName) {
+        List<Long> andesMessageIdList = getValidAndesMessageIdList(messageIDs);
+        List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>(andesMessageIdList.size());
+
+        for (Long messageId : andesMessageIdList) {
+            try {
+                List<AndesMessageMetadata> messageMetadataListForOne = MessagingEngine.getInstance().getMetaDataList
+                        (deadLetterQueueName, messageId, messageId);
+                if (messageMetadataListForOne != null && messageMetadataListForOne.size() > 0) {
+                    metadataList.add(messageMetadataListForOne.get(0));
+                }
+            } catch (AndesException e) {
+                log.error("Error retrieving meta data for message Id " + messageId + " to restore messages from Dead " +
+                        "Letter Channel.", e);
+            }
+        }
+
+        try {
+            MessagingEngine.getInstance().updateMetaDataInformation(deadLetterQueueName, metadataList);
+        } catch (AndesException e) {
+            throw new RuntimeException("Error restoring messages from " + deadLetterQueueName, e);
+        }
+
+        AndesUtils.unregisterBrowserMessageIds(messageIDs);
+
+    }
+
+    /**
+     * Restore a given browser message Id list from the Dead Letter Queue to a different given queue in the same
+     * tenant and remove them from the Dead Letter Queue.
+     *
+     * @param messageIDs          The browser message Ids
+     * @param destination         The new destination
+     * @param deadLetterQueueName The Dead Letter Queue Name for the tenant
+     */
+    @Override
+    public void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "messageIDs",
+            description = "IDs of the Messages to Be Restored") String[] messageIDs,
+                                                   @MBeanOperationParameter(name = "destination",
+            description = "Destination of the message to be restored") String destination,
+                                                   @MBeanOperationParameter(name = "deadLetterQueueName",
+            description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName) {
+        List<Long> andesMessageIdList = getValidAndesMessageIdList(messageIDs);
+        List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>(andesMessageIdList.size());
+
+        for (Long messageId : andesMessageIdList) {
+            try {
+                List<AndesMessageMetadata> messageMetadataListForOne = MessagingEngine.getInstance().getMetaDataList
+                        (deadLetterQueueName, messageId, messageId);
+                if (messageMetadataListForOne != null && messageMetadataListForOne.size() > 0) {
+                    AndesMessageMetadata currentMetaData = messageMetadataListForOne.get(0);
+
+                    // Set the new destination queue
+                    currentMetaData.setDestination(destination);
+                    currentMetaData.updateMetadata(destination);
+
+                    metadataList.add(currentMetaData);
+                }
+            } catch (AndesException e) {
+                log.error("Error retrieving meta data for message Id " + messageId + " to restore messages from Dead " +
+                        "Letter Channel.", e);
+            }
+        }
+
+        try {
+            MessagingEngine.getInstance().updateMetaDataInformation(deadLetterQueueName, metadataList);
+        } catch (AndesException e) {
+            throw new RuntimeException("Error restoring messages from " + deadLetterQueueName + " to " + destination,
+                    e);
+        }
+
+        AndesUtils.unregisterBrowserMessageIds(messageIDs);
+    }
+
+    /**
+     * Retrieve a valid andes messageId list from a given browser message Id list.
+     *
+     * @param browserMessageIdList List of browser messageIds.
+     * @return Valid Andes MessageId list
+     */
+    private List<Long> getValidAndesMessageIdList(String[] browserMessageIdList) {
+        List<Long> andesMessageIdList = new ArrayList<Long>(browserMessageIdList.length);
+
+        for (String browserMessageId : browserMessageIdList) {
+            Long andesMessageId = AndesUtils.getAndesMessageId(browserMessageId);
+
+            if (andesMessageId > 0) {
+                andesMessageIdList.add(andesMessageId);
+            } else {
+                log.warn("A valid message could not be found for the message Id : " + browserMessageId);
+            }
+        }
+
+        return andesMessageIdList;
+    }
+
     //TODO:when deleting queues from UI this is not get called. Instead we use AMQBrokerManagerMBean. Why are we keeping this?
     public void deleteQueue(@MBeanOperationParameter(name = "queueName",
             description = "Name of the queue to be deleted") String queueName) {
@@ -106,53 +233,27 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * it is not acceptable
      *
      * */
-    public int getMessageCount(String queueName,String msgPattern) {
+    public long getMessageCount(String queueName,String msgPattern) {
 
 /*        int messageCount = (int) messageStore.getCassandraMessageCountForQueue(queueName);
         if (messageCount < 0) {
-            messageStore.incrementQueueCount(queueName, Math.abs(messageCount));
+            messageStore.incrementMessageCountForQueue(queueName, Math.abs(messageCount));
             messageCount = 0;
         }
         return messageCount;*/
 
         log.debug("Counting at : " + queueName + "---------");
 
-        int messageCount = 0;
+        long messageCount = 0;
         try {
-        /**
-         * Get message count from all node queues having subscriptions
-         * plus the number of messages in respective global queue
-         */
-        SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-
         if (msgPattern.equals("queue")) {
-            List<String> nodeQueuesHavingSubscriptionsForQueue = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForQueue(queueName));
-            if (nodeQueuesHavingSubscriptionsForQueue.size() > 0) {
-                for (String nodeQueue : nodeQueuesHavingSubscriptionsForQueue) {
-                    QueueAddress nodeQueueAddress = new QueueAddress(QueueAddress.QueueType.QUEUE_NODE_QUEUE,nodeQueue);
-                    messageCount += messageStore.countMessagesOfQueue(nodeQueueAddress,queueName);
-                    log.debug("Counting Messages at : " + nodeQueue + "  : " + messageCount);
-                }
-            }
+            messageCount = MessagingEngine.getInstance().getMessageCountOfQueue(queueName);
         } else if (msgPattern.equals("topic")) {
-            List<String> nodeQueuesHavingSubscriptionsForQueue = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForTopic(queueName));
-            if (nodeQueuesHavingSubscriptionsForQueue.size() > 0) {
-                for (String nodeQueue : nodeQueuesHavingSubscriptionsForQueue) {
-                    QueueAddress nodeQueueAddress = new QueueAddress(QueueAddress.QueueType.TOPIC_NODE_QUEUE,nodeQueue);
-                    messageCount += messageStore.countMessagesOfQueue(nodeQueueAddress,queueName);
-                    log.debug("Counting Messages at : " + nodeQueue + "  : " + messageCount);
-                }
-            }
+            //TODO: hasitha - to implement
         }
 
-        String globalQueue = AndesUtils.getGlobalQueueNameForDestinationQueue(queueName);
-        QueueAddress globalQueueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE,globalQueue);
-        messageCount += messageStore.countMessagesOfQueue(globalQueueAddress,queueName);
-        log.debug("Counting Messages at : " + globalQueue + "  : " + messageCount);
-        log.debug("END");
-
         } catch (AndesException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Error retrieving message count for the queue : " + queueName, e);
         }
 
         return messageCount;

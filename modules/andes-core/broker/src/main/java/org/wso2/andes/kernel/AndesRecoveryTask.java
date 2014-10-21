@@ -41,13 +41,9 @@ public class AndesRecoveryTask implements Runnable {
     AndesContextStore andesContextStore;
     AMQPConstructStore amqpConstructStore;
 
-    long recoveryTaskInterval;
-    boolean running;
-
     private static Log log = LogFactory.getLog(AndesRecoveryTask.class);
 
-    public AndesRecoveryTask(long recoveryTaskInterval) {
-        this.recoveryTaskInterval = recoveryTaskInterval;
+    public AndesRecoveryTask() {
         queueListeners.add(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
         exchangeListeners.add(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
         bindingListeners.add(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
@@ -58,45 +54,14 @@ public class AndesRecoveryTask implements Runnable {
 
     @Override
     public void run() {
-        //when starting keep a delay of 2 minutes
-        /**
-         * when starting keep a delay of 2 minutes
-         * to give MB fair time to start
-         */
         try {
-            Thread.sleep(2 * 60 * 1000);
-        } catch (InterruptedException e) {
-            //silently ignore
+            reloadExchangesFromDB();
+            reloadQueuesFromDB();
+            reloadBindingsFromDB();
+            reloadSubscriptions();
+        } catch (Exception e) {
+            log.error("Error in running andes recovery task", e);
         }
-        while (running) {
-            try {
-                reloadExchangesFromDB();
-                reloadQueuesFromDB();
-                reloadBindingsFromDB();
-                reloadSubscriptions();
-            } catch (Exception e) {
-                log.error("Error in running andes recovery task", e);
-            }
-            try {
-                Thread.sleep(recoveryTaskInterval);
-            } catch (InterruptedException e) {
-                //silently ignore
-            }
-        }
-    }
-
-    /**
-     * start running andes recovery task
-     */
-    public void startRunning() {
-        running = true;
-    }
-
-    /**
-     * stop running andes recovery task
-     */
-    public void stopRunning() {
-        running = false;
     }
 
     /**

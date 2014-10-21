@@ -19,7 +19,6 @@ package org.wso2.andes.server.cassandra;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -29,13 +28,10 @@ import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
-import org.wso2.andes.server.util.AndesUtils;
-import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -64,12 +60,8 @@ public class QueueBrowserDeliveryWorker {
     private int defaultMessageCount = Integer.MAX_VALUE;
     private int messageCount;
     private int messageBatchSize;
-    private boolean isInMemoryMode = false;
-    private MessageStore messageStore;
 
     private static Log log = LogFactory.getLog(QueueBrowserDeliveryWorker.class);
-
-    private HashMap<String,Long> lastReadMessageIdMap = new HashMap<String,Long>();
 
     public QueueBrowserDeliveryWorker(Subscription subscription, AMQQueue queue, AMQProtocolSession session){
         this(subscription,queue,session,false);
@@ -80,15 +72,9 @@ public class QueueBrowserDeliveryWorker {
         this.queue = queue;
         this.session = session;
         this.id = "" + subscription.getSubscriptionID();
-        this.isInMemoryMode = isInMemoryMode;
         this.messageCount = defaultMessageCount;
         this.messageBatchSize = ClusterResourceHolder.getInstance().getClusterConfiguration().
                 getMessageBatchSizeForBrowserSubscriptions();
-        if(isInMemoryMode) {
-            messageStore = MessagingEngine.getInstance().getInMemoryMessageStore();
-        } else {
-            messageStore = MessagingEngine.getInstance().getDurableMessageStore();
-        }
 
     }
 
@@ -98,10 +84,8 @@ public class QueueBrowserDeliveryWorker {
         try {
             messages = getSortedMessages();
             sendMessagesToClient(messages);
-        } catch (AMQStoreException e) {
+        } catch (AndesException e) {
             log.error("Error while sending message for Browser subscription", e);
-        } catch (Exception e) {
-            e.printStackTrace();
         } finally {
             // It is essential to confirm auto close , since in the client side it waits to know the end of the messages
             subscription.confirmAutoClose();
@@ -133,47 +117,30 @@ public class QueueBrowserDeliveryWorker {
             }
     }
 
-/*    private List<QueueEntry> getSortedMessagesForInMemoryQueue(AMQQueue queue) throws AMQStoreException {
-        List<IncomingMessage> messages = new ArrayList<IncomingMessage>();
-        CassandraMessageStore messageStore = ClusterResourceHolder.getInstance().
-                getCassandraMessageStore();
-        Hashtable<Long, IncomingMessage> incomingQueueMessageHashtable = messageStore.getIncomingQueueMessageHashtable();
-        Enumeration<IncomingMessage> enu = incomingQueueMessageHashtable.elements();
-        while (enu.hasMoreElements()){
-            IncomingMessage inMessage = enu.nextElement();
-            if(inMessage.getRoutingKey().equals(queue.getName())){
-                messages.add(inMessage);
-            }
-        }
-        InMemoryMessageComparator orderComparator = new InMemoryMessageComparator();
-        Collections.sort(messages, orderComparator);
-        return getBrowserMessagesForInMemoryMode(queue, messages);
-    }*/
+    /**
+     * Get message queue entries sorted using the message Id in the ascending order.
+     *
+     * @return Sorted QueueEntry List
+     * @throws AndesException
+     */
+    private List<QueueEntry> getSortedMessages() throws AndesException {
 
-
-/*    private List<QueueEntry> getBrowserMessagesForInMemoryMode(AMQQueue queue, List<IncomingMessage> incomingMessages) throws AMQStoreException {
-        List<QueueEntry> amqMessageList = new ArrayList<QueueEntry>();
-        SimpleQueueEntryList list = new SimpleQueueEntryList(queue);
-        AMQMessage message;
-        for(IncomingMessage incomingMessage: incomingMessages){
-            message = new AMQMessage(incomingMessage.getStoredMessage());
-            amqMessageList.add(list.add(message));
-        }
-        return amqMessageList;
-    }*/
-
-    private List<QueueEntry> getSortedMessages() throws Exception {
+        String queueName = queue.getResourceName();
+        long lastReadMessageId = 0L;
 
         List<AndesMessageMetadata> queueMessageMetaData = new ArrayList<AndesMessageMetadata>();
-        queueMessageMetaData = readMessages(queueMessageMetaData, messageBatchSize);
-        int retryCount = 2;
-        while (queueMessageMetaData.size() < messageBatchSize && retryCount < 5) {
-            queueMessageMetaData = readMessages(queueMessageMetaData, messageBatchSize * retryCount);
-            retryCount++;
+        List<AndesMessageMetadata> currentlyReadMessageMetaData = MessagingEngine.getInstance().getNextNMessageMetadataFromQueue(queueName, lastReadMessageId, messageBatchSize);
+        int currentBatchSize = currentlyReadMessageMetaData.size();
+
+        queueMessageMetaData.addAll(currentlyReadMessageMetaData);
+
+        while (currentBatchSize == messageBatchSize) {
+            lastReadMessageId = currentlyReadMessageMetaData.get(currentBatchSize -1).getMessageID();
+            currentlyReadMessageMetaData = MessagingEngine.getInstance().getNextNMessageMetadataFromQueue(queueName, lastReadMessageId, messageBatchSize);
+            queueMessageMetaData.addAll(currentlyReadMessageMetaData);
+            currentBatchSize = currentlyReadMessageMetaData.size();
         }
-        if(queueMessageMetaData.size() < messageBatchSize){
-            queueMessageMetaData = readMessagesFromGlobalQueue(queueMessageMetaData,messageBatchSize);
-        }
+
         CustomComparator orderComparator = new CustomComparator();
         Collections.sort(queueMessageMetaData, orderComparator);
         //todo: hasitha - what abt setting client identifier (it is skipped)?
@@ -185,52 +152,11 @@ public class QueueBrowserDeliveryWorker {
         return queueEntries;
     }
 
-    private List<AndesMessageMetadata> readMessages(List<AndesMessageMetadata> messageMetadataList, int messageBatchSize) throws Exception {
-        SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-        List<String> nodeQueuesHavingSubscriptionsForQueue = new ArrayList<String>(subscriptionStore.getNodeQueuesHavingSubscriptionsForQueue(queue.getName()));
-        if (nodeQueuesHavingSubscriptionsForQueue != null &&
-                nodeQueuesHavingSubscriptionsForQueue.size() > 0) {
-            long lastReadMessageId = 0;
-            for (String nodeQueue : nodeQueuesHavingSubscriptionsForQueue) {
-                if(lastReadMessageIdMap.get(nodeQueue) != null){
-                    lastReadMessageId = lastReadMessageIdMap.get(nodeQueue);
-                }
-                List<AndesMessageMetadata> allMessages = messageStore.getNextNMessageMetadataFromQueue(queue.getName(), lastReadMessageId, messageBatchSize);
-                for (AndesMessageMetadata messageMetaData : allMessages) {
-                    if (messageMetaData.getDestination().equals(queue.getResourceName())) {
-                        messageMetadataList.add(messageMetaData);
-                    }
-                    lastReadMessageIdMap.put(nodeQueue,messageMetaData.getMessageID());
-                }
-            }
-        }
-        return messageMetadataList;
-    }
-
-    private List<AndesMessageMetadata> readMessagesFromGlobalQueue(List<AndesMessageMetadata> messages, int messageBatchSize) throws Exception {
-        String globalQueueName = AndesUtils.getGlobalQueueNameForDestinationQueue(queue.getResourceName());
-        QueueAddress globalQueueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE,globalQueueName);
-        List<AndesMessageMetadata> messageMetaDataList = messageStore.getNextNMessageMetadataFromQueue(globalQueueAddress, 0L, messageBatchSize);
-        for (AndesMessageMetadata messageMetaData : messageMetaDataList) {
-            if (messageMetaData.getDestination().equals(queue.getResourceName())) {
-                messages.add(messageMetaData);
-            }
-        }
-        return messages;
-    }
-
     public class CustomComparator implements Comparator<AndesMessageMetadata>{
 
         public int compare(AndesMessageMetadata message1, AndesMessageMetadata message2) {
             return (int) (message1.getMessageID()-message2.getMessageID());
         }
     }
-
-/*    public class InMemoryMessageComparator implements Comparator<IncomingMessage>{
-
-        public int compare(IncomingMessage message1, IncomingMessage message2) {
-            return (int) (message1.getMessageNumber()-message2.getMessageNumber());
-        }
-    }*/
 
 }

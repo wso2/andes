@@ -20,7 +20,6 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.server.util.AndesUtils;
 
 /**
  * This class will handle purging of messages depending on queue behaviour in cluster
@@ -63,7 +62,8 @@ public class MessagePurgeHandler implements QueueListener {
     private void handleMessageRemovalFromGlobalQueue(String destinationQueueName) throws AndesException {
         int numberOfMessagesRemoved = 0;
         //there can be messages still in global queue which needs to be removed
-        numberOfMessagesRemoved += MessagingEngine.getInstance().removeMessagesOfQueue(destinationQueueName);
+        numberOfMessagesRemoved += MessagingEngine.getInstance().removeAllMessagesOfQueue(
+                destinationQueueName);
         log.info("Removed " + numberOfMessagesRemoved + " Messages From Global Queue Addressed to Queue " + destinationQueueName);
     }
 
@@ -80,7 +80,8 @@ public class MessagePurgeHandler implements QueueListener {
         MessagingEngine.getInstance().removeInMemoryMessagesAccumulated(destinationQueueName);
 
         //there can be non-acked messages in the node queue addressed to the destination queue
-        numberOfMessagesRemoved += MessagingEngine.getInstance().removeMessagesOfQueue(destinationQueueName);
+        numberOfMessagesRemoved += MessagingEngine.getInstance().removeAllMessagesOfQueue(
+                destinationQueueName);
 
         log.info("Removed " + numberOfMessagesRemoved + " Messages From Node Queue Addressed to Queue " + destinationQueueName);
 

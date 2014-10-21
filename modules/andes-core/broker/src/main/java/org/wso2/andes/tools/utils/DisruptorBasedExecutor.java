@@ -23,16 +23,16 @@ public class DisruptorBasedExecutor {
     //private static DisruptorRuntime<SubscriptionDataEvent> dataDeliveryDisruptorRuntime;
     private static Map<Long, PendingJob> pendingJobsTracker = new ConcurrentHashMap<Long, PendingJob>();
 
-    public DisruptorBasedExecutor(MessageStore store, AndesSubscription delivery) {
+    public DisruptorBasedExecutor(MessageStoreManager messageStoreManager, AndesSubscription delivery) {
         int MAX_WRITE_HANDLERS = 10;
         AlternatingCassandraWriter[] writerHandlers = new AlternatingCassandraWriter[MAX_WRITE_HANDLERS];
         for (int i = 0; i < writerHandlers.length; i++) {
-            writerHandlers[i] = new AlternatingCassandraWriter(MAX_WRITE_HANDLERS, i, store);
+            writerHandlers[i] = new AlternatingCassandraWriter(MAX_WRITE_HANDLERS, i, messageStoreManager);
         }
         cassandraRWDisruptorRuntime = new DisruptorRuntime<CassandraDataEvent>(CassandraDataEvent.getFactory(), writerHandlers);
 
         ackDataEvenRuntime = new DisruptorRuntime<AndesAckData>(AndesAckData.getFactory(), new AckHandler[]{new AckHandler(
-                store)});
+                messageStoreManager)});
 
         int MAX_SEND_HANDLERS = 10;
 //        SubscriptionDataSender[] subscriptionHandlers = new SubscriptionDataSender[MAX_SEND_HANDLERS];
@@ -69,7 +69,7 @@ public class DisruptorBasedExecutor {
         ringBuffer.publish(sequence);
     }
 
-    public void messageCompleted(QueueAddress queueAddress, AndesMessageMetadata metadata, long channelID) {
+    public void messageCompleted(AndesMessageMetadata metadata, long channelID) {
         //This count how many jobs has finished
         synchronized (pendingJobsTracker) {
             PendingJob pendingJob = pendingJobsTracker.get(channelID);
@@ -86,7 +86,6 @@ public class DisruptorBasedExecutor {
         event.isPart = false;
         event.metadata = metadata;
         event.metadata.setPendingJobsTracker(pendingJobsTracker);
-        event.metadata.queueAddress = queueAddress;
         // make the event available to EventProcessors
         ringBuffer.publish(sequence);
     }

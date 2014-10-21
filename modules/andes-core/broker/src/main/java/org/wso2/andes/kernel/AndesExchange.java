@@ -60,19 +60,15 @@ public class AndesExchange implements Serializable {
     }
 
     public String toString() {
-        StringBuffer buf = new StringBuffer();
-        buf.append("[").append(exchangeName)
-                .append("] T=").append(type)
-                .append("/AD=").append(autoDelete);
-        return buf.toString();
+        return "[" + exchangeName + "] " +
+                "T=" + type +
+                "/AD=" + autoDelete;
     }
 
     public String encodeAsString() {
-        StringBuffer buf = new StringBuffer();
-        buf.append("exchangeName=").append(exchangeName)
-                .append(",type=").append(type)
-                .append(",autoDelete").append(autoDelete);
-        return buf.toString();
+        return "exchangeName=" + exchangeName +
+                ",type=" + type +
+                ",autoDelete" + autoDelete;
     }
 
     public boolean equals(Object o) {

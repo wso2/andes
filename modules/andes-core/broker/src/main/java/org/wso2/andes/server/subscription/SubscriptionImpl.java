@@ -25,12 +25,12 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.common.AMQPFilterTypes;
 import org.wso2.andes.common.ClientProperties;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.AndesAckData;
-import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -51,8 +51,12 @@ import org.wso2.andes.server.output.ProtocolOutputConverter;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
+import org.wso2.andes.server.slot.Slot;
+import org.wso2.andes.server.util.AndesUtils;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -140,6 +144,9 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
 
             synchronized (getChannel())
             {
+                // Register the mapping between andes message Id and delivery protocol message Id
+                AndesUtils.registerBrowserMessageId(msg.getMessageHeader().getMessageId(),
+                        msg.getMessage().getMessageNumber());
                 long deliveryTag = getChannel().getNextDeliveryTag();
                 sendToClient(msg, deliveryTag);
             }
@@ -267,6 +274,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
 
             //no point of trying to deliver if channel is closed
             if(getChannel().isClosing()) {
+                OnflightMessageTracker.getInstance().handleFailure(deliveryTag,getChannel().getId());
                 return;
             }
 
@@ -291,9 +299,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                                 .getAcknowledgementHandlerMap().get(getChannel());
 
                         if (ackHandler == null) {
-                            QueueSubscriptionAcknowledgementHandler handler = new QueueSubscriptionAcknowledgementHandler(
-                                    MessagingEngine.getInstance().getDurableMessageStore(), entry.getQueue()
-                                            .getResourceName());
+                            QueueSubscriptionAcknowledgementHandler handler = new QueueSubscriptionAcknowledgementHandler();
                             ClusterResourceHolder.getInstance().getSubscriptionManager().getAcknowledgementHandlerMap()
                                     .put(getChannel(), handler);
                             ackHandler = handler;
@@ -315,33 +321,43 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                                     ByteBuffer buf = ByteBuffer.allocate(100);
                                     int readCount = entry.getMessage().getContent(buf, 0);
                                     if(log.isDebugEnabled()) {
-                                        log.debug("sent2(" + entry.getMessage().getMessageNumber() + ")"
+                                        log.debug("sent message(" + entry.getMessage().getMessageNumber() + ")"
                                                 + new String(buf.array(), 0, readCount) + " channel="+ getChannel().getChannelId());
                                     }
                                 }
                                 sendToClient(entry, deliveryTag);
                                 break;
                             } else {
+                                //This happens when message has expired or maximum number of
+                                // retries are done fro queues
                                 if (log.isDebugEnabled()) {
-                                    log.info("sent3 stopped for " + entry.getMessage().getMessageNumber());
+                                    log.debug("Giving up sending.Sent stopped for " + entry.getMessage().getMessageNumber());
                                 }
                                 /**
-                                 * message tracker rejected this message from sending. Hence removing from store
+                                 * message tracker rejected this message from sending. Hence moving to dead letter channel
                                  */
                                 long messageId = entry.getMessage().getMessageNumber();
                                 String destinationQueue = ((AMQMessage)entry.getMessage()).getMessageMetaData().getMessagePublishInfo()
                                         .getRoutingKey().toString();
-                                OnflightMessageTracker.getInstance().removeNodeQueueMessageFromStorePermanentlyAndDecrementMsgCount(messageId,destinationQueue);
+
+                                //move message to DLC
+                                MessagingEngine.getInstance().moveMessageToDeadLetterChannel(messageId, destinationQueue);
+
+                                //remove tracking of the message
+                                OnflightMessageTracker.getInstance().removeTrackingInformationForDeadMessages(messageId);
+                                Slot slot = ((AMQMessage) entry.getMessage()).getSlot();
+                                OnflightMessageTracker.getInstance()
+                                        .decrementMessageCountInSlotAndCheckToResend(slot, destinationQueue);
                                 break;
                             }
                         } catch (Exception e) {
                             //undo any changes in the message tracker
                             log.warn("SEND FAILED >> Exception occurred while sending message out. Retrying " + retryCount + " times. Current " + i ,e);
-                            OnflightMessageTracker.getInstance().removeMessage(getChannel(), deliveryTag, entry.getMessage().getMessageNumber());
+
                             if(i < retryCount -1){
                                 //will try again
                                 if (log.isDebugEnabled()) {
-                                    log.info("sent4 failed for " + entry.getMessage().getMessageNumber() + " retrying");
+                                    log.debug("sent4 failed for " + entry.getMessage().getMessageNumber() + " retrying");
                                 }
                                 Thread.sleep(waitTime);
                             }else{
@@ -681,12 +697,13 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
 
     public void onDequeue(final QueueEntry queueEntry) {
         restoreCredit(queueEntry);
-        try {
-            MessagingEngine.getInstance().ackReceived(new AndesAckData(queueEntry.getMessage().getMessageNumber(),
-                    queueEntry.getQueue().getName(),queueEntry.getQueue().checkIfBoundToTopicExchange()));
-        } catch (AndesException e) {
-            log.error("Error while handling the acknowledgement for messageID " + queueEntry.getMessage().getMessageNumber());
-        }
+        /**
+         * When the message is acknowledged it is informed to Andes Kernel
+         */
+        QpidAMQPBridge.getInstance().ackReceived(queueEntry.getMessage().getMessageNumber(),
+                                                 queueEntry.getQueue().getName(),
+                                                 queueEntry.getQueue()
+                                                           .checkIfBoundToTopicExchange());
     }
 
     public void restoreCredit(final QueueEntry queueEntry)

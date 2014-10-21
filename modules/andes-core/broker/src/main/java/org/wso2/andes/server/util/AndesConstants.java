@@ -29,4 +29,7 @@ public class AndesConstants {
     public static final String TOPIC_NODE_QUEUE_NAME_PREFIX = "TopicNodeQueue_";
     public static final String MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX = "mid";
 
+    // The default Dead Letter Channel queue name suffix
+    public static final String DEAD_LETTER_QUEUE_NAME = "DeadLetterChannel";
+
 }

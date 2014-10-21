@@ -337,7 +337,7 @@ public class SubscriptionStore {
                 subscriptionList.add(subscription);
                 clusterSubscriptionMap.put(destination, subscriptionList);
             }
-            log.info("Added Subscription to map. queue name:" + subscription.getTargetQueue() + ", Type: " + subscription.getTargetQueueBoundExchangeType());
+            log.debug("Added Subscription to map. queue name:" + subscription.getTargetQueue() + ", Type: " + subscription.getTargetQueueBoundExchangeType());
 
         } else if (type == SubscriptionChange.Disconnected) {
             if (subscriptionList == null) {
@@ -354,7 +354,7 @@ public class SubscriptionStore {
             subscriptionList.add(subscription);
             clusterSubscriptionMap.put(destination, subscriptionList);
 
-            log.info("Disconnected Subscription from map: " + subscription.encodeAsStr());
+            log.debug("Disconnected Subscription from map: " + subscription.encodeAsStr());
 
         } else if (type == SubscriptionChange.Deleted) {
             if (subscriptionList == null) {
@@ -371,31 +371,31 @@ public class SubscriptionStore {
             if (subscriptionList.size() == 0) {
                 clusterSubscriptionMap.remove(destination);
             }
-            log.info("Deleted Subscription from map. queue name:" + subscription.getTargetQueue() + ", Type: " + subscription.getTargetQueueBoundExchangeType());
+            log.debug("Deleted Subscription from map. queue name:" + subscription.getTargetQueue() + ", Type: " + subscription.getTargetQueueBoundExchangeType());
         }
 
-        log.info("+++++++++++++++++Updated cluster subscription maps++++++++++++++++");
+        log.debug("+++++++++++++++++Updated cluster subscription maps++++++++++++++++");
         this.printSubscriptionMap(clusterQueueSubscriptionMap);
         this.printSubscriptionMap(clusterTopicSubscriptionMap);
-        log.info("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+        log.debug("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
     }
 
 
     private void printSubscriptionMap(Map<String, List<AndesSubscription>> map) {
         for (Entry<String, List<AndesSubscription>> entry : map.entrySet()) {
-            log.info("Destination: " + entry.getKey());
+            log.debug("Destination: " + entry.getKey());
             for (AndesSubscription s : entry.getValue()) {
-                log.info("\t---" + s.encodeAsStr());
+                log.debug("\t---" + s.encodeAsStr());
             }
         }
     }
 
     private void printLocalSubscriptionMap(Map<String, Map<String, LocalSubscription>> map) {
         for (Entry<String, Map<String, LocalSubscription>> entry : map.entrySet()) {
-            log.info("Destination: " + entry.getKey());
+            log.debug("Destination: " + entry.getKey());
             Map<String, LocalSubscription> mapForDestination = entry.getValue();
             for (Entry<String, LocalSubscription> sub : mapForDestination.entrySet()) {
-                log.info("\t SubID: " + sub.getKey() + "-----" + sub.getValue().encodeAsStr());
+                log.debug("\t SubID: " + sub.getKey() + "-----" + sub.getValue().encodeAsStr());
             }
         }
     }
@@ -449,8 +449,7 @@ public class SubscriptionStore {
 
             String destinationQueue = subscription.getSubscribedDestination();
             //Store the subscription
-            String destinationIdentifier = new StringBuffer().append((subscription.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX))
-                    .append(destinationQueue).toString();
+            String destinationIdentifier = (subscription.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destinationQueue;
             String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
             andesContextStore.storeDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
 
@@ -482,10 +481,10 @@ public class SubscriptionStore {
             removeLocalSubscription(subscription);
         }
 
-        log.info("===============Updated local subscription maps================");
+        log.debug("===============Updated local subscription maps================");
         this.printLocalSubscriptionMap(localQueueSubscriptionMap);
         this.printLocalSubscriptionMap(localTopicSubscriptionMap);
-        log.info("========================================================");
+        log.debug("========================================================");
 
     }
 
@@ -529,7 +528,7 @@ public class SubscriptionStore {
             String destinationIdentifier = new StringBuffer().append((subscriptionToRemove.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX))
                     .append(destination).toString();
             andesContextStore.removeDurableSubscription(destinationIdentifier, subscription.getSubscribedNode() + "_" + subscriptionID);
-            log.info("Subscription Removed Locally for  " + destination + "@" + subscriptionID + " " + subscriptionToRemove);
+            log.debug("Subscription Removed Locally for  " + destination + "@" + subscriptionID + " " + subscriptionToRemove);
         } else {
             throw new AndesException("Could not find an subscription ID " + subscriptionID + " under destination " + destination);
         }

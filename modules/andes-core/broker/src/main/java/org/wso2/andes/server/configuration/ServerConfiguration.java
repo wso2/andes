@@ -591,6 +591,14 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         return getIntValue("clustering.GlobalQueueCount",10);
     }
 
+    public int getSlotWindowSize(){
+        return getIntValue("clustering.SlotWindowSize",1000);
+    }
+
+    public int getNumberOFSlotDeliveryWorkerThreads(){
+        return getIntValue("clustering.NumberOfSlotDeliveryWorkerThreads",5);
+    }
+
     public int getGlobalQueueWorkerMessageBatchSize() {
         return getIntValue("clustering.tuning.messageBatchSizes.globalQueueWorkerMessageBatchSize", 700);
     }
@@ -690,6 +698,10 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
 
     public int getContentRemovalTimeDifference() {
         return getIntValue("clustering.tuning.waitTimes.contentRemovalTimeDifference",120);
+    }
+
+    public int getSlotSubmitTimeOut(){
+        return getIntValue("clustering.tuning.waitTimes.slotSubmitTimeOut",1000);
     }
 
     public int getAndesRecoveryTaskInterval() {

@@ -1,18 +1,18 @@
-namespace java org.wso2.andes.server.slotImp.thrift.gen
+namespace java org.wso2.andes.server.slot.thrift.gen
 
-typedef i64 long // Define long type
+//typedef i64 long
 
 /* A Slot consists of followings
  * messageCount - number of messages in the slotImp
  * startMessageId - starting message ID of the slotImp
  * endMessageId - ending message ID of the slotImp
- * queue - the queue which the slotImp belongs to
+ * queueName - the queueName which the slotImp belongs to
  */
 struct SlotInfo {
-    1: optional long  messageCount;
-    2: long  startMessageId;
-    3: long  endMessageId;
-    4: string queue;
+    1: optional i64  messageCount;
+    2: i64  startMessageId;
+    3: i64  endMessageId;
+    4: string queueName;
 }
 
 /*
@@ -21,9 +21,18 @@ struct SlotInfo {
 service SlotManagementService {
     /* The getSlot operation. This method is used to get a slotImp from SlotManager
     */
-    SlotInfo getSlot(1: string queueName),
+    SlotInfo getSlotInfo(1: string queueName, 2: string nodeId),
+
     /* The updateMessageId operation is to update the message ID in the coordinator after chunk of messages are published
     */
-    void updateMessageId(1: string queueName, 2: long messageId)
+    void updateMessageId(1: string queueName, 2: i64 messageId),
+
+    /*delete empty slots
+    */
+    void deleteSlot(1: string queueName, 2: SlotInfo slotInfo, 3: string nodeId),
+
+    /*re-assign the slot when there are no local subscribers in the node
+    */
+    void reAssignSlotWhenNoSubscribers(1: string nodeId, 2: string queueName)
 
 }

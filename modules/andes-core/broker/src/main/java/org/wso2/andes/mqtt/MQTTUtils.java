@@ -130,7 +130,7 @@ public class MQTTUtils {
      * @param metadata the meta object which holds information about the message
      * @return the byte stream of the message
      */
-    public static ByteBuffer getContentFromMetaInformation(AndesMessageMetadata metadata) {
+    public static ByteBuffer getContentFromMetaInformation(AndesMessageMetadata metadata) throws AndesException {
         //Need to get the value dynamically
         ByteBuffer message = ByteBuffer.allocate(metadata.getMessageContentLength());
         try {
@@ -141,7 +141,7 @@ public class MQTTUtils {
             message.put(messagePart.getData());
         } catch (AndesException e) {
             final String errorMessage = "Error in getting content for message";
-            throw new RuntimeException(errorMessage, e);
+            throw new AndesException(errorMessage, e);
         }
         return message;
     }
