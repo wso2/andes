@@ -426,7 +426,6 @@ public class MessagingEngine {
      * @throws Exception
      */
     public void startMessageDelivery() throws Exception {
-
         //TODO: start topic delivery workers
     }
 
@@ -467,23 +466,18 @@ public class MessagingEngine {
      * Start Checking for Expired Messages (JMS Expiration)
      */
     public void startMessageExpirationWorker() {
-        log.info("Starting Message Expiration Checker");
 
-        MessageExpirationWorker mew =
-                ClusterResourceHolder.getInstance().getMessageExpirationWorker();
+        MessageExpirationWorker mew = ClusterResourceHolder.getInstance().getMessageExpirationWorker();
 
         if (mew == null) {
-
             MessageExpirationWorker messageExpirationWorker = new MessageExpirationWorker();
             ClusterResourceHolder.getInstance().setMessageExpirationWorker(messageExpirationWorker);
 
         } else {
             if (!mew.isWorking()) {
-                mew.setWorking();
+                mew.startWorking();
             }
         }
-
-        log.info("Message Expiration Checker has started.");
     }
 
     /**
@@ -491,13 +485,13 @@ public class MessagingEngine {
      */
     public void stopMessageExpirationWorker() {
 
-        log.info("Stopping Message Expiration Checker");
-
         MessageExpirationWorker mew = ClusterResourceHolder.getInstance()
                 .getMessageExpirationWorker();
+                
         if (mew != null && mew.isWorking()) {
             mew.stopWorking();
         }
+
     }
 
 }

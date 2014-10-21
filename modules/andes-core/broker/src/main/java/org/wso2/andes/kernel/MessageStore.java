@@ -179,7 +179,7 @@ public interface MessageStore {
     /**
      * delete messages from expiry queue
      *
-     * @param messagesToRemove messages to remove
+     * @param messagesToRemove message IDs to remove
      * @throws AndesException
      */
     public void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException;
