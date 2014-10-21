@@ -1,10 +1,5 @@
-package org.wso2.andes.management.common.mbeans;
-
-import org.wso2.andes.management.common.mbeans.annotations.MBeanAttribute;
-import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
-
 /*
-*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+*  Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 *  WSO2 Inc. licenses this file to you under the Apache License,
 *  Version 2.0 (the "License"); you may not use this file except
@@ -20,6 +15,14 @@ import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParamet
 * specific language governing permissions and limitations
 * under the License.
 */
+package org.wso2.andes.management.common.mbeans;
+
+import org.wso2.andes.management.common.mbeans.annotations.MBeanAttribute;
+import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
+
+/**
+ * This is the interface for implementing subscription related information transfer to the UI.
+ */
 public interface SubscriptionManagementInformation {
 
     static final String TYPE = "SubscriptionManagementInformation";

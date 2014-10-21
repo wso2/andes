@@ -241,8 +241,9 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             messageCount = 0;
         }
         return messageCount;*/
-
-        log.debug("Counting at : " + queueName + "---------");
+        if (log.isDebugEnabled()) {
+            log.debug("Counting at queue : " + queueName);
+        }
 
         long messageCount = 0;
         try {
