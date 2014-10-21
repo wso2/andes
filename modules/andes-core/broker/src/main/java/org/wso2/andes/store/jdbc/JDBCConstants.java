@@ -13,8 +13,9 @@
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
- * under the License. and limitations under the License.
+ * under the License.
  */
+
 package org.wso2.andes.store.jdbc;
 
 /**
@@ -118,13 +119,15 @@ public class JDBCConstants {
                     " WHERE " + QUEUE_ID + "=?" +
                     " AND " + MESSAGE_ID +
                     " BETWEEN ?" +
-                    " AND ?";
+                    " AND ?" +
+                    " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_SELECT_METADATA_FROM_QUEUE =
             "SELECT " + MESSAGE_ID + "," + METADATA +
                     " FROM " + METADATA_TABLE +
                     " WHERE " + MESSAGE_ID + ">?" +
-                    " AND " + QUEUE_ID + "=?";
+                    " AND " + QUEUE_ID + "=?" +
+                    " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_DELETE_METADATA =
             "DELETE " +

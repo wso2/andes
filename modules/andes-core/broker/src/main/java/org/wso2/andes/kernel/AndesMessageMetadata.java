@@ -1,3 +1,21 @@
+/*
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
@@ -25,16 +43,27 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
     byte[] metadata;
     long expirationTime;
     boolean isTopic;
+
+    /**
+     *through which connection this message came into broker
+     */
+    int channelId;
+
     private String destination;
     private boolean isPersistent;
     private boolean reDelivered;
     Map<Long, PendingJob> pendingJobsTracker;
     public QueueAddress queueAddress;
     private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
-    //Added for MQTT usage
+
+    /**
+     *Added for MQTT usage
+     */
     private int messageContentLength;
 
-    //slotID which this metadata belongs
+    /**
+     *slotID which this metadata belongs
+     */
     private Slot slot;
 
     public AndesMessageMetadata(){}
@@ -105,6 +134,14 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         isPersistent = persistent;
     }
 
+    public int getChannelId() {
+        return channelId;
+    }
+
+    public void setChannelId(int channelId) {
+        this.channelId = channelId;
+    }
+
     
     /**
      * Create a clone, with new message ID
@@ -115,12 +152,14 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
     	AndesMessageMetadata clone = new AndesMessageMetadata();
     	clone.messageID = messageId;
     	clone.metadata = metadata;
+        clone.channelId = channelId;
     	clone.expirationTime = expirationTime;
         clone.isTopic = isTopic;
         clone.destination = destination; 
         clone.isPersistent = isPersistent;
         clone.pendingJobsTracker = pendingJobsTracker; 
         clone.queueAddress = queueAddress;
+        clone.slot = slot;
         return clone;
     }
     

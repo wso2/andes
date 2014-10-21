@@ -1,4 +1,5 @@
 /*
+*
 *  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 *  WSO2 Inc. licenses this file to you under the Apache License,
@@ -111,6 +112,7 @@ public class MQTTUtils {
         messageHeader.setTopic(true);
         messageHeader.setDestination(topic);
         messageHeader.setPersistent(true);
+        messageHeader.setChannelId(1);
         messageHeader.setMessageContentLength(messageContentLength);
         if (log.isDebugEnabled()) {
             log.debug("Message with id " + messageID + " having the topic " + topic + " with QOS" + qosLevel
@@ -137,7 +139,7 @@ public class MQTTUtils {
             //offset value will always be set to 0 since mqtt doesn't support chunking the messsages, always the message
             //will be in the first chunk but in AMQP there will be chunks
             final int mqttOffset = 0;
-            AndesMessagePart messagePart = MessagingEngine.getInstance().getDurableMessageStore().getContent(Long.toString(metadata.getMessageID()), mqttOffset);
+            AndesMessagePart messagePart = MessagingEngine.getInstance().getContent(metadata.getMessageID(),mqttOffset);
             message.put(messagePart.getData());
         } catch (AndesException e) {
             final String errorMessage = "Error in getting content for message";

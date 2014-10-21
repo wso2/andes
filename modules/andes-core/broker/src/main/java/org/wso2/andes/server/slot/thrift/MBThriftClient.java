@@ -1,21 +1,19 @@
 /*
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
- *   Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *   WSO2 Inc. licenses this file to you under the Apache License,
- *   Version 2.0 (the "License"); you may not use this file except
- *   in compliance with the License.
- *   You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing,
- *  software distributed under the License is distributed on an
- *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- *  KIND, either express or implied.  See the License for the
- *  specific language governing permissions and limitations
- *  under the License.
- * /
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.wso2.andes.server.slot.thrift;
@@ -37,12 +35,17 @@ import org.wso2.andes.server.slot.thrift.gen.SlotInfo;
 import org.wso2.andes.server.slot.thrift.gen.SlotManagementService;
 
 /**
- * A wrapper client for the native thrift client
+ * A wrapper client for the native thrift client. All the public methods in this class are
+ * synchronized in order to avoid out of sequence response exception from thrift server. Only one
+ * method should be triggered at a time in order to get the responses from the server in order.
  */
 
 public class MBThriftClient {
 
-
+    /**
+     * A state variable to indicate whether the reconnecting  to the thrift server is started or
+     * not
+     */
     private static boolean reconnectingStarted = false;
 
     private static TTransport transport;
@@ -82,7 +85,7 @@ public class MBThriftClient {
     }
 
     /**
-     * convert SlotInfo object to Slot object
+     * Convert SlotInfo object to Slot object
      *
      * @param slotInfo object
      * @return slot object
@@ -96,7 +99,9 @@ public class MBThriftClient {
     }
 
     /**
-     * updateMessageId method. This method will update the message ID list in the SlotManager
+     * updateMessageId method. This method will pass message ID to SlotManager. Slot manager
+     * maintains a list of random messageIds in a map along with the queue. This messageId will
+     * be stored in that map.
      *
      * @param queueName name of the queue
      * @param messageId a known message ID
@@ -121,7 +126,8 @@ public class MBThriftClient {
     }
 
     /**
-     * delete the slot from SlotAssignmentMap
+     * Delete the slot from SlotAssignmentMap when all the messages in the slot has been sent and
+     * all the acks are received.
      *
      * @param queueName
      * @param slot      to be deleted
@@ -147,7 +153,7 @@ public class MBThriftClient {
     }
 
     /**
-     * re-assign the slot when the last subscriber leaves the node
+     * Re-assign the slot when the last subscriber leaves the node
      *
      * @param nodeId    of this node
      * @param queueName name of the queue
@@ -171,7 +177,8 @@ public class MBThriftClient {
     }
 
     /**
-     * Returns an instance of Slot Management service client
+     * Returns an instance of Slot Management service client which is used to communicate to the
+     * thrift server. If it does not succeed in connecting to the server, it throws a  TTransportException
      *
      * @return a SlotManagementService client
      */
@@ -200,7 +207,7 @@ public class MBThriftClient {
     }
 
     /**
-     * handle when coordinator of the cluster changes. start reconnecting to new server thread
+     * Start the thrift server reconnecting thread when the coordinator of the cluster is changed.
      */
     private static void handleCoordinatorChanges() {
         resetServiceClient();
@@ -211,7 +218,7 @@ public class MBThriftClient {
     }
 
     /**
-     * set mbThriftClient to null
+     * Set mbThriftClient to null
      */
     private static void resetServiceClient() {
         client = null;

@@ -1,21 +1,19 @@
 /*
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
- *   Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *   WSO2 Inc. licenses this file to you under the Apache License,
- *   Version 2.0 (the "License"); you may not use this file except
- *   in compliance with the License.
- *   You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing,
- *  software distributed under the License is distributed on an
- *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- *  KIND, either express or implied.  See the License for the
- *  specific language governing permissions and limitations
- *  under the License.
- * /
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.wso2.andes.server.slot;
@@ -28,23 +26,23 @@ import java.io.Serializable;
 public class Slot implements Serializable, Comparable<Slot> {
 
     /**
-     * number of messages in the slot
+     * Number of messages in the slot
      */
     private long messageCount;
 
 
     /**
-     * start message ID of the slot
+     * Start message ID of the slot
      */
     private long startMessageId;
 
     /**
-     * end message ID of the slot
+     * End message ID of the slot
      */
     private long endMessageId;
 
     /**
-     * queueName which the slot belongs to. This is set when the slot is assigned to a subscriber
+     * QueueName which the slot belongs to. This is set when the slot is assigned to a subscriber
      */
     private String queueName;
 
@@ -113,7 +111,7 @@ public class Slot implements Serializable, Comparable<Slot> {
     }
 
     /**
-     * return uniqueue id for the slot
+     * Return uniqueue id for the slot
      *
      * @return slot message id
      */

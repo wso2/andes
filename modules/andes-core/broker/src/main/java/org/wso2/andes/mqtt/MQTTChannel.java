@@ -1,4 +1,5 @@
 /*
+*
 *  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 *  WSO2 Inc. licenses this file to you under the Apache License,
@@ -73,10 +74,12 @@ public class MQTTChannel {
      */
     private void addMessageHeader(AndesMessageMetadata messageHeader, int mqttLocalMessageID) throws MQTTException {
         try {
-            MessagingEngine.getInstance().messageReceived(messageHeader, mqttLocalMessageID);
+
+            MessagingEngine.getInstance().messageReceived(messageHeader);
             if (log.isDebugEnabled()) {
                 log.debug("Message meta data added for the message with id " + mqttLocalMessageID);
             }
+
         } catch (AndesException e) {
             final String error = "Error while adding the message header to the andes kernal ";
             log.error(error + e.getMessage());

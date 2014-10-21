@@ -1,4 +1,5 @@
 /*
+*
 *  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 *
 *  WSO2 Inc. licenses this file to you under the Apache License,
@@ -123,7 +124,7 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
         }
 
         /**
-         * The values will be extracted from the bytestream and will be decoded         *
+         * The values will be extracted from the bytestream and will be decoded         
          * @param buf the bytes stream the data contains
          * @return meta data object
          */

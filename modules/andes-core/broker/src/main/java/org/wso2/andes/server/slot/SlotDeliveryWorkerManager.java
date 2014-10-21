@@ -1,31 +1,31 @@
 /*
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
- *   Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *   WSO2 Inc. licenses this file to you under the Apache License,
- *   Version 2.0 (the "License"); you may not use this file except
- *   in compliance with the License.
- *   You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing,
- *  software distributed under the License is distributed on an
- *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- *  KIND, either express or implied.  See the License for the
- *  specific language governing permissions and limitations
- *  under the License.
- * /
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.wso2.andes.server.slot;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 /**
  * This class is responsible of allocating SloDeliveryWorker threads to each queue
@@ -36,12 +36,23 @@ public class SlotDeliveryWorkerManager {
             ConcurrentHashMap<Integer, SlotDeliveryWorker>();
 
     private ExecutorService slotDeliveryWorkerExecutor;
+
+
+    /**
+     * Number of slot delivery worker threads running inn one MB node
+     */
+
+    private static ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat
+            ("SlotDeliveryWorkerExecutor-%d").build();
+
+
     /*
     number of slot delivery worker threads running inn one MB node
      */
     private int numberOfThreads;
-    /*
-    slotDeliveryWorker instance
+
+    /**
+     * SlotDeliveryWorker instance
      */
     private static SlotDeliveryWorkerManager slotDeliveryWorkerManagerManager =
             new SlotDeliveryWorkerManager();
@@ -50,7 +61,7 @@ public class SlotDeliveryWorkerManager {
     private SlotDeliveryWorkerManager() {
         numberOfThreads = ClusterResourceHolder.getInstance().getClusterConfiguration()
                 .getNumberOFSlotDeliveryWorkerThreads();
-        this.slotDeliveryWorkerExecutor = Executors.newFixedThreadPool(numberOfThreads);
+        this.slotDeliveryWorkerExecutor = Executors.newFixedThreadPool(numberOfThreads, namedThreadFactory);
     }
 
     /**
@@ -96,7 +107,7 @@ public class SlotDeliveryWorkerManager {
 
 
     /**
-     * stop all stop delivery workers in the thread pool
+     * Stop all stop delivery workers in the thread pool
      */
     public void stopSlotDeliveryWorkers() {
         for (Map.Entry<Integer, SlotDeliveryWorker> slotDeliveryWorkerEntry :
@@ -107,14 +118,14 @@ public class SlotDeliveryWorkerManager {
     }
 
     /**
-     * @return slotDeliveryWorkerMap
+     * @return SlotDeliveryWorkerMap
      */
     private Map<Integer, SlotDeliveryWorker> getSlotDeliveryWorkerMap() {
         return slotDeliveryWorkerMap;
     }
 
     /**
-     * Start workers if not running
+     * Start all the SlotDeliveryWorkers if not already in running state.
      */
     public void startAllSlotDeliveryWorkers() {
         for (Map.Entry<Integer, SlotDeliveryWorker> entry :

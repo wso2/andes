@@ -13,8 +13,9 @@
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
- * under the License. and limitations under the License.
+ * under the License.
  */
+
 package org.wso2.andes.store.jdbc;
 
 import org.apache.log4j.Logger;
@@ -26,7 +27,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * ANSI SQL based message store implementation. Message persistence related methods are implemented
@@ -61,7 +62,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
         // read data source name from config and use
         jdbcConnection.initialize(connectionProperties);
         datasource = jdbcConnection.getDataSource();
-
+        logger.info("Message Store initialised");
         return jdbcConnection;
     }
 
@@ -140,7 +141,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             preparedStatement.setInt(2, offsetValue);
             results = preparedStatement.executeQuery();
 
-            if (results.first()) {
+            if (results.next()) {
                 byte[] b = results.getBytes(JDBCConstants.MESSAGE_CONTENT);
                 messagePart = new AndesMessagePart();
                 messagePart.setMessageID(messageId);
@@ -217,8 +218,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             }
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_ADDING_METADATA);
-            throw new AndesException("Error occurred while inserting message metadata to queue ",
-                    e);
+            throw new AndesException("Error occurred while inserting message metadata to queue ", e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_ADDING_METADATA);
             close(connection, JDBCConstants.TASK_ADDING_METADATA);
@@ -374,32 +374,59 @@ public class JDBCMessageStoreImpl implements MessageStore {
         preparedStatement.addBatch();
     }
 
+    /**
+     * Add metadata entry to expiry table
+     * @param connection SQLConnection. Connection resource is not closed within the method
+     * @param metadata AndesMessageMetadata
+     * @throws SQLException
+     */
     private void addToExpiryTable(Connection connection, AndesMessageMetadata metadata)
             throws SQLException {
-
-        if (metadata.getExpirationTime() > 0) {
-            PreparedStatement preparedStatement = connection
-                    .prepareStatement(JDBCConstants.PS_INSERT_EXPIRY_DATA);
-            addExpiryTableEntryToBatch(preparedStatement, metadata);
-            preparedStatement.executeBatch();
-            preparedStatement.close();
+        PreparedStatement preparedStatement = null;
+        try {
+            if (metadata.getExpirationTime() > 0) {
+                preparedStatement = connection.prepareStatement(JDBCConstants.PS_INSERT_EXPIRY_DATA);
+                addExpiryTableEntryToBatch(preparedStatement, metadata);
+                preparedStatement.executeBatch();
+            }
+        } finally {
+            close(preparedStatement, "adding entry to expiry table");
         }
     }
 
+    /**
+     * Add a list of metadata entries to expiry table
+     * @param connection SQLConnection. Connection resource is not closed within the method
+     * @param list AndesMessageMetadata list
+     * @throws SQLException
+     */
     private void addListToExpiryTable(Connection connection, List<AndesMessageMetadata> list)
             throws SQLException {
-        PreparedStatement preparedStatement = connection
-                .prepareStatement(JDBCConstants.PS_INSERT_EXPIRY_DATA);
 
-        for (AndesMessageMetadata andesMessageMetadata : list) {
-            if (andesMessageMetadata.getExpirationTime() > 0) {
-                addExpiryTableEntryToBatch(preparedStatement, andesMessageMetadata);
+        PreparedStatement preparedStatement = null;
+
+        try {
+            preparedStatement = connection
+                    .prepareStatement(JDBCConstants.PS_INSERT_EXPIRY_DATA);
+
+            for (AndesMessageMetadata andesMessageMetadata : list) {
+                if (andesMessageMetadata.getExpirationTime() > 0) {
+                    addExpiryTableEntryToBatch(preparedStatement, andesMessageMetadata);
+                }
             }
+            preparedStatement.executeBatch();
+        } finally {
+            close(preparedStatement, "adding list to expiry table");
         }
-        preparedStatement.executeBatch();
-        preparedStatement.close();
     }
 
+    /**
+     * Does a batch update on the given prepared statement to add entries to expiry table.
+     *
+     * @param preparedStatement PreparedStatement. Object is not closed within the method
+     * @param metadata AndesMessageMetadata
+     * @throws SQLException
+     */
     private void addExpiryTableEntryToBatch(PreparedStatement preparedStatement,
                                             AndesMessageMetadata metadata) throws SQLException {
         preparedStatement.setLong(1, metadata.getMessageID());
@@ -422,7 +449,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             preparedStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_METADATA);
             preparedStatement.setLong(1, messageId);
             results = preparedStatement.executeQuery();
-            if (results.first()) {
+            if (results.next()) {
                 byte[] b = results.getBytes(JDBCConstants.METADATA);
                 md = new AndesMessageMetadata(messageId, b, true);
             }
@@ -473,10 +500,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             }
         } catch (SQLException e) {
             throw new AndesException("Error occurred while retrieving messages between msg id "
-                    + firstMsgId + " and " + lastMsgID + " from queue " +
-                    queueName,
-
-                    e);
+                    + firstMsgId + " and " + lastMsgID + " from queue " + queueName, e);
         } finally {
             String task = JDBCConstants.TASK_RETRIEVING_METADATA_RANGE_FROM_QUEUE + queueName;
             close(resultSet, task);
@@ -558,9 +582,8 @@ public class JDBCMessageStoreImpl implements MessageStore {
             connection.commit();
 
             if (logger.isDebugEnabled()) {
-                logger.debug("Metadata removed. " + messagesToRemove
-                        .size() + " metadata from destination "
-                        + queueName);
+                logger.debug("Metadata removed. " + messagesToRemove.size() +
+                        " metadata from destination " + queueName);
             }
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_DELETING_METADATA_FROM_QUEUE + queueName);
@@ -588,9 +611,9 @@ public class JDBCMessageStoreImpl implements MessageStore {
             connection = getConnection();
 
             // get expired message list
-            PreparedStatement prepareStatement = connection
+            preparedStatement = connection
                     .prepareStatement(JDBCConstants.PS_SELECT_EXPIRED_MESSAGES);
-            resultSet = prepareStatement.executeQuery();
+            resultSet = preparedStatement.executeQuery();
             int resultCount = 0;
             while (resultSet.next()) {
 
@@ -604,7 +627,6 @@ public class JDBCMessageStoreImpl implements MessageStore {
                 );
                 resultCount++;
             }
-            prepareStatement.close();
             return list;
         } catch (SQLException e) {
             throw new AndesException("error occurred while retrieving expired messages.", e);
@@ -693,10 +715,11 @@ public class JDBCMessageStoreImpl implements MessageStore {
             return id;
         }
 
-        // not in map query from DB (some other node might have created it)
+        // not in map. query from DB (some other node might have created it)
         int queueID = getQueueID(destinationQueueName);
 
         if (queueID != -1) {
+            queueMap.put(destinationQueueName, queueID);
             return queueID;
         }
 
@@ -717,12 +740,12 @@ public class JDBCMessageStoreImpl implements MessageStore {
                     Statement.RETURN_GENERATED_KEYS);
             preparedStatement.setString(1, destinationQueueName);
             resultSet = preparedStatement.executeQuery();
-            if (resultSet.first()) {
+            if (resultSet.next()) {
                 queueID = resultSet.getInt(JDBCConstants.QUEUE_ID);
             }
         } catch (SQLException e) {
             logger.error("Error occurred while retrieving destination queue id " +
-                    "for destination queue " + destinationQueueName);
+                    "for destination queue " + destinationQueueName, e);
             throw e;
         } finally {
             String task = JDBCConstants.TASK_RETRIEVING_QUEUE_ID + destinationQueueName;
@@ -746,8 +769,9 @@ public class JDBCMessageStoreImpl implements MessageStore {
         try {
             connection = getConnection();
 
-            /* This has been changed to a transaction since in H2 Database this call asynchronously returns if
-            transactions are not used, leading to inconsistent DB. this is done to avoid that. */
+            /* This has been changed to a transaction since in H2 Database this call asynchronously
+            returns if transactions are not used, leading to inconsistent DB. this is done to avoid
+            that. */
             connection.setAutoCommit(false);
 
             preparedStatement = connection
@@ -758,7 +782,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             connection.commit();
 
             results = preparedStatement.getGeneratedKeys();
-            if (results.first()) {
+            if (results.next()) {
                 queueID = results.getInt(1);
             }
             preparedStatement.close();
@@ -802,7 +826,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             try {
                 connection.close();
             } catch (SQLException e) {
-                logger.error("Failed to close connection after " + task);
+                logger.error("Failed to close connection after " + task, e);
             }
         }
     }
@@ -817,8 +841,8 @@ public class JDBCMessageStoreImpl implements MessageStore {
         if (connection != null) {
             try {
                 connection.rollback();
-            } catch (SQLException e1) {
-                logger.warn("Rollback failed on " + task);
+            } catch (SQLException e) {
+                logger.warn("Rollback failed on " + task, e);
             }
         }
     }
@@ -834,7 +858,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             try {
                 preparedStatement.close();
             } catch (SQLException e) {
-                logger.error("Closing prepared statement failed after " + task);
+                logger.error("Closing prepared statement failed after " + task, e);
             }
         }
     }
@@ -850,15 +874,18 @@ public class JDBCMessageStoreImpl implements MessageStore {
             try {
                 resultSet.close();
             } catch (SQLException e) {
-                logger.error("Closing result set failed after " + task);
+                logger.error("Closing result set failed after " + task, e);
             }
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void addMessageToExpiryQueue(Long messageId, Long expirationTime,
                                         boolean isMessageForTopic, String destination)
             throws AndesException {
-
+        // todo: need to be implemented with changes done to topic messages.
     }
 }

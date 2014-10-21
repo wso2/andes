@@ -1,20 +1,21 @@
 /*
-*  Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
-*
-*  WSO2 Inc. licenses this file to you under the Apache License,
-*  Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.wso2.andes.kernel;
 
 import java.util.List;
@@ -28,33 +29,40 @@ import java.util.List;
 public interface MessageStoreManager {
 
     /**
-     * Initialisation of MessageStoreManager
-     *
-     * @param durableMessageStore
-     *         MessageStore implementation to be used as the durable message store.
-     * @throws AndesException
-     */
-    public void initialise(MessageStore durableMessageStore) throws AndesException;
-
-    /**
      * Store Metadata of the message
      *
      * @param metadata
      *         AndesMessageMetadata
-     * @param channelID
-     *         channel ID
      * @throws AndesException
      */
-    public void storeMetadata(AndesMessageMetadata metadata, long channelID) throws AndesException;
+    public void storeMetadata(AndesMessageMetadata metadata) throws AndesException;
 
     /**
-     * Store Message Content as parts (chunks)
+     * store metadata for message
      *
-     * @param messagePart
-     *         AndesMessagePart
+     * @param messageMetadata
+     *         metadata list to store
      * @throws AndesException
      */
-    public void storeMessageContent(AndesMessagePart messagePart) throws AndesException;
+    public void storeMetaData(List<AndesMessageMetadata> messageMetadata) throws AndesException;
+
+    /**
+     * Store a chuck of a message
+     *
+     * @param messagePart
+     *         AndesMessagePart to store
+     * @throws AndesException
+     */
+    public void storeMessagePart(AndesMessagePart messagePart) throws AndesException;
+
+    /**
+     * Store a message content parts of a message
+     *
+     * @param messageParts
+     *         message parts to store
+     * @throws AndesException
+     */
+    public void storeMessagePart(List<AndesMessagePart> messageParts) throws AndesException;
 
     /**
      * Handle ack received event
@@ -64,6 +72,15 @@ public interface MessageStoreManager {
      * @throws AndesException
      */
     public void ackReceived(AndesAckData ackData) throws AndesException;
+
+    /**
+     * process the ack received messages
+     *
+     * @param ackList
+     *         ack message list to process
+     * @throws AndesException
+     */
+    public void ackReceived(List<AndesAckData> ackList) throws AndesException;
 
     /**
      * remove message content chunks of messages
@@ -76,52 +93,24 @@ public interface MessageStoreManager {
 
 
     /**
-     * process the ack received messages
-     *
-     * @param ackList
-     *         ack message list to process
-     * @throws AndesException
-     */
-    public void processAckReceived(List<AndesAckData> ackList) throws AndesException;
-
-    /**
      * decrement message count of queue
      *
      * @param queueName
-     *         name of queue
+     *         name of the queue to decrement count
+     * @param decrementBy
+     *         decrement count by this value
      * @throws AndesException
      */
-    public void decrementQueueCount(String queueName) throws AndesException;
+    public void decrementQueueCount(String queueName, int decrementBy) throws AndesException;
 
 
     /**
      * increment message count of queue
-     *
-     * @param queueName
-     *         name of queue
+     * @param queueName name of the queue to increment count
+     * @param incrementBy increment count by this value
      * @throws AndesException
      */
-    public void incrementQueueCount(String queueName) throws AndesException;
-
-
-    /**
-     * store a message content part
-     *
-     * @param messageParts
-     *         message parts to store
-     * @throws AndesException
-     */
-    public void storeMessagePart(List<AndesMessagePart> messageParts) throws AndesException;
-
-
-    /**
-     * store metadata for message
-     *
-     * @param messageMetadata
-     *         metadata list to store
-     * @throws AndesException
-     */
-    public void storeMetaData(List<AndesMessageMetadata> messageMetadata) throws AndesException;
+    public void incrementQueueCount(String queueName, int incrementBy) throws AndesException;
 
     /**
      * get message content from store
@@ -133,7 +122,7 @@ public interface MessageStoreManager {
      * @return message content part
      * @throws AndesException
      */
-    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException;
+    public AndesMessagePart getMessagePart(long messageId, int offsetValue) throws AndesException;
 
     /**
      * delete messages and optionally send to DLC
@@ -190,29 +179,36 @@ public interface MessageStoreManager {
     /**
      * close the store manager
      */
-    public void close();
+    public void close() throws InterruptedException;
 
     /**
      * Store a message in a different Queue without altering the meta data.
      *
-     * @param messageId        The message Id to move
-     * @param currentQueueName The current destination of the message
-     * @param targetQueueName  The target destination Queue name
+     * @param messageId
+     *         The message Id to move
+     * @param currentQueueName
+     *         The current destination of the message
+     * @param targetQueueName
+     *         The target destination Queue name
      * @throws AndesException
      */
-    public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName) throws
+    public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName)
+            throws
             AndesException;
 
     /**
-     * Update the meta data for the given message with the given information in the AndesMetaData. Update destination
-     * and meta data bytes.
+     * Update the meta data for the given message with the given information in the AndesMetaData.
+     * Update destination and meta data bytes.
      *
-     * @param currentQueueName The queue the Meta Data currently in
-     * @param metadataList     The updated meta data list.
+     * @param currentQueueName
+     *         The queue the Meta Data currently in
+     * @param metadataList
+     *         The updated meta data list.
      * @throws AndesException
      */
-    public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
-            AndesException;
+    public void updateMetaDataInformation(String currentQueueName,
+                                          List<AndesMessageMetadata> metadataList) throws
+                                                                                   AndesException;
 
 
 }

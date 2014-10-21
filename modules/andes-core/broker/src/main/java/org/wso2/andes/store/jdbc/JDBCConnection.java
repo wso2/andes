@@ -13,7 +13,7 @@
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
- * under the License. and limitations under the License.
+ * under the License.
  */
 
 package org.wso2.andes.store.jdbc;
@@ -99,7 +99,7 @@ public class JDBCConnection implements DurableStoreConnection {
             try {
                 connection.close();
             } catch (SQLException e) {
-                logger.error("Failed to close connection after " + task);
+                logger.error("Failed to close connection after " + task, e);
             }
         }
     }

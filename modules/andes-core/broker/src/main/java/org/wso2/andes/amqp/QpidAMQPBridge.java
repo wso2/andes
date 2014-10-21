@@ -1,20 +1,20 @@
 /*
-*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
-*
-*  WSO2 Inc. licenses this file to you under the Apache License,
-*  Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 
 package org.wso2.andes.amqp;
 
@@ -127,14 +127,14 @@ public class QpidAMQPBridge {
         try {
             log.debug("AMQP BRIDGE: Message id= " + incomingMessage.getMessageNumber() + "received");
             AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
-            AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message);
+            AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message, channelID);
             String queue = message.getRoutingKey();
 
             if (queue == null) {
                 log.error("Queue cannot be null, for " + incomingMessage.getMessageNumber());
             }
 
-            MessagingEngine.getInstance().messageReceived(metadata, channelID);
+            MessagingEngine.getInstance().messageReceived(metadata);
 
             PerformanceCounter.recordMessageReceived(queue, incomingMessage.getReceivedChunkCount());
         } catch (AndesException e) {
@@ -214,13 +214,14 @@ public class QpidAMQPBridge {
         return contentLenWritten;
     }
 
-    public void ackReceived(long messageID, String queueName, boolean isTopic){
+    public void ackReceived(UUID channelID, long messageID, String queueName, boolean isTopic) throws AMQException{
         try {
         log.debug("AMQP BRIDGE: ack received for message id= " + messageID);
-        AndesAckData andesAckData = AMQPUtils.generateAndesAckMessage(messageID,queueName,isTopic);
+        AndesAckData andesAckData = AMQPUtils.generateAndesAckMessage(channelID, messageID,queueName,isTopic);
         MessagingEngine.getInstance().ackReceived(andesAckData);
         } catch (AndesException e) {
             log.error("Exception occurred while handling ack", e);
+            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error in getting handling ack for " + messageID, e);
         }
     }
 

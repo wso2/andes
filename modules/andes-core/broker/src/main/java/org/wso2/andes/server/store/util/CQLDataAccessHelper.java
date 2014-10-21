@@ -1,20 +1,20 @@
 /*
-*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
-*
-*  WSO2 Inc. licenses this file to you under the Apache License,
-*  Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.wso2.andes.server.store.util;
 
 
@@ -134,8 +134,7 @@ public class CQLDataAccessHelper {
     /**
      * Create a Cassandra Cluster instance given the connection details
      *
-     * @param config
-     *         cluster config
+     * @param config cluster config
      * @return Cluster
      * @throws CassandraDataAccessException
      */
@@ -162,8 +161,8 @@ public class CQLDataAccessHelper {
                     "Can't create cluster with empty connection string");
         }
 
-        int maxConnections = 5;
-        int concurrency = 5;
+        int maxConnections = 1000;
+        int concurrency = 1000;
         boolean async = true;
         String compression = "";
 
@@ -180,11 +179,23 @@ public class CQLDataAccessHelper {
         try {
             PoolingOptions pools = new PoolingOptions();
             pools.setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL, concurrency);
+            pools.setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE,
+                    concurrency);
+            pools.setMinSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL,
+                    concurrency);
+            pools.setMinSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE,
+                    concurrency);
             pools.setCoreConnectionsPerHost(HostDistance.LOCAL, maxConnections);
             pools.setMaxConnectionsPerHost(HostDistance.LOCAL, maxConnections);
             pools.setCoreConnectionsPerHost(HostDistance.REMOTE, maxConnections);
             pools.setMaxConnectionsPerHost(HostDistance.REMOTE, maxConnections);
 
+
+            SocketOptions soketOptions = new SocketOptions();
+            soketOptions.setConnectTimeoutMillis(10000);
+            soketOptions.setReadTimeoutMillis(15000);
+            soketOptions.setTcpNoDelay(true);
+            soketOptions.setKeepAlive(true);
             // Create cluster
 
             Builder builder = Cluster.builder();
@@ -192,7 +203,7 @@ public class CQLDataAccessHelper {
                 builder.addContactPoints(con);
             }
             builder.withPoolingOptions(pools)
-                   .withSocketOptions(new SocketOptions().setTcpNoDelay(true))
+                   .withSocketOptions(soketOptions)
                    .withRetryPolicy(DefaultRetryPolicy.INSTANCE)
                    .withReconnectionPolicy(new ConstantReconnectionPolicy(200L)).withPort(port)
                    .withCredentials(userName, password);
@@ -236,11 +247,17 @@ public class CQLDataAccessHelper {
     /**
      * Create a keySpace in a given cluster
      *
+     * @param cluster Cluster where keySpace should be created
+     * @param keySpace name of the KeySpace
+     * @throws CassandraDataAccessException
+     */
+    /**
+     *
      * @param cluster
-     *         Cluster where keySpace should be created
+     * @param clusterSession
      * @param keySpace
-     *         name of the KeySpace
-     * @return Keyspace
+     * @param replicationFactor
+     * @param strategyClass
      * @throws CassandraDataAccessException
      */
     public static void createKeySpace(Cluster cluster, String clusterSession, String keySpace,
@@ -1124,7 +1141,7 @@ public class CQLDataAccessHelper {
 
         if (columnFamilyName == null) {
             throw new CassandraDataAccessException(
-                    "Can't access data with queueType = " + columnFamilyName);
+                    "Can't access data with queueType = ");
         }
 
         try {
@@ -1150,14 +1167,11 @@ public class CQLDataAccessHelper {
 
             ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
             List<Row> rows = result.all();
-            Iterator<Row> iter = rows.iterator();
 
-            while (iter.hasNext()) {
-                Row row = iter.next();
-
+            for (Row row : rows) {
                 AndesRemovableMetadata arm = new AndesRemovableMetadata(row.getLong(MESSAGE_ID),
-                                                                        row.getString(
-                                                                                MESSAGE_DESTINATION));
+                        row.getString(
+                                MESSAGE_DESTINATION));
                 arm.isForTopic = row.getBool(MESSAGE_IS_FOR_TOPIC);
 
                 if (arm.messageID > 0) {

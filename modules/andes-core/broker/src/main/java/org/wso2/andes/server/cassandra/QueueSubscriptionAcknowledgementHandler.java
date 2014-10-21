@@ -1,10 +1,10 @@
 /*
- *  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
- *  WSO2 Inc. licenses this file to you under the Apache License,
- *  Version 2.0 (the "License"); you may not use this file except
- *  in compliance with the License.
- *  You may obtain a copy of the License at
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
  *
  *    http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -72,27 +72,16 @@ public class QueueSubscriptionAcknowledgementHandler {
 
     }
 
-    public void handleAcknowledgement(AMQChannel channel, QueueEntry queueEntry) {
-
-            try {
-                /**
-                 * When the message is acknowledged it is informed to Andes Kernel
-                 */
-                QpidAMQPBridge.getInstance().ackReceived(queueEntry.getMessage().getMessageNumber(),
-                                                         queueEntry.getQueue().getName(),
-                                                         false);
-
-                //TODO: hasitha - we should clear tracks when actual ack processing happens (if via disruptor)?
-                messageTracker.ackReceived(channel.getId(), queueEntry.getMessage().getMessageNumber());
-
-                channel.decrementNonAckedMessageCount();
-
-            } catch (AMQStoreException e) {
-                log.error("Error while handling the ack for " + queueEntry.getMessage().getMessageNumber(), e);
-            } catch (AndesException e) {
-                log.error("Error while handling the ack for " + queueEntry.getMessage().getMessageNumber(), e);
-            }
-
+    public void handleAcknowledgement(AMQChannel channel, QueueEntry queueEntry)
+            throws AMQException {
+        /**
+         * When the message is acknowledged it is informed to Andes Kernel
+         */
+        QpidAMQPBridge.getInstance()
+                      .ackReceived(channel.getId(), queueEntry.getMessage().getMessageNumber(),
+                                   queueEntry.getQueue().getName(),
+                                   false);
+        channel.decrementNonAckedMessageCount();
     }
 
     private class QueueMessageTag {

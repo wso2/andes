@@ -1,20 +1,20 @@
 /*
-*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
-*
-*  WSO2 Inc. licenses this file to you under the Apache License,
-*  Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.wso2.andes.amqp;
 
 import org.apache.commons.logging.Log;
@@ -143,7 +143,7 @@ public class AMQPUtils {
      * @return andes message metadata
      * @throws AndesException
      */
-    public static AndesMessageMetadata convertAMQMessageToAndesMetadata(AMQMessage amqMessage) throws AndesException {
+    public static AndesMessageMetadata convertAMQMessageToAndesMetadata(AMQMessage amqMessage, int channelID) throws AndesException {
         MessageMetaData amqMetadata = amqMessage.getMessageMetaData();
         String queue = amqMetadata.getMessagePublishInfo().getRoutingKey().toString();
 
@@ -161,6 +161,7 @@ public class AMQPUtils {
         metadata.setMetadata(underlying);
         metadata.setDestination(queue);
         metadata.setPersistent(amqMetadata.isPersistent());
+        metadata.setChannelId(channelID);
         metadata.setTopic(amqMetadata.getMessagePublishInfo().getExchange().equals("amq.topic"));
         metadata.setSlot(amqMessage.getSlot());
 
@@ -301,13 +302,14 @@ public class AMQPUtils {
 
     /**
      * create andes ack data message
+     * @param channelID id of the connection message was received
      * @param messageID id of the message
      * @param queueName  queue name
      * @param isTopic is ack comes from a topic subscriber
      * @return Andes Ack Data
      */
-    public static AndesAckData generateAndesAckMessage(long messageID, String queueName, boolean isTopic) {
-        return new AndesAckData(messageID,queueName,isTopic);
+    public static AndesAckData generateAndesAckMessage(UUID channelID, long messageID, String queueName, boolean isTopic) {
+        return new AndesAckData(channelID, messageID,queueName,isTopic);
     }
 
     /**
