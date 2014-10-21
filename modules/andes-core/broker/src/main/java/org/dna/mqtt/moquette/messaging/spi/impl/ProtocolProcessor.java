@@ -17,7 +17,7 @@ import org.dna.mqtt.moquette.server.ConnectionDescriptor;
 import org.dna.mqtt.moquette.server.Constants;
 import org.dna.mqtt.moquette.server.IAuthenticator;
 import org.dna.mqtt.moquette.server.ServerChannel;
-import org.dna.mqtt.wso2.AndesBridge;
+import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +44,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 
     //MQTT-Andes Bridge
     //Andes Specific
-    AndesBridge bridge;
+    //AndesMQTTBridge bridge;
 
     ProtocolProcessor() {}
     
@@ -81,7 +81,15 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
     /*Will shake hands with the kernal*/
     /*Andes Specific*/
     private void initAndesBridge(SubscriptionsStore subscriptions, IStorageService storageService) {
-        bridge = new AndesBridge(this);
+        //bridge = new AndesMQTTBridge(this);
+       // bridge = AndesMQTTBridge.getBridgeInstance(this);
+        //Will create the bridge and intiialise the protocol
+        try {
+            AndesMQTTBridge.initMQTTProtocolProcessor(this);
+        } catch (Exception e) {
+            final String message = "Error occured when initializing MQTT connection with Andes ";
+            LOG.error(message +e.getMessage());
+        }
         //Should clear all the stored messages
         subscriptions.clearAllSubscriptions();
 
@@ -232,7 +240,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
             //publish2Subscribers(topic, qos, message, retain, evt.getMessageID());
             //Will connect with andes
             //Chanage By Pamod
-            AndesBridge.addMessageInformationToAndes(topic, "", message, retain, evt.getMessageID());
+            AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), message, retain, evt.getMessageID());
         }
 
         if (qos == AbstractMessage.QOSType.LEAST_ONE) {
@@ -434,7 +442,13 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
             LOG.info("Lost connection with client <{}>", clientID);
             //Andes change
             //Need to handle disconnection
-            bridge.indicateSubscriberDisconnection(clientID);
+            try {
+                AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID);
+            } catch (Exception e) {
+                final String message = "Error occured when attempting to diconnect subscriber ";
+                LOG.error(message +e.getMessage());
+            }
+            // bridge.onSubscriberDisconnection(clientID);
         }
     }
     
@@ -448,7 +462,13 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         for (String topic : topics) {
             subscriptions.removeSubscription(topic, clientID);
             //also will unsubscribe from the kernal
-            bridge.indicateSubscriberDisconnection(clientID);
+            try {
+                AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID);
+            } catch (Exception e) {
+                final String message = "Error occured when disconneting the subscriber ";
+                LOG.error(message +e.getMessage());
+            }
+            // bridge.onSubscriberDisconnection(clientID);
         }
         //ack the client
         UnsubAckMessage ackMessage = new UnsubAckMessage();
@@ -468,7 +488,13 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
             subscribeSingleTopic(newSubscription, req.getTopic());
             //Will connect with the bridge to notify on the topic
             //Andes Specific
-            bridge.indicateSubscription(req.getTopic(), clientID);
+            try {
+                AndesMQTTBridge.getBridgeInstance().onTopicSubscription(req.getTopic(), clientID);
+            } catch (Exception e) {
+                final String message = "Error when registering the subscriber ";
+                LOG.error(message +e.getMessage());
+            }
+            // bridge.onTopicSubscription(req.getTopic(), clientID);
         }
 
         //ack the client
