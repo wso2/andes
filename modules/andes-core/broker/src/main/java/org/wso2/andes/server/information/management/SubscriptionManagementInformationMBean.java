@@ -15,7 +15,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.wso2.andes.server.information.management;
 
 import org.wso2.andes.kernel.AndesContext;
@@ -128,6 +127,12 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         return messageCount;
     }
 
+    /**
+     * This method returns the formatted subscription string to be compatible with the UI processor.
+     * @param subscription
+     * @param pendingMessageCount
+     * @return
+     */
     private static String renderSubscriptionForUI(AndesSubscription subscription, int pendingMessageCount) {
 
         //  subscriptionInfo =  subscriptionIdentifier |  subscribedQueueOrTopicName | subscriberQueueBoundExchange |

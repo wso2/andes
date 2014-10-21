@@ -646,7 +646,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     @Override
-    public List<AndesRemovableMetadata> getExpiredMessages(int limit) {
+    public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException{
         // todo implement
         return new ArrayList<AndesRemovableMetadata>();
     }
@@ -666,7 +666,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
         final String columnFamily = CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY;
 
-        if (columnFamily == null || messageId == 0) {
+        if (messageId == 0) {
             throw new AndesException("Can't add data with queueType = " + columnFamily +
                     " and messageId  = " + messageId + " expirationTime = " + expirationTime);
         }

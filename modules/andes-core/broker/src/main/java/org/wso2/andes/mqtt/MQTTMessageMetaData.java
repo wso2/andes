@@ -1,21 +1,21 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
- *
- * WSO2 Inc. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
+*
+*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+*
+*  WSO2 Inc. licenses this file to you under the Apache License,
+*  Version 2.0 (the "License"); you may not use this file except
+*  in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/
 package org.wso2.andes.mqtt;
 
 import org.wso2.andes.server.store.MessageMetaDataType;
@@ -25,17 +25,28 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
-
+/**
+ * Represents the meta data object which should represent the MQTT header information which is exchanged
+ */
 public class MQTTMessageMetaData implements StorableMessageMetaData {
     public static final MessageMetaDataType.Factory<MQTTMessageMetaData> FACTORY = new MetaDataFactory();
 
-    /*Will Gather All the Information*/
+    //Will store the following information as meta data of the message
     private long messageID;
     private boolean isTopic;
     private String destination;
     private boolean isPersistance;
     private int messageLength;
 
+    /**
+     * Will create a metadat object through this method
+     *
+     * @param mid           meta data identification
+     * @param topic         the name of the topic the message has being published
+     * @param destination   the detination the message should be sent to
+     * @param persistance   does it require the message to be persisted even after the delivery of the message
+     * @param messageLength the length of the message which was recived
+     */
     public MQTTMessageMetaData(long mid, boolean topic, String destination, boolean persistance, int messageLength) {
         this.messageID = mid;
         this.isTopic = topic;
@@ -97,7 +108,10 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
 
         private Map<String, String> decodedValues = new HashMap<String, String>();
 
-        /*Will Decode the String and re-gain access to meta information*/
+        /**
+         * Will decode the message meata data from the given buffer
+         * @param buffer the message information which will be provided
+         */
         private void decodeMetaData(ByteBuffer buffer) {
             String information = new String(buffer.array());
             //Will split the Meta Body information
@@ -109,13 +123,20 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
 
         }
 
+        /**
+         * The values will be extracted from the bytestream and will be decoded         
+         * @param buf the bytes stream the data contains
+         * @return meta data object
+         */
         @Override
         public MQTTMessageMetaData createMetaData(ByteBuffer buf) {
-            //Will call the decode meta-data option
-            //todo need to add a constant class to decode the values
             decodeMetaData(buf);
-            return new MQTTMessageMetaData(Long.parseLong(decodedValues.get("MessageID")), Boolean.parseBoolean(decodedValues.get("Topic")), decodedValues.get("Destination"),
-                    Boolean.parseBoolean(decodedValues.get("Persistant")), Integer.parseInt(decodedValues.get("MessageContentLength")));
+            //TODO intoduce a static class for this
+            return new MQTTMessageMetaData(Long.parseLong(decodedValues.get("MessageID")),
+                    Boolean.parseBoolean(decodedValues.get("Topic")),
+                    decodedValues.get("Destination"),
+                    Boolean.parseBoolean(decodedValues.get("Persistant")),
+                    Integer.parseInt(decodedValues.get("MessageContentLength")));
 
         }
     }
