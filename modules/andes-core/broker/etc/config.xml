@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!--
+ -
+ - Licensed to the Apache Software Foundation (ASF) under one
+ - or more contributor license agreements.  See the NOTICE file
+ - distributed with this work for additional information
+ - regarding copyright ownership.  The ASF licenses this file
+ - to you under the Apache License, Version 2.0 (the
+ - "License"); you may not use this file except in compliance
+ - with the License.  You may obtain a copy of the License at
+ -
+ -   http://www.apache.org/licenses/LICENSE-2.0
+ -
+ - Unless required by applicable law or agreed to in writing,
+ - software distributed under the License is distributed on an
+ - "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ - KIND, either express or implied.  See the License for the
+ - specific language governing permissions and limitations
+ - under the License.
+ -
+ -->
+<broker>
+    <prefix>${QPID_HOME}</prefix>
+    <work>${QPID_WORK}</work>
+    <conf>${prefix}/etc</conf>
+
+    <plugin-directory>${QPID_HOME}/lib/plugins</plugin-directory>
+    <cache-directory>${QPID_WORK}/cache</cache-directory>
+    
+    <connector>
+        <!-- To enable SSL edit the keystorePath and keystorePassword
+	     and set enabled to true. 
+             To disasble Non-SSL port set sslOnly to true -->
+        <ssl>
+            <enabled>false</enabled>
+            <sslOnly>false</sslOnly>
+            <keystorePath>/path/to/keystore.ks</keystorePath>
+            <keystorePassword>keystorepass</keystorePassword>
+        </ssl>
+        <port>5673</port>
+        <sslport>8672</sslport>
+        <socketReceiveBuffer>262144</socketReceiveBuffer>
+        <socketSendBuffer>262144</socketSendBuffer>
+    </connector>
+    <management>
+        <enabled>false</enabled>
+        <jmxport>8998</jmxport>
+        <ssl>
+            <enabled>false</enabled>
+            <!-- Update below path to your keystore location, or run the bin/create-example-ssl-stores(.sh|.bat)
+                 script from within the etc/ folder to generate an example store with self-signed cert -->
+            <keyStorePath>${conf}/qpid.keystore</keyStorePath>
+            <keyStorePassword>password</keyStorePassword>
+        </ssl>
+    </management>
+    <advanced>
+        <filterchain enableExecutorPool="true"/>
+        <framesize>65535</framesize>
+        <compressBufferOnQueue>false</compressBufferOnQueue>
+        <enableJMSXUserID>false</enableJMSXUserID>
+        <locale>en_US</locale>	
+    </advanced>
+
+    <security>
+        <pd-auth-manager>
+            <principal-database>
+                <class>org.wso2.andes.server.security.auth.database.PlainPasswordFilePrincipalDatabase</class>
+                <attributes>
+                    <attribute>
+                        <name>passwordFile</name>
+                        <value>${conf}/passwd</value>
+                    </attribute>
+                </attributes>
+            </principal-database>
+        </pd-auth-manager>
+
+        <allow-all />
+        
+        <msg-auth>false</msg-auth>
+    </security>
+
+    <virtualhosts>${conf}/virtualhosts.xml</virtualhosts>
+    
+    <heartbeat>
+        <delay>0</delay>
+        <timeoutFactor>2.0</timeoutFactor>
+    </heartbeat>
+    <destination>
+        <auto_register>true</auto_register>
+    </destination>
+
+    <status-updates>ON</status-updates>
+
+
+    <clustering>
+
+        <enabled>true</enabled>
+        <OnceInOrderSupportEnabled>false</OnceInOrderSupportEnabled>
+
+
+        <coordination>
+            <!-- Apache Zookeeper Host name -->
+            <ZooKeeperHost>127.0.0.1</ZooKeeperHost>
+            <ZooKeeperPort>2181</ZooKeeperPort>
+             <!-- Format yyyy-MM-dd HH:mm:ss -->
+            <ReferenceTime>2012-02-29 08:08:08</ReferenceTime>
+        </coordination>
+        <tuning>
+            <!--When messages content is received , it first look in the cache and otherwise seek in the database. This
+            is a FIFO cache of limited size-->
+            <messageReadCacheSize>500</messageReadCacheSize>
+            <messageBatchSizes>
+                <!--Message Batch size moved to  Subscriber queues from the Global Queue at once. Increasing this values
+                increase the chance of breaking in order delivery guarantee but performance will be improved-->
+                <messageBatchSizeForSubscribersQueues>20</messageBatchSizeForSubscribersQueues>
+
+                <!--Message Batch size Taken in to memory for a one time to deliver to subscribers,
+                If this time is large it will improve the performance but reduce consistency -->
+                <messageBatchSizeForSubscribers>10</messageBatchSizeForSubscribers>
+
+
+            </messageBatchSizes>
+            <threading>
+                <!-- This the the Thread pool size which will be used by the Sender Task to send messages asynchronously
+                to the subscriber.  You will have to consider the value of parameter messageBatchSizeForSubscribers
+                when configuring this pool size -->
+                <flusherPoolSize>10</flusherPoolSize>
+
+                <!--This the Thread pool that is used by the Fast subscription handing implementation.
+                Make this to a higher number if there are not of subscriptions to the system at a given time
+                -->
+                <subscriptionPoolSize>20</subscriptionPoolSize>
+
+
+
+            </threading>
+            <waitTimes>
+
+                <!-- Max wait time(in seconds)  for a acknowledgement for a given message from the client  -->
+                <maxAckWaitTime>1</maxAckWaitTime>
+                <!-- Max wait time(in seconds)  for a acknowledgement for Batch of messages that that is sent from
+                subscribers -->
+                <maxAckWaitTimeForBatch>120</maxAckWaitTimeForBatch>
+
+                <!--Running interval for destination worker in milliseconds -->
+                <queueWorkerInterval>500</queueWorkerInterval>
+
+                <!-- PubSub message removal Task interval. This is the time interval that the messages
+                in PubSub scenarios will be removed -->
+                <pubSubMessageRemovalTaskInterval>5000</pubSubMessageRemovalTaskInterval>
+
+                <!-- This is the Task interval(milli seconds) for the content removal task which will remove
+                    the actual message content from the store in the background. If the message rate is very high users
+                    can set this to a lower value -->
+                <contentRemovalTaskInterval>4000</contentRemovalTaskInterval>
+
+                <!--Time to wait before removing a message from the store in PubSub implementation-->
+                <contentRemovalTimeDifference>120</contentRemovalTimeDifference>
+
+                <!-- The Running interval for Topic Publisher Task  -->
+                <topicPublisherTaskInterval>1000</topicPublisherTaskInterval>
+
+                <!-- Virtual host sync interval seconds in for the Virtual host syncing Task which will sync the
+                Virtual host details across the cluster -->
+                <virtualHostSyncTaskInterval>3600</virtualHostSyncTaskInterval>
+            </waitTimes>
+        </tuning>
+
+    </clustering>
+</broker>
+
+
