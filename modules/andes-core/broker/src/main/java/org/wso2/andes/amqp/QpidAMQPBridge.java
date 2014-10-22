@@ -125,7 +125,9 @@ public class QpidAMQPBridge {
      */
     public void messageMetaDataReceived(IncomingMessage incomingMessage, int channelID) throws AMQException {
         try {
+            if(log.isDebugEnabled()){
             log.debug("AMQP BRIDGE: Message id= " + incomingMessage.getMessageNumber() + "received");
+            }
             AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
             AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message, channelID);
             String queue = message.getRoutingKey();
@@ -179,7 +181,9 @@ public class QpidAMQPBridge {
      */
     public void messageContentChunkReceived(long messageID, int offsetInMessage, ByteBuffer src) {
 
+        if(log.isDebugEnabled()){
         log.debug("AMQP BRIDGE: Content Part Received id= " + messageID + " offset= " + offsetInMessage);
+        }
         AndesMessagePart part = new AndesMessagePart();
         src = src.slice();
         final byte[] chunkData = new byte[src.limit()];
@@ -216,7 +220,9 @@ public class QpidAMQPBridge {
 
     public void ackReceived(UUID channelID, long messageID, String queueName, boolean isTopic) throws AMQException{
         try {
+        if(log.isDebugEnabled()){
         log.debug("AMQP BRIDGE: ack received for message id= " + messageID);
+        }
         AndesAckData andesAckData = AMQPUtils.generateAndesAckMessage(channelID, messageID,queueName,isTopic);
         MessagingEngine.getInstance().ackReceived(andesAckData);
         } catch (AndesException e) {
@@ -227,8 +233,9 @@ public class QpidAMQPBridge {
 
     public void rejectMessage(long deliveryTag, UUID channelID) throws AMQException {
         try {
-
+            if(log.isDebugEnabled()){
             log.debug("AMQP BRIDGE: rejected message delivery tag= " + deliveryTag + " channel = " + channelID);
+            }
             //todo: hasitha - implement a non-amqp specific way to do this. For now doing nothing
             MessagingEngine.getInstance().messageRejected();
 
@@ -252,14 +259,19 @@ public class QpidAMQPBridge {
      */
     public void createAMQPSubscription(Subscription subscription, AMQQueue queue) throws AMQException {
         try {
-            log.debug("AMQP BRIDGE: create AMQP Subscription subID " + subscription.getSubscriptionID() + " from queue " + queue.getName());
+            if(log.isDebugEnabled()){
+            log.debug("AMQP BRIDGE: create AMQP Subscription subID " + subscription.getSubscriptionID() + " from queue "
+                    + queue.getName());
+            }
 
             if (subscription instanceof SubscriptionImpl.BrowserSubscription) {
                 boolean isInMemoryMode = ClusterResourceHolder.getInstance().getClusterConfiguration().isInMemoryMode();
                 QueueBrowserDeliveryWorker deliveryWorker = new QueueBrowserDeliveryWorker(subscription, queue, ((SubscriptionImpl.BrowserSubscription) subscription).getProtocolSession(), isInMemoryMode);
                 deliveryWorker.send();
             } else {
+                if(log.isDebugEnabled()){
                 log.debug("Adding Subscription " + subscription.getSubscriptionID() + " to queue " + queue.getName());
+                }
                 addLocalSubscriptionsForAllBindingsOfQueue(queue, subscription);
             }
 
@@ -279,7 +291,10 @@ public class QpidAMQPBridge {
      * @throws AndesException
      */
     public void closeAMQPSubscription(AMQQueue queue, Subscription subscription) throws AndesException {
-        log.debug("AMQP BRIDGE: close AMQP Subscription subID " + subscription.getSubscriptionID() + " from queue " + queue.getName());
+        if(log.isDebugEnabled()){
+        log.debug("AMQP BRIDGE: close AMQP Subscription subID " + subscription.getSubscriptionID() + " from queue " +
+                queue.getName());
+        }
 
         // Browser subscriptions are not registered and hence not needed to be closed.
         if (!(subscription instanceof SubscriptionImpl.BrowserSubscription)) {
@@ -294,7 +309,9 @@ public class QpidAMQPBridge {
      * @throws AMQException
      */
     public void createExchange(Exchange exchange) throws AMQException {
+        if(log.isDebugEnabled()){
         log.debug("AMQP BRIDGE: create Exchange" + exchange.getName());
+        }
         try {
             /*AndesSubscriptionManager subManager = ClusterResourceHolder.getInstance().getSubscriptionManager();
             LocalSubscription sub = AMQPUtils.createInactiveLocalSubscriberRepresentingExchange(exchange);
@@ -317,7 +334,9 @@ public class QpidAMQPBridge {
      * @throws AMQException
      */
     public void deleteExchange(Exchange exchange) throws AMQException {
+        if(log.isDebugEnabled()){
         log.debug("AMQP BRIDGE: delete Exchange " + exchange.getName());
+        }
         try {
             AndesContext.getInstance().getAMQPConstructStore().removeExchange(exchange.getName(), true);
             for (ExchangeListener listener : exchangeListeners) {
@@ -336,7 +355,9 @@ public class QpidAMQPBridge {
      * @throws AMQException
      */
     public void createQueue(AMQQueue queue) throws AMQException {
+        if(log.isDebugEnabled()){
         log.debug("AMQP BRIDGE: create queue: " + queue.getName());
+        }
         try {
             AndesContext.getInstance().getAMQPConstructStore().addQueue(AMQPUtils.createAndesQueue(queue), true);
             for (QueueListener queueListener : queueListeners) {
@@ -357,7 +378,9 @@ public class QpidAMQPBridge {
      * @throws AMQException
      */
     public void deleteQueue(AMQQueue queue) throws AMQException {
+        if(log.isDebugEnabled()){
         log.debug("AMQP BRIDGE:  delete queue : " + queue.getName());
+        }
         try {
             AndesContext.getInstance().getAMQPConstructStore().removeQueue(queue.getName(), true);
             for (QueueListener queueListener : queueListeners) {
@@ -382,7 +405,9 @@ public class QpidAMQPBridge {
      */
     public void createBinding(Exchange exchange, AMQShortString routingKey,
                               AMQQueue queue, FieldTable args) throws AMQInternalException {
+        if(log.isDebugEnabled()){
         log.debug("AMQP BRIDGE: createBinding exchange=" + exchange.getName() + " routingKey=" + routingKey + " queue=" + queue.getName());
+        }
         try {
             /**
              * durable topic case is handled inside qpid itself.
@@ -408,7 +433,9 @@ public class QpidAMQPBridge {
      * @throws AndesException
      */
     public void removeBinding(Binding b, VirtualHost virtualHost) throws AndesException {
+        if(log.isDebugEnabled()){
         log.debug("AMQP BRIDGE: removeBinding binding key: " + b.getBindingKey() + " queue: " + b.getQueue().getName());
+        }
         AndesBinding binding = AMQPUtils.createAndesBinding(b.getExchange(), b.getQueue(), new AMQShortString(b.getBindingKey()));
         AndesContext.getInstance().getAMQPConstructStore().removeBinding(binding.boundExchangeName, binding.boundQueue.queueName, true);
         for (BindingListener bindingListener : bindingListeners) {
