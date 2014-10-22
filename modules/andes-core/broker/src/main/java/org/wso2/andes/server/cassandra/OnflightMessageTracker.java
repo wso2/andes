@@ -29,7 +29,6 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.slot.SlotDeliveryWorker;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
-import org.wso2.andes.server.stats.PerformanceCounter;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -60,6 +59,7 @@ public class OnflightMessageTracker {
             ConcurrentHashMap<Long, AndesMessageMetadata>();
     private ConcurrentHashMap<Slot, AtomicInteger> pendingMessagesBySlot = new
             ConcurrentHashMap<Slot, AtomicInteger>();
+    private ConcurrentSkipListSet<Long> ackedButNotDeletedMessages = new ConcurrentSkipListSet<Long>();
 
 
     /**
@@ -358,6 +358,8 @@ public class OnflightMessageTracker {
             throws AndesException {
         AndesMessageMetadata metadata = null;
         MsgData msgData;
+
+        removeAckedButNotDeletedMessages(messageId);
         synchronized (this) {
             msgData = msgId2MsgData.get(messageId);
             if (msgData != null) {
@@ -408,13 +410,14 @@ public class OnflightMessageTracker {
                             AndesMessageMetadata queueEntry = messageIdToAndesMessagesMap
                                     .remove(messageId);
 
-                            if(queueEntry != null) {
+                            if (queueEntry != null && !isAckedButNotDeleted(queueEntry.getMessageID())) {
                                 //Re-queue message to the buffer
                                 QueueDeliveryWorker.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(
                                         queueEntry);
+                                if (log.isDebugEnabled()) {
+                                    log.debug("Re-queued message : " + messageId + " since delivered but not acked.");
+                                }
                             }
-                            log.debug("TRACING>> OFMT- re-queued message-" + messageId + "- since delivered but not " +
-                                    "acked");
                         }
                     }
                 }
@@ -480,5 +483,35 @@ public class OnflightMessageTracker {
             pendingMessageCount = pendingMessagesBySlot.get(slot);
         }
         pendingMessageCount.incrementAndGet();
+    }
+
+    /**
+     * Add messageId which was acknowledged but still not deleted from the message store to the corresponding map.
+     *
+     * @param messageId The messageId for which the acknowledgement received.
+     */
+    public void addAckedButNotDeletedMessage(long messageId) {
+        ackedButNotDeletedMessages.add(messageId);
+    }
+
+    /**
+     * Remove a messageId from corresponding acknowledged but not deleted map when the message is deleted from the
+     * message store.
+     *
+     * @param messageId The messageId which was deleted from the message store.
+     */
+    public void removeAckedButNotDeletedMessages(long messageId) {
+        ackedButNotDeletedMessages.remove(messageId);
+    }
+
+    /**
+     * Check if an acknowledgement has been received for a given message Id which was yet to be removed from the
+     * message store.
+     *
+     * @param messageId The messageId which needs to be checked for acked but not deleted.
+     * @return Whether message is acknowledged but is still not deleted from the message store.
+     */
+    public boolean isAckedButNotDeleted(long messageId) {
+        return ackedButNotDeletedMessages.contains(messageId);
     }
 }
