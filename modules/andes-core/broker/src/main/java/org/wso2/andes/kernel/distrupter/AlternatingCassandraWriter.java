@@ -109,10 +109,6 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
 
                 messageStoreManager.storeMetaData(metaList);
 
-                //Record message data count
-                if (AndesContext.getInstance().isClusteringEnabled()) {
-                    SlotMessageCounter.getInstance().recordMetaDataCountInSlot(metaList);
-                }
                 metaList = new ArrayList<AndesMessageMetadata>();
             }
 
