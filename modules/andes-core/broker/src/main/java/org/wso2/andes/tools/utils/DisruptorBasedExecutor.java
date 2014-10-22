@@ -27,7 +27,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.distrupter.*;
-import org.wso2.andes.pool.AndesExecuter;
 import org.wso2.andes.server.cassandra.SequentialThreadPoolExecutor;
 
 import com.lmax.disruptor.RingBuffer;
