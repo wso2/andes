@@ -27,10 +27,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
 public class DisruptorRuntime<T> {
-//    private static ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat
-//            ("DisruptorBasedExecutor-%d").build();
-//    private ExecutorService executorPool = Executors.newCachedThreadPool(namedThreadFactory);
-    private ExecutorService executorPool = Executors.newCachedThreadPool();
+    private static ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat
+            ("DisruptorBasedExecutor-%d").build();
+    private ExecutorService executorPool = Executors.newCachedThreadPool(namedThreadFactory);
     private Disruptor<T> disruptor;
     private final RingBuffer<T> ringBuffer;
 
