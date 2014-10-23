@@ -20,11 +20,11 @@ package org.wso2.andes.server.queue;
 
 
 import org.apache.log4j.Logger;
-
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
+import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
@@ -91,28 +91,19 @@ public class DLCQueueUtils {
                 AndesConstants.DEAD_LETTER_QUEUE_NAME);
         QueueRegistry queueRegistry = host.getQueueRegistry();
         AMQQueue queue = queueRegistry.getQueue(new AMQShortString(dlcQueueName));
-        try {
-            if (queue == null && !isDeadLetterQueue(queueName)) {
-                AndesQueue andesQueue = new AndesQueue(dlcQueueName, owner, false, true);
+        if (queue == null && !isDeadLetterQueue(queueName)) {
+            AndesQueue andesQueue = new AndesQueue(dlcQueueName, owner, false, true);
+            QueueListener queueListener = new ClusterCoordinationHandler(HazelcastAgent
+                    .getInstance());
+            queueListener.handleLocalQueuesChanged(andesQueue, QueueListener.QueueChange.Added);
 
-                AndesContext.getInstance().getAMQPConstructStore().addQueue(andesQueue, true);
-                ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().queue(dlcQueueName, owner,
-                        false, null);
+            LocalSubscription mockSubscription = new AMQPLocalSubscription(queueRegistry.getQueue(new
+                    AMQShortString(dlcQueueName)), null, "0", dlcQueueName, false, false, false, null,
+                    dlcQueueName, owner, ExchangeDefaults.DIRECT_EXCHANGE_NAME.toString(), "DIRECT", null, false);
+            AndesContext.getInstance().getSubscriptionStore().createDisconnectOrRemoveClusterSubscription
+                    (mockSubscription, SubscriptionListener.SubscriptionChange.Added);
 
-
-                LocalSubscription mockSubscription = new AMQPLocalSubscription(queueRegistry.getQueue(new
-                        AMQShortString(dlcQueueName)), null, "0", dlcQueueName, false, false, false, null,
-                        dlcQueueName, owner, ExchangeDefaults.DIRECT_EXCHANGE_NAME.toString(), "DIRECT", null, false);
-                AndesContext.getInstance().getSubscriptionStore().createDisconnectOrRemoveClusterSubscription
-                        (mockSubscription, SubscriptionListener.SubscriptionChange.Added);
-
-
-                log.info(dlcQueueName + " Queue Created as Dead Letter Channel");
-            }
-
-        } catch (AndesException e) {
-            throw new AndesException("Exception Caught While Creating the Dead Letter Queue : " + dlcQueueName, e);
+            log.info(dlcQueueName + " Queue Created as Dead Letter Channel");
         }
-
     }
 }
