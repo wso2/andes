@@ -80,6 +80,11 @@ public class BrokerConfiguration {
     private boolean saveExpiredToDLC;
 
     /**
+     * Server Configured value for contentRemovalTimeDifference
+     */
+    private int contentRemovalTimeDifference;
+
+    /**
      * Create cluster configuration object
      * @param serverConfig  server configuration to get configs
      */
@@ -101,6 +106,7 @@ public class BrokerConfiguration {
         publisherPoolSize = serverConfig.getPublisherPoolSize();
         maxAckWaitTime =  serverConfig.getMaxAckWaitTime();
         contentRemovalTaskInterval = serverConfig.getContentRemovalTaskInterval();
+        contentRemovalTimeDifference = serverConfig.getContentRemovalTimeDifference();
         slotSubmitTimeOut = serverConfig.getSlotSubmitTimeOut();
         andesRecoveryTaskInterval = serverConfig.getAndesRecoveryTaskInterval();
         messageReadCacheSize = serverConfig.getMessageReadCacheSize();
@@ -155,6 +161,15 @@ public class BrokerConfiguration {
 
     public int getContentRemovalTaskInterval() {
         return contentRemovalTaskInterval;
+    }
+
+    /**
+     * Return configuration value for contentRemovalTimeDifference
+     *
+     * @return contentRemovalTimeDifference
+     */
+    public int getContentRemovalTimeDifference() {
+        return contentRemovalTimeDifference;
     }
 
     public int getSlotSubmitTimeOut() {

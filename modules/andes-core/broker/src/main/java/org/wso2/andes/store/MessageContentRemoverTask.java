@@ -22,6 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessageStore;
+import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.util.ArrayList;
 import java.util.SortedMap;
@@ -35,14 +36,19 @@ public class MessageContentRemoverTask implements Runnable {
     private static Log log = LogFactory.getLog(MessageContentRemoverTask.class);
 
     /**
-     * to be deleted contents map
+     * To be deleted contents map
      */
     private SortedMap<Long, Long> contentDeletionTasksMap;
 
     /**
-     *  reference to message store
+     * Reference to message store
      */
     private MessageStore messageStore;
+
+    /**
+     * Waiting time for message content removal of an acked message
+     */
+    private final long timeOutPerMessage;
 
     /**
      * Setup the content deletion task with the reference to MessageStore and
@@ -52,6 +58,11 @@ public class MessageContentRemoverTask implements Runnable {
     public MessageContentRemoverTask(MessageStore messageStore) {
         this.contentDeletionTasksMap = new ConcurrentSkipListMap<Long, Long>();
         this.messageStore = messageStore;
+
+        int contentRemovalTimeDifference = ClusterResourceHolder.getInstance()
+                .getClusterConfiguration().getContentRemovalTimeDifference();
+        // Convert to nanoseconds, since contentRemovalTimeDifference is in milliseconds
+        timeOutPerMessage = contentRemovalTimeDifference * 1000000L;
     }
 
     public void run() {
@@ -60,7 +71,6 @@ public class MessageContentRemoverTask implements Runnable {
                     long currentTime = System.nanoTime();
 
                     //remove content for timeout messages
-                    long timeOutPerMessage = 10000000000L;
                     SortedMap<Long, Long> timedOutContentList = contentDeletionTasksMap.headMap(currentTime - timeOutPerMessage);
                     try {
                         messageStore.deleteMessageParts(new ArrayList<Long>(timedOutContentList.values()));
