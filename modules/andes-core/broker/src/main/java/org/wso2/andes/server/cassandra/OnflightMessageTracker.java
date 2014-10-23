@@ -28,7 +28,6 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.slot.SlotDeliveryWorker;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
-
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
