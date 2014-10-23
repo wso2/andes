@@ -41,7 +41,7 @@ public final class AndesMQTTBridge {
 
     private static Log log = LogFactory.getLog(AndesMQTTBridge.class);
     //The connection between the MQTT library
-    private static ProtocolProcessor mqttProtocolHandlingReference = null;
+    private static ProtocolProcessor mqttProtocolHandlingEngine = null;
     //The Andes bridge instance
     private static AndesMQTTBridge instance = new AndesMQTTBridge();
     //Will manage the relation between each topic with andes connection
@@ -62,19 +62,12 @@ public final class AndesMQTTBridge {
     }
 
     /**
-     * Will handle processing the protocol specifc details on MQTT     *
+     * Will handle processing the protocol specifc details on MQTT
      *
      * @param mqttProtocolProcessor the reference to the protocol processing object
      */
     public static void initMQTTProtocolProcessor(ProtocolProcessor mqttProtocolProcessor) throws Exception {
-        if (instance == null) {
-            mqttProtocolHandlingReference = mqttProtocolProcessor;
-        } else {
-            final String error = "Attempting to initialize the protocol engine, an instance has already being " +
-                    "initialized";
-            log.error(error);
-            throw new Exception(error);
-        }
+            mqttProtocolHandlingEngine = mqttProtocolProcessor;
     }
 
     /**
@@ -83,7 +76,7 @@ public final class AndesMQTTBridge {
      * @return The bridge instance that will allow connectivity between the kernal and mqtt protocol
      */
     public static AndesMQTTBridge getBridgeInstance() throws Exception {
-        if (mqttProtocolHandlingReference != null) {
+        if (mqttProtocolHandlingEngine != null) {
             return instance;
         } else {
             final String message = "MQTT protocol reference has not being initialized, cannot establish connectivity";
@@ -99,10 +92,12 @@ public final class AndesMQTTBridge {
      */
     public void onSubscriberDisconnection(String mqttClientChannelID) {
 
-        if (clientTopicRelation.containsKey(mqttClientChannelID)) {
-            //Will get the relavent topic the subscriber has registered to
-            String subscribedTopic = clientTopicRelation.get(mqttClientChannelID);
-            clientTopicRelation.remove(mqttClientChannelID);
+        //Will remove the topic from the map
+        //Will also keep track of the relavent topic removed
+        String subscribedTopic = clientTopicRelation.remove(mqttClientChannelID);
+
+        if (subscribedTopic != null) {
+
             if (log.isDebugEnabled()) {
                 final String message = "The client with channel ID " + mqttClientChannelID + " disconnected " +
                         "from topic " + subscribedTopic;
@@ -113,20 +108,18 @@ public final class AndesMQTTBridge {
             //After removal if there's no indication of the topic existance we could remove
             //If there's indication that a purticular topic still has client relations we cannot disconnect
             if (!clientTopicRelation.containsValue(subscribedTopic)) {
+                //Will get the actual subscriber connection and will remove it from the list
+                String bridgingClientID = topics.remove(subscribedTopic);
                 //No relation to the topic means no connections
-                if (topics.containsKey(subscribedTopic)) {
-                    //Will get the actual subscriber connection
-                    String bridgingClientID = topics.get(subscribedTopic);
+                if (bridgingClientID != null) {
                     try {
                         MQTTChannel.getInstance().removeSubscriber(this, subscribedTopic, bridgingClientID);
                     } catch (MQTTException e) {
                         log.error("Error occured while removing the subscriber from topic "+
-                                subscribedTopic+" "+e.getMessage());
+                                subscribedTopic+" "+e.getMessage(),e);
                         //will be logging the exception here and will not be throwing it further since there should be
                         //an abstraction maintained
                     }
-                    //Finally remove the entry from the list
-                    topics.remove(subscribedTopic);
                     final String message = "All subscribers from topic :" + subscribedTopic + " have being " +
                             "disconnected";
                     log.info(message);
@@ -181,7 +174,7 @@ public final class AndesMQTTBridge {
             //Will not be throwing the exception any further since need to
             //maintain an abstaction between the mqqt protocol
             final String exceptionMessae = "Error occred while adding message content ";
-            log.error(exceptionMessae +e.getMessage());
+            log.error(exceptionMessae +e.getMessage(),e);
         }
     }
 
@@ -208,7 +201,7 @@ public final class AndesMQTTBridge {
                 MQTTChannel.getInstance().addSubscriber(this, topic, topicSpecificClientID);
             } catch (MQTTException e) {
                 final String message = "Error while registering the subscription to the topic ";
-                log.error(message +topic+e.getMessage());
+                log.error(message +topic+e.getMessage(),e);
             }
             topics.put(topic, topicSpecificClientID);
         } else {
@@ -237,13 +230,13 @@ public final class AndesMQTTBridge {
     public void notifySubscriptions(String topic, int qos, ByteBuffer message, boolean retain, long messageID) {
         final int andesMessageID = (int) messageID;
 
-        if (mqttProtocolHandlingReference != null) {
+        if (mqttProtocolHandlingEngine != null) {
             //Need to set do a re possition of bytes for writing to the buffer
             //Since the buffer needs to be initialized for reading before sending out
             //TODO check for a avaiable method to be used instead of using magic numbers
             message.position(0);
             AbstractMessage.QOSType qosType = MQTTUtils.getMQTTQOSTypeFromInteger(qos);
-            mqttProtocolHandlingReference.publish2Subscribers(topic, qosType, message, retain, andesMessageID);
+            mqttProtocolHandlingEngine.publish2Subscribers(topic, qosType, message, retain, andesMessageID);
             if (log.isDebugEnabled()) {
                 log.debug("The message with id " + messageID + " for topic " + topic +
                         " was notified to its subscribers");

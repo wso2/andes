@@ -235,6 +235,9 @@ public class MessagingEngine {
     }
 
     public void ackReceived(AndesAckData ackData) throws AndesException {
+        // Record that the message acknowledgement has been received until the message is deleted from the message
+        // store.
+        OnflightMessageTracker.getInstance().addAckedButNotDeletedMessage(ackData.messageID);
         messageStoreManager.ackReceived(ackData);
     }
 

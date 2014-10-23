@@ -29,6 +29,7 @@ import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.MessageStoreManager;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
+import org.wso2.andes.server.slot.SlotMessageCounter;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.util.AndesConstants;
 
@@ -63,6 +64,15 @@ public class DirectStoringManager extends BasicStoringManager implements Message
     public void storeMetadata(AndesMessageMetadata metadata) throws AndesException{
         long start = System.currentTimeMillis();
         messageStore.addMetaData(metadata);
+        List<AndesMessageMetadata> medatadataList = new ArrayList<AndesMessageMetadata>();
+        medatadataList.add(metadata);
+        /*
+        update last message ID in slot message counter. When the slot is filled the last message
+        ID of the slot will be submitted to the slot manager by SlotMessageCounter
+         */
+        if (AndesContext.getInstance().isClusteringEnabled()) {
+            SlotMessageCounter.getInstance().recordMetaDataCountInSlot(medatadataList);
+        }
         PerformanceCounter.warnIfTookMoreTime("Store Metadata" , start, 10);
 
         incrementQueueCount(metadata.getDestination(), 1);
@@ -80,6 +90,13 @@ public class DirectStoringManager extends BasicStoringManager implements Message
     public void storeMetaData(List<AndesMessageMetadata> messageMetadata) throws AndesException {
         long start = System.currentTimeMillis();
         messageStore.addMetaData(messageMetadata);
+         /*
+        update last message ID in slot message counter. When the slot is filled the last message
+        ID of the slot will be submitted to the slot manager by SlotMessageCounter
+         */
+        if (AndesContext.getInstance().isClusteringEnabled()) {
+            SlotMessageCounter.getInstance().recordMetaDataCountInSlot(messageMetadata);
+        }
         PerformanceCounter.warnIfTookMoreTime("Store Metadata", start, 200);
         Map<String, List<AndesMessageMetadata>> queueSeparatedMetadata = new HashMap<String,
                 List<AndesMessageMetadata>>();
@@ -234,8 +251,8 @@ public class DirectStoringManager extends BasicStoringManager implements Message
             queueSeparatedRemoveMessages.put(message.destination, messages);
 
             //update server side message trackings
-            OnflightMessageTracker onflightMessageTracker = OnflightMessageTracker.getInstance();
-            onflightMessageTracker.updateDeliveredButNotAckedMessages(message.messageID);
+        /*    OnflightMessageTracker onflightMessageTracker = OnflightMessageTracker.getInstance();
+            onflightMessageTracker.updateDeliveredButNotAckedMessages(message.messageID);*/
 
 
             //if to move, move to DLC. This is costy. Involves per message read and writes
