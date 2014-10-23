@@ -348,7 +348,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                             MessagingEngine.getInstance().moveMessageToDeadLetterChannel(messageId, destinationQueue);
 
                             //remove tracking of the message
-                            OnflightMessageTracker.getInstance().removeTrackingInformationForDeadMessages(messageId);
+                           // OnflightMessageTracker.getInstance().removeTrackingInformationForDeadMessages(messageId);
                             Slot slot = ((AMQMessage) entry.getMessage()).getSlot();
                             OnflightMessageTracker.getInstance()
                                     .decrementMessageCountInSlotAndCheckToResend(slot, destinationQueue);
