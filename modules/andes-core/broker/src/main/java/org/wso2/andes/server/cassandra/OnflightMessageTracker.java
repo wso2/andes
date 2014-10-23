@@ -21,7 +21,6 @@ package org.wso2.andes.server.cassandra;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
-import org.wso2.andes.AMQStoreException;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
@@ -29,7 +28,6 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.slot.SlotDeliveryWorker;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
-
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -60,14 +58,6 @@ public class OnflightMessageTracker {
     private ConcurrentHashMap<Slot, AtomicInteger> pendingMessagesBySlot = new
             ConcurrentHashMap<Slot, AtomicInteger>();
     private ConcurrentSkipListSet<Long> ackedButNotDeletedMessages = new ConcurrentSkipListSet<Long>();
-
-
-    /**
-     * In memory set keeping track of sent messageIds. Used to prevent duplicate message count
-     * decrements
-     */
-    private Map<Long, Long> deliveredButNotAckedMessages = new ConcurrentHashMap<Long, Long>();
-
     private static final ScheduledExecutorService scheduler = Executors
             .newSingleThreadScheduledExecutor();
     private AtomicLong sendButNotAckedMessageCount = new AtomicLong();
@@ -182,12 +172,13 @@ public class OnflightMessageTracker {
     /**
      * When messages are rejected and failed this method will be called. Rejected/failed message
      * will be put again to the buffer in QueueDeliveryWorker
-     * @param deliveryTag
-     * @param channelId
-     * @throws AMQException
+     *
+     * @param deliveryTag the identifier generated per message will be used to track the delivered message
+     * @param channelId   the identifier of the channel created with the subscriber/s
+     * @throws AMQException Occurs during failure to re queue a specific message
      */
     public void handleFailure(long deliveryTag, UUID channelId) throws AMQException {
-        String deliveryID = new StringBuffer(channelId.toString()).append("/").append(deliveryTag)
+        String deliveryID = new StringBuilder(channelId.toString()).append('/').append(deliveryTag)
                 .toString();
         Long messageId = deliveryTag2MsgID.get(deliveryID);
 
@@ -218,7 +209,7 @@ public class OnflightMessageTracker {
     /**
      * Re-queue the message to be sent again
      *
-     * @param messageId
+     * @param messageId the unique identifier of the message to be re queued
      */
     public void reQueueMessage(long messageId) throws AndesException {
         AndesMessageMetadata metadata = messageIdToAndesMessagesMap.get(messageId);
@@ -235,7 +226,7 @@ public class OnflightMessageTracker {
      * Message is allowed to be sent if and only if it is a new message or an already sent message
      * whose ack wait time out has happened
      *
-     * @param messageId
+     * @param messageId the identifier of the message which is to be sent
      * @return true if message is not sent earlier, else return false
      */
     public synchronized boolean testMessage(long messageId) {
@@ -246,11 +237,11 @@ public class OnflightMessageTracker {
      * Register message as delivered through transport. If the message has not sent up to maximum
      * number of re-delivery tries, resend it.
      *
-     * @param andesMetaDataEntry
-     * @param deliveryTag
-     * @param channel
-     * @return
-     * @throws AMQException
+     * @param andesMetaDataEntry the object which contains information regarding the message headers
+     * @param deliveryTag        the identifier generated per message will be used to track the delivered message
+     * @param channel            the object which holds the connection with the subscribers
+     * @return the status of the message which was sent for delivery
+     * @throws AMQException if an error occurs while the message is sent out
      */
     public boolean testAndAddMessage(AndesMessageMetadata andesMetaDataEntry,
                                      long deliveryTag, AMQChannel channel)
@@ -278,7 +269,7 @@ public class OnflightMessageTracker {
             if (mdata == null) {
 
                 //This is a new message
-                deliveredButNotAckedMessages.put(messageId, messageId);
+                // deliveredButNotAckedMessages.put(messageId, messageId);
                 if (log.isTraceEnabled()) {
                     log.trace(
                             "TRACING>> OFMT-testAndAdd-scheduling new message to deliver with MessageID-"
@@ -304,7 +295,7 @@ public class OnflightMessageTracker {
             numOfDeliveriesOfCurrentMsg++;
             deliveryTag2MsgID.put(deliveryID, messageId);
 
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug("Map message to delivery Id for messageID : " + messageId + " deliveryID : " + deliveryID);
             }
 
@@ -351,12 +342,11 @@ public class OnflightMessageTracker {
      *
      * @param channelID Id of the connection which ack was received
      * @param messageId Id of the message for which ack was received
-     * @throws AMQStoreException In case
-     * @throws AndesException
+     * @throws AndesException If releveant message information cannot be found
      */
     public void ackReceived(UUID channelID, long messageId)
             throws AndesException {
-        AndesMessageMetadata metadata = null;
+        AndesMessageMetadata metadata;
         MsgData msgData;
 
         removeAckedButNotDeletedMessages(messageId);
@@ -364,7 +354,7 @@ public class OnflightMessageTracker {
             msgData = msgId2MsgData.get(messageId);
             if (msgData != null) {
                 msgData.ackreceived = true;
-                
+
                 // Then update the tracker
                 if (log.isTraceEnabled()) {
                     log.trace("TRACING>> OFMT-Ack received for MessageID-" + msgData.msgID);
@@ -394,55 +384,37 @@ public class OnflightMessageTracker {
     /**
      * Clear channelToMsgIDMap and messageIdToAndesMessagesMap due to channel close.
      *
-     * @param channel
+     * @param channel the connection infromation which b
      */
     public void releaseAckTrackingSinceChannelClosed(AMQChannel channel) {
         ConcurrentSkipListSet<Long> sentButNotAckedMessages = channelToMsgIDMap.get(channel.getId());
 
         if (sentButNotAckedMessages != null && sentButNotAckedMessages.size() > 0) {
-            Iterator iterator = sentButNotAckedMessages.iterator();
-            if (iterator != null) {
-                while (iterator.hasNext()) {
-                    long messageId = (Long) iterator.next();
-                    synchronized (this) {
-                        if (msgId2MsgData.get(messageId) != null) {
-                            sendButNotAckedMessageCount.decrementAndGet();
-                            AndesMessageMetadata queueEntry = messageIdToAndesMessagesMap
-                                    .remove(messageId);
 
-                            if (queueEntry != null && !isAckedButNotDeleted(queueEntry.getMessageID())) {
-                                //Re-queue message to the buffer
-                                QueueDeliveryWorker.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(
-                                        queueEntry);
-                                if (log.isDebugEnabled()) {
-                                    log.debug("Re-queued message : " + messageId + " since delivered but not acked.");
-                                }
+            for (long messageId : sentButNotAckedMessages) {
+
+                synchronized (this) {
+                    if (msgId2MsgData.get(messageId) != null) {
+                        sendButNotAckedMessageCount.decrementAndGet();
+                        AndesMessageMetadata queueEntry = messageIdToAndesMessagesMap
+                                .remove(messageId);
+
+                        if (queueEntry != null && !isAckedButNotDeleted(queueEntry.getMessageID())) {
+                            //Re-queue message to the buffer
+                            QueueDeliveryWorker.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(
+                                    queueEntry);
+                            if (log.isDebugEnabled()) {
+                                log.debug("Re-queued message : " + messageId + " since delivered but not acked.");
                             }
                         }
                     }
+                    log.debug("TRACING>> OFMT- re-queued message-" + messageId + "- since delivered but not " +
+                            "acked");
                 }
             }
+            // }
         }
         channelToMsgIDMap.remove(channel.getId());
-    }
-
-    public void updateDeliveredButNotAckedMessages(long messageID) {
-        deliveredButNotAckedMessages.remove(messageID);
-    }
-
-    /**
-     * Remove all tracking information from a message moved to Dead Letter Channel.
-     *
-     * @param messageId message ID
-     */
-    public synchronized void removeTrackingInformationForDeadMessages(long messageId) {
-
-        //If it is an already sent but not acked message we will not decrement message count again
-        MsgData messageData = msgId2MsgData.get(messageId);
-        if (messageData != null) {
-            //We do following to stop trying to delete message again when acked someday
-            deliveredButNotAckedMessages.remove(messageId);
-        }
     }
 
     public ArrayList<AndesMessageMetadata> getSentButNotAckedMessagesOfQueue(String queueName) {
@@ -452,9 +424,9 @@ public class OnflightMessageTracker {
     /**
      * Decrement message count in slot and if it is zerocheck the slot again to resend
      *
-     * @param slot
-     * @param queueName
-     * @throws AndesException
+     * @param slot      The range of messages which the count should be decremented to
+     * @param queueName the name of the queue subscribers were bound to
+     * @throws AndesException occurs at a time where it fails to decrement the message count
      */
     public void decrementMessageCountInSlotAndCheckToResend(Slot slot, String queueName) throws AndesException {
         AtomicInteger pendingMessageCount = pendingMessagesBySlot.get(slot);
@@ -474,7 +446,7 @@ public class OnflightMessageTracker {
     /**
      * Increment the message count in a slot
      *
-     * @param slot
+     * @param slot the range of messages where the message count should be incremented
      */
     public void incrementMessageCountInSlot(Slot slot) {
         AtomicInteger pendingMessageCount = pendingMessagesBySlot.get(slot);
