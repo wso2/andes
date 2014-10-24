@@ -23,6 +23,7 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.util.AndesConstants;
@@ -86,13 +87,19 @@ public class DLCQueueUtils {
      * @param owner     The tenant owner.
      * @throws AndesException
      */
-    public static synchronized void createDLCQueue(String queueName, VirtualHost host, String owner) throws AndesException {
+    public static synchronized void createDLCQueue(String queueName, VirtualHost host,
+                                                   String owner) throws AndesException {
         String dlcQueueName = identifyTenantInformationAndGenerateDLCString(queueName,
                 AndesConstants.DEAD_LETTER_QUEUE_NAME);
         QueueRegistry queueRegistry = host.getQueueRegistry();
         AMQQueue queue = queueRegistry.getQueue(new AMQShortString(dlcQueueName));
         if (queue == null && !isDeadLetterQueue(queueName)) {
             AndesQueue andesQueue = new AndesQueue(dlcQueueName, owner, false, true);
+
+            AndesContext.getInstance().getAMQPConstructStore().addQueue(andesQueue, true);
+            ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().queue(dlcQueueName, owner, false,
+                    null);
+
             QueueListener queueListener = new ClusterCoordinationHandler(HazelcastAgent
                     .getInstance());
             queueListener.handleLocalQueuesChanged(andesQueue, QueueListener.QueueChange.Added);
