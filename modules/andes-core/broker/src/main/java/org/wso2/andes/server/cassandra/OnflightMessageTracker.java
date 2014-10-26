@@ -143,25 +143,36 @@ public class OnflightMessageTracker {
         boolean ackreceived = false;
         final String queue;
         long timestamp;
-        final String deliveryID;
-        final AMQChannel channel;
+        long expirationTime;
+        long deliveryID;
+        UUID channelId;
         int numOfDeliveries;
-        boolean ackWaitTimedOut;
         MessageStatus messageStatus;
         Slot slot;
 
         private MsgData(long msgID, Slot slot, boolean ackReceived, String queue, long timestamp,
-                        String deliveryID, AMQChannel channel, int numOfDeliveries,
+                        long expirationTime, long deliveryID, UUID channelId, int numOfDeliveries,
                         MessageStatus messageStatus) {
             this.msgID = msgID;
             this.slot = slot;
             this.ackreceived = ackReceived;
             this.queue = queue;
             this.timestamp = timestamp;
+            this.expirationTime = expirationTime;
             this.deliveryID = deliveryID;
-            this.channel = channel;
+            this.channelId = channelId;
             this.numOfDeliveries = numOfDeliveries;
             this.messageStatus = messageStatus;
+        }
+
+        private boolean isExpired() {
+            if (expirationTime != 0L)
+            {
+                long now = System.currentTimeMillis();
+                return (now > expirationTime);
+            } else {
+                return false;
+            }
         }
     }
 
@@ -185,13 +196,17 @@ public class OnflightMessageTracker {
                 if (toDelete) {
                     if (!msgData.ackreceived) {
                         //reduce messages on flight on this channel
-                        msgData.channel.decrementNonAckedMessageCount();
+                        //msgData.channel.decrementNonAckedMessageCount();
                         log.debug("No ack received for delivery tag " + msgData.deliveryID + " and " +
                                   "message id " + msgData.msgID + " Message status = " + msgData.messageStatus);
                     }
                     //permanently remove tracking of message
-                    stampMessageAsDLCAndRemoveFromTacking(msgData.channel.getId(), msgData.slot,
-                                                          msgData.msgID);
+                    log.warn("Loosing track of message id= " + msgData.msgID);
+                    try {
+                        stampMessageAsDLCAndRemoveFromTacking(msgData.msgID);
+                    } catch (AndesException e) {
+                        log.error("Error when loosing track of message id= " + msgData.msgID);
+                    }
                 }
                 return toDelete;
             }
@@ -261,46 +276,43 @@ public class OnflightMessageTracker {
     }
 
     /**
-     * Message is allowed to be sent if and only if it is a new message or an already sent message
-     * whose ack wait time out has happened
+     * Register that this message is being delivered to client
      *
-     * @return boolean if the message should be sent
+     * @return boolean if the message is being redelivered
      */
-    public boolean testAndAddMessage(AndesMessageMetadata andesMetaDataEntry, AMQChannel channel)
+    public boolean checkAndRegisterSent(long messageId, UUID channelID, long deliverTag)
             throws AMQException {
 
-        long messageId = andesMetaDataEntry.getMessageID();
+        MsgData trackingData = msgId2MsgData.get(messageId);
+        trackingData.channelId = channelID;
+        trackingData.deliveryID = deliverTag;
 
         //Add redelivery header if being redelivered
-        boolean isRedelivered = addMessageToSendingTracker(channel.getId(), messageId);
-        if (isRedelivered) {
-            andesMetaDataEntry.setRedelivered();
-        }
+        boolean isRedelivered = addMessageToSendingTracker(channelID, messageId);
 
-        return evaluateDeliveryRules(andesMetaDataEntry);
+        return isRedelivered;
 
     }
 
     /**
      * Any custom checks or procedures that should be executed before message delivery should
      * happen here. Any message rejected at this stage will be sent to DLC
-     * @param andesMetaDataEntry message metadata entry to evaluate for delivery
+     * @param messageId id of message metadata entry to evaluate for delivery
      * @return eligibility deliver
      */
-    private boolean evaluateDeliveryRules(AndesMessageMetadata andesMetaDataEntry) {
+    public boolean evaluateDeliveryRules(long messageId) {
         boolean isOKToDeliver = true;
-        long messageId = andesMetaDataEntry.getMessageID();
-        String destination = andesMetaDataEntry.getDestination();
+        MsgData trackingData = getTrackingData(messageId);
 
         //check if number of redelivery tries has breached.
         int numOfDeliveriesOfCurrentMsg = getDeliveryCountOfMessage(messageId);
         if (numOfDeliveriesOfCurrentMsg > maximumRedeliveryTimes) {
             log.warn("Number of Maximum Redelivery Tries Has Breached. Dropping The Message: " +
-                     messageId + "From Queue " + destination);
+                     messageId);
             isOKToDeliver =  false;
-            //check if queue entry has expired. Any expired message will not be delivered
-        } else if (andesMetaDataEntry.isExpired()) {
-            stampMessageAsExpired(andesMetaDataEntry.getMessageID());
+        //check if queue entry has expired. Any expired message will not be delivered
+        } else if (trackingData.isExpired()) {
+            stampMessageAsExpired(messageId);
             log.warn("Message is expired. Dropping The Message: " + messageId);
             isOKToDeliver =  false;
         }
@@ -399,8 +411,8 @@ public class OnflightMessageTracker {
         if (trackingData == null) {
             trackingData = new MsgData(messageID, slot, false,
                                        andesMessageMetadata.getDestination(),
-                                       System.currentTimeMillis(), null, null, 0,
-                                       MessageStatus.Read);
+                                       System.currentTimeMillis(), andesMessageMetadata.getExpirationTime(),
+                                       0, null, 0,MessageStatus.Read);
             msgId2MsgData.put(messageID, trackingData);
             messagesOfSlot.put(messageID, msgId2MsgData.get(messageID));
             isOKToBuffer =  true;
@@ -564,16 +576,19 @@ public class OnflightMessageTracker {
      * Permanently remove message from tacker. This will clear the tracking
      * that message is buffered and message is sent and also will remove
      * tracking object from memory
-     * @param channelID channel message is delivered to subscriber
-     * @param slot  slot message is read from
      * @param messageID id of the message
      */
-    public void stampMessageAsDLCAndRemoveFromTacking(UUID channelID, Slot slot, long messageID) {
-        log.debug("Removing tracking of message id = " + messageID);
+    public void stampMessageAsDLCAndRemoveFromTacking(long messageID) throws AndesException {
+        //remove actual object from memory
+        log.debug("Removing all tracking of message id = " + messageID);
+        MsgData trackingData = msgId2MsgData.remove(messageID);
+        UUID channelID = trackingData.channelId;
+        String queueName = trackingData.queue;
+        Slot slot = trackingData.slot;
         releaseMessageDeliveryFromTracking(channelID, messageID);
         releaseMessageBufferingFromTracking(slot, messageID);
-        //remove actual object from memory
-        msgId2MsgData.remove(messageID);
+
+        decrementMessageCountInSlotAndCheckToResend(slot, queueName);
     }
 
 }

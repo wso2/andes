@@ -64,13 +64,6 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
 
         long deliveryTag = body.getDeliveryTag();
 
-
-        /**
-         * Inform kernel that message has been rejected by AMQP transport
-         */
-        QpidAMQPBridge.getInstance().rejectMessage(deliveryTag, channel.getId());
-
-
         QueueEntry message = channel.getUnacknowledgedMessageMap().get(deliveryTag);
 
         if (message == null)
@@ -87,9 +80,12 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
                 message = channel.getUnacknowledgedMessageMap().remove(deliveryTag);
                 if(message != null)
                 {
+                    /**
+                     * Inform kernel that message has been rejected by AMQP transport
+                     */
+                    QpidAMQPBridge.getInstance().rejectMessage(message.getMessage().getMessageNumber(), channel.getId());
                     message.discard();
                 }
-                //sendtoDeadLetterQueue(msg)
                 return;
             }
 

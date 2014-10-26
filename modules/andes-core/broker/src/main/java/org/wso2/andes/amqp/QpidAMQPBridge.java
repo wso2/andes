@@ -231,18 +231,17 @@ public class QpidAMQPBridge {
         }
     }
 
-    public void rejectMessage(long deliveryTag, UUID channelID) throws AMQException {
+    public void rejectMessage(long messageID, UUID channelID) throws AMQException {
         try {
-            if(log.isDebugEnabled()){
-            log.debug("AMQP BRIDGE: rejected message delivery tag= " + deliveryTag + " channel = " + channelID);
-            }
+
+            log.debug("AMQP BRIDGE: rejected message id= " + messageID + " channel = " + channelID);
             //todo: hasitha - implement a non-amqp specific way to do this. For now doing nothing
             MessagingEngine.getInstance().messageRejected();
 
             /**Reject message is received when ack_wait_timeout happened in client side
              * We need to inform onflightMessageTracker to resend the message again
              */
-            OnflightMessageTracker.getInstance().handleFailure(deliveryTag, channelID);
+            OnflightMessageTracker.getInstance().handleFailure(messageID, channelID);
 
         } catch (AndesException e) {
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while handling rejected message", e);
@@ -511,5 +510,11 @@ public class QpidAMQPBridge {
         }
     }
 
-
+    /**
+     * channel between broker and client is closed
+     * @param channelID  id of the channel
+     */
+    public void channelIsClosing(UUID channelID) {
+         OnflightMessageTracker.getInstance().releaseAllMessagesOfChannelFromTracking(channelID);
+    }
 }

@@ -19,20 +19,18 @@
 package org.wso2.andes.kernel;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
-
-import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.Logger;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.storemanager.MessageStoreManagerFactory;
+import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
-import org.wso2.andes.store.cassandra.CQLBasedMessageStoreImpl;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cassandra.TopicDeliveryWorker;
 import org.wso2.andes.server.cluster.ClusterManager;
@@ -71,6 +69,11 @@ public class MessagingEngine {
      * reference to subscription store
      */
     private SubscriptionStore subscriptionStore;
+
+    /**
+     * Cache to keep message parts until message routing happens
+     */
+    private HashMap<Long, List<AndesMessagePart>> messagePatsCache;
 
     /**
      * Cluster related configurations
@@ -122,6 +125,8 @@ public class MessagingEngine {
             durableMessageStore = messageStore;
             subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
 
+            messagePatsCache = new HashMap<Long, List<AndesMessagePart>>();
+
         } catch (Exception e) {
             throw new AndesException("Cannot initialize message store", e);
         }
@@ -139,6 +144,7 @@ public class MessagingEngine {
      */
     public void messageContentReceived(AndesMessagePart part) {
         try {
+            cacheMessageContentPart(part);
             messageStoreManager.storeMessagePart(part);
         } catch (AndesException e) {
             log.error("Error occurred while storing message content. message id: " +
@@ -165,67 +171,12 @@ public class MessagingEngine {
                 //store message in MESSAGES_FOR_EXPIRY_COLUMN_FAMILY Queue
                 // todo: MessageStoreManager needs to replace the method
                 durableMessageStore.addMessageToExpiryQueue(message.getMessageID(),
-                        message.getExpirationTime(),
-                        message.isTopic(),
-                        message.getDestination());
+                                                            message.getExpirationTime(),
+                                                            message.isTopic(),
+                                                            message.getDestination());
             }
+            routeAMQPMetadata(message);
 
-            if (message.isTopic) {
-                List<AndesSubscription> subscriptionList = subscriptionStore
-                        .getActiveClusterSubscribersForDestination(message.getDestination(), true);
-                if (subscriptionList.size() == 0) {
-                    log.info("Message routing key: " + message
-                            .getDestination() + " No routes in cluster. Ignoring Message");
-                    List<Long> messageIdList = new ArrayList<Long>();
-                    messageIdList.add(message.getMessageID());
-                    durableMessageStore.deleteMessageParts(messageIdList);
-                }
-
-                Set<String> targetAndesNodeSet;
-                boolean originalMessageUsed = false;
-                boolean hasNonDurableSubscriptions = false;
-                for (AndesSubscription subscriberQueue : subscriptionList) {
-                    if (subscriberQueue.isDurable()) {
-                        // If message is durable, we clone the message (if there is more than one
-                        // subscription) and send them to a queue created for with the name of the
-                        // Subscription ID by writing it to the global queue.
-                        message.setDestination(subscriberQueue.getTargetQueue());
-                        AndesMessageMetadata clone;
-                        if (!originalMessageUsed) {
-                            originalMessageUsed = true;
-                            clone = message;
-                        } else {
-                            clone = cloneAndesMessageMetadataAndContent(message);
-                        }
-                        //We must update the routing key in metadata as well
-                        clone.updateMetadata(subscriberQueue.getTargetQueue());
-
-                        messageStoreManager.storeMetadata(message);
-                    } else {
-                        hasNonDurableSubscriptions = true;
-                    }
-                }
-
-                if (hasNonDurableSubscriptions) {
-                    // If there are non durable subscriptions, we write it to each node where
-                    // there is a subscription. Here we collect all nodes to which we need to
-                    // write to.
-                    targetAndesNodeSet = subscriptionStore
-                            .getNodeQueuesHavingSubscriptionsForTopic(message.getDestination());
-                    for (String hostId : targetAndesNodeSet) {
-                        AndesMessageMetadata clone;
-                        if (!originalMessageUsed) {
-                            originalMessageUsed = true;
-                            clone = message;
-                        } else {
-                            clone = message.deepClone(messageIdGenerator.getNextId());
-                        }
-                        messageStoreManager.storeMetadata(clone);
-                    }
-                }
-            } else {
-                messageStoreManager.storeMetadata(message);
-            }
         } catch (Exception e) {
             throw new AndesException("Error in storing the message to the store", e);
         }
@@ -236,9 +187,6 @@ public class MessagingEngine {
     }
 
     public void ackReceived(AndesAckData ackData) throws AndesException {
-        // Record that the message acknowledgement has been received until the message is deleted from the message
-        // store.
-        OnflightMessageTracker.getInstance().addAckedButNotDeletedMessage(ackData.messageID);
         messageStoreManager.ackReceived(ackData);
     }
 
@@ -261,6 +209,10 @@ public class MessagingEngine {
                 (destinationQueueName, AndesConstants.DEAD_LETTER_QUEUE_NAME);
 
         messageStoreManager.moveMetaDataToQueue(messageId, destinationQueueName, deadLetterQueueName);
+
+        //remove tracking of the message
+        OnflightMessageTracker.getInstance()
+                              .stampMessageAsDLCAndRemoveFromTacking(messageId);
     }
 
     /**
@@ -371,9 +323,6 @@ public class MessagingEngine {
             queueDeliveryWorker.clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(
                     destinationQueueName);
         }
-        //Remove sent but not acked messages
-        OnflightMessageTracker.getInstance()
-                .getSentButNotAckedMessagesOfQueue(destinationQueueName);
     }
 
     public long generateNewMessageId() {
@@ -390,8 +339,11 @@ public class MessagingEngine {
         AndesMessageMetadata clone = message.deepClone(newMessageId);
 
         //Duplicate message content
-        ((CQLBasedMessageStoreImpl) durableMessageStore)
-                .duplicateMessageContent(message.getMessageID(), newMessageId);
+        List<AndesMessagePart> messageParts = getAllMessagePartsFromCache(message.getMessageID());
+        for(AndesMessagePart messagePart : messageParts) {
+            AndesMessagePart clonedPart = messagePart.deepClone(newMessageId);
+            messageStoreManager.storeMessagePart(clonedPart);
+        }
 
         return clone;
 
@@ -496,6 +448,82 @@ public class MessagingEngine {
             mew.stopWorking();
         }
 
+    }
+
+
+
+    private void routeAMQPMetadata(AndesMessageMetadata message) throws AndesException{
+        if (message.isTopic) {
+            List<AndesSubscription> subscriptionList = subscriptionStore
+                    .getActiveClusterSubscribersForDestination(message.getDestination(), true);
+            if (subscriptionList.size() == 0) {
+                log.info("Message routing key: " + message
+                        .getDestination() + " No routes in cluster. Ignoring Message");
+                List<Long> messageIdList = new ArrayList<Long>();
+                messageIdList.add(message.getMessageID());
+                //todo: at this moment content is still in disruptor.
+                durableMessageStore.deleteMessageParts(messageIdList);
+            }
+
+            boolean originalMessageUsed = false;
+            for (AndesSubscription subscriberQueue : subscriptionList) {
+                //this call is AMQP Specific
+                if (AMQPUtils
+                        .isTargetQueueBoundByMatchingToRoutingKey(subscriberQueue
+                                                                  .getSubscribedDestination(),
+                                                                  message.getDestination())) {
+                    message.setDestination(subscriberQueue.getTargetQueue());
+                    AndesMessageMetadata clone;
+                    if (!originalMessageUsed) {
+                        originalMessageUsed = true;
+                        clone = message;
+                    } else {
+                        clone = cloneAndesMessageMetadataAndContent(message);
+                    }
+                    //We must update the routing key in metadata as well
+                    clone.updateMetadata(subscriberQueue.getTargetQueue());
+                    log.info("Storing metadata queue= " + subscriberQueue
+                            .getTargetQueue() + " messageID= " + clone.getMessageID());
+                    messageStoreManager.storeMetadata(clone);
+                }
+            }
+
+        } else {
+            messageStoreManager.storeMetadata(message);
+        }
+
+        removeMessageContentsFromCache(message.getMessageID());
+    }
+
+    /**
+     * Cache the message content chunk
+     * @param messagePart content chunk to cache
+     */
+    private void cacheMessageContentPart(AndesMessagePart messagePart) {
+        long messageID = messagePart.getMessageID();
+        List<AndesMessagePart> contentChumks = messagePatsCache.get(messageID);
+        if(contentChumks == null) {
+            contentChumks = new ArrayList<AndesMessagePart>();
+        }
+        contentChumks.add(messagePart);
+        messagePatsCache.put(messageID, contentChumks);
+    }
+
+    /**
+     * Get all message content chunks of a message from cache
+     * @param messageID id of the message whose chunk should receive
+     * @return lst of content chunks
+     */
+    private List<AndesMessagePart> getAllMessagePartsFromCache(long messageID) {
+        return messagePatsCache.get(messageID);
+    }
+
+    /**
+     * Remove message content chunks for message
+     * @param messageID id of the message
+     */
+    private void removeMessageContentsFromCache(long messageID) {
+        messagePatsCache.remove(messageID);
     }
 
 }

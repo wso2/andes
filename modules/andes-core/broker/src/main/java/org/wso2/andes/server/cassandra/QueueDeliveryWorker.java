@@ -27,6 +27,8 @@ import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 
@@ -63,7 +65,7 @@ public class QueueDeliveryWorker {
         this.queueWorkerWaitInterval = queueWorkerWaitInterval;
 
         BrokerConfiguration clusterConfiguration = ClusterResourceHolder.getInstance()
-                                                                        .getClusterConfiguration();
+                                                                         .getClusterConfiguration();
         this.maxNumberOfUnAckedMessages = clusterConfiguration.getMaxNumberOfUnackedMessages();
         this.maxNumberOfReadButUndeliveredMessages = clusterConfiguration
                 .getMaxNumberOfReadButUndeliveredMessages();

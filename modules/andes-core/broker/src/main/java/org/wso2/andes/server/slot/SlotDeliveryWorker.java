@@ -148,6 +148,10 @@ public class SlotDeliveryWorker extends Thread {
                                                       currentSlot.getEndMessageId() + " is " +
                                                       messagesReadByLeadingThread.size());
                                         }
+                                        log.info("Number of messages read from slot " +
+                                                  currentSlot.getStartMessageId() + " - " +
+                                                  currentSlot.getEndMessageId() + " is " +
+                                                  messagesReadByLeadingThread.size() + " queue= " + queueName);
                                         QueueDeliveryWorker.getInstance().sendMessageToFlusher(
                                                 messagesReadByLeadingThread, currentSlot);
                                     } else {
@@ -344,8 +348,7 @@ public class SlotDeliveryWorker extends Thread {
                 boolean allMessagesAlreadySent = true;
                 for (AndesMessageMetadata messageMetadata : messagesReadByLeadingThread) {
                     boolean messageNotSent = OnflightMessageTracker.getInstance()
-                                                                   .testMessage(messageMetadata
-                                                                                        .getMessageID());
+                                                                   .addMessageToBufferingTracker(slot,messageMetadata);
 
                     if (messageNotSent) {
                         allMessagesAlreadySent = false;

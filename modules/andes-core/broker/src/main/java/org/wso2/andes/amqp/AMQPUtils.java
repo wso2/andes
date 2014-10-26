@@ -21,6 +21,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.server.binding.Binding;
@@ -40,6 +42,8 @@ import org.wso2.andes.subscription.AMQPLocalSubscription;
 
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class AMQPUtils {
 
@@ -356,5 +360,27 @@ public class AMQPUtils {
             exchangeName = TopicExchange.TYPE.getDefaultExchangeName().toString();
         }
         return new AndesBinding(exchangeName, AMQPUtils.createAndesQueue(queue), routingKey.toString());
+    }
+
+    public static String generateQueueName() {
+        return "tmp_" + ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID() + UUID.randomUUID();
+    }
+
+    public static boolean isTargetQueueBoundByMatchingToRoutingKey(String queueBoundRoutingKey, String messageRoutingKey) {
+        boolean isMatching = false;
+        if (queueBoundRoutingKey.equals(messageRoutingKey)) {
+            isMatching = true;
+        } else if (queueBoundRoutingKey.indexOf(".#") > 1) {
+            String p = queueBoundRoutingKey.substring(0, queueBoundRoutingKey.indexOf(".#"));
+            Pattern pattern = Pattern.compile(p + ".*");
+            Matcher matcher = pattern.matcher(messageRoutingKey);
+            isMatching = matcher.matches();
+        } else if (queueBoundRoutingKey.indexOf(".*") > 1) {
+            String p = queueBoundRoutingKey.substring(0, queueBoundRoutingKey.indexOf(".*"));
+            Pattern pattern = Pattern.compile("^" + p + "[.][^.]+$");
+            Matcher matcher = pattern.matcher(messageRoutingKey);
+            isMatching = matcher.matches();
+        }
+        return isMatching;
     }
 }

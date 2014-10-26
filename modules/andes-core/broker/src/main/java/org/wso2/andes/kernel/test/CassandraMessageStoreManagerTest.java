@@ -18,11 +18,16 @@
 
 package org.wso2.andes.kernel.test;
 
+import com.datastax.driver.core.Cluster;
 import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.kernel.storemanager.DurableAsyncStoringManager;
+import org.wso2.andes.kernel.storemanager.AsyncStoringManager;
+import org.wso2.andes.server.store.util.CQLDataAccessHelper;
+import org.wso2.andes.server.store.util.CassandraDataAccessException;
 import org.wso2.andes.store.cassandra.CQLBasedMessageStoreImpl;
+import org.wso2.andes.store.cassandra.CQLConnection;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -31,19 +36,39 @@ public class CassandraMessageStoreManagerTest {
     private MessageStoreManager messageStoreManager;
     private int numberOfPublishers = 20;
     private AtomicLong messageCount = new AtomicLong();
+    private Cluster cluster;
+    CQLConnection cqlConnection;
 
     public CassandraMessageStoreManagerTest() {
+        initialize();
+    }
+
+
+    private void initializeCluster() {
+        try {
+            List<String> hosts = new ArrayList<String>();
+            hosts.add("127.0.0.1");
+            CQLDataAccessHelper.ClusterConfiguration clusterConfig = new CQLDataAccessHelper
+                    .ClusterConfiguration("admin", "admin", "TestCluster", hosts, 9042);
+
+            cluster = CQLDataAccessHelper.createCluster(clusterConfig);
+            CQLConnection cqlConnection = new CQLConnection();
+            cqlConnection.setCluster(cluster);
+        } catch (CassandraDataAccessException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
 
     }
 
     public void initialize() {
+        initializeCluster();
         ConfigurationProperties connectionProperties = new ConfigurationProperties();
         connectionProperties.addProperty("dataSource", "CassandraRepo");
-        MessageStore messageStore = new CQLBasedMessageStoreImpl();
+        CQLBasedMessageStoreImpl messageStore = new CQLBasedMessageStoreImpl();
         try {
+            messageStore.setCQLConnection(cqlConnection);
             messageStore.initializeMessageStore(connectionProperties);
-            messageStoreManager = new DurableAsyncStoringManager();
-            messageStoreManager.initialise(messageStore);
+            messageStoreManager = new AsyncStoringManager(messageStore);
 
         } catch (AndesException e) {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
@@ -51,16 +76,20 @@ public class CassandraMessageStoreManagerTest {
     }
 
     public void publishMessages() {
-       for(int i=0; i< numberOfPublishers; i++){
-          MockPublisher mockPublisher = new MockPublisher(messageStoreManager, messageCount);
-           mockPublisher.run();
-       }
+        for (int i = 0; i < numberOfPublishers; i++) {
+            MockPublisher mockPublisher = new MockPublisher(messageStoreManager, messageCount);
+            mockPublisher.run();
+        }
     }
 
     public void subscribeMessages() {
 
     }
 
+    public static void main(String[] args) {
+        CassandraMessageStoreManagerTest storeManagerTest = new CassandraMessageStoreManagerTest();
+        storeManagerTest.publishMessages();
+    }
 
 
 }

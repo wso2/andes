@@ -324,11 +324,6 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
             messages.add(message);
             queueSeparatedRemoveMessages.put(message.destination, messages);
 
-            //update server side message trackings
-         /*   OnflightMessageTracker onflightMessageTracker = OnflightMessageTracker.getInstance();
-            onflightMessageTracker.updateDeliveredButNotAckedMessages(message.messageID);*/
-
-
             //if to move, move to DLC. This is costy. Involves per message read and writes
             if (moveToDeadLetterChannel) {
                 AndesMessageMetadata metadata = messageStore.getMetaData(message.messageID);
