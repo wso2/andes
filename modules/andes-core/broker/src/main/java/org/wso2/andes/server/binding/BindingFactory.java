@@ -26,6 +26,7 @@ import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -271,68 +272,56 @@ public class BindingFactory
         makeBinding(bindingKey,queue,exchange,argumentMap,true, false);
     }
 
-    public void removeBinding(final Binding b) throws AMQSecurityException, AMQInternalException
-    {
-
+    public void removeBinding(final Binding b) throws AMQSecurityException, AMQInternalException {
         removeBinding(b.getBindingKey(), b.getQueue(), b.getExchange(), b.getArguments());
-        try {
-            //we only inform the kernel about DURABLE bindings
-            if(b.isDurable() ) {
-                //inform andes kernel to remove binding
-                QpidAMQPBridge.getInstance().removeBinding(b, getVirtualHost());
-            }
-
-        } catch (Exception e) {
-            throw new AMQInternalException("Error while reamove Binding:"+ e.getMessage(),e);
-        }
     }
 
-
-    public Binding removeBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments) throws AMQSecurityException, AMQInternalException
+    public Binding removeBinding(String bindingKey, AMQQueue queue, Exchange exchange,
+                                 Map<String, Object> arguments) throws AMQSecurityException, AMQInternalException
     {
         assert queue != null;
-        if (bindingKey == null)
-        {
+        if (bindingKey == null) {
             bindingKey = "";
         }
-        if (exchange == null)
-        {
+        if (exchange == null) {
             exchange = _defaultExchange;
         }
-        if (arguments == null)
-        {
+        if (arguments == null) {
             arguments = Collections.emptyMap();
         }
 
         // Check access
-        if (!getVirtualHost().getSecurityManager().authoriseUnbind(exchange, new AMQShortString(bindingKey), queue))
-        {
+        if (!getVirtualHost().getSecurityManager().authoriseUnbind(exchange,
+                new AMQShortString(bindingKey), queue)) {
             throw new AMQSecurityException("Permission denied: binding " + bindingKey);
         }
         
         BindingImpl b = _bindings.remove(new BindingImpl(bindingKey,queue,exchange,arguments));
 
-        if (b != null)
-        {
-            exchange.removeBinding(b);
-            queue.removeBinding(b);
-            exchange.removeCloseTask(b);
-            queue.removeQueueDeleteTask(b);
+        try {
+            if (b != null) {
+                if (b.isDurable()) {
+                    //inform andes kernel to remove binding.
+                    QpidAMQPBridge.getInstance().removeBinding(b, getVirtualHost());
 
-            if (b.isDurable())
-            {
-                _configSource.getDurableConfigurationStore().unbindQueue(exchange,
-                                         new AMQShortString(bindingKey),
-                                         queue,
-                                         FieldTable.convertToFieldTable(arguments));
+                    _configSource.getDurableConfigurationStore().unbindQueue(exchange,
+                            new AMQShortString(bindingKey),
+                            queue,
+                            FieldTable.convertToFieldTable(arguments));
+                }
+
+                exchange.removeBinding(b);
+                queue.removeBinding(b);
+                exchange.removeCloseTask(b);
+                queue.removeQueueDeleteTask(b);
+
+                b.logDestruction();
+                getConfigStore().removeConfiguredObject(b);
             }
-            b.logDestruction();
-            getConfigStore().removeConfiguredObject(b);
+            return b;
+        } catch (AndesException e) {
+            throw new AMQInternalException("Error while removing binding.", e);
         }
-
-
-
-        return b;
     }
 
     public Binding getBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments)
