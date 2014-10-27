@@ -511,10 +511,10 @@ public class QpidAMQPBridge {
     }
 
     /**
-     * channel between broker and client is closed
-     * @param channelID  id of the channel
+     * Channel closed. Clear status
+     * @param channelID id of the closed channel
      */
     public void channelIsClosing(UUID channelID) {
-         OnflightMessageTracker.getInstance().releaseAllMessagesOfChannelFromTracking(channelID);
+        MessagingEngine.getInstance().clientConnectionClosed(channelID);
     }
 }

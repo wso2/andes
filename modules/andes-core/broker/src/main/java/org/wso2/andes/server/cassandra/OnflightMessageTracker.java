@@ -25,7 +25,6 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.protocol.AMQConstant;
-import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.slot.SlotDeliveryWorker;
@@ -310,7 +309,7 @@ public class OnflightMessageTracker {
             log.warn("Number of Maximum Redelivery Tries Has Breached. Dropping The Message: " +
                      messageId);
             isOKToDeliver =  false;
-        //check if queue entry has expired. Any expired message will not be delivered
+            //check if queue entry has expired. Any expired message will not be delivered
         } else if (trackingData.isExpired()) {
             stampMessageAsExpired(messageId);
             log.warn("Message is expired. Dropping The Message: " + messageId);

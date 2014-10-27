@@ -21,6 +21,8 @@ package org.wso2.andes.kernel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
+
 import org.apache.log4j.Logger;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.storemanager.MessageStoreManagerFactory;
@@ -501,12 +503,12 @@ public class MessagingEngine {
      */
     private void cacheMessageContentPart(AndesMessagePart messagePart) {
         long messageID = messagePart.getMessageID();
-        List<AndesMessagePart> contentChumks = messagePatsCache.get(messageID);
-        if(contentChumks == null) {
-            contentChumks = new ArrayList<AndesMessagePart>();
+        List<AndesMessagePart> contentChunks = messagePatsCache.get(messageID);
+        if(contentChunks == null) {
+            contentChunks = new ArrayList<AndesMessagePart>();
         }
-        contentChumks.add(messagePart);
-        messagePatsCache.put(messageID, contentChumks);
+        contentChunks.add(messagePart);
+        messagePatsCache.put(messageID, contentChunks);
     }
 
     /**
@@ -526,4 +528,11 @@ public class MessagingEngine {
         messagePatsCache.remove(messageID);
     }
 
+    /**
+     * Connection Client to client is closed
+     * @param channelID id of the closed connection
+     */
+    public void clientConnectionClosed(UUID channelID) {
+        OnflightMessageTracker.getInstance().releaseAllMessagesOfChannelFromTracking(channelID);
+    }
 }
