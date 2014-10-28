@@ -43,6 +43,8 @@ import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.wso2.andes.amqp.AMQPUtils.generateQueueName;
+
 public class QueueDeclareHandler implements StateAwareMethodListener<QueueDeclareBody>
 {
     private static final Logger _logger = Logger.getLogger(QueueDeclareHandler.class);
@@ -210,7 +212,7 @@ public class QueueDeclareHandler implements StateAwareMethodListener<QueueDeclar
 
     protected AMQShortString createName()
     {
-        return new AMQShortString("tmp_" + UUID.randomUUID());
+        return new AMQShortString(generateQueueName());
     }
 
     protected AMQQueue createQueue(final AMQShortString queueName,

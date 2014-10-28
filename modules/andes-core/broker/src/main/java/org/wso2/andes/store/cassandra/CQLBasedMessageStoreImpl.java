@@ -264,6 +264,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
             int latency = (int) (System.currentTimeMillis() - start);
             if (latency > 1000) {
+
                 log.warn("Cassandra writing took " + latency + " millisecoonds for batch of " +
                         metadataList.size());
             }

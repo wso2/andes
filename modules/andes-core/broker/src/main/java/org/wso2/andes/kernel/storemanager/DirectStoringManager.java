@@ -179,7 +179,7 @@ public class DirectStoringManager extends BasicStoringManager implements Message
 
         //this should happen if and only if messages are removed from store
         for (AndesAckData ack : ackList) {
-            OnflightMessageTracker.getInstance().ackReceived(ack.channelID, ack.messageID);
+            OnflightMessageTracker.getInstance().handleAckReceived(ack.channelID, ack.messageID);
             //record ack received
             PerformanceCounter.recordMessageRemovedAfterAck();
         }
@@ -249,11 +249,6 @@ public class DirectStoringManager extends BasicStoringManager implements Message
             }
             messages.add(message);
             queueSeparatedRemoveMessages.put(message.destination, messages);
-
-            //update server side message trackings
-        /*    OnflightMessageTracker onflightMessageTracker = OnflightMessageTracker.getInstance();
-            onflightMessageTracker.updateDeliveredButNotAckedMessages(message.messageID);*/
-
 
             //if to move, move to DLC. This is costy. Involves per message read and writes
             if (moveToDeadLetterChannel) {

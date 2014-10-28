@@ -105,7 +105,7 @@ public class SlotManager {
             if (null != slotToBeAssigned) {
                 updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
             } else {
-                log.debug("Slot Manager - returns empty slot fro the queue: " + queueName);
+                log.debug("Slot Manager - returns empty slot for the queue: " + queueName);
             }
             return slotToBeAssigned;
         }

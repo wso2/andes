@@ -40,10 +40,6 @@ public class AndesSubscriptionManager {
     private Map<AMQChannel, Map<Long, Semaphore>> unAckedMessagelocks =
             new ConcurrentHashMap<AMQChannel, Map<Long, Semaphore>>();
 
-    //TODO - hasitha - what does this map do?
-    private Map<AMQChannel, QueueSubscriptionAcknowledgementHandler> acknowledgementHandlerMap =
-            new ConcurrentHashMap<AMQChannel, QueueSubscriptionAcknowledgementHandler>();
-
     private SubscriptionStore subscriptionStore;
 
     private List<SubscriptionListener> subscriptionListeners = new ArrayList<SubscriptionListener>();
@@ -65,10 +61,6 @@ public class AndesSubscriptionManager {
 
     public Map<AMQChannel, Map<Long, Semaphore>> getUnAcknowledgedMessageLocks() {
         return unAckedMessagelocks;
-    }
-
-    public Map<AMQChannel, QueueSubscriptionAcknowledgementHandler> getAcknowledgementHandlerMap() {
-        return acknowledgementHandlerMap;
     }
 
     /**

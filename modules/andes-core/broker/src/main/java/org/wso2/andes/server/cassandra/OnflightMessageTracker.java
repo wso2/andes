@@ -1,19 +1,21 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
- * WSO2 Inc. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
- * You may obtain a copy of the License at
+ *   Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *   WSO2 Inc. licenses this file to you under the Apache License,
+ *   Version 2.0 (the "License"); you may not use this file except
+ *   in compliance with the License.
+ *   You may obtain a copy of the License at
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing,
+ *  software distributed under the License is distributed on an
+ *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ *  KIND, either express or implied.  See the License for the
+ *  specific language governing permissions and limitations
+ *  under the License.
+ * /
  */
 
 package org.wso2.andes.server.cassandra;
@@ -23,76 +25,25 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.protocol.AMQConstant;
-import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.slot.SlotDeliveryWorker;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
+import org.wso2.andes.server.stats.PerformanceCounter;
+
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * This class is responsible of keeping track of message delivery and their status throughout
- * delivery, rejection, retry etc.
+ * This class will track message delivery by broker
+ * on the fly. Message delivery times, message status,
+ * is tracked here
  */
 public class OnflightMessageTracker {
 
     private static Log log = LogFactory.getLog(OnflightMessageTracker.class);
-
-    private int acktimeout = 10000;
-    private int maximumRedeliveryTimes = 1;
-
-    /**
-     * In memory map keeping sent messages. If this map does not have an entry for a delivery
-     * scheduled message it is a new message. Otherwise it is a redelivery
-     */
-    private LinkedHashMap<Long, MsgData> msgId2MsgData = new LinkedHashMap<Long, MsgData>();
-
-    private Map<String, Long> deliveryTag2MsgID = new ConcurrentHashMap<String, Long>();
-    private ConcurrentHashMap<UUID, ConcurrentSkipListSet<Long>> channelToMsgIDMap = new
-            ConcurrentHashMap<UUID, ConcurrentSkipListSet<Long>>();
-    private ConcurrentHashMap<Long, AndesMessageMetadata> messageIdToAndesMessagesMap = new
-            ConcurrentHashMap<Long, AndesMessageMetadata>();
-    private ConcurrentHashMap<Slot, AtomicInteger> pendingMessagesBySlot = new
-            ConcurrentHashMap<Slot, AtomicInteger>();
-    private ConcurrentSkipListSet<Long> ackedButNotDeletedMessages = new ConcurrentSkipListSet<Long>();
-    private static final ScheduledExecutorService scheduler = Executors
-            .newSingleThreadScheduledExecutor();
-    private AtomicLong sendButNotAckedMessageCount = new AtomicLong();
-    private ConcurrentHashMap<String, ArrayList<AndesMessageMetadata>>
-            queueTosentButNotAckedMessageMap = new ConcurrentHashMap<String,
-            ArrayList<AndesMessageMetadata>>();
-
-
-    /**
-     * Class to keep tracking data of a message
-     */
-    public class MsgData {
-
-        final long msgID;
-        boolean ackreceived = false;
-        final String queue;
-        final long timestamp;
-        final String deliveryID;
-        final AMQChannel channel;
-        int numOfDeliveries;
-        boolean ackWaitTimedOut;
-
-        public MsgData(long msgID, boolean ackreceived, String queue, long timestamp,
-                       String deliveryID, AMQChannel channel, int numOfDeliveries,
-                       boolean ackWaitTimedOut) {
-            this.msgID = msgID;
-            this.ackreceived = ackreceived;
-            this.queue = queue;
-            this.timestamp = timestamp;
-            this.deliveryID = deliveryID;
-            this.channel = channel;
-            this.numOfDeliveries = numOfDeliveries;
-            this.ackWaitTimedOut = ackWaitTimedOut;
-        }
-    }
 
     private static OnflightMessageTracker instance = new OnflightMessageTracker();
 
@@ -100,14 +51,138 @@ public class OnflightMessageTracker {
         return instance;
     }
 
+
+    /**
+     * Maximum number of times a message is tried to deliver
+     */
+    private int maximumRedeliveryTimes = 1;
+
+    /**
+     * When a message is read from a slot tracker keeps a record
+     * that the message is buffered. Those tracked are kept in memory
+     * until this number of new slots are read.
+     */
+    private int numberOfSlotsToKeepTracing = 5;
+
+    /**
+     * Message tracking data will be kept maximum until
+     * this timeout is reached
+     */
+    private long staleMsgDataRemovalTimeout;
+
+    /**
+     * In memory map keeping sent message statistics by message id
+     */
+    private LinkedHashMap<Long, MsgData> msgId2MsgData = new LinkedHashMap<Long, MsgData>();
+
+    /**
+     * Map to track messages being buffered to be sent <slot reference, messageID, MsgData
+     * reference>
+     */
+    private ConcurrentHashMap<Slot, ConcurrentHashMap<Long, MsgData>> messageBufferingTracker
+            = new ConcurrentHashMap<Slot, ConcurrentHashMap<Long, MsgData>>();
+
+    /**
+     * Map to track messages being sent <channel id, message id, MsgData reference>
+     */
+    private ConcurrentHashMap<UUID, ConcurrentHashMap<Long, MsgData>> messageSendingTracker
+            = new ConcurrentHashMap<UUID, ConcurrentHashMap<Long, MsgData>>();
+
+    private ConcurrentHashMap<Long, AndesMessageMetadata> messageIdToAndesMessagesMap = new
+            ConcurrentHashMap<Long, AndesMessageMetadata>();
+
+    /**
+     * Map to keep track of message counts pending to read
+     */
+    private ConcurrentHashMap<Slot, AtomicInteger> pendingMessagesBySlot = new
+            ConcurrentHashMap<Slot, AtomicInteger>();
+
+
+    /**
+     * Keep processed slots.
+     */
+    private LinkedHashMap<String, Slot> locallyProcessedSlots;
+
+    /**
+     * count sent but not acked message count for all destinations
+     */
+    private AtomicLong sendButNotAckedMessageCount = new AtomicLong();
+
+    /**
+     * Message status to keep track in which state message is
+     */
+    public enum MessageStatus {
+        Read,
+        Buffered,
+        Sent,
+        Acked,
+        RejectedAndBuffered,
+        Resent,
+        Expired,
+        DLCMessage;
+
+
+        /**
+         * Is OK to remove tracking message
+         * @param ms status of the message
+         * @return eligibility to remove
+         */
+        public static boolean isOKToRemove(MessageStatus ms){
+            return ( ms == Expired || ms == Acked || ms == DLCMessage);
+        }
+
+    }
+
+    /**
+     * Class to keep tracking data of a message
+     */
+    private class MsgData {
+
+        final long msgID;
+        boolean ackreceived = false;
+        final String queue;
+        long timestamp;
+        long expirationTime;
+        long deliveryID;
+        UUID channelId;
+        int numOfDeliveries;
+        MessageStatus messageStatus;
+        Slot slot;
+
+        private MsgData(long msgID, Slot slot, boolean ackReceived, String queue, long timestamp,
+                        long expirationTime, long deliveryID, UUID channelId, int numOfDeliveries,
+                        MessageStatus messageStatus) {
+            this.msgID = msgID;
+            this.slot = slot;
+            this.ackreceived = ackReceived;
+            this.queue = queue;
+            this.timestamp = timestamp;
+            this.expirationTime = expirationTime;
+            this.deliveryID = deliveryID;
+            this.channelId = channelId;
+            this.numOfDeliveries = numOfDeliveries;
+            this.messageStatus = messageStatus;
+        }
+
+        private boolean isExpired() {
+            if (expirationTime != 0L)
+            {
+                long now = System.currentTimeMillis();
+                return (now > expirationTime);
+            } else {
+                return false;
+            }
+        }
+    }
+
+
     private OnflightMessageTracker() {
 
-        this.acktimeout = ClusterResourceHolder.getInstance().getClusterConfiguration()
-                .getMaxAckWaitTime() * 1000;
         this.maximumRedeliveryTimes = ClusterResourceHolder.getInstance().getClusterConfiguration()
-                .getNumberOfMaximumDeliveryCount();
+                                                           .getNumberOfMaximumDeliveryCount();
+        this.staleMsgDataRemovalTimeout = 60*60*1000;
         /*
-         * For all add and remove, following is executed, and it will remove the oldest entry if
+         * for all add and remove, following is executed, and it will remove the oldest entry if
          * needed
          */
         msgId2MsgData = new LinkedHashMap<Long, MsgData>() {
@@ -116,100 +191,77 @@ public class OnflightMessageTracker {
             @Override
             protected boolean removeEldestEntry(Map.Entry<Long, MsgData> eldest) {
                 MsgData msgData = eldest.getValue();
-                boolean todelete = (System.currentTimeMillis() - msgData.timestamp) > (acktimeout
-                        * 10);
-                if (todelete) {
+                boolean toDelete = (System.currentTimeMillis() - msgData.timestamp) > staleMsgDataRemovalTimeout;
+                if (toDelete) {
                     if (!msgData.ackreceived) {
-                        //Reduce messages on flight on this channel
-                        msgData.channel.decrementNonAckedMessageCount();
-                        if (log.isDebugEnabled()) {
-                            log.debug(
-                                    "No ack received for delivery tag " + msgData.deliveryID + " and " +
-                                            "message id " + msgData.msgID);
-                        }
-                        //TODO notify the QueueDeliveryWorker to resend (it work now as well as
-                        // Flusher loops around, but this will be faster)
+                        //reduce messages on flight on this channel
+                        //msgData.channel.decrementNonAckedMessageCount();
+                        log.debug("No ack received for delivery tag " + msgData.deliveryID + " and " +
+                                  "message id " + msgData.msgID + " Message status = " + msgData.messageStatus);
                     }
-                    if (deliveryTag2MsgID.remove(msgData.deliveryID) == null) {
-                        log.error(
-                                "Cannot find delivery tag " + msgData.deliveryID + " and message " +
-                                        "id " + msgData.msgID);
+                    //permanently remove tracking of message
+                    log.warn("Loosing track of message id= " + msgData.msgID);
+                    try {
+                        stampMessageAsDLCAndRemoveFromTacking(msgData.msgID);
+                    } catch (AndesException e) {
+                        log.error("Error when loosing track of message id= " + msgData.msgID);
                     }
                 }
-                return todelete;
+                return toDelete;
             }
         };
 
         /**
-         * This thread will removed acked messages or messages that breached max redelivery count
-         * from tracking
-         * These messages are already scheduled to be removed from message store.
+         * Keep processed slots. This removes oldest slot as a new one comes in.
+         * When a slot is removed we remove all the tracing of those messages that they are
+         * buffered from memory.
          */
-        scheduler.scheduleAtFixedRate(new Runnable() {
+        locallyProcessedSlots = new LinkedHashMap<String, Slot>() {
             @Override
-            public void run() {
-                //TODO replace this with Gvava Cache if possible
-                synchronized (this) {
-                    Iterator<MsgData> iterator = msgId2MsgData.values().iterator();
-                    while (iterator.hasNext()) {
-                        MsgData mdata = iterator.next();
-                        if (mdata.ackreceived || (mdata.numOfDeliveries) > maximumRedeliveryTimes) {
-                            iterator.remove();
-                            deliveryTag2MsgID.remove(mdata.deliveryID);
-                            if ((mdata.numOfDeliveries) > maximumRedeliveryTimes) {
-                                log.warn(
-                                        "Message " + mdata.msgID + " with " + mdata.deliveryID +
-                                                " removed as it has gone though max redeliveries");
-                            }
-                        }
-                    }
+            protected boolean removeEldestEntry(Map.Entry<String, Slot> eldest) {
+                Slot eldestSlot = eldest.getValue();
+                boolean isPipelineFilled = locallyProcessedSlots.size() > numberOfSlotsToKeepTracing;
+                if (isPipelineFilled) {
+                    //this will not remove all the trackings.
+                    // It will be considered again if memory is growing (last is removed when new one comes)
+                    releaseAllMessagesOfSlotFromTracking(eldestSlot);
                 }
+                return isPipelineFilled;
             }
-        }, 5, 10, TimeUnit.SECONDS);
+        };
 
     }
 
     /**
-     * When messages are rejected and failed this method will be called. Rejected/failed message
-     * will be put again to the buffer in QueueDeliveryWorker
-     *
-     * @param deliveryTag the identifier generated per message will be used to track the delivered message
-     * @param channelId   the identifier of the channel created with the subscriber/s
-     * @throws AMQException Occurs during failure to re queue a specific message
+     * record that this node assign a slot to process. This will automatically
+     * remove all tracking of eldest slot in locallyProcessedSlots map
+     * @param slot slot assigned
      */
-    public void handleFailure(long deliveryTag, UUID channelId) throws AMQException {
-        String deliveryID = new StringBuilder(channelId.toString()).append('/').append(deliveryTag)
-                .toString();
-        Long messageId = deliveryTag2MsgID.get(deliveryID);
+    public void recordSlotAssignment(Slot slot) {
+        locallyProcessedSlots.put(slot.getId(),slot);
+    }
 
-        if (log.isDebugEnabled()) {
-            log.debug("Handling failed message and reQueue for deliveryTag : " + deliveryID + " messageId : " +
-                    messageId);
-        }
-        if (messageId != null) {
-            try {
-                synchronized (this) {
-                    MsgData msgData = msgId2MsgData.get(messageId);
-                    msgData.ackWaitTimedOut = true;
-                    if (msgData != null) {
-                        msgData.channel.decrementNonAckedMessageCount();
-                    }
-                }
-                //Re-queue the message to send again
-                reQueueMessage(messageId);
-
-            } catch (AndesException e) {
-                log.warn("Message " + messageId + "re-queueing failed");
-                throw new AMQException(AMQConstant.INTERNAL_ERROR,
-                        "Message " + messageId + "re-queueing failed", e);
-            }
+    /**
+     * Message has failed to process by client. Re-buffer the message
+     * @param messageId  id of the message rejected
+     * @param channelId id of the channel rejected
+     * @throws AMQException
+     */
+    public void handleFailure(long messageId, UUID channelId) throws AMQException {
+        try {
+            stampMessageAsRejected(channelId, messageId);
+            //re-queue the message to send again
+            reQueueMessage(messageId);
+        } catch (AndesException e) {
+            log.warn("Message " + messageId + "re-queueing failed");
+            throw new AMQException(AMQConstant.INTERNAL_ERROR,
+                                   "Message " + messageId + "re-queueing failed", e);
         }
     }
 
     /**
      * Re-queue the message to be sent again
-     *
-     * @param messageId the unique identifier of the message to be re queued
+     * @param messageId id of the message to re queue
      */
     public void reQueueMessage(long messageId) throws AndesException {
         AndesMessageMetadata metadata = messageIdToAndesMessagesMap.get(messageId);
@@ -223,230 +275,77 @@ public class OnflightMessageTracker {
     }
 
     /**
-     * Message is allowed to be sent if and only if it is a new message or an already sent message
-     * whose ack wait time out has happened
+     * Register that this message is being delivered to client
      *
-     * @param messageId the identifier of the message which is to be sent
-     * @return true if message is not sent earlier, else return false
+     * @return boolean if the message is being redelivered
      */
-    public synchronized boolean testMessage(long messageId) {
-        return msgId2MsgData.get(messageId) == null;
-    }
-
-    /**
-     * Register message as delivered through transport. If the message has not sent up to maximum
-     * number of re-delivery tries, resend it.
-     *
-     * @param andesMetaDataEntry the object which contains information regarding the message headers
-     * @param deliveryTag        the identifier generated per message will be used to track the delivered message
-     * @param channel            the object which holds the connection with the subscribers
-     * @return the status of the message which was sent for delivery
-     * @throws AMQException if an error occurs while the message is sent out
-     */
-    public boolean testAndAddMessage(AndesMessageMetadata andesMetaDataEntry,
-                                     long deliveryTag, AMQChannel channel)
+    public boolean checkAndRegisterSent(long messageId, UUID channelID, long deliverTag)
             throws AMQException {
 
-        //TODO - hasitha - are these AMQP specific checks?
+        MsgData trackingData = msgId2MsgData.get(messageId);
+        trackingData.channelId = channelID;
+        trackingData.deliveryID = deliverTag;
 
-        long messageId = andesMetaDataEntry.getMessageID();
-        String queue = andesMetaDataEntry.getDestination();
-        String nodeSpecificQueueName = queue;
-        String deliveryID = new StringBuffer(channel.getId().toString()).append("/")
-                .append(deliveryTag)
-                .toString();
+        //Add redelivery header if being redelivered
+        boolean isRedelivered = addMessageToSendingTracker(channelID, messageId);
 
-        long currentTime = System.currentTimeMillis();
-        int numOfDeliveriesOfCurrentMsg;
-        synchronized (this) {
-            MsgData mdata = msgId2MsgData.get(messageId);
-            numOfDeliveriesOfCurrentMsg = 0;
+        return isRedelivered;
 
-            if (deliveryTag2MsgID.containsKey(deliveryID)) {
-                throw new RuntimeException(
-                        "Delivery Tag " + deliveryID + " reused, this should not happen");
-            }
-            if (mdata == null) {
+    }
 
-                //This is a new message
-                // deliveredButNotAckedMessages.put(messageId, messageId);
-                if (log.isTraceEnabled()) {
-                    log.trace(
-                            "TRACING>> OFMT-testAndAdd-scheduling new message to deliver with MessageID-"
-                                    + messageId);
-                }
-            }
-            //This is an already sent but ack wait time expired message
-            else {
-                numOfDeliveriesOfCurrentMsg = mdata.numOfDeliveries;
-                // Entry should have "ReDelivery" header
-                andesMetaDataEntry.setRedelivered();
-                /*
-                Message has sent once, we will clean lists and consider it a new message,but with delivery times tracked
-                 */
-                deliveryTag2MsgID.remove(mdata.deliveryID);
-                msgId2MsgData.remove(messageId);
-                if (log.isTraceEnabled()) {
-                    log.trace(
-                            "TRACING>> OFMT- testAndAdd-scheduling ack expired message to deliver with " +
-                                    "MessageID-" + messageId);
-                }
-            }
-            numOfDeliveriesOfCurrentMsg++;
-            deliveryTag2MsgID.put(deliveryID, messageId);
+    /**
+     * Any custom checks or procedures that should be executed before message delivery should
+     * happen here. Any message rejected at this stage will be sent to DLC
+     * @param messageId id of message metadata entry to evaluate for delivery
+     * @return eligibility deliver
+     */
+    public boolean evaluateDeliveryRules(long messageId) {
+        boolean isOKToDeliver = true;
+        MsgData trackingData = getTrackingData(messageId);
 
-            if (log.isDebugEnabled()) {
-                log.debug("Map message to delivery Id for messageID : " + messageId + " deliveryID : " + deliveryID);
-            }
-
-            msgId2MsgData.put(messageId,
-                    new MsgData(messageId, false, nodeSpecificQueueName, currentTime,
-                            deliveryID, channel, numOfDeliveriesOfCurrentMsg, false));
-        }
-        sendButNotAckedMessageCount.incrementAndGet();
-
-        ConcurrentSkipListSet<Long> messagesDeliveredThroughThisChannel = channelToMsgIDMap.get(channel.getId
-                ());
-        if (messagesDeliveredThroughThisChannel == null) {
-            messagesDeliveredThroughThisChannel = new ConcurrentSkipListSet<Long>();
-            messagesDeliveredThroughThisChannel.add(messageId);
-            channelToMsgIDMap.put(channel.getId(), messagesDeliveredThroughThisChannel);
-        } else {
-            messagesDeliveredThroughThisChannel.add(messageId);
-        }
-        messageIdToAndesMessagesMap.put(messageId, andesMetaDataEntry);
-        /*
-          Any custom checks or procedures that should be executed before message delivery should
-          happen here. Any message
-          rejected at this stage will be dropped from the node queue permanently.
-         */
-
-        //Check if number of redelivery tries has breached.
-        if (numOfDeliveriesOfCurrentMsg > ClusterResourceHolder.getInstance()
-                .getClusterConfiguration()
-                .getNumberOfMaximumDeliveryCount()) {
-            log.warn(
-                    "Number of Maximum Redelivery Tries Has Breached. Dropping The Message: " +
-                            messageId + "From Queue " + queue);
-            return false;
-            //Check if queue entry has expired. Any expired message will not be delivered
-        } else if (andesMetaDataEntry.isExpired()) {
+        //check if number of redelivery tries has breached.
+        int numOfDeliveriesOfCurrentMsg = getDeliveryCountOfMessage(messageId);
+        if (numOfDeliveriesOfCurrentMsg > maximumRedeliveryTimes) {
+            log.warn("Number of Maximum Redelivery Tries Has Breached. Dropping The Message: " +
+                     messageId);
+            isOKToDeliver =  false;
+            //check if queue entry has expired. Any expired message will not be delivered
+        } else if (trackingData.isExpired()) {
+            stampMessageAsExpired(messageId);
             log.warn("Message is expired. Dropping The Message: " + messageId);
-            return false;
+            isOKToDeliver =  false;
         }
-        return true;
+
+        return isOKToDeliver;
     }
 
     /**
-     * This method will update message tracking maps when an ack received.
+     * decrement message count in slot and if it is zero check the slot again to resend
      *
-     * @param channelID Id of the connection which ack was received
-     * @param messageId Id of the message for which ack was received
-     * @throws AndesException If releveant message information cannot be found
+     * @param slot Slot to check
+     * @param queueName name of queue slot bares
+     * @throws AndesException
      */
-    public void ackReceived(UUID channelID, long messageId)
+    public void decrementMessageCountInSlotAndCheckToResend(Slot slot, String queueName)
             throws AndesException {
-        AndesMessageMetadata metadata;
-        MsgData msgData;
-
-        removeAckedButNotDeletedMessages(messageId);
-        synchronized (this) {
-            msgData = msgId2MsgData.get(messageId);
-            if (msgData != null) {
-                msgData.ackreceived = true;
-
-                // Then update the tracker
-                if (log.isTraceEnabled()) {
-                    log.trace("TRACING>> OFMT-Ack received for MessageID-" + msgData.msgID);
-                }
-                sendButNotAckedMessageCount.decrementAndGet();
-
-                //when subscriber is closed these tracks are removed immediately. When ack
-                //is handled via disruptor this key might be already removed in such a situation
-                //in that case channel id can be null as well
-                if (channelID != null && channelToMsgIDMap.get(channelID) != null) {
-                    channelToMsgIDMap.get(channelID).remove(messageId);
-                }
-                metadata = messageIdToAndesMessagesMap.remove(messageId);
-
-                // Decrement pending message count and check whether the slot is empty. If so read the slot again
-                // from message store.
-                if (metadata != null) {
-                    decrementMessageCountInSlotAndCheckToResend(metadata.getSlot(), msgData.queue);
-                }
-
-            } else {
-                throw new AndesException("No message data found for messageId " + messageId);
-            }
-        }
-    }
-
-    /**
-     * Clear channelToMsgIDMap and messageIdToAndesMessagesMap due to channel close.
-     *
-     * @param channel the connection infromation which b
-     */
-    public void releaseAckTrackingSinceChannelClosed(AMQChannel channel) {
-        ConcurrentSkipListSet<Long> sentButNotAckedMessages = channelToMsgIDMap.get(channel.getId());
-
-        if (sentButNotAckedMessages != null && sentButNotAckedMessages.size() > 0) {
-
-            for (long messageId : sentButNotAckedMessages) {
-
-                synchronized (this) {
-                    if (msgId2MsgData.get(messageId) != null) {
-                        sendButNotAckedMessageCount.decrementAndGet();
-                        AndesMessageMetadata queueEntry = messageIdToAndesMessagesMap
-                                .remove(messageId);
-
-                        if (queueEntry != null && !isAckedButNotDeleted(queueEntry.getMessageID())) {
-                            //Re-queue message to the buffer
-                            QueueDeliveryWorker.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(
-                                    queueEntry);
-                            if (log.isDebugEnabled()) {
-                                log.debug("Re-queued message : " + messageId + " since delivered but not acked.");
-                            }
-                        }
-                    }
-                    log.debug("TRACING>> OFMT- re-queued message-" + messageId + "- since delivered but not " +
-                            "acked");
-                }
-            }
-            // }
-        }
-        channelToMsgIDMap.remove(channel.getId());
-    }
-
-    public ArrayList<AndesMessageMetadata> getSentButNotAckedMessagesOfQueue(String queueName) {
-        return queueTosentButNotAckedMessageMap.remove(queueName);
-    }
-
-    /**
-     * Decrement message count in slot and if it is zerocheck the slot again to resend
-     *
-     * @param slot      The range of messages which the count should be decremented to
-     * @param queueName the name of the queue subscribers were bound to
-     * @throws AndesException occurs at a time where it fails to decrement the message count
-     */
-    public void decrementMessageCountInSlotAndCheckToResend(Slot slot, String queueName) throws AndesException {
         AtomicInteger pendingMessageCount = pendingMessagesBySlot.get(slot);
         int messageCount = pendingMessageCount.decrementAndGet();
         if (messageCount == 0) {
-                /*
-                All the Acks for the slot has bee received. Check the slot again for unsend
-                messages and if there are any send them and delete the slot.
-                 */
+            /*
+            All the Acks for the slot has bee received. Check the slot again for unsend
+            messages and if there are any send them and delete the slot.
+             */
             SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance()
-                    .getSlotWorker(queueName);
+                                                                     .getSlotWorker(queueName);
             slotWorker.checkForSlotCompletionAndResend(slot);
         }
 
     }
 
     /**
-     * Increment the message count in a slot
+     * increment the message count in a slot
      *
-     * @param slot the range of messages where the message count should be incremented
+     * @param slot slot whose message counter should increment
      */
     public void incrementMessageCountInSlot(Slot slot) {
         AtomicInteger pendingMessageCount = pendingMessagesBySlot.get(slot);
@@ -457,33 +356,238 @@ public class OnflightMessageTracker {
         pendingMessageCount.incrementAndGet();
     }
 
+    //handle ack
+
     /**
-     * Add messageId which was acknowledged but still not deleted from the message store to the corresponding map.
-     *
-     * @param messageId The messageId for which the acknowledgement received.
+     * Track acknowledgement for message
+     * @param channel channel of the ack
+     * @param messageID id of the message ack is for
      */
-    public void addAckedButNotDeletedMessage(long messageId) {
-        ackedButNotDeletedMessages.add(messageId);
+    public void handleAckReceived(UUID channel, long messageID) {
+        log.debug("Ack Received id= " + messageID);
+        MsgData trackingData = getTrackingData(messageID);
+        trackingData.ackreceived = true;
+        setMessageStatus(MessageStatus.Acked, trackingData);
+        sendButNotAckedMessageCount.decrementAndGet();
+        //record how much time took between delivery and ack receive
+        long timeTook = (System.currentTimeMillis() - trackingData.timestamp);
+        PerformanceCounter.recordAckReceived(trackingData.queue, (int) timeTook);
+        //release delivery tracing
+        releaseMessageDeliveryFromTracking(channel, messageID);
     }
 
     /**
-     * Remove a messageId from corresponding acknowledged but not deleted map when the message is deleted from the
-     * message store.
-     *
-     * @param messageId The messageId which was deleted from the message store.
+     * Track reject of the message
+     * @param channel channel of the message reject
+     * @param messageID id of the message reject represent
      */
-    public void removeAckedButNotDeletedMessages(long messageId) {
-        ackedButNotDeletedMessages.remove(messageId);
+    public void stampMessageAsRejected(UUID channel, long messageID) {
+        log.debug("stamping message as rejected id = " + messageID);
+        MsgData trackingData = getTrackingData(messageID);
+        trackingData.timestamp = System.currentTimeMillis();
+        sendButNotAckedMessageCount.decrementAndGet();
+        trackingData.messageStatus = MessageStatus.RejectedAndBuffered;
+        //release delivery tracing
+        releaseMessageDeliveryFromTracking(channel, messageID);
     }
 
     /**
-     * Check if an acknowledgement has been received for a given message Id which was yet to be removed from the
-     * message store.
-     *
-     * @param messageId The messageId which needs to be checked for acked but not deleted.
-     * @return Whether message is acknowledged but is still not deleted from the message store.
+     * Track that this message is buffered. Return thre if eligible to buffer
+     * @param slot slot message being read in
+     * @param andesMessageMetadata metadata to buffer
+     * @return  eligibility to buffer
      */
-    public boolean isAckedButNotDeleted(long messageId) {
-        return ackedButNotDeletedMessages.contains(messageId);
+    public boolean addMessageToBufferingTracker(Slot slot, AndesMessageMetadata andesMessageMetadata) {
+        long messageID = andesMessageMetadata.getMessageID();
+        boolean isOKToBuffer = true;
+        log.debug("Buffering message id = " + messageID + " slot = " + slot.toString());
+        ConcurrentHashMap<Long, MsgData> messagesOfSlot = messageBufferingTracker.get(slot);
+        if (messagesOfSlot == null) {
+            messagesOfSlot = new ConcurrentHashMap<Long, MsgData>();
+            messageBufferingTracker.put(slot, messagesOfSlot);
+        }
+        MsgData trackingData = messagesOfSlot.get(messageID);
+        if (trackingData == null) {
+            trackingData = new MsgData(messageID, slot, false,
+                                       andesMessageMetadata.getDestination(),
+                                       System.currentTimeMillis(), andesMessageMetadata.getExpirationTime(),
+                                       0, null, 0,MessageStatus.Read);
+            msgId2MsgData.put(messageID, trackingData);
+            messagesOfSlot.put(messageID, msgId2MsgData.get(messageID));
+            isOKToBuffer =  true;
+        } else {
+            log.debug("Buffering rejected message id = " + messageID);
+            isOKToBuffer =  false;
+        }
+        return isOKToBuffer;
     }
+
+    /**
+     * Release tracking of all messages belonging to a slot. i.e called when slot is removed.
+     * This will remove all buffering tracking of messages and tracking objects.
+     * But tracking objects will remain until delivery cycle completed
+     * @param slot slot to release
+     */
+    public void releaseAllMessagesOfSlotFromTracking(Slot slot) {
+        //remove all actual msgData objects
+        log.debug("Releasing tracking of messages for slot " + slot.toString());
+        ConcurrentHashMap<Long, MsgData> messagesOfSlot = messageBufferingTracker.remove(slot);
+        for (Long messageIdOfSlot : messagesOfSlot.keySet()) {
+            if(checkIfReadyToRemoveFromTracking(messageIdOfSlot)) {
+                msgId2MsgData.remove(messageIdOfSlot);
+            }
+        }
+    }
+
+    /**
+     * Remove tracking object from memory for a message if this returns true
+     * @param messageID  id of the message to evaluate
+     * @return eligibility to delete tracking object
+     */
+    private boolean checkIfReadyToRemoveFromTracking(long messageID) {
+        MsgData messageTrackingData = getTrackingData(messageID);
+        return  MessageStatus.isOKToRemove(messageTrackingData.messageStatus);
+    }
+
+    /**
+     * Release tracking of all messages sent from a channel
+     * @param channelID  id of the channel
+     */
+    public void releaseAllMessagesOfChannelFromTracking(UUID channelID) {
+        log.debug("Releasing tracking of messages sent by channel id = " + channelID);
+        messageSendingTracker.remove(channelID);
+    }
+
+    /**
+     * Release tracking that this message is delivered.
+     * @param channelID id of the channel
+     * @param messageID id of the message to remove
+     */
+    public void releaseMessageDeliveryFromTracking(UUID channelID, long messageID) {
+        log.debug("Releasing tracking of message sent id= " + messageID);
+        messageSendingTracker.get(channelID).remove(messageID);
+    }
+
+    /**
+     * Release tracking that this message is buffered.
+     * This will delete reference to tracking object only
+     * @param slot  slot message belongs
+     * @param messageId id of the message
+     */
+    public void releaseMessageBufferingFromTracking(Slot slot, long messageId) {
+        log.debug("Releasing message buffering tacking id= " + messageId);
+        messageBufferingTracker.get(slot).remove(messageId);
+    }
+
+    /**
+     * Increment delivery count in tracking object for message when delivered
+     * @param messageId id of the message
+     * @return number of current deliveries
+     */
+    public int incrementDeliveryCountOfMessage(long messageId) {
+        MsgData trackingData = getTrackingData(messageId);
+        trackingData.numOfDeliveries += 1;
+        return trackingData.numOfDeliveries;
+    }
+
+    /**
+     * Get how many times a message is delivered to client
+     * @param messageID  id of the message
+     * @return num of deliveries
+     */
+    public int getDeliveryCountOfMessage(long messageID) {
+        return getTrackingData(messageID).numOfDeliveries;
+    }
+
+    /**
+     * Set message status for a message.
+     * This can be buffered, sent, rejected etc
+     * @param messageStatus status of the message
+     * @param msgData  message tracking object
+     */
+    public void setMessageStatus(MessageStatus messageStatus, MsgData msgData) {
+        msgData.messageStatus = messageStatus;
+    }
+
+    /**
+     * Set message status as expired
+     * @param messageID id of the message to set expired
+     */
+    public void stampMessageAsExpired(long messageID) {
+        getTrackingData(messageID).messageStatus = MessageStatus.Expired;
+    }
+
+    /**
+     * Get the current status of the message in delivery pipeline
+     * @param messageID id of the message to get status
+     * @return status of the message
+     */
+    public MessageStatus getMessageStatus(long messageID) {
+        return getTrackingData(messageID).messageStatus;
+    }
+
+    /**
+     * Get message tracking object for a message. This contains
+     * all delivery information and message status of the message
+     * @param messageID id of the message
+     * @return  tracking object for message
+     */
+    public MsgData getTrackingData(long messageID) {
+        return msgId2MsgData.get(messageID);
+    }
+
+    //track message sending. return true if a redelivered message
+
+    /**
+     * Stamp a message as sent. This method also evaluate if the
+     * message is eligible to be sent to subscribers
+     * @param channelID id of the connection message is delivering to subscriber
+     * @param messageID id of the message
+     * @return  eligibility to deliver
+     */
+    public boolean addMessageToSendingTracker(UUID channelID, long messageID) {
+        log.debug(
+                "Tracing the sent message channel id = " + channelID + " message id = " +
+                messageID);
+        ConcurrentHashMap<Long, MsgData> messagesSentByChannel = messageSendingTracker
+                .get(channelID);
+        if (messagesSentByChannel == null) {
+            messagesSentByChannel = new ConcurrentHashMap<Long, MsgData>();
+            messageSendingTracker.put(channelID, messagesSentByChannel);
+        }
+        MsgData trackingData = messagesSentByChannel.get(messageID);
+        if (trackingData == null) {
+            trackingData = msgId2MsgData.get(messageID);
+            messagesSentByChannel.put(messageID, trackingData);
+        }
+        // increase delivery count
+        incrementDeliveryCountOfMessage(messageID);
+
+        sendButNotAckedMessageCount.incrementAndGet();
+
+        trackingData.messageStatus = MessageStatus.Sent;
+
+        //check if this is a redelivered message
+        return trackingData.numOfDeliveries > 1;
+    }
+
+    /**
+     * Permanently remove message from tacker. This will clear the tracking
+     * that message is buffered and message is sent and also will remove
+     * tracking object from memory
+     * @param messageID id of the message
+     */
+    public void stampMessageAsDLCAndRemoveFromTacking(long messageID) throws AndesException {
+        //remove actual object from memory
+        log.debug("Removing all tracking of message id = " + messageID);
+        MsgData trackingData = msgId2MsgData.remove(messageID);
+        UUID channelID = trackingData.channelId;
+        String queueName = trackingData.queue;
+        Slot slot = trackingData.slot;
+        releaseMessageDeliveryFromTracking(channelID, messageID);
+        releaseMessageBufferingFromTracking(slot, messageID);
+
+        decrementMessageCountInSlotAndCheckToResend(slot, queueName);
+    }
+
 }

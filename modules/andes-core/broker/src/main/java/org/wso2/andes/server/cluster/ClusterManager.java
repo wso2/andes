@@ -221,22 +221,6 @@ public class ClusterManager {
         return 0;
     }
 
-    /**
-     * remove in-memory messages tracked for this queue
-     *
-     * @param destinationQueueName name of queue messages should be removed
-     * @throws AndesException
-     */
-    public void removeInMemoryMessagesAccumulated(String destinationQueueName) throws AndesException {
-        //remove in-memory messages accumulated due to sudden subscription closing
-        QueueDeliveryWorker queueDeliveryWorker = ClusterResourceHolder.getInstance().getQueueDeliveryWorker();
-        if (queueDeliveryWorker != null) {
-            queueDeliveryWorker.clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(destinationQueueName);
-        }
-        //remove sent but not acked messages
-        OnflightMessageTracker.getInstance().getSentButNotAckedMessagesOfQueue(destinationQueueName);
-    }
-
     private void initStandaloneMode() throws Exception {
         final BrokerConfiguration config = ClusterResourceHolder.getInstance().getClusterConfiguration();
 

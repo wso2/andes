@@ -37,11 +37,9 @@ public class SlotDeliveryWorkerManager {
 
     private ExecutorService slotDeliveryWorkerExecutor;
 
-
     /**
      * Number of slot delivery worker threads running inn one MB node
      */
-
     private static ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat
             ("SlotDeliveryWorkerExecutor-%d").build();
 
@@ -75,7 +73,7 @@ public class SlotDeliveryWorkerManager {
      * When a subscription is added this method will be called. This method will decide which
      * SlotDeliveryWorker thread is assigned to which queue
      *
-     * @param queueName
+     * @param queueName  name of the queue to start slot delivery worker for
      */
     public synchronized void startSlotDeliveryWorker(String queueName) {
         int slotDeliveryWorkerId = getIdForSlotDeliveryWorker(queueName);
