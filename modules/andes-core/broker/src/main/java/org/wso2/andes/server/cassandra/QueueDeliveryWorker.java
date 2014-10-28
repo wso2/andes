@@ -194,7 +194,6 @@ public class QueueDeliveryWorker {
                 boolean isOKToBuffer = OnflightMessageTracker.getInstance()
                                                              .addMessageToBufferingTracker(slot,
                                                                                            message);
-                log.info("buffering message" + message.getMessageID() + " queue= " + queueName);
                 if (isOKToBuffer) {
                     queueDeliveryInfo.readButUndeliveredMessages.add(message);
                     //increment the message count in the slot

@@ -35,6 +35,7 @@ import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.UUID;
 
 public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 
@@ -47,12 +48,12 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
     /**
      *through which connection this message came into broker
      */
-    int channelId;
+    UUID channelId;
 
     private String destination;
     private boolean isPersistent;
     private boolean reDelivered;
-    Map<Long, PendingJob> pendingJobsTracker;
+    Map<UUID, PendingJob> pendingJobsTracker;
     public QueueAddress queueAddress;
     private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
 
@@ -94,11 +95,11 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         this.metadata = metadata;
     }
 
-    public Map<Long, PendingJob> getPendingJobsTracker() {
+    public Map<UUID, PendingJob> getPendingJobsTracker() {
         return pendingJobsTracker;
     }
 
-    public void setPendingJobsTracker(Map<Long, PendingJob> pendingJobsTracker) {
+    public void setPendingJobsTracker(Map<UUID, PendingJob> pendingJobsTracker) {
         this.pendingJobsTracker = pendingJobsTracker;
     }
 
@@ -134,11 +135,11 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         isPersistent = persistent;
     }
 
-    public int getChannelId() {
+    public UUID getChannelId() {
         return channelId;
     }
 
-    public void setChannelId(int channelId) {
+    public void setChannelId(UUID channelId) {
         this.channelId = channelId;
     }
 

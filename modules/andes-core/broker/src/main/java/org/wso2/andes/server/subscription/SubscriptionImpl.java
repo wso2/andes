@@ -27,6 +27,7 @@ import org.wso2.andes.common.AMQPFilterTypes;
 import org.wso2.andes.common.ClientProperties;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
@@ -267,8 +268,9 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                     //no point of trying to deliver if channel is closed ReQueue the message to be resent
                     // when channel is available
                     if (getChannel().isClosing()) {
-                        OnflightMessageTracker.getInstance().reQueueMessage(entry.getMessage()
-                                .getMessageNumber());
+                        AndesMessageMetadata message = AMQPUtils.convertAMQMessageToAndesMetadata(
+                                (AMQMessage) entry.getMessage(),getChannel().getId());
+                        MessagingEngine.getInstance().messageRejected(message);
                         return;
                     }
 

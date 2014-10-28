@@ -27,6 +27,7 @@ import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.MessagingEngine;
 
 import java.nio.ByteBuffer;
+import java.util.UUID;
 
 /**
  * This class will contain operations such as convertion of message which are taken from the protocol to be complient
@@ -112,7 +113,7 @@ public class MQTTUtils {
         messageHeader.setTopic(true);
         messageHeader.setDestination(topic);
         messageHeader.setPersistent(true);
-        messageHeader.setChannelId(1);
+        messageHeader.setChannelId(UUID.randomUUID());
         messageHeader.setMessageContentLength(messageContentLength);
         if (log.isDebugEnabled()) {
             log.debug("Message with id " + messageID + " having the topic " + topic + " with QOS" + qosLevel
