@@ -123,7 +123,7 @@ public class QpidAMQPBridge {
      * @param channelID       id of the channel
      * @throws AMQException
      */
-    public void messageMetaDataReceived(IncomingMessage incomingMessage, int channelID) throws AMQException {
+    public void messageMetaDataReceived(IncomingMessage incomingMessage, UUID channelID) throws AMQException {
         try {
             if(log.isDebugEnabled()){
             log.debug("AMQP BRIDGE: Message id= " + incomingMessage.getMessageNumber() + "received");
@@ -231,18 +231,10 @@ public class QpidAMQPBridge {
         }
     }
 
-    public void rejectMessage(long messageID, UUID channelID) throws AMQException {
+    public void rejectMessage(AndesMessageMetadata metadata) throws AMQException {
         try {
-
-            log.debug("AMQP BRIDGE: rejected message id= " + messageID + " channel = " + channelID);
-            //todo: hasitha - implement a non-amqp specific way to do this. For now doing nothing
-            MessagingEngine.getInstance().messageRejected();
-
-            /**Reject message is received when ack_wait_timeout happened in client side
-             * We need to inform onflightMessageTracker to resend the message again
-             */
-            OnflightMessageTracker.getInstance().handleFailure(messageID, channelID);
-
+            log.debug("AMQP BRIDGE: rejected message id= " + metadata.getMessageID() + " channel = " + metadata.getChannelId());
+            MessagingEngine.getInstance().messageRejected(metadata);
         } catch (AndesException e) {
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while handling rejected message", e);
         }

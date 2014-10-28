@@ -381,10 +381,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                      * happen here
                      */
 
-                    QpidAMQPBridge.getInstance().messageMetaDataReceived(incomingMessage, _channelId);
+                    QpidAMQPBridge.getInstance().messageMetaDataReceived(incomingMessage, this.getId());
 
                     AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
-                    AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message, _channelId);
+                    AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message, this.getId());
                     metadata.setExpirationTime(incomingMessage.getExpiration());
 
                 } catch (Throwable e) {
