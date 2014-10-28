@@ -36,6 +36,15 @@
     <name>WSO2 Carbon - Dependencies - Andes</name>
 
     <dependencies>
+
+        <!--if you change jython-standalone dependency you must change configuration in andes-core/common.xml as well-->
+
+        <dependency>
+            <groupId>org.python</groupId>
+            <artifactId>jython-standalone</artifactId>
+            <version>2.5.2</version>
+        </dependency>
+
         <dependency>
             <groupId>biz.aQute</groupId>
             <artifactId>bnd</artifactId>
@@ -211,8 +220,8 @@
         </dependency>
 
         <dependency>
-           <groupId>com.datastax.cassandra.wso2</groupId>
-	 <artifactId>cql-driver</artifactId>
+            <groupId>com.datastax.cassandra.wso2</groupId>
+            <artifactId>cql-driver</artifactId>
         </dependency>
 
         <!--eclipse set-->
@@ -427,22 +436,14 @@
             <artifactId>naming-resources</artifactId>
         </dependency>
 
-        <dependency>
-              <groupId>org.wso2.carbon</groupId>
-              <artifactId>org.wso2.carbon.core</artifactId>
-        </dependency>
 
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
         </dependency>
 
-       <!--Thrift Dependency-->
-        <dependency>
-            <groupId>libthrift.wso2</groupId>
-            <artifactId>libthrift</artifactId>
-        </dependency>
-  
+
+
     </dependencies>
 
     <build>
@@ -473,7 +474,8 @@
                         <configuration>
                             <target>
                                 <property name="java2.class.path"
-                                          refid="maven.dependency.classpath"/>s
+                                          refid="maven.dependency.classpath"/>
+
                                 <ant antfile="${basedir}/build.xml">
                                     <target name="build"/>
                                 </ant>
@@ -533,6 +535,7 @@
                                 </artifactItem>
                             </artifactItems>
                         </configuration>
+
                     </execution>
 
                 </executions>
@@ -688,6 +691,15 @@
                         </fileset>
                         <fileset>
                             <directory>tasks/classes</directory>
+                        </fileset>
+                        <fileset>
+                            <directory>lib/</directory>
+                            <includes>
+                                <include>**/*.jar</include>
+
+                            </includes>
+
+
                         </fileset>
                     </filesets>
                 </configuration>
