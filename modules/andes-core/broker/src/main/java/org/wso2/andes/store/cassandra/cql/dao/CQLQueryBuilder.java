@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package org.wso2.andes.store.cassandra.dao;
+package org.wso2.andes.store.cassandra.cql.dao;
 
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.gt;
@@ -38,8 +38,8 @@ import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.store.cassandra.dao.CassandraHelper.ColumnValueMap;
-import org.wso2.andes.store.cassandra.dao.CassandraHelper.WHERE_OPERATORS;
+import org.wso2.andes.store.cassandra.cql.dao.CassandraHelper.ColumnValueMap;
+import org.wso2.andes.store.cassandra.cql.dao.CassandraHelper.WHERE_OPERATORS;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 
 import com.datastax.driver.core.DataType;

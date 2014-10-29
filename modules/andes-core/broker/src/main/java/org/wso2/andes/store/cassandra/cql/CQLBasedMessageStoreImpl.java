@@ -16,30 +16,29 @@
  * under the License.
  */
 
-package org.wso2.andes.store.cassandra;
+package org.wso2.andes.store.cassandra.cql;
 
-import java.util.*;
-
-import com.datastax.driver.core.*;
-import me.prettyprint.cassandra.serializers.StringSerializer;
-import me.prettyprint.hector.api.factory.HFactory;
-import me.prettyprint.hector.api.mutation.Mutator;
+import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.Statement;
+import com.datastax.driver.core.querybuilder.Delete;
+import com.datastax.driver.core.querybuilder.Insert;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.store.cassandra.dao.CQLQueryBuilder;
-import org.wso2.andes.store.cassandra.dao.CassandraHelper;
-import org.wso2.andes.store.cassandra.dao.GenericCQLDAO;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 import org.wso2.andes.server.util.AlreadyProcessedMessageTracker;
 import org.wso2.andes.server.util.AndesConstants;
+import org.wso2.andes.store.cassandra.CassandraConstants;
+import org.wso2.andes.store.cassandra.cql.dao.CQLQueryBuilder;
+import org.wso2.andes.store.cassandra.cql.dao.CassandraHelper;
+import org.wso2.andes.store.cassandra.cql.dao.GenericCQLDAO;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 
-import com.datastax.driver.core.querybuilder.Delete;
-import com.datastax.driver.core.querybuilder.Insert;
+import java.util.*;
 
 /**
  * This is the implementation of MessageStore that deals with Cassandra no SQL DB.

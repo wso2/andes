@@ -24,8 +24,8 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.storemanager.AsyncStoringManager;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
-import org.wso2.andes.store.cassandra.CQLBasedMessageStoreImpl;
-import org.wso2.andes.store.cassandra.CQLConnection;
+import org.wso2.andes.store.cassandra.cql.CQLBasedMessageStoreImpl;
+import org.wso2.andes.store.cassandra.cql.CQLConnection;
 
 import java.util.ArrayList;
 import java.util.List;

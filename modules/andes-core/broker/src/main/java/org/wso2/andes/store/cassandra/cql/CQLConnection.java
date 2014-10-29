@@ -16,28 +16,25 @@
  * under the License.
  */
 
-package org.wso2.andes.store.cassandra;
+package org.wso2.andes.store.cassandra.cql;
 
+import com.datastax.driver.core.Cluster;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.ConfigurationProperties;
-import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesKernelBoot;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.store.cassandra.dao.GenericCQLDAO;
-import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
-
-import com.datastax.driver.core.Cluster;
+import org.wso2.andes.store.cassandra.CassandraConstants;
+import org.wso2.andes.store.cassandra.cql.dao.GenericCQLDAO;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 
-import static org.wso2.andes.store.cassandra.CassandraConstants.*;
+import static org.wso2.andes.store.cassandra.CassandraConstants.KEYSPACE;
 
 public class CQLConnection implements DurableStoreConnection {
 

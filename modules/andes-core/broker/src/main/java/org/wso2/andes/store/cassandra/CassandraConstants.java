@@ -18,11 +18,7 @@
 
 package org.wso2.andes.store.cassandra;
 
-import me.prettyprint.cassandra.serializers.ByteBufferSerializer;
-import me.prettyprint.cassandra.serializers.BytesArraySerializer;
-import me.prettyprint.cassandra.serializers.IntegerSerializer;
-import me.prettyprint.cassandra.serializers.LongSerializer;
-import me.prettyprint.cassandra.serializers.StringSerializer;
+import me.prettyprint.cassandra.serializers.*;
 
 /**
  * Constants used by Cassandra Stores related classes
@@ -33,33 +29,33 @@ public class CassandraConstants {
     /**
      * Connection property to get the jndi lookup name (value) of the data source
      */
-    protected static final String PROP_JNDI_LOOKUP_NAME = "dataSource";
+    public static final String PROP_JNDI_LOOKUP_NAME = "dataSource";
 
     /**
      * Cassandra cluster objects replication factor for key space.
      */
-    protected static final String PROP_REPLICATION_FACTOR = "replicationFactor";
+    public static final String PROP_REPLICATION_FACTOR = "replicationFactor";
 
     /**
      * GC grace seconds for Cassandra. ( Specifies the time to wait before garbage collecting
      * tombstones in Cassandra )
      */
-    protected static final String PROP_GC_GRACE_SECONDS = "GCGraceSeconds";
+    public static final String PROP_GC_GRACE_SECONDS = "GCGraceSeconds";
 
     /**
      * Read Consistency level. From How many replicas to be read before satisfying the read request
      */
-    protected static final String PROP_READ_CONSISTENCY = "readConsistencyLevel";
+    public static final String PROP_READ_CONSISTENCY = "readConsistencyLevel";
 
     /**
      * Write consistency level. How many replicas to be successfully written before acknowledging
      */
-    protected static final String PROP_WRITE_CONSISTENCY = "writeConsistencyLevel";
+    public static final String PROP_WRITE_CONSISTENCY = "writeConsistencyLevel";
 
     /**
      * Replication placement strategy (algorithm) to be used is defined in this class
      */
-    protected static final String PROP_STRATEGY_CLASS = "strategyClass";
+    public static final String PROP_STRATEGY_CLASS = "strategyClass";
 
     /**
      * Keysapce to be used by MB
@@ -80,6 +76,21 @@ public class CassandraConstants {
      * String data type for Cassandra
      */
     public final static String STRING_TYPE = "StringType";
+
+    /**
+     * UTF8 data type for Cassandra
+     */
+    public final static String UTF8_TYPE = "UTF8Type";
+
+    /**
+     * Username property to access Cassandra DB through Hector client.
+     */
+    public static final String PROP_USERNAME = "username";
+
+    /**
+     * Password property to access Cassandra DB through Hector client.
+     */
+    public static final String PROP_PASSWORD = "password";
 
     public static StringSerializer stringSerializer = StringSerializer.get();
     public static LongSerializer longSerializer = LongSerializer.get();
@@ -125,4 +136,20 @@ public class CassandraConstants {
 
     public final static String MESSAGES_FOR_EXPIRY_COLUMN_FAMILY="MessagesForExpiration";
 
+    /**
+     * Number of seconds to configure as the GC Grace seconds when creating Cassandra column
+     * families.
+     */
+    public final static String DEFAULT_GC_GRACE_SECONDS = "864000";
+
+    /**
+     * Default replication factor for Cassandra.
+     */
+    public final static String DEFAULT_REPLICATION_FACTOR = "1";
+
+    /**
+     * Default strategy class for Cassandra.
+     */
+    public final static String DEFAULT_STRATEGY_CLASS = "org.apache.cassandra.locator" +
+            ".SimpleStrategy";
 }

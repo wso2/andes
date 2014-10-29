@@ -16,37 +16,27 @@
  * under the License.
  */
 
-package org.wso2.andes.store.cassandra.dao;
+package org.wso2.andes.store.cassandra.cql.dao;
 
 
-import static com.datastax.driver.core.querybuilder.QueryBuilder.batch;
+import com.datastax.driver.core.*;
+import com.datastax.driver.core.querybuilder.Delete;
+import com.datastax.driver.core.querybuilder.Insert;
+import com.datastax.driver.core.querybuilder.Select;
+import com.datastax.driver.core.querybuilder.Update;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.server.store.util.CassandraDataAccessException;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.server.store.util.CassandraDataAccessException;
-
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Query;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.ResultSetFuture;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.querybuilder.Delete;
-import com.datastax.driver.core.querybuilder.Insert;
-import com.datastax.driver.core.querybuilder.Select;
-import com.datastax.driver.core.querybuilder.Update;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.batch;
 
 public class GenericCQLDAO {
 	
