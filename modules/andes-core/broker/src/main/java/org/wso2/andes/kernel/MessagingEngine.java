@@ -192,9 +192,13 @@ public class MessagingEngine {
         messageStoreManager.ackReceived(ackData);
     }
 
-    //todo: hasitha - to implement
-    public void messageRejected() throws AndesException {
+    public void messageRejected(AndesMessageMetadata metadata) throws AndesException {
 
+
+        /**Reject message is received when ack_wait_timeout happened in client side
+         * We need to inform onflightMessageTracker to resend the message again
+         */
+        OnflightMessageTracker.getInstance().handleFailure(metadata);
     }
 
     /**
@@ -484,8 +488,10 @@ public class MessagingEngine {
                     }
                     //We must update the routing key in metadata as well
                     clone.updateMetadata(subscriberQueue.getTargetQueue());
-                    log.info("Storing metadata queue= " + subscriberQueue
-                            .getTargetQueue() + " messageID= " + clone.getMessageID());
+                    if(log.isDebugEnabled()) {
+                        log.debug("Storing metadata queue= " + subscriberQueue
+                                .getTargetQueue() + " messageID= " + clone.getMessageID());
+                    }
                     messageStoreManager.storeMetadata(clone);
                 }
             }

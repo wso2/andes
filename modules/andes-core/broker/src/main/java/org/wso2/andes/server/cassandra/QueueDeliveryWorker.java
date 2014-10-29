@@ -194,11 +194,14 @@ public class QueueDeliveryWorker {
                 boolean isOKToBuffer = OnflightMessageTracker.getInstance()
                                                              .addMessageToBufferingTracker(slot,
                                                                                            message);
-                log.info("buffering message" + message.getMessageID() + " queue= " + queueName);
                 if (isOKToBuffer) {
                     queueDeliveryInfo.readButUndeliveredMessages.add(message);
                     //increment the message count in the slot
                     OnflightMessageTracker.getInstance().incrementMessageCountInSlot(slot);
+                } else {
+                    log.warn("Tracker rejected message id= " + message.getMessageID() + " from buffering " +
+                             "to deliver. This is an already buffered message");
+                    //todo: this message is previously buffered. Should be removed from slot
                 }
             }
             /**

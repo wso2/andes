@@ -29,7 +29,6 @@ import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cassandra.QueueBrowserDeliveryWorker;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
@@ -123,7 +122,7 @@ public class QpidAMQPBridge {
      * @param channelID       id of the channel
      * @throws AMQException
      */
-    public void messageMetaDataReceived(IncomingMessage incomingMessage, int channelID) throws AMQException {
+    public void messageMetaDataReceived(IncomingMessage incomingMessage, UUID channelID) throws AMQException {
         try {
             if(log.isDebugEnabled()){
             log.debug("AMQP BRIDGE: Message id= " + incomingMessage.getMessageNumber() + "received");
@@ -221,7 +220,7 @@ public class QpidAMQPBridge {
     public void ackReceived(UUID channelID, long messageID, String queueName, boolean isTopic) throws AMQException{
         try {
         if(log.isDebugEnabled()){
-        log.debug("AMQP BRIDGE: ack received for message id= " + messageID);
+        log.debug("AMQP BRIDGE: ack received for message id= " + messageID + " channelId= " + channelID);
         }
         AndesAckData andesAckData = AMQPUtils.generateAndesAckMessage(channelID, messageID,queueName,isTopic);
         MessagingEngine.getInstance().ackReceived(andesAckData);
@@ -231,18 +230,10 @@ public class QpidAMQPBridge {
         }
     }
 
-    public void rejectMessage(long messageID, UUID channelID) throws AMQException {
+    public void rejectMessage(AndesMessageMetadata metadata) throws AMQException {
         try {
-
-            log.debug("AMQP BRIDGE: rejected message id= " + messageID + " channel = " + channelID);
-            //todo: hasitha - implement a non-amqp specific way to do this. For now doing nothing
-            MessagingEngine.getInstance().messageRejected();
-
-            /**Reject message is received when ack_wait_timeout happened in client side
-             * We need to inform onflightMessageTracker to resend the message again
-             */
-            OnflightMessageTracker.getInstance().handleFailure(messageID, channelID);
-
+            log.debug("AMQP BRIDGE: rejected message id= " + metadata.getMessageID() + " channel = " + metadata.getChannelId());
+            MessagingEngine.getInstance().messageRejected(metadata);
         } catch (AndesException e) {
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while handling rejected message", e);
         }

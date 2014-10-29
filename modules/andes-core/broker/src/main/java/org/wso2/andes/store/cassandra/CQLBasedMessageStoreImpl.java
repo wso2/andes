@@ -277,9 +277,9 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             We can do this better, but leaving this as is or now.
             */
             for (AndesMessageMetadata md : metadataList) {
-                Map<Long, PendingJob> pendingJobMap = md.getPendingJobsTracker();
+                Map<UUID, PendingJob> pendingJobMap = md.getPendingJobsTracker();
                 if (pendingJobMap != null) {
-                    PendingJob jobData = pendingJobMap.get(md.getMessageID());
+                    PendingJob jobData = pendingJobMap.get(md.getChannelId());
                     if (jobData != null) {
                         jobData.semaphore.release();
                     }

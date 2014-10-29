@@ -267,7 +267,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                 //tell Andes kernel to create queue
                 QpidAMQPBridge.getInstance().createQueue(queue);
             }
-            _queueRegistry.registerQueue(queue);
+
         }
         catch (Exception ex)
         {
