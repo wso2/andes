@@ -155,6 +155,9 @@ public class SlotDeliveryWorker extends Thread {
                                         QueueDeliveryWorker.getInstance().sendMessageToFlusher(
                                                 messagesReadByLeadingThread, currentSlot);
                                     } else {
+                                        currentSlot.setSlotInActive();
+                                        //Release all message trackings for messages of slot
+                                        OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(currentSlot);
                                         MBThriftClient.deleteSlot(queueName, currentSlot, nodeId);
                                         /*If there are messages to be sent in the message
                                         buffer in QueueDeliveryWorker send them */
@@ -319,13 +322,15 @@ public class SlotDeliveryWorker extends Thread {
      */
     public void checkForSlotCompletionAndResend(Slot slot) throws AndesException {
         if (SlotUtils.checkSlotEmptyFromMessageStore(slot)) {
+            slot.setSlotInActive();
+            //Release all message trackings for messages of slot
+            OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
             try {
                 if (AndesContext.getInstance().isClusteringEnabled()) {
                     MBThriftClient.deleteSlot(slot.getQueueName(), slot, nodeId);
                 }
             } catch (ConnectionException e) {
-                throw new AndesException("Error deleting slot while checking for slot completion.",
-                                         e);
+                throw new AndesException("Error deleting slot while checking for slot completion.", e);
             }
 
         } else {
@@ -361,6 +366,10 @@ public class SlotDeliveryWorker extends Thread {
                 // removed.
                 if (allMessagesAlreadySent) {
                     try {
+                        slot.setSlotInActive();
+                        //Release all message trackings for messages of slot
+                        OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
+
                         if (AndesContext.getInstance().isClusteringEnabled()) {
                             MBThriftClient.deleteSlot(slot.getQueueName(), slot, nodeId);
                         }
