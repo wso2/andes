@@ -57,13 +57,6 @@ public class OnflightMessageTracker {
     private int maximumRedeliveryTimes = 1;
 
     /**
-     * When a message is read from a slot tracker keeps a record
-     * that the message is buffered. Those tracked are kept in memory
-     * until this number of new slots are read.
-     */
-    private int numberOfSlotsToKeepTracing = 5;
-
-    /**
      * Message tracking data will be kept maximum until
      * this timeout is reached
      */
@@ -99,12 +92,6 @@ public class OnflightMessageTracker {
      */
     private ConcurrentHashMap<Slot, AtomicInteger> pendingMessagesBySlot = new
             ConcurrentHashMap<Slot, AtomicInteger>();
-
-
-    /**
-     * Keep processed slots.
-     */
-    private LinkedHashMap<String, Slot> locallyProcessedSlots;
 
     /**
      * count sent but not acked message count for all destinations
@@ -214,34 +201,6 @@ public class OnflightMessageTracker {
             }
         };
 
-        /**
-         * Keep processed slots. This removes oldest slot as a new one comes in.
-         * When a slot is removed we remove all the tracing of those messages that they are
-         * buffered from memory.
-         */
-        locallyProcessedSlots = new LinkedHashMap<String, Slot>() {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry<String, Slot> eldest) {
-                Slot eldestSlot = eldest.getValue();
-                boolean isPipelineFilled = locallyProcessedSlots.size() > numberOfSlotsToKeepTracing;
-                if (isPipelineFilled) {
-                    //this will not remove all the trackings.
-                    // It will be considered again if memory is growing (last is removed when new one comes)
-                    releaseAllMessagesOfSlotFromTracking(eldestSlot);
-                }
-                return isPipelineFilled;
-            }
-        };
-
-    }
-
-    /**
-     * record that this node assign a slot to process. This will automatically
-     * remove all tracking of eldest slot in locallyProcessedSlots map
-     * @param slot slot assigned
-     */
-    public void recordSlotAssignment(Slot slot) {
-        locallyProcessedSlots.put(slot.getId(),slot);
     }
 
     /**
@@ -265,14 +224,12 @@ public class OnflightMessageTracker {
      * @param metadata message to re queue
      */
     public void reQueueMessage(AndesMessageMetadata metadata) throws AndesException {
-        //AndesMessageMetadata metadata = messageIdToAndesMessagesMap.get(messageId);
         QueueDeliveryWorker.QueueDeliveryInfo queueDeliveryInfo = QueueDeliveryWorker.getInstance().
                 getQueueDeliveryInfo(metadata.getDestination());
         if (log.isDebugEnabled()) {
             log.debug("Re-Queueing message " + metadata.getMessageID() + " to readButUndeliveredMessages map");
         }
         queueDeliveryInfo.readButUndeliveredMessages.add(metadata);
-        //messageIdToAndesMessagesMap.remove(messageId);
     }
 
     /**
@@ -323,8 +280,6 @@ public class OnflightMessageTracker {
                 trackingData.messageStatus = MessageStatus.Resent;
             }
 
-            //Keep a copy of message
-
         }
         return isOKToDeliver;
     }
@@ -374,7 +329,7 @@ public class OnflightMessageTracker {
      * @param channel channel of the ack
      * @param messageID id of the message ack is for
      */
-    public void handleAckReceived(UUID channel, long messageID) {
+    public void handleAckReceived(UUID channel, long messageID) throws AndesException {
         if(log.isDebugEnabled()) {
             log.debug("Ack Received message id= " + messageID + " channel id= " + channel);
         }
@@ -385,6 +340,7 @@ public class OnflightMessageTracker {
         //record how much time took between delivery and ack receive
         long timeTook = (System.currentTimeMillis() - trackingData.timestamp);
         PerformanceCounter.recordAckReceived(trackingData.queue, (int) timeTook);
+        decrementMessageCountInSlotAndCheckToResend(trackingData.slot, trackingData.queue);
         //release delivery tracing
         releaseMessageDeliveryFromTracking(channel, messageID);
     }
