@@ -46,6 +46,14 @@ public class Slot implements Serializable, Comparable<Slot> {
      */
     private String queueName;
 
+    /**
+     * Keep if slot is active, if not it is eligible to be removed
+     */
+    private boolean isSlotActive;
+
+    public Slot() {
+        isSlotActive = true;
+    }
 
     public void setQueueName(String queueName) {
         this.queueName = queueName;
@@ -77,6 +85,14 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     public void setStartMessageId(long startMessageId) {
         this.startMessageId = startMessageId;
+    }
+
+    public void setSlotInActive() {
+        isSlotActive = false;
+    }
+
+    public boolean isSlotActive() {
+        return isSlotActive;
     }
 
     @Override
