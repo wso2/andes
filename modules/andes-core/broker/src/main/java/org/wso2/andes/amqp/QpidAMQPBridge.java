@@ -29,7 +29,6 @@ import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cassandra.QueueBrowserDeliveryWorker;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
@@ -221,7 +220,7 @@ public class QpidAMQPBridge {
     public void ackReceived(UUID channelID, long messageID, String queueName, boolean isTopic) throws AMQException{
         try {
         if(log.isDebugEnabled()){
-        log.debug("AMQP BRIDGE: ack received for message id= " + messageID);
+        log.debug("AMQP BRIDGE: ack received for message id= " + messageID + " channelId= " + channelID);
         }
         AndesAckData andesAckData = AMQPUtils.generateAndesAckMessage(channelID, messageID,queueName,isTopic);
         MessagingEngine.getInstance().ackReceived(andesAckData);

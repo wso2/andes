@@ -376,7 +376,7 @@ public class OnflightMessageTracker {
      */
     public void handleAckReceived(UUID channel, long messageID) {
         if(log.isDebugEnabled()) {
-            log.debug("Ack Received id= " + messageID);
+            log.debug("Ack Received message id= " + messageID + " channel id= " + channel);
         }
         MsgData trackingData = getTrackingData(messageID);
         trackingData.ackreceived = true;
@@ -437,6 +437,21 @@ public class OnflightMessageTracker {
             isOKToBuffer =  false;
         }
         return isOKToBuffer;
+    }
+
+    /**
+     * Check if a message is already buffered without adding it to the buffer
+     * @param slot slot of the message
+     * @param messageID id of the message
+     * @return if message is already been buffered
+     */
+    public boolean checkIfMessageIsAlreadyBuffered(Slot slot, long messageID) {
+        boolean isAlreadyBuffered = false;
+        MsgData trackingData = messageBufferingTracker.get(slot).get(messageID);
+        if(trackingData != null) {
+           isAlreadyBuffered = true;
+        }
+        return isAlreadyBuffered;
     }
 
     /**

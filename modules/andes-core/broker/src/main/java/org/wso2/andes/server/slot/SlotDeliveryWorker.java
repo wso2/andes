@@ -347,8 +347,8 @@ public class SlotDeliveryWorker extends Thread {
 
                 boolean allMessagesAlreadySent = true;
                 for (AndesMessageMetadata messageMetadata : messagesReadByLeadingThread) {
-                    boolean messageNotSent = OnflightMessageTracker.getInstance()
-                                                                   .addMessageToBufferingTracker(slot,messageMetadata);
+                    boolean messageNotSent = ! OnflightMessageTracker.getInstance()
+                                               .checkIfMessageIsAlreadyBuffered(slot,messageMetadata.getMessageID());
 
                     if (messageNotSent) {
                         allMessagesAlreadySent = false;
