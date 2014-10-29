@@ -100,7 +100,8 @@ public class SlotDeliveryWorkerManager {
      * @return slot delivery worker ID
      */
     public int getIdForSlotDeliveryWorker(String queueName) {
-        return queueName.hashCode() % numberOfThreads;
+        // Get the absolute value since String.hashCode() can give both positive and negative values.
+        return Math.abs(queueName.hashCode() % numberOfThreads);
     }
 
 
