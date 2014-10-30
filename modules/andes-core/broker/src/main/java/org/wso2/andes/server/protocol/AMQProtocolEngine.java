@@ -17,26 +17,6 @@
  */
 package org.wso2.andes.server.protocol;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.nio.ByteBuffer;
-import java.security.Principal;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-
-import javax.management.JMException;
-import javax.security.auth.Subject;
-import javax.security.sasl.SaslServer;
-
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQChannelException;
 import org.wso2.andes.AMQConnectionException;
@@ -45,24 +25,7 @@ import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.codec.AMQCodecFactory;
 import org.wso2.andes.codec.AMQDecoder;
 import org.wso2.andes.common.ClientProperties;
-import org.wso2.andes.framing.AMQBody;
-import org.wso2.andes.framing.AMQDataBlock;
-import org.wso2.andes.framing.AMQFrame;
-import org.wso2.andes.framing.AMQMethodBody;
-import org.wso2.andes.framing.AMQProtocolHeaderException;
-import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.framing.ChannelCloseBody;
-import org.wso2.andes.framing.ChannelCloseOkBody;
-import org.wso2.andes.framing.ConnectionCloseBody;
-import org.wso2.andes.framing.ContentBody;
-import org.wso2.andes.framing.ContentHeaderBody;
-import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.framing.HeartbeatBody;
-import org.wso2.andes.framing.MethodDispatcher;
-import org.wso2.andes.framing.MethodRegistry;
-import org.wso2.andes.framing.ProtocolInitiation;
-import org.wso2.andes.framing.ProtocolVersion;
-import org.wso2.andes.framing.amqp_0_91.BasicPublishBodyImpl;
+import org.wso2.andes.framing.*;
 import org.wso2.andes.pool.Job;
 import org.wso2.andes.pool.ReferenceCountingExecutorService;
 import org.wso2.andes.protocol.AMQConstant;
@@ -87,7 +50,6 @@ import org.wso2.andes.server.management.Managable;
 import org.wso2.andes.server.management.ManagedObject;
 import org.wso2.andes.server.output.ProtocolOutputConverter;
 import org.wso2.andes.server.output.ProtocolOutputConverterRegistry;
-import org.wso2.andes.server.queue.SimpleAMQQueue;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.security.auth.sasl.UsernamePrincipal;
 import org.wso2.andes.server.state.AMQState;
@@ -96,7 +58,6 @@ import org.wso2.andes.server.stats.StatisticsCounter;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostRegistry;
 import org.wso2.andes.transport.Sender;
-import org.wso2.andes.transport.flow.control.EventDispatcher;
 import org.wso2.andes.transport.flow.control.FlowControlEventObserver;
 import org.wso2.andes.transport.network.NetworkConnection;
 
@@ -108,7 +69,11 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.security.Principal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -1039,6 +1004,9 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
 
     public void closed()
     {
+        // Set user's AuthorizedSubject in current thread
+        org.wso2.andes.server.security.SecurityManager
+                .setThreadSubject(this.getAuthorizedSubject());
         try
         {
             closeSession();
