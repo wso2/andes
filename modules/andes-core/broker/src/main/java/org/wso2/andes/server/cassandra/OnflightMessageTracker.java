@@ -114,11 +114,10 @@ public class OnflightMessageTracker {
 
         /**
          * Is OK to remove tracking message
-         * @param ms status of the message
          * @return eligibility to remove
          */
-        public static boolean isOKToRemove(MessageStatus ms){
-            return ( ms == Expired || ms == Acked || ms == DLCMessage);
+        public  boolean isOKToRemove(){
+            return ( this == Acked || this ==  Expired || this == DLCMessage);
         }
 
     }
@@ -244,10 +243,7 @@ public class OnflightMessageTracker {
         trackingData.channelId = channelID;
         trackingData.deliveryID = deliverTag;
 
-        //Add redelivery header if being redelivered
-        boolean isRedelivered = addMessageToSendingTracker(channelID, messageId);
-
-        return isRedelivered;
+        return addMessageToSendingTracker(channelID, messageId);
 
     }
 
@@ -439,7 +435,7 @@ public class OnflightMessageTracker {
      */
     private boolean checkIfReadyToRemoveFromTracking(long messageID) {
         MsgData messageTrackingData = getTrackingData(messageID);
-        return  MessageStatus.isOKToRemove(messageTrackingData.messageStatus);
+        return  messageTrackingData.messageStatus.isOKToRemove();
     }
 
     /**
