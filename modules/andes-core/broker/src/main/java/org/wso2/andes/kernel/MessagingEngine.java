@@ -457,27 +457,26 @@ public class MessagingEngine {
     }
 
 
-
+    /**
+     * Route the message to queue/queues of subscribers matching in AMQP way.
+     * Hierarchical topic message routing is evaluated here.
+     * @param message message to route
+     * @throws AndesException
+     */
     private void routeAMQPMetadata(AndesMessageMetadata message) throws AndesException{
         if (message.isTopic) {
+            //get all topic subscriptions in the cluster
             List<AndesSubscription> subscriptionList = subscriptionStore
-                    .getActiveClusterSubscribersForDestination(message.getDestination(), true);
-            if (subscriptionList.size() == 0) {
-                log.info("Message routing key: " + message
-                        .getDestination() + " No routes in cluster. Ignoring Message");
-                List<Long> messageIdList = new ArrayList<Long>();
-                messageIdList.add(message.getMessageID());
-                //todo: at this moment content is still in disruptor.
-                durableMessageStore.deleteMessageParts(messageIdList);
-            }
-
+                    .getAllActiveClusterSubscriptions(true);
             boolean originalMessageUsed = false;
+            String messageRoutingKey = message.getDestination();
             for (AndesSubscription subscriberQueue : subscriptionList) {
-                //this call is AMQP Specific
+                //this call is AMQP Specific. It evaluates the routing key of the binding subscriber bares
+                //with the routing key of the message
                 if (AMQPUtils
                         .isTargetQueueBoundByMatchingToRoutingKey(subscriberQueue
                                                                   .getSubscribedDestination(),
-                                                                  message.getDestination())) {
+                                                                  messageRoutingKey)) {
                     message.setDestination(subscriberQueue.getTargetQueue());
                     AndesMessageMetadata clone;
                     if (!originalMessageUsed) {
@@ -494,6 +493,17 @@ public class MessagingEngine {
                     }
                     messageStoreManager.storeMetadata(clone);
                 }
+            }
+
+            //if there is no matching subscriber at the moment there is no point
+            //of storing the message
+            if(!originalMessageUsed) {
+                log.info("Message routing key: " + message
+                        .getDestination() + " No routes in cluster. Ignoring Message");
+                List<Long> messageIdList = new ArrayList<Long>();
+                messageIdList.add(message.getMessageID());
+                //todo: at this moment content is still in disruptor.
+                durableMessageStore.deleteMessageParts(messageIdList);
             }
 
         } else {

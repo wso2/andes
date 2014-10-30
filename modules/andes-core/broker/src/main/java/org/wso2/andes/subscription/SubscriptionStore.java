@@ -99,6 +99,15 @@ public class SubscriptionStore {
         return subscriptionsHavingExternalsubscriber;
     }
 
+    public List<AndesSubscription> getAllActiveClusterSubscriptions(boolean isTopic) throws AndesException {
+        List<AndesSubscription> allActiveSubscriptions = new ArrayList<AndesSubscription>();
+        Set<String> destinations = isTopic ? clusterTopicSubscriptionMap.keySet() : clusterQueueSubscriptionMap.keySet();
+        for(String destination : destinations) {
+           allActiveSubscriptions.addAll(getActiveClusterSubscribersForDestination(destination,isTopic));
+        }
+        return allActiveSubscriptions;
+    }
+
     /**
      * get all ACTIVE LOCAL subscription entries subscribed for a destination/topic
      *
