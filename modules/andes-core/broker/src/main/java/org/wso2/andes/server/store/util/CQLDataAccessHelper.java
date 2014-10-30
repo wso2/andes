@@ -380,7 +380,7 @@ public class CQLDataAccessHelper {
         try {
             CQLQueryBuilder.CqlUpdate update = new CQLQueryBuilder.CqlUpdate(keyspace, cfName);
             update.addColumnAndValue(MSG_COUNTER_COLUMN, MSG_COUNTER_COLUMN);
-            update.addCounterColumnAndValue(MSG_COUNTER_COLUMN, 1);
+            update.addCounterColumnAndValue(MSG_COUNTER_COLUMN, 0);
             update.addCondition(MSG_COUNTER_ROW, counterRowName, WHERE_OPERATORS.EQ);
             update.addCondition(MSG_COUNTER_QUEUE, queueColumn, WHERE_OPERATORS.EQ);
             GenericCQLDAO.update(keyspace, update);
@@ -445,7 +445,7 @@ public class CQLDataAccessHelper {
             CQLQueryBuilder.CqlUpdate update = new CQLQueryBuilder.CqlUpdate(keyspace,
                                                                              columnFamily);
             update.addColumnAndValue(MSG_COUNTER_COLUMN, MSG_COUNTER_COLUMN);
-            update.addCounterColumnAndValue(MSG_COUNTER_COLUMN, 1);
+            update.addCounterColumnAndValue(MSG_COUNTER_COLUMN, +incrementBy);
             update.addCondition(MSG_COUNTER_ROW, rawID, WHERE_OPERATORS.EQ);
             update.addCondition(MSG_COUNTER_QUEUE, columnName, WHERE_OPERATORS.EQ);
             GenericCQLDAO.update(keyspace, update);
