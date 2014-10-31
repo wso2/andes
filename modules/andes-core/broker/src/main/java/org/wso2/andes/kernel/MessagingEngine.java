@@ -18,34 +18,43 @@
 
 package org.wso2.andes.kernel;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
-
 import org.apache.log4j.Logger;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.storemanager.MessageStoreManagerFactory;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.server.configuration.BrokerConfiguration;
-import org.wso2.andes.server.queue.DLCQueueUtils;
-import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
-import org.wso2.andes.server.slot.thrift.MBThriftClient;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
+import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cassandra.TopicDeliveryWorker;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
+import org.wso2.andes.server.configuration.BrokerConfiguration;
+import org.wso2.andes.server.queue.DLCQueueUtils;
+import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
+import org.wso2.andes.server.slot.thrift.MBThriftClient;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.subscription.SubscriptionStore;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
 
 
 /**
  * This class will handle all message related functions of WSO2 Message Broker
  */
 public class MessagingEngine {
+
+    private StatPublisherMessageListener statPublisherMessageListener;
+    private int noOfSubscribers = 0;
+
+    //StatPublisher Interface set from StatPublisher Component
+    public void setStatPublisherMessageListener(StatPublisherMessageListener statPublisherMessageListener) {
+        this.statPublisherMessageListener = statPublisherMessageListener;
+    }
+
 
     /**
      * Logger for MessagingEngine
@@ -182,6 +191,11 @@ public class MessagingEngine {
         } catch (Exception e) {
             throw new AndesException("Error in storing the message to the store", e);
         }
+
+        //Check StatPublisher component activate or not
+        if (statPublisherMessageListener != null) {
+            statPublisherMessageListener.sendMessageDetails(message, noOfSubscribers);
+        }
     }
 
     public AndesMessageMetadata getMessageMetaData(long messageID) throws AndesException {
@@ -190,6 +204,8 @@ public class MessagingEngine {
 
     public void ackReceived(AndesAckData ackData) throws AndesException {
         messageStoreManager.ackReceived(ackData);
+        if (statPublisherMessageListener != null) {
+            statPublisherMessageListener.sendAckMessageDetails(ackData);}
     }
 
     public void messageRejected(AndesMessageMetadata metadata) throws AndesException {
