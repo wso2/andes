@@ -30,7 +30,7 @@ import org.wso2.andes.subscription.SubscriptionStore;
 
 
 import java.util.*;
-import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
  * SlotDelivery worker is responsible of distributing messages to subscribers. Messages will be
@@ -38,7 +38,10 @@ import java.util.concurrent.ConcurrentSkipListSet;
  */
 public class SlotDeliveryWorker extends Thread {
 
-    private ConcurrentSkipListSet<String> queueList;
+    /**
+     * keeps storage queue name vs actual destination it represent
+     */
+    private ConcurrentSkipListMap<String, String> storageQueueNameToDestinationMap;
     private SubscriptionStore subscriptionStore;
     private HashMap<String, Long> localLastProcessedIdMap;
     private static boolean isClusteringEnabled;
@@ -54,7 +57,7 @@ public class SlotDeliveryWorker extends Thread {
     public SlotDeliveryWorker() {
         log.info("SlotDeliveryWorker Initialized.");
         queueDeliveryWorker = QueueDeliveryWorker.getInstance();
-        this.queueList = new ConcurrentSkipListSet<String>();
+        this.storageQueueNameToDestinationMap = new ConcurrentSkipListMap<String, String>();
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
         localLastProcessedIdMap = new HashMap<String, Long>();
@@ -79,18 +82,19 @@ public class SlotDeliveryWorker extends Thread {
             //Iterate through all the queues registered in this thread
             int idleQueueCounter = 0;
 
-            for (String queueName : queueList) {
+            for (String storageQueueName : storageQueueNameToDestinationMap.keySet()) {
+                String destinationOfMessagesInQueue = storageQueueNameToDestinationMap.get(storageQueueName);
                 Collection<LocalSubscription> subscriptions4Queue;
                 try {
-                    subscriptions4Queue = subscriptionStore.getActiveLocalSubscribers(queueName,
-                                                                                      false);
+                    subscriptions4Queue = subscriptionStore.getActiveLocalSubscribersForQueuesAndTopics(destinationOfMessagesInQueue);
                     if (subscriptions4Queue != null && !subscriptions4Queue.isEmpty()) {
                         //Check in memory buffer in QueueDeliveryWorker has room
-                        if (queueDeliveryWorker.getQueueDeliveryInfo(queueName)
+                        if (queueDeliveryWorker.getQueueDeliveryInfo(destinationOfMessagesInQueue)
                                                .isMessageBufferFull()) {
                             if (isClusteringEnabled) {
                                 long startTime = System.currentTimeMillis();
-                                Slot currentSlot = MBThriftClient.getSlot(queueName, nodeId);
+                                Slot currentSlot = MBThriftClient.getSlot(storageQueueName, nodeId);
+                                currentSlot.setDestinationOfMessagesInSlot(destinationOfMessagesInQueue);
                                 long endTime = System.currentTimeMillis();
 
                                 if (log.isDebugEnabled()) {
@@ -112,11 +116,11 @@ public class SlotDeliveryWorker extends Thread {
                                                   "cluster mode");
                                     }
                                     boolean sentFromMessageBuffer = sendFromMessageBuffer(
-                                            queueName);
+                                            destinationOfMessagesInQueue);
                                     if (!sentFromMessageBuffer) {
                                         //No available free slots
                                         idleQueueCounter++;
-                                        if (idleQueueCounter == queueList.size()) {
+                                        if (idleQueueCounter == storageQueueNameToDestinationMap.size()) {
                                             try {
                                                 if (log.isDebugEnabled()) {
                                                     log.debug("Sleeping Slot Delivery Worker");
@@ -129,7 +133,7 @@ public class SlotDeliveryWorker extends Thread {
                                     }
                                 } else {
                                     if (log.isDebugEnabled()) {
-                                        log.debug("Received slot for queue " + queueName + " " +
+                                        log.debug("Received slot for queue " + storageQueueName + " " +
                                                   "is: " + currentSlot.getStartMessageId() +
                                                   " - " + currentSlot.getEndMessageId() +
                                                   "Thread Id:" + Thread.currentThread().getId());
@@ -139,35 +143,32 @@ public class SlotDeliveryWorker extends Thread {
                                     //Read messages in the slot
                                     List<AndesMessageMetadata> messagesReadByLeadingThread =
                                             MessagingEngine.getInstance().getMetaDataList(
-                                                    queueName, firstMsgId, lastMsgId);
+                                                    storageQueueName, firstMsgId, lastMsgId);
                                     if (messagesReadByLeadingThread != null &&
                                         !messagesReadByLeadingThread.isEmpty()) {
                                         if (log.isDebugEnabled()) {
                                             log.debug("Number of messages read from slot " +
                                                       currentSlot.getStartMessageId() + " - " +
                                                       currentSlot.getEndMessageId() + " is " +
-                                                      messagesReadByLeadingThread.size());
+                                                      messagesReadByLeadingThread.size() + " queue= " + storageQueueName);
                                         }
-                                        log.info("Number of messages read from slot " +
-                                                  currentSlot.getStartMessageId() + " - " +
-                                                  currentSlot.getEndMessageId() + " is " +
-                                                  messagesReadByLeadingThread.size() + " queue= " + queueName);
                                         QueueDeliveryWorker.getInstance().sendMessageToFlusher(
                                                 messagesReadByLeadingThread, currentSlot);
                                     } else {
                                         currentSlot.setSlotInActive();
                                         //Release all message trackings for messages of slot
                                         OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(currentSlot);
-                                        MBThriftClient.deleteSlot(queueName, currentSlot, nodeId);
+                                        MBThriftClient.deleteSlot(storageQueueName, currentSlot, nodeId);
                                         /*If there are messages to be sent in the message
                                         buffer in QueueDeliveryWorker send them */
-                                        sendFromMessageBuffer(queueName);
+                                        sendFromMessageBuffer(destinationOfMessagesInQueue);
                                     }
                                 }
+                            //Standalone mode
                             } else {
                                 long startMessageId = 0;
-                                if (localLastProcessedIdMap.get(queueName) != null) {
-                                    startMessageId = localLastProcessedIdMap.get(queueName) + 1;
+                                if (localLastProcessedIdMap.get(storageQueueName) != null) {
+                                    startMessageId = localLastProcessedIdMap.get(storageQueueName) + 1;
                                 }
                                 int slotWindowSize = ClusterResourceHolder.getInstance()
                                                                           .getClusterConfiguration()
@@ -175,20 +176,21 @@ public class SlotDeliveryWorker extends Thread {
                                 List<AndesMessageMetadata> messagesReadByLeadingThread =
                                         MessagingEngine.getInstance()
                                                        .getNextNMessageMetadataFromQueue
-                                                               (queueName, startMessageId,
+                                                               (storageQueueName, startMessageId,
                                                                 slotWindowSize);
                                 if (messagesReadByLeadingThread == null ||
                                     messagesReadByLeadingThread.isEmpty()) {
                                     log.debug("No messages are read from the leading thread...");
                                     boolean sentFromMessageBuffer = sendFromMessageBuffer
-                                            (queueName);
+                                            (destinationOfMessagesInQueue);
                                     log.debug(
                                             "Sent messages from buffer = " + sentFromMessageBuffer);
                                     if (!sentFromMessageBuffer) {
                                         idleQueueCounter++;
                                         try {
                                             //There are no messages to read
-                                            if (idleQueueCounter == queueList.size()) {
+                                            if (idleQueueCounter == storageQueueNameToDestinationMap
+                                                    .size()) {
                                                 if (log.isDebugEnabled()) {
                                                     log.debug("Sleeping Slot Delivery Worker");
                                                 }
@@ -214,9 +216,10 @@ public class SlotDeliveryWorker extends Thread {
                                     log.debug(
                                             "Last message id from the leading thread = " +
                                             lastMessageId);
-                                    localLastProcessedIdMap.put(queueName, lastMessageId);
+                                    localLastProcessedIdMap.put(storageQueueName, lastMessageId);
                                     Slot currentSlot = new Slot();
-                                    currentSlot.setQueueName(queueName);
+                                    currentSlot.setDestinationOfMessagesInSlot(
+                                            destinationOfMessagesInQueue);
                                     currentSlot.setStartMessageId(startMessageId);
                                     currentSlot.setEndMessageId(lastMessageId);
                                     log.debug("sending read messages to flusher << " + currentSlot
@@ -230,14 +233,14 @@ public class SlotDeliveryWorker extends Thread {
                                             buffer in QueueDeliveryWorker send them */
                             if (log.isDebugEnabled()) {
                                 log.debug(
-                                        "The queue" + queueName + " has no room. Thus sending " +
+                                        "The queue" + storageQueueName + " has no room. Thus sending " +
                                         "from buffer.");
                             }
-                            sendFromMessageBuffer(queueName);
+                            sendFromMessageBuffer(destinationOfMessagesInQueue);
                         }
                     } else {
                         idleQueueCounter++;
-                        if (idleQueueCounter == queueList.size()) {
+                        if (idleQueueCounter == storageQueueNameToDestinationMap.size()) {
                             try {
                                 if (log.isDebugEnabled()) {
                                     log.debug("Sleeping Slot Delivery Worker");
@@ -264,14 +267,14 @@ public class SlotDeliveryWorker extends Thread {
     /**
      * Send messages from buffer in QueueDeliveryWorker if the buffer is not empty
      *
-     * @param queueName
+     * @param msgDestination queue/topic message is addressed to
      * @return whether the messages are sent from message buffer or not
      * @throws AndesException
      */
-    private boolean sendFromMessageBuffer(String queueName) throws AndesException {
+    private boolean sendFromMessageBuffer(String msgDestination) throws AndesException {
         boolean sentFromMessageBuffer = false;
-        if (!queueDeliveryWorker.isMessageBufferEmpty(queueName)) {
-            queueDeliveryWorker.sendMessagesInBuffer(queueName);
+        if (!queueDeliveryWorker.isMessageBufferEmpty(msgDestination)) {
+            queueDeliveryWorker.sendMessagesInBuffer(msgDestination);
             sentFromMessageBuffer = true;
         }
         return sentFromMessageBuffer;
@@ -280,10 +283,10 @@ public class SlotDeliveryWorker extends Thread {
     /**
      * Add a queue to queue list of this SlotDeliveryWorkerThread
      *
-     * @param queueName
+     * @param storageQueueName
      */
-    public void addQueueToThread(String queueName) {
-        getQueueList().add(queueName);
+    public void addQueueToThread(String storageQueueName, String destination) {
+        getStorageQueueNameToDestinationMap().put(storageQueueName, destination);
     }
 
     /**
@@ -291,8 +294,8 @@ public class SlotDeliveryWorker extends Thread {
      *
      * @return queue list
      */
-    public ConcurrentSkipListSet<String> getQueueList() {
-        return queueList;
+    public ConcurrentSkipListMap<String, String> getStorageQueueNameToDestinationMap() {
+        return storageQueueNameToDestinationMap;
     }
 
 
@@ -327,7 +330,7 @@ public class SlotDeliveryWorker extends Thread {
             OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
             try {
                 if (AndesContext.getInstance().isClusteringEnabled()) {
-                    MBThriftClient.deleteSlot(slot.getQueueName(), slot, nodeId);
+                    MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
                 }
             } catch (ConnectionException e) {
                 throw new AndesException("Error deleting slot while checking for slot completion.", e);
@@ -341,7 +344,7 @@ public class SlotDeliveryWorker extends Thread {
              */
             List<AndesMessageMetadata> messagesReadByLeadingThread =
                     MessagingEngine.getInstance().getMetaDataList(
-                            slot.getQueueName(), slot.getStartMessageId(), slot.getEndMessageId());
+                            slot.getStorageQueueName(), slot.getStartMessageId(), slot.getEndMessageId());
             if (messagesReadByLeadingThread != null &&
                 !messagesReadByLeadingThread.isEmpty()) {
                 if (log.isDebugEnabled()) {
@@ -371,7 +374,7 @@ public class SlotDeliveryWorker extends Thread {
                         OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
 
                         if (AndesContext.getInstance().isClusteringEnabled()) {
-                            MBThriftClient.deleteSlot(slot.getQueueName(), slot, nodeId);
+                            MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
                         }
                     } catch (ConnectionException e) {
                         throw new AndesException(

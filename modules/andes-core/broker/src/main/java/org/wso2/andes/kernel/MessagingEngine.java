@@ -184,21 +184,50 @@ public class MessagingEngine {
         }
     }
 
+    /**
+     * Get a single metadata object
+     * @param messageID id of the message
+     * @return AndesMessageMetadata
+     * @throws AndesException
+     */
     public AndesMessageMetadata getMessageMetaData(long messageID) throws AndesException {
         return durableMessageStore.getMetaData(messageID);
     }
 
+    /**
+     * Ack received.
+     * @param ackData information on Ack
+     * @throws AndesException
+     */
     public void ackReceived(AndesAckData ackData) throws AndesException {
         messageStoreManager.ackReceived(ackData);
     }
 
+    /**
+     * Message is rejected
+     * @param metadata message that is rejected. It must bare id of channel reject came from
+     * @throws AndesException
+     */
     public void messageRejected(AndesMessageMetadata metadata) throws AndesException {
 
-
-        /**Reject message is received when ack_wait_timeout happened in client side
-         * We need to inform onflightMessageTracker to resend the message again
-         */
         OnflightMessageTracker.getInstance().handleFailure(metadata);
+        LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId(metadata.getChannelId(), metadata.getDestination());
+        if(subToResend != null) {
+            reQueueMessage(metadata, subToResend);
+        } else {
+            log.warn("Cannot handle reject. Subscription not found for channel " + metadata.getChannelId() + "Dropping message id= " + metadata.getMessageID());
+        }
+    }
+
+    /**
+     * Schedule message for subscription
+     * @param messageMetadata message to be scheduled
+     * @param subscription subscription to send
+     * @throws AndesException
+     */
+    public void reQueueMessage(AndesMessageMetadata messageMetadata, LocalSubscription subscription)
+            throws AndesException {
+        QueueDeliveryWorker.getInstance().scheduleMessageForSubscription(subscription, messageMetadata);
     }
 
     /**
@@ -388,7 +417,15 @@ public class MessagingEngine {
      * @throws Exception
      */
     public void startMessageDelivery() throws Exception {
-        //TODO: start topic delivery workers
+        log.info("Starting SlotDelivery Workers...");
+        //Start all slotDeliveryWorkers
+        SlotDeliveryWorkerManager.getInstance().startAllSlotDeliveryWorkers();
+        //Start thrift reconnecting thread if started
+        if (MBThriftClient.isReconnectingStarted()) {
+            MBThriftClient.setReconnectingFlag(true);
+        }
+        log.info("Start Disruptor writing messages to store...");
+        //TODO: Stop the disrupter
     }
 
     /**
@@ -396,21 +433,14 @@ public class MessagingEngine {
      */
     public void stopMessageDelivery() {
 
-        log.info("Stopping topic message publisher");
-        TopicDeliveryWorker tdw =
-                ClusterResourceHolder.getInstance().getTopicDeliveryWorker();
-        if (tdw != null && tdw.isWorking()) {
-            tdw.stopWorking();
-        }
-
-        log.info("Stopping queue message publisher");
+        log.info("Stopping SlotDelivery Worker...");
         //Stop all slotDeliveryWorkers
         SlotDeliveryWorkerManager.getInstance().stopSlotDeliveryWorkers();
         //Stop thrift reconnecting thread if started
         if (MBThriftClient.isReconnectingStarted()) {
             MBThriftClient.setReconnectingFlag(false);
         }
-        log.info("Stopping Disruptor writing messages to store");
+        log.info("Stopping Disruptor writing messages to store...");
         //TODO: Stop the disrupter
     }
 
@@ -465,19 +495,17 @@ public class MessagingEngine {
      */
     private void routeAMQPMetadata(AndesMessageMetadata message) throws AndesException{
         if (message.isTopic) {
-            //get all topic subscriptions in the cluster
-            List<AndesSubscription> subscriptionList = subscriptionStore
-                    .getAllActiveClusterSubscriptions(true);
-            boolean originalMessageUsed = false;
             String messageRoutingKey = message.getDestination();
-            for (AndesSubscription subscriberQueue : subscriptionList) {
-                //this call is AMQP Specific. It evaluates the routing key of the binding subscriber bares
-                //with the routing key of the message
-                if (AMQPUtils
-                        .isTargetQueueBoundByMatchingToRoutingKey(subscriberQueue
-                                                                  .getSubscribedDestination(),
-                                                                  messageRoutingKey)) {
-                    message.setDestination(subscriberQueue.getTargetQueue());
+            //get all topic subscriptions in the cluster matching to routing key
+            List<AndesSubscription> subscriptionList = subscriptionStore
+                    .getActiveClusterSubscribersForDestination(messageRoutingKey,true);
+            boolean originalMessageUsed = false;
+            List<String> alreadyStoredQueueNames = new ArrayList<String>();
+            for (AndesSubscription subscription : subscriptionList) {
+                if(!alreadyStoredQueueNames.contains(subscription.getStorageQueueName())) {
+                    //Message should be written to storage queue name. This is
+                    //determined by destination of the message. So should be
+                    //updated (but internal metadata will have topic name as usual)
                     AndesMessageMetadata clone;
                     if (!originalMessageUsed) {
                         originalMessageUsed = true;
@@ -485,13 +513,16 @@ public class MessagingEngine {
                     } else {
                         clone = cloneAndesMessageMetadataAndContent(message);
                     }
+                    clone.setDestination(subscription.getStorageQueueName());
                     //We must update the routing key in metadata as well
-                    clone.updateMetadata(subscriberQueue.getTargetQueue());
+                    //clone.updateMetadata(subscription.getTargetQueue());
                     if(log.isDebugEnabled()) {
-                        log.debug("Storing metadata queue= " + subscriberQueue
-                                .getTargetQueue() + " messageID= " + clone.getMessageID());
+                        log.debug("Storing metadata queue= " + subscription
+                                .getStorageQueueName() + " messageID= " + clone.getMessageID());
                     }
                     messageStoreManager.storeMetadata(clone);
+
+                    alreadyStoredQueueNames.add(subscription.getStorageQueueName());
                 }
             }
 

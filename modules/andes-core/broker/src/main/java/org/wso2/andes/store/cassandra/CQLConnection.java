@@ -23,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesKernelBoot;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -200,22 +201,24 @@ public class CQLConnection implements DurableStoreConnection {
                 int retriedCount = 0;
                 while (true) {
                     try {
-                        if (CQLDataAccessHelper.isKeySpaceExist(KEYSPACE)) {
-                            boolean previousState = isCassandraConnectionLive;
-                            isCassandraConnectionLive = true;
-                            retriedCount = 0;
-                            if (previousState == false) {
-                                //start back all tasks accessing cassandra
-                                log.info("Cassandra Message Store is alive....");
-                                startTasks();
-                            }
-                            Thread.sleep(10000);
+                        boolean previousState = isCassandraConnectionLive;
+                        if (!CQLDataAccessHelper.isKeySpaceExist(KEYSPACE)) {
+                            //if DB was cleared, create key space etc
+                            AndesKernelBoot.reInitializeAndesStores();
                         }
+                        //if there was no exception connection is live
+                        isCassandraConnectionLive = true;
+                        retriedCount = 0;
+                        if (previousState == false) {
+                            //start back all tasks accessing cassandra
+                            log.info("Cassandra Message Store is alive....");
+                            startTasks();
+                        }
+                        Thread.sleep(10000);
                     } catch (CassandraDataAccessException e) {
                         try {
-                            if (e.getMessage().contains(
-                                    "All host pools marked down. Retry burden pushed out to " +
-                                    "client")) {
+                            if (e.getCause().getMessage().contains(
+                                    "All host(s) tried for query failed")) {
 
                                 isCassandraConnectionLive = false;
                                 //print the error log several times

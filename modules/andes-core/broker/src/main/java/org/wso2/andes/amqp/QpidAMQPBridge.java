@@ -32,7 +32,6 @@ import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
 import org.wso2.andes.server.cassandra.QueueBrowserDeliveryWorker;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -265,8 +264,6 @@ public class QpidAMQPBridge {
                 addLocalSubscriptionsForAllBindingsOfQueue(queue, subscription);
             }
 
-            SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
-            slotDeliveryWorkerManager.startSlotDeliveryWorker(queue.getName());
         } catch (AndesException e) {
             log.error("Error while adding the subscription", e);
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while registering subscription", e);
@@ -353,8 +350,6 @@ public class QpidAMQPBridge {
             for (QueueListener queueListener : queueListeners) {
                 queueListener.handleLocalQueuesChanged(AMQPUtils.createAndesQueue(queue), QueueListener.QueueChange.Added);
             }
-            //AndesSubscriptionManager subManager = ClusterResourceHolder.getInstance().getSubscriptionManager();
-            //.subManager.addSubscription(AMQPUtils.createInactiveLocalSubscriberRepresentingQueue(queue));
         } catch (AndesException e) {
             log.error("error while creating queue", e);
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "error while creating queue", e);

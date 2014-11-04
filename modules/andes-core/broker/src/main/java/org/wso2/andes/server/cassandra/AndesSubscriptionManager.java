@@ -25,6 +25,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.slot.OrphanedSlotHandler;
+import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.subscription.BasicSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 
@@ -76,6 +77,8 @@ public class AndesSubscriptionManager {
     /**
      * Register a subscription for a Given Queue
      * This will handle the subscription addition task.
+     * Also it will start a slot delivery worker thread to read
+     * messages for the subscription
      *
      * @param localSubscription local subscription
      * @throws AndesException
@@ -84,6 +87,10 @@ public class AndesSubscriptionManager {
 
         //store subscription in context store
         subscriptionStore.createDisconnectOrRemoveLocalSubscription(localSubscription, SubscriptionListener.SubscriptionChange.Added);
+
+        //start a slot delivery worker on the queue (or topicQueue) subscription refers
+        SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
+        slotDeliveryWorkerManager.startSlotDeliveryWorker(localSubscription.getStorageQueueName(), localSubscription.getSubscribedDestination());
 
         //notify the local subscription change to listeners
         notifyLocalSubscriptionHasChanged(localSubscription, SubscriptionListener.SubscriptionChange.Added);

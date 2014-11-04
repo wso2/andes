@@ -71,23 +71,24 @@ public class SlotDeliveryWorkerManager {
 
     /**
      * When a subscription is added this method will be called. This method will decide which
-     * SlotDeliveryWorker thread is assigned to which queue
+     * SlotDeliveryWorker thread is assigned to which queue. If a worker is already running on
+     * the queue, it will not start a new one.
      *
-     * @param queueName  name of the queue to start slot delivery worker for
+     * @param storageQueueName  name of the queue to start slot delivery worker for
      */
-    public synchronized void startSlotDeliveryWorker(String queueName) {
-        int slotDeliveryWorkerId = getIdForSlotDeliveryWorker(queueName);
+    public synchronized void startSlotDeliveryWorker(String storageQueueName, String destinaton) {
+        int slotDeliveryWorkerId = getIdForSlotDeliveryWorker(storageQueueName);
         if (getSlotDeliveryWorkerMap().containsKey(slotDeliveryWorkerId)) {
             //if this queue is not already in the queue
-            if (!getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId).getQueueList()
-                    .contains(queueName)) {
+            if (getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId).getStorageQueueNameToDestinationMap()
+                    .get(storageQueueName) == null) {
                 SlotDeliveryWorker slotDeliveryWorker = getSlotDeliveryWorkerMap()
                         .get(slotDeliveryWorkerId);
-                slotDeliveryWorker.addQueueToThread(queueName);
+                slotDeliveryWorker.addQueueToThread(storageQueueName, destinaton);
             }
         } else {
             SlotDeliveryWorker slotDeliveryWorker = new SlotDeliveryWorker();
-            slotDeliveryWorker.addQueueToThread(queueName);
+            slotDeliveryWorker.addQueueToThread(storageQueueName, destinaton);
             getSlotDeliveryWorkerMap().put(slotDeliveryWorkerId, slotDeliveryWorker);
             slotDeliveryWorkerExecutor.execute(slotDeliveryWorker);
         }

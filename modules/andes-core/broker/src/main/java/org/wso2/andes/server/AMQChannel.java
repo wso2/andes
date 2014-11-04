@@ -904,21 +904,21 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
          * TODO:is it correct? Shouldn't we honour acks for topic messages also
          */
         for(QueueEntry entry: ackedMessages){
-            if(!entry.getQueue().checkIfBoundToTopicExchange()) {
-                /**
-                 * When the message is acknowledged it is informed to Andes Kernel
-                 */
-                QpidAMQPBridge.getInstance()
-                              .ackReceived(this.getId(), entry.getMessage().getMessageNumber(),
-                                           entry.getQueue().getName(),
-                                           false);
-                //TODO: we need to do it when processing the ack?
-                this.decrementNonAckedMessageCount();
-
+/*            if(!entry.getQueue().checkIfBoundToTopicExchange()) {
             } else {
                 //discard acks for topic messages. We consider they are acked
                 //at the moment they are scheduled to deliver
-            }
+            }*/
+
+            /**
+             * When the message is acknowledged it is informed to Andes Kernel
+             */
+            QpidAMQPBridge.getInstance()
+                          .ackReceived(this.getId(), entry.getMessage().getMessageNumber(),
+                                       entry.getQueue().getName(),
+                                       false);
+            //TODO: we need to do it when processing the ack?
+            this.decrementNonAckedMessageCount();
         }
 
         updateTransactionalActivity();

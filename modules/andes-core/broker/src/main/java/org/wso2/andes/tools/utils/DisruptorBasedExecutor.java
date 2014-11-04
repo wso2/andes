@@ -89,6 +89,7 @@ public class DisruptorBasedExecutor {
         CassandraDataEvent event = ringBuffer.get(sequence);
         event.isPart = false;
         event.metadata = metadata;
+        log.info(" Disruptor based executor - publish id=" + event.metadata.getMessageID() + " destination= " + event.metadata.getDestination());
         event.metadata.setPendingJobsTracker(pendingJobsTracker);
         // make the event available to EventProcessors
         //todo uncomment this and comment executer

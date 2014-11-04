@@ -20,6 +20,7 @@ package org.wso2.andes.server.cassandra;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.configuration.BrokerConfiguration;
@@ -27,8 +28,6 @@ import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 
@@ -80,7 +79,7 @@ public class QueueDeliveryWorker {
      * Class to keep track of message delivery information queue wise
      */
     public class QueueDeliveryInfo {
-        String queueName;
+        String destination;
 
         Iterator<LocalSubscription> iterator;
         //in-memory message list scheduled to be delivered
@@ -105,23 +104,23 @@ public class QueueDeliveryWorker {
      * Get the next subscription for the given queue. If at end of the subscriptions, it circles
      * around to the first one
      *
-     * @param queueName
+     * @param destination
      *         name of queue
      * @param subscriptions4Queue
      *         subscriptions registered for the queue
      * @return subscription to deliver
      * @throws AndesException
      */
-    private LocalSubscription findNextSubscriptionToSent(String queueName,
+    private LocalSubscription findNextSubscriptionToSent(String destination,
                                                          Collection<LocalSubscription>
                                                                  subscriptions4Queue)
             throws AndesException {
         if (subscriptions4Queue == null || subscriptions4Queue.size() == 0) {
-            subscriptionCursar4QueueMap.remove(queueName);
+            subscriptionCursar4QueueMap.remove(destination);
             return null;
         }
 
-        QueueDeliveryInfo queueDeliveryInfo = getQueueDeliveryInfo(queueName);
+        QueueDeliveryInfo queueDeliveryInfo = getQueueDeliveryInfo(destination);
         Iterator<LocalSubscription> it = queueDeliveryInfo.iterator;
         if (it.hasNext()) {
             return it.next();
@@ -137,15 +136,15 @@ public class QueueDeliveryWorker {
     }
 
 
-    public QueueDeliveryInfo getQueueDeliveryInfo(String queueName) throws AndesException {
-        QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(queueName);
+    public QueueDeliveryInfo getQueueDeliveryInfo(String destination) throws AndesException {
+        QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(destination);
         if (queueDeliveryInfo == null) {
             queueDeliveryInfo = new QueueDeliveryInfo();
-            queueDeliveryInfo.queueName = queueName;
+            queueDeliveryInfo.destination = destination;
             Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
-                    .getActiveLocalSubscribers(queueName, false);
+                    .getActiveLocalSubscribersForQueuesAndTopics(destination);
             queueDeliveryInfo.iterator = localSubscribersForQueue.iterator();
-            subscriptionCursar4QueueMap.put(queueName, queueDeliveryInfo);
+            subscriptionCursar4QueueMap.put(destination, queueDeliveryInfo);
         }
         return queueDeliveryInfo;
     }
@@ -186,9 +185,9 @@ public class QueueDeliveryWorker {
             }
             for (AndesMessageMetadata message : messagesReadByLeadingThread) {
 
-                String queueName = message.getDestination();
+                String destination = message.getDestination();
                 message.setSlot(slot);
-                QueueDeliveryInfo queueDeliveryInfo = getQueueDeliveryInfo(queueName);
+                QueueDeliveryInfo queueDeliveryInfo = getQueueDeliveryInfo(destination);
                 //check and buffer message
                 //stamp this message as buffered
                 boolean isOKToBuffer = OnflightMessageTracker.getInstance()
@@ -207,7 +206,7 @@ public class QueueDeliveryWorker {
             /**
              * Now messages are read to the memory. Send the read messages to subscriptions
              */
-            sendMessagesInBuffer(slot.getQueueName());
+            sendMessagesInBuffer(slot.getDestinationOfMessagesInSlot());
             failureCount = 0;
         } catch (Throwable e) {
             /**
@@ -229,26 +228,31 @@ public class QueueDeliveryWorker {
     /**
      * Read messages from the buffer and send messages to subscribers
      */
-    public void sendMessagesInBuffer(String queueName) throws AndesException {
-        QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(queueName);
-        if (log.isDebugEnabled()) {
-            for (String queue : subscriptionCursar4QueueMap.keySet()) {
-                log.debug("Queue Size of queue " + queue + " is :"
-                          + subscriptionCursar4QueueMap.get(queue).readButUndeliveredMessages
-                        .size());
-            }
+    public void sendMessagesInBuffer(String subDestination) throws AndesException {
+        Set<String> destinationsMessagesBuffered = subscriptionCursar4QueueMap.keySet();
+        for(String bufferDest : destinationsMessagesBuffered) {
+            if(AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(subDestination,bufferDest)) {
+                QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(bufferDest);
+                if (log.isDebugEnabled()) {
+                    for (String dest : subscriptionCursar4QueueMap.keySet()) {
+                        log.debug("Queue size of destination " + dest + " is :"
+                                  + subscriptionCursar4QueueMap.get(dest).readButUndeliveredMessages
+                                .size());
+                    }
 
-        }
-        try {
-            log.debug(
-                    "Sending messages from buffer num of msg = " + queueDeliveryInfo
-                            .readButUndeliveredMessages
-                            .size());
-            sendMessagesToSubscriptions(queueDeliveryInfo.queueName,
-                                        queueDeliveryInfo.readButUndeliveredMessages);
-        } catch (Exception e) {
-            throw new AndesException("Error occurred while sending messages to subscribers " +
-                                     "from message buffer" + e);
+                }
+                try {
+                    log.debug(
+                            "Sending messages from buffer num of msg = " + queueDeliveryInfo
+                                    .readButUndeliveredMessages
+                                    .size());
+                    sendMessagesToSubscriptions(queueDeliveryInfo.destination,
+                                                queueDeliveryInfo.readButUndeliveredMessages);
+                } catch (Exception e) {
+                    throw new AndesException("Error occurred while sending messages to subscribers " +
+                                             "from message buffer" + e);
+                }
+            }
         }
     }
 
@@ -289,18 +293,8 @@ public class QueueDeliveryWorker {
     }
 
 
-    public int sendMessagesToSubscriptions(String targetQueue, Set<AndesMessageMetadata> messages)
+    public int sendMessagesToSubscriptions(String destination, Set<AndesMessageMetadata> messages)
             throws Exception {
-
-        /**
-         * check if this queue has any subscription
-         */
-
-        //todo return the slot
-        if (subscriptionStore.getActiveClusterSubscribersForDestination(targetQueue, false)
-                             .size() == 0) {
-            return 0;
-        }
 
         /**
          * deliver messages to subscriptions
@@ -312,36 +306,73 @@ public class QueueDeliveryWorker {
             if (MessageExpirationWorker.isExpired(message.getExpirationTime())) {
                 continue;
             }
-            boolean messageSent = false;
-            Collection<LocalSubscription> subscriptions4Queue = subscriptionStore
-                    .getActiveLocalSubscribers(targetQueue, false);
-                /*
-                 * we do this in a for loop to avoid iterating for a subscriptions for ever. We
-                 * only iterate as
-                 * once for each subscription
-                 */
+            //get all relevant type of subscriptions
+            Collection<LocalSubscription> subscriptions4Queue =
+                    subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
+
+            //check id destination has any subscription
+            //todo return the slot
+            if (subscriptions4Queue.size() == 0) {
+                return 0;
+            }
+
+            int numOfCurrentMsgDeliverySchedules = 0;
+            //if message is addressed to queues, only ONE subscriber should
+            //get the message. Otherwise, loop for every subscriber
             for (int j = 0; j < subscriptions4Queue.size(); j++) {
-                LocalSubscription localSubscription = findNextSubscriptionToSent(targetQueue,
+                LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
                                                                                  subscriptions4Queue);
-                if (isThisSubscriptionHasRoom(localSubscription)) {
-                    iterator.remove();
+                if(!message.isTopic()) { //for queue messages
+                    if (isThisSubscriptionHasRoom(localSubscription)) {
+                        log.debug("Scheduled to send id = " + message.getMessageID());
+                        deliverAsynchronously(localSubscription, message);
+                        numOfCurrentMsgDeliverySchedules ++;
+                        break;
+                    }
+                }  else { //for topic messages. We do not consider room
                     log.debug("Scheduled to send id = " + message.getMessageID());
                     deliverAsynchronously(localSubscription, message);
-                    sentMessageCount++;
-                    messageSent = true;
-                    break;
+                    numOfCurrentMsgDeliverySchedules ++;
                 }
             }
-            if (!messageSent) {
-                log.debug(
-                        "All subscriptions for queue " + targetQueue + " have max Unacked " +
-                        "messages " + message
-                                .getDestination());
+            //remove message after sending to all subscribers
+
+            if(!message.isTopic()) { //queue messages
+                if(numOfCurrentMsgDeliverySchedules == 1) {
+                    iterator.remove();
+                    sentMessageCount++;
+                } else {
+                    log.debug(
+                            "All subscriptions for destination " + destination + " have max unacked " +
+                            "messages " + message
+                                    .getDestination());
+                    //if we continue message order will break
+                    break;
+                }
+            } else { //topic message
+                if(numOfCurrentMsgDeliverySchedules == subscriptions4Queue.size()) {
+                    iterator.remove();
+                    sentMessageCount++;
+                }  else {
+                    log.warn("Could not schedule message delivery to all" +
+                             " subscriptions. May cause message duplication. id= " + message.getMessageID());
+                    //if we continue message order will break
+                    break;
+                }
             }
         }
         return sentMessageCount;
     }
 
+    /**
+     * Schedule to deliver message for the subscription
+     * @param subscription subscription to send
+     * @param message message to send
+     */
+    public void scheduleMessageForSubscription(LocalSubscription subscription,
+                                               final AndesMessageMetadata message) {
+        deliverAsynchronously(subscription, message);
+    }
 
     private void deliverAsynchronously(final LocalSubscription subscription,
                                        final AndesMessageMetadata message) {
@@ -357,14 +388,17 @@ public class QueueDeliveryWorker {
                     } else {
                         reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
                     }
+                    OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message.getMessageID());
                 } catch (Throwable e) {
                     log.error("Error while delivering message. Moving to Dead Letter Queue ", e);
+                    OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message.getMessageID());
                     //todo - hasitha - here we have already tried three times to deliver.
                 }
             }
         };
         executor.submit(r, (subscription.getTargetQueue() + subscription.getSubscriptionID())
                 .hashCode());
+        OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
     }
 
     public void reQueueUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message) {

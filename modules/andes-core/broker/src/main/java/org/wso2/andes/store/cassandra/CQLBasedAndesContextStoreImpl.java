@@ -66,8 +66,8 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         try {
             if (cqlConnection == null) {
                 cqlConnection = new CQLConnection();
-                cqlConnection.initialize(connectionProperties);
             }
+            cqlConnection.initialize(connectionProperties);
             connection = cqlConnection;
 
             Cluster cluster = cqlConnection.getCluster();

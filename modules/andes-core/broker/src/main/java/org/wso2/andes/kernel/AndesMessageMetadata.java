@@ -47,6 +47,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 
     /**
      *through which connection this message came into broker
+     * or rejected to the broker
      */
     UUID channelId;
 
@@ -156,7 +157,8 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         clone.channelId = channelId;
     	clone.expirationTime = expirationTime;
         clone.isTopic = isTopic;
-        clone.destination = destination; 
+        clone.destination = destination;
+       // clone.destination = destination;
         clone.isPersistent = isPersistent;
         clone.pendingJobsTracker = pendingJobsTracker; 
         clone.queueAddress = queueAddress;

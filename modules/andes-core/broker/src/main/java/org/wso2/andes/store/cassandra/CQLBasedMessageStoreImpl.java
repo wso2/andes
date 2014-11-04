@@ -256,6 +256,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                         md.getDestination(),
                         md.getMessageID(),
                         md.getMetadata(), false);
+                log.info("===========Storing id= " + md.getMessageID() + " destination= " + md.getDestination());
 
                 inserts.add(insert);
             }

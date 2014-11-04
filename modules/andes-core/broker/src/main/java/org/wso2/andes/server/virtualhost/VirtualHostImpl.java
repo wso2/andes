@@ -199,8 +199,6 @@ public class VirtualHostImpl implements VirtualHost {
 
         _bindingFactory = new BindingFactory(this);
 
-        initialiseModel(_configuration);
-
         if (store != null) {
             _messageStore = store;
             _durableConfigurationStore = store;
@@ -209,6 +207,7 @@ public class VirtualHostImpl implements VirtualHost {
         }
 
         // This needs to be after the RT has been defined as it creates the default durable exchanges.
+        initialiseModel(_configuration);
         _exchangeRegistry.initialise();
 
         _authenticationManager = ApplicationRegistry.getInstance().getAuthenticationManager();
@@ -327,8 +326,11 @@ public class VirtualHostImpl implements VirtualHost {
      */
     private void initialiseAndesStores(VirtualHostConfiguration hostConfig) throws Exception {
 
+        //Set virtual host
+        AndesKernelBoot.setVirtualHost(this);
+
         //kernel will start message stores for Andes
-        AndesKernelBoot.startAndesStores(hostConfig.getStoreConfiguration(), this);
+        AndesKernelBoot.startAndesStores();
 
         // this is considered as an internal impl now, so hard coding
         // qpid related messagestore

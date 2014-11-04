@@ -164,12 +164,14 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
      */
     @Override
     public void storeMetadata(AndesMessageMetadata metadata) throws AndesException {
+        log.info("Async store manager storing. id= " + metadata.getMessageID() + " destination= " + metadata.getDestination());
         disruptorBasedExecutor.messageCompleted(metadata);
     }
 
     @Override
     public void storeMetaData(List<AndesMessageMetadata> messageMetadata) throws AndesException {
         for (AndesMessageMetadata metadata: messageMetadata){
+            log.info("Async store manager storing LIST. id= " + metadata.getMessageID() + " destination= " + metadata.getDestination());
             disruptorBasedExecutor.messageCompleted(metadata);
         }
     }
