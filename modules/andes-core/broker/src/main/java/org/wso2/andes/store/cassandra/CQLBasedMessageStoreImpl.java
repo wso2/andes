@@ -253,10 +253,9 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 Insert insert = CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE,
                         CassandraConstants
                                 .META_DATA_COLUMN_FAMILY,
-                        md.getDestination(),
+                        md.getStorageQueueName(),
                         md.getMessageID(),
                         md.getMetadata(), false);
-                log.info("===========Storing id= " + md.getMessageID() + " destination= " + md.getDestination());
 
                 inserts.add(insert);
             }
@@ -303,12 +302,12 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
      */
     @Override
     public void addMetaData(AndesMessageMetadata metadata) throws AndesException {
-        String destination = metadata.getDestination();
+        String storageQueueName = metadata.getStorageQueueName();
         try {
             Insert insert = CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE,
                     CassandraConstants
                             .META_DATA_COLUMN_FAMILY,
-                    destination,
+                    storageQueueName,
                     metadata.getMessageID(),
                     metadata.getMetadata(), false);
 
@@ -325,19 +324,19 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
      * used when inserting meta data to a different queue row than it's destination eg:- Dead Letter
      * Queue.
      *
-     * @param queueName The queue name to add meta data to
+     * @param storageQueueName The queue name to add meta data to
      * @param metadata  The andes meta data to add
      * @throws AndesException
      */
     @Override
-    public void addMetaDataToQueue(String queueName, AndesMessageMetadata metadata)
+    public void addMetaDataToQueue(String storageQueueName, AndesMessageMetadata metadata)
             throws AndesException {
         String destination;
 
-        if (queueName == null) {
-            destination = metadata.getDestination();
+        if (storageQueueName == null) {
+            destination = metadata.getStorageQueueName();
         } else {
-            destination = queueName;
+            destination = storageQueueName;
         }
 
         try {
@@ -409,7 +408,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         }
         ArrayList<AndesRemovableMetadata> removableMetaDataList = new
                 ArrayList<AndesRemovableMetadata>();
-        removableMetaDataList.add(new AndesRemovableMetadata(messageId, currentQueueName));
+        removableMetaDataList.add(new AndesRemovableMetadata(messageId, currentQueueName,currentQueueName));
 
         addMetaDataToQueue(targetQueueName, messageMetadataList.get(0));
         deleteMessageMetadataFromQueue(currentQueueName, removableMetaDataList);
@@ -434,7 +433,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 Insert insert = CQLDataAccessHelper.addMessageToQueue(CassandraConstants.KEYSPACE,
                         CassandraConstants
                                 .META_DATA_COLUMN_FAMILY,
-                        metadata.getDestination(),
+                        metadata.getStorageQueueName(),
                         metadata.getMessageID(),
                         metadata.getMetadata(),
                         false);
@@ -529,12 +528,12 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
      * {@inheritDoc}
      */
     @Override
-    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String queueName,
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String storageQueueName,
                                                                        long firstMsgId, int count)
             throws AndesException {
         try {
             List<AndesMessageMetadata> metadataList = CQLDataAccessHelper
-                    .getMessagesFromQueue(queueName,
+                    .getMessagesFromQueue(storageQueueName,
                             CassandraConstants.META_DATA_COLUMN_FAMILY,
                             CassandraConstants.KEYSPACE, firstMsgId + 1,
                             Long.MAX_VALUE, count, true, true);
@@ -546,15 +545,15 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     /**
-     * Delete a given message meta data list from the the given queueName row in
+     * Delete a given message meta data list from the the given storageQueueName row in
      * META_DATA_COLUMN_FAMILY.
      *
-     * @param queueName        queue from which metadata to be removed ignoring the destination of metadata
+     * @param storageQueueName        queue from which metadata to be removed ignoring the destination of metadata
      * @param messagesToRemove AndesMessageMetadata list to be removed from given queue
      * @throws AndesException
      */
     @Override
-    public void deleteMessageMetadataFromQueue(String queueName,
+    public void deleteMessageMetadataFromQueue(String storageQueueName,
                                                List<AndesRemovableMetadata> messagesToRemove)
             throws AndesException {
         try {
@@ -563,7 +562,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 Delete delete = CQLDataAccessHelper
                         .deleteLongColumnFromRaw(CassandraConstants.KEYSPACE,
                                 CassandraConstants.META_DATA_COLUMN_FAMILY,
-                                queueName, message.messageID, false);
+                                storageQueueName, message.messageID, false);
                 statements.add(delete);
             }
             GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE,

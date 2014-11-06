@@ -116,13 +116,17 @@ public class SubscriptionStore {
 
     /**
      * get all ACTIVE LOCAL subscription entries subscribed for a destination/topic
-     *
+     * Hierarchical topic mapping is NOT considered here
      * @param destination queue/topic name
      * @param isTopic     TRUE if checking topics
      * @return list of matching subscriptions
      */
     public Collection<LocalSubscription> getActiveLocalSubscribers(String destination, boolean isTopic) throws AndesException {
-        Collection<LocalSubscription> list = getLocalSubscriptionList(destination, isTopic).values();
+        Map<String, LocalSubscription> localSubscriptionMap =   getLocalSubscriptionMap(destination, isTopic);
+        Collection<LocalSubscription> list = new ArrayList<LocalSubscription>();
+        if(localSubscriptionMap != null) {
+            list = getLocalSubscriptionMap(destination, isTopic).values();
+        }
         Collection<LocalSubscription> activeLocalSubscriptionList = new ArrayList<LocalSubscription>();
         for (LocalSubscription localSubscription : list) {
             if (localSubscription.hasExternalSubscriptions()) {
@@ -133,8 +137,35 @@ public class SubscriptionStore {
     }
 
     /**
+     * get all ACTIVE LOCAL subscription entries subscribed for message destination/topic
+     * Hierarchical topic mapping IS considered here
+     * @param messageDest destination of the message (queue/topic name)
+     * @param isTopic TRUE if checking topics
+     * @return List of matching subscriptions
+     */
+    public List<LocalSubscription> getAllActiveSubscriptions4MsgDestination(String messageDest, boolean isTopic) {
+        List<LocalSubscription> matchingDestinatins = new ArrayList<LocalSubscription>();
+        Map<String, Map<String, LocalSubscription>> localSubscriptionMap = isTopic ? localTopicSubscriptionMap : localQueueSubscriptionMap;
+        for (String destination : localSubscriptionMap.keySet()) {
+            if(AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(destination,messageDest)) {
+                Map<String, LocalSubscription> subMap = localSubscriptionMap.get(destination);
+                for (String subID : subMap.keySet()) {
+                    LocalSubscription sub = subMap.get(subID);
+                    if (sub.hasExternalSubscriptions()) {
+                        matchingDestinatins.add(sub);
+                    }
+                }
+            }
+        }
+
+        return matchingDestinatins;
+
+    }
+
+
+    /**
      * Get all ACTIVE LOCAL subscription entries for destination (queue/topic)
-     * hierarchical subscriptions are also considered here
+     * hierarchical subscription mapping is NOT considered here
      * @param destination queue or topic name
      * @return list of matching subscriptions
      * @throws AndesException
@@ -149,17 +180,18 @@ public class SubscriptionStore {
      * Get local subscription given the subscribed destination and
      * channel subscription use to send messages
      * @param channelID  id of the channel subscriber deals with
-     * @param subscribedDestination  destination of subscription
+     * @param messageDestination  destination of subscription
+     * @param isTopic True if searching for topic subscriptions
      * @return subscription object. Null if no match
      * @throws AndesException
      */
     public LocalSubscription getLocalSubscriptionForChannelId(UUID channelID,
-                                                              String subscribedDestination)
+                                                              String messageDestination, boolean isTopic)
 
             throws AndesException {
         List<LocalSubscription> activeLocalSubscriptions =
-                (List<LocalSubscription>) getActiveLocalSubscribersForQueuesAndTopics(
-                        subscribedDestination);
+                getAllActiveSubscriptions4MsgDestination(
+                        messageDestination, isTopic);
         for (LocalSubscription sub : activeLocalSubscriptions) {
             if (sub.getChannelID().equals(channelID)) {
                 return sub;
@@ -169,9 +201,9 @@ public class SubscriptionStore {
     }
 
 
-    public int numberOfSubscriptionsForQueueAtNode(String queueName, String nodeID) throws AndesException {
+    public int numberOfSubscriptionsForDestinationAtNode(String destination, String nodeID) throws AndesException {
         String requestedNodeQueue = AndesUtils.getNodeQueueNameForNodeId(nodeID);
-        List<AndesSubscription> subscriptions = getActiveClusterSubscribersForDestination(queueName, false);
+        List<AndesSubscription> subscriptions = getActiveClusterSubscribersForDestination(destination, false);
         int count = 0;
         if (subscriptions != null && !subscriptions.isEmpty()) {
             for (AndesSubscription sub : subscriptions) {
@@ -214,7 +246,7 @@ public class SubscriptionStore {
      */
     public List<LocalSubscription> getActiveLocalSubscribers(boolean isTopic) {
         List<LocalSubscription> activeQueueSubscriptions = new ArrayList<LocalSubscription>();
-        Map<String, Map<String, LocalSubscription>> localSubscriptionMap = isTopic ? localTopicSubscriptionMap : localTopicSubscriptionMap;
+        Map<String, Map<String, LocalSubscription>> localSubscriptionMap = isTopic ? localTopicSubscriptionMap : localQueueSubscriptionMap;
         for (String destination : localSubscriptionMap.keySet()) {
             Map<String, LocalSubscription> subMap = localSubscriptionMap.get(destination);
             for (String subID : subMap.keySet()) {
@@ -259,27 +291,16 @@ public class SubscriptionStore {
 
     /**
      * get a copy of local subscription list for a given queue/topic
-     * hierarchical topic subscription mapping also happens here
+     * hierarchical topic subscription mapping is NOT considered here
      *
      * @param destination queue/topic name
      * @param isTopic     TRUE if checking topics
      * @return a map of <SubID,subscription>
      */
-    public Map<String, LocalSubscription> getLocalSubscriptionList(String destination, boolean isTopic) {
+    public Map<String, LocalSubscription> getLocalSubscriptionMap(String destination,
+                                                                  boolean isTopic) {
         Map<String, Map<String, LocalSubscription>> subscriptionMap = isTopic ? localTopicSubscriptionMap : localQueueSubscriptionMap;
-        Map<String, LocalSubscription> matchingSubscriptions = new HashMap<String,
-                LocalSubscription>();
-        for(String subDestination : subscriptionMap.keySet()) {
-            //find matching destinations
-            if(AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(subDestination, destination)) {
-                Map<String, LocalSubscription> list = subscriptionMap.get(subDestination);
-                if (list != null) {
-                    matchingSubscriptions.putAll(list);
-                }
-            }
-        }
-
-        return matchingSubscriptions;
+        return subscriptionMap.get(destination);
     }
 
     /**
@@ -292,6 +313,25 @@ public class SubscriptionStore {
     public List<AndesSubscription> getClusterSubscriptionList(String destination, boolean isTopic) {
         Map<String, List<AndesSubscription>> subscriptionMap = isTopic ? clusterTopicSubscriptionMap : clusterQueueSubscriptionMap;
         return subscriptionMap.get(destination);
+    }
+
+    /**
+     * get all ACTIVE CLUSTER subscriptions for a queue/topic. For topics this will return
+     * subscriptions whose destination is exactly matching to the given destination only.
+     * (hierarchical mapping not considered)
+     * @param destination queue or topic name
+     * @param isTopic is destination a topic
+     * @return list of matching subscriptions
+     */
+    public List<AndesSubscription> getActiveClusterSubscriptionList(String destination, boolean isTopic) {
+        List<AndesSubscription> activeSubscriptions = new ArrayList<AndesSubscription>();
+        List<AndesSubscription> allSubscriptions = getClusterSubscriptionList(destination, isTopic);
+        for(AndesSubscription sub : allSubscriptions) {
+            if(sub.hasExternalSubscriptions()) {
+               activeSubscriptions.add(sub);
+            }
+        }
+        return activeSubscriptions;
     }
 
     /**
@@ -570,7 +610,8 @@ public class SubscriptionStore {
         String destination = subscription.getSubscribedDestination();
         String subscriptionID = subscription.getSubscriptionID();
         //check queue local subscriptions
-        Map<String, LocalSubscription> subscriptionList = getLocalSubscriptionList(destination, false);
+        Map<String, LocalSubscription> subscriptionList = getLocalSubscriptionMap(destination,
+                                                                                  false);
         Iterator<LocalSubscription> iterator = subscriptionList.values().iterator();
         LocalSubscription subscriptionToRemove = null;
         while (iterator.hasNext()) {
@@ -587,7 +628,7 @@ public class SubscriptionStore {
 
         //check topic local subscriptions
         if (subscriptionToRemove == null) {
-            subscriptionList = getLocalSubscriptionList(destination, true);
+            subscriptionList = getLocalSubscriptionMap(destination, true);
             iterator = subscriptionList.values().iterator();
             while (iterator.hasNext()) {
                 LocalSubscription currentSubscription = iterator.next();

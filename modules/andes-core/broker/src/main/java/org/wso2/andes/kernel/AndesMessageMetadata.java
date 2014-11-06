@@ -51,7 +51,17 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
      */
     UUID channelId;
 
+    /**
+     * Destination (routing key) of message
+     */
     private String destination;
+
+    /**
+     * Queue name in store in which message
+     * should be saved
+     */
+    private String storageQueueName;
+
     private boolean isPersistent;
     private boolean reDelivered;
     Map<UUID, PendingJob> pendingJobsTracker;
@@ -128,6 +138,14 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         this.destination = destination;
     }
 
+    public String getStorageQueueName() {
+        return storageQueueName;
+    }
+
+    public void setStorageQueueName(String storageQueueName) {
+        this.storageQueueName = storageQueueName;
+    }
+
     public boolean isPersistent() {
         return isPersistent;
     }
@@ -158,7 +176,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
     	clone.expirationTime = expirationTime;
         clone.isTopic = isTopic;
         clone.destination = destination;
-       // clone.destination = destination;
+        clone.storageQueueName = storageQueueName;
         clone.isPersistent = isPersistent;
         clone.pendingJobsTracker = pendingJobsTracker; 
         clone.queueAddress = queueAddress;

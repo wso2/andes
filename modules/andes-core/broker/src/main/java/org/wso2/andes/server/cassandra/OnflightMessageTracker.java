@@ -112,10 +112,15 @@ public class OnflightMessageTracker {
         Read,
         Buffered,
         Sent,
+        SentToAll,
         Acked,
+        AckedByAll,
         RejectedAndBuffered,
         ScheduledToSend,
+        DeliveryOK,
+        DeliveryReject,
         Resent,
+        SlotRemoved,
         Expired,
         DLCMessage;
 
@@ -137,7 +142,7 @@ public class OnflightMessageTracker {
 
         final long msgID;
         boolean ackreceived = false;
-        final String queue;
+        final String destination;
         long timestamp;
         long expirationTime;
         long deliveryID;
@@ -146,12 +151,12 @@ public class OnflightMessageTracker {
         List<MessageStatus> messageStatus;
         Slot slot;
 
-        private MsgData(long msgID, Slot slot, boolean ackReceived, String queue, long timestamp,
+        private MsgData(long msgID, Slot slot, boolean ackReceived, String destination, long timestamp,
                         long expirationTime, long deliveryID,MessageStatus messageStatus) {
             this.msgID = msgID;
             this.slot = slot;
             this.ackreceived = ackReceived;
-            this.queue = queue;
+            this.destination = destination;
             this.timestamp = timestamp;
             this.expirationTime = expirationTime;
             this.deliveryID = deliveryID;
@@ -325,19 +330,22 @@ public class OnflightMessageTracker {
             log.warn("Number of Maximum Redelivery Tries Has Breached. Routing Message to DLC : id= " +
                      messageId);
             isOKToDeliver =  false;
-            //check if queue entry has expired. Any expired message will not be delivered
+            //check if destination entry has expired. Any expired message will not be delivered
         } else if (trackingData.isExpired()) {
             stampMessageAsExpired(messageId);
             log.warn("Message is expired. Routing Message to DLC : id= " + messageId);
             isOKToDeliver =  false;
         }
         if(isOKToDeliver) {
+            trackingData.addMessageStatus(MessageStatus.DeliveryOK);
             if(numOfDeliveriesOfCurrentMsg == 1) {
                 trackingData.addMessageStatus(MessageStatus.Sent);
             } else if(numOfDeliveriesOfCurrentMsg > 1) {
                 trackingData.addMessageStatus(MessageStatus.Resent);
             }
 
+        } else {
+            trackingData.addMessageStatus(MessageStatus.DeliveryReject);
         }
         return isOKToDeliver;
     }
@@ -346,10 +354,10 @@ public class OnflightMessageTracker {
      * decrement message count in slot and if it is zero check the slot again to resend
      *
      * @param slot Slot to check
-     * @param queueName name of queue slot bares
+     * @param destination name of destination slot bares
      * @throws AndesException
      */
-    public void decrementMessageCountInSlotAndCheckToResend(Slot slot, String queueName)
+    public void decrementMessageCountInSlotAndCheckToResend(Slot slot, String destination)
             throws AndesException {
         AtomicInteger pendingMessageCount = pendingMessagesBySlot.get(slot);
         int messageCount = pendingMessageCount.decrementAndGet();
@@ -359,7 +367,7 @@ public class OnflightMessageTracker {
             messages and if there are any send them and delete the slot.
              */
             SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance()
-                                                                     .getSlotWorker(queueName);
+                                                                     .getSlotWorker(destination);
             if(log.isDebugEnabled()) {
                 log.debug("Slot has no pending messages. Now re-checking slot for messages");
             }
@@ -403,15 +411,17 @@ public class OnflightMessageTracker {
         //decrement delivery count
         int numOfDeliveries = trackingData.decrementDeliveryCount(channel);
 
+        setMessageStatus(MessageStatus.Acked, trackingData);
+
         //we consider ack is received if all acks came for channels message was sent
         if(trackingData.allAcksReceived() && getNumberOfScheduledDeliveries(messageID)== 0) {
             trackingData.ackreceived = true;
-            setMessageStatus(MessageStatus.Acked, trackingData);
+            setMessageStatus(MessageStatus.AckedByAll, trackingData);
             sendButNotAckedMessageCount.decrementAndGet();
             //record how much time took between delivery and ack receive
             long timeTook = (System.currentTimeMillis() - trackingData.timestamp);
-            PerformanceCounter.recordAckReceived(trackingData.queue, (int) timeTook);
-            decrementMessageCountInSlotAndCheckToResend(trackingData.slot, trackingData.queue);
+            PerformanceCounter.recordAckReceived(trackingData.destination, (int) timeTook);
+            decrementMessageCountInSlotAndCheckToResend(trackingData.slot, trackingData.destination);
 
             isOKToDeleteMessage = true;
             if(log.isDebugEnabled()) {
@@ -459,7 +469,7 @@ public class OnflightMessageTracker {
         MsgData trackingData = messagesOfSlot.get(messageID);
         if (trackingData == null) {
             trackingData = new MsgData(messageID, slot, false,
-                                       andesMessageMetadata.getDestination(),
+                                       slot.getDestinationOfMessagesInSlot(),
                                        System.currentTimeMillis(),
                                        andesMessageMetadata.getExpirationTime(), 0,MessageStatus.Buffered);
             msgId2MsgData.put(messageID, trackingData);
@@ -500,6 +510,7 @@ public class OnflightMessageTracker {
         }
         ConcurrentHashMap<Long, MsgData> messagesOfSlot = messageBufferingTracker.remove(slot);
         for (Long messageIdOfSlot : messagesOfSlot.keySet()) {
+            getTrackingData(messageIdOfSlot).addMessageStatus(MessageStatus.SlotRemoved);
             if(checkIfReadyToRemoveFromTracking(messageIdOfSlot)) {
                 if(log.isDebugEnabled()) {
                     log.debug("removing tracking object from memory id= " + messageIdOfSlot);
@@ -641,7 +652,7 @@ public class OnflightMessageTracker {
             log.debug("Removing all tracking of message id = " + messageID);
         }
         MsgData trackingData = msgId2MsgData.remove(messageID);
-        String queueName = trackingData.queue;
+        String destination = trackingData.destination;
         Slot slot = trackingData.slot;
         for(UUID channelID : trackingData.channelToNumOfDeliveries.keySet()) {
             releaseMessageDeliveryFromTracking(channelID, messageID);
@@ -649,7 +660,7 @@ public class OnflightMessageTracker {
 
         releaseMessageBufferingFromTracking(slot, messageID);
 
-        decrementMessageCountInSlotAndCheckToResend(slot, queueName);
+        decrementMessageCountInSlotAndCheckToResend(slot, destination);
     }
 
     /**
@@ -679,7 +690,7 @@ public class OnflightMessageTracker {
         MsgData trackingData =  getTrackingData(messageID);
         int count =  trackingData.numberOfScheduledDeliveries.decrementAndGet();
         if(count == 0) {
-            trackingData.addMessageStatus(MessageStatus.Sent);
+            trackingData.addMessageStatus(MessageStatus.SentToAll);
         }
         if(log.isDebugEnabled()) {
             log.debug("message id= " + messageID + " sent. Pending to execute= " + count);
@@ -727,7 +738,7 @@ public class OnflightMessageTracker {
                 HSSFRow row = sheet.createRow(rowCount);
                 row.createCell(0).setCellValue(trackingData.msgID);
                 row.createCell(1).setCellValue("null");
-                row.createCell(2).setCellValue(trackingData.queue);
+                row.createCell(2).setCellValue(trackingData.destination);
                 row.createCell(3).setCellValue(trackingData.getStatusHistory());
                 row.createCell(4).setCellValue(trackingData.slot.toString());
                 row.createCell(5).setCellValue(trackingData.timestamp);

@@ -67,6 +67,7 @@ public class MockPublisher implements Runnable {
     private AndesMessageMetadata generateMetadata(long messageId) {
         AndesMessageMetadata andesMetadata = new AndesMessageMetadata(messageId, metadata, false);
         andesMetadata.setDestination("foo");
+        andesMetadata.setStorageQueueName("foo");
         return andesMetadata;
     }
 

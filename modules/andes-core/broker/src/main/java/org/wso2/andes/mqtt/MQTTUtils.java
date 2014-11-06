@@ -112,6 +112,7 @@ public class MQTTUtils {
         messageHeader.setMessageID(messageID);
         messageHeader.setTopic(true);
         messageHeader.setDestination(topic);
+        messageHeader.setStorageQueueName(topic);
         messageHeader.setPersistent(true);
         messageHeader.setChannelId(UUID.randomUUID());
         messageHeader.setMessageContentLength(messageContentLength);

@@ -27,6 +27,7 @@ import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
+import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.state.AMQStateManager;
@@ -112,11 +113,8 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
                  * Inform kernel that message has been rejected by AMQP transport
                  */
                 try {
-                    AndesMessageMetadata rejectedMessage = AMQPUtils.convertAMQMessageToAndesMetadata(
-                            (org.wso2.andes.server.message.AMQMessage) message.getMessage(),channel
-                                        .getId());
-                    QpidAMQPBridge.getInstance().rejectMessage(rejectedMessage);
-                } catch (AndesException e) {
+                    QpidAMQPBridge.getInstance().rejectMessage((AMQMessage) message.getMessage(), channel);
+                } catch (AMQException e) {
                     _logger.error("Error while rejecting message by kernel" , e);
                     throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while rejecting message by kernel", e);
                 }

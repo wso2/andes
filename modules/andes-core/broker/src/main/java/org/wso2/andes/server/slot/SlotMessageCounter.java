@@ -92,7 +92,7 @@ public class SlotMessageCounter {
     public void recordMetaDataCountInSlot(List<AndesMessageMetadata> metadataList) {
         //If metadata list is null this method is called from time out thread
         for (AndesMessageMetadata md : metadataList) {
-            String queueName = md.getDestination();
+            String storageQueueName = md.getStorageQueueName();
             //If this is the first message to that queue
             Slot currentSlot;
             synchronized (this) {
@@ -100,7 +100,7 @@ public class SlotMessageCounter {
             }
             if (currentSlot.getMessageCount() >= slotWindowSize) {
                 try {
-                    submitSlot(queueName);
+                    submitSlot(storageQueueName);
                 } catch (AndesException e) {
                     /*
                     We do not do anything here since this operation will be run by timeout thread also
@@ -119,20 +119,20 @@ public class SlotMessageCounter {
      * @return Current slot which this metadata belongs to
      */
     private synchronized Slot updateQueueToSlotMap(AndesMessageMetadata metadata) {
-        String queueName = metadata.getDestination();
-        Slot currentSlot = queueToSlotMap.get(queueName);
+        String storageQueueName = metadata.getStorageQueueName();
+        Slot currentSlot = queueToSlotMap.get(storageQueueName);
         if (currentSlot == null) {
             currentSlot = new Slot();
             currentSlot.setEndMessageId(metadata.getMessageID());
             currentSlot.setMessageCount(1L);
-            queueToSlotMap.put(queueName, currentSlot);
-            slotTimeOutMap.put(queueName, System.currentTimeMillis());
+            queueToSlotMap.put(storageQueueName, currentSlot);
+            slotTimeOutMap.put(storageQueueName, System.currentTimeMillis());
         } else {
             long currentMsgCount = currentSlot.getMessageCount();
             long newMessageCount = currentMsgCount + 1;
             currentSlot.setMessageCount(newMessageCount);
             currentSlot.setEndMessageId(metadata.getMessageID());
-            queueToSlotMap.put(queueName, currentSlot);
+            queueToSlotMap.put(storageQueueName, currentSlot);
         }
         return currentSlot;
     }
@@ -140,15 +140,15 @@ public class SlotMessageCounter {
     /**
      * Submit last message ID in the slot to SlotManager.
      *
-     * @param queueName
+     * @param storageQueueName
      */
-    public void submitSlot(String queueName) throws AndesException {
-        Slot slot = queueToSlotMap.get(queueName);
+    public void submitSlot(String storageQueueName) throws AndesException {
+        Slot slot = queueToSlotMap.get(storageQueueName);
         if (null != slot) {
             try {
-                MBThriftClient.updateMessageId(queueName, slot.getEndMessageId());
-                queueToSlotMap.remove(queueName);
-                slotTimeOutMap.remove(queueName);
+                MBThriftClient.updateMessageId(storageQueueName, slot.getEndMessageId());
+                queueToSlotMap.remove(storageQueueName);
+                slotTimeOutMap.remove(storageQueueName);
 
             } catch (ConnectionException e) {
                  /* we only log here since this thread will be run every 3

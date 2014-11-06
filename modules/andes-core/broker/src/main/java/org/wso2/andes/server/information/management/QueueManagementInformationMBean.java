@@ -86,7 +86,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         List<Long> andesMessageIdList = getValidAndesMessageIdList(messageIDs);
         List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>(messageIDs.length);
         for (Long messageId : andesMessageIdList) {
-            removableMetadataList.add(new AndesRemovableMetadata(messageId, deadLetterQueueName));
+            removableMetadataList.add(new AndesRemovableMetadata(messageId, deadLetterQueueName, deadLetterQueueName));
         }
         try {
             MessagingEngine.getInstance().deleteMessages(removableMetadataList, false);
@@ -164,6 +164,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
                     // Set the new destination queue
                     currentMetaData.setDestination(destination);
+                    currentMetaData.setStorageQueueName(destination);
                     currentMetaData.updateMetadata(destination);
 
                     metadataList.add(currentMetaData);

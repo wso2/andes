@@ -26,20 +26,22 @@ public class AndesAckData {
     
     public AndesAckData(){}
     
-    public AndesAckData(UUID channelID, long messageID, String qName, boolean isTopic) {
+    public AndesAckData(UUID channelID, long messageID, String destination, String msgStorageDestination, boolean isTopic) {
         super();
         this.channelID = channelID;
         this.messageID = messageID;
-        this.qName = qName;
+        this.destination = destination;
+        this.msgStorageDestination = msgStorageDestination;
         this.isTopic = isTopic;
     }
     public long messageID; 
-    public String qName;
+    public String destination;
+    public String msgStorageDestination;
     public boolean isTopic;
     public UUID channelID;
 
     public AndesRemovableMetadata convertToRemovableMetaData() {
-        return new AndesRemovableMetadata(this.messageID, this.qName);
+        return new AndesRemovableMetadata(this.messageID, this.msgStorageDestination, this.destination);
     }
     
     public static class AndesAckDataEventFactory implements EventFactory<AndesAckData> {

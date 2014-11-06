@@ -211,7 +211,7 @@ public class MessagingEngine {
     public void messageRejected(AndesMessageMetadata metadata) throws AndesException {
 
         OnflightMessageTracker.getInstance().handleFailure(metadata);
-        LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId(metadata.getChannelId(), metadata.getDestination());
+        LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId(metadata.getChannelId(), metadata.getDestination(),metadata.isTopic());
         if(subToResend != null) {
             reQueueMessage(metadata, subToResend);
         } else {
@@ -253,16 +253,16 @@ public class MessagingEngine {
     /**
      * Remove messages of the queue matching to some destination queue
      *
-     * @param destinationQueue destination queue name to match
+     * @param storageQueueName destination queue name to match
      * @return number of messages removed
      * @throws AndesException
      */
     //TODO: hasitha - reimplement 1. get all message ids  2.remove all in one go 3. shedule to remove content 4. make counter delete
-    public int removeAllMessagesOfQueue(String destinationQueue) throws AndesException {
+    public int removeAllMessagesOfQueue(String storageQueueName) throws AndesException {
         long lastProcessedMessageID = 0;
         int messageCount = 0;
         List<AndesMessageMetadata> messageList = durableMessageStore
-                .getNextNMessageMetadataFromQueue(destinationQueue, lastProcessedMessageID, 500);
+                .getNextNMessageMetadataFromQueue(storageQueueName, lastProcessedMessageID, 500);
         List<AndesRemovableMetadata> messageMetaDataList = new ArrayList<AndesRemovableMetadata>();
         List<Long> messageIdList = new ArrayList<Long>();
         while (messageList.size() != 0) {
@@ -270,7 +270,7 @@ public class MessagingEngine {
             // Update metadata lists.
             for (AndesMessageMetadata metadata : messageList) {
                 messageMetaDataList.add(new AndesRemovableMetadata(metadata.getMessageID(),
-                        metadata.getDestination()));
+                        metadata.getDestination(),metadata.getStorageQueueName()));
                 messageIdList.add(metadata.getMessageID());
             }
 
@@ -279,14 +279,14 @@ public class MessagingEngine {
 
             //Remove metadata
             durableMessageStore
-                    .deleteMessageMetadataFromQueue(destinationQueue, messageMetaDataList);
+                    .deleteMessageMetadataFromQueue(storageQueueName, messageMetaDataList);
             //Remove content
             durableMessageStore.deleteMessageParts(messageIdList);
 
             messageMetaDataList.clear();
             messageIdList.clear();
             messageList = durableMessageStore
-                    .getNextNMessageMetadataFromQueue(destinationQueue, lastProcessedMessageID,
+                    .getNextNMessageMetadataFromQueue(storageQueueName, lastProcessedMessageID,
                             500);
         }
         return messageCount;
@@ -489,7 +489,9 @@ public class MessagingEngine {
 
     /**
      * Route the message to queue/queues of subscribers matching in AMQP way.
-     * Hierarchical topic message routing is evaluated here.
+     * Hierarchical topic message routing is evaluated here. This will duplicate
+     * message for each "subscription destination (not message destination)" at
+     * different nodes
      * @param message message to route
      * @throws AndesException
      */
@@ -497,6 +499,7 @@ public class MessagingEngine {
         if (message.isTopic) {
             String messageRoutingKey = message.getDestination();
             //get all topic subscriptions in the cluster matching to routing key
+            //including hierarchical topic case
             List<AndesSubscription> subscriptionList = subscriptionStore
                     .getActiveClusterSubscribersForDestination(messageRoutingKey,true);
             boolean originalMessageUsed = false;
@@ -513,7 +516,7 @@ public class MessagingEngine {
                     } else {
                         clone = cloneAndesMessageMetadataAndContent(message);
                     }
-                    clone.setDestination(subscription.getStorageQueueName());
+                    clone.setStorageQueueName(subscription.getStorageQueueName());
                     //We must update the routing key in metadata as well
                     //clone.updateMetadata(subscription.getTargetQueue());
                     if(log.isDebugEnabled()) {
@@ -538,6 +541,7 @@ public class MessagingEngine {
             }
 
         } else {
+            message.setStorageQueueName(message.getDestination());
             messageStoreManager.storeMetadata(message);
         }
 

@@ -57,8 +57,8 @@ public class TopicDeliveryWorker extends Thread {
     }
 
     /**
-     * 1. Get messages for the queue from last delivered message id
-     * 2. Enqueue the retrived message to the queue
+     * 1. Get messages for the destination from last delivered message id
+     * 2. Enqueue the retrived message to the destination
      * 3. Remove delivered messaged IDs from the data base
      */
     @Override

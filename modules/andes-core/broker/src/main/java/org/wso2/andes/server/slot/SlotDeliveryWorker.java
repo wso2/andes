@@ -217,11 +217,15 @@ public class SlotDeliveryWorker extends Thread {
                                             "Last message id from the leading thread = " +
                                             lastMessageId);
                                     localLastProcessedIdMap.put(storageQueueName, lastMessageId);
+
+                                    //Simulate a slot here
                                     Slot currentSlot = new Slot();
+                                    currentSlot.setStorageQueueName(storageQueueName);
                                     currentSlot.setDestinationOfMessagesInSlot(
                                             destinationOfMessagesInQueue);
                                     currentSlot.setStartMessageId(startMessageId);
                                     currentSlot.setEndMessageId(lastMessageId);
+
                                     log.debug("sending read messages to flusher << " + currentSlot
                                             .toString() + " >>");
                                     queueDeliveryWorker.sendMessageToFlusher

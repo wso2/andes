@@ -46,7 +46,7 @@ public class AndesSubscriptionManager {
     private List<SubscriptionListener> subscriptionListeners = new ArrayList<SubscriptionListener>();
 
     private static final String TOPIC_PREFIX = "topic.";
-    private static final String QUEUE_PREFIX = "queue.";
+    private static final String QUEUE_PREFIX = "destination.";
 
 
     public void init() {
@@ -88,7 +88,7 @@ public class AndesSubscriptionManager {
         //store subscription in context store
         subscriptionStore.createDisconnectOrRemoveLocalSubscription(localSubscription, SubscriptionListener.SubscriptionChange.Added);
 
-        //start a slot delivery worker on the queue (or topicQueue) subscription refers
+        //start a slot delivery worker on the destination (or topicQueue) subscription refers
         SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
         slotDeliveryWorkerManager.startSlotDeliveryWorker(localSubscription.getStorageQueueName(), localSubscription.getSubscribedDestination());
 
@@ -200,7 +200,7 @@ public class AndesSubscriptionManager {
 
             List<AndesSubscription> oldSubscriptionList;
 
-            //existing queue subscriptions list
+            //existing destination subscriptions list
             if (destination.startsWith(QUEUE_PREFIX)) {
                 String destinationQueueName = destination.replace(QUEUE_PREFIX, "");
                 oldSubscriptionList = subscriptionStore.replaceClusterSubscriptionListOfDestination

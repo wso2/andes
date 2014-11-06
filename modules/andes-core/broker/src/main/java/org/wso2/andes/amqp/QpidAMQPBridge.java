@@ -26,6 +26,7 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.protocol.AMQConstant;
+import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
@@ -216,23 +217,39 @@ public class QpidAMQPBridge {
         return contentLenWritten;
     }
 
-    public void ackReceived(UUID channelID, long messageID, String queueName, boolean isTopic) throws AMQException{
+    public void ackReceived(UUID channelID, long messageID, String routingKey, boolean isTopic)
+            throws AMQException {
         try {
-        if(log.isDebugEnabled()){
-        log.debug("AMQP BRIDGE: ack received for message id= " + messageID + " channelId= " + channelID);
-        }
-        AndesAckData andesAckData = AMQPUtils.generateAndesAckMessage(channelID, messageID,queueName,isTopic);
-        MessagingEngine.getInstance().ackReceived(andesAckData);
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "AMQP BRIDGE: ack received for message id= " + messageID + " channelId= "
+                        + channelID);
+            }
+            AndesSubscription ackSentSubscription = AndesContext.getInstance().
+                    getSubscriptionStore().getLocalSubscriptionForChannelId(channelID, routingKey,isTopic);
+            if(ackSentSubscription == null) {
+                log.error("Cannot handle Ack. Subscription is null for channel= " + channelID + " Message Destination= " + routingKey);
+                return;
+            }
+            //This can be different from routing key in hierarchical topic case
+            String subscriptionBoundDestination = ackSentSubscription.getSubscribedDestination();
+            String storageQueueNameOfSubscription = ackSentSubscription.getStorageQueueName();
+            AndesAckData andesAckData = AMQPUtils
+                    .generateAndesAckMessage(channelID, messageID, subscriptionBoundDestination,
+                     storageQueueNameOfSubscription,isTopic);
+            MessagingEngine.getInstance().ackReceived(andesAckData);
         } catch (AndesException e) {
             log.error("Exception occurred while handling ack", e);
-            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error in getting handling ack for " + messageID, e);
+            throw new AMQException(AMQConstant.INTERNAL_ERROR,
+                                   "Error in getting handling ack for " + messageID, e);
         }
     }
 
-    public void rejectMessage(AndesMessageMetadata metadata) throws AMQException {
+    public void rejectMessage(AMQMessage message, AMQChannel channel) throws AMQException {
         try {
-            log.debug("AMQP BRIDGE: rejected message id= " + metadata.getMessageID() + " channel = " + metadata.getChannelId());
-            MessagingEngine.getInstance().messageRejected(metadata);
+            AndesMessageMetadata rejectedMessage = AMQPUtils.convertAMQMessageToAndesMetadata(message, channel.getId());
+            log.debug("AMQP BRIDGE: rejected message id= " + rejectedMessage.getMessageID() + " channel = " + rejectedMessage.getChannelId());
+            MessagingEngine.getInstance().messageRejected(rejectedMessage);
         } catch (AndesException e) {
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while handling rejected message", e);
         }

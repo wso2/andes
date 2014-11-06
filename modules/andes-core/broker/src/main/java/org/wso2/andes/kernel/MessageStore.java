@@ -146,24 +146,24 @@ public interface MessageStore {
     /**
      * read  a metadata list from store specifying a starting message id and a count
      *
-     * @param queueName name of the queue
+     * @param storageQueueName name of the queue
      * @param firstMsgId first id
      * @param count how many messages to read
      * @return list of metadata
      * @throws AndesException
      */
-    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName,
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String storageQueueName,
                                                                        long firstMsgId, int count)
             throws AndesException;
 
     /**
      * delete message metadata of messages for a queue
      *
-     * @param queueName name of the queue
+     * @param storageQueueName name of the queue
      * @param messagesToRemove messages to remove
      * @throws AndesException
      */
-    public void deleteMessageMetadataFromQueue(final String queueName,
+    public void deleteMessageMetadataFromQueue(final String storageQueueName,
                                                List<AndesRemovableMetadata> messagesToRemove)
             throws AndesException;
 

@@ -913,10 +913,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             /**
              * When the message is acknowledged it is informed to Andes Kernel
              */
+            boolean isTopic = ((AMQMessage) entry.getMessage()).getMessagePublishInfo().getExchange().equals(AMQPUtils.TOPIC_EXCHANGE_NAME);
             QpidAMQPBridge.getInstance()
                           .ackReceived(this.getId(), entry.getMessage().getMessageNumber(),
-                                       entry.getQueue().getName(),
-                                       false);
+                                       entry.getMessage().getRoutingKey(),
+                                       isTopic);
             //TODO: we need to do it when processing the ack?
             this.decrementNonAckedMessageCount();
         }

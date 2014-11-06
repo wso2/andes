@@ -20,7 +20,6 @@ package org.wso2.andes.server.cassandra;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.configuration.BrokerConfiguration;
@@ -42,13 +41,16 @@ public class QueueDeliveryWorker {
 
     private int maxNumberOfUnAckedMessages = 100000;
 
-    //per queue
+    //per destination
     private int maxNumberOfReadButUndeliveredMessages = 5000;
 
     private SequentialThreadPoolExecutor executor;
 
     private final int queueWorkerWaitInterval;
 
+    /**
+     * Subscribed destination wise information
+     */
     private Map<String, QueueDeliveryInfo> subscriptionCursar4QueueMap = new HashMap<String,
             QueueDeliveryInfo>();
 
@@ -76,7 +78,7 @@ public class QueueDeliveryWorker {
     }
 
     /**
-     * Class to keep track of message delivery information queue wise
+     * Class to keep track of message delivery information destination wise
      */
     public class QueueDeliveryInfo {
         String destination;
@@ -87,9 +89,9 @@ public class QueueDeliveryWorker {
                 ConcurrentSkipListSet<AndesMessageMetadata>();
 
         /**
-         * Returns boolean variable saying whether this queue has room or not
+         * Returns boolean variable saying whether this destination has room or not
          *
-         * @return whether this queue has room or not
+         * @return whether this destination has room or not
          */
         public boolean isMessageBufferFull() {
             boolean hasRoom = true;
@@ -101,13 +103,13 @@ public class QueueDeliveryWorker {
     }
 
     /**
-     * Get the next subscription for the given queue. If at end of the subscriptions, it circles
+     * Get the next subscription for the given destination. If at end of the subscriptions, it circles
      * around to the first one
      *
      * @param destination
-     *         name of queue
+     *         name of destination
      * @param subscriptions4Queue
-     *         subscriptions registered for the queue
+     *         subscriptions registered for the destination
      * @return subscription to deliver
      * @throws AndesException
      */
@@ -169,7 +171,7 @@ public class QueueDeliveryWorker {
         long failureCount = 0;
         try {
             /**
-             *    Following check is to avoid the worker queue been full with too many pending tasks
+             *    Following check is to avoid the worker destination been full with too many pending tasks
              *    to send messages. Better stop buffering until we have some breathing room
              */
             pendingJobsToSendToTransport = executor.getSize();
@@ -177,15 +179,21 @@ public class QueueDeliveryWorker {
             if (pendingJobsToSendToTransport > 1000) {
                 if (pendingJobsToSendToTransport > 5000) {
                     log.error(
-                            "Flusher queue is growing, and this should not happen. Please check " +
+                            "Flusher destination is growing, and this should not happen. Please check " +
                             "cassandra Flusher");
                 }
-                log.warn("Flusher queue has " + pendingJobsToSendToTransport + " tasks");
+                log.warn("Flusher destination has " + pendingJobsToSendToTransport + " tasks");
                 // TODO: we need to handle this. Notify slot delivery worker to sleep more
             }
             for (AndesMessageMetadata message : messagesReadByLeadingThread) {
 
-                String destination = message.getDestination();
+                /**
+                 * Rather than destination of the message, we get the destination of
+                 * the messages in the slot. In hierarchical topic case this will
+                 * represent subscription bound destination NOT message destination
+                 * (games.cricket.* Not games.cricket.SriLanka)
+                 */
+                String destination = slot.getDestinationOfMessagesInSlot();
                 message.setSlot(slot);
                 QueueDeliveryInfo queueDeliveryInfo = getQueueDeliveryInfo(destination);
                 //check and buffer message
@@ -229,31 +237,30 @@ public class QueueDeliveryWorker {
      * Read messages from the buffer and send messages to subscribers
      */
     public void sendMessagesInBuffer(String subDestination) throws AndesException {
-        Set<String> destinationsMessagesBuffered = subscriptionCursar4QueueMap.keySet();
-        for(String bufferDest : destinationsMessagesBuffered) {
-            if(AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(subDestination,bufferDest)) {
-                QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(bufferDest);
-                if (log.isDebugEnabled()) {
-                    for (String dest : subscriptionCursar4QueueMap.keySet()) {
-                        log.debug("Queue size of destination " + dest + " is :"
-                                  + subscriptionCursar4QueueMap.get(dest).readButUndeliveredMessages
-                                .size());
-                    }
 
-                }
-                try {
-                    log.debug(
-                            "Sending messages from buffer num of msg = " + queueDeliveryInfo
-                                    .readButUndeliveredMessages
-                                    .size());
-                    sendMessagesToSubscriptions(queueDeliveryInfo.destination,
-                                                queueDeliveryInfo.readButUndeliveredMessages);
-                } catch (Exception e) {
-                    throw new AndesException("Error occurred while sending messages to subscribers " +
-                                             "from message buffer" + e);
-                }
+        QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(subDestination);
+        if (log.isDebugEnabled()) {
+            for (String dest : subscriptionCursar4QueueMap.keySet()) {
+                log.debug("Queue size of destination " + dest + " is :"
+                          + subscriptionCursar4QueueMap.get(dest).readButUndeliveredMessages
+                        .size());
             }
+
         }
+        try {
+            log.debug(
+                    "Sending messages from buffer num of msg = " + queueDeliveryInfo
+                            .readButUndeliveredMessages
+                            .size());
+            sendMessagesToSubscriptions(queueDeliveryInfo.destination,
+                                        queueDeliveryInfo.readButUndeliveredMessages);
+        } catch (Exception e) {
+            log.error("Error occurred while sending messages to subscribers from buffer", e);
+            throw new AndesException("Error occurred while sending messages to subscribers " +
+                                     "from message buffer" + e);
+        }
+
+
     }
 
 
@@ -265,7 +272,7 @@ public class QueueDeliveryWorker {
     }
 
     /**
-     * does that queue has too many messages pending
+     * does that destination has too many messages pending
      *
      * @param localSubscription
      *         local subscription
@@ -306,7 +313,12 @@ public class QueueDeliveryWorker {
             if (MessageExpirationWorker.isExpired(message.getExpirationTime())) {
                 continue;
             }
-            //get all relevant type of subscriptions
+
+            /**
+             * get all relevant type of subscriptions. This call does NOT
+             * return hierarchical subscriptions for the destination. There
+             * are duplicated messages for each different subscribed destination
+             */
             Collection<LocalSubscription> subscriptions4Queue =
                     subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
 
@@ -322,7 +334,7 @@ public class QueueDeliveryWorker {
             for (int j = 0; j < subscriptions4Queue.size(); j++) {
                 LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
                                                                                  subscriptions4Queue);
-                if(!message.isTopic()) { //for queue messages
+                if(!message.isTopic()) { //for destination messages
                     if (isThisSubscriptionHasRoom(localSubscription)) {
                         log.debug("Scheduled to send id = " + message.getMessageID());
                         deliverAsynchronously(localSubscription, message);
@@ -337,7 +349,7 @@ public class QueueDeliveryWorker {
             }
             //remove message after sending to all subscribers
 
-            if(!message.isTopic()) { //queue messages
+            if(!message.isTopic()) { //destination messages
                 if(numOfCurrentMsgDeliverySchedules == 1) {
                     iterator.remove();
                     sentMessageCount++;
@@ -401,14 +413,15 @@ public class QueueDeliveryWorker {
         OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
     }
 
+    //TODO: in multiple subscription case this can cause message duplication
     public void reQueueUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message) {
-        String queueName = message.getDestination();
-        subscriptionCursar4QueueMap.get(queueName).readButUndeliveredMessages.add(message);
+        String destination = message.getDestination();
+        subscriptionCursar4QueueMap.get(destination).readButUndeliveredMessages.add(message);
     }
 
     public void stopFlusher() {
         running = false;
-        log.debug("Shutting down the queue message flusher for the queue " + nodeQueue);
+        log.debug("Shutting down the destination message flusher for the destination " + nodeQueue);
     }
 
     public void clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(

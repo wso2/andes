@@ -614,8 +614,7 @@ public class CQLDataAccessHelper {
                 Row row = iter.next();
                 value = CQLQueryBuilder.convertToByteArray(row, MSG_VALUE);
             }
-
-
+            //TODO: should we set storage queue name as well?
             return value;
         } catch (Exception e) {
             throw new CassandraDataAccessException(
@@ -686,6 +685,8 @@ public class CQLDataAccessHelper {
                 long msgId = row.getLong(MSG_KEY);
                 if (value != null && value.length > 0) {
                     AndesMessageMetadata tmpEntry = new AndesMessageMetadata(msgId, value, parse);
+                    //set back storage queue name
+                    tmpEntry.setStorageQueueName(rowName);
                     if (!MessageExpirationWorker.isExpired(tmpEntry.getExpirationTime())) {
                         metadataList.add(tmpEntry);
                     }
@@ -826,22 +827,22 @@ public class CQLDataAccessHelper {
         }
     }
 
-    public static Insert addMessageToQueue(String keySpace, String columnFamily, String queue,
+    public static Insert addMessageToQueue(String keySpace, String columnFamily, String storageQueueName,
                                            long messageId,
                                            byte[] message, boolean execute)
             throws CassandraDataAccessException {
 
-        if (columnFamily == null || queue == null || message == null) {
+        if (columnFamily == null || storageQueueName == null || message == null) {
             throw new CassandraDataAccessException(
                     "Can't add data with queueType = " + columnFamily +
-                    " and queue=" + queue + " message id  = " + messageId + " message = " +
+                    " and storageQueueName=" + storageQueueName + " message id  = " + messageId + " message = " +
                     message);
         }
 
         try {
 
             Map<String, Object> keyValueMap = new HashMap<String, Object>();
-            keyValueMap.put(MSG_ROW_ID, queue);
+            keyValueMap.put(MSG_ROW_ID, storageQueueName);
             keyValueMap.put(MSG_KEY, messageId);
             keyValueMap.put(MSG_VALUE, java.nio.ByteBuffer.wrap(message));
             Insert insert = CQLQueryBuilder.buildSingleInsert(keySpace, columnFamily, keyValueMap);
@@ -1170,8 +1171,10 @@ public class CQLDataAccessHelper {
 
             for (Row row : rows) {
                 AndesRemovableMetadata arm = new AndesRemovableMetadata(row.getLong(MESSAGE_ID),
-                        row.getString(
-                                MESSAGE_DESTINATION));
+                                                                        row.getString(
+                                                                                MESSAGE_DESTINATION),
+                                                                        row.getString(
+                                                                                MESSAGE_DESTINATION));
                 arm.isForTopic = row.getBool(MESSAGE_IS_FOR_TOPIC);
 
                 if (arm.messageID > 0) {
