@@ -19,6 +19,8 @@
 package org.wso2.andes.server.slot;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.util.Map;
@@ -36,6 +38,8 @@ public class SlotDeliveryWorkerManager {
             ConcurrentHashMap<Integer, SlotDeliveryWorker>();
 
     private ExecutorService slotDeliveryWorkerExecutor;
+
+    private static Log log = LogFactory.getLog(SlotDeliveryWorkerManager.class);
 
     /**
      * Number of slot delivery worker threads running inn one MB node

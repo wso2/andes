@@ -899,21 +899,14 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         Collection<QueueEntry> ackedMessages = getAckedMessages(deliveryTag, multiple);
         _transaction.dequeue(ackedMessages, new MessageAcknowledgeAction(ackedMessages));
 
-        /**
-         * We honour acks for queue messages only
-         * TODO:is it correct? Shouldn't we honour acks for topic messages also
-         */
-        for(QueueEntry entry: ackedMessages){
-/*            if(!entry.getQueue().checkIfBoundToTopicExchange()) {
-            } else {
-                //discard acks for topic messages. We consider they are acked
-                //at the moment they are scheduled to deliver
-            }*/
-
+        for (QueueEntry entry : ackedMessages) {
             /**
              * When the message is acknowledged it is informed to Andes Kernel
              */
-            boolean isTopic = ((AMQMessage) entry.getMessage()).getMessagePublishInfo().getExchange().equals(AMQPUtils.TOPIC_EXCHANGE_NAME);
+            boolean isTopic = ((AMQMessage) entry.getMessage()).getMessagePublishInfo()
+                                                               .getExchange()
+                                                               .equals(AMQPUtils
+                                                                               .TOPIC_EXCHANGE_NAME);
             QpidAMQPBridge.getInstance()
                           .ackReceived(this.getId(), entry.getMessage().getMessageNumber(),
                                        entry.getMessage().getRoutingKey(),

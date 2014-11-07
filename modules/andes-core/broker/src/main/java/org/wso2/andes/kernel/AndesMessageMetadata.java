@@ -185,8 +185,9 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
     }
     
     
-    public void updateMetadata(String newDestination){
-    	this.metadata = createNewMetadata(this.metadata, newDestination, this.messageID);
+    public void updateMetadata(String newDestination, String newExchangeName){
+    	this.metadata = createNewMetadata(this.metadata, newDestination, newExchangeName);
+        this.destination = newDestination;
         log.debug("updated andes message metadata id= " + messageID + " new destination = " + newDestination);
     }
 
@@ -243,7 +244,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         return((MessageMetaData)mdt).getMessageHeader().getHeader(header);
     }
 
-    private byte[] createNewMetadata(byte[] originalMetadata, String routingKey, long messageID){
+    private byte[] createNewMetadata(byte[] originalMetadata, String routingKey, String exchangeName){
 		ByteBuffer buf = ByteBuffer.wrap(originalMetadata);
 		buf.position(1);
 		buf = buf.slice();
@@ -261,6 +262,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 		MessagePublishInfo messagePublishInfo = new CustomMessagePublishInfo(
 				original_mdt);
 		messagePublishInfo.setRoutingKey(new AMQShortString(routingKey));
+        messagePublishInfo.setExchange(new AMQShortString(exchangeName));
 		MessageMetaData modifiedMetaData = new MessageMetaData(
 				messagePublishInfo, contentHeaderBody, contentChunkCount,
 				arrivalTime);

@@ -255,10 +255,13 @@ public class BasicSubscription implements AndesSubscription {
      * Set storage queue name. Slot delivery worker will refer this name
      */
     private void setStorageQueueName() {
-        if(isBoundToTopic) {
+        if(isBoundToTopic && !isDurable) {  // for normal topic subscriptions
             storageQueueName = AndesUtils.TOPIC_NODE_QUEUE_PREFIX + "|" + destination + "|" + subscribedNode;
-        } else {
+        } else if(isBoundToTopic && isDurable) {  //for durable topic subscriptions
+            storageQueueName = targetQueue;
+        } else { //For queue subscriptions. This is a must. Otherwise queue will not be shared among nodes
             storageQueueName = destination;
         }
     }
+
 }

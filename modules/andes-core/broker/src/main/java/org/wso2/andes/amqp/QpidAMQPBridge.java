@@ -228,7 +228,9 @@ public class QpidAMQPBridge {
             AndesSubscription ackSentSubscription = AndesContext.getInstance().
                     getSubscriptionStore().getLocalSubscriptionForChannelId(channelID, routingKey,isTopic);
             if(ackSentSubscription == null) {
-                log.error("Cannot handle Ack. Subscription is null for channel= " + channelID + " Message Destination= " + routingKey);
+                log.error(
+                        "Cannot handle Ack. Subscription is null for channel= " + channelID + " " +
+                        "Message Destination= " + routingKey);
                 return;
             }
             //This can be different from routing key in hierarchical topic case
@@ -459,6 +461,7 @@ public class QpidAMQPBridge {
         List<Binding> bindingList = queue.getBindings();
         if (bindingList != null && !bindingList.isEmpty()) {
             Set<AndesBinding> uniqueBindings = new HashSet<AndesBinding>();
+            List<LocalSubscription> alreadyAddedSubscriptions = new ArrayList<LocalSubscription>();
             /**
              * Iterate unique bindings of the queue and add subscription entries.
              */
@@ -468,19 +471,13 @@ public class QpidAMQPBridge {
                     if (uniqueBindings.add(andesBinding)) {
                         LocalSubscription localSubscription = AMQPUtils.createAMQPLocalSubscription(queue, subscription, b);
                         subscriptionManager.addSubscription(localSubscription);
+                        alreadyAddedSubscriptions.add(localSubscription);
                     }
                 }
             } catch (AndesException e) {
-                log.warn("Reverting already created subscription entries for this subscription", e);
-                for (AndesBinding b : uniqueBindings) {
-                    for (Binding qpidBinding : bindingList) {
-                        if (qpidBinding.getQueue().getName().equals(b.boundQueue.queueName) &&
-                                qpidBinding.getBindingKey().equals(b.routingKey) &&
-                                qpidBinding.getExchange().getName().equals(b.boundExchangeName)) {
-                            LocalSubscription localSubscription = AMQPUtils.createAMQPLocalSubscription(queue, subscription, qpidBinding);
-                            subscriptionManager.closeLocalSubscription(localSubscription);
-                        }
-                    }
+                log.warn("Reverting already created subscription entries for subscription " + subscription, e);
+                for(LocalSubscription alreadyAddedSub : alreadyAddedSubscriptions) {
+                    subscriptionManager.closeLocalSubscription(alreadyAddedSub);
                 }
                 throw new AndesException("error while adding the local subscription", e);
             }

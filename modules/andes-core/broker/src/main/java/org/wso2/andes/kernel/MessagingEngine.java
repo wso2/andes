@@ -517,8 +517,14 @@ public class MessagingEngine {
                         clone = cloneAndesMessageMetadataAndContent(message);
                     }
                     clone.setStorageQueueName(subscription.getStorageQueueName());
-                    //We must update the routing key in metadata as well
-                    //clone.updateMetadata(subscription.getTargetQueue());
+                    if(subscription.isDurable()) {
+                        /**
+                         * For durable topic subscriptions we must update the routing key
+                         * in metadata as well so that they become independent messages
+                         * baring subscription bound queue name as the destination
+                         */
+                        clone.updateMetadata(subscription.getTargetQueue(), AMQPUtils.DIRECT_EXCHANGE_NAME);
+                    }
                     if(log.isDebugEnabled()) {
                         log.debug("Storing metadata queue= " + subscription
                                 .getStorageQueueName() + " messageID= " + clone.getMessageID());

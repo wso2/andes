@@ -609,27 +609,11 @@ public class SubscriptionStore {
     private LocalSubscription removeLocalSubscription(AndesSubscription subscription) throws AndesException {
         String destination = subscription.getSubscribedDestination();
         String subscriptionID = subscription.getSubscriptionID();
-        //check queue local subscriptions
-        Map<String, LocalSubscription> subscriptionList = getLocalSubscriptionMap(destination,
-                                                                                  false);
-        Iterator<LocalSubscription> iterator = subscriptionList.values().iterator();
         LocalSubscription subscriptionToRemove = null;
-        while (iterator.hasNext()) {
-            LocalSubscription currentSubscription = iterator.next();
-            if (currentSubscription.equals(subscription)) {
-                subscriptionToRemove = currentSubscription;
-                iterator.remove();
-                break;
-            }
-        }
-        if (subscriptionList.isEmpty()) {
-            localQueueSubscriptionMap.remove(destination);
-        }
-
-        //check topic local subscriptions
-        if (subscriptionToRemove == null) {
-            subscriptionList = getLocalSubscriptionMap(destination, true);
-            iterator = subscriptionList.values().iterator();
+        //check queue local subscriptions
+        Map<String, LocalSubscription> subscriptionList = getLocalSubscriptionMap(destination,false);
+        if(subscriptionList != null) {
+            Iterator<LocalSubscription> iterator = subscriptionList.values().iterator();
             while (iterator.hasNext()) {
                 LocalSubscription currentSubscription = iterator.next();
                 if (currentSubscription.equals(subscription)) {
@@ -639,7 +623,26 @@ public class SubscriptionStore {
                 }
             }
             if (subscriptionList.isEmpty()) {
-                localTopicSubscriptionMap.remove(destination);
+                localQueueSubscriptionMap.remove(destination);
+            }
+        }
+
+        //check topic local subscriptions
+        if (subscriptionToRemove == null) {
+            subscriptionList = getLocalSubscriptionMap(destination, true);
+            if(subscriptionList != null) {
+                Iterator<LocalSubscription> iterator = subscriptionList.values().iterator();
+                while (iterator.hasNext()) {
+                    LocalSubscription currentSubscription = iterator.next();
+                    if (currentSubscription.equals(subscription)) {
+                        subscriptionToRemove = currentSubscription;
+                        iterator.remove();
+                        break;
+                    }
+                }
+                if (subscriptionList.isEmpty()) {
+                    localTopicSubscriptionMap.remove(destination);
+                }
             }
         }
 

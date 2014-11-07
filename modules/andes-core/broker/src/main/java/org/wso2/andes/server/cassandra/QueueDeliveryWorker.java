@@ -317,7 +317,9 @@ public class QueueDeliveryWorker {
             /**
              * get all relevant type of subscriptions. This call does NOT
              * return hierarchical subscriptions for the destination. There
-             * are duplicated messages for each different subscribed destination
+             * are duplicated messages for each different subscribed destination.
+             * For durable topic subscriptions this should return queue subscription
+             * bound to unique queue based on subscription id
              */
             Collection<LocalSubscription> subscriptions4Queue =
                     subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
@@ -329,12 +331,15 @@ public class QueueDeliveryWorker {
             }
 
             int numOfCurrentMsgDeliverySchedules = 0;
-            //if message is addressed to queues, only ONE subscriber should
-            //get the message. Otherwise, loop for every subscriber
+
+            /**
+             * if message is addressed to queues, only ONE subscriber should
+             * get the message. Otherwise, loop for every subscriber
+             */
             for (int j = 0; j < subscriptions4Queue.size(); j++) {
                 LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
                                                                                  subscriptions4Queue);
-                if(!message.isTopic()) { //for destination messages
+                if(!message.isTopic()) { //for queue messages
                     if (isThisSubscriptionHasRoom(localSubscription)) {
                         log.debug("Scheduled to send id = " + message.getMessageID());
                         deliverAsynchronously(localSubscription, message);
@@ -349,7 +354,7 @@ public class QueueDeliveryWorker {
             }
             //remove message after sending to all subscribers
 
-            if(!message.isTopic()) { //destination messages
+            if(!message.isTopic()) { //queue messages
                 if(numOfCurrentMsgDeliverySchedules == 1) {
                     iterator.remove();
                     sentMessageCount++;
