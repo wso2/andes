@@ -36,15 +36,14 @@ public class AndesMembershipListener implements MembershipListener {
     /**
      * This is triggered when a new member joined to the cluster.
      *
-     * @param membershipEvent contains the information about the added node.
+     * @param membershipEvent
+     *         contains the information about the added node.
      */
     @Override
     public void memberAdded(MembershipEvent membershipEvent) {
         Member member = membershipEvent.getMember();
-        log.info("Handling cluster gossip: New member joined to the cluster. Member Socket Address:" +
-                member.getInetSocketAddress() +
-                " UUID:" +
-                member.getUuid());
+        log.info("Handling cluster gossip: New member joined to the cluster. Member Socket Address:"
+                 + member.getSocketAddress() + " UUID:" + member.getUuid());
         ClusterResourceHolder.getInstance().getClusterManager().memberAdded(member);
     }
 
@@ -62,15 +61,14 @@ public class AndesMembershipListener implements MembershipListener {
     /**
      * This is triggered when a node left the cluster.
      *
-     * @param membershipEvent contains the information about the removed node.
+     * @param membershipEvent
+     *         contains the information about the removed node.
      */
     @Override
     public void memberRemoved(MembershipEvent membershipEvent) {
         Member member = membershipEvent.getMember();
-        log.info("Handling cluster gossip: A member left the cluster. Member Socket Address:" +
-                member.getInetSocketAddress() +
-                " UUID:" +
-                member.getUuid());
+        log.info("Handling cluster gossip: A member left the cluster. Member Socket Address:"
+                 + member.getSocketAddress() + " UUID:" + member.getUuid());
         ClusterManager clusterManager = ClusterResourceHolder.getInstance().getClusterManager();
         try {
             clusterManager.memberRemoved(member);
