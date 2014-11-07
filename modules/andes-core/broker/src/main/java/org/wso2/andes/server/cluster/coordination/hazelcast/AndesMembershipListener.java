@@ -11,13 +11,15 @@
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
+ * KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.wso2.andes.server.cluster.coordination.hazelcast;
 
 import com.hazelcast.core.Member;
+import com.hazelcast.core.MemberAttributeEvent;
 import com.hazelcast.core.MembershipEvent;
 import com.hazelcast.core.MembershipListener;
 import org.apache.commons.logging.Log;
@@ -44,6 +46,17 @@ public class AndesMembershipListener implements MembershipListener {
                 " UUID:" +
                 member.getUuid());
         ClusterResourceHolder.getInstance().getClusterManager().memberAdded(member);
+    }
+
+    /**
+     * Invoked when an attribute of a member was changed.
+     *
+     * @param memberAttributeEvent
+     *         information about the changed member attribute
+     */
+    @Override
+    public void memberAttributeChanged(MemberAttributeEvent memberAttributeEvent) {
+        // do nothing here, since member attributes are not used in the implementation
     }
 
     /**
