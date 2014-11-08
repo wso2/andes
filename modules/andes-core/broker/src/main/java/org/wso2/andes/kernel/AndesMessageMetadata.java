@@ -47,10 +47,21 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 
     /**
      *through which connection this message came into broker
+     * or rejected to the broker
      */
     UUID channelId;
 
+    /**
+     * Destination (routing key) of message
+     */
     private String destination;
+
+    /**
+     * Queue name in store in which message
+     * should be saved
+     */
+    private String storageQueueName;
+
     private boolean isPersistent;
     private boolean reDelivered;
     Map<UUID, PendingJob> pendingJobsTracker;
@@ -127,6 +138,14 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         this.destination = destination;
     }
 
+    public String getStorageQueueName() {
+        return storageQueueName;
+    }
+
+    public void setStorageQueueName(String storageQueueName) {
+        this.storageQueueName = storageQueueName;
+    }
+
     public boolean isPersistent() {
         return isPersistent;
     }
@@ -156,17 +175,26 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         clone.channelId = channelId;
     	clone.expirationTime = expirationTime;
         clone.isTopic = isTopic;
-        clone.destination = destination; 
+        clone.destination = destination;
+        clone.storageQueueName = storageQueueName;
         clone.isPersistent = isPersistent;
         clone.pendingJobsTracker = pendingJobsTracker; 
         clone.queueAddress = queueAddress;
         clone.slot = slot;
         return clone;
     }
-    
-    
-    public void updateMetadata(String newDestination){
-    	this.metadata = createNewMetadata(this.metadata, newDestination, this.messageID);
+
+
+    /**
+     * Update metadata of message. This will change AMQP bytes representing
+     * metadata. Routing key and exchange name will be set to the
+     * given values.
+     * @param newDestination  new routing key to set
+     * @param newExchangeName new exchange name to set
+     */
+    public void updateMetadata(String newDestination, String newExchangeName){
+    	this.metadata = createNewMetadata(this.metadata, newDestination, newExchangeName);
+        this.destination = newDestination;
         log.debug("updated andes message metadata id= " + messageID + " new destination = " + newDestination);
     }
 
@@ -223,7 +251,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         return((MessageMetaData)mdt).getMessageHeader().getHeader(header);
     }
 
-    private byte[] createNewMetadata(byte[] originalMetadata, String routingKey, long messageID){
+    private byte[] createNewMetadata(byte[] originalMetadata, String routingKey, String exchangeName){
 		ByteBuffer buf = ByteBuffer.wrap(originalMetadata);
 		buf.position(1);
 		buf = buf.slice();
@@ -241,6 +269,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 		MessagePublishInfo messagePublishInfo = new CustomMessagePublishInfo(
 				original_mdt);
 		messagePublishInfo.setRoutingKey(new AMQShortString(routingKey));
+        messagePublishInfo.setExchange(new AMQShortString(exchangeName));
 		MessageMetaData modifiedMetaData = new MessageMetaData(
 				messagePublishInfo, contentHeaderBody, contentChunkCount,
 				arrivalTime);

@@ -25,7 +25,10 @@ import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.BasicSubscription;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+
 import java.nio.ByteBuffer;
+import java.util.UUID;
 
 /**
  * Cluster wide subscriptions relavent per topic will be maintained through this class
@@ -125,6 +128,12 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
     @Override
     public boolean isActive() {
         return true;
+    }
+
+    @Override
+    public UUID getChannelID() {
+        //mqqtServerChannel.
+        throw  new NotImplementedException();
     }
 
     @Override

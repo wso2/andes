@@ -68,6 +68,7 @@ public class JDBCTestHelper {
         AndesMessageMetadata md = new AndesMessageMetadata();
         md.setMessageID(msgId);
         md.setDestination(queueName);
+        md.setStorageQueueName(queueName);
         md.setMetadata(("\u0002:MessageID=" + msgId + ",persistent=false,Topic=false,Destination=" + queueName +
                 ",Persistant=false,MessageContentLength=0").getBytes());
         md.setExpirationTime((msgId % 2 == 0) ? (System.currentTimeMillis() + expirationTime) : 0);

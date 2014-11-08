@@ -104,6 +104,12 @@ public class SimplyfiedDataSender implements AndesSubscription {
 	}
 
     @Override
+    public String getStorageQueueName() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
     public String getTargetQueueOwner() {
         return null;
     }

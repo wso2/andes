@@ -25,6 +25,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.slot.OrphanedSlotHandler;
+import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.subscription.BasicSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 
@@ -45,7 +46,7 @@ public class AndesSubscriptionManager {
     private List<SubscriptionListener> subscriptionListeners = new ArrayList<SubscriptionListener>();
 
     private static final String TOPIC_PREFIX = "topic.";
-    private static final String QUEUE_PREFIX = "queue.";
+    private static final String QUEUE_PREFIX = "destination.";
 
 
     public void init() {
@@ -76,6 +77,8 @@ public class AndesSubscriptionManager {
     /**
      * Register a subscription for a Given Queue
      * This will handle the subscription addition task.
+     * Also it will start a slot delivery worker thread to read
+     * messages for the subscription
      *
      * @param localSubscription local subscription
      * @throws AndesException
@@ -84,6 +87,10 @@ public class AndesSubscriptionManager {
 
         //store subscription in context store
         subscriptionStore.createDisconnectOrRemoveLocalSubscription(localSubscription, SubscriptionListener.SubscriptionChange.Added);
+
+        //start a slot delivery worker on the destination (or topicQueue) subscription refers
+        SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
+        slotDeliveryWorkerManager.startSlotDeliveryWorker(localSubscription.getStorageQueueName(), localSubscription.getSubscribedDestination());
 
         //notify the local subscription change to listeners
         notifyLocalSubscriptionHasChanged(localSubscription, SubscriptionListener.SubscriptionChange.Added);
@@ -163,8 +170,33 @@ public class AndesSubscriptionManager {
      * @throws AndesException
      */
     public void closeLocalSubscription(LocalSubscription subscription) throws AndesException {
-        subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, SubscriptionListener.SubscriptionChange.Deleted);
-        notifyLocalSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.Deleted);
+        SubscriptionListener.SubscriptionChange chageType;
+        /**
+         * For durable topic subscriptions, mark this as a offline subscription.
+         * When a new one comes with same subID, same topic it will become online again
+         * Queue subscription representing durable topic will anyway deleted.
+         * Topic subscription representing durable topic is deleted when binding is deleted
+         */
+        if(subscription.isBoundToTopic() && subscription.isDurable()) {
+            chageType = SubscriptionListener.SubscriptionChange.Disconnected;
+        } else {
+            chageType = SubscriptionListener.SubscriptionChange.Deleted;
+        }
+        subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, chageType);
+        notifyLocalSubscriptionHasChanged(subscription, chageType);
+    }
+
+    /**
+     * Delete all subscription entries bound for queue
+     * @param boundQueueName queue name to delete subscriptions
+     * @throws AndesException
+     */
+    public void deleteSubscriptionsOfBoundQueue(String boundQueueName) throws AndesException{
+        List<LocalSubscription> subscriptionsOfQueue = subscriptionStore.getListOfSubscriptionsBoundToQueue(boundQueueName);
+        for(LocalSubscription subscription : subscriptionsOfQueue) {
+            subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, SubscriptionListener.SubscriptionChange.Deleted);
+            notifyLocalSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.Deleted);
+        }
     }
 
     /**
@@ -193,7 +225,7 @@ public class AndesSubscriptionManager {
 
             List<AndesSubscription> oldSubscriptionList;
 
-            //existing queue subscriptions list
+            //existing destination subscriptions list
             if (destination.startsWith(QUEUE_PREFIX)) {
                 String destinationQueueName = destination.replace(QUEUE_PREFIX, "");
                 oldSubscriptionList = subscriptionStore.replaceClusterSubscriptionListOfDestination

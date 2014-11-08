@@ -129,7 +129,7 @@ public class SlotManager {
                 slotToBeAssigned.setStartMessageId(0L);
             }
             slotToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
-            slotToBeAssigned.setQueueName(queueName);
+            slotToBeAssigned.setStorageQueueName(queueName);
             slotIDMap.set(queueName, messageIDSet);
             if (log.isDebugEnabled()) {
                 log.debug(slotToBeAssigned.getEndMessageId() + " removed to slotIdMap. Current " +
@@ -230,16 +230,16 @@ public class SlotManager {
                 for (Slot slotToBeReAssigned : slotsToBeReAssigned) {
                     //Re-assign only if the slot is not empty
                     if (!SlotUtils.checkSlotEmptyFromMessageStore(slotToBeReAssigned)) {
-                        unAssignedSlotMap.putIfAbsent(slotToBeReAssigned.getQueueName(),
+                        unAssignedSlotMap.putIfAbsent(slotToBeReAssigned.getStorageQueueName(),
                                 freeSlotTreeSet);
                         //Lock key is queuName + SlotManager Class
                         String lockKey = (entry.getKey() + SlotManager.class).intern();
                         synchronized (lockKey) {
                             freeSlotTreeSet = unAssignedSlotMap
-                                    .get(slotToBeReAssigned.getQueueName());
+                                    .get(slotToBeReAssigned.getStorageQueueName());
                             freeSlotTreeSet.add(slotToBeReAssigned);
                             unAssignedSlotMap
-                                    .set(slotToBeReAssigned.getQueueName(), freeSlotTreeSet);
+                                    .set(slotToBeReAssigned.getStorageQueueName(), freeSlotTreeSet);
                             if (log.isDebugEnabled()) {
                                 log.debug("Reassigned slot " + slotToBeReAssigned
                                         .getStartMessageId() + " - " +

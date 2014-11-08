@@ -22,6 +22,11 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.queue.QueueEntry;
+
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,8 +39,13 @@ public class AndesUtils {
     private int cassandraPort = 9160;
     private int cqlPort = 9042;
 
+    //this constant will be used to prefix storage queue name for topics
+    public final static String TOPIC_NODE_QUEUE_PREFIX =  "TopicQueue";
+
     //This will be used to co-relate between the message id used in the browser and the message id used internally in MB
     private static ConcurrentHashMap<String, Long> browserMessageIdCorrelater = new ConcurrentHashMap<String, Long>();
+
+    private  static PrintWriter printWriterGlobal;
 
     public static AndesUtils getInstance() {
         if(self == null){
@@ -157,6 +167,21 @@ public class AndesUtils {
             andesMessageId = Long.valueOf(-1);
         }
         return andesMessageId;
+    }
+
+    public static void writeToFile(String whatToWrite, String filePath) {
+        try {
+            if(printWriterGlobal == null) {
+                BufferedWriter bufferedWriter = new BufferedWriter( new FileWriter(filePath));
+                printWriterGlobal = new PrintWriter(bufferedWriter);
+            }
+
+            printWriterGlobal.println(whatToWrite);
+
+        } catch (IOException e) {
+            System.out.println("Error. File to print received messages is not provided" + e);
+        }
+
     }
     
     

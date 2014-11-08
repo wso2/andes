@@ -94,7 +94,7 @@ public class MBThriftClient {
         Slot slot = new Slot();
         slot.setStartMessageId(slotInfo.getStartMessageId());
         slot.setEndMessageId(slotInfo.getEndMessageId());
-        slot.setQueueName(slotInfo.getQueueName());
+        slot.setStorageQueueName(slotInfo.getQueueName());
         return slot;
     }
 
@@ -136,7 +136,7 @@ public class MBThriftClient {
     public static synchronized void deleteSlot(String queueName, Slot slot,
                                                String nodeId) throws ConnectionException {
         SlotInfo slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(),
-                slot.getQueueName());
+                slot.getStorageQueueName());
         try {
             client = getServiceClient();
             client.deleteSlot(queueName, slotInfo, nodeId);

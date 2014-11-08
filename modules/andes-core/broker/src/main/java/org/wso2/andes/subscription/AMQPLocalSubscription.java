@@ -37,6 +37,7 @@ import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
 
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -80,6 +81,11 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
 
     public boolean isActive() {
         return amqpSubscription.isActive();
+    }
+
+    @Override
+    public UUID getChannelID() {
+        return channel.getId();
     }
 
     @Override

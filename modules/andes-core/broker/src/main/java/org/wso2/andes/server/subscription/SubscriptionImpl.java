@@ -251,6 +251,10 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
 
                 long deliveryTag = getChannel().getNextDeliveryTag();
 
+                /**
+                 * This method will record that this message is delivered in AMQChannel level
+                 * Requeueing and ack handling will be affected by this.
+                 */
                 recordMessageDelivery(entry, deliveryTag);
 
                 long messageID = entry.getMessage().getMessageNumber();
@@ -263,7 +267,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                     entry.setRedelivered();
                 }
 
-                if (messageTracker.evaluateDeliveryRules(messageID)) {
+                if (messageTracker.evaluateDeliveryRules(messageID, getChannel().getId())) {
 
                     //no point of trying to deliver if channel is closed ReQueue the message to be resent
                     // when channel is available

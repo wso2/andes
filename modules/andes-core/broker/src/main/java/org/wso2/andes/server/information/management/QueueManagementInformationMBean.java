@@ -19,6 +19,7 @@ package org.wso2.andes.server.information.management;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
@@ -86,7 +87,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         List<Long> andesMessageIdList = getValidAndesMessageIdList(messageIDs);
         List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>(messageIDs.length);
         for (Long messageId : andesMessageIdList) {
-            removableMetadataList.add(new AndesRemovableMetadata(messageId, deadLetterQueueName));
+            removableMetadataList.add(new AndesRemovableMetadata(messageId, deadLetterQueueName, deadLetterQueueName));
         }
         try {
             MessagingEngine.getInstance().deleteMessages(removableMetadataList, false);
@@ -164,7 +165,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
                     // Set the new destination queue
                     currentMetaData.setDestination(destination);
-                    currentMetaData.updateMetadata(destination);
+                    currentMetaData.setStorageQueueName(destination);
+                    currentMetaData.updateMetadata(destination, AMQPUtils.DIRECT_EXCHANGE_NAME);
 
                     metadataList.add(currentMetaData);
                 }

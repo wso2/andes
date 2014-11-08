@@ -141,7 +141,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         String nodeId = subscription.getSubscribedNode().split("_")[1];
         String subscriptionIdentifier = "1_"+nodeId+"@"+subscription.getTargetQueue();
 
-        //in case of topic whats in v2 is : topicSubscriber.getQueueName() + "@" + topicSubscriber.boundTopicName; --
+        //in case of topic whats in v2 is : topicSubscriber.getDestination() + "@" + topicSubscriber.boundTopicName; --
 
 
         return subscriptionIdentifier + "|" + subscription.getTargetQueue() + "|" + subscription.getTargetQueueBoundExchangeName() +

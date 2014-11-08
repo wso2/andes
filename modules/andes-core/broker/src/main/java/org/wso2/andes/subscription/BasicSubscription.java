@@ -20,6 +20,7 @@ package org.wso2.andes.subscription;
 
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.wso2.andes.kernel.AndesSubscription;
+import org.wso2.andes.server.util.AndesUtils;
 
 import java.util.UUID;
 
@@ -34,6 +35,7 @@ public class BasicSubscription implements AndesSubscription {
     protected boolean isExclusive;
     protected boolean isDurable;
     protected String subscribedNode;
+    protected String storageQueueName;
     protected String targetQueue;
     protected String targetQueueOwner;
     protected String targetQueueBoundExchange;
@@ -81,6 +83,8 @@ public class BasicSubscription implements AndesSubscription {
                 }
             }
         }
+
+        setStorageQueueName();
     }
 
     /**
@@ -121,6 +125,7 @@ public class BasicSubscription implements AndesSubscription {
         this.targetQueueBoundExchangeType = targetQueueBoundExchangeType;
         this.isTargetQueueBoundExchangeAutoDeletable = isTargetQueueBoundExchangeAutoDeletable;
         this.hasExternalSubscriptions = hasExternalSubscriptions;
+        setStorageQueueName();
     }
 
     @Override
@@ -158,6 +163,10 @@ public class BasicSubscription implements AndesSubscription {
 
     public String getTargetQueue() {
         return targetQueue;
+    }
+
+    public String getStorageQueueName() {
+        return storageQueueName;
     }
 
     @Override
@@ -241,4 +250,18 @@ public class BasicSubscription implements AndesSubscription {
                 append(targetQueueBoundExchange).
                 toHashCode();
     }
+
+    /**
+     * Set storage queue name. Slot delivery worker will refer this name
+     */
+    private void setStorageQueueName() {
+        if(isBoundToTopic && !isDurable) {  // for normal topic subscriptions
+            storageQueueName = AndesUtils.TOPIC_NODE_QUEUE_PREFIX + "|" + destination + "|" + subscribedNode;
+        } else if(isBoundToTopic && isDurable) {  //for durable topic subscriptions
+            storageQueueName = targetQueue;
+        } else { //For queue subscriptions. This is a must. Otherwise queue will not be shared among nodes
+            storageQueueName = destination;
+        }
+    }
+
 }

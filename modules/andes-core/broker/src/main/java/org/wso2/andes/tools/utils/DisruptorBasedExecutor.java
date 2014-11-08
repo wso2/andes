@@ -101,7 +101,8 @@ public class DisruptorBasedExecutor {
         long sequence = ringBuffer.next();
         AndesAckData event = ringBuffer.get(sequence);
         event.messageID = ackData.messageID;
-        event.qName = ackData.qName;
+        event.destination = ackData.destination;
+        event.msgStorageDestination = ackData.msgStorageDestination;
         event.channelID = ackData.channelID;
         event.isTopic = ackData.isTopic;
         // make the event available to EventProcessors
