@@ -170,8 +170,33 @@ public class AndesSubscriptionManager {
      * @throws AndesException
      */
     public void closeLocalSubscription(LocalSubscription subscription) throws AndesException {
-        subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, SubscriptionListener.SubscriptionChange.Deleted);
-        notifyLocalSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.Deleted);
+        SubscriptionListener.SubscriptionChange chageType;
+        /**
+         * For durable topic subscriptions, mark this as a offline subscription.
+         * When a new one comes with same subID, same topic it will become online again
+         * Queue subscription representing durable topic will anyway deleted.
+         * Topic subscription representing durable topic is deleted when binding is deleted
+         */
+        if(subscription.isBoundToTopic() && subscription.isDurable()) {
+            chageType = SubscriptionListener.SubscriptionChange.Disconnected;
+        } else {
+            chageType = SubscriptionListener.SubscriptionChange.Deleted;
+        }
+        subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, chageType);
+        notifyLocalSubscriptionHasChanged(subscription, chageType);
+    }
+
+    /**
+     * Delete all subscription entries bound for queue
+     * @param boundQueueName queue name to delete subscriptions
+     * @throws AndesException
+     */
+    public void deleteSubscriptionsOfBoundQueue(String boundQueueName) throws AndesException{
+        List<LocalSubscription> subscriptionsOfQueue = subscriptionStore.getListOfSubscriptionsBoundToQueue(boundQueueName);
+        for(LocalSubscription subscription : subscriptionsOfQueue) {
+            subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, SubscriptionListener.SubscriptionChange.Deleted);
+            notifyLocalSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.Deleted);
+        }
     }
 
     /**

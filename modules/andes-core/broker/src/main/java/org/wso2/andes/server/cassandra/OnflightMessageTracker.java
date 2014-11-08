@@ -208,7 +208,6 @@ public class OnflightMessageTracker {
             }
             numOfDeliveries += 1;
             channelToNumOfDeliveries.put(channelID, numOfDeliveries);
-            printDeliveryMap();
             return numOfDeliveries;
         }
 
@@ -220,7 +219,6 @@ public class OnflightMessageTracker {
             }  else {
                 channelToNumOfDeliveries.remove(channelID);
             }
-            printDeliveryMap();
             return numOfDeliveries;
         }
 
@@ -235,15 +233,6 @@ public class OnflightMessageTracker {
                 allAcksReceived = true;
             }
             return allAcksReceived;
-        }
-
-        private void printDeliveryMap() {
-            Set<UUID> channelsDelivered = channelToNumOfDeliveries.keySet();
-            String deliveries = "";
-            for (UUID channelID : channelsDelivered) {
-                deliveries = deliveries + channelID + " >> " + channelToNumOfDeliveries
-                        .get(channelID) + "\n";
-            }
         }
     }
 

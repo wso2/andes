@@ -214,6 +214,9 @@ public class QueueDeliveryWorker {
             /**
              * Now messages are read to the memory. Send the read messages to subscriptions
              */
+            if(log.isDebugEnabled()) {
+                log.debug("Sending messages in buffer destination= " + slot.getDestinationOfMessagesInSlot());
+            }
             sendMessagesInBuffer(slot.getDestinationOfMessagesInSlot());
             failureCount = 0;
         } catch (Throwable e) {
@@ -324,6 +327,18 @@ public class QueueDeliveryWorker {
             Collection<LocalSubscription> subscriptions4Queue =
                     subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
 
+            //If this is a topic message, we remove all durable topic subscriptions here.
+            //Because durable topic subscriptions will get messages via queue path.
+            if(message.isTopic()) {
+                Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
+                while (subscriptionIterator.hasNext()) {
+                    LocalSubscription subscription = subscriptionIterator.next();
+                    if(subscription.isDurable()) {
+                        subscriptionIterator.remove();
+                    }
+                }
+            }
+
             //check id destination has any subscription
             //todo return the slot
             if (subscriptions4Queue.size() == 0) {
@@ -339,24 +354,28 @@ public class QueueDeliveryWorker {
             for (int j = 0; j < subscriptions4Queue.size(); j++) {
                 LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
                                                                                  subscriptions4Queue);
-                if(!message.isTopic()) { //for queue messages
+                if(!message.isTopic()) { //for queue messages and durable topic messages (as they are now queue messages)
                     if (isThisSubscriptionHasRoom(localSubscription)) {
                         log.debug("Scheduled to send id = " + message.getMessageID());
                         deliverAsynchronously(localSubscription, message);
                         numOfCurrentMsgDeliverySchedules ++;
                         break;
                     }
-                }  else { //for topic messages. We do not consider room
+                }  else { //for normal (non-durable) topic messages. We do not consider room
                     log.debug("Scheduled to send id = " + message.getMessageID());
                     deliverAsynchronously(localSubscription, message);
                     numOfCurrentMsgDeliverySchedules ++;
                 }
             }
+
             //remove message after sending to all subscribers
 
-            if(!message.isTopic()) { //queue messages
+            if(!message.isTopic()) { //queue messages (and durable topic messages)
                 if(numOfCurrentMsgDeliverySchedules == 1) {
                     iterator.remove();
+                    if(log.isDebugEnabled()) {
+                        log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
+                    }
                     sentMessageCount++;
                 } else {
                     log.debug(
@@ -366,9 +385,12 @@ public class QueueDeliveryWorker {
                     //if we continue message order will break
                     break;
                 }
-            } else { //topic message
+            } else { //normal topic message
                 if(numOfCurrentMsgDeliverySchedules == subscriptions4Queue.size()) {
                     iterator.remove();
+                    if(log.isDebugEnabled()) {
+                        log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
+                    }
                     sentMessageCount++;
                 }  else {
                     log.warn("Could not schedule message delivery to all" +
@@ -413,6 +435,9 @@ public class QueueDeliveryWorker {
                 }
             }
         };
+        if(log.isDebugEnabled()) {
+            log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription.toString());
+        }
         executor.submit(r, (subscription.getTargetQueue() + subscription.getSubscriptionID())
                 .hashCode());
         OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());

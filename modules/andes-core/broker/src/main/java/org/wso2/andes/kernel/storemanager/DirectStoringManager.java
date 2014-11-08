@@ -169,11 +169,15 @@ public class DirectStoringManager extends BasicStoringManager implements Message
     public void ackReceived(List<AndesAckData> ackList) throws AndesException {
         List<AndesRemovableMetadata> removableMetadata = new ArrayList<AndesRemovableMetadata>();
         for (AndesAckData ack : ackList) {
-            log.info("ack - direct store manager");
+            if(log.isDebugEnabled()) {
+                log.debug("ack - direct store manager");
+            }
             //for topics message is shared. If all acks are received only we should remove message
             boolean isOkToDeleteMessage = OnflightMessageTracker.getInstance().handleAckReceived(ack.channelID, ack.messageID);
             if(isOkToDeleteMessage) {
-                log.info("Ok to delete message id= " + ack.messageID);
+                if(log.isDebugEnabled()) {
+                    log.debug("Ok to delete message id= " + ack.messageID);
+                }
                 removableMetadata.add(new AndesRemovableMetadata(ack.messageID, ack.destination, ack.msgStorageDestination));
             }
             //record ack received

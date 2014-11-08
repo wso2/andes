@@ -89,9 +89,15 @@ public class SlotDeliveryWorkerManager {
                 SlotDeliveryWorker slotDeliveryWorker = getSlotDeliveryWorkerMap()
                         .get(slotDeliveryWorkerId);
                 slotDeliveryWorker.addQueueToThread(storageQueueName, destinaton);
+                if(log.isDebugEnabled()) {
+                    log.debug("Assigned Already Running Slot Delivery Worker. Reading messages storageQ= " + storageQueueName + " MsgDest= " + destinaton);
+                }
             }
         } else {
             SlotDeliveryWorker slotDeliveryWorker = new SlotDeliveryWorker();
+            if(log.isDebugEnabled()) {
+                log.debug("Slot Delivery Worker Started. Reading messages storageQ= " + storageQueueName + " MsgDest= " + destinaton);
+            }
             slotDeliveryWorker.addQueueToThread(storageQueueName, destinaton);
             getSlotDeliveryWorkerMap().put(slotDeliveryWorkerId, slotDeliveryWorker);
             slotDeliveryWorkerExecutor.execute(slotDeliveryWorker);

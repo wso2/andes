@@ -502,21 +502,19 @@ public class MessagingEngine {
             //including hierarchical topic case
             List<AndesSubscription> subscriptionList = subscriptionStore
                     .getActiveClusterSubscribersForDestination(messageRoutingKey,true);
-            boolean originalMessageUsed = false;
+            boolean isMessageRouted = false;
             List<String> alreadyStoredQueueNames = new ArrayList<String>();
             for (AndesSubscription subscription : subscriptionList) {
                 if(!alreadyStoredQueueNames.contains(subscription.getStorageQueueName())) {
+
+                    //Everything is done to a clone setting aside original message
+                    AndesMessageMetadata clone = cloneAndesMessageMetadataAndContent(message);
+
                     //Message should be written to storage queue name. This is
                     //determined by destination of the message. So should be
                     //updated (but internal metadata will have topic name as usual)
-                    AndesMessageMetadata clone;
-                    if (!originalMessageUsed) {
-                        originalMessageUsed = true;
-                        clone = message;
-                    } else {
-                        clone = cloneAndesMessageMetadataAndContent(message);
-                    }
                     clone.setStorageQueueName(subscription.getStorageQueueName());
+
                     if(subscription.isDurable()) {
                         /**
                          * For durable topic subscriptions we must update the routing key
@@ -527,19 +525,19 @@ public class MessagingEngine {
                     }
                     if(log.isDebugEnabled()) {
                         log.debug("Storing metadata queue= " + subscription
-                                .getStorageQueueName() + " messageID= " + clone.getMessageID());
+                                .getStorageQueueName() + " messageID= " + clone.getMessageID() + "isTopic");
                     }
                     messageStoreManager.storeMetadata(clone);
-
+                    isMessageRouted = true;
                     alreadyStoredQueueNames.add(subscription.getStorageQueueName());
                 }
             }
 
             //if there is no matching subscriber at the moment there is no point
             //of storing the message
-            if(!originalMessageUsed) {
+            if(!isMessageRouted) {
                 log.info("Message routing key: " + message
-                        .getDestination() + " No routes in cluster. Ignoring Message");
+                        .getDestination() + " No routes in cluster. Ignoring Message id=" + message.getMessageID());
                 List<Long> messageIdList = new ArrayList<Long>();
                 messageIdList.add(message.getMessageID());
                 //todo: at this moment content is still in disruptor.

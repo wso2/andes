@@ -228,6 +228,7 @@ public class QpidAMQPBridge {
             AndesSubscription ackSentSubscription = AndesContext.getInstance().
                     getSubscriptionStore().getLocalSubscriptionForChannelId(channelID, routingKey,isTopic);
             if(ackSentSubscription == null) {
+                //TODO : if an ack came here after subscription is closed, should we discard message?
                 log.error(
                         "Cannot handle Ack. Subscription is null for channel= " + channelID + " " +
                         "Message Destination= " + routingKey);
@@ -386,11 +387,14 @@ public class QpidAMQPBridge {
         log.debug("AMQP BRIDGE:  delete queue : " + queue.getName());
         }
         try {
+            //delete all subscription enries if remaining
+            ClusterResourceHolder.getInstance().getSubscriptionManager().deleteSubscriptionsOfBoundQueue(queue.getName());
+
+            //remove queue and notify
             AndesContext.getInstance().getAMQPConstructStore().removeQueue(queue.getName(), true);
             for (QueueListener queueListener : queueListeners) {
                 queueListener.handleLocalQueuesChanged(AMQPUtils.createAndesQueue(queue), QueueListener.QueueChange.Deleted);
             }
-            //ClusterResourceHolder.getInstance().getSubscriptionManager().removeSubscriptionsRepresentingQueue(queue.getName(),queue.isExclusive());
 
         } catch (AndesException e) {
             log.error("error while removing queue", e);

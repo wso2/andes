@@ -55,7 +55,6 @@ public class SlotDeliveryWorker extends Thread {
     private QueueDeliveryWorker queueDeliveryWorker;
 
     public SlotDeliveryWorker() {
-        log.info("SlotDeliveryWorker Initialized.");
         queueDeliveryWorker = QueueDeliveryWorker.getInstance();
         this.storageQueueNameToDestinationMap = new ConcurrentSkipListMap<String, String>();
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
@@ -180,7 +179,7 @@ public class SlotDeliveryWorker extends Thread {
                                                                 slotWindowSize);
                                 if (messagesReadByLeadingThread == null ||
                                     messagesReadByLeadingThread.isEmpty()) {
-                                    log.debug("No messages are read from the leading thread...");
+                                    log.debug("No messages are read from the leading thread. StorageQ= " + storageQueueName);
                                     boolean sentFromMessageBuffer = sendFromMessageBuffer
                                             (destinationOfMessagesInQueue);
                                     log.debug(
@@ -204,12 +203,8 @@ public class SlotDeliveryWorker extends Thread {
                                 } else {
                                     if (log.isDebugEnabled()) {
                                         log.debug(messagesReadByLeadingThread.size() + " " +
-                                                  "number of messages read from slot");
+                                                  "number of messages read from Slot Delivery Worker. StorageQ= " + storageQueueName);
                                     }
-                                    log.debug(
-                                            "Messages from the leading thread count= " +
-                                            messagesReadByLeadingThread
-                                                    .size());
                                     long lastMessageId = messagesReadByLeadingThread.get(
                                             messagesReadByLeadingThread
                                                     .size() - 1).getMessageID();

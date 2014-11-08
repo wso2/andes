@@ -79,7 +79,7 @@ public class SubscriptionStore {
     }
 
     /**
-     * get all ACTIVE CLUSTER subscription entries subscribed for a queue/topic
+     * get all (ACTIVE/INACTIVE) CLUSTER subscription entries subscribed for a queue/topic
      * hierarchical topic subscription mapping also happens here
      * @param destination queue/topic name
      * @param isTopic     TRUE if checking topics
@@ -94,9 +94,9 @@ public class SubscriptionStore {
                 List<AndesSubscription> subscriptionsOfDestination = subMap.get(subDestination);
                 if (subscriptionsOfDestination != null) {
                     for (AndesSubscription subscription : subscriptionsOfDestination) {
-                        if (subscription.hasExternalSubscriptions()) {
+                        //if (subscription.hasExternalSubscriptions()) {
                             subscriptionsHavingExternalsubscriber.add(subscription);
-                        }
+                        //}
                     }
                 }
             }
@@ -350,6 +350,33 @@ public class SubscriptionStore {
         } else {
             return new ArrayList<AndesSubscription>();
         }
+    }
+
+    /**
+     * Get ALL (ACTIVE + INACTIVE) local subscriptions whose bound queue is given
+     * @param queueName Queue name to search
+     * @return  List if matching subscriptions
+     * @throws AndesException
+     */
+    public List<LocalSubscription> getListOfSubscriptionsBoundToQueue(String queueName) throws AndesException{
+        List<LocalSubscription> subscriptionsOfQueue = new ArrayList<LocalSubscription>();
+        Map<String, LocalSubscription> queueSubscriptionMap =  localQueueSubscriptionMap.get(queueName);
+        if(queueSubscriptionMap != null) {
+            subscriptionsOfQueue.addAll(queueSubscriptionMap.values());
+        }
+        Map<String, Map<String, LocalSubscription>> topicSubscriptionMap  =  localTopicSubscriptionMap;
+        for(String destination : topicSubscriptionMap.keySet()) {
+            Map<String, LocalSubscription> topicSubsOfDest = topicSubscriptionMap.get(destination);
+            if(topicSubsOfDest != null) {
+                for(String subID : topicSubsOfDest.keySet()) {
+                    LocalSubscription sub = topicSubsOfDest.get(subID);
+                    if(sub.getTargetQueue().equals(queueName)) {
+                        subscriptionsOfQueue.add(sub);
+                    }
+                }
+            }
+        }
+        return subscriptionsOfQueue;
     }
 
     /**
