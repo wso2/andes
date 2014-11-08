@@ -61,16 +61,16 @@ runCommand()
 resetQueue()
 {
     vhost=$1
-    storageQueueName=$2
-    runCommand "get -o storageQueueName -v $vhost -n $storageQueueName  -a MaximumQueueDepth"
+    destination=$2
+    runCommand "get -o destination -v $vhost -n $destination  -a MaximumQueueDepth"
     rawQDepth=$RET
     # Note that MaxQueueDepth is returned as Kb but set as b!
     queueDepth=$[ $rawQDepth * 1024 ]
-    runCommand "get -o storageQueueName -v $vhost -n $storageQueueName  -a MaximumMessageAge"
+    runCommand "get -o destination -v $vhost -n $destination  -a MaximumMessageAge"
     messageAge=$RET
-    runCommand "get -o storageQueueName -v $vhost -n $storageQueueName  -a MaximumMessageCount"
+    runCommand "get -o destination -v $vhost -n $destination  -a MaximumMessageCount"
     messageCount=$RET
-    runCommand "get -o storageQueueName -v $vhost -n $storageQueueName  -a MaximumMessageSize"
+    runCommand "get -o destination -v $vhost -n $destination  -a MaximumMessageSize"
     messageSize=$RET
     
     if [ $OUTPUT == 1 ] ; then    
@@ -81,22 +81,22 @@ resetQueue()
      echo MaximumMessageSize  : $messageSize        
     fi
     
-    runCommand "set -o storageQueueName -v $vhost -n $storageQueueName  -a MaximumMessageSize -s $messageSize"
-    runCommand "set -o storageQueueName -v $vhost -n $storageQueueName  -a MaximumMessageAge -s $messageAge"
-    runCommand "set -o storageQueueName -v $vhost -n $storageQueueName  -a MaximumMessageCount -s $messageCount"
-    runCommand "set -o storageQueueName -v $vhost -n $storageQueueName  -a MaximumQueueDepth -s $queueDepth"
+    runCommand "set -o destination -v $vhost -n $destination  -a MaximumMessageSize -s $messageSize"
+    runCommand "set -o destination -v $vhost -n $destination  -a MaximumMessageAge -s $messageAge"
+    runCommand "set -o destination -v $vhost -n $destination  -a MaximumMessageCount -s $messageCount"
+    runCommand "set -o destination -v $vhost -n $destination  -a MaximumQueueDepth -s $queueDepth"
 }
 
 resetVirtualHost()
 {
  vhost=$1
  ignore=0
- for storageQueueName in `$CLI list -o storageQueueName -v $vhost $AUTH |grep '|' | cut -d '|' -f 1 ` ; do
+ for destination in `$CLI list -o destination -v $vhost $AUTH |grep '|' | cut -d '|' -f 1 ` ; do
  
    if [ $ignore == 0 ] ; then
      ignore=1
    else 
-     resetQueue $vhost $storageQueueName
+     resetQueue $vhost $destination
    fi
  
  done
