@@ -292,23 +292,59 @@ public class MessagingEngine {
         return messageCount;
     }
 
+    /**
+     * Delete messages from store. Optinally move to dead letter channel
+     * @param messagesToRemove List of messages to remove
+     * @param moveToDeadLetterChannel if to move to DLC
+     * @throws AndesException
+     */
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
         messageStoreManager.deleteMessages(messagesToRemove, moveToDeadLetterChannel);
     }
 
+    /**
+     * Get content chunk from store
+     * @param messageId id of the message
+     * @param offsetValue  chunk id
+     * @return message content
+     * @throws AndesException
+     */
     public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
         return messageStoreManager.getMessagePart(messageId, offsetValue);
     }
 
+    /**
+     * Get message count for queue
+     * @param queueName  name of the queue
+     * @return  message count of the queue
+     * @throws AndesException
+     */
     public int getMessageCountOfQueue(String queueName) throws AndesException {
         return (int) AndesContext.getInstance().getAndesContextStore().getMessageCountForQueue(
                 queueName);
     }
 
+    /**
+     * Get message metadata from queue between two message id values
+     * @param queueName queue name
+     * @param firstMsgId  id of the starting id
+     * @param lastMsgID id of the last id
+     * @return  List of message metadata
+     * @throws AndesException
+     */
     public List<AndesMessageMetadata> getMetaDataList(final String queueName, long firstMsgId, long lastMsgID) throws AndesException {
         return messageStoreManager.getMetaDataList(queueName, firstMsgId, lastMsgID);
     }
 
+    /**
+     * Get message metadata from queue starting from given id up a given
+     * message count
+     * @param queueName name of the queue
+     * @param firstMsgId  id of the starting id
+     * @param count maximum num of messages to return
+     * @return  List of message metadata
+     * @throws AndesException
+     */
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId, int count) throws AndesException {
         return messageStoreManager.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
     }
@@ -360,6 +396,11 @@ public class MessagingEngine {
         }
     }
 
+    /**
+     * Generate a new message ID. The return id will be always unique
+     * even for different message broker nodes
+     * @return  id generated
+     */
     public long generateNewMessageId() {
         long messageId = messageIdGenerator.getNextId();
         if (log.isTraceEnabled()) {
@@ -368,6 +409,12 @@ public class MessagingEngine {
         return messageId;
     }
 
+    /**
+     * Create a clone of the message
+     * @param message  message to be cloned
+     * @return  Cloned reference of message
+     * @throws AndesException
+     */
     private AndesMessageMetadata cloneAndesMessageMetadataAndContent(AndesMessageMetadata message
     ) throws AndesException {
         long newMessageId = messageIdGenerator.getNextId();
@@ -384,6 +431,11 @@ public class MessagingEngine {
 
     }
 
+    /**
+     * Get node identifier current node. This will be unique for the node.
+     * Further after a restart node will have same node name
+     * @return  node identifier
+     */
     public static String getMyNodeQueueName() {
         ClusterManager clusterManager = ClusterResourceHolder.getInstance().getClusterManager();
         return AndesConstants.NODE_QUEUE_NAME_PREFIX + clusterManager.getMyNodeID();

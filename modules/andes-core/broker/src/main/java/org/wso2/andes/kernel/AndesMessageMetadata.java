@@ -183,8 +183,15 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         clone.slot = slot;
         return clone;
     }
-    
-    
+
+
+    /**
+     * Update metadata of message. This will change AMQP bytes representing
+     * metadata. Routing key and exchange name will be set to the
+     * given values.
+     * @param newDestination  new routing key to set
+     * @param newExchangeName new exchange name to set
+     */
     public void updateMetadata(String newDestination, String newExchangeName){
     	this.metadata = createNewMetadata(this.metadata, newDestination, newExchangeName);
         this.destination = newDestination;
