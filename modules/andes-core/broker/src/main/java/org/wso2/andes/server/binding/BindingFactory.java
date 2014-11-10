@@ -160,8 +160,8 @@ public class BindingFactory {
             }
         }
 
-        BindingImpl b = new BindingImpl(bindingKey, queue, exchange, arguments);
-        BindingImpl existingMapping = _bindings.putIfAbsent(b, b);
+        BindingImpl binding = new BindingImpl(bindingKey, queue, exchange, arguments);
+        BindingImpl existingMapping = _bindings.putIfAbsent(binding, binding);
         if (existingMapping == null || force) {
             if (existingMapping != null) {
                 //TODO - we should not remove the existing binding
@@ -169,7 +169,7 @@ public class BindingFactory {
             }
 
             //save only durable bindings
-            if (b.isDurable() && !restore) {
+            if (binding.isDurable() && !restore) {
                 _configSource.getDurableConfigurationStore().bindQueue
                         (exchange, new AMQShortString(bindingKey), queue, FieldTable.convertToFieldTable(arguments));
 
@@ -178,12 +178,12 @@ public class BindingFactory {
 
             }
 
-            queue.addQueueDeleteTask(b);
-            exchange.addCloseTask(b);
-            queue.addBinding(b);
-            exchange.addBinding(b);
-            getConfigStore().addConfiguredObject(b);
-            b.logCreation();
+            queue.addQueueDeleteTask(binding);
+            exchange.addCloseTask(binding);
+            queue.addBinding(binding);
+            exchange.addBinding(binding);
+            getConfigStore().addConfiguredObject(binding);
+            binding.logCreation();
 
             return true;
         } else {
@@ -236,13 +236,13 @@ public class BindingFactory {
             throw new AMQSecurityException("Permission denied: binding " + bindingKey);
         }
 
-        BindingImpl b = _bindings.remove(new BindingImpl(bindingKey, queue, exchange, arguments));
+        BindingImpl binding = _bindings.remove(new BindingImpl(bindingKey, queue, exchange, arguments));
 
         try {
-            if (b != null) {
-                if (b.isDurable()) {
+            if (binding != null) {
+                if (binding.isDurable()) {
                     //inform andes kernel to remove binding.
-                    QpidAMQPBridge.getInstance().removeBinding(b, getVirtualHost());
+                    QpidAMQPBridge.getInstance().removeBinding(binding, getVirtualHost());
 
                     _configSource.getDurableConfigurationStore().unbindQueue(exchange,
                             new AMQShortString(bindingKey),
@@ -250,15 +250,15 @@ public class BindingFactory {
                             FieldTable.convertToFieldTable(arguments));
                 }
 
-                exchange.removeBinding(b);
-                queue.removeBinding(b);
-                exchange.removeCloseTask(b);
-                queue.removeQueueDeleteTask(b);
+                exchange.removeBinding(binding);
+                queue.removeBinding(binding);
+                exchange.removeCloseTask(binding);
+                queue.removeQueueDeleteTask(binding);
 
-                b.logDestruction();
-                getConfigStore().removeConfiguredObject(b);
+                binding.logDestruction();
+                getConfigStore().removeConfiguredObject(binding);
             }
-            return b;
+            return binding;
         } catch (AndesException e) {
             throw new AMQInternalException("Error while removing binding.", e);
         }
