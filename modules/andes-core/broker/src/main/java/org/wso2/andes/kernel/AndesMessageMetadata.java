@@ -18,13 +18,17 @@
 
 package org.wso2.andes.kernel;
 
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.ContentHeaderBody;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
+import org.wso2.andes.mqtt.AndesMetaDataHandler;
 import org.wso2.andes.mqtt.MQTTMessageMetaData;
+import org.wso2.andes.mqtt.MQTTMetaDataHandler;
+import org.wso2.andes.mqtt.MetaDataHandler;
 import org.wso2.andes.server.message.CustomMessagePublishInfo;
 import org.wso2.andes.server.message.MessageMetaData;
 import org.wso2.andes.server.slot.Slot;
@@ -73,6 +77,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
      *Added for MQTT usage
      */
     private int messageContentLength;
+    private int qosLevel;
 
     /**
      *slotID which this metadata belongs
@@ -88,7 +93,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 		if(parse){
 			parseMetaData();
 		}
-        
+
 	}
 
 	public long getMessageID() {
@@ -97,6 +102,22 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 
     public void setMessageID(long messageID) {
         this.messageID = messageID;
+    }
+
+    /**
+     * Will retive the level of QOS of the message. This will be applicable only if the message is MQTT
+     * @return the level of qos it can be either 0,1 or 2
+     */
+    public int getQosLevel() {
+        return qosLevel;
+    }
+
+    /**
+     * The level of qos the message is published at
+     * @param qosLevel the qos level can be of value 0,1 or 2
+     */
+    public void setQosLevel(int qosLevel) {
+        this.qosLevel = qosLevel;
     }
 
     public byte[] getMetadata() {
@@ -247,6 +268,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
             this.destination = ((MQTTMessageMetaData) mdt).getDestination();
             this.isPersistent = ((MQTTMessageMetaData) mdt).isPersistent();
             this.messageContentLength = ((MQTTMessageMetaData) mdt).getContentSize();
+            this.qosLevel = ((MQTTMessageMetaData) mdt).getQosLevel();
         }
 
     }
@@ -269,7 +291,17 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 		StorableMessageMetaData original_mdt = type.getFactory()
 				.createMetaData(buf);
 
-		ContentHeaderBody contentHeaderBody = ((MessageMetaData) original_mdt)
+        byte[] underlying;
+        MetaDataHandler handler;
+
+        if(type.equals(MessageMetaDataType.META_DATA_MQTT)){
+            handler = new MQTTMetaDataHandler();
+        }else{
+            handler = new AndesMetaDataHandler();
+        }
+
+        underlying = handler.constructMetadata(routingKey,buf,original_mdt);
+/*		ContentHeaderBody contentHeaderBody = ((MessageMetaData) original_mdt)
 				.getContentHeaderBody();
 		int contentChunkCount = ((MessageMetaData) original_mdt)
 				.getContentChunkCount();
@@ -290,7 +322,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 		buf = java.nio.ByteBuffer.wrap(underlying);
 		buf.position(1);
 		buf = buf.slice();
-		modifiedMetaData.writeToBuffer(0, buf);
+		modifiedMetaData.writeToBuffer(0, buf);*/
 		
 		return underlying;
     }

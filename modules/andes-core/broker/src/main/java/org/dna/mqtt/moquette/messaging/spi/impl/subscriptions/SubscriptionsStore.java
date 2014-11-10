@@ -136,6 +136,24 @@ public class SubscriptionsStore {
             matchNode.subscriptions().remove(toBeRemoved);
         }
     }
+
+    /**
+     * Method written by WSO2 we need to get the subscriptions from the client id
+     */
+    public Subscription getSubscriptions(String topic,String clientID){
+        Subscription subscription = null;
+
+        TreeNode matchNode = findMatchingNode(topic);
+
+        for (Subscription sub : matchNode.subscriptions()) {
+            if (sub.topic.equals(topic) && sub.getClientId().equals(clientID)) {
+                subscription = sub;
+                break;
+            }
+        }
+
+        return subscription;
+    }
     
     /**
      * TODO implement testing

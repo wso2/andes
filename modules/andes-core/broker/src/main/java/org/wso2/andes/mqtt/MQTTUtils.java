@@ -41,6 +41,7 @@ public class MQTTUtils {
     private static final String DESTINATION = "Destination";
     private static final String PERSISTENCE = "Persistant";
     private static final String MESSAGE_CONTENT_LENGTH = "MessageContentLength";
+    private static final String QOSLEVEL = "QOSLevel";
     //This will be required to be at the initial byte stream the meta data will have since when the message is proccessed
     //back from andes since the message relevency is checked ex :- whether its amqp, mqtt etc
     private static final String MQTT_META_INFO = "\u0002MQTT Protocol v3.1";
@@ -84,14 +85,15 @@ public class MQTTUtils {
      * @param destination   the definition where the message should be sent to
      * @param persistance   should this message be persisted
      * @param contentLength the lengthe of the message content
+     * @param qos the level of qos the message was published at
      * @return the collective information as a bytes object
      */
-    public static byte[] encodeMetaInfo(String metaData, long messageID, boolean topic, String destination,
+    public static byte[] encodeMetaInfo(String metaData, long messageID, boolean topic,int qos, String destination,
                                         boolean persistance, int contentLength) {
         byte[] metaInformation;
         String information = metaData + ":" + MESSAGE_ID + "=" + messageID + "," + TOPIC + "=" + topic +
                 "," + DESTINATION + "=" + destination + "," + PERSISTENCE + "=" + persistance
-                + "," + MESSAGE_CONTENT_LENGTH + "=" + contentLength;
+                + "," + MESSAGE_CONTENT_LENGTH + "=" + contentLength+","+ QOSLEVEL +"="+qos;
         metaInformation = information.getBytes();
         return metaInformation;
     }
@@ -110,7 +112,7 @@ public class MQTTUtils {
                                                             int messageContentLength, boolean retain) {
         AndesMessageMetadata messageHeader = new AndesMessageMetadata();
         messageHeader.setMessageID(messageID);
-        messageHeader.setTopic(true);
+        messageHeader.setTopic(false); //This will be set to false since Andes kernal will treat topics as queues
         messageHeader.setDestination(topic);
         messageHeader.setStorageQueueName(topic);
         messageHeader.setPersistent(true);
@@ -122,7 +124,7 @@ public class MQTTUtils {
         }
 
         byte[] andesMetaData = encodeMetaInfo(MQTT_META_INFO, messageHeader.getMessageID(), messageHeader.isTopic(),
-                messageHeader.getDestination(), messageHeader.isPersistent(), messageContentLength);
+                qosLevel,messageHeader.getDestination(), messageHeader.isPersistent(), messageContentLength);
         messageHeader.setMetadata(andesMetaData);
         return messageHeader;
     }
@@ -182,5 +184,22 @@ public class MQTTUtils {
         }
 
         return message;
+    }
+
+    /**
+     * Will get the qos type defined through the protocol and will send the integer representation of it
+     * @param qos the level of qos which will be MOST_ONE, LEAST_ONE or EXACTLY_ONCE
+     * @return the level of qos as an integer which can be either 0,1 or 2
+     */
+    public static int convertMQTTProtocolTypeToInteger(AbstractMessage.QOSType qos){
+        if(AbstractMessage.QOSType.MOST_ONE.equals(qos)){
+            return 0;
+        }else if(AbstractMessage.QOSType.LEAST_ONE.equals(qos)){
+            return 1;
+        }else if(AbstractMessage.QOSType.EXACTLY_ONCE.equals(qos)){
+            return 2;
+        }else{
+            return -1;
+        }
     }
 }

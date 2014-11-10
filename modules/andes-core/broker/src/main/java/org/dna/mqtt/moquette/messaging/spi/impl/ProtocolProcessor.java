@@ -243,6 +243,8 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
             AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), message, retain, evt.getMessageID());
         }
 
+       // AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), message, retain, evt.getMessageID());
+
         if (qos == AbstractMessage.QOSType.LEAST_ONE) {
             if (publishKey == null) {
                 throw new RuntimeException("Found a publish key null for QoS " + qos + " for message " + evt);
@@ -253,7 +255,54 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         }
 
         if (retain) {
-            m_storageService.storeRetained(topic, message, qos);
+            //TODO call the cluster specifc store here
+           // m_storageService.storeRetained(topic, message, qos);
+        }
+    }
+
+    /**
+     * Method written by WSO2. Since we would be sequentially writing the message to the subscribers
+     * @param topic
+     * @param qos
+     * @param origMessage
+     * @param retain
+     * @param messageID
+     */
+    public void publishToSubscriber(String topic, AbstractMessage.QOSType qos, ByteBuffer origMessage,
+                                    boolean retain, Integer messageID,String mqttClientID){
+        Subscription subscription = subscriptions.getSubscriptions(topic,mqttClientID);
+
+
+        if (qos.ordinal() > subscription.getRequestedQos().ordinal()) {
+            qos = subscription.getRequestedQos();
+        }
+
+        ByteBuffer message = origMessage.duplicate();
+     /*       LOG.debug("Broker republishing to client <{}> topic <{}> qos <{}>, active {}",
+                    sub.getClientId(), sub.getTopic(), qos, sub.isActive());*/
+
+        if (qos == AbstractMessage.QOSType.MOST_ONE && subscription.isActive()) {
+            //QoS 0
+            sendPublish(subscription.getClientId(), topic, qos, message, false);
+        } else {
+            //QoS 1 or 2
+            //if the target subscription is not clean session and is not connected => store it
+            if (!subscription.isCleanSession() && !subscription.isActive()) {
+                //clone the event with matching clientID
+                PublishEvent newPublishEvt = new PublishEvent(topic, qos, message, retain, subscription.getClientId(), messageID, null);
+                m_storageService.storePublishForFuture(newPublishEvt);
+            } else  {
+                //if QoS 2 then store it in temp memory
+                if (qos ==AbstractMessage.QOSType.EXACTLY_ONCE) {
+                    String publishKey = String.format("%s%d", subscription.getClientId(), messageID);
+                    PublishEvent newPublishEvt = new PublishEvent(topic, qos, message, retain, subscription.getClientId(), messageID, null);
+                    m_storageService.addInFlight(newPublishEvt, publishKey);
+                }
+                //publish
+                if (subscription.isActive()) {
+                    sendPublish(subscription.getClientId(), topic, qos, message, false);
+                }
+            }
         }
     }
     
@@ -270,7 +319,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
             if (qos.ordinal() > sub.getRequestedQos().ordinal()) {
                 qos = sub.getRequestedQos();
             }
-            
+
             ByteBuffer message = origMessage.duplicate();
      /*       LOG.debug("Broker republishing to client <{}> topic <{}> qos <{}>, active {}",
                     sub.getClientId(), sub.getTopic(), qos, sub.isActive());*/
@@ -379,13 +428,15 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 
         final String topic = evt.getTopic();
         final AbstractMessage.QOSType qos = evt.getQos();
-        //todo by pamod need to change
-        publish2Subscribers(topic, qos, evt.getMessage(), evt.isRetain(), evt.getMessageID());
+        //publish2Subscribers(topic, qos, evt.getMessage(), evt.isRetain(), evt.getMessageID());
+        //For QOS 2 we will add the message upone the pub rel
+        AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), evt.getMessage(), evt.isRetain(), evt.getMessageID());
 
         m_storageService.removeQoS2Message(publishKey);
 
         if (evt.isRetain()) {
-            m_storageService.storeRetained(topic, evt.getMessage(), qos);
+            //TODO call the cluster specifc store here
+            //m_storageService.storeRetained(topic, evt.getMessage(), qos);
         }
 
         sendPubComp(clientID, messageID);
@@ -489,10 +540,11 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
             //Will connect with the bridge to notify on the topic
             //Andes Specific
             try {
-                AndesMQTTBridge.getBridgeInstance().onTopicSubscription(req.getTopic(), clientID);
+                AndesMQTTBridge.getBridgeInstance().onTopicSubscription(req.getTopic(), clientID,qos,cleanSession);
             } catch (Exception e) {
                 final String message = "Error when registering the subscriber ";
-                LOG.error(message +e.getMessage());
+                LOG.error(message +e.getMessage(),e);
+                throw new RuntimeException(message,e);
             }
             // bridge.onTopicSubscription(req.getTopic(), clientID);
         }
