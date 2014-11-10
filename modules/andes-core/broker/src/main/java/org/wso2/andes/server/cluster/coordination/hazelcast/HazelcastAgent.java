@@ -11,7 +11,7 @@
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
+ * KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations
  * under the License.
  */
@@ -207,7 +207,7 @@ public class HazelcastAgent {
     public String getNodeId() {
         Member localMember = hazelcastInstance.getCluster().getLocalMember();
         return CoordinationConstants.NODE_NAME_PREFIX +
-                localMember.getInetSocketAddress();
+                localMember.getSocketAddress();
     }
 
     /**
@@ -229,7 +229,7 @@ public class HazelcastAgent {
         List<String> nodeIDList = new ArrayList<String>();
         for (Member member : members) {
             nodeIDList.add(CoordinationConstants.NODE_NAME_PREFIX +
-                    member.getInetSocketAddress());
+                    member.getSocketAddress());
         }
 
         return nodeIDList;
@@ -270,7 +270,7 @@ public class HazelcastAgent {
      */
     public String getIdOfNode(Member node) {
         return CoordinationConstants.NODE_NAME_PREFIX +
-                node.getInetSocketAddress();
+                node.getSocketAddress();
     }
 
     /**
