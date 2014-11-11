@@ -499,7 +499,7 @@ public class CQLDataAccessHelper {
             cqlSelect.addCondition(MSG_COUNTER_ROW, key, WHERE_OPERATORS.EQ);
             Select select = CQLQueryBuilder.buildSelect(cqlSelect);
             if (log.isDebugEnabled()) {
-                log.debug(" getMessageMetaDataFromQueue : " + select.toString());
+                log.debug(" getMessageMetaDataOfMessage : " + select.toString());
             }
 
             ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
@@ -586,7 +586,7 @@ public class CQLDataAccessHelper {
             cqlSelect.addCondition(MSG_KEY, Long.MAX_VALUE, WHERE_OPERATORS.LTE);
             Select select = CQLQueryBuilder.buildSelect(cqlSelect);
             if (log.isDebugEnabled()) {
-                log.debug(" getMessageMetaDataFromQueue : " + select.toString());
+                log.debug(" getMessageMetaDataOfMessage : " + select.toString());
             }
 
             ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
@@ -655,7 +655,7 @@ public class CQLDataAccessHelper {
             cqlSelect.addCondition(MSG_ROW_ID, rowName, WHERE_OPERATORS.EQ);
             Select select = CQLQueryBuilder.buildSelect(cqlSelect);
             if (log.isDebugEnabled()) {
-                log.debug(" getMessageMetaDataFromQueue : " + select.toString());
+                log.debug(" getMessageMetaDataOfMessage : " + select.toString());
             }
 
             ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
@@ -793,7 +793,7 @@ public class CQLDataAccessHelper {
             }
             Select select = CQLQueryBuilder.buildSelect(cqlSelect);
             if (log.isDebugEnabled()) {
-                log.debug(" getMessageMetaDataFromQueue : " + select.toString());
+                log.debug(" getMessageMetaDataOfMessage : " + select.toString());
             }
 
             ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());

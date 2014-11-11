@@ -138,7 +138,7 @@ public class CassandraConstants {
 
     /**
      * Number of seconds to configure as the GC Grace seconds when creating Cassandra column
-     * families.
+     * families. It is set to 10days by default.
      */
     public final static String DEFAULT_GC_GRACE_SECONDS = "864000";
 

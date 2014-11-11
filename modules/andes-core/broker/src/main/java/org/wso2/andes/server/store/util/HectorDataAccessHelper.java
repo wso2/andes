@@ -18,28 +18,13 @@
 package org.wso2.andes.server.store.util;
 
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-
 import me.prettyprint.cassandra.model.thrift.ThriftCounterColumnQuery;
-import me.prettyprint.cassandra.serializers.ByteBufferSerializer;
-import me.prettyprint.cassandra.serializers.BytesArraySerializer;
-import me.prettyprint.cassandra.serializers.IntegerSerializer;
-import me.prettyprint.cassandra.serializers.LongSerializer;
-import me.prettyprint.cassandra.serializers.StringSerializer;
+import me.prettyprint.cassandra.serializers.*;
 import me.prettyprint.cassandra.service.ThriftCfDef;
 import me.prettyprint.cassandra.service.ThriftKsDef;
 import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.Keyspace;
-import me.prettyprint.hector.api.beans.ColumnSlice;
-import me.prettyprint.hector.api.beans.HColumn;
-import me.prettyprint.hector.api.beans.HCounterColumn;
-import me.prettyprint.hector.api.beans.OrderedRows;
-import me.prettyprint.hector.api.beans.Row;
+import me.prettyprint.hector.api.beans.*;
 import me.prettyprint.hector.api.ddl.ColumnFamilyDefinition;
 import me.prettyprint.hector.api.ddl.ColumnType;
 import me.prettyprint.hector.api.ddl.ComparatorType;
@@ -48,12 +33,14 @@ import me.prettyprint.hector.api.exceptions.HectorException;
 import me.prettyprint.hector.api.factory.HFactory;
 import me.prettyprint.hector.api.mutation.Mutator;
 import me.prettyprint.hector.api.query.*;
-
+import org.apache.commons.lang.StringUtils;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.store.CassandraConsistencyLevelPolicy;
-import org.wso2.andes.store.cassandra.CassandraConstants;
+
+import java.nio.ByteBuffer;
+import java.util.*;
 
 /**
  * Class <code>HectorDataAccessHelper</code> Encapsulate the Cassandra DataAccessLogic used in
@@ -76,31 +63,34 @@ public class HectorDataAccessHelper {
     private static ByteBufferSerializer byteBufferSerializer = ByteBufferSerializer.get();
 
     /**
+     * The number of records read in "listAllStringRows" method.
+     */
+    private final static int MAX_NUMBER_OF_ROWS_TO_READ = 1000;
+
+    /**
      * Create a keySpace in a given cluster
      *
-     * @param cluster  Cluster where keySpace should be created
-     * @param keySpace name of the KeySpace
+     * @param cluster      Cluster where Keyspace should be created
+     * @param keySpaceName name of the Cassandra KeySpace
      * @return Keyspace
      */
-    public static Keyspace createKeySpace(Cluster cluster, String keySpace, int replicationFactor,
+    public static Keyspace createKeySpace(Cluster cluster, String keySpaceName, int replicationFactor,
                                           String strategyClass) {
-        Keyspace keyspace;
-
-        //Define the keySpace
-        ThriftKsDef thriftKsDef = new ThriftKsDef(keySpace);
+        //Define the keySpaceName
+        ThriftKsDef thriftKsDef = new ThriftKsDef(keySpaceName);
         thriftKsDef.setReplicationFactor(replicationFactor);
         if (strategyClass == null || strategyClass.isEmpty()) {
             strategyClass = ThriftKsDef.DEF_STRATEGY_CLASS;
         }
         thriftKsDef.setStrategyClass(strategyClass);
 
-        KeyspaceDefinition definition = cluster.describeKeyspace(keySpace);
+        KeyspaceDefinition definition = cluster.describeKeyspace(keySpaceName);
         if (definition == null) {
-            //Adding keySpace to the cluster
+            //Adding keySpaceName to the cluster
             cluster.addKeyspace(thriftKsDef, true);
         }
 
-        keyspace = HFactory.createKeyspace(keySpace, cluster);
+        Keyspace keyspace = HFactory.createKeyspace(keySpaceName, cluster);
         CassandraConsistencyLevelPolicy policy = new CassandraConsistencyLevelPolicy();
         keyspace.setConsistencyLevelPolicy(policy);
         return keyspace;
@@ -235,12 +225,17 @@ public class HectorDataAccessHelper {
 
             counter.setColumnFamily(cfName).setKey(counterRowName).setName(queueColumn);
         } catch (Exception e) {
-            throw new CassandraDataAccessException("Error while inserting data to:" + cfName, e);
+            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+                throw new CassandraDataAccessException("Unable to insert data since " +
+                        "cassandra connection is down");
+            } else {
+                throw new CassandraDataAccessException("Error while inserting data to:" + cfName, e);
+            }
         }
     }
 
     /**
-     * remove allocated raw-column space for counter
+     * Remove allocated raw-column space for counter
      *
      * @param cfName         column family name
      * @param counterRowName name of row
@@ -262,7 +257,7 @@ public class HectorDataAccessHelper {
             counter.setColumnFamily(cfName).setKey(counterRowName).setName(queueColumn);
         } catch (Exception e) {
             if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Unable to remove counter column as " +
+                throw new CassandraDataAccessException("Unable to access data as " +
                         "cassandra connection is down");
             } else {
                 throw new CassandraDataAccessException("Error while accessing:" + cfName, e);
@@ -288,7 +283,12 @@ public class HectorDataAccessHelper {
             mutator.incrementCounter(rawID, columnFamily, columnName, incrementBy);
             mutator.execute();
         } catch (Exception e) {
-            throw new CassandraDataAccessException("Error while accessing:" + columnFamily, e);
+            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+                throw new CassandraDataAccessException("Error while accessing " + columnFamily +
+                        " since cassandra connection is down");
+            } else {
+                throw new CassandraDataAccessException("Error while accessing:" + columnFamily, e);
+            }
         }
     }
 
@@ -310,8 +310,8 @@ public class HectorDataAccessHelper {
             mutator.execute();
         } catch (HectorException he) {
             if (he.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Unable to remove active subscribers as " +
-                        "cassandra connection is down");
+                throw new CassandraDataAccessException("Error while accessing " + columnFamily +
+                        " since cassandra connection is down");
             } else {
                 throw new CassandraDataAccessException("Error while accessing:" + columnFamily, he);
             }
@@ -342,11 +342,25 @@ public class HectorDataAccessHelper {
             }
             return count;
         } catch (Exception e) {
-            throw new CassandraDataAccessException("Error while accessing:" + columnFamily, e);
+            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+                throw new CassandraDataAccessException("Error while accessing " + columnFamily +
+                        " since cassandra connection is down");
+            } else {
+                throw new CassandraDataAccessException("Error while accessing:" + columnFamily, e);
+            }
         }
     }
 
-    public static byte[] getMessageMetaDataFromQueue(String columnFamilyName, Keyspace keyspace,
+    /**
+     * Get the meta data stored for a given message ID
+     *
+     * @param columnFamilyName name of the column family
+     * @param keyspace         Cassandra Keyspace
+     * @param messageId        ID of the message
+     * @return the metadata stored in Cassandra as a byte array
+     * @throws CassandraDataAccessException
+     */
+    public static byte[] getMessageMetaDataOfMessage(String columnFamilyName, Keyspace keyspace,
                                                      long messageId) throws
             CassandraDataAccessException {
         byte[] value = null;
@@ -368,23 +382,28 @@ public class HectorDataAccessHelper {
             sliceQuery.setColumnNames(messageId);
             sliceQuery.setColumnFamily(columnFamilyName);
 
-
             QueryResult<OrderedRows<String, Long, byte[]>> result = sliceQuery.execute();
-            Row<String, Long, byte[]> rowSlice = result.get().peekLast();
 
             if (result == null || result.get().getList().size() == 0) {
-                return null;
-            }
-            ColumnSlice<Long, byte[]> columnSlice = rowSlice.getColumnSlice();
-            for (Object column : columnSlice.getColumns()) {
-                if (column instanceof HColumn) {
-                    value = ((HColumn<Long, byte[]>) column).getValue();
+                value = null;
+            } else {
+                Row<String, Long, byte[]> rowSlice = result.get().peekLast();
+                ColumnSlice<Long, byte[]> columnSlice = rowSlice.getColumnSlice();
+                for (Object column : columnSlice.getColumns()) {
+                    if (column instanceof HColumn) {
+                        value = ((HColumn<Long, byte[]>) column).getValue();
+                    }
                 }
             }
             return value;
         } catch (Exception e) {
-            throw new CassandraDataAccessException("Error while getting data from " +
-                    columnFamilyName, e);
+            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+                throw new CassandraDataAccessException("Error while getting data from " +
+                        columnFamilyName + " since cassandra connection is down");
+            } else {
+                throw new CassandraDataAccessException("Error while getting data from " +
+                        columnFamilyName, e);
+            }
         }
     }
 
@@ -396,7 +415,7 @@ public class HectorDataAccessHelper {
      * @param rowName          name of row (queue name)
      * @param columnFamilyName ColumnFamilyName
      * @param keyspace         Cassandra KeySpace
-     * @param lastProcessedId  Last processed Message id to use as a off set
+     * @param lastProcessedId  Last processed Message id to use as a offset
      * @param count            max message count limit
      * @throws CassandraDataAccessException
      */
@@ -428,7 +447,6 @@ public class HectorDataAccessHelper {
             QueryResult<ColumnSlice<Long, byte[]>> result = sliceQuery.execute();
             ColumnSlice<Long, byte[]> columnSlice = result.get();
             List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>();
-            ;
 
             for (Object column : columnSlice.getColumns()) {
                 if (column instanceof HColumn) {
@@ -443,17 +461,22 @@ public class HectorDataAccessHelper {
 
             return metadataList;
         } catch (Exception e) {
-            throw new CassandraDataAccessException("Error while getting data from " +
-                    columnFamilyName, e);
+            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+                throw new CassandraDataAccessException("Error while getting data from " +
+                        columnFamilyName + " since cassandra connection is down");
+            } else {
+                throw new CassandraDataAccessException("Error while getting data from " +
+                        columnFamilyName, e);
+            }
         }
     }
 
     /**
-     * Get Number of <String,String> type columns in a given row in a cassandra column family
+     * Get all columns in a given row of a cassandra column family
      *
      * @param rowName          row Name we are querying for
-     * @param columnFamilyName columnFamilName
-     * @param keyspace
+     * @param columnFamilyName column family name
+     * @param keyspace         Cassandra Keyspace
      * @param count            number of columns the column slice should contain
      * @return
      */
@@ -466,11 +489,10 @@ public class HectorDataAccessHelper {
             throw new CassandraDataAccessException("Can't access Data , no keyspace provided ");
         }
 
-        if (columnFamilyName == null || rowName == null) {
+        if (StringUtils.isBlank(columnFamilyName) || StringUtils.isBlank(rowName)) {
             throw new CassandraDataAccessException("Can't access data with queueType = " +
                     columnFamilyName + " and rowName=" + rowName);
         }
-
 
         try {
             SliceQuery sliceQuery = HFactory.createSliceQuery(keyspace, stringSerializer,
@@ -484,13 +506,18 @@ public class HectorDataAccessHelper {
 
             return columnSlice;
         } catch (Exception e) {
-            throw new CassandraDataAccessException("Error while getting data from : " +
-                    columnFamilyName, e);
+            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+                throw new CassandraDataAccessException("Error while getting data from " +
+                        columnFamilyName + " since cassandra connection is down");
+            } else {
+                throw new CassandraDataAccessException("Error while getting data from : " +
+                        columnFamilyName, e);
+            }
         }
     }
 
     /**
-     * add message to a queue
+     * Add message to a queue
      *
      * @param columnFamily column family name
      * @param queue        name of queue (row name)
@@ -508,7 +535,7 @@ public class HectorDataAccessHelper {
             throw new CassandraDataAccessException("Can't add Data , no mutator provided ");
         }
 
-        if (columnFamily == null || queue == null || message == null) {
+        if (StringUtils.isBlank(columnFamily) || StringUtils.isBlank(queue) || message == null) {
             throw new CassandraDataAccessException("Can't add data with queueType = " +
                     columnFamily + " and queue=" + queue + " offset = " + key + " message = " +
                     message);
@@ -523,13 +550,18 @@ public class HectorDataAccessHelper {
             }
 
         } catch (Exception e) {
-            throw new CassandraDataAccessException("Error while adding message to Queue", e);
+            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+                throw new CassandraDataAccessException("Error while adding message to Queue " +
+                        queue + " since cassandra connection is down");
+            } else {
+                throw new CassandraDataAccessException("Error while adding message to Queue", e);
+            }
         }
     }
 
 
     /**
-     * add message to a queue
+     * Add message to a queue
      *
      * @param columnFamily column family name
      * @param queue        name of queue (row name)
@@ -562,7 +594,12 @@ public class HectorDataAccessHelper {
             }
 
         } catch (Exception e) {
-            throw new CassandraDataAccessException("Error while adding message to Queue", e);
+            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+                throw new CassandraDataAccessException("Error while adding message to Queue " +
+                        queue + " since cassandra connection is down");
+            } else {
+                throw new CassandraDataAccessException("Error while adding message to Queue", e);
+            }
         }
     }
 
@@ -595,7 +632,12 @@ public class HectorDataAccessHelper {
                     HFactory.createColumn(cKey, cValue.trim(), stringSerializer, stringSerializer));
             mutator.execute();
         } catch (Exception e) {
-            throw new CassandraDataAccessException("Error while adding a Mapping to row ", e);
+            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+                throw new CassandraDataAccessException("Error while adding a mapping to row " +
+                        row + " since cassandra connection is down");
+            } else {
+                throw new CassandraDataAccessException("Error while adding a mapping to row ", e);
+            }
         }
     }
 
@@ -625,9 +667,13 @@ public class HectorDataAccessHelper {
             mutator.addDeletion(row, columnFamily, key, stringSerializer);
             mutator.execute();
         } catch (Exception e) {
-            throw new CassandraDataAccessException("Error while deleting " + key + " from " +
-                    columnFamily + " as cassandra connection is down");
-
+            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+                throw new CassandraDataAccessException("Error while deleting " + key + " from " +
+                        columnFamily + " since cassandra connection is down");
+            } else {
+                throw new CassandraDataAccessException("Error while deleting " + key + " from " +
+                        columnFamily);
+            }
         }
     }
 
@@ -663,14 +709,18 @@ public class HectorDataAccessHelper {
             }
 
         } catch (Exception e) {
-            throw new CassandraDataAccessException("Error while deleting " + key + " from " +
-                    columnFamily);
+            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+                throw new CassandraDataAccessException("Error while deleting " + key + " from " +
+                        row + " since cassandra connection is down");
+            } else {
+                throw new CassandraDataAccessException("Error while deleting " + key + " from " +
+                        row);
+            }
         }
-
     }
 
     /**
-     * delete a list of integer rows from a column family
+     * Delete a list of integer rows from a column family
      *
      * @param columnFamily name of column family
      * @param rows         list of rows to be removed
@@ -698,7 +748,12 @@ public class HectorDataAccessHelper {
                 mutator.execute();
             }
         } catch (Exception e) {
-            throw new CassandraDataAccessException("Error while deleting data", e);
+            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+                throw new CassandraDataAccessException("Error while deleting data since " +
+                        "cassandra connection is down");
+            } else {
+                throw new CassandraDataAccessException("Error while deleting data", e);
+            }
         }
     }
 
@@ -718,7 +773,7 @@ public class HectorDataAccessHelper {
                         stringSerializer);
 
         rangeSlicesQuery.setColumnFamily(columnFamilyName);
-        rangeSlicesQuery.setRange("", "", false, 1000);
+        rangeSlicesQuery.setRange("", "", false, MAX_NUMBER_OF_ROWS_TO_READ);
         QueryResult<OrderedRows<String, String, String>> result = rangeSlicesQuery
                 .execute();
         for (Row<String, String, String> row : result.get().getList()) {
@@ -775,8 +830,12 @@ public class HectorDataAccessHelper {
             }
 
         } catch (Exception e) {
-            throw new CassandraDataAccessException("Error while getting message content " +
-                    rowKey + " from " + columnFamily + " as cassandra connection is down", e);
+            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+                throw new CassandraDataAccessException("Error while getting message content " +
+                        "since cassandra connection is down");
+            } else {
+                throw new CassandraDataAccessException("Error while getting message content", e);
+            }
         }
 
         return messagePart;

@@ -38,6 +38,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static com.datastax.driver.core.querybuilder.QueryBuilder.batch;
 
+/**
+ * Data Access Object to access Cassandra using CQL.
+ */
 public class GenericCQLDAO {
 	
 	private static Log log = LogFactory.getLog(GenericCQLDAO.class);

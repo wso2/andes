@@ -38,7 +38,7 @@ import java.util.List;
 
 /**
  * This is the implementation of MessageStore that deals with Cassandra no SQL DB.
- * It uses Hector for making queries
+ * It uses Hector for making queries.
  */
 public class HectorBasedMessageStoreImpl implements MessageStore {
 
@@ -75,6 +75,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         // get cassandra cluster and create column families
         initializeCassandraMessageStore(hectorConnection);
 
+        //TODO: The trackingTimeOut (15000000000L) and  trackingMessagesRemovalTaskIntervalInSec
+        // (10) should be configurable. Opened JIRA (MB-781)
         alreadyMovedMessageTracker = new AlreadyProcessedMessageTracker("Message-move-tracker",
                 15000000000L, 10);
 
@@ -291,7 +293,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         }
         ArrayList<AndesRemovableMetadata> removableMetaDataList = new
                 ArrayList<AndesRemovableMetadata>();
-        removableMetaDataList.add(new AndesRemovableMetadata(messageId, currentQueueName));
+        removableMetaDataList.add(new AndesRemovableMetadata(messageId, currentQueueName, currentQueueName));
 
         addMetaDataToQueue(targetQueueName, messageMetadataList.get(0));
         deleteMessageMetadataFromQueue(currentQueueName, removableMetaDataList);
@@ -352,7 +354,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         try {
 
             byte[] value = HectorDataAccessHelper
-                    .getMessageMetaDataFromQueue(CassandraConstants.META_DATA_COLUMN_FAMILY,
+                    .getMessageMetaDataOfMessage(CassandraConstants.META_DATA_COLUMN_FAMILY,
                             keyspace, messageId);
             return new AndesMessageMetadata(messageId, value, true);
 

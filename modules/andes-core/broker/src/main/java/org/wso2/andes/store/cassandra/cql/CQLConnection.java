@@ -208,7 +208,7 @@ public class CQLConnection implements DurableStoreConnection {
                         retriedCount = 0;
                         if (previousState == false) {
                             //start back all tasks accessing cassandra
-                            log.info("Cassandra Message Store is alive....");
+                            log.info("Cassandra Message Store is alive");
                             startTasks();
                         }
                         Thread.sleep(10000);
