@@ -46,10 +46,15 @@ public class QueueDeliveryWorker {
 
     private SequentialThreadPoolExecutor executor;
 
+    private static final int THREADPOOL_RECOVERY_INTERVAL = 2000;
+    private static final int SAFE_THREAD_COUNT = 1000;
+    private static final int THREADPOOL_RECOVERY_ATTEMPTS = 2;
+
     private final int queueWorkerWaitInterval;
 
     /**
      * Subscribed destination wise information
+     * the key here is the original destination of message. NOT storage queue name.
      */
     private Map<String, QueueDeliveryInfo> subscriptionCursar4QueueMap = new HashMap<String,
             QueueDeliveryInfo>();
@@ -88,6 +93,18 @@ public class QueueDeliveryWorker {
         Set<AndesMessageMetadata> readButUndeliveredMessages = new
                 ConcurrentSkipListSet<AndesMessageMetadata>();
 
+        // In case of a purge, we must store the timestamp when the purge was called.
+        // This way we can identify messages received before that timestamp that fail and ignore them.
+        private Long lastPurgedTimestamp;
+
+        /***
+         * Constructor
+         * initialize lastPurgedTimestamp to 0.
+         */
+        public QueueDeliveryInfo() {
+            lastPurgedTimestamp =0l;
+        }
+
         /**
          * Returns boolean variable saying whether this destination has room or not
          *
@@ -99,6 +116,34 @@ public class QueueDeliveryWorker {
                 hasRoom = false;
             }
             return hasRoom;
+        }
+
+        /***
+         * clear the read-but-undelivered collection of messages of the given queue from memory
+         * @return Number of messages that was in the read-but-undelivered buffer
+         */
+        public int clearReadButUndeliveredMessages() {
+
+            int messageCount = readButUndeliveredMessages.size();
+
+            readButUndeliveredMessages.clear();
+
+            return messageCount;
+        }
+
+        /***
+         * @return Last purged timestamp of queue.
+         */
+        public Long getLastPurgedTimestamp() {
+            return lastPurgedTimestamp;
+        }
+
+        /**
+         * set last purged timestamp for queue.
+         * @param lastPurgedTimestamp
+         */
+        public void setLastPurgedTimestamp(Long lastPurgedTimestamp) {
+            this.lastPurgedTimestamp = lastPurgedTimestamp;
         }
     }
 
@@ -179,8 +224,20 @@ public class QueueDeliveryWorker {
             if (pendingJobsToSendToTransport > 1000) {
                 if (pendingJobsToSendToTransport > 5000) {
                     log.error(
-                            "Flusher destination is growing, and this should not happen. Please check " +
+                            "Flusher queue is growing ("+ pendingJobsToSendToTransport + " jobs), and this should not happen. Please check " +
                             "cassandra Flusher");
+
+                    // Must give some time for the threads to clean up. Thus, following conditional loop.
+                    // Once the thread count is below SAFE_THREAD_COUNT, other tasks can resume. Until then this worker is held hostage
+                    // with <THREADPOOL_RECOVERY_INTERVAL> millisecond sleeps for THREADPOOL_RECOVERY_ATTEMPTS times.
+                    for (int i=0; i<THREADPOOL_RECOVERY_ATTEMPTS;i++) {
+                        if (executor.getSize() < SAFE_THREAD_COUNT) {
+                            break;
+                        } else {
+                            Thread.sleep(THREADPOOL_RECOVERY_INTERVAL);
+                            log.info("Pending jobs to send to transport : " + executor.getSize());
+                        }
+                    }
                 }
                 log.warn("Flusher destination has " + pendingJobsToSendToTransport + " tasks");
                 // TODO: we need to handle this. Notify slot delivery worker to sleep more
@@ -256,7 +313,7 @@ public class QueueDeliveryWorker {
                             .readButUndeliveredMessages
                             .size());
             sendMessagesToSubscriptions(queueDeliveryInfo.destination,
-                                        queueDeliveryInfo.readButUndeliveredMessages);
+                    queueDeliveryInfo.readButUndeliveredMessages);
         } catch (Exception e) {
             log.error("Error occurred while sending messages to subscribers from buffer", e);
             throw new AndesException("Error occurred while sending messages to subscribers " +
@@ -302,7 +359,14 @@ public class QueueDeliveryWorker {
         }
     }
 
-
+    /**
+     * Check whether there are active subscribers and send
+     *
+     * @param destination queue name
+     * @param messages    metadata set
+     * @return how many messages sent
+     * @throws Exception
+     */
     public int sendMessagesToSubscriptions(String destination, Set<AndesMessageMetadata> messages)
             throws Exception {
 
@@ -312,92 +376,104 @@ public class QueueDeliveryWorker {
         int sentMessageCount = 0;
         Iterator<AndesMessageMetadata> iterator = messages.iterator();
         while (iterator.hasNext()) {
-            AndesMessageMetadata message = iterator.next();
-            if (MessageExpirationWorker.isExpired(message.getExpirationTime())) {
-                continue;
-            }
 
-            /**
-             * get all relevant type of subscriptions. This call does NOT
-             * return hierarchical subscriptions for the destination. There
-             * are duplicated messages for each different subscribed destination.
-             * For durable topic subscriptions this should return queue subscription
-             * bound to unique queue based on subscription id
-             */
-            Collection<LocalSubscription> subscriptions4Queue =
-                    subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
+            try {
+                AndesMessageMetadata message = iterator.next();
 
-            //If this is a topic message, we remove all durable topic subscriptions here.
-            //Because durable topic subscriptions will get messages via queue path.
-            if(message.isTopic()) {
-                Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
-                while (subscriptionIterator.hasNext()) {
-                    LocalSubscription subscription = subscriptionIterator.next();
-                    if(subscription.isDurable()) {
-                        subscriptionIterator.remove();
+                /**
+                 * get all relevant type of subscriptions. This call does NOT
+                 * return hierarchical subscriptions for the destination. There
+                 * are duplicated messages for each different subscribed destination.
+                 * For durable topic subscriptions this should return queue subscription
+                 * bound to unique queue based on subscription id
+                 */
+                Collection<LocalSubscription> subscriptions4Queue =
+                        subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
+
+                //If this is a topic message, we remove all durable topic subscriptions here.
+                //Because durable topic subscriptions will get messages via queue path.
+                if(message.isTopic()) {
+                    Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
+                    while (subscriptionIterator.hasNext()) {
+                        LocalSubscription subscription = subscriptionIterator.next();
+                        if(subscription.isDurable()) {
+                            subscriptionIterator.remove();
+                        }
                     }
                 }
-            }
 
-            //check id destination has any subscription
-            //todo return the slot
-            if (subscriptions4Queue.size() == 0) {
-                return 0;
-            }
+                //check id destination has any subscription
+                //todo return the slot
+                if (subscriptions4Queue.size() == 0) {
+                    return 0;
+                }
 
-            int numOfCurrentMsgDeliverySchedules = 0;
+                int numOfCurrentMsgDeliverySchedules = 0;
 
-            /**
-             * if message is addressed to queues, only ONE subscriber should
-             * get the message. Otherwise, loop for every subscriber
-             */
-            for (int j = 0; j < subscriptions4Queue.size(); j++) {
-                LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
-                                                                                 subscriptions4Queue);
-                if(!message.isTopic()) { //for queue messages and durable topic messages (as they are now queue messages)
-                    if (isThisSubscriptionHasRoom(localSubscription)) {
-                        log.debug("Scheduled to send id = " + message.getMessageID());
+                /**
+                 * if message is addressed to queues, only ONE subscriber should
+                 * get the message. Otherwise, loop for every subscriber
+                 */
+                for (int j = 0; j < subscriptions4Queue.size(); j++) {
+                    LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
+                                                                                     subscriptions4Queue);
+                    if(!message.isTopic()) { //for queue messages and durable topic messages (as they are now queue messages)
+                        if (isThisSubscriptionHasRoom(localSubscription)) {
+                            if (log.isDebugEnabled()) {
+                                log.debug("Scheduled to send id = " + message.getMessageID());
+                            }
+                            deliverAsynchronously(localSubscription, message);
+                            numOfCurrentMsgDeliverySchedules ++;
+                            break;
+                        }
+                    }  else { //for normal (non-durable) topic messages. We do not consider room
+                        if (log.isDebugEnabled()) {
+                            log.debug("Scheduled to send id = " + message.getMessageID());
+                        }
                         deliverAsynchronously(localSubscription, message);
                         numOfCurrentMsgDeliverySchedules ++;
+                    }
+                }
+
+                //remove message after sending to all subscribers
+
+                if(!message.isTopic()) { //queue messages (and durable topic messages)
+                    if(numOfCurrentMsgDeliverySchedules == 1) {
+                        iterator.remove();
+                        if(log.isDebugEnabled()) {
+                            log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
+                        }
+                        sentMessageCount++;
+                    } else {
+                        log.debug(
+                                "All subscriptions for destination " + destination + " have max unacked " +
+                                "messages " + message
+                                        .getDestination());
+                        //if we continue message order will break
                         break;
                     }
-                }  else { //for normal (non-durable) topic messages. We do not consider room
-                    log.debug("Scheduled to send id = " + message.getMessageID());
-                    deliverAsynchronously(localSubscription, message);
-                    numOfCurrentMsgDeliverySchedules ++;
-                }
-            }
-
-            //remove message after sending to all subscribers
-
-            if(!message.isTopic()) { //queue messages (and durable topic messages)
-                if(numOfCurrentMsgDeliverySchedules == 1) {
-                    iterator.remove();
-                    if(log.isDebugEnabled()) {
-                        log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
+                } else { //normal topic message
+                    if(numOfCurrentMsgDeliverySchedules == subscriptions4Queue.size()) {
+                        iterator.remove();
+                        if(log.isDebugEnabled()) {
+                            log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
+                        }
+                        sentMessageCount++;
+                    }  else {
+                        log.warn("Could not schedule message delivery to all" +
+                                 " subscriptions. May cause message duplication. id= " + message.getMessageID());
+                        //if we continue message order will break
+                        break;
                     }
-                    sentMessageCount++;
-                } else {
-                    log.debug(
-                            "All subscriptions for destination " + destination + " have max unacked " +
-                            "messages " + message
-                                    .getDestination());
-                    //if we continue message order will break
-                    break;
                 }
-            } else { //normal topic message
-                if(numOfCurrentMsgDeliverySchedules == subscriptions4Queue.size()) {
-                    iterator.remove();
-                    if(log.isDebugEnabled()) {
-                        log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
-                    }
-                    sentMessageCount++;
-                }  else {
-                    log.warn("Could not schedule message delivery to all" +
-                             " subscriptions. May cause message duplication. id= " + message.getMessageID());
-                    //if we continue message order will break
-                    break;
-                }
+            } catch (NoSuchElementException ex) {
+            // This exception can occur because the iterator of ConcurrentSkipListSet loads the at-the-time snapshot.
+            // Some records could be deleted by the time the iterator reaches them.
+            // However, this can only happen at the tail of the collection, not in middle, and it would cause the loop
+            // to blindly check for a batch of deleted records.
+            // Given this situation, this loop should break so the sendFlusher can re-trigger it.
+            // for tracing purposes can use this : log.warn("NoSuchElementException thrown",ex);
+            break;
             }
         }
         return sentMessageCount;
@@ -413,16 +489,18 @@ public class QueueDeliveryWorker {
         deliverAsynchronously(subscription, message);
     }
 
-    private void deliverAsynchronously(final LocalSubscription subscription,
-                                       final AndesMessageMetadata message) {
+    /**
+     * Submit the messages to a thread pool to deliver asynchronously
+     *
+     * @param subscription local subscription
+     * @param message      metadata of the message
+     */
+    private void deliverAsynchronously(final LocalSubscription subscription, final AndesMessageMetadata message) {
         Runnable r = new Runnable() {
             @Override
             public void run() {
                 try {
                     if (subscription.isActive()) {
-                        if (MessageExpirationWorker.isExpired(message.getExpirationTime())) {
-                            return;
-                        }
                         (subscription).sendMessageToSubscriber(message);
                     } else {
                         reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);

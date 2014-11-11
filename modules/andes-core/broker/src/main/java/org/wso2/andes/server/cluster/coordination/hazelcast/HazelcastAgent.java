@@ -21,7 +21,6 @@ import com.hazelcast.core.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.MessagePurgeHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
@@ -104,8 +103,6 @@ public class HazelcastAgent {
 
     private int uniqueIdOfLocalMember;
 
-
-
     /**
      * Private constructor.
      */
@@ -164,7 +161,6 @@ public class HazelcastAgent {
                 CoordinationConstants.HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME);
         ClusterQueueChangedListener clusterQueueChangedListener = new ClusterQueueChangedListener();
         clusterQueueChangedListener.addQueueListener(new ClusterCoordinationHandler(this));
-        clusterQueueChangedListener.addQueueListener(new MessagePurgeHandler());
         this.queueChangedNotifierChannel.addMessageListener(clusterQueueChangedListener);
 
         /**

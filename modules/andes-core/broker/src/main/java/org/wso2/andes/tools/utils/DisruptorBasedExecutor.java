@@ -18,7 +18,6 @@
 
 package org.wso2.andes.tools.utils;
 
-
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -41,7 +40,6 @@ public class DisruptorBasedExecutor {
     //private static DisruptorRuntime<SubscriptionDataEvent> dataDeliveryDisruptorRuntime;
     private static Map<UUID, PendingJob> pendingJobsTracker = new ConcurrentHashMap<UUID, PendingJob>();
     private MessageStoreManager messageStoreManager;
-
 
     public DisruptorBasedExecutor(MessageStoreManager messageStoreManager) {
         this.messageStoreManager = messageStoreManager;

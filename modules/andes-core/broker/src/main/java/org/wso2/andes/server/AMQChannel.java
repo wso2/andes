@@ -285,7 +285,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             _currentMessage.setContentHeaderBody(contentHeaderBody);
 
             _currentMessage.setExpiration();
-
+            _currentMessage.setArrivalTime();
 
             MessageMetaData mmd = _currentMessage.headersReceived();
             //TODO find a proper way to get the IP of the client
@@ -386,6 +386,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                     AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
                     AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message, this.getId());
                     metadata.setExpirationTime(incomingMessage.getExpiration());
+                    metadata.setArrivalTime(incomingMessage.getArrivalTime());
 
                 } catch (Throwable e) {
                     _logger.error("Error processing completed messages, we will close this session", e);

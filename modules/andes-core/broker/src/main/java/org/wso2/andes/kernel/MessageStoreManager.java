@@ -210,5 +210,12 @@ public interface MessageStoreManager {
                                           List<AndesMessageMetadata> metadataList) throws
                                                                                    AndesException;
 
+    /***
+     * Clear all references to all message metadata / content addressed to a specific queue. Used when purging.
+     * @param queueName
+     * @throws AndesException
+     */
+    public Integer purgeQueueFromStore(String queueName) throws AndesException;
+
 
 }

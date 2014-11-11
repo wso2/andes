@@ -19,6 +19,21 @@
 package org.wso2.andes.kernel;
 
 public class AndesException extends Exception{
+
+    /***
+     * The most frequent exception happening here is due to message content being miscollected or not being there.
+     * we cannot throw this exception and interrupt other delivery tasks. The message content can be unavailable only if :
+     * 1. a message is sent and acknowledged
+     * 2. all messages of a queue is suddenly purged.
+     */
+    public static final String MESSAGE_CONTENT_OBSOLETE = "MESSAGE_CONTENT_OBSOLETE";
+
+    /**
+     * error code for our custom exception type to identify specific scenarios and handle them properly.
+     * TODO - add error codes to other frequent exceptional scenarios
+     */
+    private String errorCode = "";
+
     public AndesException() {
     }
 
@@ -26,11 +41,50 @@ public class AndesException extends Exception{
         super(message);
     }
 
+    /***
+     * Constructor
+     * @param message descriptive message
+     * @param errorCode one of the above defined constants that classifies the error.
+     */
+    public AndesException(String message,String errorCode){
+        super(message);
+        this.errorCode = errorCode;
+    }
+
+    /***
+     * Constructor
+     * @param message descriptive message
+     * @param cause reference to the exception for reference.
+     */
     public AndesException(String message, Throwable cause) {
         super(message, cause);
     }
 
+    /***
+     * Constructor
+     * @param message descriptive message
+     * @param errorCode one of the above defined constants that classifies the error.
+     * @param cause reference to the exception for reference.
+     */
+    public AndesException(String message,String errorCode, Throwable cause){
+        super(message, cause);
+        this.errorCode = errorCode;
+    }
+
+    /***
+     * Constructor
+     * @param cause reference to the exception for reference.
+     */
     public AndesException(Throwable cause) {
         super(cause);
     }
+
+    /***
+     * One of the above defined constants that classifies the error. e.g.- MESSAGE_CONTENT_OBSOLETE
+     * @return
+     */
+    public String getErrorCode() {
+        return errorCode;
+    }
+
 }

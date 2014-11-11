@@ -20,12 +20,24 @@ package org.wso2.andes.server.information.management;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.AMQException;
+import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
+import org.wso2.andes.server.logging.actors.CurrentActor;
+import org.wso2.andes.server.logging.actors.ManagementActor;
 import org.wso2.andes.server.management.AMQManagedObject;
+import org.wso2.andes.server.queue.AMQQueue;
+import org.wso2.andes.server.queue.QueueRegistry;
+import org.wso2.andes.server.store.DurableConfigurationStore;
 import org.wso2.andes.server.util.AndesUtils;
+import org.wso2.andes.server.virtualhost.VirtualHost;
+import org.wso2.andes.server.virtualhost.VirtualHostImpl;
+import org.wso2.andes.subscription.SubscriptionStore;
 
+import javax.management.JMException;
+import javax.management.MBeanException;
 import javax.management.NotCompliantMBeanException;
 
 import java.util.ArrayList;
@@ -35,14 +47,33 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     private static Log log = LogFactory.getLog(QueueManagementInformationMBean.class);
 
-    public QueueManagementInformationMBean() throws NotCompliantMBeanException {
+    private final QueueRegistry _queueRegistry;
+
+    private final VirtualHostImpl.VirtualHostMBean _virtualHostMBean;
+
+    /***
+     * Virtual host information are needed in the constructor to evaluate user permissions for
+     * queue management actions.(e.g. purge)
+     * @param virtualHostMBean
+     * @throws NotCompliantMBeanException
+     */
+    public QueueManagementInformationMBean(VirtualHostImpl.VirtualHostMBean virtualHostMBean) throws NotCompliantMBeanException {
         super(QueueManagementInformation.class, QueueManagementInformation.TYPE);
+
+        _virtualHostMBean = virtualHostMBean;
+        VirtualHost virtualHost = _virtualHostMBean.getVirtualHost();
+
+        _queueRegistry = virtualHost.getQueueRegistry();
     }
 
     public String getObjectInstanceName() {
         return QueueManagementInformation.TYPE;
     }
 
+    /***
+     * {@inheritDoc}
+     * @return
+     */
     public synchronized String[] getAllQueueNames() {
 
         try {
@@ -57,6 +88,10 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     }
 
+    /***
+     * {@inheritDoc}
+     * @return
+     */
     public boolean isQueueExists(String queueName) {
         try {
             List<String> queuesList = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
@@ -66,11 +101,58 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void deleteAllMessagesInQueue(@MBeanOperationParameter(name = "queueName",
-            description = "Name of the queue to delete messages from") String queueName) {
-         //todo: we have to implement this 1. remove all messages in node queue 2.set counter to zero
-        //todo: what happens if all messages were not copied to the node queue at the moment?
+            description = "Name of the queue to delete messages from") String queueName,
+                                         @MBeanOperationParameter(name = "ownerName",
+                                                 description = "Username of user that calls for " +
+                                                         "purge") String ownerName) throws
+            MBeanException {
+
+        //SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+
+        AMQQueue queue = _queueRegistry.getQueue(new AMQShortString(queueName));
+
+        try {
+            if (queue == null) {
+                throw new JMException("The Queue " + queueName + " is not a registered queue.");
+            }
+
+            // This code block is kept for reference. If its decided to avoid purging when having
+            // active subscribers, this condition should be added.
+            /*if(subscriptionStore.getActiveClusterSubscribersForDestination(queueName,
+                false).size() >0) {
+                throw new JMException("Queue" + queueName +" Has Active Subscribers. Please Stop
+                Them First.");
+            } */
+
+            CurrentActor.set(new ManagementActor(_logActor.getRootMessageLogger()));
+            queue.purge(0l);
+
+            Integer purgedMessageCount = MessagingEngine.getInstance().purgeQueue(queueName,
+                    ownerName);
+            log.info("Total message count purged for queue (from store) : " + queueName + " : " +
+                    purgedMessageCount + ". All in memory messages received before the purge call" +
+                    " are abandoned from delivery phase. ");
+
+        } catch (JMException jme) {
+            if (jme.toString().contains("not a registered queue")) {
+                throw new MBeanException(jme, "The Queue " + queueName + " is not a registered " +
+                        "queue.");
+            } else if (jme.toString().contains("Has Active Subscribers")) {
+                throw new MBeanException(jme, "Queue " + queueName + " has active subscribers. " +
+                        "Please stop them first.");
+            } else {
+                throw new MBeanException(jme, "Error in purging queue " + queueName + ":");
+            }
+        } catch (AMQException amqex) {
+            throw new MBeanException(amqex, "Error in purging queue " + queueName + ":");
+        } catch (AndesException e) {
+            throw new MBeanException(e, "Error in purging queue " + queueName);
+        }
     }
 
     /**
@@ -262,6 +344,10 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         return messageCount;
     }
 
+    /***
+     * {@inheritDoc}
+     * @return
+     */
     public int getSubscriptionCount( String queueName){
         try {
             return AndesContext.getInstance().getSubscriptionStore().numberOfSubscriptionsInCluster(queueName, false);

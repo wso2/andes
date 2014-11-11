@@ -129,6 +129,13 @@ public class JDBCConstants {
                     " AND " + QUEUE_ID + "=?" +
                     " ORDER BY " + MESSAGE_ID;
 
+    protected static final String PS_SELECT_MESSAGE_IDS_FROM_METADATA_FOR_QUEUE =
+            "SELECT " + MESSAGE_ID +
+                    " FROM " + METADATA_TABLE +
+                    " WHERE " + QUEUE_ID + "=?" +
+                    " AND " + MESSAGE_ID + ">?" +
+                    " ORDER BY " + MESSAGE_ID ;
+
     protected static final String PS_DELETE_METADATA =
             "DELETE " +
                     " FROM " + METADATA_TABLE +
@@ -144,6 +151,10 @@ public class JDBCConstants {
                     " FROM " + METADATA_TABLE +
                     " WHERE " + QUEUE_ID + "=?" +
                     " AND " + MESSAGE_ID + "=?";
+
+    protected static final String PS_CLEAR_QUEUE_FROM_METADATA = "DELETE " +
+            " FROM " + METADATA_TABLE +
+            " WHERE " + QUEUE_ID + "=?";
 
     protected static final String PS_SELECT_EXPIRED_MESSAGES =
             "SELECT " + MESSAGE_ID + "," + DESTINATION_QUEUE +
@@ -285,6 +296,11 @@ public class JDBCConstants {
                     " SET " + QUEUE_COUNT + "=" + QUEUE_COUNT + "-? " +
                     " WHERE " + QUEUE_NAME + "=?";
 
+    protected static final String PS_RESET_QUEUE_COUNT =
+            "UPDATE " + QUEUE_COUNTER_TABLE +
+                    " SET " + QUEUE_COUNT + "= 0" +
+                    " WHERE " + QUEUE_NAME + "=?";
+
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";
     protected static final String TASK_DELETING_MESSAGE_PARTS = "deleting message parts.";
@@ -302,6 +318,8 @@ public class JDBCConstants {
             "metadata within a range from queue. ";
     protected static final String TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE = "retrieving " +
             "metadata list from queue. ";
+    protected static final String TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE = "retrieving " +
+            "message ID list from queue. ";
     protected static final String TASK_DELETING_FROM_EXPIRY_TABLE = "deleting from expiry table.";
     protected static final String TASK_DELETING_MESSAGE_LIST = "deleting message list.";
     protected static final String TASK_DELETING_METADATA_FROM_QUEUE = "deleting metadata from " +

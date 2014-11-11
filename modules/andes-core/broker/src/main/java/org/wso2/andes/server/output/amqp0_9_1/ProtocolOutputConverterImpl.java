@@ -25,6 +25,7 @@ import org.wso2.andes.framing.*;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.framing.abstraction.ProtocolVersionMethodConverter;
 import org.wso2.andes.framing.amqp_0_91.BasicGetBodyImpl;
+import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.protocol.AMQVersionAwareProtocolSession;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.message.MessageContentSource;
@@ -142,7 +143,7 @@ public class ProtocolOutputConverterImpl implements ProtocolOutputConverter
                     writtenSize += message.getContent(buf, writtenSize);
 
                     if( writtenSize <= oldWrittenSize && writtenSize < bodySize) {
-                        throw new AMQException("Unexpected Error while getting message content : " +
+                        throw new AMQException(AMQConstant.MESSAGE_CONTENT_OBSOLETE, "Unexpected Error while getting message content : " +
                                 "This might leads to an infinite loop so exiting the loop forcefully. " +
                                 "writtenSize= " + writtenSize + " oldWrittenSize= " + oldWrittenSize + " bodySize= " + bodySize +
                         " Thus writtenSize <= oldWrittenSize && writtenSize < bodySize evaluates to TRUE");

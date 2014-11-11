@@ -162,6 +162,7 @@ public class AMQPUtils {
         AndesMessageMetadata metadata = new AndesMessageMetadata(amqMessage.getMessageId(),underlying,true);
         metadata.setChannelId(channelID);
         metadata.setSlot(amqMessage.getSlot());
+        metadata.setArrivalTime(amqMessage.getArrivalTime());
 
         return metadata;
     }
@@ -231,7 +232,6 @@ public class AMQPUtils {
 
             AndesMessagePart messagePart = resolveCacheAndRetrieveMessagePart(messageId, indexToQuery);
 
-
             int messagePartSize = messagePart.getDataLength();
             int remainingSizeOfBuffer = initialBufferSize - dst.position();
             int numOfBytesAvailableToRead = messagePartSize - positionToReadFromChunk;
@@ -246,7 +246,12 @@ public class AMQPUtils {
                 numOfBytesToRead = initialBufferSize - written;
             }
 
-            dst.put(messagePart.getData(), positionToReadFromChunk, numOfBytesToRead);
+            // message content can be returned as null if a sudden queue purge occurs and clears all message content in store.
+            // This has to be handled.
+            if (messagePart.getData() != null) {
+                dst.put(messagePart.getData(), positionToReadFromChunk, numOfBytesToRead);
+            }
+
             written += numOfBytesToRead;
 
             if (messagePartSize < DEFAULT_CONTENT_CHUNK_SIZE) { // Last message chunk has been received

@@ -53,22 +53,16 @@ public class AMQException extends Exception
         _errorCode = errorCode;
     }
 
-    /*
-     * Deprecated constructors brought from M2.1
-     */
-    @Deprecated
     public AMQException(String msg) 
     {
         this(null, (msg == null) ? "" : msg);
     }
-    
-    @Deprecated 
+
     public AMQException(AMQConstant errorCode, String msg) 
     {
         this(errorCode, (msg == null) ? "" : msg, null);
     }
 
-    @Deprecated
     public AMQException(String msg, Throwable cause)
     {
         this(null, msg, cause);

@@ -28,7 +28,10 @@ import org.wso2.andes.common.ClientProperties;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.configuration.*;
@@ -237,7 +240,8 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
 
 
         /**
-         * This method can be called by each of the publisher threads. As a result all changes to the channel object
+         * This method can be called by each of the publisher threads. As a result all changes to
+         * the channel object
          * must be
          * thread safe.
          *
@@ -258,31 +262,36 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                 recordMessageDelivery(entry, deliveryTag);
 
                 long messageID = entry.getMessage().getMessageNumber();
-                OnflightMessageTracker messageTracker =  OnflightMessageTracker.getInstance();
+                OnflightMessageTracker messageTracker = OnflightMessageTracker.getInstance();
 
-                boolean isRedelivered = messageTracker.checkAndRegisterSent(messageID, getChannel().getId(), deliveryTag);
+                boolean isRedelivered = messageTracker.checkAndRegisterSent(messageID,
+                        getChannel().getId(), deliveryTag);
 
                 //set redelivery header
-                if(isRedelivered) {
+                if (isRedelivered) {
                     entry.setRedelivered();
                 }
 
                 if (messageTracker.evaluateDeliveryRules(messageID, getChannel().getId())) {
 
-                    //no point of trying to deliver if channel is closed ReQueue the message to be resent
+                    //no point of trying to deliver if channel is closed ReQueue the message to
+                    // be resent
                     // when channel is available
                     if (getChannel().isClosing()) {
                         AndesMessageMetadata message = AMQPUtils.convertAMQMessageToAndesMetadata(
-                                (AMQMessage) entry.getMessage(),getChannel().getId());
+                                (AMQMessage) entry.getMessage(), getChannel().getId());
                         MessagingEngine.getInstance().messageRejected(message);
                         return;
                     }
 
                     if (log.isDebugEnabled()) {
                         log.debug("sent message : " + messageID + " JMSMessageId " +
-                                ": " + entry.getMessageHeader().getMessageId() + " channel=" + getChannel()
+                                ": " + entry.getMessageHeader().getMessageId() + " channel=" +
+                                getChannel()
                                 .getChannelId());
+
                     }
+
                     sendToClient(entry, deliveryTag);
                 } else {
                     /**
@@ -298,12 +307,38 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                     //move message to DLC
                     //todo: hasitha - for topics this should not happen
                     MessagingEngine.getInstance().moveMessageToDeadLetterChannel(messageId,
-                                                                                 destinationQueue);
+                            destinationQueue);
                 }
+
             } catch (Exception e) {
+
+                // Try and shed more light about the exact context of the error (only in debug mode)
+                if (log.isDebugEnabled()) {
+                    //undo any changes in the message tracker
+                    log.warn("SEND FAILED >> Exception occurred while sending message out.");
+
+                    if (e instanceof AMQException) {
+                        if (((AMQException) e).getErrorCode().getCode() == AMQConstant
+                                .MESSAGE_CONTENT_OBSOLETE.getCode()) {
+                            log.debug("Message content for message id : " + entry.getMessage()
+                                    .getMessageNumber() + " has been removed from store due to a " +
+                                    "queue purge or a previous acknowledgement of the message.", e);
+                        } else if (((AMQException) e).getErrorCode().getCode() == AMQConstant
+                                .DELIVERY_TAG_REUSED.getCode()) {
+                            log.debug("Delivery tag for message : " + entry.getMessage()
+                                    .getMessageNumber() + " has been used earlier.", e);
+                        }
+                    } else {
+                        // This is an unexpected scenario. Logged for reference.
+                        log.debug("Unexpected error occurred when sending message : " + entry
+                                .getMessage().getMessageNumber(), e);
+                    }
+                }
+
                 //todo: hasitha - should we consider requeing here?
-                throw new AMQException("SEND FAILED >> Exception occurred while sending message out message ID" + entry.getMessage().getMessageNumber()
-                                       + " " + e.getMessage(), e);
+                throw new AMQException("SEND FAILED >> Exception occurred while sending message " +
+                        "out message ID" + entry.getMessage().getMessageNumber()
+                        + " " + e.getMessage(), e);
             }
         }
     }

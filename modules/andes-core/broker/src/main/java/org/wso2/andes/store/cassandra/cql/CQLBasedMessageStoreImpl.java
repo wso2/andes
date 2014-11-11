@@ -23,6 +23,7 @@ import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.querybuilder.Delete;
 import com.datastax.driver.core.querybuilder.Insert;
+import java.util.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.ConfigurationProperties;
@@ -39,6 +40,10 @@ import org.wso2.andes.store.cassandra.cql.dao.GenericCQLDAO;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 
 import java.util.*;
+
+import static org.wso2.andes.store.cassandra.CassandraConstants.KEYSPACE;
+import static org.wso2.andes.store.cassandra.CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY;
+import static org.wso2.andes.store.cassandra.CassandraConstants.MESSAGE_COUNTERS_RAW_NAME;
 
 /**
  * This is the implementation of MessageStore that deals with Cassandra no SQL DB.
@@ -691,6 +696,87 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * @param queueName name of the queue being purged
+     * @throws AndesException
+     */
+    @Override
+    public void deleteAllMessageMetadata(String queueName) throws AndesException {
+        try {
+            CQLDataAccessHelper.deleteRowFromColumnFamily(CassandraConstants
+                    .META_DATA_COLUMN_FAMILY, queueName, CassandraConstants.KEYSPACE);
+
+            // Resetting counters is strictly prohibited by Cassandra by design,
+            // and even re-inserting a record
+            // won't reset the value but set the counter to null.
+            // Therefore we have to first get the counter value and decrement it in another query.
+            // This could be problematic in a race condition between another counter modification.
+            Long messageCountOfQueue = CQLDataAccessHelper.getCountValue(CassandraConstants
+                    .KEYSPACE, CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, queueName,
+                    CassandraConstants.MESSAGE_COUNTERS_RAW_NAME);
+            CQLDataAccessHelper.decrementCounter(queueName,
+                    CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY,
+                    CassandraConstants.MESSAGE_COUNTERS_RAW_NAME,
+                    CassandraConstants.KEYSPACE, messageCountOfQueue);
+
+        } catch (Exception e) {
+            throw new AndesException("Error while deleting messages", e);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Long> getMessageIDsAddressedToQueue(String queueName) throws AndesException {
+
+        try {
+
+            List<Long> messageIDs = new ArrayList<Long>();
+
+            Long lastProcessedID = 0l;
+            // In case paginated data fetching is slow, this can be set to Integer.MAX.
+            // This is set to paginate so that a big data read wont cause continuous timeouts.
+            Integer pageSize = CQLDataAccessHelper.STANDARD_PAGE_SIZE;
+
+            Boolean allRecordsRetrieved = false;
+
+            while (!allRecordsRetrieved) {
+                try {
+                    List<Long> currentPage = CQLDataAccessHelper.getColumnDataFromColumnFamily
+                            (queueName, CassandraConstants.META_DATA_COLUMN_FAMILY,
+                                    CQLDataAccessHelper.MSG_KEY, CassandraConstants.KEYSPACE,
+                                    lastProcessedID, pageSize);
+
+                    if (currentPage.size() == 0) {
+                        // this means that there are no more messages to be retrieved for this queue
+                        allRecordsRetrieved = true;
+                    } else {
+                        messageIDs.addAll(currentPage);
+                        lastProcessedID = currentPage.get(currentPage.size() - 1);
+
+                        if (currentPage.size() < pageSize) {
+                            // again means there are no more message IDs to be retrieved
+                            allRecordsRetrieved = true;
+                        }
+                    }
+
+                } catch (CassandraDataAccessException e) {
+                    // we also need to escape loop in case of an exception and communicate the error
+                    throw new AndesException("Error while getting message IDs for queue : " +
+                            queueName, e);
+                }
+            }
+
+            return messageIDs;
+
+        } catch (Exception e) {
+            throw new AndesException("Error while getting message IDs for queue : " + queueName, e);
+        }
+    }
+
+    /**
      * delete message from expiration column family
      *
      * @param messagesToRemove messages to remove
@@ -726,5 +812,76 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             throw new AndesException(e);
         }
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int deleteAllMessageMetadataFromDLC(String queueName, String DLCQueueName) throws
+            AndesException {
+
+        List<Statement> statements = new ArrayList<Statement>();
+
+        try {
+
+            Long lastProcessedID = 0l;
+            // In case paginated data fetching is slow for some reason,
+            // this can be set to Integer.MAX..
+            // This is set to paginate so that a big data read wont cause continuous timeouts.
+            Integer pageSize = CQLDataAccessHelper.STANDARD_PAGE_SIZE;
+
+            Boolean allRecordsRetrieved = false;
+
+            while (allRecordsRetrieved) {
+                try {
+
+                    List<AndesMessageMetadata> metadataList = CQLDataAccessHelper
+                            .getMessagesFromQueue(DLCQueueName,
+                            CassandraConstants.META_DATA_COLUMN_FAMILY,
+                            CassandraConstants.KEYSPACE, lastProcessedID,
+                            Long.MAX_VALUE, pageSize, true, true);
+
+                    if (metadataList.size() == 0) {
+                        allRecordsRetrieved = true; // this means that there are no more messages
+                        // to be retrieved for this queue
+                    } else {
+                        for (AndesMessageMetadata amm : metadataList) {
+                            if (amm.getDestination().equals(queueName)) {
+
+                                Delete delete = CQLDataAccessHelper
+                                        .deleteLongColumnFromRaw(CassandraConstants.KEYSPACE,
+                                                CassandraConstants.META_DATA_COLUMN_FAMILY,
+                                                DLCQueueName, amm.getMessageID(), false);
+                                statements.add(delete);
+                            }
+                        }
+
+                        lastProcessedID = metadataList.get(metadataList.size() - 1).getMessageID();
+
+                        if (metadataList.size() < pageSize) {
+                            // again means there are no more metadata to be retrieved
+                            allRecordsRetrieved = true;
+                        }
+                    }
+
+                } catch (CassandraDataAccessException e) {
+                    // we also need to escape loop in case of an exception and communicate the error
+                    throw new AndesException("Error while getting messages in DLC for queue : " +
+                            queueName, e);
+                }
+            }
+
+            // Execute Batch Delete
+            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE,
+                    statements.toArray(new Statement[statements.size()]));
+
+        } catch (Exception e) {
+            throw new AndesException("Error while getting messages in DLC for queue : " +
+                    queueName, e);
+        }
+
+        return statements.size();
+    }
+
 
 }
