@@ -24,30 +24,69 @@ package org.wso2.andes.management.common.mbeans;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanAttribute;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
 
+import javax.management.JMException;
+import javax.management.MBeanException;
+
 public interface QueueManagementInformation {
 
     static final String TYPE = "QueueManagementInformation";
 
+    /***
+     * Retrieve all destination queue names.
+     * @return
+     */
     @MBeanAttribute(name="Queues",description = "All queue names")
     String[] getAllQueueNames();
 
+    /***
+     * Delete a queue from the broker.
+     * @param queueName
+     */
     @MBeanAttribute(name="Delete Queue" ,description = "Deleting the specified queue from the server")
     void deleteQueue(@MBeanOperationParameter(name = "queueName" ,
             description = "Name of the queue to be deleted") String queueName);
 
+    /***
+     * Retrieve current message count of a queue. This may be only a rough estimate in a fast pub/sub scenario.
+     * @param queueName
+     * @param msgPattern
+     * @return
+     */
     @MBeanAttribute(name="MessageCount",description = "Message count of the queue")
     long getMessageCount(String queueName,String msgPattern);
 
+    /***
+     * Retrieve number of subscribers (active/inactive) for a given queue.
+     * @param queueName
+     * @return
+     */
     @MBeanAttribute(name="SubscriptionCount", description = "Number of subscriptions for the queue")
     int getSubscriptionCount(String queueName);
 
+    /***
+     * Verify whether the given queue exists in broker.
+     * @param queueName
+     * @return
+     */
     @MBeanAttribute(name = " Queue Exists", description = "Check whether the queue exists in the server")
     boolean isQueueExists(@MBeanOperationParameter(name = "queueName" ,
             description = "Name of the queue to be checked") String queueName);
 
-    @MBeanAttribute(name = " Delete All Messages In Queue ", description = "Delete all the messages in the queue without removing queue bindings.")
-    void deleteAllMessagesInQueue(@MBeanOperationParameter(name = "queueName" ,
-            description = "Name of the queue to delete messages from") String queueName);
+    /**
+     * Purge the given queue both in terms of stored messages and in-memory messages.
+     * Ideally, all messages not awaiting acknowledgement at the time of purge should be cleared
+     * from the broker.
+     *
+     * @param queueName
+     */
+    @MBeanAttribute(name = " Delete All Messages In Queue ", description = "Delete all the " +
+            "messages in the queue without removing queue bindings.")
+    void deleteAllMessagesInQueue(@MBeanOperationParameter(name = "queueName",
+            description = "Name of the queue to delete messages from") String queueName,
+                                  @MBeanOperationParameter(name = "ownerName",
+                                          description = "Username of user that calls for " +
+                                                  "purge")
+                                  String ownerName) throws MBeanException;
 
     /**
      * Delete a selected message list from a given Dead Letter Queue of a tenant.

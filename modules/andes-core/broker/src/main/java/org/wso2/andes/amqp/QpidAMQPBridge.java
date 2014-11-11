@@ -77,7 +77,6 @@ public class QpidAMQPBridge {
     private QpidAMQPBridge() {
 
         //register listeners for queue changes
-        addQueueListener(new MessagePurgeHandler());
         addQueueListener(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
 
         //register listeners for exchange changes
@@ -128,6 +127,8 @@ public class QpidAMQPBridge {
             log.debug("AMQP BRIDGE: Message id= " + incomingMessage.getMessageNumber() + "received");
             }
             AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
+            message.getMessageMetaData().setArrivalTime(incomingMessage.getArrivalTime());
+
             AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message, channelID);
             String queue = message.getRoutingKey();
 

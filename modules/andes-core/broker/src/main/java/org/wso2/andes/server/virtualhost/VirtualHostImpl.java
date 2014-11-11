@@ -33,6 +33,7 @@ import org.wso2.andes.server.connection.ConnectionRegistry;
 import org.wso2.andes.server.connection.IConnectionRegistry;
 import org.wso2.andes.server.exchange.*;
 import org.wso2.andes.server.federation.BrokerLink;
+import org.wso2.andes.server.information.management.QueueManagementInformationMBean;
 import org.wso2.andes.server.logging.LogSubject;
 import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.server.logging.messages.VirtualHostMessages;
@@ -82,6 +83,8 @@ public class VirtualHostImpl implements VirtualHost {
     protected VirtualHostMBean _virtualHostMBean;
 
     private AMQBrokerManagerMBean _brokerMBean;
+
+    private QueueManagementInformationMBean _queueManagementInformationMBean;
 
     private final AuthenticationManager _authenticationManager;
 
@@ -214,6 +217,10 @@ public class VirtualHostImpl implements VirtualHost {
 
         _brokerMBean = new AMQBrokerManagerMBean(_virtualHostMBean);
         _brokerMBean.register();
+
+        _queueManagementInformationMBean = new QueueManagementInformationMBean(_virtualHostMBean);
+        _queueManagementInformationMBean.register();
+
         initialiseHouseKeeping(hostConfig.getHousekeepingExpiredMessageCheckPeriod());
 
         initialiseStatistics();

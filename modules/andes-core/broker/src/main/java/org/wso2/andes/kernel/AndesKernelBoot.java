@@ -244,10 +244,6 @@ public class AndesKernelBoot {
                 ClusterResourceHolder.getInstance().getClusterManager());
         clusterManagementMBean.register();
 
-        QueueManagementInformationMBean queueManagementMBean = new
-                QueueManagementInformationMBean();
-        queueManagementMBean.register();
-
         SubscriptionManagementInformationMBean subscriptionManagementInformationMBean = new
                 SubscriptionManagementInformationMBean();
         subscriptionManagementInformationMBean.register();

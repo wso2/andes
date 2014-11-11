@@ -197,6 +197,29 @@ public interface MessageStore {
                                         boolean isMessageForTopic, String destination)
             throws AndesException;
 
+    /***
+     * Store level method to remove all metadata references to all messages addressed to a specific queue.
+     * @param queueName name of the queue being purged
+     * @return int number of deleted messages
+     * @throws AndesException
+     */
+    public void deleteAllMessageMetadata(String queueName) throws AndesException;
+
+    /***
+     * Store level method to remove all DLC records of all messages addressed to a specific queue.
+     * @param queueName name of the queue being purged
+     * @return int number of deleted messages
+     * @throws AndesException
+     */
+    public int deleteAllMessageMetadataFromDLC(String queueName, String DLCQueueName) throws AndesException;
+
+    /***
+     * Get Message ID list addressed to a specific queue.
+     * @param queueName
+     * @throws AndesException
+     */
+    public List<Long> getMessageIDsAddressedToQueue(String queueName) throws AndesException;
+
     /**
      * close the message store
      */

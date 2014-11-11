@@ -18,6 +18,8 @@
 package org.wso2.andes.server.store.util;
 
 
+import java.util.List;
+
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.Cluster.Builder;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
@@ -26,6 +28,7 @@ import com.datastax.driver.core.policies.DefaultRetryPolicy;
 import com.datastax.driver.core.querybuilder.Delete;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.Select;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -56,6 +59,9 @@ public class CQLDataAccessHelper {
     public static final String MSG_COUNTER_COLUMN = "counter_value";
     public static final String MSG_COUNTER_QUEUE = "queue_name";
     public static final String MSG_COUNTER_ROW = "counter_row_id";
+
+    public static final int STANDARD_PAGE_SIZE = 10000; // Standard row count retrieved in one call
+    // during a paginated data retrieval.
 
     //cql table column which store slice column key (compound primary key)
     public static final String MSG_KEY = "message_key";
@@ -392,7 +398,7 @@ public class CQLDataAccessHelper {
             cqlDelete.addCondition(MSG_COUNTER_QUEUE, queueColumn, WHERE_OPERATORS.EQ);
             cqlDelete.addCondition(MSG_COUNTER_ROW, counterRowName, WHERE_OPERATORS.EQ);
             Delete delete = CQLQueryBuilder.buildSingleDelete(cqlDelete);
-            GenericCQLDAO.executeAsync(keyspace, delete.getQueryString());
+            GenericCQLDAO.execute(keyspace, delete.getQueryString());
         } catch (Exception e) {
             if (e.getMessage()
                  .contains("All host pools marked down. Retry burden pushed out to client")) {
@@ -684,6 +690,78 @@ public class CQLDataAccessHelper {
     }
 
     /**
+     * Get a list of values of a single Long column (in our case ; the message ID) from the given
+     * column family
+     *
+     * @param rowKey key value of the row
+     * @param columnFamilyName name of columnfamily from which data is read
+     * @param columnKey key value of the column in the <rowKey> row
+     * @param keyspace keyspace name of which the data is read
+     * @param lastProcessedId for pagination purposes. The last read ID is used to ignore the
+     *                        already read records when making the query.
+     * @param limit number of rows to be retrieved
+     * @return
+     * @throws CassandraDataAccessException
+     */
+    public static List<Long> getColumnDataFromColumnFamily(String rowKey,
+                                                           String columnFamilyName,
+                                                           String columnKey,
+                                                           String keyspace,
+                                                           long lastProcessedId,
+                                                           long limit)
+            throws CassandraDataAccessException {
+
+        if (StringUtils.isBlank(keyspace) || StringUtils.isBlank(columnFamilyName)) {
+            throw new CassandraDataAccessException("Can't access Data. The input keyspace or " +
+                    "column family is invalid.");
+        }
+
+        if (StringUtils.isBlank(columnFamilyName) || StringUtils.isBlank(rowKey)) {
+            throw new CassandraDataAccessException(
+                    "Can't access data with column family = " + columnFamilyName +
+                            " and row key=" + rowKey);
+        }
+
+        try {
+
+            List<Long> valueList = new ArrayList<Long>();
+            CQLQueryBuilder.CqlSelect cqlSelect = new CQLQueryBuilder.CqlSelect(columnFamilyName,
+                    limit,
+                    true);
+            cqlSelect.addColumn(columnKey);
+
+            cqlSelect.addCondition(MSG_ROW_ID, rowKey, WHERE_OPERATORS.EQ);
+
+            // Add this condition only if the request needs messages from a specific point
+            if (lastProcessedId > 0) {
+                cqlSelect.addCondition(MSG_KEY, lastProcessedId, WHERE_OPERATORS.GTE);
+            }
+
+            Select select = CQLQueryBuilder.buildSelect(cqlSelect);
+
+            if (log.isDebugEnabled()) {
+                log.debug(" getMessageMetaDataFromQueue : " + select.toString());
+            }
+
+            ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
+
+            List<Row> rows = result.all();
+
+            Iterator<Row> iter = rows.iterator();
+            while (iter.hasNext()) {
+                Row row = iter.next();
+                long msgId = row.getLong(MSG_KEY);
+                valueList.add(msgId);
+            }
+
+            return valueList;
+        } catch (Exception e) {
+            throw new CassandraDataAccessException(
+                    "Error while getting data from " + columnFamilyName, e);
+        }
+    }
+
+    /**
      * Return a message part with the given offset for the given message Id.
      *
      * @param rowName
@@ -730,18 +808,21 @@ public class CQLDataAccessHelper {
             ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
             List<Row> rows = result.all();
             Iterator<Row> iterator = rows.iterator();
-            Row row = iterator.next();
-            byte[] value = CQLQueryBuilder.convertToByteArray(row, MSG_VALUE);
 
-            if (value != null && value.length > 0) {
-                messagePart.setData(value);
-                messagePart.setMessageID(messageId);
-                messagePart.setDataLength(value.length);
-                messagePart.setOffSet(offset);
-            } else {
-                throw new CassandraDataAccessException(
-                        "Message part with offset " + offset + " for the message " +
-                        messageId + " was not found.");
+            if (iterator.hasNext()) {
+                Row row = iterator.next();
+                byte[] value = CQLQueryBuilder.convertToByteArray(row, MSG_VALUE);
+
+                if (value != null && value.length > 0) {
+                    messagePart.setData(value);
+                    messagePart.setMessageID(messageId);
+                    messagePart.setDataLength(value.length);
+                    messagePart.setOffSet(offset);
+                } else {
+                    throw new CassandraDataAccessException(
+                            "Message part with offset " + offset + " for the message " +
+                            messageId + " was not found.");
+                }
             }
 
 
@@ -1036,6 +1117,8 @@ public class CQLDataAccessHelper {
 
     }
 
+
+
     /**
      * delete a list of integer rows from a column family
      *
@@ -1071,6 +1154,36 @@ public class CQLDataAccessHelper {
         } catch (Exception e) {
             throw new CassandraDataAccessException("Error while deleting data", e);
         }
+    }
+
+    /**
+     * Delete a single row from given column family
+     *
+     * @param columnFamily
+     * @param rowKey
+     * @param keyspace
+     */
+    public static void deleteRowFromColumnFamily(String columnFamily, String rowKey,
+                                                 String keyspace) throws
+            CassandraDataAccessException {
+
+        if (StringUtils.isBlank(keyspace)) {
+            throw new CassandraDataAccessException("Cannot delete data, no keyspace provided");
+        }
+
+        try {
+
+            CQLQueryBuilder.CqlDelete cqlDelete = new CQLQueryBuilder.CqlDelete(keyspace,
+                    columnFamily);
+
+            cqlDelete.addCondition(MSG_ROW_ID, rowKey, WHERE_OPERATORS.EQ);
+            Delete delete = CQLQueryBuilder.buildSingleDelete(cqlDelete);
+            GenericCQLDAO.execute(keyspace, delete.getQueryString());
+        } catch (Exception e) {
+            throw new CassandraDataAccessException("Error while deleting data", e);
+        }
+
+
     }
 
     public static Map<String, List<String>> listAllStringRows(String columnFamilyName,

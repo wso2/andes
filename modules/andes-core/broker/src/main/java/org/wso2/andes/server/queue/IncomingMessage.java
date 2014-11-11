@@ -22,8 +22,6 @@ import org.wso2.andes.framing.abstraction.ContentChunk;
 import org.wso2.andes.framing.ContentHeaderBody;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.BasicContentHeaderProperties;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.exchange.Exchange;
@@ -65,6 +63,7 @@ public class IncomingMessage implements Filterable, InboundMessage, EnqueableMes
     private ArrayList<? extends BaseQueue> _destinationQueues;
 
     private long _expiration;
+    private long _arrivalTime;
 
     private Exchange _exchange;
 
@@ -122,6 +121,10 @@ public class IncomingMessage implements Filterable, InboundMessage, EnqueableMes
                 }
             }
 
+    }
+
+    public void setArrivalTime() {
+         _arrivalTime = ((BasicContentHeaderProperties) _contentHeaderBody.getProperties()).getTimestamp();
     }
 
     public MessageMetaData headersReceived()
@@ -248,6 +251,11 @@ public class IncomingMessage implements Filterable, InboundMessage, EnqueableMes
     public long getExpiration()
     {
         return _expiration;
+    }
+
+    public long getArrivalTime()
+    {
+        return _arrivalTime;
     }
 
     public int getReceivedChunkCount()

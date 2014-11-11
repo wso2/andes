@@ -31,6 +31,7 @@ import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
  * SlotDelivery worker is responsible of distributing messages to subscribers. Messages will be
@@ -42,6 +43,7 @@ public class SlotDeliveryWorker extends Thread {
      * keeps storage queue name vs actual destination it represent
      */
     private ConcurrentSkipListMap<String, String> storageQueueNameToDestinationMap;
+
     private SubscriptionStore subscriptionStore;
     private HashMap<String, Long> localLastProcessedIdMap;
     private static boolean isClusteringEnabled;
@@ -289,6 +291,22 @@ public class SlotDeliveryWorker extends Thread {
     }
 
     /**
+     * Clear all in memory messages addressed to the queue and update the last purged timestamp for the given queue at its QueueDeliveryInfo object.
+     *
+     * @param queueName
+     * @param purgedTimestamp
+     * @return
+     * @throws AndesException
+     */
+    public int purgeInMemoryMessagesFromQueue(String queueName, long purgedTimestamp) throws AndesException {
+
+        queueDeliveryWorker.getQueueDeliveryInfo(queueName).setLastPurgedTimestamp(purgedTimestamp);
+
+        return queueDeliveryWorker.getQueueDeliveryInfo(queueName).clearReadButUndeliveredMessages
+                ();
+    }
+
+    /**
      * Get queue list belongs to this thread
      *
      * @return queue list
@@ -308,7 +326,7 @@ public class SlotDeliveryWorker extends Thread {
     /**
      * Set state of the worker thread
      *
-     * @param running
+     * @param running new state of the worker
      */
     public void setRunning(boolean running) {
         this.running = running;

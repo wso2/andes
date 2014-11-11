@@ -93,9 +93,6 @@ public class TopicDeliveryWorker extends Thread {
             public void run() {
                 try {
                     if (subscription.isActive()) {
-                        if (MessageExpirationWorker.isExpired(message.getExpirationTime())) {
-                            return;
-                        }
                         (subscription).sendMessageToSubscriber(message);
                     }
                 } catch (Throwable e) {

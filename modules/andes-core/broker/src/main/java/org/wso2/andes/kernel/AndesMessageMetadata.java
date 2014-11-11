@@ -44,6 +44,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
     byte[] metadata;
     long expirationTime;
     boolean isTopic;
+    Long arrivalTime;
 
     /**
      *through which connection this message came into broker
@@ -162,7 +163,14 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         this.channelId = channelId;
     }
 
-    
+    public Long getArrivalTime() {
+        return arrivalTime;
+    }
+
+    public void setArrivalTime(Long arrivalTime) {
+        this.arrivalTime = arrivalTime;
+    }
+
     /**
      * Create a clone, with new message ID
      * @param messageId message id
@@ -181,6 +189,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         clone.pendingJobsTracker = pendingJobsTracker; 
         clone.queueAddress = queueAddress;
         clone.slot = slot;
+        clone.arrivalTime = arrivalTime;
         return clone;
     }
 
@@ -226,6 +235,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         if (type.equals(MessageMetaDataType.META_DATA_0_10) || type.equals(MessageMetaDataType.META_DATA_0_8)) {
             isPersistent = ((MessageMetaData) mdt).isPersistent();
             expirationTime = ((MessageMetaData) mdt).getMessageHeader().getExpiration();
+            arrivalTime = ((MessageMetaData) mdt).getArrivalTime();
             destination = ((MessageMetaData) mdt).getMessagePublishInfo().getRoutingKey().toString();
             isTopic = ((MessageMetaData) mdt).getMessagePublishInfo().getExchange().equals(AMQPUtils.TOPIC_EXCHANGE_NAME);
             queueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE, AndesUtils.getGlobalQueueNameForDestinationQueue(destination));

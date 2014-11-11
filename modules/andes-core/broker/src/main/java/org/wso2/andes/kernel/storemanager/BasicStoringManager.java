@@ -21,7 +21,9 @@ package org.wso2.andes.kernel.storemanager;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.stats.PerformanceCounter;
+import org.wso2.andes.server.util.AndesConstants;
 
 import java.util.List;
 
@@ -105,6 +107,52 @@ public abstract class BasicStoringManager implements MessageStoreManager {
         long start = System.currentTimeMillis();
         messageStore.updateMetaDataInformation(currentQueueName, metadataList);
         PerformanceCounter.warnIfTookMoreTime("Update Metadata ", start, 100);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Integer purgeQueueFromStore(String queueName) throws AndesException {
+
+        try {
+            // Retrieve message IDs addressed to the queue and keep track of message count for
+            // the queue in the store
+            List<Long> messageIDsAddressedToQueue = messageStore.getMessageIDsAddressedToQueue
+                    (queueName);
+
+            Integer messageCountInStore = messageIDsAddressedToQueue.size();
+
+            //  Clear message metadata from queues and update message count for the specific queue
+            messageStore.deleteAllMessageMetadata(queueName);
+
+            // There is only 1 DLC queue per tenant. So we have to read and parse the message
+            // metadata and filter messages specific to a given queue.
+            // This is pretty exhaustive. If there are 1000 DLC messages and only 10 are relevant
+            // to the given queue, We still have to get all 1000
+            // into memory. Options are to delete dlc messages leisurely with another thread,
+            // or to break from
+            // original DLC pattern and maintain multiple DLC queues per each queue.
+            Integer messageCountFromDLC = messageStore.deleteAllMessageMetadataFromDLC
+                    (DLCQueueUtils.identifyTenantInformationAndGenerateDLCString
+                    (queueName, AndesConstants.DEAD_LETTER_QUEUE_NAME), queueName);
+
+            // Clear message content leisurely / asynchronously using retrieved message IDs
+            messageStore.deleteMessageParts(messageIDsAddressedToQueue);
+
+            // We can also delete messages from the messagesForExpiry store,
+            // but since we have a thread running to clear them up as they expire,
+            // we do not necessarily have to rush it here.
+            // messageStore.deleteMessagesFromExpiryQueue(messageIDsAddressedToQueue);
+
+            // If any other places in the store keep track of messages ,
+            // they should also be cleared here.
+
+            return messageCountInStore + messageCountFromDLC;
+
+        } catch (AndesException e) {
+            throw new AndesException("Error occurred when purging queue from store", e);
+        }
     }
 
     /**

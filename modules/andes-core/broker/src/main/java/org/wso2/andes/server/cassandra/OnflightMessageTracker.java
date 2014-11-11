@@ -143,8 +143,9 @@ public class OnflightMessageTracker {
         final long msgID;
         boolean ackreceived = false;
         final String destination;
-        long timestamp;
+        long timestamp; // timestamp at which the message was taken from store for processing.
         long expirationTime;
+        long arrivalTime; // timestamp at which the message entered the first gates of the broker.
         long deliveryID;
         AtomicInteger numberOfScheduledDeliveries;
         Map<UUID, Integer> channelToNumOfDeliveries;
@@ -152,7 +153,8 @@ public class OnflightMessageTracker {
         Slot slot;
 
         private MsgData(long msgID, Slot slot, boolean ackReceived, String destination, long timestamp,
-                        long expirationTime, long deliveryID,MessageStatus messageStatus) {
+                        long expirationTime, long deliveryID,MessageStatus messageStatus,
+                        long arrivalTime) {
             this.msgID = msgID;
             this.slot = slot;
             this.ackreceived = ackReceived;
@@ -164,6 +166,7 @@ public class OnflightMessageTracker {
             this.messageStatus = new ArrayList<MessageStatus>();
             this.messageStatus.add(messageStatus);
             this.numberOfScheduledDeliveries = new AtomicInteger(0);
+            this.arrivalTime = arrivalTime;
         }
 
         private boolean isExpired() {
@@ -309,21 +312,31 @@ public class OnflightMessageTracker {
      * @param messageId id of message metadata entry to evaluate for delivery
      * @return eligibility deliver
      */
-    public boolean evaluateDeliveryRules(long messageId, UUID channelID) {
+    public boolean evaluateDeliveryRules(long messageId, UUID channelID) throws AndesException {
         boolean isOKToDeliver = true;
         MsgData trackingData = getTrackingData(messageId);
 
         //check if number of redelivery tries has breached.
         int numOfDeliveriesOfCurrentMsg = trackingData.getNumOfDeliveires4Channel(channelID);
+
+        // Get last purged timestamp of the destination queue.
+        long lastPurgedTimestampOfQueue = QueueDeliveryWorker.getInstance()
+                .getQueueDeliveryInfo(trackingData.destination).getLastPurgedTimestamp();
+
         if (numOfDeliveriesOfCurrentMsg > maximumRedeliveryTimes) {
             log.warn("Number of Maximum Redelivery Tries Has Breached. Routing Message to DLC : id= " +
-                     messageId);
+                    messageId);
             isOKToDeliver =  false;
             //check if destination entry has expired. Any expired message will not be delivered
         } else if (trackingData.isExpired()) {
             stampMessageAsExpired(messageId);
             log.warn("Message is expired. Routing Message to DLC : id= " + messageId);
             isOKToDeliver =  false;
+        } else if (trackingData.arrivalTime <= lastPurgedTimestampOfQueue) {
+            log.warn("Message was sent at "+trackingData.arrivalTime+" before last purge event at " +
+                    ""+lastPurgedTimestampOfQueue+". Will be skipped. id= " +
+                    messageId);
+            isOKToDeliver = false;
         }
         if(isOKToDeliver) {
             trackingData.addMessageStatus(MessageStatus.DeliveryOK);
@@ -460,7 +473,8 @@ public class OnflightMessageTracker {
             trackingData = new MsgData(messageID, slot, false,
                                        slot.getDestinationOfMessagesInSlot(),
                                        System.currentTimeMillis(),
-                                       andesMessageMetadata.getExpirationTime(), 0,MessageStatus.Buffered);
+                                       andesMessageMetadata.getExpirationTime(), 0,
+                    MessageStatus.Buffered,andesMessageMetadata.getArrivalTime());
             msgId2MsgData.put(messageID, trackingData);
             messagesOfSlot.put(messageID, msgId2MsgData.get(messageID));
             isOKToBuffer =  true;
@@ -498,13 +512,14 @@ public class OnflightMessageTracker {
             log.debug("Releasing tracking of messages for slot " + slot.toString());
         }
         ConcurrentHashMap<Long, MsgData> messagesOfSlot = messageBufferingTracker.remove(slot);
-        for (Long messageIdOfSlot : messagesOfSlot.keySet()) {
-            getTrackingData(messageIdOfSlot).addMessageStatus(MessageStatus.SlotRemoved);
-            if(checkIfReadyToRemoveFromTracking(messageIdOfSlot)) {
-                if(log.isDebugEnabled()) {
-                    log.debug("removing tracking object from memory id= " + messageIdOfSlot);
+        if (messagesOfSlot != null) {
+            for (Long messageIdOfSlot : messagesOfSlot.keySet()) {
+                getTrackingData(messageIdOfSlot).addMessageStatus(MessageStatus.SlotRemoved);
+                if(checkIfReadyToRemoveFromTracking(messageIdOfSlot)) {
+                    if(log.isDebugEnabled()) {
+                        log.debug("removing tracking object from memory id= " + messageIdOfSlot);
+                    }
                 }
-                msgId2MsgData.remove(messageIdOfSlot);
             }
         }
     }

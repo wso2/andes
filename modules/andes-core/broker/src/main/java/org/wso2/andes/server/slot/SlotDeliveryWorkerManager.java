@@ -21,6 +21,7 @@ package org.wso2.andes.server.slot;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.util.Map;
@@ -157,5 +158,28 @@ public class SlotDeliveryWorkerManager {
         return slotDeliveryWorkerMap.get(getIdForSlotDeliveryWorker(queueName));
     }
 
+
+    /***
+     * This method will clear up all unacked/queued in memory messages addressed to the given queue.
+     *
+     * @param queueName
+     */
+    public int purgeMessagesFromActiveDeliveryWorkers(String queueName, Long purgedTimestamp) throws AndesException {
+
+        int slotDeliveryWorkerId = getIdForSlotDeliveryWorker(queueName);
+
+        int purgedMessageCountInMemory = 0;
+
+        if (getSlotDeliveryWorkerMap().containsKey(slotDeliveryWorkerId)) {
+            //if this queue is not already in the queue
+            if (getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId)
+                    .getStorageQueueNameToDestinationMap().containsKey(queueName)) {
+                purgedMessageCountInMemory = getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId)
+                        .purgeInMemoryMessagesFromQueue(queueName,purgedTimestamp);
+            }
+        }
+
+        return purgedMessageCountInMemory;
+    }
 
 }
