@@ -35,6 +35,15 @@ public class AlreadyProcessedMessageTracker {
     private long trackingMessagesRemovalTaskIntervalInSec = 10;
     private String identifier = "";
 
+    /**
+     * Wrapper class for tracking messages. This will remove timed out messages when a new
+     * message comes in.
+     *
+     * @param identifier Name of the message tracker.
+     * @param trackingTimeOut  How long message should remain in the tracker.
+     * @param trackingMessagesRemovalTaskIntervalInSec  task interval which checks the messages
+     *                                                  to remove.
+     */
     public AlreadyProcessedMessageTracker (String identifier, long trackingTimeOut, long trackingMessagesRemovalTaskIntervalInSec) {
         this.identifier = identifier;
         this.timeOutPerMessage = trackingTimeOut;

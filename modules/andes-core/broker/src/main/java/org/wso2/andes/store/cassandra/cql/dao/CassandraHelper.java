@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package org.wso2.andes.store.cassandra.dao;
+package org.wso2.andes.store.cassandra.cql.dao;
 
 public class CassandraHelper {
 	

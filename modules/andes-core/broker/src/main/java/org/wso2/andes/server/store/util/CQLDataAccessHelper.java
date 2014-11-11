@@ -18,47 +18,29 @@
 package org.wso2.andes.server.store.util;
 
 
-import static org.wso2.andes.store.cassandra.CassandraConstants.INTEGER_TYPE;
-import static org.wso2.andes.store.cassandra.CassandraConstants.LONG_TYPE;
-import static org.wso2.andes.store.cassandra.CassandraConstants.STRING_TYPE;
-import static org.wso2.andes.store.cassandra.dao.GenericCQLDAO.CLUSTER_SESSION;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.AndesRemovableMetadata;
-import org.wso2.andes.server.cassandra.MessageExpirationWorker;
-import org.wso2.andes.store.cassandra.dao.CQLQueryBuilder;
-import org.wso2.andes.store.cassandra.dao.CQLQueryBuilder.Table;
-import org.wso2.andes.store.cassandra.dao.CassandraHelper.WHERE_OPERATORS;
-import org.wso2.andes.store.cassandra.dao.GenericCQLDAO;
-
-import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.*;
 import com.datastax.driver.core.Cluster.Builder;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.Host;
-import com.datastax.driver.core.HostDistance;
-import com.datastax.driver.core.PoolingOptions;
-import com.datastax.driver.core.ProtocolOptions;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.SocketOptions;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.policies.ConstantReconnectionPolicy;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
 import com.datastax.driver.core.querybuilder.Delete;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.Select;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.AndesRemovableMetadata;
+import org.wso2.andes.server.cassandra.MessageExpirationWorker;
+import org.wso2.andes.store.cassandra.cql.dao.CQLQueryBuilder;
+import org.wso2.andes.store.cassandra.cql.dao.CQLQueryBuilder.Table;
+import org.wso2.andes.store.cassandra.cql.dao.CassandraHelper.WHERE_OPERATORS;
+import org.wso2.andes.store.cassandra.cql.dao.GenericCQLDAO;
+
+import java.util.*;
+
+import static org.wso2.andes.store.cassandra.CassandraConstants.*;
+import static org.wso2.andes.store.cassandra.cql.dao.GenericCQLDAO.CLUSTER_SESSION;
 
 
 /**
@@ -517,7 +499,7 @@ public class CQLDataAccessHelper {
             cqlSelect.addCondition(MSG_COUNTER_ROW, key, WHERE_OPERATORS.EQ);
             Select select = CQLQueryBuilder.buildSelect(cqlSelect);
             if (log.isDebugEnabled()) {
-                log.debug(" getMessageMetaDataFromQueue : " + select.toString());
+                log.debug(" getMessageMetaDataOfMessage : " + select.toString());
             }
 
             ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
@@ -604,7 +586,7 @@ public class CQLDataAccessHelper {
             cqlSelect.addCondition(MSG_KEY, Long.MAX_VALUE, WHERE_OPERATORS.LTE);
             Select select = CQLQueryBuilder.buildSelect(cqlSelect);
             if (log.isDebugEnabled()) {
-                log.debug(" getMessageMetaDataFromQueue : " + select.toString());
+                log.debug(" getMessageMetaDataOfMessage : " + select.toString());
             }
 
             ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
@@ -673,7 +655,7 @@ public class CQLDataAccessHelper {
             cqlSelect.addCondition(MSG_ROW_ID, rowName, WHERE_OPERATORS.EQ);
             Select select = CQLQueryBuilder.buildSelect(cqlSelect);
             if (log.isDebugEnabled()) {
-                log.debug(" getMessageMetaDataFromQueue : " + select.toString());
+                log.debug(" getMessageMetaDataOfMessage : " + select.toString());
             }
 
             ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
@@ -811,7 +793,7 @@ public class CQLDataAccessHelper {
             }
             Select select = CQLQueryBuilder.buildSelect(cqlSelect);
             if (log.isDebugEnabled()) {
-                log.debug(" getMessageMetaDataFromQueue : " + select.toString());
+                log.debug(" getMessageMetaDataOfMessage : " + select.toString());
             }
 
             ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());

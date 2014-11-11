@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package org.wso2.andes.store.cassandra;
+package org.wso2.andes.store.cassandra.cql;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.DataType;
@@ -27,6 +27,7 @@ import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
+import org.wso2.andes.store.cassandra.CassandraConstants;
 
 import java.util.ArrayList;
 import java.util.HashMap;
