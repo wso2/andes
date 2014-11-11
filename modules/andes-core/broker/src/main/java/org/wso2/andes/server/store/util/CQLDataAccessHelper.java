@@ -18,6 +18,8 @@
 package org.wso2.andes.server.store.util;
 
 
+import java.util.List;
+
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.Cluster.Builder;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
@@ -26,6 +28,7 @@ import com.datastax.driver.core.policies.DefaultRetryPolicy;
 import com.datastax.driver.core.querybuilder.Delete;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.Select;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -57,7 +60,8 @@ public class CQLDataAccessHelper {
     public static final String MSG_COUNTER_QUEUE = "queue_name";
     public static final String MSG_COUNTER_ROW = "counter_row_id";
 
-    public static final Integer STANDARD_PAGE_SIZE = 10000; // Standard row count retrieved in one call during a paginated data retrieval.
+    public static final int STANDARD_PAGE_SIZE = 10000; // Standard row count retrieved in one call
+    // during a paginated data retrieval.
 
     //cql table column which store slice column key (compound primary key)
     public static final String MSG_KEY = "message_key";
@@ -689,12 +693,13 @@ public class CQLDataAccessHelper {
      * Get a list of values of a single Long column (in our case ; the message ID) from the given
      * column family
      *
-     * @param rowKey
-     * @param columnFamilyName
-     * @param columnKey
-     * @param keyspace
-     * @param lastProcessedId
-     * @param limit
+     * @param rowKey key value of the row
+     * @param columnFamilyName name of columnfamily from which data is read
+     * @param columnKey key value of the column in the <rowKey> row
+     * @param keyspace keyspace name of which the data is read
+     * @param lastProcessedId for pagination purposes. The last read ID is used to ignore the
+     *                        already read records when making the query.
+     * @param limit number of rows to be retrieved
      * @return
      * @throws CassandraDataAccessException
      */
@@ -706,12 +711,12 @@ public class CQLDataAccessHelper {
                                                            long limit)
             throws CassandraDataAccessException {
 
-        if (keyspace == null || columnFamilyName == null) {
+        if (StringUtils.isBlank(keyspace) || StringUtils.isBlank(columnFamilyName)) {
             throw new CassandraDataAccessException("Can't access Data. The input keyspace or " +
                     "column family is invalid.");
         }
 
-        if (columnFamilyName.isEmpty() || rowKey.isEmpty()) {
+        if (StringUtils.isBlank(columnFamilyName) || StringUtils.isBlank(rowKey)) {
             throw new CassandraDataAccessException(
                     "Can't access data with column family = " + columnFamilyName +
                             " and row key=" + rowKey);
@@ -1162,7 +1167,7 @@ public class CQLDataAccessHelper {
                                                  String keyspace) throws
             CassandraDataAccessException {
 
-        if (keyspace == null) {
+        if (StringUtils.isBlank(keyspace)) {
             throw new CassandraDataAccessException("Cannot delete data, no keyspace provided");
         }
 

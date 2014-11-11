@@ -112,8 +112,6 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                                                          "purge") String ownerName) throws
             MBeanException {
 
-        //SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-
         AMQQueue queue = _queueRegistry.getQueue(new AMQShortString(queueName));
 
         try {
@@ -129,10 +127,11 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 Them First.");
             } */
 
-            CurrentActor.set(new ManagementActor(_logActor.getRootMessageLogger()));
-            queue.purge(0l);
+            queue.purge(0l); //This is to trigger the AMQChannel purge event so that the queue
+            // state of qpid is updated. This method also validates the request and throws an
+            // exception if permission is denied.
 
-            Integer purgedMessageCount = MessagingEngine.getInstance().purgeQueue(queueName,
+            int purgedMessageCount = MessagingEngine.getInstance().purgeQueue(queueName,
                     ownerName);
             log.info("Total message count purged for queue (from store) : " + queueName + " : " +
                     purgedMessageCount + ". All in memory messages received before the purge call" +
@@ -146,12 +145,12 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 throw new MBeanException(jme, "Queue " + queueName + " has active subscribers. " +
                         "Please stop them first.");
             } else {
-                throw new MBeanException(jme, "Error in purging queue " + queueName + ":");
+                throw new MBeanException(jme, "Error in purging queue : " + queueName);
             }
         } catch (AMQException amqex) {
-            throw new MBeanException(amqex, "Error in purging queue " + queueName + ":");
+            throw new MBeanException(amqex, "Error in purging queue : " + queueName);
         } catch (AndesException e) {
-            throw new MBeanException(e, "Error in purging queue " + queueName);
+            throw new MBeanException(e, "Error in purging queue : " + queueName);
         }
     }
 
