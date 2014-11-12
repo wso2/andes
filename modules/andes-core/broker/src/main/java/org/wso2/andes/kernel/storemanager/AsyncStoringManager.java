@@ -192,7 +192,6 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
      */
     @Override
     public void ackReceived(AndesAckData ackData) throws AndesException {
-        log.info(" ack - disruptor");
         disruptorBasedExecutor.ackReceived(ackData);
     }
 
