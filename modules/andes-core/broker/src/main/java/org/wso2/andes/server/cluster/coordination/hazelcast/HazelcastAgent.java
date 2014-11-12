@@ -192,7 +192,9 @@ public class HazelcastAgent {
 
         log.info("Successfully initialized Hazelcast Agent");
 
-        log.debug("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
+        if (log.isDebugEnabled()) {
+            log.debug("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
+        }
     }
 
     /**
