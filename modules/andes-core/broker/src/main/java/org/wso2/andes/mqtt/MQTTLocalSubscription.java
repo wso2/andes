@@ -21,7 +21,6 @@ package org.wso2.andes.mqtt;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
@@ -42,8 +41,6 @@ import java.util.UUID;
 public class MQTTLocalSubscription extends BasicSubscription implements LocalSubscription {
     //The reference to the bridge object
     private MQTTopicManager mqqtServerChannel;
-    //Will define the name as amq.direct since the subscription for MQTT topic will be represented as a queue in AMQP
-    private static final String MQTT_TARGET_BOUND_EXCHANGE = "amq.direct";
     //Will log the flows in relevent for this class
     private static Log log = LogFactory.getLog(MQTTLocalSubscription.class);
 
@@ -65,7 +62,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
      */
     public MQTTLocalSubscription(String mqttTopicSubscription) {
         super(mqttTopicSubscription);
-        setTargetBoundExchange();
+        //setTargetBoundExchange();
         setIsTopic();
         setNodeInfo();
         setIsActive(true);
@@ -98,8 +95,8 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
     /**
      * Will set the target bound exchange
      */
-    public void setTargetBoundExchange() {
-       this.targetQueueBoundExchange = MQTT_TARGET_BOUND_EXCHANGE;
+    public void setTargetBoundExchange(String exchange) {
+        this.targetQueueBoundExchange = exchange;
     }
 
     /**
@@ -107,7 +104,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
      * So will overide the is bound to always have the value true
      */
     public void setIsTopic() {
-        this.isBoundToTopic = false;
+        this.isBoundToTopic = true;
     }
 
     /**
@@ -138,7 +135,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
         //Will publish the message to the respective queue
         if (mqqtServerChannel != null) {
             try {
-                mqqtServerChannel.subscriptionNotificationReceived(messageMetadata.getDestination(), message,
+                mqqtServerChannel.subscriptionNotificationReceived(messageMetadata.getStorageQueueName(), message,
                         messageMetadata.getMessageID(),messageMetadata.getQosLevel(),messageMetadata.isPersistent(),
                         getMqttChannelID());
             } catch (Exception e) {

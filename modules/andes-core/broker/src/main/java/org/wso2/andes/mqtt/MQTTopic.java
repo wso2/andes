@@ -20,6 +20,7 @@ package org.wso2.andes.mqtt;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -38,36 +39,18 @@ public class MQTTopic {
     //Will map between the relationship of topics and subscribers key will be the channel id of the subscriber
     //Value will be the properties associated with the subscriber
     //TODO check whether concurrency should be considered here
-    private Map<String,MQTTSubscriber> subscribers = new ConcurrentHashMap<String, MQTTSubscriber>();
-
-
-/*    *//**
-     * Will retrive the id specific to the cluster subscription made
-     * @return the identity which will uniquely identify the topic
-     *//*
-     public String getClusterSpecificClientID() {
-        return clusterSpecificClientID;
-    }
-
-    *//**
-     * Sets the id that will be generated to the topic through the client
-     * @param clusterSpecificClientID the id generated cluster wide to reprsent the topic
-     *//*
-    public void setClusterSpecificClientID(String clusterSpecificClientID) {
-        this.clusterSpecificClientID = clusterSpecificClientID;
-    }*/
+    private Map<String, MQTTSubscriber> subscribers = new ConcurrentHashMap<String, MQTTSubscriber>();
 
     /**
      * Will construct the topic object which will hold references to all the subscribers
      * Will require the topic name, since there cannot be a topic without the name
      * @param topicName the name of the topic registered
      */
-    public MQTTopic(String topicName){
+    public MQTTopic(String topicName) {
         this.topic = topicName;
     }
 
     /**
-     *
      * @return name of the topic
      */
     public String getTopic() {
@@ -77,34 +60,35 @@ public class MQTTopic {
     /**
      * Will create a new subscriber for the topic
      * @param mqttClientChannelID the channel identitiy of the subscriber bound to the topic
-     * @param qos the level of qos which can be of value 0,1 or 2
-     * @param isCleanSession the durability of the session
+     * @param qos                 the level of qos which can be of value 0,1 or 2
+     * @param isCleanSession      the durability of the session
+     * @param clusterSpecificID   the id generated for the subscriber which is unique across the cluster
      * @throws MQTTException if the subscriber with the same channel id exist
      */
-    public void addSubscriber(String mqttClientChannelID,int qos,boolean isCleanSession,String clusterSpecificID)
-            throws MQTTException{
-         MQTTSubscriber subscriber = subscribers.get(mqttClientChannelID);
-         //Will create a new subscriber if the susbscriber do not exist
-         if(subscriber == null){
-             subscriber = new MQTTSubscriber();
-             //Will set the level of QOS of the subscriber
-             subscriber.setQOS_Level(qos);
-             //Will specify the durablitiy of the session
-             subscriber.setCleanSession(isCleanSession);
-             //Will set the subscriber channel id
-             subscriber.setSubscriberChannelID(clusterSpecificID);
-             //Will register the subscriber
-             subscribers.put(mqttClientChannelID,subscriber);
-             if (log.isDebugEnabled()) {
-                 log.debug("Subscriber with channel id :"+mqttClientChannelID+" with qos :"+qos+
-                         " havin clean session :"+isCleanSession);
-             }
+    public void addSubscriber(String mqttClientChannelID, int qos, boolean isCleanSession, String clusterSpecificID)
+            throws MQTTException {
+        MQTTSubscriber subscriber = subscribers.get(mqttClientChannelID);
+        //Will create a new subscriber if the susbscriber do not exist
+        if (subscriber == null) {
+            subscriber = new MQTTSubscriber();
+            //Will set the level of QOS of the subscriber
+            subscriber.setQOS_Level(qos);
+            //Will specify the durablitiy of the session
+            subscriber.setCleanSession(isCleanSession);
+            //Will set the subscriber channel id
+            subscriber.setSubscriberChannelID(clusterSpecificID);
+            //Will register the subscriber
+            subscribers.put(mqttClientChannelID, subscriber);
+            if (log.isDebugEnabled()) {
+                log.debug("Subscriber with channel id :" + mqttClientChannelID + " with qos :" + qos +
+                        " havin clean session :" + isCleanSession);
+            }
 
-         }else{
-             //If the subscriber with the same channel id exists
-             final String message = "Subscriber with channel id " + mqttClientChannelID + " exists already";
-             throw new MQTTException(message);
-         }
+        } else {
+            //If the subscriber with the same channel id exists
+            final String message = "Subscriber with channel id " + mqttClientChannelID + " exists already";
+            throw new MQTTException(message);
+        }
     }
 
     /**
@@ -117,7 +101,7 @@ public class MQTTopic {
         //Will get the subscription
         MQTTSubscriber subscriber = subscribers.remove(mqttClientChannelID);
         //If there was no subscriber to be removed
-        if(subscriber == null){
+        if (subscriber == null) {
             final String message = "Subscriber with id " + mqttClientChannelID + " cannot be found";
             throw new MQTTException(message);
         }
@@ -130,10 +114,10 @@ public class MQTTopic {
      * @param mqttClientChannelID the local subscription channel id
      * @return the cluster specific id generated for subscription
      */
-    public String getSubscriptionID(String mqttClientChannelID){
+    public String getSubscriptionID(String mqttClientChannelID) {
         MQTTSubscriber subscriber = subscribers.get(mqttClientChannelID);
-        return  subscriber != null ? subscriber.getSubscriberChannelID() : null;
+        return subscriber != null ? subscriber.getSubscriberChannelID() : null;
     }
 
 
- }
+}

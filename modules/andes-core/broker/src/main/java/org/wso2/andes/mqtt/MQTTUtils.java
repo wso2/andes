@@ -58,6 +58,7 @@ public class MQTTUtils {
         AndesMessagePart messageBody = new AndesMessagePart();
         //TODO need to check if this causes any memory leakes, it would be good to transfer the bytestream forward as buffer
         byte[] data = message.array();
+        //The offset of the MQTT messages will by default be in 0 since there's not chunking concept here
         messageBody.setOffSet(0);
         messageBody.setData(data);
         messageBody.setMessageID(messagID);
@@ -85,15 +86,15 @@ public class MQTTUtils {
      * @param destination   the definition where the message should be sent to
      * @param persistance   should this message be persisted
      * @param contentLength the lengthe of the message content
-     * @param qos the level of qos the message was published at
+     * @param qos           the level of qos the message was published at
      * @return the collective information as a bytes object
      */
-    public static byte[] encodeMetaInfo(String metaData, long messageID, boolean topic,int qos, String destination,
+    public static byte[] encodeMetaInfo(String metaData, long messageID, boolean topic, int qos, String destination,
                                         boolean persistance, int contentLength) {
         byte[] metaInformation;
         String information = metaData + ":" + MESSAGE_ID + "=" + messageID + "," + TOPIC + "=" + topic +
                 "," + DESTINATION + "=" + destination + "," + PERSISTENCE + "=" + persistance
-                + "," + MESSAGE_CONTENT_LENGTH + "=" + contentLength+","+ QOSLEVEL +"="+qos;
+                + "," + MESSAGE_CONTENT_LENGTH + "=" + contentLength + "," + QOSLEVEL + "=" + qos;
         metaInformation = information.getBytes();
         return metaInformation;
     }
@@ -112,7 +113,7 @@ public class MQTTUtils {
                                                             int messageContentLength, boolean retain) {
         AndesMessageMetadata messageHeader = new AndesMessageMetadata();
         messageHeader.setMessageID(messageID);
-        messageHeader.setTopic(false); //This will be set to false since Andes kernal will treat topics as queues
+        messageHeader.setTopic(true);
         messageHeader.setDestination(topic);
         messageHeader.setStorageQueueName(topic);
         messageHeader.setPersistent(true);
@@ -124,7 +125,7 @@ public class MQTTUtils {
         }
 
         byte[] andesMetaData = encodeMetaInfo(MQTT_META_INFO, messageHeader.getMessageID(), messageHeader.isTopic(),
-                qosLevel,messageHeader.getDestination(), messageHeader.isPersistent(), messageContentLength);
+                qosLevel, messageHeader.getDestination(), messageHeader.isPersistent(), messageContentLength);
         messageHeader.setMetadata(andesMetaData);
         return messageHeader;
     }
@@ -143,7 +144,7 @@ public class MQTTUtils {
             //offset value will always be set to 0 since mqtt doesn't support chunking the messsages, always the message
             //will be in the first chunk but in AMQP there will be chunks
             final int mqttOffset = 0;
-            AndesMessagePart messagePart = MessagingEngine.getInstance().getContent(metadata.getMessageID(),mqttOffset);
+            AndesMessagePart messagePart = MessagingEngine.getInstance().getContent(metadata.getMessageID(), mqttOffset);
             message.put(messagePart.getData());
         } catch (AndesException e) {
             final String errorMessage = "Error in getting content for message";
@@ -188,17 +189,18 @@ public class MQTTUtils {
 
     /**
      * Will get the qos type defined through the protocol and will send the integer representation of it
+     *
      * @param qos the level of qos which will be MOST_ONE, LEAST_ONE or EXACTLY_ONCE
      * @return the level of qos as an integer which can be either 0,1 or 2
      */
-    public static int convertMQTTProtocolTypeToInteger(AbstractMessage.QOSType qos){
-        if(AbstractMessage.QOSType.MOST_ONE.equals(qos)){
+    public static int convertMQTTProtocolTypeToInteger(AbstractMessage.QOSType qos) {
+        if (AbstractMessage.QOSType.MOST_ONE.equals(qos)) {
             return 0;
-        }else if(AbstractMessage.QOSType.LEAST_ONE.equals(qos)){
+        } else if (AbstractMessage.QOSType.LEAST_ONE.equals(qos)) {
             return 1;
-        }else if(AbstractMessage.QOSType.EXACTLY_ONCE.equals(qos)){
+        } else if (AbstractMessage.QOSType.EXACTLY_ONCE.equals(qos)) {
             return 2;
-        }else{
+        } else {
             return -1;
         }
     }

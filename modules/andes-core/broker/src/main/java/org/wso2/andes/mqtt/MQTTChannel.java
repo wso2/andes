@@ -20,23 +20,10 @@ package org.wso2.andes.mqtt;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.dna.mqtt.wso2.AndesMQTTBridge;
-import org.wso2.andes.amqp.QpidAMQPBridge;
-import org.wso2.andes.exchange.ExchangeDefaults;
-import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.server.configuration.VirtualHostConfig;
-import org.wso2.andes.server.queue.AMQQueue;
-import org.wso2.andes.server.queue.QueueRegistry;
-import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
-import org.wso2.andes.server.virtualhost.VirtualHost;
-import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
-import org.wso2.andes.server.virtualhost.VirtualHostImpl;
-import org.wso2.andes.subscription.AMQPLocalSubscription;
+import org.wso2.andes.server.util.AndesConstants;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
@@ -52,7 +39,7 @@ public class MQTTChannel {
 
     private static Log log = LogFactory.getLog(MQTTChannel.class);
     private static MQTTChannel instance = new MQTTChannel();
-    private static final String MQTT_TOPIC_PREFIX = "destination";
+    private static final String MQTT_TOPIC_DESTINATION = "destination";
     private static final String MQTT_QUEUE_IDENTIFIER = "targetQueue";
 
     /**
@@ -104,9 +91,10 @@ public class MQTTChannel {
     }
 
 
-    public void messageAck(long messageID,String topicName) throws AndesException {
-        AndesAckData andesAckData = new AndesAckData(new UUID(1111,000),messageID,
-                topicName,true);
+    public void messageAck(long messageID, String topicName, String storageName) throws AndesException {
+        //TODO need to review and impliment this method properly
+        AndesAckData andesAckData = new AndesAckData(UUID.randomUUID(), messageID,
+                topicName, storageName, true);
         MessagingEngine.getInstance().ackReceived(andesAckData);
     }
 
@@ -135,38 +123,40 @@ public class MQTTChannel {
     }
 
     /**
-     * The method will create an AMQP queue since the slot delivery worker will depend on having a queue registered
-     * @param queueName the name of the queue that will represent the topic
-     */
-    //TODO this method should be removed once the archetecture to topics is verified
-    private void createAMQPSubscription(String queueName){
-        SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
-        slotDeliveryWorkerManager.startSlotDeliveryWorker(queueName);
-    }
-
-    /**
      * Will add and indicate the subscription to the kernal the bridge will be provided as the channel
      * since per topic we will only be creating one channel with andes
      *
-     * @param channel  the bridge connection as the channel
-     * @param topic    the name of the topic which has subscriber/s
-     * @param clientID the id which will distinguish the topic channel
+     * @param channel       the bridge connection as the channel
+     * @param topic         the name of the topic which has subscriber/s
+     * @param clientID      the id which will distinguish the topic channel
+     * @param mqttChannel   the subscription id which is local to the subscriber
+     * @param isCleanSesion should the connection be durable
      */
-    public void addSubscriber(MQTTopicManager channel, String topic, String clientID,String mqttChannel) throws MQTTException {
+    public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttChannel,
+                              boolean isCleanSesion) throws MQTTException {
         //Will create a new local subscription object
-        MQTTLocalSubscription localSubscription = new MQTTLocalSubscription(MQTT_TOPIC_PREFIX +"="+
-                topic+ "," + MQTT_QUEUE_IDENTIFIER + "=" +topic);
+        final String isBoundToTopic = "isBoundToTopic";
+        final String subscribedNode = "subscribedNode";
+        final String isDurable = "isDurable";
+        final String myNodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        MQTTLocalSubscription localSubscription = new MQTTLocalSubscription(MQTT_TOPIC_DESTINATION + "=" +
+                topic + "," + MQTT_QUEUE_IDENTIFIER + "=" + (isCleanSesion ? topic : topic + mqttChannel) + "," +
+                isBoundToTopic + "=" + true + "," + subscribedNode + "="
+                + AndesConstants.TOPIC_NODE_QUEUE_NAME_PREFIX + myNodeID + "," + isDurable + "=" + !isCleanSesion);
+        localSubscription.setIsTopic();
+        localSubscription.setTargetBoundExchange(isCleanSesion ? AMQPUtils.TOPIC_EXCHANGE_NAME :
+                AMQPUtils.DIRECT_EXCHANGE_NAME);
         localSubscription.setMqqtServerChannel(channel);
         localSubscription.setTopic(topic);
         localSubscription.setSubscriptionID(clientID);
         localSubscription.setMqttChannelID(mqttChannel);
-        //TODO need to investigate the times this should be false
+        //TODO is bound to topic
+        //TODO need to investigate the times this should be false - hari
         //TODO need to figure out the impact where theres a case which has multiple qos levels of subscription
         localSubscription.setIsActive(true);
         //Shold indicate the record in the cluster
         try {
             //First will register the subscription as a queue
-            createAMQPSubscription(topic);
             ClusterResourceHolder.getInstance().getSubscriptionManager().addSubscription(localSubscription);
             if (log.isDebugEnabled()) {
                 log.debug("Subscription registered to the " + topic + " with channel id " + clientID);
@@ -190,8 +180,8 @@ public class MQTTChannel {
         try {
 
             //Will create a new local subscription object
-            MQTTLocalSubscription localSubscription = new MQTTLocalSubscription(MQTT_TOPIC_PREFIX +"=" +subscribedTopic+
-                    "," + MQTT_QUEUE_IDENTIFIER + "=" +subscribedTopic);
+            MQTTLocalSubscription localSubscription = new MQTTLocalSubscription(MQTT_TOPIC_DESTINATION + "=" +
+                    subscribedTopic + "," + MQTT_QUEUE_IDENTIFIER + "=" + subscribedTopic);
             localSubscription.setMqqtServerChannel(channel);
             localSubscription.setTopic(subscribedTopic);
             localSubscription.setSubscriptionID(clientID);

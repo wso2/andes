@@ -22,24 +22,34 @@ package org.wso2.andes.mqtt;
  * levels will be maintained here
  */
 public class MQTTSubscriber {
+    //TODO QOS level information should be accessed for use cases which will be implimented in future
     //The level of QOS the subscriber is bound to
     private int QOS_Level;
     //Specifies whether the subscription is durable or not
     private boolean isCleanSession;
-
     //Specifies the channel id of the subscriber
     private String subscriberChannelID;
 
+    /**
+     * Will allow retrival of the unique identifyer of the subscriber
+     *
+     * @return the identifier of the subscriber
+     */
     public String getSubscriberChannelID() {
         return subscriberChannelID;
     }
 
+    /**
+     * Set the id generated for the subscriber locally
+     * @param subscriberChannelID the unique subscription identifier
+     */
     public void setSubscriberChannelID(String subscriberChannelID) {
         this.subscriberChannelID = subscriberChannelID;
     }
 
     /**
      * Indicates whether the subscription is durable or not, false if not
+     *
      * @param isCleanSession whether the subscription is durable
      */
     public void setCleanSession(boolean isCleanSession) {
@@ -48,6 +58,7 @@ public class MQTTSubscriber {
 
     /**
      * Will set the lvel of QOS the subscriber is bound to
+     *
      * @param QOS_Level the QOS level, this can either be 1,2 or 3
      */
     public void setQOS_Level(int QOS_Level) {

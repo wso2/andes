@@ -1,4 +1,4 @@
-package org.wso2.andes.mqtt;
+package org.wso2.andes.kernel;
 
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.ContentHeaderBody;
@@ -10,21 +10,24 @@ import org.wso2.andes.server.store.StorableMessageMetaData;
 import java.nio.ByteBuffer;
 
 /**
- * Created by pamod on 10/28/14.
+ * Will handle cloning of meta data at an even where AMQP message is published
  */
-public class AndesMetaDataHandler implements MetaDataHandler {
+public class AMQPMetaDataHandler implements MetaDataHandler {
+
     @Override
-    public byte[] constructMetadata(String routingKey, ByteBuffer buf,StorableMessageMetaData original_mdt) {
-        ContentHeaderBody contentHeaderBody = ((MessageMetaData) original_mdt)
+    public byte[] constructMetadata(String routingKey, ByteBuffer buf, StorableMessageMetaData originalMeataData,
+                                    String exchange) {
+        ContentHeaderBody contentHeaderBody = ((MessageMetaData) originalMeataData)
                 .getContentHeaderBody();
-        int contentChunkCount = ((MessageMetaData) original_mdt)
+        int contentChunkCount = ((MessageMetaData) originalMeataData)
                 .getContentChunkCount();
-        long arrivalTime = ((MessageMetaData) original_mdt).getArrivalTime();
+        long arrivalTime = ((MessageMetaData) originalMeataData).getArrivalTime();
 
         // modify routing key to the binding name
         MessagePublishInfo messagePublishInfo = new CustomMessagePublishInfo(
-                original_mdt);
+                originalMeataData);
         messagePublishInfo.setRoutingKey(new AMQShortString(routingKey));
+        messagePublishInfo.setExchange(new AMQShortString(exchange));
         MessageMetaData modifiedMetaData = new MessageMetaData(
                 messagePublishInfo, contentHeaderBody, contentChunkCount,
                 arrivalTime);

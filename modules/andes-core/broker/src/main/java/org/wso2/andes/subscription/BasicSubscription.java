@@ -29,18 +29,31 @@ import java.util.UUID;
  * (AMQP,MQTT) is inherited from this template
  */
 public class BasicSubscription implements AndesSubscription {
+    // The id of the subscriber cluster wide this will be unique - MANDOTORY
     protected String subscriptionID;
+    // The target queue or topic name - MANDOTORY
     protected String destination;
+    // Whether the subscription is bound to topic- MANDOTORY
     protected boolean isBoundToTopic;
+    //If the internal queue for the subscription have other subscriptions bound to it other than its own - OPTIONAL
     protected boolean isExclusive;
+    // Durability of the subscription - MANDOTORY
     protected boolean isDurable;
+    // The name of the node in the cluster where the subscription is bound - MANDOTORY
     protected String subscribedNode;
+    // If the binding is non durable (topic) then the name would be prfix+destination+nodequeuename - INTERNALLY CONSTRUCTED
     protected String storageQueueName;
+    //non durable topics this value will be null. In other cases ex queues and durable topics we need to have this - OPTIONAL
     protected String targetQueue;
+    //This will be used for security purposes defines the creator of the queue - OPTIONAL
     protected String targetQueueOwner;
+    // This will be AMQP specific - OPTIONAL
     protected String targetQueueBoundExchange;
+    // This will be AMQP specific - OPTIONAL
     protected String targetQueueBoundExchangeType;
+    // This will be AMQP specific - OPTIONAL
     protected Short isTargetQueueBoundExchangeAutoDeletable;
+    //whether the subscription is online or offline - MANDOTORY
     protected boolean hasExternalSubscriptions;
 
 
@@ -110,6 +123,8 @@ public class BasicSubscription implements AndesSubscription {
 
         super();
         this.subscriptionID = subscriptionID;
+
+        //TODO this is random, need to get this id from one place
         if (subscriptionID == null) {
             this.subscriptionID = UUID.randomUUID().toString();
         }
@@ -255,9 +270,10 @@ public class BasicSubscription implements AndesSubscription {
      * Set storage queue name. Slot delivery worker will refer this name
      */
     private void setStorageQueueName() {
-        if(isBoundToTopic && !isDurable) {  // for normal topic subscriptions
+        if (isBoundToTopic && !isDurable) {  // for normal topic subscriptions
+            // We need to add a prefix so that we could differentiate if queue is created under the same name
             storageQueueName = AndesUtils.TOPIC_NODE_QUEUE_PREFIX + "|" + destination + "|" + subscribedNode;
-        } else if(isBoundToTopic && isDurable) {  //for durable topic subscriptions
+        } else if (isBoundToTopic && isDurable) {  //for durable topic subscriptions
             storageQueueName = targetQueue;
         } else { //For queue subscriptions. This is a must. Otherwise queue will not be shared among nodes
             storageQueueName = destination;

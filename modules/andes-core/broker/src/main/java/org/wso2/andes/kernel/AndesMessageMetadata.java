@@ -22,14 +22,8 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.framing.ContentHeaderBody;
-import org.wso2.andes.framing.abstraction.MessagePublishInfo;
-import org.wso2.andes.mqtt.AndesMetaDataHandler;
 import org.wso2.andes.mqtt.MQTTMessageMetaData;
 import org.wso2.andes.mqtt.MQTTMetaDataHandler;
-import org.wso2.andes.mqtt.MetaDataHandler;
-import org.wso2.andes.server.message.CustomMessagePublishInfo;
 import org.wso2.andes.server.message.MessageMetaData;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.store.MessageMetaDataType;
@@ -293,16 +287,17 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 
         byte[] underlying;
         MetaDataHandler handler;
-
+        //TODO need to impliment factory pattern here
         if(type.equals(MessageMetaDataType.META_DATA_MQTT)){
             handler = new MQTTMetaDataHandler();
         }else{
-            handler = new AndesMetaDataHandler();
+            handler = new AMQPMetaDataHandler();
         }
 
-        underlying = handler.constructMetadata(routingKey,buf,original_mdt);
+        underlying = handler.constructMetadata(routingKey, buf, original_mdt, exchangeName);
+        //TODO uncomment this once the logic is confirmed - Hasitha to review the change
 /*		ContentHeaderBody contentHeaderBody = ((MessageMetaData) original_mdt)
-				.getContentHeaderBody();
+                .getContentHeaderBody();
 		int contentChunkCount = ((MessageMetaData) original_mdt)
 				.getContentChunkCount();
 		long arrivalTime = ((MessageMetaData) original_mdt).getArrivalTime();

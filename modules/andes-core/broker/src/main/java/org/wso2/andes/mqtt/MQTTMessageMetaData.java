@@ -123,9 +123,12 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
             String information = new String(buffer.array());
             //Will split the Meta Body information
             String[] message_parts = information.split(":");
-            for (String keyValue : message_parts[1].split(",")) {
-                String[] pairs = keyValue.split("=", 2);
-                decodedValues.put(pairs[0], pairs.length == 1 ? "" : pairs[1]);
+            //Check whether the message parts is split into 2 properly
+            if (message_parts.length > 1) {
+                for (String keyValue : message_parts[1].split(",")) {
+                    String[] pairs = keyValue.split("=", 2);
+                    decodedValues.put(pairs[0], pairs.length == 1 ? "" : pairs[1]);
+                }
             }
 
         }

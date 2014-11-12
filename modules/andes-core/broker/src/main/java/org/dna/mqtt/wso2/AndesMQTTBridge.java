@@ -125,6 +125,8 @@ public final class AndesMQTTBridge {
      *
      * @param topic               the name of the topic the subscribed to
      * @param mqttClientChannelID the client identification maintained by the MQTT protocol lib
+     * @param qos   the type of qos the subscription is connected to this can be either MOST_ONE,LEAST_ONE, EXACTLY_ONE
+     * @param isCleanSession      whether the subscription is durable
      */
     public void onTopicSubscription(String topic, String mqttClientChannelID, AbstractMessage.QOSType qos,
                                     boolean isCleanSession) {
@@ -140,6 +142,21 @@ public final class AndesMQTTBridge {
     }
 
     /**
+     * Will trigger at an event where a message was published and an ack being received for the published message
+     *
+     * @param mqttClientChannelID the id of the channel where the message was published
+     * @param messageID           the id of the message
+     */
+    public void onAckReceived(String mqttClientChannelID, int messageID) {
+        //TODO need to call the method defined under the TopicManager
+        if (log.isDebugEnabled()) {
+            log.debug("Message ack received for message with id " + messageID + " and subscription " +
+                    mqttClientChannelID);
+        }
+        throw new UnsupportedOperationException("Method is not supported yet");
+    }
+
+    /**
      * When a message is sent the notification to the subscriber channels managed by the MQTT library will be notified
      *
      * @param topic     the topic of the message that the subscribers should be notified of
@@ -148,8 +165,8 @@ public final class AndesMQTTBridge {
      * @param retain    should this message be persisted
      * @param messageID the identity of the message
      */
-    public void notifySubscriptions(String topic, int qos, ByteBuffer message, boolean retain, long messageID,String channelID) {
-        final int andesMessageID = (int) messageID;
+    public void notifySubscriptions(String topic, int qos, ByteBuffer message, boolean retain, int messageID,
+                                    String channelID) {
 
         if (mqttProtocolHandlingEngine != null) {
             //Need to set do a re possition of bytes for writing to the buffer
@@ -157,8 +174,8 @@ public final class AndesMQTTBridge {
             final int bytesPossition = 0;
             message.position(bytesPossition);
             AbstractMessage.QOSType qosType = MQTTUtils.getMQTTQOSTypeFromInteger(qos);
-           // mqttProtocolHandlingEngine.publish2Subscribers(topic, qosType, message, retain, andesMessageID);
-            mqttProtocolHandlingEngine.publishToSubscriber(topic,qosType,message,retain,andesMessageID,channelID);
+            // mqttProtocolHandlingEngine.publish2Subscribers(topic, qosType, message, retain, andesMessageID);
+            mqttProtocolHandlingEngine.publishToSubscriber(topic, qosType, message, retain, messageID, channelID);
             if (log.isDebugEnabled()) {
                 log.debug("The message with id " + messageID + " for topic " + topic +
                         " was notified to its subscribers");
