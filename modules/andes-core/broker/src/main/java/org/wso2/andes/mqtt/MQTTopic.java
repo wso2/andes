@@ -44,6 +44,7 @@ public class MQTTopic {
     /**
      * Will construct the topic object which will hold references to all the subscribers
      * Will require the topic name, since there cannot be a topic without the name
+     *
      * @param topicName the name of the topic registered
      */
     public MQTTopic(String topicName) {
@@ -59,6 +60,7 @@ public class MQTTopic {
 
     /**
      * Will create a new subscriber for the topic
+     *
      * @param mqttClientChannelID the channel identitiy of the subscriber bound to the topic
      * @param qos                 the level of qos which can be of value 0,1 or 2
      * @param isCleanSession      the durability of the session
@@ -92,12 +94,24 @@ public class MQTTopic {
     }
 
     /**
+     * Will add the subcriber object directly to the topic, this method was designed to be called during callback
+     *
+     * @param mqttchannelID the id of the channel of the subscriber
+     * @param subscriber    the subscription
+     */
+    public void addSubscriber(String mqttchannelID, MQTTSubscriber subscriber) {
+        //Will not do a check here, since this operation will mostly be called during the call back
+        subscribers.put(mqttchannelID, subscriber);
+    }
+
+    /**
      * Removes the subscription entry that is bound with the topic
+     *
      * @param mqttClientChannelID the channel id of the subscriber bound to the topic
-     * @return the id of the subscriber that was removed
+     * @return the subscriber object which will be removed
      * @throws MQTTException will indicate if an error occurs during subscription entry removal
      */
-    public String removeSubscriber(String mqttClientChannelID) throws MQTTException {
+    public MQTTSubscriber removeSubscriber(String mqttClientChannelID) throws MQTTException {
         //Will get the subscription
         MQTTSubscriber subscriber = subscribers.remove(mqttClientChannelID);
         //If there was no subscriber to be removed
@@ -106,11 +120,12 @@ public class MQTTopic {
             throw new MQTTException(message);
         }
 
-        return subscriber.getSubscriberChannelID();
+        return subscriber;
     }
 
     /**
      * Will provide the cluster wide id generated for the topic subscription
+     *
      * @param mqttClientChannelID the local subscription channel id
      * @return the cluster specific id generated for subscription
      */

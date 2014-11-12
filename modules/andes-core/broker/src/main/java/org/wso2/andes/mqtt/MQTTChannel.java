@@ -192,7 +192,10 @@ public class MQTTChannel {
             localSubscription.setMqqtServerChannel(channel);
             localSubscription.setTopic(subscribedTopic);
             localSubscription.setSubscriptionID(clientID);
+            localSubscription.setIsTopic();
             localSubscription.setIsActive(false);
+            //TODO clean session case should be considered here
+            localSubscription.setTargetBoundExchange(AMQPUtils.TOPIC_EXCHANGE_NAME);
             ClusterResourceHolder.getInstance().getSubscriptionManager().closeLocalSubscription(localSubscription);
             if (log.isDebugEnabled()) {
                 log.debug("Disconnected subscriber from topic " + subscribedTopic);
