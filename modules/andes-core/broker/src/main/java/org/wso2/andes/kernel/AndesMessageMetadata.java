@@ -42,7 +42,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
     byte[] metadata;
     long expirationTime;
     boolean isTopic;
-    Long arrivalTime;
+    long arrivalTime;
 
     /**
      *through which connection this message came into broker
@@ -178,11 +178,11 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         this.channelId = channelId;
     }
 
-    public Long getArrivalTime() {
+    public long getArrivalTime() {
         return arrivalTime;
     }
 
-    public void setArrivalTime(Long arrivalTime) {
+    public void setArrivalTime(long arrivalTime) {
         this.arrivalTime = arrivalTime;
     }
 
