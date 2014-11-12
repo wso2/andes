@@ -91,6 +91,13 @@ public class MQTTChannel {
     }
 
 
+    /**
+     * The acked messages will be informed to the kernal
+     * @param messageID the identifier of the message
+     * @param topicName the name of the topic the message was published
+     * @param storageName the storage name representation of the topic
+     * @throws AndesException if the ack was not processed properly 
+     */
     public void messageAck(long messageID, String topicName, String storageName) throws AndesException {
         //TODO need to review and impliment this method properly
         AndesAckData andesAckData = new AndesAckData(UUID.randomUUID(), messageID,
