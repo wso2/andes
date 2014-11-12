@@ -37,6 +37,8 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
     private String destination;
     private boolean isPersistance;
     private int messageLength;
+    private int qosLevel;
+
 
     /**
      * Will create a metadat object through this method
@@ -47,22 +49,23 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
      * @param persistance   does it require the message to be persisted even after the delivery of the message
      * @param messageLength the length of the message which was recived
      */
-    public MQTTMessageMetaData(long mid, boolean topic, String destination, boolean persistance, int messageLength) {
+    public MQTTMessageMetaData(long mid, boolean topic, String destination, boolean persistance, int messageLength,int qos) {
         this.messageID = mid;
         this.isTopic = topic;
         this.destination = destination;
         this.isPersistance = persistance;
         this.messageLength = messageLength;
+        this.qosLevel = qos;
     }
 
     @Override
     public MessageMetaDataType getType() {
-        return null;
+        return MessageMetaDataType.META_DATA_MQTT;
     }
 
     @Override
     public int getStorableSize() {
-        return 0;
+        return messageLength;
     }
 
     @Override
@@ -82,6 +85,10 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
 
     public long getMessageID() {
         return messageID;
+    }
+
+    public int getQosLevel() {
+        return qosLevel;
     }
 
     public void setMessageID(long messageID) {
@@ -116,9 +123,12 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
             String information = new String(buffer.array());
             //Will split the Meta Body information
             String[] message_parts = information.split(":");
-            for (String keyValue : message_parts[1].split(",")) {
-                String[] pairs = keyValue.split("=", 2);
-                decodedValues.put(pairs[0], pairs.length == 1 ? "" : pairs[1]);
+            //Check whether the message parts is split into 2 properly
+            if (message_parts.length > 1) {
+                for (String keyValue : message_parts[1].split(",")) {
+                    String[] pairs = keyValue.split("=", 2);
+                    decodedValues.put(pairs[0], pairs.length == 1 ? "" : pairs[1]);
+                }
             }
 
         }
@@ -136,7 +146,8 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
                     Boolean.parseBoolean(decodedValues.get("Topic")),
                     decodedValues.get("Destination"),
                     Boolean.parseBoolean(decodedValues.get("Persistant")),
-                    Integer.parseInt(decodedValues.get("MessageContentLength")));
+                    Integer.parseInt(decodedValues.get("MessageContentLength")),
+                    Integer.parseInt(decodedValues.get("QOSLevel")));
 
         }
     }

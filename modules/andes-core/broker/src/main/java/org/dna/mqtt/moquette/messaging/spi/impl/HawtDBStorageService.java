@@ -136,7 +136,8 @@ public class HawtDBStorageService implements IStorageService {
     }
 
     public void storeRetained(String topic, ByteBuffer message, AbstractMessage.QOSType qos) {
-        if (!message.hasRemaining()) {
+        //TODO removed the retain entry since we will be maintaing a cluster specifc store in andes
+ /*       if (!message.hasRemaining()) {
             //clean the message from topic
             m_retainedStore.remove(topic);
         } else {
@@ -144,7 +145,7 @@ public class HawtDBStorageService implements IStorageService {
             byte[] raw = new byte[message.remaining()];
             message.get(raw);
             m_retainedStore.put(topic, new StoredMessage(raw, qos, topic));
-        }
+        }*/
     }
 
     public Collection<StoredMessage> searchMatching(IMatchingCondition condition) {

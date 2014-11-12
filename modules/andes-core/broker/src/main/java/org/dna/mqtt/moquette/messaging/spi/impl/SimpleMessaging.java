@@ -176,6 +176,8 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
     private void processInit(Properties props) {
         m_storageService = new HawtDBStorageService();
         m_storageService.initStore();
+      /*  m_storageService = new MemoryStorageService();
+        m_storageService.initStore();*/
 
         subscriptions.init(m_storageService);
         

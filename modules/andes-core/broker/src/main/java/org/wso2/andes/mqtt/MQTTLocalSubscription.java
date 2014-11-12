@@ -19,7 +19,8 @@
 package org.wso2.andes.mqtt;
 
 import org.apache.commons.lang.builder.HashCodeBuilder;
-import org.dna.mqtt.wso2.AndesMQTTBridge;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
@@ -39,8 +40,21 @@ import java.util.UUID;
  */
 public class MQTTLocalSubscription extends BasicSubscription implements LocalSubscription {
     //The reference to the bridge object
-    private AndesMQTTBridge mqqtServerChannel;
-    private static final String MQTT_TARGET_BOUND_EXCHANGE = "MQQT";
+    private MQTTopicManager mqqtServerChannel;
+    //Will log the flows in relevent for this class
+    private static Log log = LogFactory.getLog(MQTTLocalSubscription.class);
+
+    //Will store the MQTT channel id
+    private String mqttChannelID;
+
+
+    public String getMqttChannelID() {
+        return mqttChannelID;
+    }
+
+    public void setMqttChannelID(String mqttChannelID) {
+        this.mqttChannelID = mqttChannelID;
+    }
 
     /**
      * The relavant subscritption will be registered
@@ -48,7 +62,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
      */
     public MQTTLocalSubscription(String mqttTopicSubscription) {
         super(mqttTopicSubscription);
-        setTargetBoundExchange();
+        //setTargetBoundExchange();
         setIsTopic();
         setNodeInfo();
         setIsActive(true);
@@ -58,7 +72,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
      * Will set the server channel that will maintain the connectivity between the mqtt protocol realm
      * @param mqqtServerChannel the bridge connection that will be maintained between the protocol and andes
      */
-    public void setMqqtServerChannel(AndesMQTTBridge mqqtServerChannel) {
+    public void setMqqtServerChannel(MQTTopicManager mqqtServerChannel) {
         this.mqqtServerChannel = mqqtServerChannel;
     }
 
@@ -81,8 +95,8 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
     /**
      * Will set the target bound exchange
      */
-    public void setTargetBoundExchange() {
-       this.targetQueueBoundExchange = MQTT_TARGET_BOUND_EXCHANGE;
+    public void setTargetBoundExchange(String exchange) {
+        this.targetQueueBoundExchange = exchange;
     }
 
     /**
@@ -120,8 +134,16 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
         ByteBuffer message = MQTTUtils.getContentFromMetaInformation(messageMetadata);
         //Will publish the message to the respective queue
         if (mqqtServerChannel != null) {
-            //TODO QOS level should be persisted and correlated in the Andes Bridge itself
-            mqqtServerChannel.notifySubscriptions(messageMetadata.getDestination(), 0, message, false, messageMetadata.getMessageID());
+            try {
+                mqqtServerChannel.subscriptionNotificationReceived(messageMetadata.getStorageQueueName(), message,
+                        messageMetadata.getMessageID(),messageMetadata.getQosLevel(),messageMetadata.isPersistent(),
+                        getMqttChannelID());
+            } catch (Exception e) {
+                final String error = "Error occured while delivering message to the subscriber for message :" +
+                        messageMetadata.getMessageID();
+                log.error(error);
+                throw new AndesException(error,e);
+            }
         }
     }
 
