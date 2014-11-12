@@ -163,16 +163,26 @@ public class MQTTopicManager {
 
             if (null != mqttTopic) {
                 //Will remove the subscription entitiy
-                String subscriberID = mqttTopic.removeSubscriber(mqttClientChannelID);
+                MQTTSubscriber subscriber = mqttTopic.removeSubscriber(mqttClientChannelID);
+                String subscriberChannelID = subscriber.getSubscriberChannelID();
                 //The corresponding subscription created cluster wide will be topic name and the local channel id
                 //Will remove the subscriber clusterwide
-                MQTTChannel.getInstance().removeSubscriber(this, topic, subscriberID);
-                //Will indicate the disconnection of the topic
-                if (log.isDebugEnabled()) {
-                    final String message = "Subscription with cluster id " + subscriberID + " disconnected " +
-                            "from topic " + topic;
-                    log.debug(message);
+                try {
+                    MQTTChannel.getInstance().removeSubscriber(this, topic, subscriberChannelID);
+                    //Will indicate the disconnection of the topic
+                    if (log.isDebugEnabled()) {
+                        final String message = "Subscription with cluster id " + subscriberChannelID + " disconnected " +
+                                "from topic " + topic;
+                        log.debug(message);
+                    }
+                } catch (MQTTException ex) {
+                    //Should re state the connection of the subscriber back to the map
+                    mqttTopic.addSubscriber(mqttClientChannelID, subscriber);
+                    final String error = "Error occured while removing the subscription " + mqttClientChannelID;
+                    log.error(error);
+                    throw ex;
                 }
+
             } else {
                 final String message = "Error unidentified topic found for client id " + mqttClientChannelID;
                 throw new MQTTException(message);
