@@ -165,8 +165,8 @@ public final class AndesMQTTBridge {
      * @param retain    should this message be persisted
      * @param messageID the identity of the message
      */
-    public void notifySubscriptions(String topic, int qos, ByteBuffer message, boolean retain, int messageID,
-                                    String channelID) {
+    public void distributeMessageToSubscriptions(String topic, int qos, ByteBuffer message, boolean retain,
+                                                 int messageID, String channelID) {
 
         if (mqttProtocolHandlingEngine != null) {
             //Need to set do a re possition of bytes for writing to the buffer

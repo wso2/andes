@@ -159,6 +159,7 @@ public class MQTTUtils {
      * @return the unique identifier
      */
     public static String generateTopicSpecficClientID() {
+        //TODO just go with a uuid + node id for unique subscriber definition for more info
         final String mqttSubscriptionID = "MQTTAndesSubscriber:";
         return mqttSubscriptionID + String.valueOf(MessagingEngine.getInstance().generateNewMessageId());
     }

@@ -24,6 +24,7 @@ import org.wso2.andes.kernel.AndesException;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -104,7 +105,7 @@ public class MQTTopicManager {
         }
 
         //Will add the topic message to the cluster for distribution
-        MQTTChannel.getInstance().addMessageContent(message, clusterSpecificMessageID, topic, qosLevel,
+        MQTTChannel.getInstance().addMessage(message, clusterSpecificMessageID, topic, qosLevel,
                 mqttLocalMessageID, retain);
 
     }
@@ -213,19 +214,20 @@ public class MQTTopicManager {
      * @param shouldRetain whether the message should retain after it was published
      * @throws Exception during a failure to deliver the message to the subscribers
      */
-    public void subscriptionNotificationReceived(String storageName, ByteBuffer message, long messageID, int publishedQOS,
-                                                 boolean shouldRetain, String channelID) throws Exception {
+    public void distributeMessageToSubscriber(String storageName, ByteBuffer message, long messageID, int publishedQOS,
+                                              boolean shouldRetain, String channelID, UUID subChannelID)
+            throws Exception {
         //Will cast the cluster wide message to an int since the mqtt protocol engine maintain the id of the message as
         // int
         //TODO need to get rid of casting change the MQTT library to support long instead of int
         int mqttLocalMessageID = (int) messageID;
         //Should get the topic name from the channel id
         String topic = clientTopicCorrelate.get(channelID);
-        AndesMQTTBridge.getBridgeInstance().notifySubscriptions(topic, publishedQOS, message, shouldRetain,
+        AndesMQTTBridge.getBridgeInstance().distributeMessageToSubscriptions(topic, publishedQOS, message, shouldRetain,
                 mqttLocalMessageID, channelID);
         //We will indicate the ack to the kernal at this stage
         //TODO for QOS 0 we need to ack to the message here
-        messageAck(topic, messageID, storageName);
+        messageAck(topic, messageID, storageName, subChannelID);
     }
 
     /**
@@ -260,9 +262,9 @@ public class MQTTopicManager {
      * @param storageName the name of the representation of the topic in the store
      * @throws MQTTException at an event where the ack was not properly processed
      */
-    private void messageAck(String topic, long messageID, String storageName) throws MQTTException {
+    private void messageAck(String topic, long messageID, String storageName, UUID subChannelID) throws MQTTException {
         try {
-            MQTTChannel.getInstance().messageAck(messageID, topic, storageName);
+            MQTTChannel.getInstance().messageAck(messageID, topic, storageName, subChannelID);
         } catch (AndesException ex) {
             final String message = "Error occurred while cleaning up the acked message";
             log.error(message);
