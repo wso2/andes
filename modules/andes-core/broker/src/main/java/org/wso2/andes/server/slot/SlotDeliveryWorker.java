@@ -343,11 +343,11 @@ public class SlotDeliveryWorker extends Thread {
     public void checkForSlotCompletionAndResend(Slot slot) throws AndesException {
         if (SlotUtils.checkSlotEmptyFromMessageStore(slot)) {
             slot.setSlotInActive();
-            //Release all message trackings for messages of slot
-            OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
             try {
                 if (AndesContext.getInstance().isClusteringEnabled()) {
                     MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
+                    //Release all message trackings for messages of slot
+                    OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
                 }
             } catch (ConnectionException e) {
                 throw new AndesException("Error deleting slot while checking for slot completion.", e);
@@ -369,29 +369,23 @@ public class SlotDeliveryWorker extends Thread {
                             "Resending missing" + messagesReadByLeadingThread.size() + "messages " +
                             "for slot: " + slot.toString());
                 }
-
-                boolean allMessagesAlreadySent = true;
-                for (AndesMessageMetadata messageMetadata : messagesReadByLeadingThread) {
-                    boolean messageNotSent = ! OnflightMessageTracker.getInstance()
-                                               .checkIfMessageIsAlreadyBuffered(slot,messageMetadata.getMessageID());
-
-                    if (messageNotSent) {
-                        allMessagesAlreadySent = false;
-                        break;
+                Iterator<AndesMessageMetadata> iterator = messagesReadByLeadingThread.iterator();
+                while(iterator.hasNext()) {
+                    if(OnflightMessageTracker.getInstance().checkIfMessageIsAlreadyBuffered(slot,iterator.next().getMessageID())) {
+                        iterator.remove();
                     }
                 }
-
                 // Return the slot if all messages remaining in slot are already sent. Otherwise
                 // the slot will not be
                 // removed.
-                if (allMessagesAlreadySent) {
+                if (!iterator.hasNext()) {
                     try {
                         slot.setSlotInActive();
-                        //Release all message trackings for messages of slot
-                        OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
 
                         if (AndesContext.getInstance().isClusteringEnabled()) {
                             MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
+                            //Release all message trackings for messages of slot
+                            OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
                         }
                     } catch (ConnectionException e) {
                         throw new AndesException(
