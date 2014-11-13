@@ -115,7 +115,7 @@ public class SlotMessageCounter {
     /**
      * Update in-memory queue to slot map. This method is synchronized since many publishers can
      * be access this thread simultaneously.
-     * @param metadata
+     * @param metadata  Andes metadata whose ID needs to be reported to SlotManager
      * @return Current slot which this metadata belongs to
      */
     private synchronized Slot updateQueueToSlotMap(AndesMessageMetadata metadata) {
@@ -140,7 +140,7 @@ public class SlotMessageCounter {
     /**
      * Submit last message ID in the slot to SlotManager.
      *
-     * @param storageQueueName
+     * @param storageQueueName  name of the queue which this slot belongs to
      */
     public void submitSlot(String storageQueueName) throws AndesException {
         Slot slot = queueToSlotMap.get(storageQueueName);
