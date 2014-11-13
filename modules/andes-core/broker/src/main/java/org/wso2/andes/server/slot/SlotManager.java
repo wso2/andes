@@ -175,7 +175,7 @@ public class SlotManager {
     /**
      * Record Slot's last message ID related to a particular queue
      *
-     * @param queueName
+     * @param queueName name of the queue which this message ID belongs to
      * @param lastMessageIdInTheSlot
      */
     public void updateMessageID(String queueName, Long lastMessageIdInTheSlot) {
@@ -218,7 +218,7 @@ public class SlotManager {
     /**
      * This method will reassigned slots which are owned by a node to a free slots pool
      *
-     * @param nodeId
+     * @param nodeId node ID of the leaving node
      */
     public void reAssignSlotsWhenMemberLeaves(String nodeId) {
         //Remove the entry from slot assignment map
@@ -256,8 +256,8 @@ public class SlotManager {
     /**
      * Remove slot entry from slotAssignment map
      *
-     * @param queueName
-     * @param emptySlot
+     * @param queueName name of the queue which is owned by the slot to be deleted
+     * @param emptySlot reference of the slot to be deleted
      */
     public void deleteSlot(String queueName, Slot emptySlot, String nodeId) {
         String lockKey = (nodeId + SlotManager.class).intern();
@@ -283,8 +283,8 @@ public class SlotManager {
     /**
      * Re-assign the slot when there are no local subscribers in the node
      *
-     * @param nodeId
-     * @param queueName
+     * @param nodeId node ID of the node without subscribers
+     * @param queueName  name of the queue whose slots to be reassigned
      */
     public void reAssignSlotWhenNoSubscribers(String nodeId, String queueName) {
         ArrayList<Slot> assignedSlotList = null;
@@ -317,7 +317,7 @@ public class SlotManager {
     /**
      * Delete all the slots belongs to a queue from unAssignedSlotMap and slotIDMap
      *
-     * @param queueName
+     * @param queueName name of the queue whose slots to be deleted
      */
     public void deleteAllSlots(String queueName) {
         unAssignedSlotMap.remove(queueName);

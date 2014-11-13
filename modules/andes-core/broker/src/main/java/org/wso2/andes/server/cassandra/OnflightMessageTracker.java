@@ -352,9 +352,9 @@ public class OnflightMessageTracker {
     }
 
     /**
-     * decrement message count in slot and if it is zero check the slot again to resend
+     * Decrement message count in slot and if it is zero check the slot again to resend
      *
-     * @param slot Slot to check
+     * @param slot Slot whose message count is decremented
      * @param destination name of destination slot bares
      * @throws AndesException
      */
@@ -378,7 +378,7 @@ public class OnflightMessageTracker {
     }
 
     /**
-     * increment the message count in a slot
+     * Increment the message count in a slot
      *
      * @param slot slot whose message counter should increment
      */

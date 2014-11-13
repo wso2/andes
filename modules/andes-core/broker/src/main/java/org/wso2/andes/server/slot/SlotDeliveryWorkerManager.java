@@ -108,7 +108,7 @@ public class SlotDeliveryWorkerManager {
     /**
      * This method is to decide slotDeliveryWorkerId for the queue
      *
-     * @param queueName
+     * @param queueName name of the newly created queue
      * @return slot delivery worker ID
      */
     public int getIdForSlotDeliveryWorker(String queueName) {
@@ -129,7 +129,10 @@ public class SlotDeliveryWorkerManager {
     }
 
     /**
-     * @return SlotDeliveryWorkerMap
+     * @return SlotDeliveryWorkerMap  a map which stores slot delivery worker ID against
+     * SlotDelivery
+     * Worker
+     * object references
      */
     private Map<Integer, SlotDeliveryWorker> getSlotDeliveryWorkerMap() {
         return slotDeliveryWorkerMap;
@@ -151,7 +154,7 @@ public class SlotDeliveryWorkerManager {
     /**
      * Returns SlotDeliveryWorker mapped to a given queue
      *
-     * @param queueName
+     * @param queueName name of the queue
      * @return SlotDeliveryWorker instance
      */
     public SlotDeliveryWorker getSlotWorker(String queueName) {
@@ -162,7 +165,7 @@ public class SlotDeliveryWorkerManager {
     /***
      * This method will clear up all unacked/queued in memory messages addressed to the given queue.
      *
-     * @param queueName
+     * @param queueName name of the purging queue
      */
     public int purgeMessagesFromActiveDeliveryWorkers(String queueName, Long purgedTimestamp) throws AndesException {
 

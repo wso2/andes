@@ -284,7 +284,7 @@ public class SlotDeliveryWorker extends Thread {
     /**
      * Add a queue to queue list of this SlotDeliveryWorkerThread
      *
-     * @param storageQueueName
+     * @param storageQueueName queue name of the newly added queue
      */
     public void addQueueToThread(String storageQueueName, String destination) {
         getStorageQueueNameToDestinationMap().put(storageQueueName, destination);
@@ -293,8 +293,8 @@ public class SlotDeliveryWorker extends Thread {
     /**
      * Clear all in memory messages addressed to the queue and update the last purged timestamp for the given queue at its QueueDeliveryInfo object.
      *
-     * @param queueName
-     * @param purgedTimestamp
+     * @param queueName name of the purging queue
+     * @param purgedTimestamp   time stamp of the purged queue
      * @return
      * @throws AndesException
      */

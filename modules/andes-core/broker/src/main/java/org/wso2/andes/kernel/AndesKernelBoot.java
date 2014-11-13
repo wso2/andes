@@ -300,7 +300,7 @@ public class AndesKernelBoot {
     }
 
     /**
-     * stop andes components
+     * Stop andes components
      *
      * @throws Exception
      */
@@ -321,7 +321,7 @@ public class AndesKernelBoot {
     }
 
     /**
-     * close transports and stop message delivery
+     * Close transports and stop message delivery
      *
      * @throws Exception
      */
@@ -333,17 +333,14 @@ public class AndesKernelBoot {
 
 
     /**
-     * start the thrift server
+     * Start the thrift server
      * @throws AndesException
      */
     private static void startThriftServer() throws AndesException {
-        try {
-            MBThriftServer.getInstance().start(AndesContext.getInstance().getThriftServerHost(),
-                    AndesContext.getInstance().getThriftServerPort(),"MB-ThriftServer-main-thread");
+        MBThriftServer.getInstance().start(AndesContext.getInstance().getThriftServerHost(),
+                AndesContext.getInstance().getThriftServerPort(), "MB-ThriftServer-main-thread");
 
-        } catch (AndesException e) {
-            throw new AndesException("Could not start the MB Thrift Server" , e);
-        }
+
     }
 
     /**
