@@ -25,6 +25,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.api.Message;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.slot.Slot;
@@ -32,10 +33,7 @@ import org.wso2.andes.server.slot.SlotDeliveryWorker;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.stats.PerformanceCounter;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -129,8 +127,9 @@ public class OnflightMessageTracker {
          * Is OK to remove tracking message
          * @return eligibility to remove
          */
-        public  boolean isOKToRemove(){
-            return ( this == Acked || this ==  Expired || this == DLCMessage);
+        public static boolean isOKToRemove(List<MessageStatus> messageStatus){
+            return ( messageStatus.contains(MessageStatus.AckedByAll) || messageStatus.contains(MessageStatus.Expired)
+                    || messageStatus.contains(MessageStatus.DLCMessage));
         }
 
     }
@@ -531,7 +530,7 @@ public class OnflightMessageTracker {
      */
     private boolean checkIfReadyToRemoveFromTracking(long messageID) {
         MsgData messageTrackingData = getTrackingData(messageID);
-        return  messageTrackingData.getLatestState().isOKToRemove();
+        return  MessageStatus.isOKToRemove(messageTrackingData.messageStatus);
     }
 
     /**
@@ -721,44 +720,58 @@ public class OnflightMessageTracker {
     public void dumpMessageStatusToFile(File fileToWrite) throws AndesException {
 
         try {
-            HSSFWorkbook workbook = new HSSFWorkbook();
-            HSSFSheet sheet = workbook.createSheet("Message Status");
+            FileWriter writer = new FileWriter(fileToWrite);
 
-            HSSFRow rowhead = sheet.createRow((short) 0);
-            rowhead.createCell(0).setCellValue("Message ID");
-            rowhead.createCell(1).setCellValue("Message Header");
-            rowhead.createCell(2).setCellValue("Destination");
-            rowhead.createCell(3).setCellValue("Message status");
-            rowhead.createCell(4).setCellValue("Slot Info");
-            rowhead.createCell(5).setCellValue("Timestamp");
-            rowhead.createCell(6).setCellValue("Expiration time");
-            rowhead.createCell(7).setCellValue("NumOfScheduledDeliveries");
-            rowhead.createCell(8).setCellValue("Channels sent");
+            writer.append("Message ID");
+            writer.append(',');
+            writer.append("Message Header");
+            writer.append(',');
+            writer.append("Destination");
+            writer.append(',');
+            writer.append("Message status");
+            writer.append(',');
+            writer.append("Slot Info");
+            writer.append(',');
+            writer.append("Timestamp");
+            writer.append(',');
+            writer.append("Expiration time");
+            writer.append(',');
+            writer.append("NumOfScheduledDeliveries");
+            writer.append(',');
+            writer.append("Channels sent");
+            writer.append('\n');
 
-            short rowCount = 0;
             for (Long messageID : msgId2MsgData.keySet()) {
-                rowCount++;
                 MsgData trackingData = msgId2MsgData.get(messageID);
-                HSSFRow row = sheet.createRow(rowCount);
-                row.createCell(0).setCellValue(trackingData.msgID);
-                row.createCell(1).setCellValue("null");
-                row.createCell(2).setCellValue(trackingData.destination);
-                row.createCell(3).setCellValue(trackingData.getStatusHistory());
-                row.createCell(4).setCellValue(trackingData.slot.toString());
-                row.createCell(5).setCellValue(trackingData.timestamp);
-                row.createCell(6).setCellValue(trackingData.expirationTime);
-                row.createCell(7).setCellValue(trackingData.numberOfScheduledDeliveries.get());
+                writer.append(Long.toString(trackingData.msgID));
+                writer.append(',');
+                writer.append("null");
+                writer.append(',');
+                writer.append(trackingData.destination);
+                writer.append(',');
+                writer.append(trackingData.getStatusHistory());
+                writer.append(',');
+                writer.append(trackingData.slot.toString());
+                writer.append(',');
+                writer.append(Long.toString(trackingData.timestamp));
+                writer.append(',');
+                writer.append(Long.toString(trackingData.expirationTime));
+                writer.append(',');
+                writer.append(Integer.toString(trackingData.numberOfScheduledDeliveries.get()));
+                writer.append(',');
                 String deliveries = "";
                 for (UUID channelID : trackingData.channelToNumOfDeliveries.keySet()) {
                     deliveries = deliveries + channelID + " >> " + trackingData
                             .channelToNumOfDeliveries
                             .get(channelID) + " : ";
                 }
-                row.createCell(8).setCellValue(deliveries);
+                writer.append(deliveries);
+                writer.append('\n');
             }
-            FileOutputStream fileOut = new FileOutputStream(fileToWrite);
-            workbook.write(fileOut);
-            fileOut.close();
+
+            writer.flush();
+            writer.close();
+
         } catch (FileNotFoundException e) {
             log.error("File to write is not found", e);
             throw new AndesException("File to write is not found", e);
