@@ -66,13 +66,13 @@ public class AndesQueue {
             String[] tokens = pt.split("=");
             if (tokens[0].equals("queueName")) {
                 this.queueName = tokens[1];
-            } else if (tokens[0].equals("queueOwner")) {
+            } else if ("queueOwner".equals(tokens[0])) {
                 this.queueOwner = tokens[1].equals("null") ? null : tokens[1];
-            } else if (tokens[0].equals("isExclusive")) {
+            } else if ("isExclusive".equals(tokens[0])) {
                 this.isExclusive = Boolean.parseBoolean(tokens[1]);
-            } else if (tokens[0].equals("isDurable")) {
+            } else if ("isDurable".equals(tokens[0])) {
                 this.isDurable = Boolean.parseBoolean(tokens[1]);
-            } else if (tokens[0].equals("lastPurgedTimestamp")) {
+            } else if ("lastPurgedTimestamp".equals(tokens[0])) {
                 this.lastPurgedTimestamp = Long.parseLong(tokens[1]);
             }
         }

@@ -123,7 +123,7 @@ public class CQLConnection implements DurableStoreConnection {
 
         } catch (NamingException e) {
             throw new AndesException("Couldn't look up jndi entry for " +
-                                     "\"" + jndiLookupName + "\"" + e);
+                                     "\"" + jndiLookupName + "\"", e);
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Cannot Initialize Cassandra Connection", e);
         }

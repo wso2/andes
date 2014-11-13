@@ -191,7 +191,7 @@ public class AndesKernelBoot {
         log.info("Closing all local subscriptions existing...");
         ClusterResourceHolder.getInstance().getSubscriptionManager()
                              .closeAllLocalSubscriptionsOfNode();
-        //tell cluster I am leaving
+        // notify cluster this MB node is shutting down. For other nodes to do recovery tasks
         ClusterResourceHolder.getInstance().getClusterManager().shutDownMyNode();
     }
 
