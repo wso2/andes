@@ -257,7 +257,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         }
         //For MQTT Specific Types
         if (type.equals(MessageMetaDataType.META_DATA_MQTT)) {
-            this.messageID = ((MQTTMessageMetaData) mdt).getMessageID();
             this.isTopic = ((MQTTMessageMetaData) mdt).isTopic();
             this.destination = ((MQTTMessageMetaData) mdt).getDestination();
             this.isPersistent = ((MQTTMessageMetaData) mdt).isPersistent();
