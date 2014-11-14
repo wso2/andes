@@ -38,21 +38,41 @@ import java.util.UUID;
  * engine to inform the relavant subscriptions which are channel bound
  */
 public class MQTTLocalSubscription extends BasicSubscription implements LocalSubscription {
-    //The reference to the bridge object
-    private MQTTopicManager mqqtServerChannel;
     //Will log the flows in relevent for this class
     private static Log log = LogFactory.getLog(MQTTLocalSubscription.class);
-
+    //The reference to the bridge object
+    private MQTTopicManager mqqtServerChannel;
     //Will store the MQTT channel id
-    private String mqttChannelID;
+    private String mqttSubscriptionID;
+    //Will set unique uuid as the channel of the subscription this will be used to track the delivery of messages
+    private UUID channelID;
 
 
-    public String getMqttChannelID() {
-        return mqttChannelID;
+    /**
+     * Sets a channel identifyer which is unique for each subscription, this will be used to tack delivery of message
+     *
+     * @param channelID the unique identifyer of a channel speciifc to a subscription
+     */
+    public void setChannelID(UUID channelID) {
+        this.channelID = channelID;
     }
 
-    public void setMqttChannelID(String mqttChannelID) {
-        this.mqttChannelID = mqttChannelID;
+    /**
+     * Retrival of the subscription id
+     *
+     * @return the id of the subscriber
+     */
+    public String getMqttSubscriptionID() {
+        return mqttSubscriptionID;
+    }
+
+    /**
+     * Sets an id to the subscriber which will be unique
+     *
+     * @param mqttSubscriptionID the unique id of the subscriber
+     */
+    public void setMqttSubscriptionID(String mqttSubscriptionID) {
+        this.mqttSubscriptionID = mqttSubscriptionID;
     }
 
     /**
@@ -134,9 +154,9 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
         //Will publish the message to the respective queue
         if (mqqtServerChannel != null) {
             try {
-                mqqtServerChannel.subscriptionNotificationReceived(messageMetadata.getStorageQueueName(), message,
-                        messageMetadata.getMessageID(),messageMetadata.getQosLevel(),messageMetadata.isPersistent(),
-                        getMqttChannelID());
+                mqqtServerChannel.distributeMessageToSubscriber(messageMetadata.getStorageQueueName(), message,
+                        messageMetadata.getMessageID(), messageMetadata.getQosLevel(), messageMetadata.isPersistent(),
+                        getMqttSubscriptionID(),getChannelID());
             } catch (Exception e) {
                 final String error = "Error occured while delivering message to the subscriber for message :" +
                         messageMetadata.getMessageID();
@@ -153,13 +173,13 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
 
     @Override
     public UUID getChannelID() {
-        //mqqtServerChannel.
-        throw  new NotImplementedException();
+        return channelID != null ? channelID : null;
     }
 
     @Override
     public LocalSubscription createQueueToListentoTopic() {
-        return null;
+        //mqqtServerChannel.
+        throw new NotImplementedException();
     }
 
     public boolean equals(Object o)

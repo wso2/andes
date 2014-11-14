@@ -98,9 +98,11 @@ public class MQTTChannel {
      * @param storageName the storage name representation of the topic
      * @throws AndesException if the ack was not processed properly
      */
-    public void messageAck(long messageID, String topicName, String storageName) throws AndesException {
+    public void messageAck(long messageID, String topicName, String storageName, UUID subChannelID)
+            throws AndesException {
         //TODO need to review and impliment this method properly
-        AndesAckData andesAckData = new AndesAckData(UUID.randomUUID(), messageID,
+        //TODO need to generate a channel id uuid for sub and use the same intead of random generation
+        AndesAckData andesAckData = new AndesAckData(subChannelID, messageID,
                 topicName, storageName, true);
         MessagingEngine.getInstance().ackReceived(andesAckData);
     }
@@ -116,8 +118,8 @@ public class MQTTChannel {
      * @param retain             whether the message requires to be persisted
      * @throws MQTTException occurs if there was an errro while adding the message content
      */
-    public void addMessageContent(ByteBuffer message, long messageID, String topic, int qosLevel,
-                                  int mqttLocalMessageID, boolean retain) throws MQTTException {
+    public void addMessage(ByteBuffer message, long messageID, String topic, int qosLevel,
+                           int mqttLocalMessageID, boolean retain) throws MQTTException {
         //Will start converting the message body
         AndesMessagePart msg = MQTTUtils.convertToAndesMessage(message, messageID);
         //Will Create the Andes Header
@@ -141,6 +143,7 @@ public class MQTTChannel {
      */
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttChannel,
                               boolean isCleanSesion) throws MQTTException {
+        //TODO create mqttSubscriber to AndesSubscriber converting method
         //Will create a new local subscription object
         final String isBoundToTopic = "isBoundToTopic";
         final String subscribedNode = "subscribedNode";
@@ -154,11 +157,12 @@ public class MQTTChannel {
         localSubscription.setTargetBoundExchange(isCleanSesion ? AMQPUtils.TOPIC_EXCHANGE_NAME :
                 AMQPUtils.DIRECT_EXCHANGE_NAME);
         localSubscription.setMqqtServerChannel(channel);
+        localSubscription.setChannelID(UUID.randomUUID());
         localSubscription.setTopic(topic);
         localSubscription.setSubscriptionID(clientID);
-        localSubscription.setMqttChannelID(mqttChannel);
+        localSubscription.setMqttSubscriptionID(mqttChannel);
         //TODO is bound to topic
-        //TODO need to investigate the times this should be false - hari
+        //TODO need to investigate the times this should be false
         //TODO need to figure out the impact where theres a case which has multiple qos levels of subscription
         localSubscription.setIsActive(true);
         //Shold indicate the record in the cluster
@@ -185,7 +189,7 @@ public class MQTTChannel {
     public void removeSubscriber(MQTTopicManager channel, String subscribedTopic, String clientID)
             throws MQTTException {
         try {
-
+            //TODO if we can bring the following to a util for adding and removal we could maintain possibility ??
             //Will create a new local subscription object
             MQTTLocalSubscription localSubscription = new MQTTLocalSubscription(MQTT_TOPIC_DESTINATION + "=" +
                     subscribedTopic + "," + MQTT_QUEUE_IDENTIFIER + "=" + subscribedTopic);
