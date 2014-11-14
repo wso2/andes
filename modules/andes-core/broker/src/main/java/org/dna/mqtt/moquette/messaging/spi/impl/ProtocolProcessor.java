@@ -20,6 +20,7 @@ import org.dna.mqtt.moquette.server.ServerChannel;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.wso2.andes.mqtt.MQTTException;
 
 import java.nio.ByteBuffer;
 import java.util.Collection;
@@ -87,9 +88,9 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         //Will create the bridge and intiialise the protocol
         try {
             AndesMQTTBridge.initMQTTProtocolProcessor(this);
-        } catch (Exception e) {
+        } catch (MQTTException e) {
             final String message = "Error occured when initializing MQTT connection with Andes ";
-            LOG.error(message + e.getMessage());
+            LOG.error(message + e.getMessage(), e);
         }
         //Should clear all the stored messages
         subscriptions.clearAllSubscriptions();
@@ -504,9 +505,9 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
             //Need to handle disconnection
             try {
                 AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID);
-            } catch (Exception e) {
+            } catch (MQTTException e) {
                 final String message = "Error occured when attempting to diconnect subscriber ";
-                LOG.error(message + e.getMessage());
+                LOG.error(message + e.getMessage(), e);
             }
             // bridge.onSubscriberDisconnection(clientID);
         }

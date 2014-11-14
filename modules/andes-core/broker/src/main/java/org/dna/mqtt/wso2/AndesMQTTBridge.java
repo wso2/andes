@@ -58,7 +58,7 @@ public final class AndesMQTTBridge {
      *
      * @param mqttProtocolProcessor the reference to the protocol processing object
      */
-    public static void initMQTTProtocolProcessor(ProtocolProcessor mqttProtocolProcessor) throws Exception {
+    public static void initMQTTProtocolProcessor(ProtocolProcessor mqttProtocolProcessor) throws MQTTException {
         mqttProtocolHandlingEngine = mqttProtocolProcessor;
         //Also we initialize the topic manager instance
         MQTTopicManager.getInstance().initProtocolEngine(instance);
@@ -69,14 +69,14 @@ public final class AndesMQTTBridge {
      *
      * @return The bridge instance that will allow connectivity between the kernal and mqtt protocol
      */
-    public static AndesMQTTBridge getBridgeInstance() throws Exception {
+    public static AndesMQTTBridge getBridgeInstance() throws MQTTException {
         if (mqttProtocolHandlingEngine != null) {
             return instance;
         } else {
             //Will capture the exception here and will not throw it any further
             final String message = "MQTT protocol reference has not being initialized, cannot establish connectivity";
             log.error(message);
-            throw (new Exception(message));
+            throw (new MQTTException(message));
         }
     }
 
