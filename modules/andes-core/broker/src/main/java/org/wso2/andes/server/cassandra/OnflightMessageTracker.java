@@ -259,8 +259,10 @@ public class OnflightMessageTracker {
                     if (!msgData.ackreceived) {
                         //reduce messages on flight on this channel
                         //msgData.channel.decrementNonAckedMessageCount();
-                        log.debug("No ack received for delivery tag " + msgData.deliveryID + " and " +
-                                  "message id " + msgData.msgID + " Message status = " + msgData.messageStatus);
+                        if (log.isDebugEnabled()) {
+                            log.debug("No ack received for delivery tag " + msgData.deliveryID + " and " +
+                                      "message id " + msgData.msgID + " Message status = " + msgData.messageStatus);
+                        }
                     }
                     //permanently remove tracking of message
                     log.warn("Loosing track of message id= " + msgData.msgID);
@@ -478,7 +480,9 @@ public class OnflightMessageTracker {
             messagesOfSlot.put(messageID, msgId2MsgData.get(messageID));
             isOKToBuffer =  true;
         } else {
-            log.debug("Buffering rejected message id = " + messageID);
+            if (log.isDebugEnabled()) {
+                log.debug("Buffering rejected message id = " + messageID);
+            }
             isOKToBuffer =  false;
         }
         return isOKToBuffer;
