@@ -357,10 +357,9 @@ public class OnflightMessageTracker {
      * Decrement message count in slot and if it is zero check the slot again to resend
      *
      * @param slot Slot whose message count is decremented
-     * @param destination name of destination slot bares
      * @throws AndesException
      */
-    public void decrementMessageCountInSlotAndCheckToResend(Slot slot, String destination)
+    public void decrementMessageCountInSlotAndCheckToResend(Slot slot)
             throws AndesException {
         AtomicInteger pendingMessageCount = pendingMessagesBySlot.get(slot);
         int messageCount = pendingMessageCount.decrementAndGet();
@@ -369,8 +368,8 @@ public class OnflightMessageTracker {
             All the Acks for the slot has bee received. Check the slot again for unsend
             messages and if there are any send them and delete the slot.
              */
-            SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance()
-                                                                     .getSlotWorker(destination);
+            SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance().getSlotWorker(slot
+                    .getStorageQueueName());
             if(log.isDebugEnabled()) {
                 log.debug("Slot has no pending messages. Now re-checking slot for messages");
             }
@@ -424,7 +423,7 @@ public class OnflightMessageTracker {
             //record how much time took between delivery and ack receive
             long timeTook = (System.currentTimeMillis() - trackingData.timestamp);
             PerformanceCounter.recordAckReceived(trackingData.destination, (int) timeTook);
-            decrementMessageCountInSlotAndCheckToResend(trackingData.slot, trackingData.destination);
+            decrementMessageCountInSlotAndCheckToResend(trackingData.slot);
 
             isOKToDeleteMessage = true;
             if(log.isDebugEnabled()) {
@@ -659,7 +658,6 @@ public class OnflightMessageTracker {
             log.debug("Removing all tracking of message id = " + messageID);
         }
         MsgData trackingData = msgId2MsgData.remove(messageID);
-        String destination = trackingData.destination;
         Slot slot = trackingData.slot;
         for(UUID channelID : trackingData.channelToNumOfDeliveries.keySet()) {
             releaseMessageDeliveryFromTracking(channelID, messageID);
@@ -667,7 +665,7 @@ public class OnflightMessageTracker {
 
         releaseMessageBufferingFromTracking(slot, messageID);
 
-        decrementMessageCountInSlotAndCheckToResend(slot, destination);
+        decrementMessageCountInSlotAndCheckToResend(slot);
     }
 
     /**
