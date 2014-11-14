@@ -23,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.BasicSubscription;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
@@ -156,7 +157,15 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
             try {
                 mqqtServerChannel.distributeMessageToSubscriber(messageMetadata.getStorageQueueName(), message,
                         messageMetadata.getMessageID(), messageMetadata.getQosLevel(), messageMetadata.isPersistent(),
-                        getMqttSubscriptionID(),getChannelID());
+                        getMqttSubscriptionID(), getChannelID());
+
+                OnflightMessageTracker.getInstance().addMessageToSendingTracker(getChannelID(),
+                        messageMetadata.getMessageID());
+
+                //We will indicate the ack to the kernal at this stage
+                //TODO for QOS 0 we need to ack to the message here
+                mqqtServerChannel.messageAck(getSubscribedDestination(), messageMetadata.getMessageID(),
+                        messageMetadata.getStorageQueueName(), getChannelID());
             } catch (Exception e) {
                 final String error = "Error occured while delivering message to the subscriber for message :" +
                         messageMetadata.getMessageID();

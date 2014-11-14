@@ -225,9 +225,6 @@ public class MQTTopicManager {
         String topic = clientTopicCorrelate.get(channelID);
         AndesMQTTBridge.getBridgeInstance().distributeMessageToSubscriptions(topic, publishedQOS, message, shouldRetain,
                 mqttLocalMessageID, channelID);
-        //We will indicate the ack to the kernal at this stage
-        //TODO for QOS 0 we need to ack to the message here
-        messageAck(topic, messageID, storageName, subChannelID);
     }
 
     /**
@@ -262,7 +259,7 @@ public class MQTTopicManager {
      * @param storageName the name of the representation of the topic in the store
      * @throws MQTTException at an event where the ack was not properly processed
      */
-    private void messageAck(String topic, long messageID, String storageName, UUID subChannelID) throws MQTTException {
+    public void messageAck(String topic, long messageID, String storageName, UUID subChannelID) throws MQTTException {
         try {
             MQTTChannel.getInstance().messageAck(messageID, topic, storageName, subChannelID);
         } catch (AndesException ex) {
