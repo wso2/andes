@@ -257,7 +257,7 @@ public class OnflightMessageTracker {
                 boolean toDelete = (System.currentTimeMillis() - msgData.timestamp) > staleMsgDataRemovalTimeout;
                 if (toDelete) {
                     if (!msgData.ackreceived) {
-                        //reduce messages on flight on ris channel
+                        //reduce messages on flight on this channel
                         //msgData.channel.decrementNonAckedMessageCount();
                         if (log.isDebugEnabled()) {
                             log.debug("No ack received for delivery tag " + msgData.deliveryID + " and " +
