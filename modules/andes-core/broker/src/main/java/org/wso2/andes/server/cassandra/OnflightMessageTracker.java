@@ -521,6 +521,7 @@ public class OnflightMessageTracker {
                     if(log.isDebugEnabled()) {
                         log.debug("removing tracking object from memory id= " + messageIdOfSlot);
                     }
+                    msgId2MsgData.remove(messageIdOfSlot);
                 }
             }
         }
@@ -715,7 +716,7 @@ public class OnflightMessageTracker {
     }
 
     /**
-     * Dump message info to a excel sheet
+     * Dump message info to a csv file
      * @param fileToWrite file to dump info
      * @throws AndesException
      */

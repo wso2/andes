@@ -316,6 +316,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                     metadata.getMetadata(), false);
 
             GenericCQLDAO.execute(CassandraConstants.KEYSPACE, insert.getQueryString());
+            log.info("Metadata added to cassandra MessageID = " + metadata.getMessageID());
         } catch (CassandraDataAccessException e) {
             String errorString = "Error writing incoming message to cassandra.";
             log.error(errorString, e);
@@ -518,7 +519,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             List<AndesMessageMetadata> metadataList = CQLDataAccessHelper
                     .getMessagesFromQueue(queueName,
                             CassandraConstants.META_DATA_COLUMN_FAMILY,
-                            CassandraConstants.KEYSPACE, firstMsgId, lastMsgID, 1000,
+                            CassandraConstants.KEYSPACE, firstMsgId, lastMsgID, 10000,
                             true, true);
             return metadataList;
         } catch (CassandraDataAccessException e) {
