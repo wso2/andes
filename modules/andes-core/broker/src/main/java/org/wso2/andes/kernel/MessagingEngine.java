@@ -632,8 +632,11 @@ public class MessagingEngine {
             contentChunks = new ArrayList<AndesMessagePart>();
         }
         contentChunks.add(messagePart);
-        //TODO: add a warning if growing
         messagePartsCache.put(messageID, contentChunks);
+        if(messagePartsCache.size() > 1000) {
+            log.warn(" Message Parts Cache is growing. Current size= " + messagePartsCache.size() +
+                     " This can lead to OOM.");
+        }
     }
 
     /**

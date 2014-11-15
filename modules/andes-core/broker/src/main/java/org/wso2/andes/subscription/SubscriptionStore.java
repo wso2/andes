@@ -88,22 +88,20 @@ public class SubscriptionStore {
      */
     public List<AndesSubscription> getActiveClusterSubscribersForDestination(String destination, boolean isTopic) throws AndesException {
         Map<String, List<AndesSubscription>> subMap = isTopic ? clusterTopicSubscriptionMap: clusterQueueSubscriptionMap;
-        List<AndesSubscription> subscriptionsHavingExternalsubscriber = new ArrayList<AndesSubscription>();
-        //TODO: get key entries
-        for(String subDestination : subMap.keySet()) {
+        List<AndesSubscription> subscriptionsHavingExternalSubscriber = new ArrayList<AndesSubscription>();
+        for(Map.Entry<String,List<AndesSubscription>> entry: subMap.entrySet()) {
+            String subDestination = entry.getKey();
             if(AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(subDestination, destination)) {
-                List<AndesSubscription> subscriptionsOfDestination = subMap.get(subDestination);
+                List<AndesSubscription> subscriptionsOfDestination = entry.getValue();
                 if (subscriptionsOfDestination != null) {
                     for (AndesSubscription subscription : subscriptionsOfDestination) {
-                        //if (subscription.hasExternalSubscriptions()) {
-                            subscriptionsHavingExternalsubscriber.add(subscription);
-                        //}
+                        subscriptionsHavingExternalSubscriber.add(subscription);
                     }
                 }
             }
         }
 
-        return subscriptionsHavingExternalsubscriber;
+        return subscriptionsHavingExternalSubscriber;
     }
 
     public List<AndesSubscription> getAllActiveClusterSubscriptions(boolean isTopic) throws AndesException {
