@@ -86,13 +86,6 @@ public class OnflightMessageTracker {
             = new ConcurrentHashMap<UUID, ConcurrentHashMap<Long, MsgData>>();
 
     /**
-     * This will keep all the message metadata delivered. As soon as ack is received
-     * this object is removed
-     */
-/*    private ConcurrentHashMap<Long, AndesMessageMetadata> messageIdToAndesMessagesMap = new
-            ConcurrentHashMap<Long, AndesMessageMetadata>();*/
-
-    /**
      * Map to keep track of message counts pending to read
      */
     private ConcurrentHashMap<Slot, AtomicInteger> pendingMessagesBySlot = new
@@ -101,11 +94,12 @@ public class OnflightMessageTracker {
     /**
      * count sent but not acked message count for all destinations
      */
-    private AtomicLong sendButNotAckedMessageCount = new AtomicLong();
+    private AtomicLong sentButNotAckedMessageCount = new AtomicLong();
 
     /**
      * Message status to keep track in which state message is
      */
+    //TODO: Make Capital
     public enum MessageStatus {
         Read,
         Buffered,
@@ -205,17 +199,17 @@ public class OnflightMessageTracker {
 
         private int incrementDeliveryCount(UUID channelID) {
             Integer numOfDeliveries = channelToNumOfDeliveries.get(channelID);
-            if(numOfDeliveries == null) {
+            if(null == numOfDeliveries) {
                 numOfDeliveries = 0;
             }
-            numOfDeliveries += 1;
+            numOfDeliveries ++;
             channelToNumOfDeliveries.put(channelID, numOfDeliveries);
             return numOfDeliveries;
         }
 
         private int decrementDeliveryCount(UUID channelID) {
             Integer numOfDeliveries = channelToNumOfDeliveries.get(channelID);
-            numOfDeliveries -= 1;
+            numOfDeliveries --;
             if(numOfDeliveries > 0) {
                 channelToNumOfDeliveries.put(channelID, numOfDeliveries);
             }  else {
@@ -229,12 +223,7 @@ public class OnflightMessageTracker {
         }
 
         private boolean allAcksReceived() {
-            Set<UUID> channelsDelivered = channelToNumOfDeliveries.keySet();
-            boolean allAcksReceived = false;
-            if(channelsDelivered.isEmpty()) {
-                allAcksReceived = true;
-            }
-            return allAcksReceived;
+            return channelToNumOfDeliveries.isEmpty();
         }
     }
 
@@ -251,6 +240,7 @@ public class OnflightMessageTracker {
         msgId2MsgData = new LinkedHashMap<Long, MsgData>() {
             private static final long serialVersionUID = -8681132571102532817L;
 
+            //TODO: remove
             @Override
             protected boolean removeEldestEntry(Map.Entry<Long, MsgData> eldest) {
                 MsgData msgData = eldest.getValue();
@@ -385,9 +375,8 @@ public class OnflightMessageTracker {
      */
     public void incrementMessageCountInSlot(Slot slot) {
         AtomicInteger pendingMessageCount = pendingMessagesBySlot.get(slot);
-        if (pendingMessageCount == null) {
-            pendingMessagesBySlot.putIfAbsent(slot, new AtomicInteger());
-            pendingMessageCount = pendingMessagesBySlot.get(slot);
+        if (null == pendingMessageCount) {
+            pendingMessageCount = pendingMessagesBySlot.putIfAbsent(slot, new AtomicInteger());
         }
         pendingMessageCount.incrementAndGet();
     }
@@ -419,7 +408,7 @@ public class OnflightMessageTracker {
         if(trackingData.allAcksReceived() && getNumberOfScheduledDeliveries(messageID)== 0) {
             trackingData.ackreceived = true;
             setMessageStatus(MessageStatus.AckedByAll, trackingData);
-            sendButNotAckedMessageCount.decrementAndGet();
+            sentButNotAckedMessageCount.decrementAndGet();
             //record how much time took between delivery and ack receive
             long timeTook = (System.currentTimeMillis() - trackingData.timestamp);
             PerformanceCounter.recordAckReceived(trackingData.destination, (int) timeTook);
@@ -445,7 +434,7 @@ public class OnflightMessageTracker {
         }
         MsgData trackingData = getTrackingData(messageID);
         trackingData.timestamp = System.currentTimeMillis();
-        sendButNotAckedMessageCount.decrementAndGet();
+        sentButNotAckedMessageCount.decrementAndGet();
         trackingData.addMessageStatus(MessageStatus.RejectedAndBuffered);
         //release delivery tracing
         releaseMessageDeliveryFromTracking(channel, messageID);
@@ -641,7 +630,7 @@ public class OnflightMessageTracker {
             log.debug("Number of current deliveries for message id= " + messageID + " to Channel " + channelID + " is " + numOfCurrentDeliveries);
         }
 
-        sendButNotAckedMessageCount.incrementAndGet();
+        sentButNotAckedMessageCount.incrementAndGet();
 
         //check if this is a redelivered message
         return trackingData.isRedelivered(channelID);
