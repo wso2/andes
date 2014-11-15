@@ -21,7 +21,7 @@
 #
 
 #
-# Alerting Rest Scripts to renabled the alerts on the destination.
+# Alerting Rest Scripts to renabled the alerts on the storageQueueName.
 #
 # Defaults to Localhost broker
 #

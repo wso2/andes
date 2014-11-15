@@ -5,6 +5,7 @@ import com.datastax.driver.core.Cluster;
 import org.junit.Before;
 import org.junit.Test;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
+import org.wso2.andes.store.cassandra.cql.CQLConnection;
 
 import java.util.ArrayList;
 import java.util.List;

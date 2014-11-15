@@ -19,19 +19,22 @@
 package org.wso2.andes.kernel;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.UUID;
 
 import org.apache.log4j.Logger;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.storemanager.MessageStoreManagerFactory;
+import org.wso2.andes.server.cassandra.OnflightMessageTracker;
+import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
+import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
-import org.wso2.andes.store.cassandra.CQLBasedMessageStoreImpl;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cassandra.TopicDeliveryWorker;
 import org.wso2.andes.server.cluster.ClusterManager;
@@ -50,7 +53,6 @@ public class MessagingEngine {
      * Logger for MessagingEngine
      */
     private static final Logger log;
-
 
     /**
      * Static instance of MessagingEngine
@@ -72,6 +74,11 @@ public class MessagingEngine {
     private SubscriptionStore subscriptionStore;
 
     /**
+     * Cache to keep message parts until message routing happens
+     */
+    private HashMap<Long, List<AndesMessagePart>> messagePatsCache;
+
+    /**
      * Cluster related configurations
      */
     private BrokerConfiguration config;
@@ -81,6 +88,12 @@ public class MessagingEngine {
      * Underlying implementation of this interface handles the logic
      */
     private MessageStoreManager messageStoreManager;
+
+    /***
+     * This listener is primarily added so that messaging engine and communicate a queue purge situation to the cluster.
+     * Addition/Deletion of queues are done through QpidAMQPBridge
+     */
+    private QueueListener queueListener;
 
     /**
      * private constructor for singleton pattern
@@ -120,6 +133,9 @@ public class MessagingEngine {
             // Accessed via MessageStoreManager
             durableMessageStore = messageStore;
             subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+            messagePatsCache = new HashMap<Long, List<AndesMessagePart>>();
+            //register listeners for queue changes
+            queueListener= new ClusterCoordinationHandler(HazelcastAgent.getInstance());
 
         } catch (Exception e) {
             throw new AndesException("Cannot initialize message store", e);
@@ -138,6 +154,7 @@ public class MessagingEngine {
      */
     public void messageContentReceived(AndesMessagePart part) {
         try {
+            cacheMessageContentPart(part);
             messageStoreManager.storeMessagePart(part);
         } catch (AndesException e) {
             log.error("Error occurred while storing message content. message id: " +
@@ -164,86 +181,61 @@ public class MessagingEngine {
                 //store message in MESSAGES_FOR_EXPIRY_COLUMN_FAMILY Queue
                 // todo: MessageStoreManager needs to replace the method
                 durableMessageStore.addMessageToExpiryQueue(message.getMessageID(),
-                        message.getExpirationTime(),
-                        message.isTopic(),
-                        message.getDestination());
+                                                            message.getExpirationTime(),
+                                                            message.isTopic(),
+                                                            message.getDestination());
             }
+            routeAMQPMetadata(message);
 
-            if (message.isTopic) {
-                List<AndesSubscription> subscriptionList = subscriptionStore
-                        .getActiveClusterSubscribersForDestination(message.getDestination(), true);
-                if (subscriptionList.size() == 0) {
-                    log.info("Message routing key: " + message
-                            .getDestination() + " No routes in cluster. Ignoring Message");
-                    List<Long> messageIdList = new ArrayList<Long>();
-                    messageIdList.add(message.getMessageID());
-                    durableMessageStore.deleteMessageParts(messageIdList);
-                }
-
-                Set<String> targetAndesNodeSet;
-                boolean originalMessageUsed = false;
-                boolean hasNonDurableSubscriptions = false;
-                for (AndesSubscription subscriberQueue : subscriptionList) {
-                    if (subscriberQueue.isDurable()) {
-                        // If message is durable, we clone the message (if there is more than one
-                        // subscription) and send them to a queue created for with the name of the
-                        // Subscription ID by writing it to the global queue.
-                        message.setDestination(subscriberQueue.getTargetQueue());
-                        AndesMessageMetadata clone;
-                        if (!originalMessageUsed) {
-                            originalMessageUsed = true;
-                            clone = message;
-                        } else {
-                            clone = cloneAndesMessageMetadataAndContent(message);
-                        }
-                        //We must update the routing key in metadata as well
-                        clone.updateMetadata(subscriberQueue.getTargetQueue());
-
-                        messageStoreManager.storeMetadata(message);
-                    } else {
-                        hasNonDurableSubscriptions = true;
-                    }
-                }
-
-                if (hasNonDurableSubscriptions) {
-                    // If there are non durable subscriptions, we write it to each node where
-                    // there is a subscription. Here we collect all nodes to which we need to
-                    // write to.
-                    targetAndesNodeSet = subscriptionStore
-                            .getNodeQueuesHavingSubscriptionsForTopic(message.getDestination());
-                    for (String hostId : targetAndesNodeSet) {
-                        AndesMessageMetadata clone;
-                        if (!originalMessageUsed) {
-                            originalMessageUsed = true;
-                            clone = message;
-                        } else {
-                            clone = message.deepClone(messageIdGenerator.getNextId());
-                        }
-                        messageStoreManager.storeMetadata(clone);
-                    }
-                }
-            } else {
-                messageStoreManager.storeMetadata(message);
-            }
         } catch (Exception e) {
             throw new AndesException("Error in storing the message to the store", e);
         }
     }
 
+    /**
+     * Get a single metadata object
+     * @param messageID id of the message
+     * @return AndesMessageMetadata
+     * @throws AndesException
+     */
     public AndesMessageMetadata getMessageMetaData(long messageID) throws AndesException {
         return durableMessageStore.getMetaData(messageID);
     }
 
+    /**
+     * Ack received.
+     * @param ackData information on Ack
+     * @throws AndesException
+     */
     public void ackReceived(AndesAckData ackData) throws AndesException {
-        // Record that the message acknowledgement has been received until the message is deleted from the message
-        // store.
-        OnflightMessageTracker.getInstance().addAckedButNotDeletedMessage(ackData.messageID);
         messageStoreManager.ackReceived(ackData);
     }
 
-    //todo: hasitha - to implement
-    public void messageRejected() throws AndesException {
+    /**
+     * Message is rejected
+     * @param metadata message that is rejected. It must bare id of channel reject came from
+     * @throws AndesException
+     */
+    public void messageRejected(AndesMessageMetadata metadata) throws AndesException {
 
+        OnflightMessageTracker.getInstance().handleFailure(metadata);
+        LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId(metadata.getChannelId(), metadata.getDestination(),metadata.isTopic());
+        if(subToResend != null) {
+            reQueueMessage(metadata, subToResend);
+        } else {
+            log.warn("Cannot handle reject. Subscription not found for channel " + metadata.getChannelId() + "Dropping message id= " + metadata.getMessageID());
+        }
+    }
+
+    /**
+     * Schedule message for subscription
+     * @param messageMetadata message to be scheduled
+     * @param subscription subscription to send
+     * @throws AndesException
+     */
+    public void reQueueMessage(AndesMessageMetadata messageMetadata, LocalSubscription subscription)
+            throws AndesException {
+        QueueDeliveryWorker.getInstance().scheduleMessageForSubscription(subscription, messageMetadata);
     }
 
     /**
@@ -259,68 +251,118 @@ public class MessagingEngine {
         String deadLetterQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString
                 (destinationQueueName, AndesConstants.DEAD_LETTER_QUEUE_NAME);
 
+
         messageStoreManager.moveMetaDataToQueue(messageId, destinationQueueName, deadLetterQueueName);
+
+        //remove tracking of the message
+        OnflightMessageTracker.getInstance()
+                              .stampMessageAsDLCAndRemoveFromTacking(messageId);
     }
 
     /**
-     * Remove messages of the queue matching to some destination queue
+     * Remove in-memory message buffers of the queue matching to given destination queue in this
+     * node.
+     * This is called from the HazelcastAgent when it receives a queue purged event.
      *
-     * @param destinationQueue destination queue name to match
+     * @param storageQueueName destination queue name to match
      * @return number of messages removed
      * @throws AndesException
      */
-    //TODO: hasitha - reimplement 1. get all message ids  2.remove all in one go 3. shedule to remove content 4. make counter delete
-    public int removeAllMessagesOfQueue(String destinationQueue) throws AndesException {
-        long lastProcessedMessageID = 0;
-        int messageCount = 0;
-        List<AndesMessageMetadata> messageList = durableMessageStore
-                .getNextNMessageMetadataFromQueue(destinationQueue, lastProcessedMessageID, 500);
-        List<AndesRemovableMetadata> messageMetaDataList = new ArrayList<AndesRemovableMetadata>();
-        List<Long> messageIdList = new ArrayList<Long>();
-        while (messageList.size() != 0) {
+    public int clearMessagesFromQueueInMemory(String storageQueueName,
+                                              Long purgedTimestamp) throws AndesException {
 
-            // Update metadata lists.
-            for (AndesMessageMetadata metadata : messageList) {
-                messageMetaDataList.add(new AndesRemovableMetadata(metadata.getMessageID(),
-                        metadata.getDestination()));
-                messageIdList.add(metadata.getMessageID());
-            }
-
-            messageCount += messageIdList.size();
-            lastProcessedMessageID = messageIdList.get(messageIdList.size() - 1);
-
-            //Remove metadata
-            durableMessageStore
-                    .deleteMessageMetadataFromQueue(destinationQueue, messageMetaDataList);
-            //Remove content
-            durableMessageStore.deleteMessageParts(messageIdList);
-
-            messageMetaDataList.clear();
-            messageIdList.clear();
-            messageList = durableMessageStore
-                    .getNextNMessageMetadataFromQueue(destinationQueue, lastProcessedMessageID,
-                            500);
-        }
-        return messageCount;
+        // Notify and clear any and all in memory messages addressed to the queue
+        return SlotDeliveryWorkerManager.getInstance().purgeMessagesFromActiveDeliveryWorkers
+                (storageQueueName, purgedTimestamp);
     }
 
+
+    /***
+     * This is the andes-specific purge method and can be called from AMQPBridge,
+     * MQTTBridge or UI MBeans (QueueManagementInformationMBean)
+     * Remove messages of the queue matching to given destination queue (cassandra / h2 / mysql etc. )
+     *
+     * @param destinationQueue destination queue name to match
+     * @param ownerName
+     * @return number of messages removed (in memory message count may not be 100% accurate
+     * since we cannot guarantee that we caught all messages in delivery threads.)
+     * @throws AndesException
+     */
+    public int purgeQueue(String destinationQueue,String ownerName) throws AndesException {
+
+        Long purgedTimestamp = System.currentTimeMillis();
+
+        // clear in memory messages of self (node)
+        clearMessagesFromQueueInMemory(destinationQueue, purgedTimestamp);
+
+        // The queueOwner here is passed as null since its not used from the notification object.
+        // The user permissions are validated at the andes feature component level.
+        AndesQueue purgedQueue = new AndesQueue(destinationQueue,ownerName,false,true);
+        purgedQueue.setLastPurgedTimestamp(purgedTimestamp);
+
+        //Notify the cluster
+        queueListener.handleLocalQueuesChanged(purgedQueue, QueueListener.QueueChange.Purged);
+
+        // Clear any and all message references addressed to the queue from the store
+        // We can measure the message count in store, but cannot exactly infer the message count
+        // in memory within all nodes at the time of purging. (Adding that could unnecessarily
+        // block critical pub sub flows.)
+        return messageStoreManager.purgeQueueFromStore(destinationQueue);
+    }
+
+    /**
+     * Delete messages from store. Optinally move to dead letter channel
+     * @param messagesToRemove List of messages to remove
+     * @param moveToDeadLetterChannel if to move to DLC
+     * @throws AndesException
+     */
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
         messageStoreManager.deleteMessages(messagesToRemove, moveToDeadLetterChannel);
     }
 
+    /**
+     * Get content chunk from store
+     * @param messageId id of the message
+     * @param offsetValue  chunk id
+     * @return message content
+     * @throws AndesException
+     */
     public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
         return messageStoreManager.getMessagePart(messageId, offsetValue);
     }
 
+    /**
+     * Get message count for queue
+     * @param queueName  name of the queue
+     * @return  message count of the queue
+     * @throws AndesException
+     */
     public int getMessageCountOfQueue(String queueName) throws AndesException {
         return (int) AndesContext.getInstance().getAndesContextStore().getMessageCountForQueue(
                 queueName);
     }
 
+    /**
+     * Get message metadata from queue between two message id values
+     * @param queueName queue name
+     * @param firstMsgId  id of the starting id
+     * @param lastMsgID id of the last id
+     * @return  List of message metadata
+     * @throws AndesException
+     */
     public List<AndesMessageMetadata> getMetaDataList(final String queueName, long firstMsgId, long lastMsgID) throws AndesException {
         return messageStoreManager.getMetaDataList(queueName, firstMsgId, lastMsgID);
     }
 
+    /**
+     * Get message metadata from queue starting from given id up a given
+     * message count
+     * @param queueName name of the queue
+     * @param firstMsgId  id of the starting id
+     * @param count maximum num of messages to return
+     * @return  List of message metadata
+     * @throws AndesException
+     */
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId, int count) throws AndesException {
         return messageStoreManager.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
     }
@@ -370,32 +412,48 @@ public class MessagingEngine {
             queueDeliveryWorker.clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(
                     destinationQueueName);
         }
-        //Remove sent but not acked messages
-        OnflightMessageTracker.getInstance()
-                .getSentButNotAckedMessagesOfQueue(destinationQueueName);
     }
 
+    /**
+     * Generate a new message ID. The return id will be always unique
+     * even for different message broker nodes
+     * @return  id generated
+     */
     public long generateNewMessageId() {
         long messageId = messageIdGenerator.getNextId();
         if (log.isTraceEnabled()) {
-            log.trace("=== TRACING>> CMS - MessageID generated: " + messageId + " ===");
+            log.trace("MessageID generated: " + messageId );
         }
         return messageId;
     }
 
+    /**
+     * Create a clone of the message
+     * @param message  message to be cloned
+     * @return  Cloned reference of message
+     * @throws AndesException
+     */
     private AndesMessageMetadata cloneAndesMessageMetadataAndContent(AndesMessageMetadata message
     ) throws AndesException {
         long newMessageId = messageIdGenerator.getNextId();
         AndesMessageMetadata clone = message.deepClone(newMessageId);
 
         //Duplicate message content
-        ((CQLBasedMessageStoreImpl) durableMessageStore)
-                .duplicateMessageContent(message.getMessageID(), newMessageId);
+        List<AndesMessagePart> messageParts = getAllMessagePartsFromCache(message.getMessageID());
+        for(AndesMessagePart messagePart : messageParts) {
+            AndesMessagePart clonedPart = messagePart.deepClone(newMessageId);
+            messageStoreManager.storeMessagePart(clonedPart);
+        }
 
         return clone;
 
     }
 
+    /**
+     * Get node identifier current node. This will be unique for the node.
+     * Further after a restart node will have same node name
+     * @return  node identifier
+     */
     public static String getMyNodeQueueName() {
         ClusterManager clusterManager = ClusterResourceHolder.getInstance().getClusterManager();
         return AndesConstants.NODE_QUEUE_NAME_PREFIX + clusterManager.getMyNodeID();
@@ -429,7 +487,15 @@ public class MessagingEngine {
      * @throws Exception
      */
     public void startMessageDelivery() throws Exception {
-        //TODO: start topic delivery workers
+        log.info("Starting SlotDelivery Workers...");
+        //Start all slotDeliveryWorkers
+        SlotDeliveryWorkerManager.getInstance().startAllSlotDeliveryWorkers();
+        //Start thrift reconnecting thread if started
+        if (MBThriftClient.isReconnectingStarted()) {
+            MBThriftClient.setReconnectingFlag(true);
+        }
+        log.info("Start Disruptor writing messages to store...");
+        //TODO: Stop the disrupter
     }
 
     /**
@@ -437,21 +503,14 @@ public class MessagingEngine {
      */
     public void stopMessageDelivery() {
 
-        log.info("Stopping topic message publisher");
-        TopicDeliveryWorker tdw =
-                ClusterResourceHolder.getInstance().getTopicDeliveryWorker();
-        if (tdw != null && tdw.isWorking()) {
-            tdw.stopWorking();
-        }
-
-        log.info("Stopping queue message publisher");
+        log.info("Stopping SlotDelivery Worker...");
         //Stop all slotDeliveryWorkers
         SlotDeliveryWorkerManager.getInstance().stopSlotDeliveryWorkers();
         //Stop thrift reconnecting thread if started
         if (MBThriftClient.isReconnectingStarted()) {
             MBThriftClient.setReconnectingFlag(false);
         }
-        log.info("Stopping Disruptor writing messages to store");
+        log.info("Stopping Disruptor writing messages to store...");
         //TODO: Stop the disrupter
     }
 
@@ -497,4 +556,108 @@ public class MessagingEngine {
 
     }
 
+
+    /**
+     * Route the message to queue/queues of subscribers matching in AMQP way.
+     * Hierarchical topic message routing is evaluated here. This will duplicate
+     * message for each "subscription destination (not message destination)" at
+     * different nodes
+     * @param message message to route
+     * @throws AndesException
+     */
+    private void routeAMQPMetadata(AndesMessageMetadata message) throws AndesException{
+        if (message.isTopic) {
+            String messageRoutingKey = message.getDestination();
+            //get all topic subscriptions in the cluster matching to routing key
+            //including hierarchical topic case
+            List<AndesSubscription> subscriptionList = subscriptionStore
+                    .getActiveClusterSubscribersForDestination(messageRoutingKey,true);
+            boolean isMessageRouted = false;
+            List<String> alreadyStoredQueueNames = new ArrayList<String>();
+            for (AndesSubscription subscription : subscriptionList) {
+                if(!alreadyStoredQueueNames.contains(subscription.getStorageQueueName())) {
+
+                    //Everything is done to a clone setting aside original message
+                    AndesMessageMetadata clone = cloneAndesMessageMetadataAndContent(message);
+
+                    //Message should be written to storage queue name. This is
+                    //determined by destination of the message. So should be
+                    //updated (but internal metadata will have topic name as usual)
+                    clone.setStorageQueueName(subscription.getStorageQueueName());
+
+                    if(subscription.isDurable()) {
+                        /**
+                         * For durable topic subscriptions we must update the routing key
+                         * in metadata as well so that they become independent messages
+                         * baring subscription bound queue name as the destination
+                         */
+                        clone.updateMetadata(subscription.getTargetQueue(), AMQPUtils.DIRECT_EXCHANGE_NAME);
+                    }
+                    if(log.isDebugEnabled()) {
+                        log.debug("Storing metadata queue= " + subscription
+                                .getStorageQueueName() + " messageID= " + clone.getMessageID() + "isTopic");
+                    }
+                    messageStoreManager.storeMetadata(clone);
+                    isMessageRouted = true;
+                    alreadyStoredQueueNames.add(subscription.getStorageQueueName());
+                }
+            }
+
+            //if there is no matching subscriber at the moment there is no point
+            //of storing the message
+            if(!isMessageRouted) {
+                log.info("Message routing key: " + message
+                        .getDestination() + " No routes in cluster. Ignoring Message id=" + message.getMessageID());
+                List<Long> messageIdList = new ArrayList<Long>();
+                messageIdList.add(message.getMessageID());
+                //todo: at this moment content is still in disruptor.
+                durableMessageStore.deleteMessageParts(messageIdList);
+            }
+
+        } else {
+            message.setStorageQueueName(message.getDestination());
+            messageStoreManager.storeMetadata(message);
+        }
+
+        removeMessageContentsFromCache(message.getMessageID());
+    }
+
+    /**
+     * Cache the message content chunk
+     * @param messagePart content chunk to cache
+     */
+    private void cacheMessageContentPart(AndesMessagePart messagePart) {
+        long messageID = messagePart.getMessageID();
+        List<AndesMessagePart> contentChunks = messagePatsCache.get(messageID);
+        if(contentChunks == null) {
+            contentChunks = new ArrayList<AndesMessagePart>();
+        }
+        contentChunks.add(messagePart);
+        messagePatsCache.put(messageID, contentChunks);
+    }
+
+    /**
+     * Get all message content chunks of a message from cache
+     * @param messageID id of the message whose chunk should receive
+     * @return lst of content chunks
+     */
+    private List<AndesMessagePart> getAllMessagePartsFromCache(long messageID) {
+        return messagePatsCache.get(messageID);
+    }
+
+    /**
+     * Remove message content chunks for message
+     * @param messageID id of the message
+     */
+    private void removeMessageContentsFromCache(long messageID) {
+        messagePatsCache.remove(messageID);
+    }
+
+    /**
+     * Connection Client to client is closed
+     * @param channelID id of the closed connection
+     */
+    public void clientConnectionClosed(UUID channelID) {
+        OnflightMessageTracker.getInstance().releaseAllMessagesOfChannelFromTracking(channelID);
+    }
 }

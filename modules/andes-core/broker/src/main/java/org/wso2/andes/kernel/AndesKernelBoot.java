@@ -28,6 +28,7 @@ import org.wso2.andes.server.cassandra.TopicDeliveryWorker;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.configuration.BrokerConfiguration;
+import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
 import org.wso2.andes.server.information.management.QueueManagementInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
 import org.wso2.andes.server.slot.thrift.MBThriftServer;
@@ -44,8 +45,9 @@ import java.util.concurrent.TimeUnit;
  */
 public class AndesKernelBoot {
     private static Log log = LogFactory.getLog(AndesKernelBoot.class);
-    private static Configuration storeConfiguration;
     private static BrokerConfiguration clusterConfiguration;
+    private static VirtualHost virtualHost;
+    private static MessageStore messageStore;
 
     /**
      * Scheduled thread pool executor to run periodic andes recovery task
@@ -68,6 +70,15 @@ public class AndesKernelBoot {
         startThriftServer();
         startMessaging();
 
+    }
+
+    /**
+     * Set the default virtual host. Andes operates
+     * this virtual host only
+     * @param defaultVirtualHost virtual host to set
+     */
+    public static void setVirtualHost(VirtualHost defaultVirtualHost) {
+        virtualHost = defaultVirtualHost;
     }
 
     /**
@@ -99,14 +110,9 @@ public class AndesKernelBoot {
 
     /**
      * start all andes stores message store/context store and AMQP construct store
-     *
-     * @param configuration store configurations
-     * @param virtualHost virtual host to relate
      * @throws Exception
      */
-    public static void startAndesStores(Configuration configuration, VirtualHost virtualHost)
-            throws Exception {
-        storeConfiguration = configuration;
+    public static void startAndesStores() throws Exception {
 
         VirtualHostsConfiguration virtualHostsConfiguration = AndesContext.getInstance()
                                                                           .getVirtualHostsConfiguration();
@@ -153,6 +159,7 @@ public class AndesKernelBoot {
                 virtualHostsConfiguration.getMessageStoreProperties()
         );
         MessagingEngine.getInstance().initialise(messageStore);
+        AndesKernelBoot.messageStore = messageStore;
 
         /**
          * initialize amqp constructs syncing into Qpid
@@ -237,13 +244,13 @@ public class AndesKernelBoot {
                 ClusterResourceHolder.getInstance().getClusterManager());
         clusterManagementMBean.register();
 
-        QueueManagementInformationMBean queueManagementMBean = new
-                QueueManagementInformationMBean();
-        queueManagementMBean.register();
-
         SubscriptionManagementInformationMBean subscriptionManagementInformationMBean = new
                 SubscriptionManagementInformationMBean();
         subscriptionManagementInformationMBean.register();
+
+        MessageStatusInformationMBean messageStatusInformationMBean = new
+                MessageStatusInformationMBean();
+        messageStatusInformationMBean.register();
     }
 
     /**
@@ -279,7 +286,21 @@ public class AndesKernelBoot {
     }
 
     /**
-     * stop andes components
+     * reinitialize message stores after a connection lost
+     * to DB
+     * @throws Exception
+     */
+    public static void reInitializeAndesStores() throws Exception {
+        log.info("Reinitializing Andes Stores...");
+        VirtualHostsConfiguration virtualHostsConfiguration =
+                AndesContext.getInstance().getVirtualHostsConfiguration();
+        messageStore.initializeMessageStore(virtualHostsConfiguration.getMessageStoreProperties());
+        AndesContextStore andesContextStore = AndesContext.getInstance().getAndesContextStore();
+        andesContextStore.init(virtualHostsConfiguration.getAndesContextStoreProperties());
+    }
+
+    /**
+     * Stop andes components
      *
      * @throws Exception
      */
@@ -300,7 +321,7 @@ public class AndesKernelBoot {
     }
 
     /**
-     * close transports and stop message delivery
+     * Close transports and stop message delivery
      *
      * @throws Exception
      */
@@ -312,17 +333,14 @@ public class AndesKernelBoot {
 
 
     /**
-     * start the thrift server
+     * Start the thrift server
      * @throws AndesException
      */
     private static void startThriftServer() throws AndesException {
-        try {
-            MBThriftServer.getInstance().start(AndesContext.getInstance().getThriftServerHost(),
-                    AndesContext.getInstance().getThriftServerPort(),"MB-ThriftServer-main-thread");
+        MBThriftServer.getInstance().start(AndesContext.getInstance().getThriftServerHost(),
+                AndesContext.getInstance().getThriftServerPort(), "MB-ThriftServer-main-thread");
 
-        } catch (AndesException e) {
-            throw new AndesException("Could not start the MB Thrift Server" , e);
-        }
+
     }
 
     /**

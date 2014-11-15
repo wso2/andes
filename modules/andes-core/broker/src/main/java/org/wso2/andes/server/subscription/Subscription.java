@@ -19,6 +19,7 @@ package org.wso2.andes.server.subscription;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.logging.LogActor;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;

@@ -31,36 +31,43 @@ import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
 
 /**
- * This class centralises the management of Dead Letter Queues by creating Dead Letter Queues when requested and
- * deciding on whether a queue is a Dead Letter Queue or not and generating the 'Dead Letter Queue' queue name for
- * the tenant.
+ * This class centralises the management of Dead Letter Queues by creating Dead Letter Queues when
+ * requested and deciding on whether a queue is a Dead Letter Queue or not and generating the 'Dead
+ * Letter Queue' queue name for the tenant.
  */
 public class DLCQueueUtils {
 
     private static final Logger log = Logger.getLogger(DLCQueueUtils.class);
 
     /**
-     * Derive the Dead Letter Queue name of the tenant with respect to a given queue of the same tenant.
+     * Derive the Dead Letter Queue name of the tenant with respect to a given queue of the same
+     * tenant.
      *
-     * @param queueName  A queue name in the same tenant.
-     * @param dlc_string The Dead Letter Queue suffix.
+     * @param queueName
+     *         A queue name in the same tenant.
+     * @param dlcString
+     *         The Dead Letter Queue suffix.
      * @return The Dead Letter Queue name for the tenant.
      */
-    public static String identifyTenantInformationAndGenerateDLCString(String queueName, String dlc_string) {
-        String destination_string;
-        if (queueName.contains("/")) {
+    public static String identifyTenantInformationAndGenerateDLCString(String queueName,
+                                                                       String dlcString) {
+        String destinationString;
+
+        if ("/".contains(queueName)) {
             //The Queue is in the tenant realm
-            destination_string = queueName.split("/", 2)[0] + "/" + dlc_string;
+            destinationString = queueName.split("/", 2)[0] + "/" + dlcString;
         } else {
-            destination_string = dlc_string;
+            destinationString = dlcString;
         }
-        return destination_string;
+
+        return destinationString;
     }
 
     /**
      * Decides on whether a given queue name is a Dead Letter Queue or not.
      *
-     * @param queueName The Queue name to test.
+     * @param queueName
+     *         The Queue name to test.
      * @return True if a Dead Letter Queue, False if not a Dead Letter Queue.
      */
     public static boolean isDeadLetterQueue(String queueName) {
@@ -82,9 +89,12 @@ public class DLCQueueUtils {
     /**
      * Creates a Dead Letter Queue for the tenant in a given queue name.
      *
-     * @param queueName A queue name in the same tenant.
-     * @param host      The Virtual Host.
-     * @param owner     The tenant owner.
+     * @param queueName
+     *         A queue name in the same tenant.
+     * @param host
+     *         The Virtual Host.
+     * @param owner
+     *         The tenant owner.
      * @throws AndesException
      */
     public static synchronized void createDLCQueue(String queueName, VirtualHost host,

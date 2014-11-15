@@ -18,6 +18,8 @@
 
 package org.wso2.andes.kernel;
 
+import java.util.UUID;
+
 public interface LocalSubscription extends AndesSubscription {
 
 	public int getnotAckedMsgCount();
@@ -25,6 +27,8 @@ public interface LocalSubscription extends AndesSubscription {
     public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata)throws AndesException;
 
     public boolean isActive();
+
+    public UUID getChannelID();
 
     public LocalSubscription createQueueToListentoTopic();
 }

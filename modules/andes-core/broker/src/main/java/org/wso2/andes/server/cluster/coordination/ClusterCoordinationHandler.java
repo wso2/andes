@@ -46,12 +46,19 @@ public class ClusterCoordinationHandler implements QueueListener, ExchangeListen
                 ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterQueueRemoved(andesQueue);
                 break;
             case Purged:
-                //purge queue - handled by a different listener
-
+                //purge queue
+                ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterQueuePurged(andesQueue);
+                break;
         }
 
     }
 
+    /***
+     * {@inheritDoc}
+     * @param andesQueue changed queue
+     * @param changeType what type of change has happened
+     * @throws AndesException
+     */
     @Override
     public void handleLocalQueuesChanged(AndesQueue andesQueue, QueueChange changeType) throws AndesException {
         //notify cluster that queues are changed
@@ -60,10 +67,6 @@ public class ClusterCoordinationHandler implements QueueListener, ExchangeListen
             ClusterNotification clusterNotification = new ClusterNotification(andesQueue.encodeAsString(),
                     changeType.toString(), "Queue Notification Message : " + changeType.toString());
             hazelcastAgent.notifyQueuesChanged(clusterNotification);
-        }
-        //if running in standalone mode short-circuit cluster notification
-        else {
-            //handleClusterQueuesChanged(andesQueue,changeType);
         }
 
     }

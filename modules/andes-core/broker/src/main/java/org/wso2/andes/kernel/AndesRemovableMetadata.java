@@ -21,11 +21,13 @@ package org.wso2.andes.kernel;
 public class AndesRemovableMetadata {
 
     public long messageID;
-    public String destination;
+    public String storageDestination;
+    public String messageDestination;
     public boolean isForTopic;
 
-    public AndesRemovableMetadata(long messageID, String destination){
+    public AndesRemovableMetadata(long messageID, String messageDestination, String storageDestination){
         this.messageID = messageID;
-        this.destination = destination;
+        this.messageDestination = messageDestination;
+        this.storageDestination = storageDestination;
     }
 }

@@ -18,10 +18,16 @@
 package org.wso2.andes.server.handler;
 
 import org.wso2.andes.AMQException;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.BasicRejectBody;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
+import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.state.AMQStateManager;
@@ -64,13 +70,6 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
 
         long deliveryTag = body.getDeliveryTag();
 
-
-        /**
-         * Inform kernel that message has been rejected by AMQP transport
-         */
-        QpidAMQPBridge.getInstance().rejectMessage(deliveryTag, channel.getId());
-
-
         QueueEntry message = channel.getUnacknowledgedMessageMap().get(deliveryTag);
 
         if (message == null)
@@ -89,7 +88,6 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
                 {
                     message.discard();
                 }
-                //sendtoDeadLetterQueue(msg)
                 return;
             }
 
@@ -111,21 +109,32 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
             // If we haven't requested message to be resent to this consumer then reject it from ever getting it.
             //if (!evt.getMethod().resend)
             {
+                /**
+                 * Inform kernel that message has been rejected by AMQP transport
+                 */
+                try {
+                    QpidAMQPBridge.getInstance().rejectMessage((AMQMessage) message.getMessage(), channel);
+                } catch (AMQException e) {
+                    _logger.error("Error while rejecting message by kernel" , e);
+                    throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while rejecting message by kernel", e);
+                }
                 message.reject();
             }
 
             if (body.getRequeue())
             {
-
+                //todo: we need to honour this
                 channel.requeue(deliveryTag);
             }
             else
             {
                 _logger.warn("Dropping message as requeue not required and there is no dead letter queue");
-                 message = channel.getUnacknowledgedMessageMap().remove(deliveryTag);
-                //sendtoDeadLetterQueue(AMQMessage message)
-//                message.queue = channel.getDefaultDeadLetterQueue();
-//                channel.requeue(deliveryTag);
+                try {
+                    MessagingEngine.getInstance().moveMessageToDeadLetterChannel(message.getMessage().getMessageNumber(),message.getQueue().getName());
+                } catch (AndesException e) {
+                    _logger.error("Error while moving message to DLC" , e);
+                    throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while moving message to DLC", e);
+                }
             }
         }
     }

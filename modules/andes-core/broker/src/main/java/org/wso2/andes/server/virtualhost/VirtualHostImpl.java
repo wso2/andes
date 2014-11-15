@@ -33,6 +33,7 @@ import org.wso2.andes.server.connection.ConnectionRegistry;
 import org.wso2.andes.server.connection.IConnectionRegistry;
 import org.wso2.andes.server.exchange.*;
 import org.wso2.andes.server.federation.BrokerLink;
+import org.wso2.andes.server.information.management.QueueManagementInformationMBean;
 import org.wso2.andes.server.logging.LogSubject;
 import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.server.logging.messages.VirtualHostMessages;
@@ -82,6 +83,8 @@ public class VirtualHostImpl implements VirtualHost {
     protected VirtualHostMBean _virtualHostMBean;
 
     private AMQBrokerManagerMBean _brokerMBean;
+
+    private QueueManagementInformationMBean _queueManagementInformationMBean;
 
     private final AuthenticationManager _authenticationManager;
 
@@ -199,8 +202,6 @@ public class VirtualHostImpl implements VirtualHost {
 
         _bindingFactory = new BindingFactory(this);
 
-        initialiseModel(_configuration);
-
         if (store != null) {
             _messageStore = store;
             _durableConfigurationStore = store;
@@ -209,12 +210,17 @@ public class VirtualHostImpl implements VirtualHost {
         }
 
         // This needs to be after the RT has been defined as it creates the default durable exchanges.
+        initialiseModel(_configuration);
         _exchangeRegistry.initialise();
 
         _authenticationManager = ApplicationRegistry.getInstance().getAuthenticationManager();
 
         _brokerMBean = new AMQBrokerManagerMBean(_virtualHostMBean);
         _brokerMBean.register();
+
+        _queueManagementInformationMBean = new QueueManagementInformationMBean(_virtualHostMBean);
+        _queueManagementInformationMBean.register();
+
         initialiseHouseKeeping(hostConfig.getHousekeepingExpiredMessageCheckPeriod());
 
         initialiseStatistics();
@@ -327,8 +333,11 @@ public class VirtualHostImpl implements VirtualHost {
      */
     private void initialiseAndesStores(VirtualHostConfiguration hostConfig) throws Exception {
 
+        //Set virtual host
+        AndesKernelBoot.setVirtualHost(this);
+
         //kernel will start message stores for Andes
-        AndesKernelBoot.startAndesStores(hostConfig.getStoreConfiguration(), this);
+        AndesKernelBoot.startAndesStores();
 
         // this is considered as an internal impl now, so hard coding
         // qpid related messagestore

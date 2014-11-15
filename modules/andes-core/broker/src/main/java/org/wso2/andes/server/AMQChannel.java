@@ -34,8 +34,6 @@ import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMapImpl;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.server.cassandra.QueueSubscriptionAcknowledgementHandler;
 import org.wso2.andes.server.cassandra.SequentialThreadPoolExecutor;
 import org.wso2.andes.server.configuration.*;
 import org.wso2.andes.server.exchange.Exchange;
@@ -86,7 +84,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     private static final Logger _logger = Logger.getLogger(AMQChannel.class);
 
     private static final boolean MSG_AUTH =
-        ApplicationRegistry.getInstance().getConfiguration().getMsgAuth();
+            ApplicationRegistry.getInstance().getConfiguration().getMsgAuth();
 
 
     private final int _channelId;
@@ -126,7 +124,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     private final AtomicBoolean _suspended = new AtomicBoolean(false);
 
     private ServerTransaction _transaction;
-    
+
     private final AtomicLong _txnStarts = new AtomicLong(0);
     private final AtomicLong _txnCommits = new AtomicLong(0);
     private final AtomicLong _txnRejects = new AtomicLong(0);
@@ -151,7 +149,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     AMQShortString IMMEDIATE_DELIVERY_REPLY_TEXT = new AMQShortString("Immediate delivery is not possible.");
     private final UUID _id;
     private long _createTime = System.currentTimeMillis();
-    
+
     private AtomicInteger inflightMessageCount = new AtomicInteger();
 
     private static SequentialThreadPoolExecutor messageRoutingExecutor = null;
@@ -208,12 +206,12 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         // theory
         return !(_transaction instanceof AutoCommitTransaction);
     }
-    
+
     public boolean inTransaction()
     {
         return isTransactional() && _txnUpdateTime.get() > 0 && _transaction.getTransactionStartTime() > 0;
     }
-    
+
     private void incrementOutstandingTxnsIfNecessary()
     {
         if(isTransactional())
@@ -223,7 +221,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             _txnCount.compareAndSet(0,1);
         }
     }
-    
+
     private void decrementOutstandingTxnsIfNecessary()
     {
         if(isTransactional())
@@ -262,8 +260,8 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     public void setPublishFrame(MessagePublishInfo info, final Exchange e) throws AMQSecurityException
     {
         if (!getVirtualHost().getSecurityManager().authorisePublish(info.isImmediate(),
-                info.getRoutingKey().asString(), e.getName()) ||
-                DLCQueueUtils.isDeadLetterQueue(info.getRoutingKey().asString())) {
+                                                                    info.getRoutingKey().asString(), e.getName()) ||
+            DLCQueueUtils.isDeadLetterQueue(info.getRoutingKey().asString())) {
             throw new AMQSecurityException("Permission denied: " + e.getName());
         }
         _currentMessage = new IncomingMessage(info);
@@ -287,7 +285,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             _currentMessage.setContentHeaderBody(contentHeaderBody);
 
             _currentMessage.setExpiration();
-
+            _currentMessage.setArrivalTime();
 
             MessageMetaData mmd = _currentMessage.headersReceived();
             //TODO find a proper way to get the IP of the client
@@ -329,7 +327,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             {
                 //Srinath - we will do this later
                 //_currentMessage.getStoredMessage().flushToStore();
-                
+
                 final ArrayList<? extends BaseQueue> destinationQueues = _currentMessage.getDestinationQueues();
 
                 if(!checkMessageUserId(_currentMessage.getContentHeader()))
@@ -348,10 +346,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                         }
                         else
                         {
-                             //no need to sync whole topic bindings across cluster. Thus this log has no sense in clustered mode
-                             if(!AndesContext.getInstance().isClusteringEnabled()) {
-                                 _logger.warn("MESSAGE DISCARDED: No routes for message - " + createAMQMessage(_currentMessage));
-                             }
+                            //no need to sync whole topic bindings across cluster. Thus this log has no sense in clustered mode
+                            if(!AndesContext.getInstance().isClusteringEnabled()) {
+                                _logger.warn("MESSAGE DISCARDED: No routes for message - " + createAMQMessage(_currentMessage));
+                            }
                         }
 
                     }
@@ -367,10 +365,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                          */
                     }
                 }
-                
+
                 //TODO
                 //check queue size from here and reject the request
-                
+
                 //need to bind this to the inner class, as _currentMessage
                 final IncomingMessage incomingMessage = _currentMessage;
 
@@ -383,11 +381,12 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                      * happen here
                      */
 
-                    QpidAMQPBridge.getInstance().messageMetaDataReceived(incomingMessage, _channelId);
+                    QpidAMQPBridge.getInstance().messageMetaDataReceived(incomingMessage, this.getId());
 
                     AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
-                    AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message, _channelId);
+                    AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message, this.getId());
                     metadata.setExpirationTime(incomingMessage.getExpiration());
+                    metadata.setArrivalTime(incomingMessage.getArrivalTime());
 
                 } catch (Throwable e) {
                     _logger.error("Error processing completed messages, we will close this session", e);
@@ -492,8 +491,8 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         {
             throw new AMQException("Consumer already exists with same tag: " + tag);
         }
-        
-         Subscription subscription =
+
+        Subscription subscription =
                 SubscriptionFactoryImpl.INSTANCE.createSubscription(_channelId, _session, tag, acks, filters, noLocal, _creditManager);
 
         try {
@@ -515,7 +514,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         try {
             //Will finally create a DLC queue for the domain if it has not being created before
             DLCQueueUtils.createDLCQueue(queue.getResourceName(), getVirtualHost(),
-                    ((AMQProtocolEngine) _session).getAuthId().toString());
+                                         ((AMQProtocolEngine) _session).getAuthId().toString());
         } catch (AndesException e) {
             throw new AMQException("Error creating Dead Letter Queue.", e);
         }
@@ -547,10 +546,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 //				for(Binding b : bindingList) {
 //				    Exchange exchange = b.getExchange();
 //				    if (exchange.getName().equalsIgnoreCase("amq.direct")) {
-//				    	String subscriptionID = String.valueOf(subscription.getSubscription().getSubscriptionID()); 
-//				        String destinationQueue = b.getBindingKey(); 
+//				    	String subscriptionID = String.valueOf(subscription.getSubscription().getSubscriptionID());
+//				        String destinationQueue = b.getBindingKey();
 //				    }
-//				}            	
+//				}
                 sub.getSendLock();
                 sub.getQueue().unregisterSubscription(sub);
 //			    ClusteringEnabledSubscriptionManager csm = ClusterResourceHolder.getInstance().getSubscriptionManager();
@@ -598,9 +597,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         }
 
         getConfigStore().removeConfiguredObject(this);
-        
-        //make the message tracker remove pending messages
-        forgetMessages4Channel(); 
+
+        forgetMessages4Channel();
+
+        QpidAMQPBridge.getInstance().channelIsClosing(this.getId());
 
         //here we will wait for  all jobs from this channel to end
         DisruptorBasedExecutor.wait4JobsfromThisChannel2End(this._channelId);
@@ -669,16 +669,16 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                 if (_logger.isDebugEnabled())
                 {
                     _logger.debug(debugIdentity() + " Adding unacked message(" + entry.getMessage().toString() + " DT:" + deliveryTag
-                               + ") with a queue(" + entry.getQueue() + ") for " + subscription);
+                                  + ") with a queue(" + entry.getQueue() + ") for " + subscription);
                 }
             }
         }
-        
 
-   /**Todo -Shammi- We are not using unack map in Queue scenario. Because of that this map is growing unnecessarily in Queues and
-    * created OOM exceptions.
-    * But we need to have this map for topics, other wise it will create "https://wso2.org/jira/browse/MB-70"  */
-         _unacknowledgedMessageMap.add(deliveryTag, entry);
+
+        /**Todo -Shammi- We are not using unack map in Queue scenario. Because of that this map is growing unnecessarily in Queues and
+         * created OOM exceptions.
+         * But we need to have this map for topics, other wise it will create "https://wso2.org/jira/browse/MB-70"  */
+        _unacknowledgedMessageMap.add(deliveryTag, entry);
 
     }
 
@@ -755,7 +755,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             else
             {
                 _logger.warn(System.identityHashCode(this) + " Requested requeue of message(" + unacked
-                          + "):" + deliveryTag + " but no queue defined and no DeadLetter queue so DROPPING message.");
+                             + "):" + deliveryTag + " but no queue defined and no DeadLetter queue so DROPPING message.");
 
                 unacked.discard();
             }
@@ -763,7 +763,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         else
         {
             _logger.warn("Requested requeue of message:" + deliveryTag + " but no such delivery tag exists."
-                      + _unacknowledgedMessageMap.size());
+                         + _unacknowledgedMessageMap.size());
 
         }
 
@@ -855,7 +855,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                 if (_logger.isInfoEnabled())
                 {
                     _logger.info("DeliveredSubscription not recorded so just requeueing(" + message.toString()
-                              + ")to prevent loss");
+                                 + ")to prevent loss");
                 }
                 // move this message to requeue
                 msgToRequeue.put(deliveryTag, message);
@@ -900,20 +900,20 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         Collection<QueueEntry> ackedMessages = getAckedMessages(deliveryTag, multiple);
         _transaction.dequeue(ackedMessages, new MessageAcknowledgeAction(ackedMessages));
 
-        QueueSubscriptionAcknowledgementHandler acknowledgementHandler = ClusterResourceHolder.getInstance().
-                getSubscriptionManager().getAcknowledgementHandlerMap().get(this);
-        /**
-         * We honour acks for queue messages only
-         * TODO:is it correct? Shouldn't we honour acks for topic messages also
-         */
-        for(QueueEntry entry: ackedMessages){
-            if(!entry.getQueue().checkIfBoundToTopicExchange()) {
-
-                acknowledgementHandler.handleAcknowledgement(this, entry);
-            } else {
-                //discard acks for topic messages. We consider they are acked
-                //at the moment they are scheduled to deliver
-            }
+        for (QueueEntry entry : ackedMessages) {
+            /**
+             * When the message is acknowledged it is informed to Andes Kernel
+             */
+            boolean isTopic = ((AMQMessage) entry.getMessage()).getMessagePublishInfo()
+                                                               .getExchange()
+                                                               .equals(AMQPUtils
+                                                                               .TOPIC_EXCHANGE_NAME);
+            QpidAMQPBridge.getInstance()
+                          .ackReceived(this.getId(), entry.getMessage().getMessageNumber(),
+                                       entry.getMessage().getRoutingKey(),
+                                       isTopic);
+            //TODO: we need to do it when processing the ack?
+            this.decrementNonAckedMessageCount();
         }
 
         updateTransactionalActivity();
@@ -924,11 +924,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     {
 
         Map<Long, QueueEntry> ackedMessageMap = new LinkedHashMap<Long,QueueEntry>();
-          synchronized (_unacknowledgedMessageMap) {
-        _unacknowledgedMessageMap.collect(deliveryTag, multiple, ackedMessageMap);
-        _unacknowledgedMessageMap.remove(ackedMessageMap);
-		}        
-		return ackedMessageMap.values();
+        synchronized (_unacknowledgedMessageMap) {
+            _unacknowledgedMessageMap.collect(deliveryTag, multiple, ackedMessageMap);
+            _unacknowledgedMessageMap.remove(ackedMessageMap);
+        }
+        return ackedMessageMap.values();
     }
 
     /**
@@ -1059,7 +1059,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         finally
         {
             _rollingBack = false;
-            
+
             _txnRejects.incrementAndGet();
             _txnStarts.incrementAndGet();
             decrementOutstandingTxnsIfNecessary();
@@ -1148,17 +1148,17 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     }
 
     private final ClientDeliveryMethod _clientDeliveryMethod = new ClientDeliveryMethod()
+    {
+
+        public void deliverToClient(final Subscription sub, final QueueEntry entry, final long deliveryTag)
+                throws AMQException
         {
+            getProtocolSession().getProtocolOutputConverter().writeDeliver(entry, getChannelId(),
+                                                                           deliveryTag, sub.getConsumerTag());
+            _session.registerMessageDelivered(entry.getMessage().getSize());
+        }
 
-            public void deliverToClient(final Subscription sub, final QueueEntry entry, final long deliveryTag)
-                    throws AMQException
-            {
-                getProtocolSession().getProtocolOutputConverter().writeDeliver(entry, getChannelId(),
-                                                                               deliveryTag, sub.getConsumerTag());
-               _session.registerMessageDelivered(entry.getMessage().getSize());
-            }
-
-        };
+    };
 
     public ClientDeliveryMethod getClientDeliveryMethod()
     {
@@ -1166,13 +1166,13 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     }
 
     private final RecordDeliveryMethod _recordDeliveryMethod = new RecordDeliveryMethod()
-        {
+    {
 
-            public void recordMessageDelivery(final Subscription sub, final QueueEntry entry, final long deliveryTag)
-            {
-                addUnacknowledgedMessage(entry, deliveryTag, sub);
-            }
-        };
+        public void recordMessageDelivery(final Subscription sub, final QueueEntry entry, final long deliveryTag)
+        {
+            addUnacknowledgedMessage(entry, deliveryTag, sub);
+        }
+    };
 
     public RecordDeliveryMethod getRecordDeliveryMethod()
     {
@@ -1195,8 +1195,8 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     {
         AMQShortString userID =
                 header.getProperties() instanceof BasicContentHeaderProperties
-                    ? ((BasicContentHeaderProperties) header.getProperties()).getUserId()
-                    : null;
+                ? ((BasicContentHeaderProperties) header.getProperties()).getUserId()
+                : null;
 
         return (!MSG_AUTH || _session.getAuthorizedPrincipal().getName().equals(userID == null? "" : userID.toString()));
 
@@ -1371,16 +1371,16 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             // explicit rollbacks resend the message after the rollback-ok is sent
             if(_rollingBack)
             {
-                 _resendList.addAll(_ackedMessages);
+                _resendList.addAll(_ackedMessages);
             }
             else
             {
                 try
                 {
-                        for(QueueEntry entry : _ackedMessages)
-                        {
-                            entry.release();
-                        }
+                    for(QueueEntry entry : _ackedMessages)
+                    {
+                        entry.release();
+                    }
                 }
                 finally
                 {
@@ -1411,11 +1411,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             try
             {
                 _session.getProtocolOutputConverter().writeReturn(_message.getMessagePublishInfo(),
-                                                              _message.getContentHeader(),
-                                                              _message,
-                                                              _channelId,
-                                                              _errorCode.getCode(),
-                                                             new AMQShortString(_description));
+                                                                  _message.getContentHeader(),
+                                                                  _message,
+                                                                  _channelId,
+                                                                  _errorCode.getCode(),
+                                                                  new AMQShortString(_description));
             }
             catch (AMQException e)
             {
@@ -1441,11 +1441,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     {
         //if(_blockingQueues.putIfAbsent(queue, Boolean.TRUE) == null)
         //{
-            if(_blocking.compareAndSet(false, true))
-            {
-                _actor.message(_logSubject, ChannelMessages.FLOW_ENFORCED(queue.getNameShortString().toString()));
-                flow(false);
-            }
+        if(_blocking.compareAndSet(false, true))
+        {
+            _actor.message(_logSubject, ChannelMessages.FLOW_ENFORCED(queue.getNameShortString().toString()));
+            flow(false);
+        }
         //}
     }
 
@@ -1461,11 +1461,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     {
         //if(_blockingQueues.remove(queue))
         //{
-            if(_blocking.compareAndSet(true,false))
-            {
-                _actor.message(_logSubject, ChannelMessages.FLOW_REMOVED());
-                flow(true);
-            }
+        if(_blocking.compareAndSet(true,false))
+        {
+            _actor.message(_logSubject, ChannelMessages.FLOW_REMOVED());
+            flow(true);
+        }
         //}
     }
 
@@ -1557,12 +1557,12 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     {
         return _createTime;
     }
-    
+
     public void mgmtClose() throws AMQException
     {
         _session.mgmtCloseChannel(_channelId);
     }
-    
+
     public void checkTransactionStatus(long openWarn, long openClose, long idleWarn, long idleClose) throws AMQException
     {
         if (inTransaction())
@@ -1594,30 +1594,29 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             }
         }
     }
-    
+
     public void forgetMessages4Channel(){
         inflightMessageCount.set(0);
-         while (isMessagesAcksProcessing){
+        while (isMessagesAcksProcessing){
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
-        OnflightMessageTracker.getInstance().releaseAckTrackingSinceChannelClosed(this);
     }
-    
+
     public int getNotAckedMessageCount(){
         return inflightMessageCount.get();
     }
-    
+
     public void decrementNonAckedMessageCount(){
         int msgCount = inflightMessageCount.decrementAndGet();
         if(_logger.isDebugEnabled()){
             _logger.debug("message sent channel="+ this + " pending Count" + msgCount);
         }
     }
-    
+
     public void incrementNonAckedMessageCount(){
         int intCount = inflightMessageCount.incrementAndGet();
         if(_logger.isDebugEnabled()){

@@ -26,14 +26,13 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.protocol.AMQConstant;
+import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cassandra.QueueBrowserDeliveryWorker;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -78,7 +77,6 @@ public class QpidAMQPBridge {
     private QpidAMQPBridge() {
 
         //register listeners for queue changes
-        addQueueListener(new MessagePurgeHandler());
         addQueueListener(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
 
         //register listeners for exchange changes
@@ -123,12 +121,14 @@ public class QpidAMQPBridge {
      * @param channelID       id of the channel
      * @throws AMQException
      */
-    public void messageMetaDataReceived(IncomingMessage incomingMessage, int channelID) throws AMQException {
+    public void messageMetaDataReceived(IncomingMessage incomingMessage, UUID channelID) throws AMQException {
         try {
             if(log.isDebugEnabled()){
             log.debug("AMQP BRIDGE: Message id= " + incomingMessage.getMessageNumber() + "received");
             }
             AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
+            message.getMessageMetaData().setArrivalTime(incomingMessage.getArrivalTime());
+
             AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message, channelID);
             String queue = message.getRoutingKey();
 
@@ -218,32 +218,42 @@ public class QpidAMQPBridge {
         return contentLenWritten;
     }
 
-    public void ackReceived(UUID channelID, long messageID, String queueName, boolean isTopic) throws AMQException{
+    public void ackReceived(UUID channelID, long messageID, String routingKey, boolean isTopic)
+            throws AMQException {
         try {
-        if(log.isDebugEnabled()){
-        log.debug("AMQP BRIDGE: ack received for message id= " + messageID);
-        }
-        AndesAckData andesAckData = AMQPUtils.generateAndesAckMessage(channelID, messageID,queueName,isTopic);
-        MessagingEngine.getInstance().ackReceived(andesAckData);
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "AMQP BRIDGE: ack received for message id= " + messageID + " channelId= "
+                        + channelID);
+            }
+            AndesSubscription ackSentSubscription = AndesContext.getInstance().
+                    getSubscriptionStore().getLocalSubscriptionForChannelId(channelID, routingKey,isTopic);
+            if(ackSentSubscription == null) {
+                //TODO : if an ack came here after subscription is closed, should we discard message?
+                log.error(
+                        "Cannot handle Ack. Subscription is null for channel= " + channelID + " " +
+                        "Message Destination= " + routingKey);
+                return;
+            }
+            //This can be different from routing key in hierarchical topic case
+            String subscriptionBoundDestination = ackSentSubscription.getSubscribedDestination();
+            String storageQueueNameOfSubscription = ackSentSubscription.getStorageQueueName();
+            AndesAckData andesAckData = AMQPUtils
+                    .generateAndesAckMessage(channelID, messageID, subscriptionBoundDestination,
+                     storageQueueNameOfSubscription,isTopic);
+            MessagingEngine.getInstance().ackReceived(andesAckData);
         } catch (AndesException e) {
             log.error("Exception occurred while handling ack", e);
-            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error in getting handling ack for " + messageID, e);
+            throw new AMQException(AMQConstant.INTERNAL_ERROR,
+                                   "Error in getting handling ack for " + messageID, e);
         }
     }
 
-    public void rejectMessage(long deliveryTag, UUID channelID) throws AMQException {
+    public void rejectMessage(AMQMessage message, AMQChannel channel) throws AMQException {
         try {
-            if(log.isDebugEnabled()){
-            log.debug("AMQP BRIDGE: rejected message delivery tag= " + deliveryTag + " channel = " + channelID);
-            }
-            //todo: hasitha - implement a non-amqp specific way to do this. For now doing nothing
-            MessagingEngine.getInstance().messageRejected();
-
-            /**Reject message is received when ack_wait_timeout happened in client side
-             * We need to inform onflightMessageTracker to resend the message again
-             */
-            OnflightMessageTracker.getInstance().handleFailure(deliveryTag, channelID);
-
+            AndesMessageMetadata rejectedMessage = AMQPUtils.convertAMQMessageToAndesMetadata(message, channel.getId());
+            log.debug("AMQP BRIDGE: rejected message id= " + rejectedMessage.getMessageID() + " channel = " + rejectedMessage.getChannelId());
+            MessagingEngine.getInstance().messageRejected(rejectedMessage);
         } catch (AndesException e) {
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while handling rejected message", e);
         }
@@ -275,8 +285,6 @@ public class QpidAMQPBridge {
                 addLocalSubscriptionsForAllBindingsOfQueue(queue, subscription);
             }
 
-            SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
-            slotDeliveryWorkerManager.startSlotDeliveryWorker(queue.getName());
         } catch (AndesException e) {
             log.error("Error while adding the subscription", e);
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while registering subscription", e);
@@ -363,8 +371,6 @@ public class QpidAMQPBridge {
             for (QueueListener queueListener : queueListeners) {
                 queueListener.handleLocalQueuesChanged(AMQPUtils.createAndesQueue(queue), QueueListener.QueueChange.Added);
             }
-            //AndesSubscriptionManager subManager = ClusterResourceHolder.getInstance().getSubscriptionManager();
-            //.subManager.addSubscription(AMQPUtils.createInactiveLocalSubscriberRepresentingQueue(queue));
         } catch (AndesException e) {
             log.error("error while creating queue", e);
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "error while creating queue", e);
@@ -382,11 +388,14 @@ public class QpidAMQPBridge {
         log.debug("AMQP BRIDGE:  delete queue : " + queue.getName());
         }
         try {
+            //delete all subscription enries if remaining
+            ClusterResourceHolder.getInstance().getSubscriptionManager().deleteSubscriptionsOfBoundQueue(queue.getName());
+
+            //remove queue and notify
             AndesContext.getInstance().getAMQPConstructStore().removeQueue(queue.getName(), true);
             for (QueueListener queueListener : queueListeners) {
                 queueListener.handleLocalQueuesChanged(AMQPUtils.createAndesQueue(queue), QueueListener.QueueChange.Deleted);
             }
-            //ClusterResourceHolder.getInstance().getSubscriptionManager().removeSubscriptionsRepresentingQueue(queue.getName(),queue.isExclusive());
 
         } catch (AndesException e) {
             log.error("error while removing queue", e);
@@ -457,6 +466,7 @@ public class QpidAMQPBridge {
         List<Binding> bindingList = queue.getBindings();
         if (bindingList != null && !bindingList.isEmpty()) {
             Set<AndesBinding> uniqueBindings = new HashSet<AndesBinding>();
+            List<LocalSubscription> alreadyAddedSubscriptions = new ArrayList<LocalSubscription>();
             /**
              * Iterate unique bindings of the queue and add subscription entries.
              */
@@ -466,19 +476,13 @@ public class QpidAMQPBridge {
                     if (uniqueBindings.add(andesBinding)) {
                         LocalSubscription localSubscription = AMQPUtils.createAMQPLocalSubscription(queue, subscription, b);
                         subscriptionManager.addSubscription(localSubscription);
+                        alreadyAddedSubscriptions.add(localSubscription);
                     }
                 }
             } catch (AndesException e) {
-                log.warn("Reverting already created subscription entries for this subscription", e);
-                for (AndesBinding b : uniqueBindings) {
-                    for (Binding qpidBinding : bindingList) {
-                        if (qpidBinding.getQueue().getName().equals(b.boundQueue.queueName) &&
-                                qpidBinding.getBindingKey().equals(b.routingKey) &&
-                                qpidBinding.getExchange().getName().equals(b.boundExchangeName)) {
-                            LocalSubscription localSubscription = AMQPUtils.createAMQPLocalSubscription(queue, subscription, qpidBinding);
-                            subscriptionManager.closeLocalSubscription(localSubscription);
-                        }
-                    }
+                log.warn("Reverting already created subscription entries for subscription " + subscription, e);
+                for(LocalSubscription alreadyAddedSub : alreadyAddedSubscriptions) {
+                    subscriptionManager.closeLocalSubscription(alreadyAddedSub);
                 }
                 throw new AndesException("error while adding the local subscription", e);
             }
@@ -511,5 +515,11 @@ public class QpidAMQPBridge {
         }
     }
 
-
+    /**
+     * Channel closed. Clear status
+     * @param channelID id of the closed channel
+     */
+    public void channelIsClosing(UUID channelID) {
+        MessagingEngine.getInstance().clientConnectionClosed(channelID);
+    }
 }

@@ -15,6 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.wso2.andes.server.binding;
 
 import org.wso2.andes.AMQException;
@@ -22,19 +23,14 @@ import org.wso2.andes.AMQInternalException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAMQPBridge;
-import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.subscription.SubscriptionStore;
-import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.configuration.BindingConfig;
 import org.wso2.andes.server.configuration.BindingConfigType;
 import org.wso2.andes.server.configuration.ConfigStore;
 import org.wso2.andes.server.configuration.ConfiguredObject;
 import org.wso2.andes.server.exchange.Exchange;
-import org.wso2.andes.server.exchange.ExchangeRegistry;
 import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.server.logging.messages.BindingMessages;
 import org.wso2.andes.server.logging.subjects.BindingLogSubject;
@@ -47,8 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class BindingFactory
-{
+public class BindingFactory {
     private final VirtualHost _virtualHost;
     private final DurableConfigurationStore.Source _configSource;
     private final Exchange _defaultExchange;
@@ -56,149 +51,101 @@ public class BindingFactory
     private final ConcurrentHashMap<BindingImpl, BindingImpl> _bindings = new ConcurrentHashMap<BindingImpl, BindingImpl>();
 
 
-    public BindingFactory(final VirtualHost vhost)
-    {
+    public BindingFactory(final VirtualHost vhost) {
         this(vhost, vhost.getExchangeRegistry().getDefaultExchange());
     }
 
-    public BindingFactory(final DurableConfigurationStore.Source configSource, final Exchange defaultExchange)
-    {
+    public BindingFactory(final DurableConfigurationStore.Source configSource, final Exchange defaultExchange) {
         _configSource = configSource;
         _defaultExchange = defaultExchange;
-        if (configSource instanceof VirtualHost)
-        {
+        if (configSource instanceof VirtualHost) {
             _virtualHost = (VirtualHost) configSource;
-        }
-        else
-        {
+        } else {
             _virtualHost = null;
         }
     }
 
-    public VirtualHost getVirtualHost()
-    {
+    public VirtualHost getVirtualHost() {
         return _virtualHost;
     }
 
 
-
-    private final class BindingImpl extends Binding implements AMQQueue.Task, Exchange.Task, BindingConfig
-    {
+    private final class BindingImpl extends Binding implements AMQQueue.Task, Exchange.Task, BindingConfig {
         private final BindingLogSubject _logSubject;
         //TODO : persist creation time
         private long _createTime = System.currentTimeMillis();
 
-        private BindingImpl(String bindingKey, final AMQQueue queue, final Exchange exchange, final Map<String, Object> arguments)
-        {
+        private BindingImpl(String bindingKey, final AMQQueue queue, final Exchange exchange, final Map<String, Object> arguments) {
             super(queue.getVirtualHost().getConfigStore().createId(), bindingKey, queue, exchange, arguments);
-            _logSubject = new BindingLogSubject(bindingKey,exchange,queue);
+            _logSubject = new BindingLogSubject(bindingKey, exchange, queue);
 
         }
 
 
-        public void doTask(final AMQQueue queue) throws AMQException
-        {
+        public void doTask(final AMQQueue queue) throws AMQException {
             removeBinding(this);
         }
 
-        public void onClose(final Exchange exchange) throws AMQSecurityException, AMQInternalException
-        {
+        public void onClose(final Exchange exchange) throws AMQSecurityException, AMQInternalException {
             removeBinding(this);
         }
 
-        void logCreation()
-        {
+        void logCreation() {
             CurrentActor.get().message(_logSubject, BindingMessages.CREATED(String.valueOf(getArguments()), getArguments() != null && !getArguments().isEmpty()));
         }
 
-        void logDestruction()
-        {
+        void logDestruction() {
             CurrentActor.get().message(_logSubject, BindingMessages.DELETED());
         }
 
-        public String getOrigin()
-        {
+        public String getOrigin() {
             return (String) getArguments().get("qpid.fed.origin");
         }
 
-        public long getCreateTime()
-        {
+        public long getCreateTime() {
             return _createTime;
         }
 
-        public BindingConfigType getConfigType()
-        {
+        public BindingConfigType getConfigType() {
             return BindingConfigType.getInstance();
         }
 
-        public ConfiguredObject getParent()
-        {
+        public ConfiguredObject getParent() {
             return _virtualHost;
         }
 
-        public boolean isDurable()
-        {
+        public boolean isDurable() {
             return getQueue().isDurable() && getExchange().isDurable();
         }
 
     }
 
-
-
-    public boolean addBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments) throws AMQSecurityException, AMQInternalException 
-    {
-    //    CassandraMessageStore.getInstance().addBinding(exchange,queue,bindingKey);
+    public boolean addBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments) throws AMQSecurityException, AMQInternalException {
+        //    CassandraMessageStore.getInstance().addBinding(exchange,queue,bindingKey);
         return makeBinding(bindingKey, queue, exchange, arguments, false, false);
     }
 
-    /**
-     * to avoid javax.jms.InvalidDestinationException: Queue: direct://amq.direct/myQueueNew/<queueName>?
-     * routingkey='<queueName>'&durable='true' is not a valid destination exception at client side we create a binding
-     * and let it synchronize across the cluster
-     * @param queueName
-     * @param routingKey
-     * @return is operation success
-     */
-/*    public boolean addInitialBindingForQueue(String queueName, String routingKey) {
-        boolean success = false;
-        try {
-            ClusterResourceHolder.getInstance().getCassandraMessageStore().addBinding(ExchangeDefaults.DEFAULT_EXCHANGE_NAME.toString(),queueName,routingKey);
-            ClusterResourceHolder.getInstance().getCassandraMessageStore().addBinding(ExchangeDefaults.DIRECT_EXCHANGE_NAME.toString(),queueName,routingKey);
-            success = true;
-        } catch (CassandraDataAccessException e) {
-            success = false;
-        }
-        return success;
-    }*/
-
-
     public boolean replaceBinding(final String bindingKey,
-                               final AMQQueue queue,
-                               final Exchange exchange,
-                               final Map<String, Object> arguments) throws AMQSecurityException, AMQInternalException
-    {
+                                  final AMQQueue queue,
+                                  final Exchange exchange,
+                                  final Map<String, Object> arguments) throws AMQSecurityException, AMQInternalException {
         return makeBinding(bindingKey, queue, exchange, arguments, false, true);
     }
 
-    private boolean makeBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments, boolean restore, boolean force) throws AMQSecurityException, AMQInternalException
-    {
+    private boolean makeBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments, boolean restore, boolean force) throws AMQSecurityException, AMQInternalException {
         assert queue != null;
-        if (bindingKey == null)
-        {
+        if (bindingKey == null) {
             bindingKey = "";
         }
-        if (exchange == null)
-        {
+        if (exchange == null) {
             exchange = _defaultExchange;
         }
-        if (arguments == null)
-        {
+        if (arguments == null) {
             arguments = Collections.emptyMap();
         }
-      
+
         //Perform ACLs
-        if (!getVirtualHost().getSecurityManager().authoriseBind(exchange, queue, new AMQShortString(bindingKey)))
-        {
+        if (!getVirtualHost().getSecurityManager().authoriseBind(exchange, queue, new AMQShortString(bindingKey))) {
             throw new AMQSecurityException("Permission denied: binding " + bindingKey);
         }
 
@@ -207,44 +154,39 @@ public class BindingFactory
          * (say B) we should not allow it. It is enough to check with local bindings as whenever we create a binding in cluster
          * it is syned and created locally
          */
-        if(exchange.getName().equalsIgnoreCase("amq.topic") && queue.isDurable()) {
-            if(checkIfQueueHasBoundToDifferentTopic(bindingKey, queue)) {
+        if (exchange.getName().equalsIgnoreCase("amq.topic") && queue.isDurable()) {
+            if (checkIfQueueHasBoundToDifferentTopic(bindingKey, queue)) {
                 throw new AMQInternalException("An Exclusive Bindings already exists for different topic. Not permitted.");
             }
         }
 
-        BindingImpl b = new BindingImpl(bindingKey,queue,exchange,arguments);
-        BindingImpl existingMapping = _bindings.putIfAbsent(b,b);
-        if (existingMapping == null || force)
-        {
-            if (existingMapping != null)
-            {
+        BindingImpl binding = new BindingImpl(bindingKey, queue, exchange, arguments);
+        BindingImpl existingMapping = _bindings.putIfAbsent(binding, binding);
+        if (existingMapping == null || force) {
+            if (existingMapping != null) {
                 //TODO - we should not remove the existing binding
                 removeBinding(existingMapping);
             }
 
             //save only durable bindings
-            if (b.isDurable() && !restore)
-            {
-                     _configSource.getDurableConfigurationStore().bindQueue
-                             (exchange,new AMQShortString(bindingKey),queue,FieldTable.convertToFieldTable(arguments));
+            if (binding.isDurable() && !restore) {
+                _configSource.getDurableConfigurationStore().bindQueue
+                        (exchange, new AMQShortString(bindingKey), queue, FieldTable.convertToFieldTable(arguments));
 
-                     //tell Andes kernel to create binding
-                     QpidAMQPBridge.getInstance().createBinding(exchange,new AMQShortString(bindingKey),queue,FieldTable.convertToFieldTable(arguments));
+                //tell Andes kernel to create binding
+                QpidAMQPBridge.getInstance().createBinding(exchange, new AMQShortString(bindingKey), queue, FieldTable.convertToFieldTable(arguments));
 
             }
 
-            queue.addQueueDeleteTask(b);
-            exchange.addCloseTask(b);
-            queue.addBinding(b);
-            exchange.addBinding(b);
-            getConfigStore().addConfiguredObject(b);
-            b.logCreation();
+            queue.addQueueDeleteTask(binding);
+            exchange.addCloseTask(binding);
+            queue.addBinding(binding);
+            exchange.addBinding(binding);
+            getConfigStore().addConfiguredObject(binding);
+            binding.logCreation();
 
             return true;
-        }
-        else
-        {
+        } else {
             return false;
         }
     }
@@ -252,8 +194,8 @@ public class BindingFactory
     private boolean checkIfQueueHasBoundToDifferentTopic(String bindingKey, AMQQueue queue) {
         boolean isAlreadyABindingExistsForDifferentKey = false;
         List<Binding> bindingList = queue.getBindings();
-        for(Binding b : bindingList) {
-            if(b.getExchange().getName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME) && !b.getBindingKey().equals(bindingKey)) {
+        for (Binding b : bindingList) {
+            if (b.getExchange().getName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME) && !b.getBindingKey().equals(bindingKey)) {
                 isAlreadyABindingExistsForDifferentKey = true;
                 break;
             }
@@ -261,97 +203,80 @@ public class BindingFactory
         return isAlreadyABindingExistsForDifferentKey;
     }
 
-    private ConfigStore getConfigStore()
-    {
+    private ConfigStore getConfigStore() {
         return getVirtualHost().getConfigStore();
     }
 
-    public void restoreBinding(final String bindingKey, final AMQQueue queue, final Exchange exchange, final Map<String, Object> argumentMap) throws AMQSecurityException, AMQInternalException
-    {
-        makeBinding(bindingKey,queue,exchange,argumentMap,true, false);
+    public void restoreBinding(final String bindingKey, final AMQQueue queue,
+                               final Exchange exchange, final Map<String, Object> argumentMap)
+            throws AMQSecurityException, AMQInternalException {
+        makeBinding(bindingKey, queue, exchange, argumentMap, true, false);
     }
 
-    public void removeBinding(final Binding b) throws AMQSecurityException, AMQInternalException
-    {
-
+    public void removeBinding(final Binding b) throws AMQSecurityException, AMQInternalException {
         removeBinding(b.getBindingKey(), b.getQueue(), b.getExchange(), b.getArguments());
-        try {
-            //we only inform the kernel about DURABLE bindings
-            if(b.isDurable() ) {
-                //inform andes kernel to remove binding
-                QpidAMQPBridge.getInstance().removeBinding(b, getVirtualHost());
-            }
-
-        } catch (Exception e) {
-            throw new AMQInternalException("Error while reamove Binding:"+ e.getMessage(),e);
-        }
     }
 
-
-    public Binding removeBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments) throws AMQSecurityException, AMQInternalException
-    {
+    public Binding removeBinding(String bindingKey, AMQQueue queue, Exchange exchange,
+                                 Map<String, Object> arguments) throws AMQSecurityException, AMQInternalException {
         assert queue != null;
-        if (bindingKey == null)
-        {
+        if (bindingKey == null) {
             bindingKey = "";
         }
-        if (exchange == null)
-        {
+        if (exchange == null) {
             exchange = _defaultExchange;
         }
-        if (arguments == null)
-        {
+        if (arguments == null) {
             arguments = Collections.emptyMap();
         }
 
         // Check access
-        if (!getVirtualHost().getSecurityManager().authoriseUnbind(exchange, new AMQShortString(bindingKey), queue))
-        {
+        if (!getVirtualHost().getSecurityManager().authoriseUnbind(exchange,
+                new AMQShortString(bindingKey), queue)) {
             throw new AMQSecurityException("Permission denied: binding " + bindingKey);
         }
-        
-        BindingImpl b = _bindings.remove(new BindingImpl(bindingKey,queue,exchange,arguments));
 
-        if (b != null)
-        {
-            exchange.removeBinding(b);
-            queue.removeBinding(b);
-            exchange.removeCloseTask(b);
-            queue.removeQueueDeleteTask(b);
+        BindingImpl binding = _bindings.remove(new BindingImpl(bindingKey, queue, exchange, arguments));
 
-            if (b.isDurable())
-            {
-                _configSource.getDurableConfigurationStore().unbindQueue(exchange,
-                                         new AMQShortString(bindingKey),
-                                         queue,
-                                         FieldTable.convertToFieldTable(arguments));
+        try {
+            if (binding != null) {
+                if (binding.isDurable()) {
+                    //inform andes kernel to remove binding.
+                    QpidAMQPBridge.getInstance().removeBinding(binding, getVirtualHost());
+
+                    _configSource.getDurableConfigurationStore().unbindQueue(exchange,
+                            new AMQShortString(bindingKey),
+                            queue,
+                            FieldTable.convertToFieldTable(arguments));
+                }
+
+                exchange.removeBinding(binding);
+                queue.removeBinding(binding);
+                exchange.removeCloseTask(binding);
+                queue.removeQueueDeleteTask(binding);
+
+                binding.logDestruction();
+                getConfigStore().removeConfiguredObject(binding);
             }
-            b.logDestruction();
-            getConfigStore().removeConfiguredObject(b);
+            return binding;
+        } catch (AndesException e) {
+            throw new AMQInternalException("Error while removing binding.", e);
         }
-
-
-
-        return b;
     }
 
-    public Binding getBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments)
-    {
+    public Binding getBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments) {
         assert queue != null;
-        if(bindingKey == null)
-        {
+        if (bindingKey == null) {
             bindingKey = "";
         }
-        if(exchange == null)
-        {
+        if (exchange == null) {
             exchange = _defaultExchange;
         }
-        if(arguments == null)
-        {
+        if (arguments == null) {
             arguments = Collections.emptyMap();
         }
 
-        BindingImpl b = new BindingImpl(bindingKey,queue,exchange,arguments);
+        BindingImpl b = new BindingImpl(bindingKey, queue, exchange, arguments);
         return _bindings.get(b);
     }
 }

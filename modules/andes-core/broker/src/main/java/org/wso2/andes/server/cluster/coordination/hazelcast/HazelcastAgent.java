@@ -11,7 +11,7 @@
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
+ * KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations
  * under the License.
  */
@@ -21,7 +21,6 @@ import com.hazelcast.core.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.MessagePurgeHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
@@ -104,8 +103,6 @@ public class HazelcastAgent {
 
     private int uniqueIdOfLocalMember;
 
-
-
     /**
      * Private constructor.
      */
@@ -164,7 +161,6 @@ public class HazelcastAgent {
                 CoordinationConstants.HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME);
         ClusterQueueChangedListener clusterQueueChangedListener = new ClusterQueueChangedListener();
         clusterQueueChangedListener.addQueueListener(new ClusterCoordinationHandler(this));
-        clusterQueueChangedListener.addQueueListener(new MessagePurgeHandler());
         this.queueChangedNotifierChannel.addMessageListener(clusterQueueChangedListener);
 
         /**
@@ -196,7 +192,9 @@ public class HazelcastAgent {
 
         log.info("Successfully initialized Hazelcast Agent");
 
-        log.debug("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
+        if (log.isDebugEnabled()) {
+            log.debug("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
+        }
     }
 
     /**
@@ -207,7 +205,7 @@ public class HazelcastAgent {
     public String getNodeId() {
         Member localMember = hazelcastInstance.getCluster().getLocalMember();
         return CoordinationConstants.NODE_NAME_PREFIX +
-                localMember.getInetSocketAddress();
+                localMember.getSocketAddress();
     }
 
     /**
@@ -229,7 +227,7 @@ public class HazelcastAgent {
         List<String> nodeIDList = new ArrayList<String>();
         for (Member member : members) {
             nodeIDList.add(CoordinationConstants.NODE_NAME_PREFIX +
-                    member.getInetSocketAddress());
+                    member.getSocketAddress());
         }
 
         return nodeIDList;
@@ -270,7 +268,7 @@ public class HazelcastAgent {
      */
     public String getIdOfNode(Member node) {
         return CoordinationConstants.NODE_NAME_PREFIX +
-                node.getInetSocketAddress();
+                node.getSocketAddress();
     }
 
     /**

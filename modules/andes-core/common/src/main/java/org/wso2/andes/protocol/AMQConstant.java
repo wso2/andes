@@ -82,6 +82,24 @@ public final class AMQConstant
      */
     public static final AMQConstant CONTEXT_IN_USE = new AMQConstant(320, "context in use", true);
 
+    /**
+     * Message content for this message have been deleted due to a sudden queue purge / previous
+     * acknowledgement.
+     */
+    public static final AMQConstant MESSAGE_CONTENT_OBSOLETE = new AMQConstant(321,
+            "Message content for this message have been deleted due " +
+            "to a sudden queue purge / previous acknowledgement.", true);
+
+    /**
+     * The delivery tags used within one messaging session should be unique even if the same
+     * message is retried.
+     * This is to identify each delivery task within the session. Therefore,
+     * if an already used tag is reused,
+     * It means something has gone wrong.(more probable with high concurrency)
+     */
+    public static final AMQConstant DELIVERY_TAG_REUSED = new AMQConstant(322,
+            "DELIVERY_TAG_REUSED", true);
+
     /** The client tried to work with an unknown virtual host or cluster. */
     public static final AMQConstant INVALID_PATH = new AMQConstant(402, "invalid path", true);
 

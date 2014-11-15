@@ -26,6 +26,9 @@ public class AndesQueue {
     public boolean isExclusive;
     public boolean isDurable;
     public int subscriptionCount;
+    // Added to infer the state of the queue during concurrent message delivery. Initial value
+    // before a purge should be 0
+    private Long lastPurgedTimestamp;
 
     /**
      * create an instance of andes queue
@@ -41,6 +44,15 @@ public class AndesQueue {
         this.isExclusive = isExclusive;
         this.isDurable = isDurable;
         this.subscriptionCount = 1;
+        this.lastPurgedTimestamp = 0l;
+    }
+
+    public Long getLastPurgedTimestamp() {
+        return lastPurgedTimestamp;
+    }
+
+    public void setLastPurgedTimestamp(Long lastPurgedTimestamp) {
+        this.lastPurgedTimestamp = lastPurgedTimestamp;
     }
 
     /**
@@ -60,6 +72,8 @@ public class AndesQueue {
                 this.isExclusive = Boolean.parseBoolean(tokens[1]);
             } else if (tokens[0].equals("isDurable")) {
                 this.isDurable = Boolean.parseBoolean(tokens[1]);
+            } else if (tokens[0].equals("lastPurgedTimestamp")) {
+                this.lastPurgedTimestamp = Long.parseLong(tokens[1]);
             }
         }
     }
@@ -68,14 +82,16 @@ public class AndesQueue {
         return "[" + queueName + "] " +
                 "OW=" + queueOwner +
                 "/X=" + isExclusive +
-                "/D" + isDurable;
+                "/D" + isDurable +
+                "/LPT" + lastPurgedTimestamp;
     }
 
     public String encodeAsString() {
         return "queueName=" + queueName +
                 ",queueOwner=" + queueOwner +
                 ",isExclusive=" + isExclusive +
-                ",isDurable=" + isDurable;
+                ",isDurable=" + isDurable +
+                ",lastPurgedTimestamp=" + lastPurgedTimestamp;
     }
 
     public boolean equals(Object o) {

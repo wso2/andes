@@ -18,9 +18,8 @@
 
 package org.wso2.andes.tools.utils;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.*;
 
 import org.apache.commons.logging.Log;
@@ -39,9 +38,8 @@ public class DisruptorBasedExecutor {
     private static DisruptorRuntime<CassandraDataEvent> cassandraRWDisruptorRuntime;
     private static DisruptorRuntime<AndesAckData> ackDataEvenRuntime;
     //private static DisruptorRuntime<SubscriptionDataEvent> dataDeliveryDisruptorRuntime;
-    private static Map<Long, PendingJob> pendingJobsTracker = new ConcurrentHashMap<Long, PendingJob>();
+    private static Map<UUID, PendingJob> pendingJobsTracker = new ConcurrentHashMap<UUID, PendingJob>();
     private MessageStoreManager messageStoreManager;
-
 
     public DisruptorBasedExecutor(MessageStoreManager messageStoreManager) {
         this.messageStoreManager = messageStoreManager;
@@ -73,7 +71,7 @@ public class DisruptorBasedExecutor {
     }
 
     public void messageCompleted(final AndesMessageMetadata metadata) {
-        long channelID = metadata.getChannelId();
+        UUID channelID = metadata.getChannelId();
         //This count how many jobs has finished
         synchronized (pendingJobsTracker) {
             PendingJob pendingJob = pendingJobsTracker.get(channelID);
@@ -101,7 +99,10 @@ public class DisruptorBasedExecutor {
         long sequence = ringBuffer.next();
         AndesAckData event = ringBuffer.get(sequence);
         event.messageID = ackData.messageID;
-        event.qName = ackData.qName;
+        event.destination = ackData.destination;
+        event.msgStorageDestination = ackData.msgStorageDestination;
+        event.channelID = ackData.channelID;
+        event.isTopic = ackData.isTopic;
         // make the event available to EventProcessors
         ringBuffer.publish(sequence);
     }

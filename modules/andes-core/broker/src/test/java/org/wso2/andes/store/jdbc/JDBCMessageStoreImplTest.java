@@ -292,6 +292,7 @@ public class JDBCMessageStoreImplTest {
 
         md.setMessageID(msgId);
         md.setDestination("my_queue");
+        md.setStorageQueueName("my_queue");
         md.setMetadata(content);
         md.setExpirationTime(System.currentTimeMillis() + 10000);
 
@@ -366,7 +367,7 @@ public class JDBCMessageStoreImplTest {
             AndesMessageMetadata retrieved = messageStore.getMetaData(md.getMessageID());
             Assert.assertEquals(md.getMessageID(), retrieved.getMessageID());
             Assert.assertEquals(true, Arrays.equals(md.getMetadata(), retrieved.getMetadata()));
-            Assert.assertEquals(destQueueName, md.getDestination());
+            Assert.assertEquals(destQueueName, md.getStorageQueueName());
         }
     }
 
@@ -383,7 +384,7 @@ public class JDBCMessageStoreImplTest {
         // Test
         Assert.assertEquals(5, list.size());
         for (AndesMessageMetadata andesMessageMetadata : list) {
-            Assert.assertEquals(0, destQueue_1.compareTo(andesMessageMetadata.getDestination()));
+            Assert.assertEquals(0, destQueue_1.compareTo(andesMessageMetadata.getStorageQueueName()));
         }
 
         // Retrieve
@@ -391,7 +392,7 @@ public class JDBCMessageStoreImplTest {
         // Test
         Assert.assertEquals(5, list.size());
         for (AndesMessageMetadata andesMessageMetadata : list) {
-            Assert.assertEquals(0, destQueue_2.compareTo(andesMessageMetadata.getDestination()));
+            Assert.assertEquals(0, destQueue_2.compareTo(andesMessageMetadata.getStorageQueueName()));
         }
     }
 
@@ -418,7 +419,7 @@ public class JDBCMessageStoreImplTest {
         for (int i = 0; i < list.size(); i++) {
             AndesRemovableMetadata md = list.get(i);
             Assert.assertEquals(i * 2, md.messageID);
-            Assert.assertEquals(destQueue_1, md.destination);
+            Assert.assertEquals(destQueue_1, md.storageDestination);
         }
 
         // delete them
@@ -430,11 +431,11 @@ public class JDBCMessageStoreImplTest {
 
         AndesRemovableMetadata md = list.get(0);
         Assert.assertEquals(6, md.messageID);
-        Assert.assertEquals(destQueue_2, md.destination);
+        Assert.assertEquals(destQueue_2, md.storageDestination);
 
         md = list.get(1);
         Assert.assertEquals(8, md.messageID);
-        Assert.assertEquals(destQueue_2, md.destination);
+        Assert.assertEquals(destQueue_2, md.storageDestination);
 
     }
 
@@ -450,7 +451,7 @@ public class JDBCMessageStoreImplTest {
         // Test
         Assert.assertEquals(3, mdList.size());
         for (AndesMessageMetadata andesMessageMetadata : mdList) {
-            Assert.assertEquals(0, destQueues[0].compareTo(andesMessageMetadata.getDestination()));
+            Assert.assertEquals(0, destQueues[0].compareTo(andesMessageMetadata.getStorageQueueName()));
         }
 
         // Retrieve
@@ -458,7 +459,7 @@ public class JDBCMessageStoreImplTest {
         // Test
         Assert.assertEquals(4, mdList.size());
         for (AndesMessageMetadata andesMessageMetadata : mdList) {
-            Assert.assertEquals(0, destQueues[1].compareTo(andesMessageMetadata.getDestination()));
+            Assert.assertEquals(0, destQueues[1].compareTo(andesMessageMetadata.getStorageQueueName()));
         }
     }
 

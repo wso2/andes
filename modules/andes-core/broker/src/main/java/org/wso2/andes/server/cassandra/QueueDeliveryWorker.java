@@ -1,20 +1,20 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
- *
- * WSO2 Inc. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
+*  Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+*
+*  WSO2 Inc. licenses this file to you under the Apache License,
+*  Version 2.0 (the "License"); you may not use this file except
+*  in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/
 
 package org.wso2.andes.server.cassandra;
 
@@ -28,71 +28,87 @@ import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 
 /**
- * QueueDeliveryWorker Handles the task of polling the user queues and flushing
- * the messages to subscribers
- * There will be one Flusher per Queue Per Node
+ * <code>QueueDeliveryWorker</code> Handles the task of polling the user queues and flushing the
+ * messages to subscribers There will be one Flusher per Queue Per Node
  */
 public class QueueDeliveryWorker {
     private final String nodeQueue;
+    private boolean running = true;
     private static Log log = LogFactory.getLog(QueueDeliveryWorker.class);
 
     private int maxNumberOfUnAckedMessages = 100000;
-    //per queue
+
+    //per destination
     private int maxNumberOfReadButUndeliveredMessages = 5000;
+
+    private SequentialThreadPoolExecutor executor;
 
     private static final int THREADPOOL_RECOVERY_INTERVAL = 2000;
     private static final int SAFE_THREAD_COUNT = 1000;
-    private static final int THREADPOOL_RECOVERY_ATTEMPTS = 5;
+    private static final int THREADPOOL_RECOVERY_ATTEMPTS = 2;
 
-    // private long lastProcessedId = 0;
+    private final int queueWorkerWaitInterval;
 
-    // private long totMsgSent = 0;
-    //  private long totMsgRead = 0;
+    /**
+     * Subscribed destination wise information
+     * the key here is the original destination of message. NOT storage queue name.
+     */
+    private Map<String, QueueDeliveryInfo> subscriptionCursar4QueueMap = new HashMap<String,
+            QueueDeliveryInfo>();
 
-    private static final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
-
-    private SequentialThreadPoolExecutor executor;
-    private Map<String, QueueDeliveryInfo> subscriptionCursar4QueueMap = new HashMap<String, QueueDeliveryInfo>();
     private SubscriptionStore subscriptionStore;
 
-    private OnflightMessageTracker onflightMessageTracker;
+    private static QueueDeliveryWorker queueDeliveryWorker = new QueueDeliveryWorker(1000);
 
-
-    private static QueueDeliveryWorker queueDeliveryWorker = new QueueDeliveryWorker();
-
-    public QueueDeliveryWorker() {
+    public QueueDeliveryWorker(final int queueWorkerWaitInterval) {
         this.nodeQueue = MessagingEngine.getMyNodeQueueName();
-        this.executor = new SequentialThreadPoolExecutor((ClusterResourceHolder.getInstance().getClusterConfiguration().
-                getPublisherPoolSize()), "QueueMessagePublishingExecutor");
-        BrokerConfiguration clusterConfiguration = ClusterResourceHolder.getInstance().getClusterConfiguration();
-        this.maxNumberOfUnAckedMessages = clusterConfiguration.getMaxNumberOfUnackedMessages();
-        this.maxNumberOfReadButUndeliveredMessages = clusterConfiguration.getMaxNumberOfReadButUndeliveredMessages();
-        this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-        this.onflightMessageTracker = OnflightMessageTracker.getInstance();
+        this.executor = new SequentialThreadPoolExecutor(
+                (ClusterResourceHolder.getInstance().getClusterConfiguration().
+                        getPublisherPoolSize()), "QueueMessagePublishingExecutor");
+        this.queueWorkerWaitInterval = queueWorkerWaitInterval;
 
-        log.info("Queue worker started Listening for " + nodeQueue + " with on flight message checks");
+        BrokerConfiguration clusterConfiguration = ClusterResourceHolder.getInstance()
+                                                                         .getClusterConfiguration();
+        this.maxNumberOfUnAckedMessages = clusterConfiguration.getMaxNumberOfUnackedMessages();
+        this.maxNumberOfReadButUndeliveredMessages = clusterConfiguration
+                .getMaxNumberOfReadButUndeliveredMessages();
+        this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+    }
+
+    public boolean isWorking() {
+        return running;
     }
 
     /**
-     * Class to keep track of message delivery information queue wise
+     * Class to keep track of message delivery information destination wise
      */
     public class QueueDeliveryInfo {
-        String queueName;
+        String destination;
 
         Iterator<LocalSubscription> iterator;
         //in-memory message list scheduled to be delivered
-
         Set<AndesMessageMetadata> readButUndeliveredMessages = new
                 ConcurrentSkipListSet<AndesMessageMetadata>();
 
+        // In case of a purge, we must store the timestamp when the purge was called.
+        // This way we can identify messages received before that timestamp that fail and ignore them.
+        private Long lastPurgedTimestamp;
+
+        /***
+         * Constructor
+         * initialize lastPurgedTimestamp to 0.
+         */
+        public QueueDeliveryInfo() {
+            lastPurgedTimestamp =0l;
+        }
+
         /**
-         * Returns boolean variable saying whether this queue has room or not
+         * Returns boolean variable saying whether this destination has room or not
          *
-         * @return whether this queue has room or not
+         * @return whether this destination has room or not
          */
         public boolean isMessageBufferFull() {
             boolean hasRoom = true;
@@ -101,25 +117,57 @@ public class QueueDeliveryWorker {
             }
             return hasRoom;
         }
+
+        /***
+         * clear the read-but-undelivered collection of messages of the given queue from memory
+         * @return Number of messages that was in the read-but-undelivered buffer
+         */
+        public int clearReadButUndeliveredMessages() {
+
+            int messageCount = readButUndeliveredMessages.size();
+
+            readButUndeliveredMessages.clear();
+
+            return messageCount;
+        }
+
+        /***
+         * @return Last purged timestamp of queue.
+         */
+        public Long getLastPurgedTimestamp() {
+            return lastPurgedTimestamp;
+        }
+
+        /**
+         * set last purged timestamp for queue.
+         * @param lastPurgedTimestamp
+         */
+        public void setLastPurgedTimestamp(Long lastPurgedTimestamp) {
+            this.lastPurgedTimestamp = lastPurgedTimestamp;
+        }
     }
 
     /**
-     * Get the next subscription for the given queue. If at end of the subscriptions, it circles around to the first one
+     * Get the next subscription for the given destination. If at end of the subscriptions, it circles
+     * around to the first one
      *
-     * @param queueName           name of queue
-     * @param subscriptions4Queue subscriptions registered for the queue
+     * @param destination
+     *         name of destination
+     * @param subscriptions4Queue
+     *         subscriptions registered for the destination
      * @return subscription to deliver
      * @throws AndesException
      */
-    private LocalSubscription findNextSubscriptionToSent(String queueName,
+    private LocalSubscription findNextSubscriptionToSent(String destination,
                                                          Collection<LocalSubscription>
-                                                                 subscriptions4Queue) throws AndesException {
+                                                                 subscriptions4Queue)
+            throws AndesException {
         if (subscriptions4Queue == null || subscriptions4Queue.size() == 0) {
-            subscriptionCursar4QueueMap.remove(queueName);
+            subscriptionCursar4QueueMap.remove(destination);
             return null;
         }
 
-        QueueDeliveryInfo queueDeliveryInfo = getQueueDeliveryInfo(queueName);
+        QueueDeliveryInfo queueDeliveryInfo = getQueueDeliveryInfo(destination);
         Iterator<LocalSubscription> it = queueDeliveryInfo.iterator;
         if (it.hasNext()) {
             return it.next();
@@ -135,14 +183,15 @@ public class QueueDeliveryWorker {
     }
 
 
-    public QueueDeliveryInfo getQueueDeliveryInfo(String queueName) throws AndesException {
-        QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(queueName);
+    public QueueDeliveryInfo getQueueDeliveryInfo(String destination) throws AndesException {
+        QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(destination);
         if (queueDeliveryInfo == null) {
             queueDeliveryInfo = new QueueDeliveryInfo();
-            queueDeliveryInfo.queueName = queueName;
-            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore.getActiveLocalSubscribers(queueName, false);
+            queueDeliveryInfo.destination = destination;
+            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
+                    .getActiveLocalSubscribersForQueuesAndTopics(destination);
             queueDeliveryInfo.iterator = localSubscribersForQueue.iterator();
-            subscriptionCursar4QueueMap.put(queueName, queueDeliveryInfo);
+            subscriptionCursar4QueueMap.put(destination, queueDeliveryInfo);
         }
         return queueDeliveryInfo;
     }
@@ -155,118 +204,156 @@ public class QueueDeliveryWorker {
     /**
      * send the messages to deliver
      *
-     * @param messagesReadByLeadingThread AndesMetadata list
-     * @param slot                        these messages are belonged to
+     * @param messagesReadByLeadingThread
+     *         AndesMetadata list
+     * @param slot
+     *         these messages are belonged to
      */
     public void sendMessageToFlusher(List<AndesMessageMetadata> messagesReadByLeadingThread,
                                      Slot slot) {
 
-        int workqueueSize;
-        long lastProcessedId = 0;
+        int pendingJobsToSendToTransport;
+        long failureCount = 0;
         try {
             /**
-             *    Following check is to avoid the worker queue been full with too many pending tasks.
-             *    those pending tasks are best left in Cassandra until we have some breathing room
+             *    Following check is to avoid the worker destination been full with too many pending tasks
+             *    to send messages. Better stop buffering until we have some breathing room
              */
-            workqueueSize = executor.getSize();
+            pendingJobsToSendToTransport = executor.getSize();
 
-            if (workqueueSize > 1000) {
-                if (workqueueSize > 5000) {
-                    log.error("Flusher queue is growing, and this should not happen. Please check cassandra Flusher");
+            if (pendingJobsToSendToTransport > 1000) {
+                if (pendingJobsToSendToTransport > 5000) {
+                    log.error(
+                            "Flusher queue is growing ("+ pendingJobsToSendToTransport + " jobs), and this should not happen. Please check " +
+                            "cassandra Flusher");
 
                     // Must give some time for the threads to clean up. Thus, following conditional loop.
                     // Once the thread count is below SAFE_THREAD_COUNT, other tasks can resume. Until then this worker is held hostage
                     // with <THREADPOOL_RECOVERY_INTERVAL> millisecond sleeps for THREADPOOL_RECOVERY_ATTEMPTS times.
                     for (int i=0; i<THREADPOOL_RECOVERY_ATTEMPTS;i++) {
-                        if (executor.getSize() > SAFE_THREAD_COUNT) {
+                        if (executor.getSize() < SAFE_THREAD_COUNT) {
                             break;
+                        } else {
+                            Thread.sleep(THREADPOOL_RECOVERY_INTERVAL);
+                            log.info("Pending jobs to send to transport : " + executor.getSize());
                         }
-
-                        log.info("Current Threadpool size : " + executor.getSize());
-                        Thread.sleep(THREADPOOL_RECOVERY_INTERVAL);
-                        log.info("Current Threadpool size after sleep: " + executor.getSize());
                     }
                 }
-                log.warn("Skipping content cassandra reading thread as flusher queue has " +
-                        workqueueSize + " tasks");
+                log.warn("Flusher destination has " + pendingJobsToSendToTransport + " tasks");
+                // TODO: we need to handle this. Notify slot delivery worker to sleep more
             }
-
-            /**
-             * Following reads from message store, it reads only if there are not enough messages loaded in memory
-             */
-            List<AndesMessageMetadata> messagesFromMessageStore;
-            messagesFromMessageStore = new ArrayList<AndesMessageMetadata>();
             for (AndesMessageMetadata message : messagesReadByLeadingThread) {
-                Long messageID = message.getMessageID();
-                if (onflightMessageTracker.testMessage((message.getMessageID()))) {
-                    messagesFromMessageStore.add(message);
-                }
-                if (log.isTraceEnabled()) {
-                    log.trace("TRACING>> CMS>> read from message store " + message
-                            .getMessageID());
-                }
-                lastProcessedId = messageID;
-            }
 
-            if (log.isDebugEnabled()) {
-                log.debug("QDW >> Number of messages read from " + nodeQueue + " with last processed ID " + lastProcessedId + " is  = " + messagesFromMessageStore.size());
-            }
-            for (AndesMessageMetadata message : messagesFromMessageStore) {
-                String queueName = message.getDestination();
+                /**
+                 * Rather than destination of the message, we get the destination of
+                 * the messages in the slot. In hierarchical topic case this will
+                 * represent subscription bound destination NOT message destination
+                 * (games.cricket.* Not games.cricket.SriLanka)
+                 */
+                String destination = slot.getDestinationOfMessagesInSlot();
                 message.setSlot(slot);
-                QueueDeliveryInfo queueDeliveryInfo = getQueueDeliveryInfo(queueName);
-                queueDeliveryInfo.readButUndeliveredMessages.add(message);
-                //increment the message count in the slot
-                OnflightMessageTracker.getInstance().incrementMessageCountInSlot(slot);
+                QueueDeliveryInfo queueDeliveryInfo = getQueueDeliveryInfo(destination);
+                //check and buffer message
+                //stamp this message as buffered
+                boolean isOKToBuffer = OnflightMessageTracker.getInstance()
+                                                             .addMessageToBufferingTracker(slot,
+                                                                                           message);
+                if (isOKToBuffer) {
+                    queueDeliveryInfo.readButUndeliveredMessages.add(message);
+                    //increment the message count in the slot
+                    OnflightMessageTracker.getInstance().incrementMessageCountInSlot(slot);
+                } else {
+                    log.warn("Tracker rejected message id= " + message.getMessageID() + " from buffering " +
+                             "to deliver. This is an already buffered message");
+                    //todo: this message is previously buffered. Should be removed from slot
+                }
             }
-            //Send messages in QueueDeliveryInfo message list
-            sendMessagesInBuffer(slot.getQueueName());
-
+            /**
+             * Now messages are read to the memory. Send the read messages to subscriptions
+             */
+            if(log.isDebugEnabled()) {
+                log.debug("Sending messages in buffer destination= " + slot.getDestinationOfMessagesInSlot());
+            }
+            sendMessagesInBuffer(slot.getDestinationOfMessagesInSlot());
+            failureCount = 0;
         } catch (Throwable e) {
-            //todo handle
+            /**
+             * When there is a error, we will wait to avoid looping.
+             */
+            long waitTime = queueWorkerWaitInterval;
+            failureCount++;
+            long faultWaitTime = Math.max(waitTime * 5, failureCount * waitTime);
+            try {
+                Thread.sleep(faultWaitTime);
+            } catch (InterruptedException e1) {
+                //silently ignore
+            }
+
             log.fatal("Error running Cassandra Message Flusher" + e.getMessage(), e);
         }
     }
 
     /**
-     * Read messages from the buffer and send messages to subscribers. THis buffer stays in
-     * QueueDeliveryInfo objects for each queue.
+     * Read messages from the buffer and send messages to subscribers
      */
-    public void sendMessagesInBuffer(String queueName) throws AndesException {
+    public void sendMessagesInBuffer(String subDestination) throws AndesException {
 
-        QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(queueName);
+        QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(subDestination);
         if (log.isDebugEnabled()) {
-            for (String queue : subscriptionCursar4QueueMap.keySet()) {
-                log.debug("Queue Size of queue " + queue + " is :"
-                        + subscriptionCursar4QueueMap.get(queue).readButUndeliveredMessages.size());
+            for (String dest : subscriptionCursar4QueueMap.keySet()) {
+                log.debug("Queue size of destination " + dest + " is :"
+                          + subscriptionCursar4QueueMap.get(dest).readButUndeliveredMessages
+                        .size());
             }
+
         }
         try {
-            sendMessagesToSubscriptions(queueDeliveryInfo.queueName,
+            log.debug(
+                    "Sending messages from buffer num of msg = " + queueDeliveryInfo
+                            .readButUndeliveredMessages
+                            .size());
+            sendMessagesToSubscriptions(queueDeliveryInfo.destination,
                     queueDeliveryInfo.readButUndeliveredMessages);
         } catch (Exception e) {
+            log.error("Error occurred while sending messages to subscribers from buffer", e);
             throw new AndesException("Error occurred while sending messages to subscribers " +
-                    "from message buffer" + e);
+                                     "from message buffer" + e);
+        }
+
+
+    }
+
+
+    private void sleep4waitInterval(long sleepInterval) {
+        try {
+            Thread.sleep(sleepInterval);
+        } catch (InterruptedException ignored) {
         }
     }
 
     /**
-     * Does that queue has too many messages pending
+     * does that destination has too many messages pending
      *
-     * @param localSubscription local subscription
+     * @param localSubscription
+     *         local subscription
      * @return is subscription ready to accept messages
      */
     private boolean isThisSubscriptionHasRoom(LocalSubscription localSubscription) {
-
+        //
         int notAckedMsgCount = localSubscription.getnotAckedMsgCount();
-        //Here we ignore messages that has been scheduled but not executed, so it might send few messages than maxNumberOfUnAckedMessages
+
+
+        //Here we ignore messages that has been scheduled but not executed,
+        // so it might send few messages than maxNumberOfUnAckedMessages
         if (notAckedMsgCount < maxNumberOfUnAckedMessages) {
             return true;
         } else {
 
             if (log.isDebugEnabled()) {
-                log.debug("Not selected, channel =" + localSubscription + " pending count = " +
-                        (notAckedMsgCount + executor.getSize()));
+                log.debug(
+                        "Not selected, channel =" + localSubscription + " pending count =" +
+                        (notAckedMsgCount + executor
+                                .getSize()));
             }
             return false;
         }
@@ -275,23 +362,16 @@ public class QueueDeliveryWorker {
     /**
      * Check whether there are active subscribers and send
      *
-     * @param targetQueue queue name
+     * @param destination queue name
      * @param messages    metadata set
      * @return how many messages sent
      * @throws Exception
      */
-    public int sendMessagesToSubscriptions(String targetQueue, Set<AndesMessageMetadata> messages)
+    public int sendMessagesToSubscriptions(String destination, Set<AndesMessageMetadata> messages)
             throws Exception {
 
         /**
-         * Check if this queue has any subscription
-         */
-        if (subscriptionStore.getActiveClusterSubscribersForDestination(targetQueue, false).size() == 0) {
-            return 0;
-        }
-
-        /**
-         * Deliver messages to subscriptions
+         * deliver messages to subscriptions
          */
         int sentMessageCount = 0;
         Iterator<AndesMessageMetadata> iterator = messages.iterator();
@@ -300,42 +380,113 @@ public class QueueDeliveryWorker {
             try {
                 AndesMessageMetadata message = iterator.next();
 
-                if (MessageExpirationWorker.isExpired(message.getExpirationTime())) {
-                    continue;
+                /**
+                 * get all relevant type of subscriptions. This call does NOT
+                 * return hierarchical subscriptions for the destination. There
+                 * are duplicated messages for each different subscribed destination.
+                 * For durable topic subscriptions this should return queue subscription
+                 * bound to unique queue based on subscription id
+                 */
+                Collection<LocalSubscription> subscriptions4Queue =
+                        subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
+
+                //If this is a topic message, we remove all durable topic subscriptions here.
+                //Because durable topic subscriptions will get messages via queue path.
+                if(message.isTopic()) {
+                    Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
+                    while (subscriptionIterator.hasNext()) {
+                        LocalSubscription subscription = subscriptionIterator.next();
+                        if(subscription.isDurable()) {
+                            subscriptionIterator.remove();
+                        }
+                    }
                 }
 
-                boolean messageSent = false;
-                Collection<LocalSubscription> subscriptions4Queue = subscriptionStore
-                        .getActiveLocalSubscribers(targetQueue, false);
-                    /*
-                     * We do this in a for loop to avoid iterating for a subscriptions for ever. We
-                     * only iterate as
-                     * once for each subscription
-                     */
+                //check id destination has any subscription
+                //todo return the slot
+                if (subscriptions4Queue.size() == 0) {
+                    return 0;
+                }
+
+                int numOfCurrentMsgDeliverySchedules = 0;
+
+                /**
+                 * if message is addressed to queues, only ONE subscriber should
+                 * get the message. Otherwise, loop for every subscriber
+                 */
                 for (int j = 0; j < subscriptions4Queue.size(); j++) {
-                    LocalSubscription localSubscription = findNextSubscriptionToSent(targetQueue, subscriptions4Queue);
-                    if (isThisSubscriptionHasRoom(localSubscription)) {
-                        iterator.remove();
+                    LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
+                                                                                     subscriptions4Queue);
+                    if(!message.isTopic()) { //for queue messages and durable topic messages (as they are now queue messages)
+                        if (isThisSubscriptionHasRoom(localSubscription)) {
+                            if (log.isDebugEnabled()) {
+                                log.debug("Scheduled to send id = " + message.getMessageID());
+                            }
+                            deliverAsynchronously(localSubscription, message);
+                            numOfCurrentMsgDeliverySchedules ++;
+                            break;
+                        }
+                    }  else { //for normal (non-durable) topic messages. We do not consider room
+                        if (log.isDebugEnabled()) {
+                            log.debug("Scheduled to send id = " + message.getMessageID());
+                        }
                         deliverAsynchronously(localSubscription, message);
+                        numOfCurrentMsgDeliverySchedules ++;
+                    }
+                }
+
+                //remove message after sending to all subscribers
+
+                if(!message.isTopic()) { //queue messages (and durable topic messages)
+                    if(numOfCurrentMsgDeliverySchedules == 1) {
+                        iterator.remove();
+                        if(log.isDebugEnabled()) {
+                            log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
+                        }
                         sentMessageCount++;
-                        messageSent = true;
+                    } else {
+                        log.debug(
+                                "All subscriptions for destination " + destination + " have max unacked " +
+                                "messages " + message
+                                        .getDestination());
+                        //if we continue message order will break
+                        break;
+                    }
+                } else { //normal topic message
+                    if(numOfCurrentMsgDeliverySchedules == subscriptions4Queue.size()) {
+                        iterator.remove();
+                        if(log.isDebugEnabled()) {
+                            log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
+                        }
+                        sentMessageCount++;
+                    }  else {
+                        log.warn("Could not schedule message delivery to all" +
+                                 " subscriptions. May cause message duplication. id= " + message.getMessageID());
+                        //if we continue message order will break
                         break;
                     }
                 }
-                if (!messageSent) {
-                    log.debug("All subscriptions for queue " + targetQueue + " have max Unacked messages " + message.getDestination());
-                }
             } catch (NoSuchElementException ex) {
-                //This exception can occur because the iterator of ConcurrentSkipListSet loads the at-the-time snapshot.
-                // Some records could be deleted by the time the iterator reaches them.
-                // However, this can only happen at the tail of the collection, not in middle, and it would cause the loop
-                // to blindly check for a batch of deleted records.
-                // Given this situation, this loop should break so the sendFlusher can re-trigger it.
-                //for tracing purposes can use this : log.warn("NoSuchElementException thrown",ex);
-                break;
+            // This exception can occur because the iterator of ConcurrentSkipListSet loads the at-the-time snapshot.
+            // Some records could be deleted by the time the iterator reaches them.
+            // However, this can only happen at the tail of the collection, not in middle, and it would cause the loop
+            // to blindly check for a batch of deleted records.
+            // Given this situation, this loop should break so the sendFlusher can re-trigger it.
+            // for tracing purposes can use this : log.warn("NoSuchElementException thrown",ex);
+            break;
             }
         }
         return sentMessageCount;
+    }
+
+    /**
+     * Schedule to deliver message for the subscription
+     * @param subscription subscription to send
+     * @param message message to send
+     */
+    public void scheduleMessageForSubscription(LocalSubscription subscription,
+                                               final AndesMessageMetadata message) {
+        deliverAsynchronously(subscription, message);
     }
 
     /**
@@ -350,41 +501,39 @@ public class QueueDeliveryWorker {
             public void run() {
                 try {
                     if (subscription.isActive()) {
-                        if (MessageExpirationWorker.isExpired(message.getExpirationTime())) {
-                            return;
-                        }
                         (subscription).sendMessageToSubscriber(message);
                     } else {
                         reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
                     }
+                    OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message.getMessageID());
                 } catch (Throwable e) {
                     log.error("Error while delivering message. Moving to Dead Letter Queue ", e);
+                    OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message.getMessageID());
                     //todo - hasitha - here we have already tried three times to deliver.
                 }
             }
         };
-        executor.submit(r, (subscription.getTargetQueue() + subscription.getSubscriptionID()).hashCode());
+        if(log.isDebugEnabled()) {
+            log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription.toString());
+        }
+        executor.submit(r, (subscription.getTargetQueue() + subscription.getSubscriptionID())
+                .hashCode());
+        OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
     }
 
-    /**
-     * Send the messages back to the buffer in QueueDeliveryInfo object due to inactive
-     * subscribers.
-     *
-     * @param message metadata
-     */
+    //TODO: in multiple subscription case this can cause message duplication
     public void reQueueUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message) {
-        String queueName = message.getDestination();
-        subscriptionCursar4QueueMap.get(queueName).readButUndeliveredMessages.add(message);
+        String destination = message.getDestination();
+        subscriptionCursar4QueueMap.get(destination).readButUndeliveredMessages.add(message);
     }
 
-    /**
-     * This method will be called when message purging is initiated. Clear the messages in
-     * QueueDeliveryInfo buffer
-     *
-     * @param destinationQueueName queue name
-     * @throws AndesException
-     */
-    public void clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(String destinationQueueName) throws AndesException {
+    public void stopFlusher() {
+        running = false;
+        log.debug("Shutting down the destination message flusher for the destination " + nodeQueue);
+    }
+
+    public void clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(
+            String destinationQueueName) throws AndesException {
         getQueueDeliveryInfo(destinationQueueName).readButUndeliveredMessages.clear();
     }
 

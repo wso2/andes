@@ -11,7 +11,6 @@ import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.MessageStoreManager;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.store.MessageContentRemoverTask;
 
@@ -468,24 +467,29 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove,
                                boolean moveToDeadLetterChannel) throws AndesException {
         List<Long> idsOfMessagesToRemove = new ArrayList<Long>();
-        Map<String, List<AndesRemovableMetadata>> queueSeparatedRemoveMessages = new HashMap<String, List<AndesRemovableMetadata>>();
+        Map<String, List<AndesRemovableMetadata>> storageQueueSeparatedRemoveMessages = new HashMap<String, List<AndesRemovableMetadata>>();
+        Map<String, Integer> destinationSeparatedMsgCounts = new HashMap<String, Integer>();
 
         for (AndesRemovableMetadata message : messagesToRemove) {
             idsOfMessagesToRemove.add(message.messageID);
 
-            List<AndesRemovableMetadata> messages = queueSeparatedRemoveMessages
-                    .get(message.destination);
+            //update <storageQueue, metadata> map
+            List<AndesRemovableMetadata> messages = storageQueueSeparatedRemoveMessages
+                    .get(message.storageDestination);
             if (messages == null) {
                 messages = new ArrayList
                         <AndesRemovableMetadata>();
             }
             messages.add(message);
-            queueSeparatedRemoveMessages.put(message.destination, messages);
+            storageQueueSeparatedRemoveMessages.put(message.storageDestination, messages);
 
-            //update server side message trackings
-   /*         OnflightMessageTracker onflightMessageTracker = OnflightMessageTracker.getInstance();
-            onflightMessageTracker.updateDeliveredButNotAckedMessages(message.messageID);*/
-
+            //update <destination, Msgcount> map
+            Integer count = destinationSeparatedMsgCounts.get(message.messageDestination);
+            if(count == null) {
+                count = 0;
+            }
+            count = count + 1;
+            destinationSeparatedMsgCounts.put(message.messageDestination, count);
 
             //if to move, move to DLC. This is costy. Involves per message read and writes
             if (moveToDeadLetterChannel) {
@@ -496,13 +500,14 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
         }
 
         //remove metadata
-        for (String queueName : queueSeparatedRemoveMessages.keySet()) {
-            messageStore.deleteMessageMetadataFromQueue(queueName,
-                                                        queueSeparatedRemoveMessages
-                                                                .get(queueName));
-            //decrement message count of queue
-            decrementQueueCount(queueName, queueSeparatedRemoveMessages
-                    .get(queueName).size());
+        for (String storageQueueName : storageQueueSeparatedRemoveMessages.keySet()) {
+            messageStore.deleteMessageMetadataFromQueue(storageQueueName,
+                                                        storageQueueSeparatedRemoveMessages
+                                                                .get(storageQueueName));
+        }
+        //decrement message counts
+        for(String destination: destinationSeparatedMsgCounts.keySet()) {
+            decrementQueueCount(destination, destinationSeparatedMsgCounts.get(destination));
         }
 
         if (!moveToDeadLetterChannel) {

@@ -21,6 +21,7 @@ package org.wso2.andes.store.jdbc;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 
 import javax.sql.DataSource;
 import java.sql.*;
@@ -174,7 +175,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             preparedStatement = connection.prepareStatement(JDBCConstants.PS_INSERT_METADATA);
 
             for (AndesMessageMetadata metadata : metadataList) {
-                addMetadataToBatch(preparedStatement, metadata, metadata.getDestination());
+                addMetadataToBatch(preparedStatement, metadata, metadata.getStorageQueueName());
             }
             preparedStatement.executeBatch();
             preparedStatement.close();
@@ -206,7 +207,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             connection.setAutoCommit(false);
             preparedStatement = connection.prepareStatement(JDBCConstants.PS_INSERT_METADATA);
 
-            addMetadataToBatch(preparedStatement, metadata, metadata.getDestination());
+            addMetadataToBatch(preparedStatement, metadata, metadata.getStorageQueueName());
             preparedStatement.executeBatch();
             preparedStatement.close();
             addToExpiryTable(connection, metadata);
@@ -214,7 +215,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
 
             if (logger.isDebugEnabled()) {
                 logger.debug("Metadata added: msgID: " + metadata.getMessageID() +
-                        " Destination: " + metadata.getDestination());
+                        " Destination: " + metadata.getStorageQueueName());
             }
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_ADDING_METADATA);
@@ -336,7 +337,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             preparedStatement = connection.prepareStatement(JDBCConstants.PS_UPDATE_METADATA);
 
             for (AndesMessageMetadata metadata : metadataList) {
-                preparedStatement.setInt(1, getCachedQueueID(metadata.getDestination()));
+                preparedStatement.setInt(1, getCachedQueueID(metadata.getStorageQueueName()));
                 preparedStatement.setBytes(2, metadata.getMetadata());
                 preparedStatement.setLong(3, metadata.getMessageID());
                 preparedStatement.setInt(4, getCachedQueueID(currentQueueName));
@@ -431,7 +432,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
                                             AndesMessageMetadata metadata) throws SQLException {
         preparedStatement.setLong(1, metadata.getMessageID());
         preparedStatement.setLong(2, metadata.getExpirationTime());
-        preparedStatement.setString(3, metadata.getDestination());
+        preparedStatement.setString(3, metadata.getStorageQueueName());
         preparedStatement.addBatch();
     }
 
@@ -514,7 +515,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName,
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String storageQueueName,
                                                                        long firstMsgId, int count)
             throws AndesException {
 
@@ -527,7 +528,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             preparedStatement = connection
                     .prepareStatement(JDBCConstants.PS_SELECT_METADATA_FROM_QUEUE);
             preparedStatement.setLong(1, firstMsgId - 1);
-            preparedStatement.setInt(2, getCachedQueueID(queueName));
+            preparedStatement.setInt(2, getCachedQueueID(storageQueueName));
 
             results = preparedStatement.executeQuery();
             int resultCount = 0;
@@ -560,14 +561,14 @@ public class JDBCMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessageMetadataFromQueue(final String queueName,
+    public void deleteMessageMetadataFromQueue(final String storageQueueName,
                                                List<AndesRemovableMetadata> messagesToRemove)
             throws AndesException {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         try {
-            int queueID = getCachedQueueID(queueName);
+            int queueID = getCachedQueueID(storageQueueName);
 
             connection = getConnection();
             connection.setAutoCommit(false);
@@ -583,14 +584,14 @@ public class JDBCMessageStoreImpl implements MessageStore {
 
             if (logger.isDebugEnabled()) {
                 logger.debug("Metadata removed. " + messagesToRemove.size() +
-                        " metadata from destination " + queueName);
+                        " metadata from destination " + storageQueueName);
             }
         } catch (SQLException e) {
-            rollback(connection, JDBCConstants.TASK_DELETING_METADATA_FROM_QUEUE + queueName);
+            rollback(connection, JDBCConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
             throw new AndesException("error occurred while deleting message metadata from queue ",
                     e);
         } finally {
-            String task = JDBCConstants.TASK_DELETING_METADATA_FROM_QUEUE + queueName;
+            String task = JDBCConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName;
             close(preparedStatement, task);
             close(connection, task);
         }
@@ -622,6 +623,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
                 }
                 list.add(new AndesRemovableMetadata(
                                 resultSet.getLong(JDBCConstants.MESSAGE_ID),
+                                resultSet.getString(JDBCConstants.DESTINATION_QUEUE),
                                 resultSet.getString(JDBCConstants.DESTINATION_QUEUE)
                         )
                 );
@@ -888,4 +890,246 @@ public class JDBCMessageStoreImpl implements MessageStore {
             throws AndesException {
         // todo: need to be implemented with changes done to topic messages.
     }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @param queueName name of the queue being purged
+     * @throws AndesException
+     */
+    @Override
+    public void deleteAllMessageMetadata(String queueName) throws AndesException {
+
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+            int queueID = getCachedQueueID(queueName);
+
+            connection = getConnection();
+            connection.setAutoCommit(false);
+            preparedStatement = connection
+                    .prepareStatement(JDBCConstants.PS_CLEAR_QUEUE_FROM_METADATA);
+
+            preparedStatement.setInt(1, queueID);
+
+            preparedStatement.execute();
+            connection.commit();
+
+            // RESET the queue counter to 0
+            preparedStatement = connection
+                    .prepareStatement(JDBCConstants.PS_RESET_QUEUE_COUNT);
+
+            preparedStatement.setString(1, queueName);
+
+            preparedStatement.execute();
+            connection.commit();
+
+            if (logger.isDebugEnabled()) {
+                logger.debug("Deleted all message metadata from " + queueName +
+                        " with queue ID " + queueID);
+            }
+        } catch (SQLException e) {
+            rollback(connection, JDBCConstants.TASK_DELETING_METADATA_FROM_QUEUE + queueName);
+            throw new AndesException("error occurred while clearing message metadata from queue ",
+                    e);
+        } finally {
+            String task = JDBCConstants.TASK_DELETING_METADATA_FROM_QUEUE + queueName;
+            close(preparedStatement, task);
+            close(connection, task);
+        }
+    }
+
+
+    /**
+     * Internal method to retrieve a given page from the message ID list addressed to a queue
+     * from the Metadata table.
+     *
+     * @param queueName
+     * @param lastProcessedID
+     * @param limit
+     * @param connection      There should be an active JDBC connection passed to this method
+     *                        always.
+     *                        So that all queries for retrieving all messages for 1 queue is done
+     *                        through a single connection.
+     * @return
+     * @throws AndesException
+     */
+    private List<Long> getMessageIDsAddressedToQueueWithPagination(String queueName,
+                                                                   Long lastProcessedID,
+                                                                   Integer limit,
+                                                                   Connection connection) throws
+            AndesException {
+
+        List<Long> messageIDs = new ArrayList<Long>();
+
+        PreparedStatement preparedStatement = null;
+        ResultSet results = null;
+
+        try {
+            preparedStatement = connection
+                    .prepareStatement(JDBCConstants.PS_SELECT_MESSAGE_IDS_FROM_METADATA_FOR_QUEUE);
+
+            preparedStatement.setInt(1, getCachedQueueID(queueName));
+            preparedStatement.setLong(2, lastProcessedID);
+            preparedStatement.setMaxRows(limit);
+
+            results = preparedStatement.executeQuery();
+
+            while (results.next()) {
+                messageIDs.add(results.getLong(JDBCConstants.MESSAGE_ID));
+            }
+        } catch (SQLException e) {
+            throw new AndesException("error occurred while retrieving message metadata from queue ",
+                    e);
+        } finally {
+            close(results, JDBCConstants.TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE);
+            close(preparedStatement, JDBCConstants.TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE);
+        }
+        return messageIDs;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Long> getMessageIDsAddressedToQueue(String queueName) throws AndesException {
+
+        List<Long> messageIDs = new ArrayList<Long>();
+
+        Connection connection = null;
+
+        try {
+
+            connection = getConnection();
+
+            Long lastProcessedID = 0l;
+            // In case paginated data fetching is slow, this can be set to Integer.MAX.
+            // This is set to paginate so that a big data read wont cause continuous timeouts.
+            Integer pageSize = CQLDataAccessHelper.STANDARD_PAGE_SIZE;
+
+            Boolean allRecordsReceived = false;
+
+            while (!allRecordsReceived) {
+                try {
+                    List<Long> currentPage = getMessageIDsAddressedToQueueWithPagination
+                            (queueName, lastProcessedID, pageSize, connection);
+
+                    if (currentPage.size() == 0) {
+                        allRecordsReceived = true; // this means that there are no more messages
+                        // to be retrieved for this queue
+                    } else {
+                        messageIDs.addAll(currentPage);
+                        lastProcessedID = currentPage.get(currentPage.size() - 1);
+
+                        if (currentPage.size() < pageSize) {
+                            // again means there are no more message IDs to be retrieved
+                            allRecordsReceived = true;
+                        }
+                    }
+
+                } catch (AndesException e) {
+                    // escape loop in case of an exception and communicate the error
+                    throw new AndesException("Error while getting message IDs for queue : " +
+                            queueName, e);
+                }
+            }
+
+            return messageIDs;
+
+
+        } catch (SQLException e) {
+            throw new AndesException("Error occurred while retrieving message IDs for queue ",
+                    e);
+        } finally {
+            close(connection, JDBCConstants.TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE);
+        }
+
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @param queueName    name of the queue being purged
+     * @param DLCQueueName
+     * @return
+     * @throws AndesException
+     */
+    @Override
+    public int deleteAllMessageMetadataFromDLC(String queueName, String DLCQueueName) throws
+            AndesException {
+
+        Connection connection;
+        PreparedStatement preparedStatement;
+
+        int messageCountInDLCForQueue = 0;
+
+        try {
+
+            Long lastProcessedID = 0l;
+
+            Integer pageSize = CQLDataAccessHelper.STANDARD_PAGE_SIZE;
+
+            int queueID = getCachedQueueID(DLCQueueName);
+
+            connection = getConnection();
+            connection.setAutoCommit(false);
+            preparedStatement = connection
+                    .prepareStatement(JDBCConstants.PS_DELETE_METADATA_FROM_QUEUE);
+
+            Boolean allRecordsReceived = false;
+
+            while (!allRecordsReceived) {
+
+                List<AndesMessageMetadata> metadataList = getNextNMessageMetadataFromQueue
+                        (DLCQueueName, lastProcessedID, pageSize);
+
+                if (metadataList.size() == 0) {
+                    allRecordsReceived = true; // this means that there are no more messages to
+                    // be retrieved for this queue
+                } else {
+                    for (AndesMessageMetadata amm : metadataList) {
+                        if (amm.getDestination().equals(queueName)) {
+                            preparedStatement.setInt(1, queueID);
+                            preparedStatement.setLong(2, amm.getMessageID());
+                            preparedStatement.addBatch();
+                        }
+                    }
+
+                    lastProcessedID = metadataList.get(metadataList.size() - 1).getMessageID();
+
+                    if (metadataList.size() < pageSize) {
+                        // again means there are no more metadata to be retrieved
+                        allRecordsReceived = true;
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            // This could be thrown only from the while loop reading messages in DLC. The bat
+            throw new AndesException("Error while deleting messages in DLC for queue : " +
+                    queueName, e);
+        }
+
+        // Execute Batch Delete
+        try {
+            preparedStatement.executeBatch();
+            connection.commit();
+
+            if (logger.isDebugEnabled()) {
+                logger.debug("Removed. " + messageCountInDLCForQueue +
+                        " messages from DLC for destination " + queueName);
+            }
+        } catch (SQLException e) {
+            rollback(connection, JDBCConstants.TASK_DELETING_METADATA_FROM_QUEUE + queueName);
+            throw new AndesException("error occurred while deleting message metadata from queue ",
+                    e);
+        } finally {
+            String task = JDBCConstants.TASK_DELETING_METADATA_FROM_QUEUE + queueName;
+            close(preparedStatement, task);
+            close(connection, task);
+        }
+
+        return messageCountInDLCForQueue;
+    }
+
 }

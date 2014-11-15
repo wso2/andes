@@ -181,7 +181,7 @@ public class Show extends AbstractCommand
 //
 //        msg.getMessageNumber();
 //        msg.getSize();
-//        msg.getArrivalTime();
+//        msg.get_arrivalTime();
 
 //        msg.getDeliveredSubscription();
 //        msg.getDeliveredToConsumer();

@@ -37,6 +37,7 @@ import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
 
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -80,6 +81,11 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
 
     public boolean isActive() {
         return amqpSubscription.isActive();
+    }
+
+    @Override
+    public UUID getChannelID() {
+        return channel.getId();
     }
 
     @Override
@@ -133,6 +139,14 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
      * @throws AndesException
      */
     private void sendMessage(QueueEntry queueEntry) throws AndesException {
+
+        String msgHeaderStringID = "";
+
+        if (queueEntry != null) {
+            msgHeaderStringID = (String) queueEntry.getMessageHeader().
+                    getHeader("msgID");
+        }
+
         try {
             AMQProtocolSession session = channel.getProtocolSession();
             ((AMQMessage) queueEntry.getMessage()).setClientIdentifier(session);
@@ -140,11 +154,10 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
             if (amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
                 //this check is needed to detect if subscription has suddenly closed
                 if (log.isDebugEnabled()) {
-                    String msgHeaderStringID = (String) queueEntry.getMessageHeader().
-                            getHeader("msgID");
                     log.debug("TRACING>> QDW- sent queue/durable topic message " +
                             (msgHeaderStringID == null ? "" : msgHeaderStringID + " messageID-" +
-                                    queueEntry.getMessage().getMessageNumber()) + "-to subscription " + amqpSubscription);
+                                    queueEntry.getMessage().getMessageNumber()) + "-to " +
+                            "subscription " + amqpSubscription);
                 }
                 amqpSubscription.send(queueEntry);
             } else {
@@ -152,6 +165,16 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
             }
         } catch (AMQException e) {
             throw new AndesException(e);
+        } catch (AndesException e) {
+            if (e.getErrorCode().equals(AndesException.MESSAGE_CONTENT_OBSOLETE)) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Message content for message id : " + msgHeaderStringID + " has " +
+                            "been removed from store due to a queue purge or a previous " +
+                            "acknowledgement of the message. This message won't be retried.", e);
+                }
+            } else {
+                throw new AndesException(e);
+            }
         }
     }
 

@@ -38,16 +38,16 @@ import java.util.List;
  * From JMS Spec
  * -----------------
  *
- * A client uses a QueueBrowser to look at messages on a queue without removing
+ * A client uses a QueueBrowser to look at messages on a destination without removing
  * them.
  * The browse methods return a java.util.Enumeration that is used to scan the
- * queue’s messages. It may be an enumeration of the entire content of a queue or
+ * destination’s messages. It may be an enumeration of the entire content of a destination or
  * it may only contain the messages matching a message selector.
  * Messages may be arriving and expiring while the scan is done. JMS does not
- * require the content of an enumeration to be a static snapshot of queue content.
+ * require the content of an enumeration to be a static snapshot of destination content.
  * Whether these changes are visible or not depends on the JMS provider.
  * 
- * When someone made a QueueBroswer Subscription, we read messages for that queue and
+ * When someone made a QueueBroswer Subscription, we read messages for that destination and
  * send them to that subscription. 
  */
 
@@ -94,7 +94,7 @@ public class QueueBrowserDeliveryWorker {
 
     /**
      * Sends the browser subscription's messages to client
-     * @param messages - matching messages of queue
+     * @param messages - matching messages of destination
      */
     private void sendMessagesToClient(List<QueueEntry> messages){
             if (messages.size() > 0) {
@@ -118,7 +118,7 @@ public class QueueBrowserDeliveryWorker {
     }
 
     /**
-     * Get message queue entries sorted using the message Id in the ascending order.
+     * Get message destination entries sorted using the message Id in the ascending order.
      *
      * @return Sorted QueueEntry List
      * @throws AndesException
