@@ -344,7 +344,7 @@ public class SlotDeliveryWorker extends Thread {
         if (SlotUtils.checkSlotEmptyFromMessageStore(slot)) {
             slot.setSlotInActive();
             try {
-                if (AndesContext.getInstance().isClusteringEnabled()) {
+                if (isClusteringEnabled) {
                     MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
                     //Release all message trackings for messages of slot
                     OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
@@ -382,7 +382,7 @@ public class SlotDeliveryWorker extends Thread {
                     try {
                         slot.setSlotInActive();
 
-                        if (AndesContext.getInstance().isClusteringEnabled()) {
+                        if (isClusteringEnabled) {
                             MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
                             //Release all message trackings for messages of slot
                             OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);

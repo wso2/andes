@@ -36,7 +36,6 @@ import org.wso2.andes.server.slot.thrift.MBThriftClient;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
-import org.wso2.andes.server.cassandra.TopicDeliveryWorker;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
@@ -76,7 +75,7 @@ public class MessagingEngine {
     /**
      * Cache to keep message parts until message routing happens
      */
-    private HashMap<Long, List<AndesMessagePart>> messagePatsCache;
+    private HashMap<Long, List<AndesMessagePart>> messagePartsCache;
 
     /**
      * Cluster related configurations
@@ -133,7 +132,7 @@ public class MessagingEngine {
             // Accessed via MessageStoreManager
             durableMessageStore = messageStore;
             subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-            messagePatsCache = new HashMap<Long, List<AndesMessagePart>>();
+            messagePartsCache = new HashMap<Long, List<AndesMessagePart>>();
             //register listeners for queue changes
             queueListener= new ClusterCoordinationHandler(HazelcastAgent.getInstance());
 
@@ -628,12 +627,16 @@ public class MessagingEngine {
      */
     private void cacheMessageContentPart(AndesMessagePart messagePart) {
         long messageID = messagePart.getMessageID();
-        List<AndesMessagePart> contentChunks = messagePatsCache.get(messageID);
+        List<AndesMessagePart> contentChunks = messagePartsCache.get(messageID);
         if(contentChunks == null) {
             contentChunks = new ArrayList<AndesMessagePart>();
         }
         contentChunks.add(messagePart);
-        messagePatsCache.put(messageID, contentChunks);
+        messagePartsCache.put(messageID, contentChunks);
+        if(messagePartsCache.size() > 1000) {
+            log.warn(" Message Parts Cache is growing. Current size= " + messagePartsCache.size() +
+                     " This can lead to OOM.");
+        }
     }
 
     /**
@@ -642,7 +645,7 @@ public class MessagingEngine {
      * @return lst of content chunks
      */
     private List<AndesMessagePart> getAllMessagePartsFromCache(long messageID) {
-        return messagePatsCache.get(messageID);
+        return messagePartsCache.get(messageID);
     }
 
     /**
@@ -650,7 +653,7 @@ public class MessagingEngine {
      * @param messageID id of the message
      */
     private void removeMessageContentsFromCache(long messageID) {
-        messagePatsCache.remove(messageID);
+        messagePartsCache.remove(messageID);
     }
 
     /**
