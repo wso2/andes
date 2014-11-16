@@ -41,7 +41,7 @@ public class BasicSubscription implements AndesSubscription {
     protected boolean isDurable;
     // The name of the node in the cluster where the subscription is bound - MANDOTORY
     protected String subscribedNode;
-    // If the binding is non durable (topic) then the name would be prfix+destination+nodequeuename - INTERNALLY CONSTRUCTED
+    // If the binding is non durable (topic) then the name would be prfix+destination+nodeID - INTERNALLY CONSTRUCTED
     protected String storageQueueName;
     //non durable topics this value will be null. In other cases ex queues and durable topics we need to have this - OPTIONAL
     protected String targetQueue;
@@ -128,7 +128,6 @@ public class BasicSubscription implements AndesSubscription {
         if (subscriptionID == null) {
             this.subscriptionID = UUID.randomUUID().toString();
         }
-        //TODO: hasitha - need to handle hierarchical topic case
         this.destination = destination;
         this.isBoundToTopic = isBoundToTopic;
         this.isExclusive = isExclusive;

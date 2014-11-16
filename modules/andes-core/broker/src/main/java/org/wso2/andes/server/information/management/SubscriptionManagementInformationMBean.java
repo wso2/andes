@@ -20,7 +20,6 @@ package org.wso2.andes.server.information.management;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.QueueAddress;
 import org.wso2.andes.management.common.mbeans.SubscriptionManagementInformation;
 import org.wso2.andes.server.management.AMQManagedObject;
 
@@ -109,17 +108,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
     public int getMessageCount(String subscribedNode, String msgPattern ,String destinationName) {
         int messageCount = 0;
         try {
-            QueueAddress.QueueType queueType = null;
-
-            if (msgPattern.equals("topic")) {
-                queueType = QueueAddress.QueueType.TOPIC_NODE_QUEUE;
-                //TODO: implement - hasitha
-                messageCount = 0;
-            }
-            if (msgPattern.equals("queue")) {
-                queueType = QueueAddress.QueueType.QUEUE_NODE_QUEUE;
-                messageCount =  MessagingEngine.getInstance().getMessageCountOfQueue(destinationName);
-            }
+            messageCount = MessagingEngine.getInstance().getMessageCountOfQueue(destinationName);
 
         }catch (Exception e) {
             throw new RuntimeException("Error in retrieving pending message count", e);

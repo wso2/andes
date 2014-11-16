@@ -61,7 +61,6 @@ public class MessageStoreManagerFactory {
             throws AndesException {
         MessageStoreManager messageStoreManager;
         messageStoreManager = new DirectStoringManager(messageStore);
-        log.info("Message Storing strategy: direct message storing.");
         return messageStoreManager;
     }
 }

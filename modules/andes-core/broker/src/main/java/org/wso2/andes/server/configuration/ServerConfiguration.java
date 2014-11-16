@@ -585,20 +585,12 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         return getBooleanValue("clustering.OnceInOrderSupportEnabled",false);
     }
 
-    public int getGlobalQueueCount(){
-        return getIntValue("clustering.GlobalQueueCount",10);
-    }
-
     public int getSlotWindowSize(){
         return getIntValue("clustering.SlotWindowSize",1000);
     }
 
     public int getNumberOFSlotDeliveryWorkerThreads(){
         return getIntValue("clustering.NumberOfSlotDeliveryWorkerThreads",5);
-    }
-
-    public int getGlobalQueueWorkerMessageBatchSize() {
-        return getIntValue("clustering.tuning.messageBatchSizes.globalQueueWorkerMessageBatchSize", 700);
     }
 
     public int getContentPublisherMessageBatchSize() {

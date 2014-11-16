@@ -42,6 +42,7 @@ public interface QueueManagementInformation {
      * Delete a queue from the broker.
      * @param queueName
      */
+    @Deprecated
     @MBeanAttribute(name="Delete Queue" ,description = "Deleting the specified queue from the server")
     void deleteQueue(@MBeanOperationParameter(name = "queueName" ,
             description = "Name of the queue to be deleted") String queueName);

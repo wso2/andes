@@ -28,6 +28,7 @@ import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.AMQChannel;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.message.AMQMessage;
@@ -206,8 +207,9 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
 
     public LocalSubscription createQueueToListentoTopic() {
         //todo:hasitha:verify passing null values
+        String subscribedNode = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         return new AMQPLocalSubscription(amqQueue,
-                amqpSubscription, subscriptionID, targetQueue, false, isExclusive, true, MessagingEngine.getMyNodeQueueName(), amqQueue.getName(),
+                amqpSubscription, subscriptionID, targetQueue, false, isExclusive, true, subscribedNode, amqQueue.getName(),
                 amqQueue.getOwner().toString(), AMQPUtils.DIRECT_EXCHANGE_NAME, DirectExchange.TYPE.toString(), Short.parseShort("0"), true);
     }
 

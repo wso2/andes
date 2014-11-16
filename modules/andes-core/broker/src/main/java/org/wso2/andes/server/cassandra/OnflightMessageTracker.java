@@ -189,7 +189,7 @@ public class OnflightMessageTracker {
 
         private int incrementDeliveryCount(UUID channelID) {
             Integer numOfDeliveries = channelToNumOfDeliveries.get(channelID);
-            if(null == numOfDeliveries) {
+            if(numOfDeliveries == null) {
                 numOfDeliveries = 0;
             }
             numOfDeliveries ++;
@@ -340,8 +340,9 @@ public class OnflightMessageTracker {
     public void incrementMessageCountInSlot(Slot slot) {
         AtomicInteger pendingMessageCount = pendingMessagesBySlot.get(slot);
         if (null == pendingMessageCount) {
-            pendingMessageCount = pendingMessagesBySlot.putIfAbsent(slot, new AtomicInteger());
+            pendingMessagesBySlot.putIfAbsent(slot, new AtomicInteger());
         }
+        pendingMessageCount = pendingMessagesBySlot.get(slot);
         pendingMessageCount.incrementAndGet();
     }
 

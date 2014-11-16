@@ -64,7 +64,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
     private boolean isPersistent;
     private boolean reDelivered;
     Map<UUID, PendingJob> pendingJobsTracker;
-    public QueueAddress queueAddress;
     private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
 
     /**
@@ -201,8 +200,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         clone.destination = destination;
         clone.storageQueueName = storageQueueName;
         clone.isPersistent = isPersistent;
-        clone.pendingJobsTracker = pendingJobsTracker; 
-        clone.queueAddress = queueAddress;
+        clone.pendingJobsTracker = pendingJobsTracker;
         clone.slot = slot;
         clone.arrivalTime = arrivalTime;
         return clone;
@@ -253,7 +251,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
             arrivalTime = ((MessageMetaData) mdt).getArrivalTime();
             destination = ((MessageMetaData) mdt).getMessagePublishInfo().getRoutingKey().toString();
             isTopic = ((MessageMetaData) mdt).getMessagePublishInfo().getExchange().equals(AMQPUtils.TOPIC_EXCHANGE_NAME);
-            queueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE, AndesUtils.getGlobalQueueNameForDestinationQueue(destination));
         }
         //For MQTT Specific Types
         if (type.equals(MessageMetaDataType.META_DATA_MQTT)) {

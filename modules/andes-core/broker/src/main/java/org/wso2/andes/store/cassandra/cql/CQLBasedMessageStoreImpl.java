@@ -114,19 +114,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 CassandraConstants.KEYSPACE, this.cluster,
                 CassandraConstants.LONG_TYPE, DataType.blob(),
                 gcGraceSeconds);
-        CQLDataAccessHelper.createColumnFamily(CassandraConstants.NODE_QUEUES_COLUMN_FAMILY,
-                CassandraConstants.KEYSPACE, this.cluster,
-                CassandraConstants.LONG_TYPE, DataType.blob(),
-                gcGraceSeconds);
-        CQLDataAccessHelper.createColumnFamily(CassandraConstants.GLOBAL_QUEUES_COLUMN_FAMILY,
-                CassandraConstants.KEYSPACE, this.cluster,
-                CassandraConstants.LONG_TYPE, DataType.blob(),
-                gcGraceSeconds);
         CQLDataAccessHelper.createColumnFamily(CassandraConstants.META_DATA_COLUMN_FAMILY,
-                CassandraConstants.KEYSPACE, this.cluster,
-                CassandraConstants.LONG_TYPE, DataType.blob(),
-                gcGraceSeconds);
-        CQLDataAccessHelper.createColumnFamily(CassandraConstants.PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY,
                 CassandraConstants.KEYSPACE, this.cluster,
                 CassandraConstants.LONG_TYPE, DataType.blob(),
                 gcGraceSeconds);
@@ -493,13 +481,8 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         try {
 
             byte[] value = CQLDataAccessHelper
-                    .getMessageMetaDataFromQueue(CassandraConstants.NODE_QUEUES_COLUMN_FAMILY,
+                    .getMessageMetaDataFromQueue(CassandraConstants.META_DATA_COLUMN_FAMILY,
                             CassandraConstants.KEYSPACE, messageId);
-            if (value == null) {
-                value = CQLDataAccessHelper.getMessageMetaDataFromQueue(
-                        CassandraConstants.PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY,
-                        CassandraConstants.KEYSPACE, messageId);
-            }
             metadata = new AndesMessageMetadata(messageId, value, true);
 
         } catch (Exception e) {
@@ -599,47 +582,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             }
         } catch (CassandraDataAccessException e) {
             throw new AndesException(e);
-        }
-    }
-
-    private String getColumnFamilyFromQueueAddress(QueueAddress address) {
-        String columnFamilyName;
-        if (address.queueType.equals(QueueAddress.QueueType.QUEUE_NODE_QUEUE)) {
-            columnFamilyName = CassandraConstants.NODE_QUEUES_COLUMN_FAMILY;
-        } else if (address.queueType.equals(QueueAddress.QueueType.GLOBAL_QUEUE)) {
-            columnFamilyName = CassandraConstants.GLOBAL_QUEUES_COLUMN_FAMILY;
-        } else if (address.queueType.equals(QueueAddress.QueueType.TOPIC_NODE_QUEUE)) {
-            columnFamilyName = CassandraConstants.PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY;
-        } else {
-            columnFamilyName = null;
-        }
-        return columnFamilyName;
-    }
-
-    private boolean msgOKToMove(long msgID, QueueAddress sourceAddress, QueueAddress targetAddress)
-            throws CassandraDataAccessException {
-        if (alreadyMovedMessageTracker.checkIfAlreadyTracked(msgID)) {
-            List<Statement> statements = new ArrayList<Statement>();
-            Delete delete = CQLDataAccessHelper.deleteLongColumnFromRaw(CassandraConstants.KEYSPACE,
-                    getColumnFamilyFromQueueAddress(
-                            sourceAddress),
-                    sourceAddress.queueName,
-                    msgID, false);
-            statements.add(delete);
-            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE,
-                    statements.toArray(new Statement[statements.size()]));
-            if (log.isTraceEnabled()) {
-                log.trace(
-                        "Rejecting moving message id =" + msgID + " as it is already read from " + sourceAddress.queueName);
-            }
-            return false;
-        } else {
-            alreadyMovedMessageTracker.insertMessageForTracking(msgID, msgID);
-            if (log.isTraceEnabled()) {
-                log.trace(
-                        "allowing to move message id - " + msgID + " from " + sourceAddress.queueName);
-            }
-            return true;
         }
     }
 

@@ -182,8 +182,8 @@ public class AMQPUtils {
         String subscriptionID = String.valueOf(subscription.getSubscriptionID());
         Exchange exchange = b.getExchange();
         String destination = b.getBindingKey();
+        String subscribedNode = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         String queueOwner = (queue.getOwner() == null) ? null : queue.getOwner().toString();
-        String nodeQueueName = "";
         String queueBoundExchangeName = "";
         String queueBoundExchangeType = exchange.getType().toString();
         Short isqueueBoundExchangeAutoDeletable = Short.parseShort(exchange.isAutoDelete() ? Integer.toString(1) : Integer.toString(0));
@@ -196,17 +196,15 @@ public class AMQPUtils {
         //TODO: extend to other types of exchanges
         if (exchange.getType().equals(DirectExchange.TYPE)) {
             queueBoundExchangeName = DirectExchange.TYPE.getDefaultExchangeName().toString();
-            nodeQueueName = MessagingEngine.getMyNodeQueueName();
             isBoundToTopic = false;
         } else if (exchange.getType().equals(TopicExchange.TYPE)) {
-            nodeQueueName = AndesUtils.getTopicNodeQueueName();
             queueBoundExchangeName = TopicExchange.TYPE.getDefaultExchangeName().toString();
             isBoundToTopic = true;
         }
 
         AMQPLocalSubscription localSubscription = new AMQPLocalSubscription(queue,
                 subscription, subscriptionID, destination, isBoundToTopic, queue.isExclusive(), queue.isDurable(),
-                nodeQueueName, queue.getName(), queueOwner, queueBoundExchangeName, queueBoundExchangeType, isqueueBoundExchangeAutoDeletable, subscription.isActive());
+                subscribedNode, queue.getName(), queueOwner, queueBoundExchangeName, queueBoundExchangeType, isqueueBoundExchangeAutoDeletable, subscription.isActive());
 
         return localSubscription;
     }

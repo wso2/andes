@@ -24,9 +24,6 @@ package org.wso2.andes.server.util;
 public class AndesConstants {
 
     public static final String MESSAGE_EXPIRATION_PROPERTY = "Message Expiration";
-    public static final String GLOBAL_QUEUE_NAME_PREFIX = "GlobalQueue_";
-    public static final String NODE_QUEUE_NAME_PREFIX = "NodeQueue_";
-    public static final String TOPIC_NODE_QUEUE_NAME_PREFIX = "TopicNodeQueue_";
     public static final String MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX = "mid";
 
     // The default Dead Letter Channel queue name suffix

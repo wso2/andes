@@ -23,18 +23,14 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.slot.SlotCoordinationConstants;
 import org.wso2.andes.server.slot.SlotManager;
-import org.wso2.andes.server.util.AndesConstants;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -58,12 +54,7 @@ public class ClusterManager {
     /**
      * each node is assigned  an ID 0-x after arranging nodeIDs in an ascending order
      */
-    private int globalQueueSyncId;
-
-    /**
-     * in memory map keeping global queues assigned to the this node
-     */
-    private List<String> globalQueuesAssignedToMe = Collections.synchronizedList(new ArrayList<String>());
+    private int nodeSyncSyncId;
 
     /**
      * AndesContextStore instance
@@ -103,8 +94,7 @@ public class ClusterManager {
      * Handles changes needs to be done in current node when a node joins to the cluster
      */
     public void memberAdded(Member node) {
-        reAssignGlobalQueueSyncId();
-        handleGlobalQueueAddition();
+        reAssignNodeSyncId();
         //update thrift coordinator server details
         updateThriftCoordinatorDetailsToMap();
     }
@@ -116,12 +106,10 @@ public class ClusterManager {
         String deletedNodeId = hazelcastAgent.getIdOfNode(node);
 
         //refresh global queue sync ID
-        reAssignGlobalQueueSyncId();
-        //reassign global queue workers
-        handleGlobalQueueAddition();
+        reAssignNodeSyncId();
 
         // Below steps are carried out only by the 0th node of the list.
-        if (globalQueueSyncId == 0) {
+        if (nodeSyncSyncId == 0) {
             //clear persisted states of disappeared node
             clearAllPersistedStatesOfDisappearedNode(deletedNodeId);
 
@@ -143,42 +131,6 @@ public class ClusterManager {
      */
     public String getNodeAddress(String nodeId) throws AndesException {
         return andesContextStore.getAllStoredNodeData().get(nodeId);
-    }
-
-    /**
-     * Get all global queues assigned to a node
-     *
-     * @param nodeId Id of the node
-     * @return global queues as an array of Strings
-     *         TODO:this should be removed with slot based architecture. The logic behind this method is no more valid
-     */
-    public String[] getGlobalQueuesAssigned(String nodeId) {
-        List<String> globalQueuesToBeAssigned = new ArrayList<String>();
-        List<String> membersUniqueRepresentations = new ArrayList<String>();
-
-        for (Member member : hazelcastAgent.getAllClusterMembers()) {
-            membersUniqueRepresentations.add(member.getUuid());
-        }
-
-        Collections.sort(membersUniqueRepresentations);
-
-        int indexOfRequestedId = membersUniqueRepresentations.indexOf(nodeId.substring(nodeId.length() - 36, nodeId.length()));
-        int globalQueueCount = ClusterResourceHolder.getInstance().getClusterConfiguration().getGlobalQueueCount();
-        int clusterNodeCount = hazelcastAgent.getClusterSize();
-
-        for (int count = 0; count < globalQueueCount; count++) {
-            if (count % clusterNodeCount == indexOfRequestedId) {
-                globalQueuesToBeAssigned.add(AndesConstants.GLOBAL_QUEUE_NAME_PREFIX + count);
-            }
-        }
-
-        return globalQueuesToBeAssigned.toArray(new String[globalQueuesToBeAssigned.size()]);
-    }
-
-    //TODO:hasitha can we implement moving global queue workers?
-    public boolean updateWorkerForQueue(String queueToBeMoved, String newNodeToAssign) {
-        boolean successful = false;
-        return false;
     }
 
     /**
@@ -270,56 +222,8 @@ public class ClusterManager {
     /**
      * update global queue synchronizing ID according to current status in cluster
      */
-    private void reAssignGlobalQueueSyncId() {
-        this.globalQueueSyncId = hazelcastAgent.getIndexOfLocalNode();
-    }
-
-    /**
-     * Start and stop global queue workers
-     */
-    private void updateGlobalQueuesAssignedTome() {
-
-        List<String> globalQueuesToBeAssigned = new ArrayList<String>();
-        int globalQueueCount = ClusterResourceHolder.getInstance().getClusterConfiguration().getGlobalQueueCount();
-        int clusterNodeCount = hazelcastAgent.getClusterSize();
-        for (int count = 0; count < globalQueueCount; count++) {
-            if (count % clusterNodeCount == globalQueueSyncId) {
-                globalQueuesToBeAssigned.add(AndesConstants.GLOBAL_QUEUE_NAME_PREFIX + count);
-            }
-        }
-        this.globalQueuesAssignedToMe.clear();
-        for (String q : globalQueuesToBeAssigned) {
-            globalQueuesAssignedToMe.add(q);
-        }
-    }
-
-    /**
-     * When redistributing the global queues among cluster nodes, some nodes will get more global queues
-     * than the existing global queues. This case is handled by below methods.
-     */
-    private void handleGlobalQueueAddition() {
-        //get the current globalQueue Assignments
-        List<String> currentGlobalQueueAssignments = new ArrayList<String>();
-        for (String q : globalQueuesAssignedToMe) {
-            currentGlobalQueueAssignments.add(q);
-        }
-
-        //update GlobalQueues to be assigned as to new situation in cluster
-        updateGlobalQueuesAssignedTome();
-
-        //stop any global queue worker that is not assigned to me now
-        //TODO these should be removed when slot implememntation is tested
-
-//        for (String globalQueue : currentGlobalQueueAssignments) {
-//            if (!globalQueuesAssignedToMe.contains(globalQueue)) {
-//                globalQueueManager.removeWorker(globalQueue);
-//            }
-//        }
-
-        //start global queue workers for queues assigned to me
-//        for (String globalQueue : globalQueuesAssignedToMe) {
-//            globalQueueManager.scheduleWorkForGlobalQueue(globalQueue);
-//        }
+    private void reAssignNodeSyncId() {
+        this.nodeSyncSyncId = hazelcastAgent.getIndexOfLocalNode();
     }
 
     private void clearAllPersistedStatesOfDisappearedNode(String nodeID) throws AndesException {

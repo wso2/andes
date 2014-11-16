@@ -18,18 +18,15 @@
 
 package org.wso2.andes.kernel;
 
-import org.apache.commons.configuration.Configuration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.VirtualHostsConfiguration;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
-import org.wso2.andes.server.cassandra.TopicDeliveryWorker;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
-import org.wso2.andes.server.information.management.QueueManagementInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
 import org.wso2.andes.server.slot.thrift.MBThriftServer;
 import org.wso2.andes.server.virtualhost.VirtualHost;
@@ -314,8 +311,6 @@ public class AndesKernelBoot {
      * @throws Exception
      */
     public static void startMessaging() throws Exception {
-        // TODO: Remove this
-        ClusterResourceHolder.getInstance().setTopicDeliveryWorker(new TopicDeliveryWorker());
         MessagingEngine.getInstance().startMessageDelivery();
         MessagingEngine.getInstance().startMessageExpirationWorker();
     }

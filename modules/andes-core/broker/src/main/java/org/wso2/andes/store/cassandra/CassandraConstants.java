@@ -112,17 +112,8 @@ public class CassandraConstants {
     //column family to add and remove message content with their <messageID,offset> values
     public final static String MESSAGE_CONTENT_COLUMN_FAMILY = "MessageContent";
 
-    //column family to keep messages for node queues (<nodequeue,messageID>)
-    public final static String NODE_QUEUES_COLUMN_FAMILY = "NodeQueues";
-
-    //column family to keep messages for global queues (<global-queue,messageID>)
-    public final static String GLOBAL_QUEUES_COLUMN_FAMILY = "GlobalQueue";
-
     //column family to keep message metadata for queues
     public final static String META_DATA_COLUMN_FAMILY = "MetaData";
-
-    //column family to keep track of message IDs for topics <nodeQueueName,MessageID>
-    public final static String PUB_SUB_MESSAGE_IDS_COLUMN_FAMILY = "pubSubMessages";
     
     public final static String SUBSCRIPTIONS_COLUMN_FAMILY = "Subscriptions";
 

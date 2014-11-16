@@ -201,12 +201,11 @@ public class SubscriptionStore {
 
 
     public int numberOfSubscriptionsForDestinationAtNode(String destination, String nodeID) throws AndesException {
-        String requestedNodeQueue = AndesUtils.getNodeQueueNameForNodeId(nodeID);
         List<AndesSubscription> subscriptions = getActiveClusterSubscribersForDestination(destination, false);
         int count = 0;
         if (subscriptions != null && !subscriptions.isEmpty()) {
             for (AndesSubscription sub : subscriptions) {
-                if (sub.getSubscribedNode().equals(requestedNodeQueue)) {
+                if (sub.getSubscribedNode().equals(nodeID)) {
                     count++;
                 }
             }
@@ -223,12 +222,11 @@ public class SubscriptionStore {
      */
     public List<AndesSubscription> getActiveClusterSubscribersForNode(String nodeID, boolean isTopic) {
         List<AndesSubscription> activeQueueSubscriptions = new ArrayList<AndesSubscription>();
-        String nodeQueueNameForNode = AndesUtils.getNodeQueueNameForNodeId(nodeID);
         Map<String, List<AndesSubscription>> clusterSubscriptionMap = isTopic ? clusterTopicSubscriptionMap : clusterQueueSubscriptionMap;
         for (String destination : clusterSubscriptionMap.keySet()) {
             List<AndesSubscription> subList = clusterSubscriptionMap.get(destination);
             for (AndesSubscription sub : subList) {
-                if (sub.getSubscribedNode().equals(nodeQueueNameForNode) && sub.hasExternalSubscriptions()) {
+                if (sub.getSubscribedNode().equals(nodeID) && sub.hasExternalSubscriptions()) {
                     activeQueueSubscriptions.add(sub);
                 }
             }
@@ -384,7 +382,7 @@ public class SubscriptionStore {
      * @param queueName destination queue name
      * @return list of node queue names
      */
-    public Set<String> getNodeQueuesHavingSubscriptionsForQueue(String queueName) throws AndesException {
+    public Set<String> getNodesHavingSubscriptionsForQueue(String queueName) throws AndesException {
         List<AndesSubscription> nodesHavingSubscriptions4Queue = getActiveClusterSubscribersForDestination(queueName, false);
         HashSet<String> nodes = new HashSet<String>();
         for (AndesSubscription subscrption : nodesHavingSubscriptions4Queue) {
@@ -400,7 +398,7 @@ public class SubscriptionStore {
      * @return list of node queues
      * @throws AndesException
      */
-    public Set<String> getNodeQueuesHavingSubscriptionsForTopic(String topicName) throws AndesException {
+    public Set<String> getNodesHavingSubscriptionsForTopic(String topicName) throws AndesException {
         List<AndesSubscription> nodesHavingSubscriptions4Topic = getActiveClusterSubscribersForDestination(topicName, true);
         HashSet<String> nodes = new HashSet<String>();
         for (AndesSubscription subscrption : nodesHavingSubscriptions4Topic) {
@@ -410,16 +408,16 @@ public class SubscriptionStore {
     }
 
     /**
-     * get subscriptions of a particular node queue
+     * get subscriptions of a particular node
      *
-     * @param nodeQueueName    node queue name
+     * @param nodeID    ID of the node
      * @param subscriptionList list of subscriptions to evaluate
      * @return list of subscriptions filtered
      */
-    private List<AndesSubscription> getSubscriptionsOfNode(String nodeQueueName, List<AndesSubscription> subscriptionList) {
+    private List<AndesSubscription> getSubscriptionsOfNode(String nodeID, List<AndesSubscription> subscriptionList) {
         List<AndesSubscription> subscriptionsOfNode = new ArrayList<AndesSubscription>();
         for (AndesSubscription sub : subscriptionList) {
-            if (sub.getSubscribedNode().equals(nodeQueueName)) {
+            if (sub.getSubscribedNode().equals(nodeID)) {
                 subscriptionsOfNode.add(sub);
             }
         }
