@@ -35,8 +35,6 @@ import java.util.concurrent.ConcurrentSkipListSet;
  * messages to subscribers There will be one Flusher per Queue Per Node
  */
 public class QueueDeliveryWorker {
-    private final String nodeQueue;
-    private boolean running = true;
     private static Log log = LogFactory.getLog(QueueDeliveryWorker.class);
 
     private int maxNumberOfUnAckedMessages = 100000;
@@ -64,7 +62,6 @@ public class QueueDeliveryWorker {
     private static QueueDeliveryWorker queueDeliveryWorker = new QueueDeliveryWorker(1000);
 
     public QueueDeliveryWorker(final int queueWorkerWaitInterval) {
-        this.nodeQueue = MessagingEngine.getMyNodeQueueName();
         this.executor = new SequentialThreadPoolExecutor(
                 (ClusterResourceHolder.getInstance().getClusterConfiguration().
                         getPublisherPoolSize()), "QueueMessagePublishingExecutor");
@@ -76,10 +73,6 @@ public class QueueDeliveryWorker {
         this.maxNumberOfReadButUndeliveredMessages = clusterConfiguration
                 .getMaxNumberOfReadButUndeliveredMessages();
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-    }
-
-    public boolean isWorking() {
-        return running;
     }
 
     /**
@@ -525,11 +518,6 @@ public class QueueDeliveryWorker {
     public void reQueueUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message) {
         String destination = message.getDestination();
         subscriptionCursar4QueueMap.get(destination).readButUndeliveredMessages.add(message);
-    }
-
-    public void stopFlusher() {
-        running = false;
-        log.debug("Shutting down the destination message flusher for the destination " + nodeQueue);
     }
 
     public void clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(

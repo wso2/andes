@@ -35,7 +35,6 @@ public class PerformanceCounter {
     
     private static AtomicLong queueDeliveryCount =  new AtomicLong();
     private static AtomicLong queueReceiveCount =  new AtomicLong();
-    private static AtomicLong queueGlobalQueueMoveCount =  new AtomicLong();
     private static AtomicLong pendingMessagesToBeWrittenToCassandra = new AtomicLong();
     
     private static long startTime = -1; 
@@ -61,14 +60,10 @@ public class PerformanceCounter {
                     
                     float receivethroughput = queueReceiveCount.get()*1000/timeTookSinceEmit; 
                     queueReceiveCount.set(0);
-                    
-                    float globalQueueMovethroughput = queueGlobalQueueMoveCount.get()*1000/timeTookSinceEmit; 
-                    queueGlobalQueueMoveCount.set(0);
-
 
                     if(queueReceiveCount.get() > 0){
                         log.info("PerfCount: summary ["+new Date()+"] deliveryThoughput = "+deliverythroughput +", receiveThoughput="+ receivethroughput 
-                                +", qquaueMoveT="+globalQueueMovethroughput+" delivered=" + totmessagesDelivered + ", received " + totMessagesReceived );                    
+                                + "delivered=" + totmessagesDelivered + ", received " + totMessagesReceived );
                     }
                     lastEmitTs = System.currentTimeMillis(); 
                 }
@@ -199,14 +194,7 @@ public class PerformanceCounter {
              log.info("[mbperf1]["+count+"]"+label+"=(T=" + tc.getThroughput() + "("+tc.getLast1000Throughput()+"), L="+ lc.getLatency() + Arrays.toString(lc.getHistorgram()));
         }
     }
-    
 
-    
-    public static void recordGlobalQueueMsgMove(int messagesMoved){
-        queueGlobalQueueMoveCount.addAndGet(messagesMoved);
-    }
-
-    
     public static void recordMessageSentToConsumer(){
         messageSentToConsumerCounter.notifyEvent(false);
     }

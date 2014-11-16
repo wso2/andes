@@ -46,38 +46,36 @@ public class MessageDeliveryThreadHandler implements SubscriptionListener {
             case Added:
                 //if it is a topic subscription, start a topicDeliveryWorker if one has not started
                 if (localSubscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME) && localSubscription.hasExternalSubscriptions()) {
-                    if (!ClusterResourceHolder.getInstance().getTopicDeliveryWorker().isWorking()) {
-                        ClusterResourceHolder.getInstance().getTopicDeliveryWorker().setWorking();
-                    }
+                    //TODO:TDW removed
                 }
 
                 //if it is a MQTT subscription on this node. Start a topicDeliveryWorker if one has not started
                 else if (localSubscription instanceof MQTTLocalSubscription) {
-                    if (!ClusterResourceHolder.getInstance().getTopicDeliveryWorker().isWorking()) {
-                        ClusterResourceHolder.getInstance().getTopicDeliveryWorker().setWorking();
-                    }
+                    //TODO:TDW removed
                 }
                 break;
             case Disconnected:
                 if (localSubscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME) && !localSubscription.isDurable()) {
 
+                    //TODO:TDW removed
                     //stop Topic Delivery Worker If Having No active normal (not durable) topic subscriptions on this node
-                    if (ClusterResourceHolder.getInstance().getTopicDeliveryWorker() != null) {
+/*                    if (ClusterResourceHolder.getInstance().getTopicDeliveryWorker() != null) {
                         if (!subscriptionManager.checkIfActiveLocalNonDurableSubscriptionsExists(true)) {
-                            ClusterResourceHolder.getInstance().getTopicDeliveryWorker().stopWorking();
+
                         }
-                    }
+                    }*/
                 }
                 break;
             case Deleted:
                 if (localSubscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME) && !localSubscription.isDurable()) {
 
+                    //TODO:TDW removed
                     //stop Topic Delivery Worker If Having No active normal (not durable) topic subscriptions on this node
-                    if (ClusterResourceHolder.getInstance().getTopicDeliveryWorker() != null) {
+/*                    if (ClusterResourceHolder.getInstance().getTopicDeliveryWorker() != null) {
                         if (!subscriptionManager.checkIfActiveLocalNonDurableSubscriptionsExists(true)) {
-                            ClusterResourceHolder.getInstance().getTopicDeliveryWorker().stopWorking();
+
                         }
-                    }
+                    }*/
                 }
                 break;
         }

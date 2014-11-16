@@ -23,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.BasicSubscription;
@@ -131,7 +132,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
      * Should inform the purticuler node the subcriber is bound to, This mehod would set the node id to the current
      */
     public void setNodeInfo() {
-        this.subscribedNode = AndesUtils.getTopicNodeQueueName();
+        this.subscribedNode = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
     }
 
     /**

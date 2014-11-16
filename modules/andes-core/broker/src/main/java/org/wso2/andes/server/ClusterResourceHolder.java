@@ -20,8 +20,6 @@ package org.wso2.andes.server;
 import org.wso2.andes.kernel.AndesRecoveryTask;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
-import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
-import org.wso2.andes.server.cassandra.TopicDeliveryWorker;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.store.QpidDeprecatedMessageStore;
@@ -68,12 +66,6 @@ public class ClusterResourceHolder {
      * holds cluster manager
      */
     private ClusterManager clusterManager;
-
-    /**
-     * Holds the topic Delivery Worker Thread for the node
-     */
-    private TopicDeliveryWorker topicDeliveryWorker;
-    private QueueDeliveryWorker queueDeliveryWorker;
     private MessageExpirationWorker messageExpirationWorker;
 
     private ClusterResourceHolder() {
@@ -141,22 +133,6 @@ public class ClusterResourceHolder {
 
     public void setAndesRecoveryTask(AndesRecoveryTask andesRecoveryTask) {
         this.andesRecoveryTask = andesRecoveryTask;
-    }
-
-    public TopicDeliveryWorker getTopicDeliveryWorker() {
-        return topicDeliveryWorker;
-    }
-
-    public void setTopicDeliveryWorker(TopicDeliveryWorker topicDeliveryWorker) {
-        this.topicDeliveryWorker = topicDeliveryWorker;
-    }
-
-    public void setQueueDeliveryWorker(QueueDeliveryWorker queueDeliveryWorker) {
-        this.queueDeliveryWorker = queueDeliveryWorker;
-    }
-
-    public QueueDeliveryWorker getQueueDeliveryWorker() {
-        return queueDeliveryWorker;
     }
 
     public MessageExpirationWorker getMessageExpirationWorker() {

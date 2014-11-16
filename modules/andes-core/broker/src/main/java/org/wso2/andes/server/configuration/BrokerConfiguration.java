@@ -31,7 +31,6 @@ public class BrokerConfiguration {
 
     private String bindIpAddress;
 
-    private int globalQueueCount;
 
     private int slotWindowSize;
 
@@ -94,8 +93,6 @@ public class BrokerConfiguration {
     }
 
     public void intilizeConfig() {
-
-        globalQueueCount =  serverConfig.getGlobalQueueCount();
         slotWindowSize =  serverConfig.getSlotWindowSize();
         slotDeliveryWorkerThreads = serverConfig.getNumberOFSlotDeliveryWorkerThreads();
         messageBatchSizeForSubscribersQueues =  serverConfig.getMessageBatchSizeForSubscribersQueues();
@@ -121,10 +118,6 @@ public class BrokerConfiguration {
         expirationMessageBatchSize = serverConfig.getExpirationMessageBatchSize();
         saveExpiredToDLC = serverConfig.getSaveExpiredToDLC();
 
-    }
-
-    public int getGlobalQueueCount(){
-        return globalQueueCount;
     }
 
     public int getSlotWindowSize(){

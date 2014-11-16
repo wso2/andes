@@ -35,13 +35,6 @@ public interface ClusterManagementInformation {
     @MBeanAttribute(name = "getMyNodeID", description = "Node Id assigned for the node")
     String getMyNodeID();
 
-    @MBeanAttribute(name = "getGlobalQueuesAssigned", description = "Existing global queues currently assigned to the node")
-    String[] getGlobalQueuesAssigned(String nodeId);
-
-    @MBeanAttribute(name = "updateWorkerForQueue", description = "Move the given global queue Worker Handler to a new node")
-    boolean updateWorkerForQueue(@MBeanOperationParameter(name="queueToMove",description = "name of queue whose queue worker to move") String queueToBeMoved,
-                                 @MBeanOperationParameter(name="newNode",description = "name of new node to assign queue worker") String newNodeToAssign);
-
     @MBeanAttribute(name = "getMessageCount" , description = "Message Count in the queue")
     int getMessageCount(@MBeanOperationParameter(name = "queueName",description = "Name of the queue which message count is required")String queueName);
 
@@ -60,10 +53,12 @@ public interface ClusterManagementInformation {
     @MBeanAttribute(name = "getDestinationQueuesOfCluster", description = "get destination queues in cluster")
     List<String> getDestinationQueuesOfCluster();
 
+    @Deprecated
     @MBeanAttribute(name = "getNodeQueueMessageCount", description = "get message count of node addressed to given destination queue")
     int getNodeQueueMessageCount(@MBeanOperationParameter(name = "nodeId", description = "node id") String nodeId,
                                  @MBeanOperationParameter(name = "destinationQueue" , description = "destination queue name") String destinationQueue);
 
+    @Deprecated
     @MBeanAttribute(name = "getNodeQueueSubscriberCount", description = "get subscriber count of node subscribed to given destination queue")
     int getNodeQueueSubscriberCount(@MBeanOperationParameter(name = "nodeId", description = "node id") String nodeId,
                                  @MBeanOperationParameter(name = "destinationQueue" , description = "destination queue name") String destinationQueue);

@@ -452,7 +452,6 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
         }
 
         deliverAsync(subscription);
-//        CassandraMessageStore.getInstance().addNodeQueueToGlobalQueue(this.getResourceName(),subscription.getSubscriptionID()+"");
 
     }
 

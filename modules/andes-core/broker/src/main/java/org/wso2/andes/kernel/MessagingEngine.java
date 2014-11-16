@@ -405,12 +405,8 @@ public class MessagingEngine {
     public void removeInMemoryMessagesAccumulated(String destinationQueueName)
             throws AndesException {
         //Remove in-memory messages accumulated due to sudden subscription closing
-        QueueDeliveryWorker queueDeliveryWorker = ClusterResourceHolder.getInstance()
-                .getQueueDeliveryWorker();
-        if (queueDeliveryWorker != null) {
-            queueDeliveryWorker.clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(
+        QueueDeliveryWorker.getInstance().clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(
                     destinationQueueName);
-        }
     }
 
     /**
@@ -445,17 +441,6 @@ public class MessagingEngine {
         }
 
         return clone;
-
-    }
-
-    /**
-     * Get node identifier current node. This will be unique for the node.
-     * Further after a restart node will have same node name
-     * @return  node identifier
-     */
-    public static String getMyNodeQueueName() {
-        ClusterManager clusterManager = ClusterResourceHolder.getInstance().getClusterManager();
-        return AndesConstants.NODE_QUEUE_NAME_PREFIX + clusterManager.getMyNodeID();
 
     }
 
