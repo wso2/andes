@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel;
 
 import org.wso2.andes.configuration.ConfigurationProperties;
-
 import java.util.List;
 import java.util.Map;
 
@@ -30,7 +29,7 @@ import java.util.Map;
 public interface AndesContextStore {
 
     /**
-     * initialize the storage and makes a connection to the data base
+     * Initialize the storage and makes a connection to the data base
      * @param connectionProperties ConfigurationProperties
      * @return returns the created DurableStoreConnection object created
      * @throws AndesException
@@ -39,14 +38,14 @@ public interface AndesContextStore {
                                                                                AndesException;
 
     /**
-     * get all durable encoded subscriptions as strings
+     * Get all durable encoded subscriptions as strings
      *
      * @return list of <id,subscriptions>
      */
     public Map<String, List<String>> getAllStoredDurableSubscriptions() throws AndesException;
 
     /**
-     * store subscription to the durable store
+     * Store subscription to the durable store
      *
      * @param destinationIdentifier   identifier of the destination (queue/topic) of the queue this subscription is bound to
      * @param subscriptionID          id of the subscription
@@ -63,7 +62,7 @@ public interface AndesContextStore {
     public void removeDurableSubscription(String destinationIdentifier, String subscriptionID) throws AndesException;
 
     /**
-     * store details of node
+     * Store details of node
      *
      * @param nodeID id of the node
      * @param data   detail to store
@@ -71,21 +70,21 @@ public interface AndesContextStore {
     public void storeNodeDetails(String nodeID, String data) throws AndesException;
 
     /**
-     * get all node information stored
+     * Get all node information stored
      *
      * @return map of node information
      */
     public Map<String, String> getAllStoredNodeData() throws AndesException;
 
     /**
-     * remove stored node information
+     * Remove stored node information
      *
      * @param nodeID id of the node
      */
     public void removeNodeData(String nodeID) throws AndesException;
 
     /**
-     * add message counting entry for queue. queue count is initialised to zero. The counter for
+     * Add message counting entry for queue. queue count is initialised to zero. The counter for
      * created queue can then be incremented and decremented.
      * @see this.removeMessageCounterForQueue this.incrementMessageCountForQueue,
      * this.decrementMessageCountForQueue
@@ -95,7 +94,7 @@ public interface AndesContextStore {
     public void addMessageCounterForQueue(String destinationQueueName) throws AndesException;
 
     /**
-     * get message count of queue
+     * Get message count of queue
      *
      * @param destinationQueueName name of queue
      * @return message count
@@ -104,7 +103,7 @@ public interface AndesContextStore {
 
 
     /**
-     * remove Message counting entry
+     * Remove Message counting entry
      *
      * @param destinationQueueName name of queue
      */
@@ -112,7 +111,7 @@ public interface AndesContextStore {
 
 
     /**
-     * increment message counter for a queue by a given incrementBy value
+     * Increment message counter for a queue by a given incrementBy value
      * @param destinationQueueName name of the queue
      * @param incrementBy  increment counter by
      * @throws AndesException
@@ -121,15 +120,16 @@ public interface AndesContextStore {
 
 
     /**
-     * decrement message counter for a queue
-     * @param destinationQueueName  name of the queue
-     * @param decrementBy decrement counter by
+     * Decrement message counter for a queue
+     *
+     * @param destinationQueueName name of the queue
+     * @param decrementBy          decrement counter by
      * @throws AndesException
      */
     public void decrementMessageCountForQueue(String destinationQueueName, long decrementBy) throws AndesException;
 
     /**
-     * store exchange information (amqp)
+     * Store exchange information (amqp)
      *
      * @param exchangeName name of string
      * @param exchangeInfo info for exchange
@@ -137,7 +137,7 @@ public interface AndesContextStore {
     public void storeExchangeInformation(String exchangeName, String exchangeInfo) throws AndesException;
 
     /**
-     * get all exchanges stored
+     * Get all exchanges stored
      *
      * @return list of exchanges
      */
@@ -145,7 +145,7 @@ public interface AndesContextStore {
 
 
     /**
-     * delete all exchange information
+     * Delete all exchange information
      *
      * @param exchangeName name of exchange
      */
@@ -153,7 +153,7 @@ public interface AndesContextStore {
 
 
     /**
-     * store a queue
+     * Store a queue
      *
      * @param queueName name of the queue to be stored
      * @param queueInfo string encoded queue information
@@ -162,7 +162,7 @@ public interface AndesContextStore {
     public void storeQueueInformation(String queueName, String queueInfo) throws AndesException;
 
     /**
-     * get all stored queues
+     * Get all stored queues
      *
      * @return list of queues
      * @throws AndesException
@@ -170,7 +170,7 @@ public interface AndesContextStore {
     public List<AndesQueue> getAllQueuesStored() throws AndesException;
 
     /**
-     * delete a queue from store
+     * Delete a queue from store
      *
      * @param queueName name of the queue to be removed
      * @throws AndesException
@@ -178,7 +178,7 @@ public interface AndesContextStore {
     public void deleteQueueInformation(String queueName) throws AndesException;
 
     /**
-     * store a binding. Bound exchange and bound queue name together will be unique
+     * Store a binding. Bound exchange and bound queue name together will be unique
      *
      * @param exchange       name of the exchange binding represent
      * @param boundQueueName target queue binding is done
@@ -188,7 +188,7 @@ public interface AndesContextStore {
     public void storeBindingInformation(String exchange, String boundQueueName, String bindingInfo) throws AndesException;
 
     /**
-     * get bindings stored for some exchange
+     * Get bindings stored for some exchange
      *
      * @return a list of bindings belonging to the exchange
      * @throws AndesException
@@ -196,7 +196,7 @@ public interface AndesContextStore {
     public List<AndesBinding> getBindingsStoredForExchange(String exchangeName) throws AndesException;
 
     /**
-     * remove a binding from the store
+     * Remove a binding from the store
      *
      * @param exchangeName   name of the exchange
      * @param boundQueueName name of the queue binding relates to
@@ -205,7 +205,7 @@ public interface AndesContextStore {
     public void deleteBindingInformation(String exchangeName, String boundQueueName) throws AndesException;
 
     /**
-     * close the context store
+     * Close the context store
      */
     public void close();
 
