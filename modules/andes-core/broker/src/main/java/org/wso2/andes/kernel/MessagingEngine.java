@@ -126,19 +126,15 @@ public class MessagingEngine {
         config = ClusterResourceHolder.getInstance().getClusterConfiguration();
         configureMessageIDGenerator();
 
-        try {
-            messageStoreManager = MessageStoreManagerFactory.create(messageStore);
-            // TODO: These message store references need to be removed. Message stores need to be
-            // Accessed via MessageStoreManager
-            durableMessageStore = messageStore;
-            subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-            messagePartsCache = new HashMap<Long, List<AndesMessagePart>>();
-            //register listeners for queue changes
-            queueListener= new ClusterCoordinationHandler(HazelcastAgent.getInstance());
+        messageStoreManager = MessageStoreManagerFactory.create(messageStore);
+        // TODO: These message store references need to be removed. Message stores need to be
+        // Accessed via MessageStoreManager
+        durableMessageStore = messageStore;
+        subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+        messagePartsCache = new HashMap<Long, List<AndesMessagePart>>();
+        //register listeners for queue changes
+        queueListener = new ClusterCoordinationHandler(HazelcastAgent.getInstance());
 
-        } catch (Exception e) {
-            throw new AndesException("Cannot initialize message store", e);
-        }
     }
 
     public BrokerConfiguration getConfig() {

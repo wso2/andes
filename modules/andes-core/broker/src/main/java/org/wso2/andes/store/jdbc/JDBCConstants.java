@@ -29,6 +29,7 @@ public class JDBCConstants {
 
     // Configuration properties
     protected static final String PROP_JNDI_LOOKUP_NAME = "dataSource";
+    protected static final String PROP_MAX_QUEUE_CACHE_SIZE = "maxQueueCacheSize";
 
     // Message Store tables
     protected static final String MESSAGES_TABLE = "messages";
@@ -361,4 +362,9 @@ public class JDBCConstants {
     protected static final String TASK_INCREMENTING_QUEUE_COUNT = "incrementing queue count";
     protected static final String TASK_DECREMENTING_QUEUE_COUNT = "decrementing queue count";
 
+    /**
+     * Only public static constants are in this class. No need to instantiate.
+     */
+    private JDBCConstants() {
+    }
 }

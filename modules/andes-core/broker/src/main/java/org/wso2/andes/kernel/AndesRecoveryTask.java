@@ -59,7 +59,7 @@ public class AndesRecoveryTask implements Runnable {
             reloadQueuesFromDB();
             reloadBindingsFromDB();
             reloadSubscriptions();
-        } catch (Exception e) {
+        } catch (AndesException e) {
             log.error("Error in running andes recovery task", e);
         }
     }
