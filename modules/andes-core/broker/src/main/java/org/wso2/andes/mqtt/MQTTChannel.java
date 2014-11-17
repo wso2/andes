@@ -22,8 +22,6 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.util.AndesConstants;
-import org.wso2.andes.server.util.AndesUtils;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
@@ -152,8 +150,8 @@ public class MQTTChannel {
         final String myNodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         MQTTLocalSubscription localSubscription = new MQTTLocalSubscription(MQTT_TOPIC_DESTINATION + "=" +
                 topic + "," + MQTT_QUEUE_IDENTIFIER + "=" + (isCleanSesion ? topic : topic + mqttChannel) + "," +
-                isBoundToTopic + "=" + true + "," + subscribedNode + "="
-                + AndesUtils.TOPIC_NODE_QUEUE_PREFIX + myNodeID + "," + isDurable + "=" + !isCleanSesion);
+                isBoundToTopic + "=" + true + "," + subscribedNode + "=" + myNodeID + "," + isDurable + "="
+                + !isCleanSesion);
         localSubscription.setIsTopic();
         localSubscription.setTargetBoundExchange(isCleanSesion ? AMQPUtils.TOPIC_EXCHANGE_NAME :
                 AMQPUtils.DIRECT_EXCHANGE_NAME);
