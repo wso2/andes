@@ -139,9 +139,10 @@ public class MQTTChannel {
      * @param clientID      the id which will distinguish the topic channel
      * @param mqttChannel   the subscription id which is local to the subscriber
      * @param isCleanSesion should the connection be durable
+     * @param qos           the subscriber specific qos this can be either 0,1 or 2
      */
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttChannel,
-                              boolean isCleanSesion) throws MQTTException {
+                              boolean isCleanSesion, int qos) throws MQTTException {
         //TODO create mqttSubscriber to AndesSubscriber converting method
         //Will create a new local subscription object
         final String isBoundToTopic = "isBoundToTopic";
@@ -160,6 +161,7 @@ public class MQTTChannel {
         localSubscription.setTopic(topic);
         localSubscription.setSubscriptionID(clientID);
         localSubscription.setMqttSubscriptionID(mqttChannel);
+        localSubscription.setSubscriberQOS(qos);
         //TODO is bound to topic
         //TODO need to investigate the times this should be false
         //TODO need to figure out the impact where theres a case which has multiple qos levels of subscription

@@ -123,6 +123,10 @@ public class MQTTopic {
         return subscriber;
     }
 
+    public MQTTSubscriber getSubscription(String mqttClientChannelID) {
+        return subscribers.get(mqttClientChannelID);
+    }
+
     /**
      * Will provide the cluster wide id generated for the topic subscription
      *

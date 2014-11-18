@@ -310,7 +310,8 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
                 }
                 //publish
                 if (subscription.isActive()) {
-                    sendPublish(subscription.getClientId(), topic, qos, message, false);
+                    //Change done by WSO2 will be overloading the method
+                    sendPublish(subscription.getClientId(), topic, qos, message, false, messageID);
                 }
             }
         }

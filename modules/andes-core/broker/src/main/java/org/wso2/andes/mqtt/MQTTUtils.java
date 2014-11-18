@@ -114,10 +114,10 @@ public class MQTTUtils {
         messageHeader.setMessageID(messageID);
         messageHeader.setTopic(true);
         messageHeader.setDestination(topic);
-        messageHeader.setStorageQueueName(topic);
         messageHeader.setPersistent(true);
         messageHeader.setChannelId(UUID.randomUUID());
         messageHeader.setMessageContentLength(messageContentLength);
+        messageHeader.setStorageQueueName(topic);
         if (log.isDebugEnabled()) {
             log.debug("Message with id " + messageID + " having the topic " + topic + " with QOS" + qosLevel
                     + " and retain flag set to " + retain + " was created");

@@ -125,7 +125,7 @@ public final class AndesMQTTBridge {
      *
      * @param topic               the name of the topic the subscribed to
      * @param mqttClientChannelID the client identification maintained by the MQTT protocol lib
-     * @param qos   the type of qos the subscription is connected to this can be either MOST_ONE,LEAST_ONE, EXACTLY_ONE
+     * @param qos                 the type of qos the subscription is connected to this can be either MOST_ONE,LEAST_ONE, EXACTLY_ONE
      * @param isCleanSession      whether the subscription is durable
      */
     public void onTopicSubscription(String topic, String mqttClientChannelID, AbstractMessage.QOSType qos,
@@ -153,7 +153,14 @@ public final class AndesMQTTBridge {
             log.debug("Message ack received for message with id " + messageID + " and subscription " +
                     mqttClientChannelID);
         }
-        throw new UnsupportedOperationException("Method is not supported yet");
+        try {
+            MQTTopicManager.getInstance().onMessageAck(mqttClientChannelID, messageID);
+        } catch (MQTTException e) {
+            //Will not throw this any further
+            final String message = "Error occured while the subscription ack was received for channel "
+                    + mqttClientChannelID + " and for messsage " + messageID;
+            log.error(message);
+        }
     }
 
     /**
