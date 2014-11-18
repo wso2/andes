@@ -139,7 +139,7 @@ public class MQTTopicManager {
         }
         //TODO address the possibility of two nodes subscribing to the same topic in the same manner
         //First the topic should be registered in the cluster
-        String subscriptionID = registerTopicSubscriptionInCluster(topicName, mqttClientChannelID, isCleanSession);
+        String subscriptionID = registerTopicSubscriptionInCluster(topicName, mqttClientChannelID, isCleanSession, qos);
         //Will add the subscription to the topic
         //The status will be false if the subscriber with the same channel id exists
         try {
@@ -164,6 +164,7 @@ public class MQTTopicManager {
     public void removeTopicSubscription(String mqttClientChannelID) throws MQTTException {
         //First the topic name will be taken from the subscriber channel
         //TODO what if the node crashes at this point the state will be lost before disconnection
+        //TODO check if there're pending messages that are awaiting for acks
         String topic = clientTopicCorrelate.get(mqttClientChannelID);
         //If the topic has correlators
         if (null != topic) {
@@ -212,19 +213,52 @@ public class MQTTopicManager {
      * @param messageID    the idnetifier of the message
      * @param publishedQOS the level of qos the message was published
      * @param shouldRetain whether the message should retain after it was published
-     * @throws Exception during a failure to deliver the message to the subscribers
+     * @param subscriberQOS the level of QOS of the subscription
+     * @throws MQTTException during a failure to deliver the message to the subscribers
      */
     public void distributeMessageToSubscriber(String storageName, ByteBuffer message, long messageID, int publishedQOS,
-                                              boolean shouldRetain, String channelID, UUID subChannelID)
-            throws Exception {
-        //Will cast the cluster wide message to an int since the mqtt protocol engine maintain the id of the message as
-        // int
-        //TODO need to get rid of casting change the MQTT library to support long instead of int
-        int mqttLocalMessageID = (int) messageID;
+                                              boolean shouldRetain, String channelID, UUID subChannelID, int subscriberQOS)
+            throws MQTTException {
+        //Will generate a uniqe id, cannot force MQTT to have a long as the message id since the protocol looks for
+        //unsigned short
+        int mqttLocalMessageID = 1;
         //Should get the topic name from the channel id
         String topic = clientTopicCorrelate.get(channelID);
+        //We need to keep track of the message if the QOS level is > 0
+        if (subscriberQOS > 0) {
+            //We need to add the message information to maintain state, inorder to identify the messages once the acks receive
+            MQTTopic mqttopic = topics.get(topic);
+            MQTTSubscriber mqttSubscriber = mqttopic.getSubscription(channelID);
+            //Will mark the message as sent to subscribers
+            mqttLocalMessageID = mqttSubscriber.markSend(messageID);
+            //Will add the information that will be neccassary to process once the acks arrive
+            mqttSubscriber.setStorageIdentifier(storageName);
+            mqttSubscriber.setSubscriptionChannel(subChannelID);
+        }
         AndesMQTTBridge.getBridgeInstance().distributeMessageToSubscriptions(topic, publishedQOS, message, shouldRetain,
                 mqttLocalMessageID, channelID);
+    }
+
+    /**
+     * Will trigger during the time where an ack was received for a message
+     * @param mqttChannelID the identifier of the channel
+     * @param messageID the message id on which the ack was recievd
+     */
+    public void onMessageAck(String mqttChannelID, int messageID) throws MQTTException {
+        //Will retrive the topic
+        String topicName = clientTopicCorrelate.get(mqttChannelID);
+        //Will retrive the topic object out of the list
+        MQTTopic mqttTopic = topics.get(topicName);
+        //Will get the subscription object out of the topic
+        MQTTSubscriber mqttSubscriber = mqttTopic.getSubscription(mqttChannelID);
+        //Will indicate that the ack was recived
+        long clusterID = mqttSubscriber.ackReceived(messageID);
+        //First we need to get the subscription information
+        messageAck(topicName, clusterID, mqttSubscriber.getStorageIdentifier(), mqttSubscriber.getSubscriptionChannel());
+    }
+
+    public void implicitAck(String topic, long messageID, String storageName, UUID subChannelID) throws MQTTException {
+        messageAck(topic, messageID, storageName, subChannelID);
     }
 
     /**
@@ -233,10 +267,11 @@ public class MQTTopicManager {
      * @param topicName      the name of the topic which should be registered in the cluster
      * @param mqttChannel    the subscriber id which is local to the node
      * @param isCleanSession should the subscription be identified as durable
+     * @param qos the subscriber level qos
      * @return topic subscription id which will represent the topic in the cluster
      */
-    private String registerTopicSubscriptionInCluster(String topicName, String mqttChannel, boolean isCleanSession)
-            throws MQTTException {
+    private String registerTopicSubscriptionInCluster(String topicName, String mqttChannel, boolean isCleanSession, int qos)
+    throws MQTTException {
         //Will generate a unique id for the client
         //Per topic only one subscription will be created across the cluster
         String topicSpecificClientID = MQTTUtils.generateTopicSpecficClientID();
@@ -246,7 +281,7 @@ public class MQTTopicManager {
         }
 
         //Will register the topic cluster wide
-        MQTTChannel.getInstance().addSubscriber(this, topicName, topicSpecificClientID, mqttChannel, isCleanSession);
+        MQTTChannel.getInstance().addSubscriber(this, topicName, topicSpecificClientID, mqttChannel, isCleanSession, qos);
 
         return topicSpecificClientID;
     }
@@ -259,7 +294,7 @@ public class MQTTopicManager {
      * @param storageName the name of the representation of the topic in the store
      * @throws MQTTException at an event where the ack was not properly processed
      */
-    public void messageAck(String topic, long messageID, String storageName, UUID subChannelID) throws MQTTException {
+    private void messageAck(String topic, long messageID, String storageName, UUID subChannelID) throws MQTTException {
         try {
             MQTTChannel.getInstance().messageAck(messageID, topic, storageName, subChannelID);
         } catch (AndesException ex) {

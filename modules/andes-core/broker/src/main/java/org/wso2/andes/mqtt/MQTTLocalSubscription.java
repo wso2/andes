@@ -25,7 +25,6 @@ import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.BasicSubscription;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
@@ -48,6 +47,27 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
     private String mqttSubscriptionID;
     //Will set unique uuid as the channel of the subscription this will be used to track the delivery of messages
     private UUID channelID;
+
+    //The QOS level the subscription is bound to
+    private int subscriberQOS;
+
+    /**
+     * Will allow retrival of the qos the subscription is bound to
+     *
+     * @return the level of qos the subscription is bound to
+     */
+    public int getSubscriberQOS() {
+        return subscriberQOS;
+    }
+
+    /**
+     * Will specify the level of the qos the subscription is bound to
+     *
+     * @param subscriberQOS the qos could be either 0,1 or 2
+     */
+    public void setSubscriberQOS(int subscriberQOS) {
+        this.subscriberQOS = subscriberQOS;
+    }
 
 
     /**
@@ -79,6 +99,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
 
     /**
      * The relavant subscritption will be registered
+     *
      * @param mqttTopicSubscription the name of the topic the subscription will be bound to
      */
     public MQTTLocalSubscription(String mqttTopicSubscription) {
@@ -91,6 +112,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
 
     /**
      * Will set the server channel that will maintain the connectivity between the mqtt protocol realm
+     *
      * @param mqqtServerChannel the bridge connection that will be maintained between the protocol and andes
      */
     public void setMqqtServerChannel(MQTTopicManager mqqtServerChannel) {
@@ -99,6 +121,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
 
     /**
      * Will include the destination topic name the message should be given to
+     *
      * @param dest the destination the message should be delivered to
      */
     public void setTopic(String dest) {
@@ -107,6 +130,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
 
     /**
      * Will set the unique identification for the subscription reference
+     *
      * @param id the identity of the subscriber
      */
     public void setSubscriptionID(String id) {
@@ -137,6 +161,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
 
     /**
      * Will indicate whether the given request is to active the subscription or deactivate it
+     *
      * @param isActive the connection status
      */
     public void setIsActive(boolean isActive) {
@@ -156,22 +181,24 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
         //Will publish the message to the respective queue
         if (mqqtServerChannel != null) {
             try {
-                mqqtServerChannel.distributeMessageToSubscriber(messageMetadata.getStorageQueueName(), message,
-                        messageMetadata.getMessageID(), messageMetadata.getQosLevel(), messageMetadata.isPersistent(),
-                        getMqttSubscriptionID(), getChannelID());
+                mqqtServerChannel.distributeMessageToSubscriber(/*messageMetadata.getStorageQueueName()*/
+                        this.getStorageQueueName(), message, messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
+                        messageMetadata.isPersistent(), getMqttSubscriptionID(), getChannelID(), getSubscriberQOS());
 
                 OnflightMessageTracker.getInstance().addMessageToSendingTracker(getChannelID(),
                         messageMetadata.getMessageID());
 
                 //We will indicate the ack to the kernal at this stage
-                //TODO for QOS 0 we need to ack to the message here
-                mqqtServerChannel.messageAck(getSubscribedDestination(), messageMetadata.getMessageID(),
-                        messageMetadata.getStorageQueueName(), getChannelID());
+                //For MQTT QOS 0 we do not get ack from subscriber, hence will be implicitely creating an ack
+                if (0 == getSubscriberQOS()) {
+                    mqqtServerChannel.implicitAck(getSubscribedDestination(), messageMetadata.getMessageID(),
+                       /* messageMetadata.getStorageQueueName()*/ this.getStorageQueueName(), getChannelID());
+                }
             } catch (Exception e) {
                 final String error = "Error occured while delivering message to the subscriber for message :" +
                         messageMetadata.getMessageID();
                 log.error(error);
-                throw new AndesException(error,e);
+                throw new AndesException(error, e);
             }
         }
     }
@@ -192,12 +219,10 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
         throw new NotImplementedException();
     }
 
-    public boolean equals(Object o)
-    {
-        if (o instanceof MQTTLocalSubscription)
-        {
+    public boolean equals(Object o) {
+        if (o instanceof MQTTLocalSubscription) {
             MQTTLocalSubscription c = (MQTTLocalSubscription) o;
-            if ( this.subscriptionID.equals(c.subscriptionID) &&
+            if (this.subscriptionID.equals(c.subscriptionID) &&
                     this.getSubscribedNode().equals(c.getSubscribedNode()) &&
                     this.targetQueue.equals(c.targetQueue) &&
                     this.targetQueueBoundExchange.equals(c.targetQueueBoundExchange)) {
