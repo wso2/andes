@@ -21,9 +21,9 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.server.configuration.plugins.SlowConsumerDetectionConfiguration;
-import org.wso2.andes.server.configuration.plugins.SlowConsumerDetectionQueueConfiguration;
-import org.wso2.andes.server.configuration.plugins.ConfigurationPlugin;
+import org.wso2.andes.configuration.qpid.configuration.plugins.SlowConsumerDetectionConfiguration;
+import org.wso2.andes.configuration.qpid.configuration.plugins.SlowConsumerDetectionQueueConfiguration;
+import org.wso2.andes.configuration.qpid.configuration.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.server.plugins.Plugin;
 import org.wso2.andes.server.queue.AMQQueue;

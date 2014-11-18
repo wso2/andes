@@ -22,8 +22,9 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,18 +54,26 @@ public class SlotDeliveryWorkerManager {
     /*
     number of slot delivery worker threads running inn one MB node
      */
-    private int numberOfThreads;
+    private Integer numberOfThreads;
 
     /**
      * SlotDeliveryWorker instance
      */
-    private static SlotDeliveryWorkerManager slotDeliveryWorkerManagerManager =
-            new SlotDeliveryWorkerManager();
+    private static SlotDeliveryWorkerManager slotDeliveryWorkerManagerManager;
+
+    static {
+        try {
+            slotDeliveryWorkerManagerManager = new SlotDeliveryWorkerManager();
+        } catch (AndesException e) {
+            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR +
+                    AndesConfiguration.PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT.toString(),e);
+        }
+    }
 
 
-    private SlotDeliveryWorkerManager() {
-        numberOfThreads = ClusterResourceHolder.getInstance().getClusterConfiguration()
-                .getNumberOFSlotDeliveryWorkerThreads();
+    private SlotDeliveryWorkerManager() throws AndesException {
+        numberOfThreads = AndesConfigurationManager.getInstance().readConfigurationValue
+                (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT);
         this.slotDeliveryWorkerExecutor = Executors.newFixedThreadPool(numberOfThreads, namedThreadFactory);
     }
 

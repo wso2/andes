@@ -17,9 +17,12 @@
  */
 package org.wso2.andes.server.cassandra;
 
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.message.AMQMessage;
@@ -59,22 +62,25 @@ public class QueueBrowserDeliveryWorker {
     private String id;
     private int defaultMessageCount = Integer.MAX_VALUE;
     private int messageCount;
-    private int messageBatchSize;
+    private Integer messageBatchSize;
 
     private static Log log = LogFactory.getLog(QueueBrowserDeliveryWorker.class);
 
-    public QueueBrowserDeliveryWorker(Subscription subscription, AMQQueue queue, AMQProtocolSession session){
+    public QueueBrowserDeliveryWorker(Subscription subscription, AMQQueue queue,
+                                      AMQProtocolSession session) throws AndesException {
         this(subscription,queue,session,false);
     }
 
-    public QueueBrowserDeliveryWorker(Subscription subscription, AMQQueue queue, AMQProtocolSession session, boolean isInMemoryMode) {
+    public QueueBrowserDeliveryWorker(Subscription subscription, AMQQueue queue,
+                                      AMQProtocolSession session, boolean isInMemoryMode) throws
+            AndesException {
         this.subscription = subscription;
         this.queue = queue;
         this.session = session;
         this.id = "" + subscription.getSubscriptionID();
         this.messageCount = defaultMessageCount;
-        this.messageBatchSize = ClusterResourceHolder.getInstance().getClusterConfiguration().
-                getMessageBatchSizeForBrowserSubscriptions();
+        this.messageBatchSize = AndesConfigurationManager.getInstance().readConfigurationValue
+                (AndesConfiguration.MANAGEMENT_CONSOLE_MESSAGE_BATCH_SIZE_FOR_BROWSER_SUBSCRIPTIONS);
 
     }
 

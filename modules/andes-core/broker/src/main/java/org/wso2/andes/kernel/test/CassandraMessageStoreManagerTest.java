@@ -19,7 +19,8 @@
 package org.wso2.andes.kernel.test;
 
 import com.datastax.driver.core.Cluster;
-import org.wso2.andes.configuration.ConfigurationProperties;
+import org.apache.commons.configuration.ConfigurationException;
+import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.storemanager.AsyncStoringManager;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
@@ -39,7 +40,7 @@ public class CassandraMessageStoreManagerTest {
     private Cluster cluster;
     CQLConnection cqlConnection;
 
-    public CassandraMessageStoreManagerTest() {
+    public CassandraMessageStoreManagerTest() throws ConfigurationException {
         initialize();
     }
 
@@ -60,7 +61,7 @@ public class CassandraMessageStoreManagerTest {
 
     }
 
-    public void initialize() {
+    public void initialize() throws ConfigurationException {
         initializeCluster();
         ConfigurationProperties connectionProperties = new ConfigurationProperties();
         connectionProperties.addProperty("dataSource", "CassandraRepo");
@@ -86,7 +87,7 @@ public class CassandraMessageStoreManagerTest {
 
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws ConfigurationException {
         CassandraMessageStoreManagerTest storeManagerTest = new CassandraMessageStoreManagerTest();
         storeManagerTest.publishMessages();
     }

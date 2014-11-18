@@ -20,7 +20,7 @@
  */
 package org.wso2.andes.server.security.access.plugins;
 
-import org.wso2.andes.server.configuration.plugins.ConfigurationPluginFactory;
+import org.wso2.andes.configuration.qpid.configuration.plugins.ConfigurationPluginFactory;
 import org.wso2.andes.server.security.SecurityPluginActivator;
 import org.wso2.andes.server.security.SecurityPluginFactory;
 import org.osgi.framework.BundleActivator;

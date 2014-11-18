@@ -21,7 +21,7 @@ package org.wso2.andes.qmf;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.common.Closeable;
 import org.wso2.andes.qmf.schema.BrokerSchema;
-import org.wso2.andes.server.configuration.*;
+import org.wso2.andes.configuration.qpid.configuration.*;
 import org.wso2.andes.server.registry.IApplicationRegistry;
 
 import java.util.Collection;

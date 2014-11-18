@@ -19,13 +19,15 @@ package org.wso2.andes.server.cluster;
 
 
 import com.hazelcast.core.Member;
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.slot.SlotCoordinationConstants;
 import org.wso2.andes.server.slot.SlotManager;
 
@@ -93,7 +95,7 @@ public class ClusterManager {
     /**
      * Handles changes needs to be done in current node when a node joins to the cluster
      */
-    public void memberAdded(Member node) {
+    public void memberAdded(Member node) throws AndesException {
         reAssignNodeSyncId();
         //update thrift coordinator server details
         updateThriftCoordinatorDetailsToMap();
@@ -174,7 +176,6 @@ public class ClusterManager {
     }
 
     private void initStandaloneMode() throws Exception {
-        final BrokerConfiguration config = ClusterResourceHolder.getInstance().getClusterConfiguration();
 
         this.nodeId = CoordinationConstants.NODE_NAME_PREFIX + InetAddress.getLocalHost().toString();
 
@@ -187,18 +188,19 @@ public class ClusterManager {
 
         clearAllPersistedStatesOfDisappearedNode(nodeId);
         log.info("NodeID:" + this.nodeId);
-        andesContextStore.storeNodeDetails(nodeId, config.getBindIpAddress());
+        andesContextStore.storeNodeDetails(nodeId, (String)AndesConfigurationManager.getInstance()
+                .readConfigurationValue(AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
     }
 
     private void initClusterMode() throws Exception {
-        final BrokerConfiguration config = ClusterResourceHolder.getInstance().getClusterConfiguration();
 
         this.hazelcastAgent = HazelcastAgent.getInstance();
         this.nodeId = this.hazelcastAgent.getNodeId();
         log.info("NodeID:" + this.nodeId);
 
         //add node information to durable store
-        andesContextStore.storeNodeDetails(nodeId, config.getBindIpAddress());
+        andesContextStore.storeNodeDetails(nodeId, (String)AndesConfigurationManager.getInstance()
+                .readConfigurationValue(AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
 
         /**
          * If nodeList size is one, this is the first node joining to cluster. Here we check if there has been
@@ -250,9 +252,16 @@ public class ClusterManager {
     /**
      * set coordinator's thrift server IP and port in hazelcast map.
      */
-    public void updateThriftCoordinatorDetailsToMap() {
-        String thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerHost();
-        int thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerPort();
+    public void updateThriftCoordinatorDetailsToMap() throws AndesException {
+        String thriftCoordinatorServerIP = AndesConfiguration.COORDINATION_THRIFT_SERVER_HOST.get
+                ().getDefaultValue();
+        int thriftCoordinatorServerPort = Integer.parseInt(AndesConfiguration
+                .COORDINATION_THRIFT_SERVER_PORT.get().getDefaultValue());
+
+        thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerHost();
+        thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerPort();
+
+
         if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
             log.info("This node is elected as the Slot Coordinator. Registering " +
                      thriftCoordinatorServerIP + ":" + thriftCoordinatorServerPort);

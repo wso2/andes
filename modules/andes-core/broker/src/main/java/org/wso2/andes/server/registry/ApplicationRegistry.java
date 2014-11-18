@@ -23,7 +23,7 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.common.Closeable;
 import org.wso2.andes.common.QpidProperties;
 import org.wso2.andes.qmf.QMFService;
-import org.wso2.andes.server.configuration.*;
+import org.wso2.andes.configuration.qpid.configuration.*;
 import org.wso2.andes.server.logging.CompositeStartupMessageLogger;
 import org.wso2.andes.server.logging.Log4jMessageLogger;
 import org.wso2.andes.server.logging.RootMessageLogger;

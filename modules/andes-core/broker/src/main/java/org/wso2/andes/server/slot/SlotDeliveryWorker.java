@@ -20,8 +20,9 @@ package org.wso2.andes.server.slot;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageFlusher;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
@@ -170,10 +171,11 @@ public class SlotDeliveryWorker extends Thread {
                                 if (localLastProcessedIdMap.get(storageQueueName) != null) {
                                     startMessageId = localLastProcessedIdMap.get(storageQueueName) + 1;
                                 }
-                                int slotWindowSize = ClusterResourceHolder.getInstance()
-                                                                          .getClusterConfiguration()
-                                                                          .getSlotWindowSize();
+
+                                Integer slotWindowSize = AndesConfigurationManager.getInstance()
+                                        .readConfigurationValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
                                 List<AndesMessageMetadata> messagesRead =
+
                                         MessagingEngine.getInstance()
                                                        .getNextNMessageMetadataFromQueue
                                                                (storageQueueName, startMessageId,

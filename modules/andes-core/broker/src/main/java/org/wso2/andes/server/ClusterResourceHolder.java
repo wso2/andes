@@ -21,7 +21,6 @@ import org.wso2.andes.kernel.AndesRecoveryTask;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cluster.ClusterManager;
-import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.store.QpidDeprecatedMessageStore;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 
@@ -43,12 +42,6 @@ public class ClusterResourceHolder {
      * Holds Cassandra SubscriptionManager
      */
     private AndesSubscriptionManager subscriptionManager;
-
-
-    /**
-     * Holds the Cluster Configuration Data
-     */
-    private BrokerConfiguration clusterConfiguration;
 
 
     /**
@@ -109,14 +102,6 @@ public class ClusterResourceHolder {
 
     public ClusterManager getClusterManager() {
         return this.clusterManager;
-    }
-
-    public BrokerConfiguration getClusterConfiguration() {
-        return clusterConfiguration;
-    }
-
-    public void setClusterConfiguration(BrokerConfiguration clusterConfiguration) {
-        this.clusterConfiguration = clusterConfiguration;
     }
 
     public VirtualHostConfigSynchronizer getVirtualHostConfigSynchronizer() {

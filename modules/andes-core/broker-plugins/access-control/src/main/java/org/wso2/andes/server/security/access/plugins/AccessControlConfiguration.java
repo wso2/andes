@@ -26,8 +26,8 @@ import java.util.List;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
-import org.wso2.andes.server.configuration.plugins.ConfigurationPlugin;
-import org.wso2.andes.server.configuration.plugins.ConfigurationPluginFactory;
+import org.wso2.andes.configuration.qpid.configuration.plugins.ConfigurationPlugin;
+import org.wso2.andes.configuration.qpid.configuration.plugins.ConfigurationPluginFactory;
 import org.wso2.andes.server.security.access.config.ConfigurationFile;
 import org.wso2.andes.server.security.access.config.PlainConfiguration;
 import org.wso2.andes.server.security.access.config.RuleSet;

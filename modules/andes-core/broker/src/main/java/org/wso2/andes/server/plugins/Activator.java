@@ -18,7 +18,7 @@
 package org.wso2.andes.server.plugins;
 
 import org.apache.log4j.Logger;
-import org.wso2.andes.server.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;

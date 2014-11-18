@@ -17,7 +17,7 @@
  */
 package org.wso2.andes.server.registry;
 
-import org.wso2.andes.server.configuration.*;
+import org.wso2.andes.configuration.qpid.configuration.*;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.common.QpidProperties;
 

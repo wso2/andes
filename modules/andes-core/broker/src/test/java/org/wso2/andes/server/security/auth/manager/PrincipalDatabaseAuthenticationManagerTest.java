@@ -34,7 +34,7 @@ import javax.security.sasl.SaslServer;
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
-import org.wso2.andes.server.configuration.plugins.ConfigurationPlugin;
+import org.wso2.andes.configuration.qpid.configuration.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.security.auth.AuthenticationResult;
 import org.wso2.andes.server.security.auth.AuthenticationResult.AuthenticationStatus;
 import org.wso2.andes.server.security.auth.database.PlainPasswordFilePrincipalDatabase;

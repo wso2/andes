@@ -20,7 +20,7 @@
  */
 package org.wso2.andes.server.logging.actors;
 
-import org.wso2.andes.server.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
 import org.wso2.andes.server.logging.LogMessage;
 import org.wso2.andes.server.logging.LogSubject;
 import org.wso2.andes.server.logging.RootMessageLogger;

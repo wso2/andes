@@ -20,7 +20,7 @@
  */
 package org.wso2.andes.server.logging;
 
-import org.wso2.andes.server.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
 import org.wso2.andes.server.logging.subjects.AbstractTestLogSubject;
 
 import javax.jms.Connection;

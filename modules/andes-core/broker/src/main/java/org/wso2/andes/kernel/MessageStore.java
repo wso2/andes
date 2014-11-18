@@ -18,7 +18,7 @@
 
 package org.wso2.andes.kernel;
 
-import org.wso2.andes.configuration.ConfigurationProperties;
+import org.wso2.andes.configuration.util.ConfigurationProperties;
 
 import java.util.List;
 

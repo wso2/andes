@@ -19,7 +19,7 @@ package org.wso2.andes.server.logging;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.wso2.andes.server.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
 
 public class Log4jMessageLogger extends AbstractRootMessageLogger
 {

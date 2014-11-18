@@ -23,7 +23,7 @@ package org.wso2.andes.server.logging;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.wso2.andes.server.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
 
 public class UnitTestMessageLogger extends AbstractRootMessageLogger
 {

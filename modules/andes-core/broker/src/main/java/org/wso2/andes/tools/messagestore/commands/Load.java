@@ -17,7 +17,7 @@
  */
 package org.wso2.andes.tools.messagestore.commands;
 
-import org.wso2.andes.configuration.Configuration;
+import org.wso2.andes.configuration.qpid.Configuration;
 import org.wso2.andes.tools.messagestore.MessageStoreTool;
 
 public class Load extends AbstractCommand

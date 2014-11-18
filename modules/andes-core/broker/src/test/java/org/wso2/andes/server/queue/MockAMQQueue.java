@@ -21,8 +21,8 @@
 package org.wso2.andes.server.queue;
 
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.server.configuration.*;
-import org.wso2.andes.server.configuration.plugins.ConfigurationPlugin;
+import org.wso2.andes.configuration.qpid.configuration.*;
+import org.wso2.andes.configuration.qpid.configuration.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.LogSubject;
 import org.wso2.andes.server.subscription.Subscription;

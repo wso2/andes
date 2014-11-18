@@ -17,7 +17,7 @@
  */
 package org.wso2.andes.server.message;
 
-import org.wso2.andes.server.configuration.SessionConfig;
+import org.wso2.andes.configuration.qpid.configuration.SessionConfig;
 import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.server.transport.ServerSession;
 import org.wso2.andes.transport.Header;

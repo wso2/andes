@@ -28,7 +28,7 @@ import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.AMQBrokerManagerMBean;
 import org.wso2.andes.server.binding.BindingFactory;
-import org.wso2.andes.server.configuration.*;
+import org.wso2.andes.configuration.qpid.configuration.*;
 import org.wso2.andes.server.connection.ConnectionRegistry;
 import org.wso2.andes.server.connection.IConnectionRegistry;
 import org.wso2.andes.server.exchange.*;

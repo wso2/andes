@@ -32,7 +32,7 @@ import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.logging.SystemOutMessageLogger;
 import org.wso2.andes.server.logging.actors.CurrentActor;
-import org.wso2.andes.server.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.actors.TestLogActor;
 import org.wso2.andes.server.protocol.InternalTestProtocolSession;

@@ -19,7 +19,7 @@
 package org.wso2.andes.store.jdbc;
 
 import org.apache.log4j.Logger;
-import org.wso2.andes.configuration.ConfigurationProperties;
+import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
 
 import javax.sql.DataSource;

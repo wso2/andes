@@ -25,7 +25,8 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.slot.SlotDeliveryWorker;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
@@ -49,7 +50,15 @@ public class OnflightMessageTracker {
 
     private static Log log = LogFactory.getLog(OnflightMessageTracker.class);
 
-    private static OnflightMessageTracker instance = new OnflightMessageTracker();
+    private static OnflightMessageTracker instance;
+
+    static {
+        try {
+            instance = new OnflightMessageTracker();
+        } catch (AndesException e) {
+            log.error("Error occurred when reading configurations : ",e);
+        }
+    }
 
     public static OnflightMessageTracker getInstance() {
         return instance;
@@ -59,7 +68,7 @@ public class OnflightMessageTracker {
     /**
      * Maximum number of times a message is tried to deliver
      */
-    private int maximumRedeliveryTimes = 1;
+    private Integer maximumRedeliveryTimes = 1;
 
     /**
      * In memory map keeping sent message statistics by message id
@@ -303,10 +312,10 @@ public class OnflightMessageTracker {
     }
 
 
-    private OnflightMessageTracker() {
+    private OnflightMessageTracker() throws AndesException {
 
-        this.maximumRedeliveryTimes = ClusterResourceHolder.getInstance().getClusterConfiguration()
-                .getNumberOfMaximumDeliveryCount();
+        this.maximumRedeliveryTimes = AndesConfigurationManager.getInstance()
+                .readConfigurationValue(AndesConfiguration.TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS);
         /*
          * for all add and remove, following is executed, and it will remove the oldest entry if
          * needed

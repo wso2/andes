@@ -94,7 +94,7 @@ public class MergeConfigurationTest extends TestingBaseCase
 //        assertEquals("Configuration name not correct", getName() + ":stockSubscription", config.getSubscriptionName());
 //
 //        ConfigurationPlugin scdConfig = queue.getConfiguration().getConfiguration(SlowConsumerDetectionQueueConfiguration.class.getName());
-//        if (scdConfig instanceof org.wso2.andes.server.configuration.plugin.SlowConsumerDetectionQueueConfiguration)
+//        if (scdConfig instanceof org.wso2.andes.configuration.qpid.configuration.plugin.SlowConsumerDetectionQueueConfiguration)
 //        {
 //            System.err.println("********************** scd is a SlowConsumerDetectionQueueConfiguration.");
 //        }

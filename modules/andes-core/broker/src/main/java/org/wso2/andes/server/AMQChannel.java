@@ -17,11 +17,14 @@
  */
 package org.wso2.andes.server;
 
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.framing.*;
 import org.wso2.andes.framing.abstraction.ContentChunk;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
@@ -35,7 +38,7 @@ import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMapImpl;
 import org.wso2.andes.server.cassandra.SequentialThreadPoolExecutor;
-import org.wso2.andes.server.configuration.*;
+import org.wso2.andes.configuration.qpid.configuration.*;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.flow.FlowCreditManager;
 import org.wso2.andes.server.flow.Pre0_10CreditManager;
@@ -157,8 +160,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     private AMQChannelMBean _managedObject;
 
     public AMQChannel(AMQProtocolSession session, int channelId, MessageStore messageStore)
-            throws AMQException
-    {
+            throws AMQException {
         _session = session;
         _channelId = channelId;
 
@@ -175,8 +177,16 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         _transaction = new AutoCommitTransaction(_messageStore);
 
         if(messageRoutingExecutor == null){
-            messageRoutingExecutor = new SequentialThreadPoolExecutor((ClusterResourceHolder.getInstance().
-                    getClusterConfiguration().getInternalSequentialThreadPoolSize()),"messageRoutingExecutor");
+            try {
+                messageRoutingExecutor = new SequentialThreadPoolExecutor(((Integer)
+                        AndesConfigurationManager
+                        .getInstance().readConfigurationValue(AndesConfiguration.PERFORMANCE_TUNING_ROUTING_WORKER_THREAD_COUNT)),
+                        "messageRoutingExecutor");
+            } catch (AndesException e) {
+                throw new AMQException(AndesConfigurationManager
+                        .GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration
+                        .PERFORMANCE_TUNING_ROUTING_WORKER_THREAD_COUNT.toString(),e);
+            }
         }
 
         try {
@@ -480,8 +490,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      * @throws AMQException                  if something goes wrong
      */
     public AMQShortString subscribeToQueue(AMQShortString tag, AMQQueue queue, boolean acks,
-                                           FieldTable filters, boolean noLocal, boolean exclusive) throws AMQException
-    {
+                                           FieldTable filters, boolean noLocal, boolean exclusive) throws AMQException {
         if (tag == null)
         {
             tag = new AMQShortString("sgen_" + getNextConsumerTag());

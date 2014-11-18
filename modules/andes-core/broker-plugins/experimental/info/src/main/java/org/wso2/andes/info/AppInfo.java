@@ -22,7 +22,7 @@
 package org.wso2.andes.info;
 
 import org.wso2.andes.common.QpidProperties;
-import org.wso2.andes.server.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 
 import java.util.Arrays;

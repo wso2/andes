@@ -27,8 +27,8 @@ import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
-import org.wso2.andes.server.configuration.plugins.ConfigurationPlugin;
-import org.wso2.andes.server.configuration.plugins.ConfigurationPluginFactory;
+import org.wso2.andes.configuration.qpid.configuration.plugins.ConfigurationPlugin;
+import org.wso2.andes.configuration.qpid.configuration.plugins.ConfigurationPluginFactory;
 import org.wso2.andes.server.security.Result;
 import org.wso2.andes.server.security.access.config.FirewallRule;
 

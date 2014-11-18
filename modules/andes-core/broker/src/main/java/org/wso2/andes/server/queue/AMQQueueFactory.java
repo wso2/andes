@@ -22,7 +22,7 @@ import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.server.virtualhost.VirtualHost;
-import org.wso2.andes.server.configuration.QueueConfiguration;
+import org.wso2.andes.configuration.qpid.configuration.QueueConfiguration;
 
 import java.util.Map;
 import java.util.HashMap;

@@ -28,7 +28,7 @@ import org.wso2.andes.server.queue.BaseQueue;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.message.InboundMessage;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.server.configuration.ExchangeConfig;
+import org.wso2.andes.configuration.qpid.configuration.ExchangeConfig;
 
 import javax.management.JMException;
 import java.util.ArrayList;

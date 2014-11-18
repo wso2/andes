@@ -21,11 +21,11 @@ import java.net.InetSocketAddress;
 import java.util.UUID;
 
 import org.wso2.andes.qmf.QMFService;
-import org.wso2.andes.server.configuration.BrokerConfig;
-import org.wso2.andes.server.configuration.ConfigStore;
-import org.wso2.andes.server.configuration.ServerConfiguration;
-import org.wso2.andes.server.configuration.VirtualHostConfiguration;
-import org.wso2.andes.server.configuration.ConfigurationManager;
+import org.wso2.andes.configuration.qpid.configuration.BrokerConfig;
+import org.wso2.andes.configuration.qpid.configuration.ConfigStore;
+import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.configuration.VirtualHostConfiguration;
+import org.wso2.andes.configuration.qpid.configuration.ConfigurationManager;
 import org.wso2.andes.server.logging.RootMessageLogger;
 import org.wso2.andes.server.management.ManagedObjectRegistry;
 import org.wso2.andes.server.plugins.PluginManager;
