@@ -3,13 +3,13 @@ package org.dna.mqtt.moquette.server.netty;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.IMessaging;
 import org.dna.mqtt.moquette.proto.Utils;
 import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
 import org.dna.mqtt.moquette.proto.messages.PingRespMessage;
 import org.dna.mqtt.moquette.server.Constants;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,15 +22,17 @@ import static org.dna.mqtt.moquette.proto.messages.AbstractMessage.*;
  */
 @Sharable
 public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
-    
-    private static final Logger LOG = LoggerFactory.getLogger(NettyMQTTHandler.class);
+
+    private static Log log = LogFactory.getLog(NettyMQTTHandler.class);
     private IMessaging m_messaging;
     private final Map<ChannelHandlerContext, NettyChannel> m_channelMapper = new HashMap<ChannelHandlerContext, NettyChannel>();
     
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object message) {
         AbstractMessage msg = (AbstractMessage) message;
-        LOG.info("Received a message of type {}", Utils.msgType2String(msg.getMessageType()));
+        if (log.isDebugEnabled()) {
+            log.info("Received a message of type " + Utils.msgType2String(msg.getMessageType()));
+        }
         try {
             switch (msg.getMessageType()) {
                 case CONNECT:
@@ -58,7 +60,7 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
                     break;
             }
         } catch (Exception ex) {
-            LOG.error("Bad error in processing the message", ex);
+            log.error("Bad error in processing the message", ex);
         }
     }
     

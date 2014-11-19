@@ -20,7 +20,10 @@ package org.wso2.andes.server.cassandra;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.slot.Slot;
@@ -31,11 +34,11 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 
 /**
- * <code>QueueDeliveryWorker</code> Handles the task of polling the user queues and flushing the
+ * <code>MessageFlusher</code> Handles the task of polling the user queues and flushing the
  * messages to subscribers There will be one Flusher per Queue Per Node
  */
-public class QueueDeliveryWorker {
-    private static Log log = LogFactory.getLog(QueueDeliveryWorker.class);
+public class MessageFlusher {
+    private static Log log = LogFactory.getLog(MessageFlusher.class);
 
     private int maxNumberOfUnAckedMessages = 100000;
 
@@ -54,14 +57,14 @@ public class QueueDeliveryWorker {
      * Subscribed destination wise information
      * the key here is the original destination of message. NOT storage queue name.
      */
-    private Map<String, QueueDeliveryInfo> subscriptionCursar4QueueMap = new HashMap<String,
-            QueueDeliveryInfo>();
+    private Map<String, MessageDeliveryInfo> subscriptionCursar4QueueMap = new HashMap<String,
+            MessageDeliveryInfo>();
 
     private SubscriptionStore subscriptionStore;
 
-    private static QueueDeliveryWorker queueDeliveryWorker = new QueueDeliveryWorker(1000);
+    private static MessageFlusher messageFlusher = new MessageFlusher(1000);
 
-    public QueueDeliveryWorker(final int queueWorkerWaitInterval) {
+    public MessageFlusher(final int queueWorkerWaitInterval) {
         this.executor = new SequentialThreadPoolExecutor(
                 (ClusterResourceHolder.getInstance().getClusterConfiguration().
                         getPublisherPoolSize()), "QueueMessagePublishingExecutor");
@@ -78,7 +81,7 @@ public class QueueDeliveryWorker {
     /**
      * Class to keep track of message delivery information destination wise
      */
-    public class QueueDeliveryInfo {
+    public class MessageDeliveryInfo {
         String destination;
 
         Iterator<LocalSubscription> iterator;
@@ -94,7 +97,7 @@ public class QueueDeliveryWorker {
          * Constructor
          * initialize lastPurgedTimestamp to 0.
          */
-        public QueueDeliveryInfo() {
+        public MessageDeliveryInfo() {
             lastPurgedTimestamp =0l;
         }
 
@@ -133,7 +136,7 @@ public class QueueDeliveryWorker {
 
         /**
          * set last purged timestamp for queue.
-         * @param lastPurgedTimestamp
+         * @param lastPurgedTimestamp the time stamp of the message message which was purged most recently
          */
         public void setLastPurgedTimestamp(Long lastPurgedTimestamp) {
             this.lastPurgedTimestamp = lastPurgedTimestamp;
@@ -160,13 +163,13 @@ public class QueueDeliveryWorker {
             return null;
         }
 
-        QueueDeliveryInfo queueDeliveryInfo = getQueueDeliveryInfo(destination);
-        Iterator<LocalSubscription> it = queueDeliveryInfo.iterator;
+        MessageDeliveryInfo messageDeliveryInfo = getMessageDeliveryInfo(destination);
+        Iterator<LocalSubscription> it = messageDeliveryInfo.iterator;
         if (it.hasNext()) {
             return it.next();
         } else {
             it = subscriptions4Queue.iterator();
-            queueDeliveryInfo.iterator = it;
+            messageDeliveryInfo.iterator = it;
             if (it.hasNext()) {
                 return it.next();
             } else {
@@ -176,20 +179,33 @@ public class QueueDeliveryWorker {
     }
 
 
-    public QueueDeliveryInfo getQueueDeliveryInfo(String destination) throws AndesException {
-        QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(destination);
-        if (queueDeliveryInfo == null) {
-            queueDeliveryInfo = new QueueDeliveryInfo();
-            queueDeliveryInfo.destination = destination;
+    /**
+     * Will allow retrival of information related to delivery of the message
+     *
+     * @param destination where the message should be delivered to
+     * @return the information which holds of the message which should be delivered
+     * @throws AndesException
+     */
+    public MessageDeliveryInfo getMessageDeliveryInfo(String destination) throws AndesException {
+        MessageDeliveryInfo messageDeliveryInfo = subscriptionCursar4QueueMap.get(destination);
+        if (messageDeliveryInfo == null) {
+            messageDeliveryInfo = new MessageDeliveryInfo();
+            messageDeliveryInfo.destination = destination;
             Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
                     .getActiveLocalSubscribersForQueuesAndTopics(destination);
-            queueDeliveryInfo.iterator = localSubscribersForQueue.iterator();
-            subscriptionCursar4QueueMap.put(destination, queueDeliveryInfo);
+            messageDeliveryInfo.iterator = localSubscribersForQueue.iterator();
+            subscriptionCursar4QueueMap.put(destination, messageDeliveryInfo);
         }
-        return queueDeliveryInfo;
+        return messageDeliveryInfo;
     }
 
 
+    /**
+     * Validates if the the buffer is empty, the messages will be read through this buffer and will be delivered to the
+     * relevant subscriptions
+     * @param queueName the name of the queue which hold the messages
+     * @return whether the buffer is empty
+     */
     public boolean isMessageBufferEmpty(String queueName) {
         return subscriptionCursar4QueueMap.get(queueName).readButUndeliveredMessages.isEmpty();
     }
@@ -245,14 +261,14 @@ public class QueueDeliveryWorker {
                  */
                 String destination = slot.getDestinationOfMessagesInSlot();
                 message.setSlot(slot);
-                QueueDeliveryInfo queueDeliveryInfo = getQueueDeliveryInfo(destination);
+                MessageDeliveryInfo messageDeliveryInfo = getMessageDeliveryInfo(destination);
                 //check and buffer message
                 //stamp this message as buffered
                 boolean isOKToBuffer = OnflightMessageTracker.getInstance()
                                                              .addMessageToBufferingTracker(slot,
                                                                                            message);
                 if (isOKToBuffer) {
-                    queueDeliveryInfo.readButUndeliveredMessages.add(message);
+                    messageDeliveryInfo.readButUndeliveredMessages.add(message);
                     //increment the message count in the slot
                     OnflightMessageTracker.getInstance().incrementMessageCountInSlot(slot);
                 } else {
@@ -291,7 +307,7 @@ public class QueueDeliveryWorker {
      */
     public void sendMessagesInBuffer(String subDestination) throws AndesException {
 
-        QueueDeliveryInfo queueDeliveryInfo = subscriptionCursar4QueueMap.get(subDestination);
+        MessageDeliveryInfo messageDeliveryInfo = subscriptionCursar4QueueMap.get(subDestination);
         if (log.isDebugEnabled()) {
             for (String dest : subscriptionCursar4QueueMap.keySet()) {
                 log.debug("Queue size of destination " + dest + " is :"
@@ -302,11 +318,11 @@ public class QueueDeliveryWorker {
         }
         try {
             log.debug(
-                    "Sending messages from buffer num of msg = " + queueDeliveryInfo
+                    "Sending messages from buffer num of msg = " + messageDeliveryInfo
                             .readButUndeliveredMessages
                             .size());
-            sendMessagesToSubscriptions(queueDeliveryInfo.destination,
-                    queueDeliveryInfo.readButUndeliveredMessages);
+            sendMessagesToSubscriptions(messageDeliveryInfo.destination,
+                    messageDeliveryInfo.readButUndeliveredMessages);
         } catch (Exception e) {
             log.error("Error occurred while sending messages to subscribers from buffer", e);
             throw new AndesException("Error occurred while sending messages to subscribers " +
@@ -317,6 +333,7 @@ public class QueueDeliveryWorker {
     }
 
 
+    //TODO check if this method is required in future
     private void sleep4waitInterval(long sleepInterval) {
         try {
             Thread.sleep(sleepInterval);
@@ -515,18 +532,28 @@ public class QueueDeliveryWorker {
     }
 
     //TODO: in multiple subscription case this can cause message duplication
+
+    /**
+     * Will be responsible in placing the message back at the queue if delivery fails
+     * @param message the message which was scheduled for delivery to its subscribers
+     */
     public void reQueueUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message) {
         String destination = message.getDestination();
         subscriptionCursar4QueueMap.get(destination).readButUndeliveredMessages.add(message);
     }
 
+    /**
+     * Would clear the messages which were accumilated in the buffer due to failure in delivery
+     * @param destinationQueueName the destination name of the queue/topic the message was intended for delivery
+     * @throws AndesException
+     */
     public void clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(
             String destinationQueueName) throws AndesException {
-        getQueueDeliveryInfo(destinationQueueName).readButUndeliveredMessages.clear();
+        getMessageDeliveryInfo(destinationQueueName).readButUndeliveredMessages.clear();
     }
 
-    public static QueueDeliveryWorker getInstance() {
-        return queueDeliveryWorker;
+    public static MessageFlusher getInstance() {
+        return messageFlusher;
     }
 
 

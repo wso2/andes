@@ -17,6 +17,9 @@
  */
 package org.wso2.andes.mqtt;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,6 +50,8 @@ public class MQTTSubscriber {
     //Will generate a unique id
     //TODO check to see if making this volatile is neccassary
     private volatile int lastGeneratedMessageID = 0;
+    //Will log the events
+    private static Log log = LogFactory.getLog(MQTTSubscriber.class);
 
 
     /**
@@ -56,11 +61,12 @@ public class MQTTSubscriber {
      * @return a unique identifier for the local message sent through the subscription
      */
     public int markSend(long clusterMessageID) {
-        lastGeneratedMessageID += 1;
+        lastGeneratedMessageID = lastGeneratedMessageID + 1;
         if (lastGeneratedMessageID >= Short.MAX_VALUE) {
             //Then we need to reduce
             //TODO add a debug log here
             //TODO assuming that the acks are receved on the oreder which was sent, this is wrong need to re think
+            log.warn("The message ids will be refreshed since it exceeded the maximum limit ");
             lastGeneratedMessageID = 0;
 
         }
