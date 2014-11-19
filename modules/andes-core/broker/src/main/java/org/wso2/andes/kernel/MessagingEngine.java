@@ -116,7 +116,7 @@ public class MessagingEngine {
 
     /**
      * Initialises the MessagingEngine with a given durableMessageStore. Message retrieval and
-     * storing strategy will be set accoridng to the configurations by calling this.
+     * storing strategy will be set according to the configurations by calling this.
      *
      * @param messageStore MessageStore
      * @throws AndesException

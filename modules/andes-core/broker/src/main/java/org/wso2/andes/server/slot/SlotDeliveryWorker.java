@@ -28,10 +28,8 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
 import org.wso2.andes.subscription.SubscriptionStore;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
+
+import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
@@ -143,19 +141,19 @@ public class SlotDeliveryWorker extends Thread {
                                     long firstMsgId = currentSlot.getStartMessageId();
                                     long lastMsgId = currentSlot.getEndMessageId();
                                     //Read messages in the slot
-                                    List<AndesMessageMetadata> messagesReadByLeadingThread =
+                                    List<AndesMessageMetadata> messagesRead =
                                             MessagingEngine.getInstance().getMetaDataList(
                                                     storageQueueName, firstMsgId, lastMsgId);
-                                    if (messagesReadByLeadingThread != null &&
-                                        !messagesReadByLeadingThread.isEmpty()) {
+                                    if (messagesRead != null &&
+                                        !messagesRead.isEmpty()) {
                                         if (log.isDebugEnabled()) {
                                             log.debug("Number of messages read from slot " +
                                                       currentSlot.getStartMessageId() + " - " +
                                                       currentSlot.getEndMessageId() + " is " +
-                                                      messagesReadByLeadingThread.size() + " queue= " + storageQueueName);
+                                                      messagesRead.size() + " queue= " + storageQueueName);
                                         }
                                         MessageFlusher.getInstance().sendMessageToFlusher(
-                                                messagesReadByLeadingThread, currentSlot);
+                                                messagesRead, currentSlot);
                                     } else {
                                         currentSlot.setSlotInActive();
                                         //Release all message trackings for messages of slot
@@ -175,14 +173,14 @@ public class SlotDeliveryWorker extends Thread {
                                 int slotWindowSize = ClusterResourceHolder.getInstance()
                                                                           .getClusterConfiguration()
                                                                           .getSlotWindowSize();
-                                List<AndesMessageMetadata> messagesReadByLeadingThread =
+                                List<AndesMessageMetadata> messagesRead =
                                         MessagingEngine.getInstance()
                                                        .getNextNMessageMetadataFromQueue
                                                                (storageQueueName, startMessageId,
                                                                 slotWindowSize);
-                                if (messagesReadByLeadingThread == null ||
-                                    messagesReadByLeadingThread.isEmpty()) {
-                                    log.debug("No messages are read from the leading thread. StorageQ= " + storageQueueName);
+                                if (messagesRead == null ||
+                                    messagesRead.isEmpty()) {
+                                    log.debug("No messages are read. StorageQ= " + storageQueueName);
                                     boolean sentFromMessageBuffer = sendFromMessageBuffer
                                             (destinationOfMessagesInQueue);
                                     log.debug(
@@ -205,14 +203,14 @@ public class SlotDeliveryWorker extends Thread {
                                     }
                                 } else {
                                     if (log.isDebugEnabled()) {
-                                        log.debug(messagesReadByLeadingThread.size() + " " +
+                                        log.debug(messagesRead.size() + " " +
                                                   "number of messages read from Slot Delivery Worker. StorageQ= " + storageQueueName);
                                     }
-                                    long lastMessageId = messagesReadByLeadingThread.get(
-                                            messagesReadByLeadingThread
+                                    long lastMessageId = messagesRead.get(
+                                            messagesRead
                                                     .size() - 1).getMessageID();
                                     log.debug(
-                                            "Last message id from the leading thread = " +
+                                            "Last message id read = " +
                                             lastMessageId);
                                     localLastProcessedIdMap.put(storageQueueName, lastMessageId);
 
@@ -227,7 +225,7 @@ public class SlotDeliveryWorker extends Thread {
                                     log.debug("sending read messages to flusher << " + currentSlot
                                             .toString() + " >>");
                                     messageFlusher.sendMessageToFlusher
-                                            (messagesReadByLeadingThread, currentSlot);
+                                            (messagesRead, currentSlot);
                                 }
                             }
                         } else {
@@ -359,17 +357,17 @@ public class SlotDeliveryWorker extends Thread {
             however slot is not empty. This happens when we write messages to message store out of
             order. Therefore we resend those messages.
              */
-            List<AndesMessageMetadata> messagesReadByLeadingThread =
+            List<AndesMessageMetadata> messagesRead =
                     MessagingEngine.getInstance().getMetaDataList(
                             slot.getStorageQueueName(), slot.getStartMessageId(), slot.getEndMessageId());
-            if (messagesReadByLeadingThread != null &&
-                !messagesReadByLeadingThread.isEmpty()) {
+            if (messagesRead != null &&
+                !messagesRead.isEmpty()) {
                 if (log.isDebugEnabled()) {
                     log.debug(
-                            "Resending missing" + messagesReadByLeadingThread.size() + "messages " +
+                            "Resending missing" + messagesRead.size() + "messages " +
                             "for slot: " + slot.toString());
                 }
-                Iterator<AndesMessageMetadata> iterator = messagesReadByLeadingThread.iterator();
+                Iterator<AndesMessageMetadata> iterator = messagesRead.iterator();
                 while(iterator.hasNext()) {
                     if(OnflightMessageTracker.getInstance().checkIfMessageIsAlreadyBuffered(slot,iterator.next().getMessageID())) {
                         iterator.remove();
@@ -393,7 +391,7 @@ public class SlotDeliveryWorker extends Thread {
                     }
                 } else {
                     MessageFlusher.getInstance().sendMessageToFlusher(
-                            messagesReadByLeadingThread, slot);
+                            messagesRead, slot);
                 }
             }
         }
