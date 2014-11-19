@@ -213,12 +213,12 @@ public class MessageFlusher {
     /**
      * send the messages to deliver
      *
-     * @param messagesReadByLeadingThread
+     * @param messagesRead
      *         AndesMetadata list
      * @param slot
      *         these messages are belonged to
      */
-    public void sendMessageToFlusher(List<AndesMessageMetadata> messagesReadByLeadingThread,
+    public void sendMessageToFlusher(List<AndesMessageMetadata> messagesRead,
                                      Slot slot) {
 
         int pendingJobsToSendToTransport;
@@ -251,7 +251,7 @@ public class MessageFlusher {
                 log.warn("Flusher destination has " + pendingJobsToSendToTransport + " tasks");
                 // TODO: we need to handle this. Notify slot delivery worker to sleep more
             }
-            for (AndesMessageMetadata message : messagesReadByLeadingThread) {
+            for (AndesMessageMetadata message : messagesRead) {
 
                 /**
                  * Rather than destination of the message, we get the destination of
