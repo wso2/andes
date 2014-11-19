@@ -4,6 +4,8 @@ import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.IMessaging;
 import org.dna.mqtt.moquette.messaging.spi.IStorageService;
 import org.dna.mqtt.moquette.messaging.spi.impl.events.*;
@@ -12,8 +14,6 @@ import org.dna.mqtt.moquette.proto.messages.*;
 import org.dna.mqtt.moquette.server.Constants;
 import org.dna.mqtt.moquette.server.IAuthenticator;
 import org.dna.mqtt.moquette.server.ServerChannel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
@@ -23,8 +23,8 @@ import java.util.concurrent.TimeUnit;
 
 public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SimpleMessaging.class);
-    
+    private static Log log = LogFactory.getLog(SimpleMessaging.class);
+
     private SubscriptionsStore subscriptions;
     
     private RingBuffer<ValueEvent> m_ringBuffer;
@@ -67,7 +67,9 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
     
     private void disruptorPublish(MessagingEvent msgEvent) {
-        LOG.debug("disruptorPublish publishing event {}", msgEvent);
+        if (log.isDebugEnabled()) {
+            log.debug("disruptorPublish publishing event " + msgEvent);
+        }
         long sequence = m_ringBuffer.next();
         ValueEvent event = m_ringBuffer.get(sequence);
 
@@ -96,16 +98,18 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
             //wait the callback notification from the protocol processor thread
             boolean elapsed = !m_stopLatch.await(10, TimeUnit.SECONDS);
             if (elapsed) {
-                LOG.error("Can't stop the server in 10 seconds");
+                log.error("Can't stop the server in 10 seconds");
             }
         } catch (InterruptedException ex) {
-            LOG.error(null, ex);
+            log.error(null, ex);
         }
     }
     
     public void onEvent(ValueEvent t, long l, boolean bln) throws Exception {
         MessagingEvent evt = t.getEvent();
-        LOG.info("onEvent processing messaging event from input ringbuffer {}", evt);
+        if (log.isDebugEnabled()) {
+            log.info("onEvent processing messaging event from input ringbuffer " + evt);
+        }
         if (evt instanceof PublishEvent) {
             m_processor.processPublish((PublishEvent) evt);
         } else if (evt instanceof StopEvent) {
@@ -190,7 +194,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
 
     private void processStop() {
-        LOG.debug("processStop invoked");
+        log.debug("processStop invoked");
         m_storageService.close();
 
 //        m_eventProcessor.halt();

@@ -22,16 +22,17 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.cassandra.MessageFlusher;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
 import org.wso2.andes.subscription.SubscriptionStore;
 
-
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
  * SlotDelivery worker is responsible of distributing messages to subscribers. Messages will be
@@ -54,10 +55,10 @@ public class SlotDeliveryWorker extends Thread {
      */
     private volatile boolean running;
     private String nodeId;
-    private QueueDeliveryWorker queueDeliveryWorker;
+    private MessageFlusher messageFlusher;
 
     public SlotDeliveryWorker() {
-        queueDeliveryWorker = QueueDeliveryWorker.getInstance();
+        messageFlusher = MessageFlusher.getInstance();
         this.storageQueueNameToDestinationMap = new ConcurrentSkipListMap<String, String>();
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
@@ -89,9 +90,9 @@ public class SlotDeliveryWorker extends Thread {
                 try {
                     subscriptions4Queue = subscriptionStore.getActiveLocalSubscribersForQueuesAndTopics(destinationOfMessagesInQueue);
                     if (subscriptions4Queue != null && !subscriptions4Queue.isEmpty()) {
-                        //Check in memory buffer in QueueDeliveryWorker has room
-                        if (queueDeliveryWorker.getQueueDeliveryInfo(destinationOfMessagesInQueue)
-                                               .isMessageBufferFull()) {
+                        //Check in memory buffer in MessageFlusher has room
+                        if (messageFlusher.getMessageDeliveryInfo(destinationOfMessagesInQueue)
+                                .isMessageBufferFull()) {
                             if (isClusteringEnabled) {
                                 long startTime = System.currentTimeMillis();
                                 Slot currentSlot = MBThriftClient.getSlot(storageQueueName, nodeId);
@@ -109,7 +110,7 @@ public class SlotDeliveryWorker extends Thread {
                                 if (0 == currentSlot.getEndMessageId()) {
 
                                     /*
-                                    If the message buffer in QueueDeliveryWorker is not empty
+                                    If the message buffer in MessageFlusher is not empty
                                      send those messages
                                      */
                                     if (log.isDebugEnabled()) {
@@ -153,7 +154,7 @@ public class SlotDeliveryWorker extends Thread {
                                                       currentSlot.getEndMessageId() + " is " +
                                                       messagesReadByLeadingThread.size() + " queue= " + storageQueueName);
                                         }
-                                        QueueDeliveryWorker.getInstance().sendMessageToFlusher(
+                                        MessageFlusher.getInstance().sendMessageToFlusher(
                                                 messagesReadByLeadingThread, currentSlot);
                                     } else {
                                         currentSlot.setSlotInActive();
@@ -161,7 +162,7 @@ public class SlotDeliveryWorker extends Thread {
                                         OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(currentSlot);
                                         MBThriftClient.deleteSlot(storageQueueName, currentSlot, nodeId);
                                         /*If there are messages to be sent in the message
-                                        buffer in QueueDeliveryWorker send them */
+                                        buffer in MessageFlusher send them */
                                         sendFromMessageBuffer(destinationOfMessagesInQueue);
                                     }
                                 }
@@ -225,13 +226,13 @@ public class SlotDeliveryWorker extends Thread {
 
                                     log.debug("sending read messages to flusher << " + currentSlot
                                             .toString() + " >>");
-                                    queueDeliveryWorker.sendMessageToFlusher
+                                    messageFlusher.sendMessageToFlusher
                                             (messagesReadByLeadingThread, currentSlot);
                                 }
                             }
                         } else {
                                 /*If there are messages to be sent in the message
-                                            buffer in QueueDeliveryWorker send them */
+                                            buffer in MessageFlusher send them */
                             if (log.isDebugEnabled()) {
                                 log.debug(
                                         "The queue" + storageQueueName + " has no room. Thus sending " +
@@ -266,7 +267,7 @@ public class SlotDeliveryWorker extends Thread {
 
 
     /**
-     * Send messages from buffer in QueueDeliveryWorker if the buffer is not empty
+     * Send messages from buffer in MessageFlusher if the buffer is not empty
      *
      * @param msgDestination queue/topic message is addressed to
      * @return whether the messages are sent from message buffer or not
@@ -274,8 +275,8 @@ public class SlotDeliveryWorker extends Thread {
      */
     private boolean sendFromMessageBuffer(String msgDestination) throws AndesException {
         boolean sentFromMessageBuffer = false;
-        if (!queueDeliveryWorker.isMessageBufferEmpty(msgDestination)) {
-            queueDeliveryWorker.sendMessagesInBuffer(msgDestination);
+        if (!messageFlusher.isMessageBufferEmpty(msgDestination)) {
+            messageFlusher.sendMessagesInBuffer(msgDestination);
             sentFromMessageBuffer = true;
         }
         return sentFromMessageBuffer;
@@ -291,7 +292,7 @@ public class SlotDeliveryWorker extends Thread {
     }
 
     /**
-     * Clear all in memory messages addressed to the queue and update the last purged timestamp for the given queue at its QueueDeliveryInfo object.
+     * Clear all in memory messages addressed to the queue and update the last purged timestamp for the given queue at its MessageDeliveryInfo object.
      *
      * @param queueName name of the purging queue
      * @param purgedTimestamp   time stamp of the purged queue
@@ -300,10 +301,9 @@ public class SlotDeliveryWorker extends Thread {
      */
     public int purgeInMemoryMessagesFromQueue(String queueName, long purgedTimestamp) throws AndesException {
 
-        queueDeliveryWorker.getQueueDeliveryInfo(queueName).setLastPurgedTimestamp(purgedTimestamp);
+        messageFlusher.getMessageDeliveryInfo(queueName).setLastPurgedTimestamp(purgedTimestamp);
 
-        return queueDeliveryWorker.getQueueDeliveryInfo(queueName).clearReadButUndeliveredMessages
-                ();
+        return messageFlusher.getMessageDeliveryInfo(queueName).clearReadButUndeliveredMessages();
     }
 
     /**
@@ -392,7 +392,7 @@ public class SlotDeliveryWorker extends Thread {
                                 "Error deleting slot while checking for slot completion.", e);
                     }
                 } else {
-                    QueueDeliveryWorker.getInstance().sendMessageToFlusher(
+                    MessageFlusher.getInstance().sendMessageToFlusher(
                             messagesReadByLeadingThread, slot);
                 }
             }
