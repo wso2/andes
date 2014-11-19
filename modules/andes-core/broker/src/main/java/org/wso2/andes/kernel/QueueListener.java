@@ -38,7 +38,7 @@ public interface QueueListener {
     public void handleClusterQueuesChanged(AndesQueue andesQueue, QueueChange changeType) throws AndesException;
 
     /**
-     * handle a queue has changed in the local node
+     * handle the event where a queue has changed in another node
      *
      * @param andesQueue changed queue
      * @param changeType what type of change has happened

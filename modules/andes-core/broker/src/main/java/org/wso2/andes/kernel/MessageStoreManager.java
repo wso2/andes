@@ -212,10 +212,10 @@ public interface MessageStoreManager {
 
     /***
      * Clear all references to all message metadata / content addressed to a specific queue. Used when purging.
-     * @param queueName
+     * @param storageQueueName name of storage queue
      * @throws AndesException
      */
-    public Integer purgeQueueFromStore(String queueName) throws AndesException;
+    public int purgeQueueFromStore(String storageQueueName) throws AndesException;
 
 
 }

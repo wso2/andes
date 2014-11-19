@@ -134,7 +134,6 @@ public class JDBCConstants {
             "SELECT " + MESSAGE_ID +
                     " FROM " + METADATA_TABLE +
                     " WHERE " + QUEUE_ID + "=?" +
-                    " AND " + MESSAGE_ID + ">?" +
                     " ORDER BY " + MESSAGE_ID ;
 
     protected static final String PS_DELETE_METADATA =

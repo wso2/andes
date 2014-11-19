@@ -108,7 +108,8 @@ public class OnflightMessageTracker {
         RESENT,
         SLOT_REMOVED,
         EXPIRED,
-        DLC_MESSAGE;
+        DLC_MESSAGE,
+        PURGED;
 
 
         /**
@@ -296,6 +297,7 @@ public class OnflightMessageTracker {
             log.warn("Message was sent at " + trackingData.arrivalTime + " before last purge event at " +
                     "" + lastPurgedTimestampOfQueue + ". Will be skipped. id= " +
                     messageId);
+            trackingData.addMessageStatus(MessageStatus.PURGED);
             isOKToDeliver = false;
         }
         if (isOKToDeliver) {

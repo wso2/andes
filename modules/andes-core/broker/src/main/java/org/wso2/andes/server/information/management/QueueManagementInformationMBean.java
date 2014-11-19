@@ -25,16 +25,12 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
-import org.wso2.andes.server.logging.actors.CurrentActor;
-import org.wso2.andes.server.logging.actors.ManagementActor;
 import org.wso2.andes.server.management.AMQManagedObject;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueRegistry;
-import org.wso2.andes.server.store.DurableConfigurationStore;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostImpl;
-import org.wso2.andes.subscription.SubscriptionStore;
 
 import javax.management.JMException;
 import javax.management.MBeanException;
@@ -49,19 +45,18 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     private final QueueRegistry _queueRegistry;
 
-    private final VirtualHostImpl.VirtualHostMBean _virtualHostMBean;
+    private final String PURGE_QUEUE_ERROR = "Error in purging queue : ";
 
     /***
      * Virtual host information are needed in the constructor to evaluate user permissions for
      * queue management actions.(e.g. purge)
-     * @param virtualHostMBean
+     * @param vHostMBean Used to access the virtual host information
      * @throws NotCompliantMBeanException
      */
-    public QueueManagementInformationMBean(VirtualHostImpl.VirtualHostMBean virtualHostMBean) throws NotCompliantMBeanException {
+    public QueueManagementInformationMBean(VirtualHostImpl.VirtualHostMBean vHostMBean) throws NotCompliantMBeanException {
         super(QueueManagementInformation.class, QueueManagementInformation.TYPE);
 
-        _virtualHostMBean = virtualHostMBean;
-        VirtualHost virtualHost = _virtualHostMBean.getVirtualHost();
+        VirtualHost virtualHost = vHostMBean.getVirtualHost();
 
         _queueRegistry = virtualHost.getQueueRegistry();
     }
@@ -119,20 +114,13 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 throw new JMException("The Queue " + queueName + " is not a registered queue.");
             }
 
-            // This code block is kept for reference. If its decided to avoid purging when having
-            // active subscribers, this condition should be added.
-            /*if(subscriptionStore.getActiveClusterSubscribersForDestination(queueName,
-                false).size() >0) {
-                throw new JMException("Queue" + queueName +" Has Active Subscribers. Please Stop
-                Them First.");
-            } */
-
             queue.purge(0l); //This is to trigger the AMQChannel purge event so that the queue
-            // state of qpid is updated. This method also validates the request and throws an
-            // exception if permission is denied.
+            // state of qpid is updated. This method also validates the request owner and throws
+            // an exception if permission is denied.
 
             int purgedMessageCount = MessagingEngine.getInstance().purgeQueue(queueName,
                     ownerName);
+
             log.info("Total message count purged for queue (from store) : " + queueName + " : " +
                     purgedMessageCount + ". All in memory messages received before the purge call" +
                     " are abandoned from delivery phase. ");
@@ -141,16 +129,13 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             if (jme.toString().contains("not a registered queue")) {
                 throw new MBeanException(jme, "The Queue " + queueName + " is not a registered " +
                         "queue.");
-            } else if (jme.toString().contains("Has Active Subscribers")) {
-                throw new MBeanException(jme, "Queue " + queueName + " has active subscribers. " +
-                        "Please stop them first.");
             } else {
-                throw new MBeanException(jme, "Error in purging queue : " + queueName);
+                throw new MBeanException(jme, PURGE_QUEUE_ERROR + queueName);
             }
         } catch (AMQException amqex) {
-            throw new MBeanException(amqex, "Error in purging queue : " + queueName);
+            throw new MBeanException(amqex, PURGE_QUEUE_ERROR + queueName);
         } catch (AndesException e) {
-            throw new MBeanException(e, "Error in purging queue : " + queueName);
+            throw new MBeanException(e, PURGE_QUEUE_ERROR + queueName);
         }
     }
 
@@ -289,7 +274,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         return andesMessageIdList;
     }
 
-    //TODO:when deleting queues from UI this is not get called. Instead we use AMQBrokerManagerMBean. Why are we keeping this?
+    // When deleting queues from UI this is not get called. Instead we use AMQBrokerManagerMBean.
+    // Why are we keeping this?
     @Deprecated
     public void deleteQueue(@MBeanOperationParameter(name = "queueName",
             description = "Name of the queue to be deleted") String queueName) {

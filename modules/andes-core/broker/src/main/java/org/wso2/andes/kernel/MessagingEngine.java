@@ -63,7 +63,7 @@ public class MessagingEngine {
     private MessageIdGenerator messageIdGenerator;
 
     // todo: remove referring to this from MessagingEngine. Use within MessageStoreManager
-    // implmentations
+    // implementations
     private MessageStore durableMessageStore;
 
     /**
@@ -281,27 +281,28 @@ public class MessagingEngine {
      * Remove messages of the queue matching to given destination queue (cassandra / h2 / mysql etc. )
      *
      * @param destinationQueue destination queue name to match
-     * @param ownerName
+     * @param ownerName The user who initiated the purge request
      * @return number of messages removed (in memory message count may not be 100% accurate
      * since we cannot guarantee that we caught all messages in delivery threads.)
      * @throws AndesException
      */
     public int purgeQueue(String destinationQueue, String ownerName) throws AndesException {
 
+        // The timestamp is recorded to track messages that came before the purge event.
+        // Refer OnflightMessageTracker:evaluateDeliveryRules method for more details.
         Long purgedTimestamp = System.currentTimeMillis();
 
         // clear in memory messages of self (node)
         clearMessagesFromQueueInMemory(destinationQueue, purgedTimestamp);
 
-        // The queueOwner here is passed as null since its not used from the notification object.
-        // The user permissions are validated at the andes feature component level.
-        AndesQueue purgedQueue = new AndesQueue(destinationQueue, ownerName, false, true);
+        // Notification object to the cluster is prepared.
+        AndesQueue purgedQueue = new AndesQueue(destinationQueue,ownerName,false,true);
         purgedQueue.setLastPurgedTimestamp(purgedTimestamp);
 
         //Notify the cluster
         queueListener.handleLocalQueuesChanged(purgedQueue, QueueListener.QueueChange.Purged);
 
-        // Clear any and all message references addressed to the queue from the store
+        // Clear any and all message references addressed to the queue from the persistent store.
         // We can measure the message count in store, but cannot exactly infer the message count
         // in memory within all nodes at the time of purging. (Adding that could unnecessarily
         // block critical pub sub flows.)
@@ -375,19 +376,6 @@ public class MessagingEngine {
     }
 
     /**
-     * Store a message in a different Queue without altering the meta data.
-     *
-     * @param messageId        The message Id to move
-     * @param currentQueueName The current destination of the message
-     * @param targetQueueName  The target destination Queue name
-     * @throws AndesException
-     */
-    public void moveMetaDataToQueue(long messageId, String currentQueueName,
-                                    String targetQueueName) throws AndesException {
-        messageStoreManager.moveMetaDataToQueue(messageId, currentQueueName, targetQueueName);
-    }
-
-    /**
      * Update the meta data for the given message with the given information in the AndesMetaData. Update destination
      * and meta data bytes.
      *
@@ -398,19 +386,6 @@ public class MessagingEngine {
     public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
             AndesException {
         messageStoreManager.updateMetaDataInformation(currentQueueName, metadataList);
-    }
-
-    /**
-     * Remove in-memory messages tracked for this queue
-     *
-     * @param destinationQueueName name of queue messages should be removed
-     * @throws AndesException
-     */
-    public void removeInMemoryMessagesAccumulated(String destinationQueueName)
-            throws AndesException {
-        //Remove in-memory messages accumulated due to sudden subscription closing
-        MessageFlusher.getInstance().clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(
-                destinationQueueName);
     }
 
     /**

@@ -309,8 +309,9 @@ public class HazelcastAgent {
         try {
             this.queueChangedNotifierChannel.publish(clusterNotification);
         } catch (Exception e) {
-            log.error("Error while sending queue change notification", e);
-            throw new AndesException("Error while sending queue change notification", e);
+            log.error("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(),
+                    e);
+            throw new AndesException("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), e);
         }
     }
 

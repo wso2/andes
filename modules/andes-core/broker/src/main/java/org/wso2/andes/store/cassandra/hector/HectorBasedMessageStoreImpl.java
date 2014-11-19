@@ -453,19 +453,19 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     }
 
     @Override
-    public void deleteAllMessageMetadata(String queueName) throws AndesException {
+    public void deleteAllMessageMetadata(String storageQueueName) throws AndesException {
         //TODO implement. If we decide to use hector instead of cql ,
         // these methods must be implemented.
     }
 
     @Override
-    public int deleteAllMessageMetadataFromDLC(String queueName, String DLCQueueName) throws AndesException {
+    public int deleteAllMessageMetadataFromDLC(String storageQueueName, String DLCQueueName) throws AndesException {
         return 0;  //TODO implement. If we decide to use hector instead of cql ,
         // these methods must be implemented.
     }
 
     @Override
-    public List<Long> getMessageIDsAddressedToQueue(String queueName) throws AndesException {
+    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName) throws AndesException {
         return null;  //TODO implement. If we decide to use hector instead of cql ,
         // these methods must be implemented.
     }

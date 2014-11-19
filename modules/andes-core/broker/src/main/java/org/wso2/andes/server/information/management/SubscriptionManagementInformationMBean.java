@@ -17,6 +17,8 @@
  */
 package org.wso2.andes.server.information.management;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.MessagingEngine;
@@ -31,6 +33,8 @@ import java.util.List;
  * Class to Handle data for all subscription related UIs
  */
 public class SubscriptionManagementInformationMBean extends AMQManagedObject implements SubscriptionManagementInformation {
+
+    private static Log log = LogFactory.getLog(SubscriptionManagementInformationMBean.class);
 
     public SubscriptionManagementInformationMBean() throws NotCompliantMBeanException {
         super(SubscriptionManagementInformation.class, SubscriptionManagementInformation.TYPE);
@@ -127,7 +131,11 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         //  subscriptionInfo =  subscriptionIdentifier |  subscribedQueueOrTopicName | subscriberQueueBoundExchange |
         // subscriberQueueName |  isDurable | isActive | numberOfMessagesRemainingForSubscriber | subscriberNodeAddress
 
-        String nodeId = subscription.getSubscribedNode().split("_")[1];
+//        log.info("Subscriptions String : " + subscription.getSubscribedNode() + " " +
+//                subscription.getTargetQueue() + " " + subscription
+//                .getTargetQueueBoundExchangeName());
+
+        String nodeId = subscription.getSubscribedNode().split("/")[1];
         String subscriptionIdentifier = "1_"+nodeId+"@"+subscription.getTargetQueue();
 
         //in case of topic whats in v2 is : topicSubscriber.getDestination() + "@" + topicSubscriber.boundTopicName; --
