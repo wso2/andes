@@ -52,6 +52,7 @@ public class TimeStampBasedMessageIdGenerator implements MessageIdGenerator {
      * @return
      */
     public synchronized long getNextId() {
+        //TODO review on how we could optimize this code
         uniqueIdForNode = ClusterResourceHolder.getInstance().getClusterManager().getUniqueIdForLocalNode();
         long ts = System.currentTimeMillis();
         int offset = 0;

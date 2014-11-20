@@ -27,13 +27,13 @@ class PublishDecoder extends DemuxDecoder {
         PublishMessage message = new PublishMessage();
         if (!decodeCommonHeader(message, in)) {
             if (log.isDebugEnabled()) {
-                log.info("decode ask for more data after " + in);
+                log.debug("decode ask for more data after " + in);
             }
             in.resetReaderIndex();
             return;
         }
         int remainingLength = message.getRemainingLength();
-        
+
         //Topic name
         String topic = Utils.decodeString(in);
         if (topic == null) {
@@ -41,13 +41,13 @@ class PublishDecoder extends DemuxDecoder {
             return;
         }
         message.setTopicName(topic);
-        
-        if (message.getQos() == AbstractMessage.QOSType.LEAST_ONE || 
+
+        if (message.getQos() == AbstractMessage.QOSType.LEAST_ONE ||
                 message.getQos() == AbstractMessage.QOSType.EXACTLY_ONCE) {
             message.setMessageID(in.readUnsignedShort());
         }
         int stopPos = in.readerIndex();
-        
+
         //read the payload
         int payloadSize = remainingLength - (stopPos - startPos - 2) + (Utils.numBytesToEncode(remainingLength) - 1);
         if (in.readableBytes() < payloadSize) {
@@ -58,8 +58,8 @@ class PublishDecoder extends DemuxDecoder {
         ByteBuf bb = Unpooled.buffer(payloadSize);
         in.readBytes(bb);
         message.setPayload(bb.nioBuffer());
-        
+
         out.add(message);
     }
-    
+
 }

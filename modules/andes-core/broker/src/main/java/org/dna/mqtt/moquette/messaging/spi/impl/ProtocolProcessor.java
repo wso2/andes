@@ -419,7 +419,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 
     private void sendPubRec(String clientID, int messageID) {
         if (log.isDebugEnabled()) {
-            log.trace("SendPubRec invoked for clientID " + clientID + " with messageID " + messageID);
+            log.debug("SendPubRec invoked for clientID " + clientID + " with messageID " + messageID);
         }
         PubRecMessage pubRecMessage = new PubRecMessage();
         pubRecMessage.setMessageID(messageID);
@@ -429,7 +429,9 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
     }
 
     private void sendPubAck(PubAckEvent evt) {
-        log.trace("sendPubAck invoked");
+        if (log.isTraceEnabled()) {
+            log.trace("sendPubAck invoked");
+        }
 
         String clientId = evt.getClientID();
 

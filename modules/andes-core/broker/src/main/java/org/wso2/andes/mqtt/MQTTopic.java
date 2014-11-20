@@ -71,7 +71,7 @@ public class MQTTopic {
             throws MQTTException {
         MQTTSubscriber subscriber = subscribers.get(mqttClientChannelID);
         //Will create a new subscriber if the susbscriber do not exist
-        if (subscriber == null) {
+        if (null == subscriber) {
             subscriber = new MQTTSubscriber();
             //Will set the level of QOS of the subscriber
             subscriber.setQOS_Level(qos);
@@ -115,7 +115,7 @@ public class MQTTopic {
         //Will get the subscription
         MQTTSubscriber subscriber = subscribers.remove(mqttClientChannelID);
         //If there was no subscriber to be removed
-        if (subscriber == null) {
+        if (null == subscriber) {
             final String message = "Subscriber with id " + mqttClientChannelID + " cannot be found";
             throw new MQTTException(message);
         }

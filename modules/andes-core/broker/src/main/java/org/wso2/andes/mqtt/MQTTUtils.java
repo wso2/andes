@@ -53,15 +53,12 @@ public class MQTTUtils {
      * @param messagID the message identifier
      * @return AndesMessagePart which wrapps the message into a Andes kernal complient object
      */
-    public static AndesMessagePart convertToAndesMessage(ByteBuffer message, long messagID) {
+    public static AndesMessagePart convertToAndesMessage(byte[] message, long messagID) {
         AndesMessagePart messageBody = new AndesMessagePart();
-        //TODO need to check if this causes any memory leakes, it would be good to transfer the bytestream forward as buffer
-        byte[] data = message.array();
-        //The offset of the MQTT messages will by default be in 0 since there's not chunking concept here
         messageBody.setOffSet(0);
-        messageBody.setData(data);
+        messageBody.setData(message);
         messageBody.setMessageID(messagID);
-        messageBody.setDataLength(data.length);
+        messageBody.setDataLength(message.length);
         return messageBody;
     }
 
@@ -71,6 +68,8 @@ public class MQTTUtils {
      * @return the unique message identifier
      */
     public static long generateMessageID() {
+        //Message ids will not be directly generated from the kernal since in future if there's a MQTT specific
+        //id generation mechanism
         return MessagingEngine.getInstance().generateNewMessageId();
     }
 
@@ -171,20 +170,7 @@ public class MQTTUtils {
      * @return the level which is complient by the mqtt library
      */
     public static AbstractMessage.QOSType getMQTTQOSTypeFromInteger(int qos) {
-        AbstractMessage.QOSType message = null;
-        switch (qos) {
-            case 0:
-                message = AbstractMessage.QOSType.MOST_ONE;
-                break;
-            case 1:
-                message = AbstractMessage.QOSType.LEAST_ONE;
-                break;
-            case 2:
-                message = AbstractMessage.QOSType.EXACTLY_ONCE;
-                break;
-        }
-
-        return message;
+        return AbstractMessage.QOSType.valueOf(qos);
     }
 
     /**
@@ -194,14 +180,6 @@ public class MQTTUtils {
      * @return the level of qos as an integer which can be either 0,1 or 2
      */
     public static int convertMQTTProtocolTypeToInteger(AbstractMessage.QOSType qos) {
-        if (AbstractMessage.QOSType.MOST_ONE.equals(qos)) {
-            return 0;
-        } else if (AbstractMessage.QOSType.LEAST_ONE.equals(qos)) {
-            return 1;
-        } else if (AbstractMessage.QOSType.EXACTLY_ONCE.equals(qos)) {
-            return 2;
-        } else {
-            return -1;
-        }
+        return qos.getValue();
     }
 }
