@@ -174,17 +174,19 @@ public class SlotDeliveryWorkerManager {
 
         int purgedMessageCountInMemory = 0;
 
-        if (getSlotDeliveryWorkerMap().containsKey(slotDeliveryWorkerId)) {
+        SlotDeliveryWorker slotDeliveryWorker = getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId);
+
+        if (null != slotDeliveryWorker) {
 
             //Need to get the actual destination to which the storage queue is used for.
-            String destinationOfStorageQueue = getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId)
+            String destinationOfStorageQueue = slotDeliveryWorker
                     .getStorageQueueNameToDestinationMap().get(storageQueueName);
 
             if (!StringUtils.isBlank(destinationOfStorageQueue)) {
                 // if this queue is already in the slot delivery worker, that means it has in-memory
                 // messages queued.
-                purgedMessageCountInMemory = getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId)
-                        .purgeInMemoryMessagesFromQueue(destinationOfStorageQueue,purgedTimestamp);
+                purgedMessageCountInMemory = slotDeliveryWorker
+                        .purgeInMemoryMessagesFromQueue(destinationOfStorageQueue, purgedTimestamp);
             }
         }
 

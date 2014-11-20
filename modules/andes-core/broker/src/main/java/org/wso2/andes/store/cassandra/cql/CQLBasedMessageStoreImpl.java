@@ -767,7 +767,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
             Boolean allRecordsRetrieved = false;
 
-            while (allRecordsRetrieved) {
+            while (!allRecordsRetrieved) {
                 try {
 
                     List<AndesMessageMetadata> metadataList = CQLDataAccessHelper
