@@ -24,7 +24,6 @@ import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
-import org.wso2.andes.mqtt.MQTTLocalSubscription;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.slot.Slot;
@@ -94,7 +93,7 @@ public class MessageFlusher {
         // This way we can identify messages received before that timestamp that fail and ignore them.
         private Long lastPurgedTimestamp;
 
-        /**
+        /***
          * Constructor
          * initialize lastPurgedTimestamp to 0.
          */
@@ -115,9 +114,8 @@ public class MessageFlusher {
             return hasRoom;
         }
 
-        /**
+        /***
          * clear the read-but-undelivered collection of messages of the given queue from memory
-         *
          * @return Number of messages that was in the read-but-undelivered buffer
          */
         public int clearReadButUndeliveredMessages() {
@@ -129,7 +127,7 @@ public class MessageFlusher {
             return messageCount;
         }
 
-        /**
+        /***
          * @return Last purged timestamp of queue.
          */
         public Long getLastPurgedTimestamp() {
@@ -138,7 +136,6 @@ public class MessageFlusher {
 
         /**
          * set last purged timestamp for queue.
-         *
          * @param lastPurgedTimestamp the time stamp of the message message which was purged most recently
          */
         public void setLastPurgedTimestamp(Long lastPurgedTimestamp) {
@@ -150,8 +147,10 @@ public class MessageFlusher {
      * Get the next subscription for the given destination. If at end of the subscriptions, it circles
      * around to the first one
      *
-     * @param destination         name of destination
-     * @param subscriptions4Queue subscriptions registered for the destination
+     * @param destination
+     *         name of destination
+     * @param subscriptions4Queue
+     *         subscriptions registered for the destination
      * @return subscription to deliver
      * @throws AndesException
      */
@@ -204,7 +203,6 @@ public class MessageFlusher {
     /**
      * Validates if the the buffer is empty, the messages will be read through this buffer and will be delivered to the
      * relevant subscriptions
-     *
      * @param queueName the name of the queue which hold the messages
      * @return whether the buffer is empty
      */
@@ -214,6 +212,7 @@ public class MessageFlusher {
 
     /**
      * send the messages to deliver
+     *
      * @param messagesRead
      *         AndesMetadata list
      * @param slot
@@ -345,7 +344,8 @@ public class MessageFlusher {
     /**
      * does that destination has too many messages pending
      *
-     * @param localSubscription local subscription
+     * @param localSubscription
+     *         local subscription
      * @return is subscription ready to accept messages
      */
     private boolean isThisSubscriptionHasRoom(LocalSubscription localSubscription) {
@@ -432,7 +432,7 @@ public class MessageFlusher {
                             if (log.isDebugEnabled()) {
                                 log.debug("Scheduled to send id = " + message.getMessageID());
                             }
-                            deliverMessage(localSubscription, message);
+                            deliverAsynchronously(localSubscription, message);
                             numOfCurrentMsgDeliverySchedules++;
                             break;
                         }
@@ -440,7 +440,7 @@ public class MessageFlusher {
                         if (log.isDebugEnabled()) {
                             log.debug("Scheduled to send id = " + message.getMessageID());
                         }
-                        deliverMessage(localSubscription, message);
+                        deliverAsynchronously(localSubscription, message);
                         numOfCurrentMsgDeliverySchedules++;
                     }
                 }
@@ -491,29 +491,12 @@ public class MessageFlusher {
 
     /**
      * Schedule to deliver message for the subscription
-     *
      * @param subscription subscription to send
-     * @param message      message to send
+     * @param message message to send
      */
     public void scheduleMessageForSubscription(LocalSubscription subscription,
                                                final AndesMessageMetadata message) {
-        deliverMessage(subscription, message);
-    }
-
-
-    /**
-     * Will deliver the message based on the subscription requirments
-     *
-     * @param subscription the subscription which is boud to the topic
-     * @param message      the message content
-     */
-    private void deliverMessage(final LocalSubscription subscription, final AndesMessageMetadata message) {
-        if (subscription instanceof MQTTLocalSubscription) {
-            deliverSynchronously(subscription, message);
-        } else {
-            deliverAsynchronously(subscription, message);
-        }
-
+        deliverAsynchronously(subscription, message);
     }
 
     /**
@@ -548,37 +531,10 @@ public class MessageFlusher {
         OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
     }
 
-    /**
-     * The method will deliver to the subscribers sequentially instead of threading
-     *
-     * @param subscription the local subscription
-     * @param message      contents which will be delivered
-     */
-    private void deliverSynchronously(final LocalSubscription subscription, final AndesMessageMetadata message) {
-        try {
-            if (subscription.isActive()) {
-                (subscription).sendMessageToSubscriber(message);
-            } else {
-                reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
-            }
-            OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message.getMessageID());
-        } catch (Throwable e) {
-            log.error("Error while delivering message. Moving to Dead Letter Queue ", e);
-            OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message.getMessageID());
-            //todo - hasitha - here we have already tried three times to deliver.
-        }
-
-        if (log.isDebugEnabled()) {
-            log.debug("Message id= " + message.getMessageID() + " to be sent to subscription= " + subscription.toString());
-        }
-        OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
-    }
-
     //TODO: in multiple subscription case this can cause message duplication
 
     /**
      * Will be responsible in placing the message back at the queue if delivery fails
-     *
      * @param message the message which was scheduled for delivery to its subscribers
      */
     public void reQueueUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message) {
@@ -588,7 +544,6 @@ public class MessageFlusher {
 
     /**
      * Would clear the messages which were accumilated in the buffer due to failure in delivery
-     *
      * @param destinationQueueName the destination name of the queue/topic the message was intended for delivery
      * @throws AndesException
      */
