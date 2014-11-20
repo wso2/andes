@@ -44,12 +44,11 @@ public class MQTTSubscriber {
     //Each subscription object will maintain the ids of the messages that were sent out for delivery
     //Upon recieving of an ack the message element will be removed
     //Cluster message id to local messages the key will be the local id of the map and the value will be cluster id
-    //TODO check if a concurren hashmap is neccessary here
+    //TODO check if a concurrent hashmap is neccessary here
     private Map<Integer, Long> clusterMessageToLocalMessage = new ConcurrentHashMap<Integer, Long>();
     //Will hold the message id which was last processed
     //Will generate a unique id
-    //TODO check to see if making this volatile is neccassary
-    private volatile int lastGeneratedMessageID = 0;
+    private int lastGeneratedMessageID = 0;
     //Will log the events
     private static Log log = LogFactory.getLog(MQTTSubscriber.class);
 
@@ -62,12 +61,12 @@ public class MQTTSubscriber {
      */
     public int markSend(long clusterMessageID) {
         lastGeneratedMessageID = lastGeneratedMessageID + 1;
-        if (lastGeneratedMessageID >= Short.MAX_VALUE) {
+        if (lastGeneratedMessageID == Short.MAX_VALUE) {
             //Then we need to reduce
             //TODO add a debug log here
             //TODO assuming that the acks are receved on the oreder which was sent, this is wrong need to re think
             log.warn("The message ids will be refreshed since it exceeded the maximum limit ");
-            lastGeneratedMessageID = 0;
+            lastGeneratedMessageID = 1;
 
         }
         //Here the local id will be the key since we do not accept the same local id to duplicate
@@ -75,6 +74,12 @@ public class MQTTSubscriber {
         return lastGeneratedMessageID;
     }
 
+    /**
+     * Will be called apon receving an ack for a message
+     *
+     * @param localMessageID the id of the message the ack was received
+     * @return the cluster specific message if of the message which received the ack
+     */
     public long ackReceived(int localMessageID) {
         //TODO throw exception if the id cannot be correlated
         long custerID = clusterMessageToLocalMessage.remove(localMessageID);
@@ -128,6 +133,7 @@ public class MQTTSubscriber {
 
     /**
      * Set the id generated for the subscriber locally
+     *
      * @param subscriberChannelID the unique subscription identifier
      */
     public void setSubscriberChannelID(String subscriberChannelID) {

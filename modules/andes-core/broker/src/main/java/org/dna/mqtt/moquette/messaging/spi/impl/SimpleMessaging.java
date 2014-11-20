@@ -26,7 +26,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
     private static Log log = LogFactory.getLog(SimpleMessaging.class);
 
     private SubscriptionsStore subscriptions;
-    
+
     private RingBuffer<ValueEvent> m_ringBuffer;
 
     private IStorageService m_storageService;
@@ -35,11 +35,11 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
     BatchEventProcessor<ValueEvent> m_eventProcessor;
 
     private static SimpleMessaging INSTANCE;
-    
+
     private ProtocolProcessor m_processor = new ProtocolProcessor();
-    
+
     CountDownLatch m_stopLatch;
-    
+
     private SimpleMessaging() {
     }
 
@@ -65,7 +65,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
         disruptorPublish(new InitEvent(configProps));
     }
 
-    
+
     private void disruptorPublish(MessagingEvent msgEvent) {
         if (log.isDebugEnabled()) {
             log.debug("disruptorPublish publishing event " + msgEvent);
@@ -74,15 +74,15 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
         ValueEvent event = m_ringBuffer.get(sequence);
 
         event.setEvent(msgEvent);
-        
-        m_ringBuffer.publish(sequence); 
+
+        m_ringBuffer.publish(sequence);
     }
-    
+
 
     public void disconnect(ServerChannel session) {
         disruptorPublish(new DisconnectEvent(session));
     }
-    
+
     public void lostConnection(String clientID) {
         disruptorPublish(new LostConnectionEvent(clientID));
     }
@@ -98,17 +98,17 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
             //wait the callback notification from the protocol processor thread
             boolean elapsed = !m_stopLatch.await(10, TimeUnit.SECONDS);
             if (elapsed) {
-                log.error("Can't stop the server in 10 seconds");
+                log.warn("Can't stop the server in 10 seconds");
             }
         } catch (InterruptedException ex) {
             log.error(null, ex);
         }
     }
-    
+
     public void onEvent(ValueEvent t, long l, boolean bln) throws Exception {
         MessagingEvent evt = t.getEvent();
         if (log.isDebugEnabled()) {
-            log.info("onEvent processing messaging event from input ringbuffer " + evt);
+            log.debug("onEvent processing messaging event from input ringbuffer " + evt);
         }
         if (evt instanceof PublishEvent) {
             m_processor.processPublish((PublishEvent) evt);
@@ -123,7 +123,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
             AbstractMessage message = ((ProtocolEvent) evt).getMessage();
             if (message instanceof ConnectMessage) {
                 m_processor.processConnect(session, (ConnectMessage) message);
-            } else if (message instanceof  PublishMessage) {
+            } else if (message instanceof PublishMessage) {
                 PublishEvent pubEvt;
                 String clientID = (String) session.getAttribute(Constants.ATTR_CLIENTID);
                 pubEvt = new PublishEvent((PublishMessage) message, clientID, session);
@@ -184,22 +184,24 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
         m_storageService.initStore();*/
 
         subscriptions.init(m_storageService);
-        
+
         String passwdPath = props.getProperty("password_file");
         String configPath = System.getProperty("moquette.path", "");
         IAuthenticator authenticator = new FileAuthenticator(configPath + passwdPath);
-        
+
         m_processor.init(subscriptions, m_storageService, authenticator);
     }
 
 
     private void processStop() {
-        log.debug("processStop invoked");
+        if (log.isDebugEnabled()) {
+            log.debug("processStop invoked");
+        }
         m_storageService.close();
 
 //        m_eventProcessor.halt();
         m_executor.shutdown();
-        
+
         subscriptions = null;
         m_stopLatch.countDown();
     }

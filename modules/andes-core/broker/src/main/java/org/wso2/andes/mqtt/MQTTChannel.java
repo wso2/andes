@@ -58,11 +58,18 @@ public class MQTTChannel {
      *
      * @param messageBody        message content
      * @param mqttLocalMessageID channel id in which the message was published
+     * @throws MQTTException
      */
-    private void addMessageBody(AndesMessagePart messageBody, int mqttLocalMessageID) {
-        MessagingEngine.getInstance().messageContentReceived(messageBody);
-        if (log.isDebugEnabled()) {
-            log.debug("Content of the message with id " + mqttLocalMessageID + " added to the kernal");
+    private void addMessageBody(AndesMessagePart messageBody, int mqttLocalMessageID) throws MQTTException {
+        try {
+            MessagingEngine.getInstance().messageContentReceived(messageBody);
+            if (log.isDebugEnabled()) {
+                log.debug("Content of the message with id " + mqttLocalMessageID + " added to the kernal");
+            }
+        } catch (AndesException ex) {
+            final String message = "Error while adding message content ";
+            log.error(message, ex);
+            throw new MQTTException(message, ex);
         }
     }
 
@@ -119,15 +126,21 @@ public class MQTTChannel {
      */
     public void addMessage(ByteBuffer message, long messageID, String topic, int qosLevel,
                            int mqttLocalMessageID, boolean retain) throws MQTTException {
-        //Will start converting the message body
-        AndesMessagePart msg = MQTTUtils.convertToAndesMessage(message, messageID);
-        //Will Create the Andes Header
-        AndesMessageMetadata metaHeader = MQTTUtils.convertToAndesHeader(messageID, topic, qosLevel,
-                message.array().length, retain);
-        //Will write the message body
-        addMessageBody(msg, mqttLocalMessageID);
-        //Will add the message header
-        addMessageHeader(metaHeader, mqttLocalMessageID);
+        if (message.hasArray()) {
+            //Will get the bytes of the message
+            byte[] messageData = message.array();
+            //Will start converting the message body
+            AndesMessagePart messagePart = MQTTUtils.convertToAndesMessage(messageData, messageID);
+            //Will Create the Andes Header
+            AndesMessageMetadata messageHeader = MQTTUtils.convertToAndesHeader(messageID, topic, qosLevel,
+                    messageData.length, retain);
+            //Will write the message body
+            addMessageBody(messagePart, mqttLocalMessageID);
+            //Will add the message header
+            addMessageHeader(messageHeader, mqttLocalMessageID);
+        } else {
+            throw new MQTTException("Message content is not backed by an array, or the array is read-only .");
+        }
     }
 
     /**

@@ -125,7 +125,7 @@ public class MQTTopicManager {
         //Will extract out the topic information if the topic is created already
         MQTTopic topic = topics.get(topicName);
         //If the topic has not being created before
-        if (topic == null) {
+        if (null == topic) {
             //First the topic should be registered in the cluster
             //Once the cluster registration is successful the topic will be created
             topic = new MQTTopic(topicName);
@@ -208,11 +208,11 @@ public class MQTTopicManager {
     /**
      * Will notify to the subscribers who are bound to the topic
      *
-     * @param storageName  the topic the message was published that will be stored
-     * @param message      the message content
-     * @param messageID    the idnetifier of the message
-     * @param publishedQOS the level of qos the message was published
-     * @param shouldRetain whether the message should retain after it was published
+     * @param storageName   the topic the message was published that will be stored
+     * @param message       the message content
+     * @param messageID     the idnetifier of the message
+     * @param publishedQOS  the level of qos the message was published
+     * @param shouldRetain  whether the message should retain after it was published
      * @param subscriberQOS the level of QOS of the subscription
      * @throws MQTTException during a failure to deliver the message to the subscribers
      */
@@ -241,8 +241,9 @@ public class MQTTopicManager {
 
     /**
      * Will trigger during the time where an ack was received for a message
+     *
      * @param mqttChannelID the identifier of the channel
-     * @param messageID the message id on which the ack was recievd
+     * @param messageID     the message id on which the ack was recievd
      */
     public void onMessageAck(String mqttChannelID, int messageID) throws MQTTException {
         //Will retrive the topic
@@ -257,6 +258,15 @@ public class MQTTopicManager {
         messageAck(topicName, clusterID, mqttSubscriber.getStorageIdentifier(), mqttSubscriber.getSubscriptionChannel());
     }
 
+    /**
+     * This will be called when simulating the ack for the server for QOS 0 messages
+     *
+     * @param topic        the name of the topic the ack will be simulated for
+     * @param messageID    the id of the message the ack will be simulated for
+     * @param storageName  the storage name representation
+     * @param subChannelID the id of the subscription channel
+     * @throws MQTTException occurs if the ack was faled to process by the kernal
+     */
     public void implicitAck(String topic, long messageID, String storageName, UUID subChannelID) throws MQTTException {
         messageAck(topic, messageID, storageName, subChannelID);
     }
@@ -267,11 +277,11 @@ public class MQTTopicManager {
      * @param topicName      the name of the topic which should be registered in the cluster
      * @param mqttChannel    the subscriber id which is local to the node
      * @param isCleanSession should the subscription be identified as durable
-     * @param qos the subscriber level qos
+     * @param qos            the subscriber level qos
      * @return topic subscription id which will represent the topic in the cluster
      */
     private String registerTopicSubscriptionInCluster(String topicName, String mqttChannel, boolean isCleanSession, int qos)
-    throws MQTTException {
+            throws MQTTException {
         //Will generate a unique id for the client
         //Per topic only one subscription will be created across the cluster
         String topicSpecificClientID = MQTTUtils.generateTopicSpecficClientID();

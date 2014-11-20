@@ -146,13 +146,15 @@ public class MessagingEngine {
      *
      * @param part AndesMessagePart
      */
-    public void messageContentReceived(AndesMessagePart part) {
+    public void messageContentReceived(AndesMessagePart part) throws AndesException {
         try {
             cacheMessageContentPart(part);
             messageStoreManager.storeMessagePart(part);
         } catch (AndesException e) {
             log.error("Error occurred while storing message content. message id: " +
                     part.getMessageID(), e);
+            //We need to throw this further, we cannot proceed if the store has an issue
+            throw e;
         }
     }
 
