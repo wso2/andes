@@ -916,15 +916,6 @@ public class JDBCMessageStoreImpl implements MessageStore {
             preparedStatement.execute();
             connection.commit();
 
-            // RESET the queue counter to 0
-            preparedStatement = connection
-                    .prepareStatement(JDBCConstants.PS_RESET_QUEUE_COUNT);
-
-            preparedStatement.setString(1, storageQueueName);
-
-            preparedStatement.execute();
-            connection.commit();
-
             if (logger.isDebugEnabled()) {
                 logger.debug("Deleted all message metadata from " + storageQueueName +
                         " with queue ID " + queueID);
@@ -939,6 +930,48 @@ public class JDBCMessageStoreImpl implements MessageStore {
             close(connection, task);
         }
     }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @param storageQueueName name of the queue being purged
+     * @throws AndesException
+     */
+    @Override
+    public void resetMessageCounterForQueue(String storageQueueName) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+            int queueID = getCachedQueueID(storageQueueName);
+
+            connection = getConnection();
+            connection.setAutoCommit(false);
+
+            // RESET the queue counter to 0
+            preparedStatement = connection
+                    .prepareStatement(JDBCConstants.PS_RESET_QUEUE_COUNT);
+
+            preparedStatement.setString(1, storageQueueName);
+
+            preparedStatement.execute();
+            connection.commit();
+
+            if (logger.isDebugEnabled()) {
+                logger.debug("Reset message counter for queue " + storageQueueName +
+                        " with queue ID " + queueID);
+            }
+        } catch (SQLException e) {
+            rollback(connection, JDBCConstants.TASK_RESETTING_MESSAGE_COUNTER + storageQueueName);
+            throw new AndesException("error occurred while resetting message count for queue :" +
+                    storageQueueName,e);
+        } finally {
+            String task = JDBCConstants.TASK_RESETTING_MESSAGE_COUNTER + storageQueueName;
+            close(preparedStatement, task);
+            close(connection, task);
+        }
+    }
+
 
     /**
      * {@inheritDoc}

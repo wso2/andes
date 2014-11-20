@@ -642,21 +642,32 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             CQLDataAccessHelper.deleteRowFromColumnFamily(CassandraConstants
                     .META_DATA_COLUMN_FAMILY, storageQueueName, CassandraConstants.KEYSPACE);
 
-            // Resetting counters is strictly prohibited by Cassandra by design,
-            // and even re-inserting a record
+        } catch (Exception e) {
+            throw new AndesException("Error while deleting messages from queue : " + storageQueueName, e);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * @param storageQueueName name of the queue being purged
+     * @throws AndesException
+     */
+    @Override
+    public void resetMessageCounterForQueue(String storageQueueName) throws AndesException {
+        try {
+
+            // Resetting counters is strictly prohibited by Cassandra by design, and even re-inserting a record
             // won't reset the value but set the counter to null.
             // Therefore we have to first get the counter value and decrement it in another query.
             // This could be problematic in a race condition between another counter modification.
-            Long messageCountOfQueue = CQLDataAccessHelper.getCountValue(CassandraConstants
-                    .KEYSPACE, CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, storageQueueName,
+            Long messageCountOfQueue = CQLDataAccessHelper.getCountValue(CassandraConstants.KEYSPACE,
+                    CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, storageQueueName,
                     CassandraConstants.MESSAGE_COUNTERS_RAW_NAME);
-            CQLDataAccessHelper.decrementCounter(storageQueueName,
-                    CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY,
-                    CassandraConstants.MESSAGE_COUNTERS_RAW_NAME,
-                    CassandraConstants.KEYSPACE, messageCountOfQueue);
+            CQLDataAccessHelper.decrementCounter(storageQueueName, CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY,
+                    CassandraConstants.MESSAGE_COUNTERS_RAW_NAME, CassandraConstants.KEYSPACE, messageCountOfQueue);
 
         } catch (Exception e) {
-            throw new AndesException("Error while deleting messages from queue : " + storageQueueName, e);
+            throw new AndesException("Error while resetting message counter for queue : " + storageQueueName, e);
         }
     }
 

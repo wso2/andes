@@ -119,8 +119,11 @@ public abstract class BasicStoringManager implements MessageStoreManager {
 
             Integer messageCountInStore = messageIDsAddressedToQueue.size();
 
-            //  Clear message metadata from queues and update message count for the specific queue
+            //  Clear message metadata from queues
             messageStore.deleteAllMessageMetadata(storageQueueName);
+
+            // Reset message count for the specific queue
+            messageStore.resetMessageCounterForQueue(storageQueueName);
 
             // There is only 1 DLC queue per tenant. So we have to read and parse the message
             // metadata and filter messages specific to a given queue.
