@@ -19,6 +19,7 @@
 package org.wso2.andes.server.slot;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
@@ -175,15 +176,13 @@ public class SlotDeliveryWorkerManager {
 
         if (getSlotDeliveryWorkerMap().containsKey(slotDeliveryWorkerId)) {
 
-            // if this queue is already in the slot delivery worker, that means it has in-memory
-            // messages queued.
-            if (getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId)
-                    .getStorageQueueNameToDestinationMap().containsKey(storageQueueName)) {
+            //Need to get the actual destination to which the storage queue is used for.
+            String destinationOfStorageQueue = getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId)
+                    .getStorageQueueNameToDestinationMap().get(storageQueueName);
 
-                //Need to get the actual destination to which the storage queue is used for.
-                String destinationOfStorageQueue = getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId)
-                        .getStorageQueueNameToDestinationMap().get(storageQueueName);
-
+            if (!StringUtils.isBlank(destinationOfStorageQueue)) {
+                // if this queue is already in the slot delivery worker, that means it has in-memory
+                // messages queued.
                 purgedMessageCountInMemory = getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId)
                         .purgeInMemoryMessagesFromQueue(destinationOfStorageQueue,purgedTimestamp);
             }

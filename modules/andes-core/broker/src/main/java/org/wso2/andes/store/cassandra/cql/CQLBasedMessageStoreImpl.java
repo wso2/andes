@@ -496,7 +496,8 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             return CQLDataAccessHelper
                     .getMessagesFromQueue(queueName,
                             CassandraConstants.META_DATA_COLUMN_FAMILY,
-                            CassandraConstants.KEYSPACE, firstMsgId, lastMsgID, 10000,
+                            CassandraConstants.KEYSPACE, firstMsgId, lastMsgID,
+                            CQLDataAccessHelper.STANDARD_PAGE_SIZE,
                             true, true);
         } catch (CassandraDataAccessException e) {
             throw new AndesException(e);
@@ -519,7 +520,8 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                             CassandraConstants.KEYSPACE, firstMsgId + 1,
                             Long.MAX_VALUE, count, true, true);
         } catch (CassandraDataAccessException e) {
-            throw new AndesException(e);
+            throw new AndesException("Error while retrieving "+ count + " messages for queue : " +
+                    storageQueueName + " from message ID : " + firstMsgId,e);
         }
 
     }

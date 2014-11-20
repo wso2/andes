@@ -37,15 +37,6 @@ public interface QueueManagementInformation {
     String[] getAllQueueNames();
 
     /***
-     * Delete a queue from the broker.
-     * @param queueName name of queue
-     */
-    @Deprecated
-    @MBeanAttribute(name="Delete Queue" ,description = "Deleting the specified queue from the server")
-    void deleteQueue(@MBeanOperationParameter(name = "queueName" ,
-            description = "Name of the queue to be deleted") String queueName);
-
-    /***
      * Retrieve current message count of a queue. This may be only a rough estimate in a fast pub/sub scenario.
      * @param queueName name of queue
      * @param msgPattern The exchange type used to transfer messages with the given queueName. e

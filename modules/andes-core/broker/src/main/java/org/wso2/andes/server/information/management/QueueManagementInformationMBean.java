@@ -274,13 +274,6 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         return andesMessageIdList;
     }
 
-    // When deleting queues from UI this is not get called. Instead we use AMQBrokerManagerMBean.
-    // Why are we keeping this?
-    @Deprecated
-    public void deleteQueue(@MBeanOperationParameter(name = "queueName",
-            description = "Name of the queue to be deleted") String queueName) {
-    }
-
     /**
      * We are returning message count to the UI from this method.
      * When it has received Acks from the clients more than the message actual

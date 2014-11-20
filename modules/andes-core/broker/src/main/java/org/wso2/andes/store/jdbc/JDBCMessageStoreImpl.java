@@ -1021,7 +1021,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
                     // be retrieved for this queue
                 } else {
                     for (AndesMessageMetadata amm : metadataList) {
-                        if (amm.getDestination().equals(storageQueueName)) {
+                        if (storageQueueName.equals(amm.getDestination())) {
                             preparedStatement.setInt(1, queueID);
                             preparedStatement.setLong(2, amm.getMessageID());
                             preparedStatement.addBatch();

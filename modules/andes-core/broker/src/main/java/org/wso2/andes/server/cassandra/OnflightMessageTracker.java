@@ -95,21 +95,26 @@ public class OnflightMessageTracker {
      */
     public enum MessageStatus {
 
-        READ,
-        BUFFERED,
-        SENT,
-        SENT_TO_ALL,
-        ACKED,
-        ACKED_BY_ALL,
-        REJECTED_AND_BUFFERED,
-        SCHEDULED_TO_SEND,
-        DELIVERY_OK,
-        DELIVERY_REJECT,
-        RESENT,
-        SLOT_REMOVED,
-        EXPIRED,
-        DLC_MESSAGE,
-        PURGED;
+        READ, // Message has been read from store
+        BUFFERED, // Message has been buffered for delivery
+        SENT, // Message has been sent to its routed consumer
+        SENT_TO_ALL, // In a topic scenario, message has been sent to all subscribers
+        ACKED, // The consumer has acknowledged receipt of the message
+        ACKED_BY_ALL, // In a topic scenario, all subscribed consumers have acknowledged receipt
+        // of message
+        REJECTED_AND_BUFFERED, // Consumer has rejected the message ad it has been buffered again
+        // for delivery (possibly to another waiting consumer)
+        SCHEDULED_TO_SEND, // Message has been added to the final async delivery queue,
+        // (deliverAsynchronously method has been called for the message.)
+        DELIVERY_OK, // Message has passed all the delivery rules and is eligible to be sent.
+        DELIVERY_REJECT, // Message did not align with one or more delivery rules,
+        // and has not been sent.
+        RESENT, // Message has been sent more than once.
+        SLOT_REMOVED, // All messages of the slot containing this message have been handled
+        // successfully, causing it to be removed
+        EXPIRED, // Message has expired (JMS Expiration duration sent with the message has passed)
+        DLC_MESSAGE, // Message is moved to the DLC queue
+        PURGED; // Message has been cleared from delivery due to a queue purge event.
 
 
         /**
@@ -129,17 +134,19 @@ public class OnflightMessageTracker {
      */
     private class MsgData {
 
-        final long msgID;
-        boolean ackreceived = false;
-        final String destination;
-        long timestamp; // timestamp at which the message was taken from store for processing.
-        long expirationTime;
-        long arrivalTime; // timestamp at which the message entered the first gates of the broker.
-        long deliveryID;
-        AtomicInteger numberOfScheduledDeliveries;
-        Map<UUID, Integer> channelToNumOfDeliveries;
-        List<MessageStatus> messageStatus;
-        Slot slot;
+        private final long msgID;
+        private boolean ackreceived = false;
+        private final String destination;
+        private long timestamp; // timestamp at which the message was taken from store for
+        // processing.
+        private long expirationTime;
+        private long arrivalTime; // timestamp at which the message entered the first gates of
+        // the broker.
+        private long deliveryID;
+        private AtomicInteger numberOfScheduledDeliveries;
+        private Map<UUID, Integer> channelToNumOfDeliveries;
+        private List<MessageStatus> messageStatus;
+        private Slot slot;
 
         private MsgData(long msgID, Slot slot, boolean ackReceived, String destination, long timestamp,
                         long expirationTime, long deliveryID, MessageStatus messageStatus,

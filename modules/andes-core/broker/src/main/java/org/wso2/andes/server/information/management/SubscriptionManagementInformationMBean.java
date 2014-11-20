@@ -17,9 +17,11 @@
  */
 package org.wso2.andes.server.information.management;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.management.common.mbeans.SubscriptionManagementInformation;
@@ -122,27 +124,35 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
     /**
      * This method returns the formatted subscription string to be compatible with the UI processor.
+     * <p/>
+     * Format of the string : "subscriptionInfo =  subscriptionIdentifier |
+     * subscribedQueueOrTopicName | subscriberQueueBoundExchange | subscriberQueueName |
+     * isDurable | isActive | numberOfMessagesRemainingForSubscriber | subscriberNodeAddress"
+     *
      * @param subscription
      * @param pendingMessageCount
      * @return
      */
-    private static String renderSubscriptionForUI(AndesSubscription subscription, int pendingMessageCount) {
+    private static String renderSubscriptionForUI(AndesSubscription subscription,
+                                                  int pendingMessageCount) throws AndesException {
 
-        //  subscriptionInfo =  subscriptionIdentifier |  subscribedQueueOrTopicName | subscriberQueueBoundExchange |
-        // subscriberQueueName |  isDurable | isActive | numberOfMessagesRemainingForSubscriber | subscriberNodeAddress
-
-//        log.info("Subscriptions String : " + subscription.getSubscribedNode() + " " +
-//                subscription.getTargetQueue() + " " + subscription
-//                .getTargetQueueBoundExchangeName());
 
         String nodeId = subscription.getSubscribedNode().split("/")[1];
-        String subscriptionIdentifier = "1_"+nodeId+"@"+subscription.getTargetQueue();
 
-        //in case of topic whats in v2 is : topicSubscriber.getDestination() + "@" + topicSubscriber.boundTopicName; --
+        if (!StringUtils.isBlank(nodeId)) {
 
+            String subscriptionIdentifier = "1_" + nodeId + "@" + subscription.getTargetQueue();
 
-        return subscriptionIdentifier + "|" + subscription.getTargetQueue() + "|" + subscription.getTargetQueueBoundExchangeName() +
-                "|" + subscription.getTargetQueue() + "|" + subscription.isDurable() + "|" + subscription.isBoundToTopic() +
-                "|" + pendingMessageCount + "|" + subscription.getSubscribedNode();
+            //in case of topic whats in v2 is : topicSubscriber.getDestination() + "@" +
+            // topicSubscriber.boundTopicName; --
+            return subscriptionIdentifier + "|" + subscription.getTargetQueue() + "|" + subscription
+                    .getTargetQueueBoundExchangeName() +
+                    "|" + subscription.getTargetQueue() + "|" + subscription.isDurable() + "|" +
+                    subscription.isBoundToTopic() +
+                    "|" + pendingMessageCount + "|" + subscription.getSubscribedNode();
+        } else {
+            throw new AndesException("Invalid format in Subscriber Node ID : " + subscription
+                    .getSubscribedNode() + ". Delimiter should be /.");
+        }
     }
 }
