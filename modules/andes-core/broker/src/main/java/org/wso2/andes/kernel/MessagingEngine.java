@@ -32,6 +32,7 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
+import org.wso2.andes.server.slot.SlotManager;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.subscription.SubscriptionStore;
@@ -291,6 +292,10 @@ public class MessagingEngine {
         // The timestamp is recorded to track messages that came before the purge event.
         // Refer OnflightMessageTracker:evaluateDeliveryRules method for more details.
         Long purgedTimestamp = System.currentTimeMillis();
+
+        // Clear all slots assigned to the Queue. This should ideally stop any messages being buffered during the purge.
+        // This call clears all slot associations for the queue in all nodes. (could take time)
+        SlotManager.getInstance().clearAllActiveSlotRelationsToQueue(destinationQueue);
 
         // clear in memory messages of self (node)
         clearMessagesFromQueueInMemory(destinationQueue, purgedTimestamp);

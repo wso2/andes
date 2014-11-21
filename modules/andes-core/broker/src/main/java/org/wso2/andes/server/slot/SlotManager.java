@@ -323,4 +323,30 @@ public class SlotManager {
         unAssignedSlotMap.remove(queueName);
         slotIDMap.remove(queueName);
     }
+
+    /**
+     * Delete all slot associations with a given queue. This is required to handle a queue purge event.
+     * @param queueName name of destination queue
+     */
+    public void clearAllActiveSlotRelationsToQueue(String queueName) {
+        unAssignedSlotMap.remove(queueName);
+        slotIDMap.remove(queueName);
+
+        // Clear slots assigned to the queue
+        String nodeId = HazelcastAgent.getInstance().getNodeId();
+        String lockKey = (nodeId + SlotManager.class).intern();
+
+        synchronized (lockKey) {
+            // The requirement here is to clear slot associations for the queue on all nodes.
+            Set<Map.Entry<String,HashMap<String,List<Slot>>>> nodeEntries = slotAssignmentMap.entrySet();
+
+            Iterator<Map.Entry<String,HashMap<String,List<Slot>>>> iterator = nodeEntries.iterator();
+
+            while(iterator.hasNext()) {
+                iterator.next().getValue().put(queueName,new ArrayList<Slot>());
+            }
+        }
+
+
+    }
 }
