@@ -80,33 +80,42 @@ public class AndesKernelBoot {
 
     /**
      * This will recreate slot mapping for queues which have messages left in the message store.
+     * The slot mapping is required only for the cluster implementation.
+     *
+     * First we acquire the slot initialization lock and check if the cluster is already
+     * initialized using a distributed variable. Then if the cluster is not initialized, the
+     * server will iterate through all the queues available in the context store and inform the
+     * slot manager to recreate the slot mapping. Finally the distribute variable is updated to
+     * indicate the success and the lock is released.
      *
      * @throws AndesException
      */
     public static void recoverDistributedSlotMap() throws AndesException {
-        log.info("Restoring slot mapping in the cluster.");
-        HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
+        // Slot recreation is required in the clustering mode
+        if (AndesContext.getInstance().isClusteringEnabled()) {
+            log.info("Restoring slot mapping in the cluster.");
+            HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
 
-        try {
-            hazelcastAgent.acquireInitializationLock();
-            if (AndesContext.getInstance().isClusteringEnabled() &&
-                !hazelcastAgent.isClusterInitializedSuccessfully()) {
+            try {
+                hazelcastAgent.acquireInitializationLock();
+                if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
 
-                List<AndesQueue> queueList = contextStore.getAllQueuesStored();
+                    List<AndesQueue> queueList = contextStore.getAllQueuesStored();
 
-                for (AndesQueue queue : queueList) {
-                    // Skip slot creation for Dead letter Channel
-                    if (AndesConstants.DEAD_LETTER_QUEUE_NAME.equals(queue.queueName)) {
-                        continue;
+                    for (AndesQueue queue : queueList) {
+                        // Skip slot creation for Dead letter Channel
+                        if (AndesConstants.DEAD_LETTER_QUEUE_NAME.equals(queue.queueName)) {
+                            continue;
+                        }
+
+                        initializeSlotMapForQueue(queue.queueName);
                     }
 
-                    initializeSlotMapForQueue(queue.queueName);
+                    hazelcastAgent.indicateSuccessfulInitilization();
                 }
-
-                hazelcastAgent.indicateSuccessfulInitilization();
+            } finally {
+                hazelcastAgent.releaseInitializationLock();
             }
-        } finally {
-            hazelcastAgent.releaseInitializationLock();
         }
     }
 
