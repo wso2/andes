@@ -20,13 +20,23 @@ package org.wso2.andes.server.cassandra;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.*;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.kernel.distrupter.delivery.DisruptorBasedFlusher;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.subscription.SubscriptionStore;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 
@@ -36,13 +46,13 @@ import java.util.concurrent.ConcurrentSkipListSet;
  */
 public class MessageFlusher {
     private static Log log = LogFactory.getLog(MessageFlusher.class);
+    private final DisruptorBasedFlusher flusherExecutor;
 
     private Integer maxNumberOfUnAckedMessages = 100000;
 
     //per destination
     private Integer maxNumberOfReadButUndeliveredMessages = 5000;
 
-    private SequentialThreadPoolExecutor executor;
 
     private static final int THREADPOOL_RECOVERY_INTERVAL = 2000;
     private static final int SAFE_THREAD_COUNT = 1000;
@@ -78,13 +88,13 @@ public class MessageFlusher {
         this.maxNumberOfUnAckedMessages = AndesConfigurationManager.getInstance().readConfigurationValue
                 (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
 
-        this.executor = new SequentialThreadPoolExecutor((PUBLISHER_POOL_SIZE), "QueueMessagePublishingExecutor");
         this.queueWorkerWaitInterval = queueWorkerWaitInterval;
 
         this.maxNumberOfReadButUndeliveredMessages = AndesConfigurationManager.getInstance().readConfigurationValue
                 (AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_MAX_READ_BUT_UNDELIVERED_MESSAGES);
 
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+        flusherExecutor = new DisruptorBasedFlusher();
     }
 
     /**
@@ -147,8 +157,9 @@ public class MessageFlusher {
         }
 
         /**
-         * Set last purged timestamp for queue.
-         * @param lastPurgedTimestamp the time at which the destination queue was last purged.         */
+         * set last purged timestamp for queue.
+         * @param lastPurgedTimestamp the time stamp of the message message which was purged most recently
+         */
         public void setLastPurgedTimestamp(Long lastPurgedTimestamp) {
             this.lastPurgedTimestamp = lastPurgedTimestamp;
         }
@@ -235,33 +246,6 @@ public class MessageFlusher {
         int pendingJobsToSendToTransport;
         long failureCount = 0;
         try {
-            /**
-             *    Following check is to avoid the worker destination been full with too many pending tasks
-             *    to send messages. Better stop buffering until we have some breathing room
-             */
-            pendingJobsToSendToTransport = executor.getSize();
-
-            if (pendingJobsToSendToTransport > 1000) {
-                if (pendingJobsToSendToTransport > 5000) {
-                    log.error(
-                            "Flusher queue is growing (" + pendingJobsToSendToTransport + " jobs), and this should not happen. Please check " +
-                                    "cassandra Flusher");
-
-                    // Must give some time for the threads to clean up. Thus, following conditional loop.
-                    // Once the thread count is below SAFE_THREAD_COUNT, other tasks can resume. Until then this worker is held hostage
-                    // with <THREADPOOL_RECOVERY_INTERVAL> millisecond sleeps for THREADPOOL_RECOVERY_ATTEMPTS times.
-                    for (int i = 0; i < THREADPOOL_RECOVERY_ATTEMPTS; i++) {
-                        if (executor.getSize() < SAFE_THREAD_COUNT) {
-                            break;
-                        } else {
-                            sleep4waitInterval(THREADPOOL_RECOVERY_INTERVAL);
-                            log.info("Pending jobs to send to transport : " + executor.getSize());
-                        }
-                    }
-                }
-                log.warn("Flusher destination has " + pendingJobsToSendToTransport + " tasks");
-                // TODO: we need to handle this. Notify slot delivery worker to sleep more
-            }
             for (AndesMessageMetadata message : messagesRead) {
 
                 /**
@@ -276,15 +260,15 @@ public class MessageFlusher {
                 //check and buffer message
                 //stamp this message as buffered
                 boolean isOKToBuffer = OnflightMessageTracker.getInstance()
-                        .addMessageToBufferingTracker(slot,
-                                message);
+                                                             .addMessageToBufferingTracker(slot,
+                                                                                           message);
                 if (isOKToBuffer) {
                     messageDeliveryInfo.readButUndeliveredMessages.add(message);
                     //increment the message count in the slot
                     OnflightMessageTracker.getInstance().incrementMessageCountInSlot(slot);
                 } else {
                     log.warn("Tracker rejected message id= " + message.getMessageID() + " from buffering " +
-                            "to deliver. This is an already buffered message");
+                             "to deliver. This is an already buffered message");
                     //todo: this message is previously buffered. Should be removed from slot
                 }
             }
@@ -337,7 +321,7 @@ public class MessageFlusher {
         } catch (Exception e) {
             log.error("Error occurred while sending messages to subscribers from buffer", e);
             throw new AndesException("Error occurred while sending messages to subscribers " +
-                    "from message buffer" + e);
+                                     "from message buffer" + e);
         }
 
 
@@ -372,8 +356,7 @@ public class MessageFlusher {
             if (log.isDebugEnabled()) {
                 log.debug(
                         "Not selected, channel =" + localSubscription + " pending count =" +
-                                (notAckedMsgCount + executor
-                                        .getSize()));
+                        (notAckedMsgCount));
             }
             return false;
         }
@@ -442,7 +425,7 @@ public class MessageFlusher {
                             if (log.isDebugEnabled()) {
                                 log.debug("Scheduled to send id = " + message.getMessageID());
                             }
-                            deliverAsynchronously(localSubscription, message);
+                            deliverMessageAsynchronously(localSubscription, message);
                             numOfCurrentMsgDeliverySchedules++;
                             break;
                         }
@@ -450,7 +433,7 @@ public class MessageFlusher {
                         if (log.isDebugEnabled()) {
                             log.debug("Scheduled to send id = " + message.getMessageID());
                         }
-                        deliverAsynchronously(localSubscription, message);
+                        deliverMessageAsynchronously(localSubscription, message);
                         numOfCurrentMsgDeliverySchedules++;
                     }
                 }
@@ -506,7 +489,7 @@ public class MessageFlusher {
      */
     public void scheduleMessageForSubscription(LocalSubscription subscription,
                                                final AndesMessageMetadata message) {
-        deliverAsynchronously(subscription, message);
+        deliverMessageAsynchronously(subscription, message);
     }
 
     /**
@@ -515,58 +498,15 @@ public class MessageFlusher {
      * @param subscription local subscription
      * @param message      metadata of the message
      */
-    private void deliverAsynchronously(final LocalSubscription subscription, final AndesMessageMetadata message) {
-        Runnable r = new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    if (subscription.isActive()) {
-                        (subscription).sendMessageToSubscriber(message);
-                    } else {
-                        reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
-                    }
-                } catch (Throwable e) {
-                    log.error("Error while delivering message. Moving to Dead Letter Queue ", e);
-
-                    // If message is a queue message we move the message to the Dead Letter Channel
-                    // since topics doesn't have a Dead Letter Channel
-                    if (!message.isTopic()) {
-                        AndesRemovableMetadata removableMessage = new AndesRemovableMetadata(message.getMessageID(),
-                                message.getDestination(), message.getStorageQueueName());
-
-                        List<AndesRemovableMetadata> messageToMoveToDLC = new ArrayList<AndesRemovableMetadata>();
-                        messageToMoveToDLC.add(removableMessage);
-
-                        try {
-                            MessagingEngine.getInstance().deleteMessages(messageToMoveToDLC, true);
-                        } catch (AndesException dlcException) {
-                            // If an exception occur in this level, it means that there is a message store level error.
-                            // There's a possibility that we might lose this message
-                            // If the message is not removed the slot will not get removed which will lead to an
-                            // inconsistency
-                            log.error("Error moving message " + +message.getMessageID() + " to dead letter channel",
-                                    dlcException);
-                        }
-                    }
-                } finally {
-                    OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message.getMessageID());
-                }
-            }
-        };
-        if (log.isDebugEnabled()) {
-            log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " +
-                    subscription.toString());
+    private void deliverMessageAsynchronously(LocalSubscription subscription, AndesMessageMetadata message) {
+        if(log.isDebugEnabled()) {
+            log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
         }
-
-        // Increment the counter before the thread is submitted to start because otherwise the thread might decrement
-        // this counter before increment is completed
         OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
-        executor.submit(r, (subscription.getTargetQueue() + subscription.getSubscriptionID())
-                .hashCode());
+        flusherExecutor.submit(subscription, message);
     }
 
     //TODO: in multiple subscription case this can cause message duplication
-
     /**
      * Will be responsible in placing the message back at the queue if delivery fails
      * @param message the message which was scheduled for delivery to its subscribers

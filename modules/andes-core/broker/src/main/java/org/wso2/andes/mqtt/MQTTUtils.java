@@ -20,6 +20,7 @@ package org.wso2.andes.mqtt;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
+import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
@@ -132,18 +133,18 @@ public class MQTTUtils {
      * Will extract out the message content from the meta data object provided, this will be called when a published
      * message is distributed among the subscribers
      *
-     * @param metadata the meta object which holds information about the message
+     * @param content
+     *         Content object which has access to the message content
      * @return the byte stream of the message
      */
-    public static ByteBuffer getContentFromMetaInformation(AndesMessageMetadata metadata) throws AndesException {
-        //Need to get the value dynamically
-        ByteBuffer message = ByteBuffer.allocate(metadata.getMessageContentLength());
+    public static ByteBuffer getContentFromMetaInformation(AndesContent content)
+            throws AndesException {
+        ByteBuffer message = ByteBuffer.allocate(content.getContentLength());
         try {
             //offset value will always be set to 0 since mqtt doesn't support chunking the messsages, always the message
             //will be in the first chunk but in AMQP there will be chunks
             final int mqttOffset = 0;
-            AndesMessagePart messagePart = MessagingEngine.getInstance().getContent(metadata.getMessageID(), mqttOffset);
-            message.put(messagePart.getData());
+            content.putContent(mqttOffset, message);
         } catch (AndesException e) {
             final String errorMessage = "Error in getting content for message";
             log.error(errorMessage, e);

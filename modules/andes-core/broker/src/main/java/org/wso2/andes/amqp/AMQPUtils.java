@@ -22,9 +22,6 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.ClusterManager;
-import org.wso2.andes.server.slot.Slot;
-import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.exchange.Exchange;
@@ -34,14 +31,20 @@ import org.wso2.andes.server.message.MessageMetaData;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.queue.SimpleQueueEntryList;
+import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
+import org.wso2.andes.server.store.util.DisruptorCachedMessage;
 import org.wso2.andes.server.subscription.Subscription;
-import org.wso2.andes.server.util.AndesUtils;
+import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -115,6 +118,27 @@ public class AMQPUtils {
     }
 
     /**
+     * Convert andes metadata to Qpid AMQMessage. Returned message is aware of the disruptor memory cache.
+     *
+     * @param metadata
+     *         Meta object which holds information about the message
+     * @param content
+     *         Content object which has access to the message content
+     * @return AMQMessage
+     */
+    public static AMQMessage getAMQMessageForDelivery(AndesMessageMetadata metadata, AndesContent content) {
+        long messageId = metadata.getMessageID();
+        Slot slot = metadata.getSlot();
+
+        //create message with meta data. This has access to message content
+        StorableMessageMetaData metaData = convertAndesMetadataToAMQMetadata(metadata);
+        DisruptorCachedMessage<MessageMetaData> message = new DisruptorCachedMessage<MessageMetaData>(
+                new StoredAMQPMessage(messageId, metaData), content);
+        message.setSlot(slot);
+        return new AMQMessage(message);
+    }
+
+    /**
      * convert a AMQMessage to a queue entry
      *
      * @param message AMQMessage
@@ -138,8 +162,7 @@ public class AMQPUtils {
         buf.position(1);
         buf = buf.slice();
         MessageMetaDataType type = MessageMetaDataType.values()[dataAsBytes[0]];
-        StorableMessageMetaData metaData = type.getFactory().createMetaData(buf);
-        return metaData;
+        return type.getFactory().createMetaData(buf);
     }
 
     /**
