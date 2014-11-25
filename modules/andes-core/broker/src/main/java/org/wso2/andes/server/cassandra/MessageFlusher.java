@@ -89,8 +89,11 @@ public class MessageFlusher {
         Set<AndesMessageMetadata> readButUndeliveredMessages = new
                 ConcurrentSkipListSet<AndesMessageMetadata>();
 
-        // In case of a purge, we must store the timestamp when the purge was called.
-        // This way we can identify messages received before that timestamp that fail and ignore them.
+        /***
+         * In case of a purge, we must store the timestamp when the purge was called.
+         * This way we can identify messages received before that timestamp that fail and ignore
+         them.
+         */
         private Long lastPurgedTimestamp;
 
         /***
@@ -136,8 +139,7 @@ public class MessageFlusher {
 
         /**
          * set last purged timestamp for queue.
-         * @param lastPurgedTimestamp the time stamp of the message message which was purged most recently
-         */
+         * @param lastPurgedTimestamp the time at which the destination queue was last purged.         */
         public void setLastPurgedTimestamp(Long lastPurgedTimestamp) {
             this.lastPurgedTimestamp = lastPurgedTimestamp;
         }
@@ -243,7 +245,7 @@ public class MessageFlusher {
                         if (executor.getSize() < SAFE_THREAD_COUNT) {
                             break;
                         } else {
-                            Thread.sleep(THREADPOOL_RECOVERY_INTERVAL);
+                            sleep4waitInterval(THREADPOOL_RECOVERY_INTERVAL);
                             log.info("Pending jobs to send to transport : " + executor.getSize());
                         }
                     }
@@ -540,16 +542,6 @@ public class MessageFlusher {
     public void reQueueUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message) {
         String destination = message.getDestination();
         subscriptionCursar4QueueMap.get(destination).readButUndeliveredMessages.add(message);
-    }
-
-    /**
-     * Would clear the messages which were accumilated in the buffer due to failure in delivery
-     * @param destinationQueueName the destination name of the queue/topic the message was intended for delivery
-     * @throws AndesException
-     */
-    public void clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(
-            String destinationQueueName) throws AndesException {
-        getMessageDeliveryInfo(destinationQueueName).readButUndeliveredMessages.clear();
     }
 
     public static MessageFlusher getInstance() {

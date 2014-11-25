@@ -95,20 +95,84 @@ public class OnflightMessageTracker {
      */
     public enum MessageStatus {
 
+        /**
+         * Message has been read from store
+         */
         READ,
+
+        /**
+         * Message has been buffered for delivery
+         */
         BUFFERED,
+
+        /**
+         * Message has been sent to its routed consumer
+         */
         SENT,
+
+        /**
+         * In a topic scenario, message has been sent to all subscribers
+         */
         SENT_TO_ALL,
+
+        /**
+         * The consumer has acknowledged receipt of the message
+         */
         ACKED,
+
+        /**
+         * In a topic scenario, all subscribed consumers have acknowledged receipt of message
+         */
         ACKED_BY_ALL,
+
+
+        /**
+         * Consumer has rejected the message ad it has been buffered again for delivery (possibly to another waiting
+         * consumer)
+         */
         REJECTED_AND_BUFFERED,
+
+
+        /**
+         * Message has been added to the final async delivery queue (deliverAsynchronously method has been called for
+         * the message.)
+         */
         SCHEDULED_TO_SEND,
+
+        /**
+         * Message has passed all the delivery rules and is eligible to be sent.
+         */
         DELIVERY_OK,
+
+        /**
+         * Message did not align with one or more delivery rules, and has not been sent.
+         */
         DELIVERY_REJECT,
+
+        /**
+         * Message has been sent more than once.
+         */
         RESENT,
+
+        /**
+         * All messages of the slot containing this message have been handled successfully, causing it to be removed
+         */
         SLOT_REMOVED,
+
+        /**
+         * Message has expired (JMS Expiration duration sent with the message has passed)
+         */
         EXPIRED,
-        DLC_MESSAGE;
+
+        /**
+         * Message is moved to the DLC queue
+         */
+        DLC_MESSAGE,
+
+        /**
+         * Message has been cleared from delivery due to a queue purge event.
+         */
+        PURGED;
 
 
         /**
@@ -128,28 +192,45 @@ public class OnflightMessageTracker {
      */
     private class MsgData {
 
-        final long msgID;
-        boolean ackreceived = false;
-        final String destination;
-        long timestamp; // timestamp at which the message was taken from store for processing.
-        long expirationTime;
-        long arrivalTime; // timestamp at which the message entered the first gates of the broker.
-        long deliveryID;
-        AtomicInteger numberOfScheduledDeliveries;
-        Map<UUID, Integer> channelToNumOfDeliveries;
-        List<MessageStatus> messageStatus;
-        Slot slot;
+        private final long msgID;
+        private final String destination;
+        /**
+         * timestamp at which the message was taken from store for processing.
+         */
+        private long timestamp;
+        /**
+         * Timestamp after which the message should expire.
+         */
+        private long expirationTime;
+        /**
+         * timestamp at which the message entered the first gates of the broker.
+         */
+        private long arrivalTime;
+        /**
+         * Number of scheduled deliveries. concurrently modified whenever the message is scheduled to be delivered.
+         */
+        private AtomicInteger numberOfScheduledDeliveries;
+        /**
+         * Number of deliveries done of this message in each amq channel.
+         */
+        private Map<UUID, Integer> channelToNumOfDeliveries;
+        /**
+         * State transition of the message
+         */
+        private List<MessageStatus> messageStatus;
+        /**
+         * Parent slot of message.
+         */
+        private Slot slot;
 
-        private MsgData(long msgID, Slot slot, boolean ackReceived, String destination, long timestamp,
-                        long expirationTime, long deliveryID, MessageStatus messageStatus,
+        private MsgData(long msgID, Slot slot, String destination, long timestamp,
+                        long expirationTime, MessageStatus messageStatus,
                         long arrivalTime) {
             this.msgID = msgID;
             this.slot = slot;
-            this.ackreceived = ackReceived;
             this.destination = destination;
             this.timestamp = timestamp;
             this.expirationTime = expirationTime;
-            this.deliveryID = deliveryID;
             this.channelToNumOfDeliveries = new HashMap<UUID, Integer>();
             this.messageStatus = new ArrayList<MessageStatus>();
             this.messageStatus.add(messageStatus);
@@ -259,7 +340,6 @@ public class OnflightMessageTracker {
             throws AMQException {
 
         MsgData trackingData = msgId2MsgData.get(messageId);
-        trackingData.deliveryID = deliverTag;
 
         return addMessageToSendingTracker(channelID, messageId);
 
@@ -296,6 +376,7 @@ public class OnflightMessageTracker {
             log.warn("Message was sent at " + trackingData.arrivalTime + " before last purge event at " +
                     "" + lastPurgedTimestampOfQueue + ". Will be skipped. id= " +
                     messageId);
+            trackingData.addMessageStatus(MessageStatus.PURGED);
             isOKToDeliver = false;
         }
         if (isOKToDeliver) {
@@ -378,7 +459,6 @@ public class OnflightMessageTracker {
 
         //we consider ack is received if all acks came for channels message was sent
         if (trackingData.allAcksReceived() && getNumberOfScheduledDeliveries(messageID) == 0) {
-            trackingData.ackreceived = true;
             setMessageStatus(MessageStatus.ACKED_BY_ALL, trackingData);
             sentButNotAckedMessageCount.decrementAndGet();
             //record how much time took between delivery and ack receive
@@ -433,10 +513,10 @@ public class OnflightMessageTracker {
         }
         MsgData trackingData = messagesOfSlot.get(messageID);
         if (trackingData == null) {
-            trackingData = new MsgData(messageID, slot, false,
+            trackingData = new MsgData(messageID, slot,
                     slot.getDestinationOfMessagesInSlot(),
                     System.currentTimeMillis(),
-                    andesMessageMetadata.getExpirationTime(), 0,
+                    andesMessageMetadata.getExpirationTime(),
                     MessageStatus.BUFFERED, andesMessageMetadata.getArrivalTime());
             msgId2MsgData.put(messageID, trackingData);
             messagesOfSlot.put(messageID, msgId2MsgData.get(messageID));

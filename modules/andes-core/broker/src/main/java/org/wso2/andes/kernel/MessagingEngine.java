@@ -25,6 +25,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cassandra.MessageFlusher;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
+import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
@@ -32,6 +33,7 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
+import org.wso2.andes.server.slot.SlotManager;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.subscription.SubscriptionStore;
@@ -61,10 +63,6 @@ public class MessagingEngine {
      * Cluster wide unique message id generator
      */
     private MessageIdGenerator messageIdGenerator;
-
-    // todo: remove referring to this from MessagingEngine. Use within MessageStoreManager
-    // implmentations
-    private MessageStore durableMessageStore;
 
     /**
      * reference to subscription store
@@ -126,9 +124,6 @@ public class MessagingEngine {
         configureMessageIDGenerator();
 
         messageStoreManager = MessageStoreManagerFactory.create(messageStore);
-        // TODO: These message store references need to be removed. Message stores need to be
-        // Accessed via MessageStoreManager
-        durableMessageStore = messageStore;
         subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         messagePartsCache = new HashMap<Long, List<AndesMessagePart>>();
         //register listeners for queue changes
@@ -158,8 +153,15 @@ public class MessagingEngine {
         }
     }
 
+    /**
+     * Return the requested chunk of a message's content.
+     * @param messageID Unique ID of the Message
+     * @param offsetInMessage The offset of the required chunk in the Message content.
+     * @return AndesMessagePart
+     * @throws AndesException
+     */
     public AndesMessagePart getMessageContentChunk(long messageID, int offsetInMessage) throws AndesException {
-        return durableMessageStore.getContent(messageID, offsetInMessage);
+        return messageStoreManager.getMessagePart(messageID,offsetInMessage);
     }
 
     /**
@@ -174,9 +176,8 @@ public class MessagingEngine {
         try {
 
             if (message.getExpirationTime() > 0l) {
-                //store message in MESSAGES_FOR_EXPIRY_COLUMN_FAMILY Queue
-                // todo: MessageStoreManager needs to replace the method
-                durableMessageStore.addMessageToExpiryQueue(message.getMessageID(),
+                //store message in a special messages-for-expiration collection
+                messageStoreManager.storeMessageInExpiryQueue(message.getMessageID(),
                         message.getExpirationTime(),
                         message.isTopic(),
                         message.getDestination());
@@ -196,7 +197,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public AndesMessageMetadata getMessageMetaData(long messageID) throws AndesException {
-        return durableMessageStore.getMetaData(messageID);
+        return messageStoreManager.getMetadataOfMessage(messageID);
     }
 
     /**
@@ -283,27 +284,32 @@ public class MessagingEngine {
      * Remove messages of the queue matching to given destination queue (cassandra / h2 / mysql etc. )
      *
      * @param destinationQueue destination queue name to match
-     * @param ownerName
+     * @param ownerName The user who initiated the purge request
      * @return number of messages removed (in memory message count may not be 100% accurate
      * since we cannot guarantee that we caught all messages in delivery threads.)
      * @throws AndesException
      */
     public int purgeQueue(String destinationQueue, String ownerName) throws AndesException {
 
+        // The timestamp is recorded to track messages that came before the purge event.
+        // Refer OnflightMessageTracker:evaluateDeliveryRules method for more details.
         Long purgedTimestamp = System.currentTimeMillis();
+
+        // Clear all slots assigned to the Queue. This should ideally stop any messages being buffered during the purge.
+        // This call clears all slot associations for the queue in all nodes. (could take time)
+        SlotManager.getInstance().clearAllActiveSlotRelationsToQueue(destinationQueue);
 
         // clear in memory messages of self (node)
         clearMessagesFromQueueInMemory(destinationQueue, purgedTimestamp);
 
-        // The queueOwner here is passed as null since its not used from the notification object.
-        // The user permissions are validated at the andes feature component level.
-        AndesQueue purgedQueue = new AndesQueue(destinationQueue, ownerName, false, true);
+        // Notification object to the cluster is prepared.
+        AndesQueue purgedQueue = new AndesQueue(destinationQueue,ownerName,false,true);
         purgedQueue.setLastPurgedTimestamp(purgedTimestamp);
 
         //Notify the cluster
         queueListener.handleLocalQueuesChanged(purgedQueue, QueueListener.QueueChange.Purged);
 
-        // Clear any and all message references addressed to the queue from the store
+        // Clear any and all message references addressed to the queue from the persistent store.
         // We can measure the message count in store, but cannot exactly infer the message count
         // in memory within all nodes at the time of purging. (Adding that could unnecessarily
         // block critical pub sub flows.)
@@ -377,19 +383,6 @@ public class MessagingEngine {
     }
 
     /**
-     * Store a message in a different Queue without altering the meta data.
-     *
-     * @param messageId        The message Id to move
-     * @param currentQueueName The current destination of the message
-     * @param targetQueueName  The target destination Queue name
-     * @throws AndesException
-     */
-    public void moveMetaDataToQueue(long messageId, String currentQueueName,
-                                    String targetQueueName) throws AndesException {
-        messageStoreManager.moveMetaDataToQueue(messageId, currentQueueName, targetQueueName);
-    }
-
-    /**
      * Update the meta data for the given message with the given information in the AndesMetaData. Update destination
      * and meta data bytes.
      *
@@ -400,19 +393,6 @@ public class MessagingEngine {
     public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
             AndesException {
         messageStoreManager.updateMetaDataInformation(currentQueueName, metadataList);
-    }
-
-    /**
-     * Remove in-memory messages tracked for this queue
-     *
-     * @param destinationQueueName name of queue messages should be removed
-     * @throws AndesException
-     */
-    public void removeInMemoryMessagesAccumulated(String destinationQueueName)
-            throws AndesException {
-        //Remove in-memory messages accumulated due to sudden subscription closing
-        MessageFlusher.getInstance().clearMessagesAccumilatedDueToInactiveSubscriptionsForQueue(
-                destinationQueueName);
     }
 
     /**
@@ -509,11 +489,7 @@ public class MessagingEngine {
     public void close() {
 
         stopMessageDelivery();
-        //todo: hasitha - we need to wait all jobs are finished, all executors have no future tasks
         stopMessageExpirationWorker();
-        durableMessageStore.close();
-
-
     }
 
     /**
@@ -604,7 +580,7 @@ public class MessagingEngine {
                 List<Long> messageIdList = new ArrayList<Long>();
                 messageIdList.add(message.getMessageID());
                 //todo: at this moment content is still in disruptor.
-                durableMessageStore.deleteMessageParts(messageIdList);
+                messageStoreManager.deleteMessageParts(messageIdList);
             }
 
         } else {

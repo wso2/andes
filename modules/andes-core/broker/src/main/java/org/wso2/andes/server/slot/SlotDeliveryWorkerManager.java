@@ -19,6 +19,7 @@
 package org.wso2.andes.server.slot;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
@@ -165,20 +166,27 @@ public class SlotDeliveryWorkerManager {
     /***
      * This method will clear up all unacked/queued in memory messages addressed to the given queue.
      *
-     * @param queueName name of the purging queue
+     * @param storageQueueName name of the purging queue
      */
-    public int purgeMessagesFromActiveDeliveryWorkers(String queueName, Long purgedTimestamp) throws AndesException {
+    public int purgeMessagesFromActiveDeliveryWorkers(String storageQueueName, Long purgedTimestamp) throws AndesException {
 
-        int slotDeliveryWorkerId = getIdForSlotDeliveryWorker(queueName);
+        int slotDeliveryWorkerId = getIdForSlotDeliveryWorker(storageQueueName);
 
         int purgedMessageCountInMemory = 0;
 
-        if (getSlotDeliveryWorkerMap().containsKey(slotDeliveryWorkerId)) {
-            //if this queue is not already in the queue
-            if (getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId)
-                    .getStorageQueueNameToDestinationMap().containsKey(queueName)) {
-                purgedMessageCountInMemory = getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId)
-                        .purgeInMemoryMessagesFromQueue(queueName,purgedTimestamp);
+        SlotDeliveryWorker slotDeliveryWorker = getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId);
+
+        if (null != slotDeliveryWorker) {
+
+            //Need to get the actual destination to which the storage queue is used for.
+            String destinationOfStorageQueue = slotDeliveryWorker
+                    .getStorageQueueNameToDestinationMap().get(storageQueueName);
+
+            if (!StringUtils.isBlank(destinationOfStorageQueue)) {
+                // if this queue is already in the slot delivery worker, that means it has in-memory
+                // messages queued.
+                purgedMessageCountInMemory = slotDeliveryWorker
+                        .purgeInMemoryMessagesFromQueue(destinationOfStorageQueue, purgedTimestamp);
             }
         }
 

@@ -134,7 +134,6 @@ public class JDBCConstants {
             "SELECT " + MESSAGE_ID +
                     " FROM " + METADATA_TABLE +
                     " WHERE " + QUEUE_ID + "=?" +
-                    " AND " + MESSAGE_ID + ">?" +
                     " ORDER BY " + MESSAGE_ID ;
 
     protected static final String PS_DELETE_METADATA =
@@ -325,6 +324,7 @@ public class JDBCConstants {
     protected static final String TASK_DELETING_MESSAGE_LIST = "deleting message list.";
     protected static final String TASK_DELETING_METADATA_FROM_QUEUE = "deleting metadata from " +
             "queue. ";
+    protected static final String TASK_RESETTING_MESSAGE_COUNTER = "Resetting message counter for queue";
     protected static final String TASK_RETRIEVING_EXPIRED_MESSAGES = "retrieving expired messages.";
     protected static final String TASK_RETRIEVING_QUEUE_ID = "retrieving queue id for queue. ";
     protected static final String TASK_CREATING_QUEUE = "creating queue. ";

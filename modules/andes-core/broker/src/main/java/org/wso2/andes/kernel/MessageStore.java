@@ -199,26 +199,33 @@ public interface MessageStore {
 
     /***
      * Store level method to remove all metadata references to all messages addressed to a specific queue.
-     * @param queueName name of the queue being purged
-     * @return int number of deleted messages
+     * @param storageQueueName name of the queue being purged
      * @throws AndesException
      */
-    public void deleteAllMessageMetadata(String queueName) throws AndesException;
+    public void deleteAllMessageMetadata(String storageQueueName) throws AndesException;
+
+    /**
+     * Store level method to reset the message counter of a given queue to 0.
+     * @param storageQueueName name of the queue being purged
+     * @throws AndesException
+     */
+    public void resetMessageCounterForQueue(String storageQueueName) throws AndesException;
 
     /***
      * Store level method to remove all DLC records of all messages addressed to a specific queue.
-     * @param queueName name of the queue being purged
+     *
+     * @param storageQueueName name of the queue being purged
      * @return int number of deleted messages
      * @throws AndesException
      */
-    public int deleteAllMessageMetadataFromDLC(String queueName, String DLCQueueName) throws AndesException;
+    public int deleteAllMessageMetadataFromDLC(String storageQueueName, String DLCQueueName) throws AndesException;
 
     /***
      * Get Message ID list addressed to a specific queue.
-     * @param queueName
+     * @param storageQueueName name of the queue being purged.
      * @throws AndesException
      */
-    public List<Long> getMessageIDsAddressedToQueue(String queueName) throws AndesException;
+    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName) throws AndesException;
 
     /**
      * close the message store

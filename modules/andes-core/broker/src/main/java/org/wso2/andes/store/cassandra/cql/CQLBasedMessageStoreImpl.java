@@ -39,12 +39,6 @@ import org.wso2.andes.store.cassandra.cql.dao.CassandraHelper;
 import org.wso2.andes.store.cassandra.cql.dao.GenericCQLDAO;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 
-import java.util.*;
-
-import static org.wso2.andes.store.cassandra.CassandraConstants.KEYSPACE;
-import static org.wso2.andes.store.cassandra.CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY;
-import static org.wso2.andes.store.cassandra.CassandraConstants.MESSAGE_COUNTERS_RAW_NAME;
-
 /**
  * This is the implementation of MessageStore that deals with Cassandra no SQL DB.
  * It uses CQL for making queries
@@ -477,7 +471,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
      */
     @Override
     public AndesMessageMetadata getMetaData(long messageId) throws AndesException {
-        AndesMessageMetadata metadata = null;
+        AndesMessageMetadata metadata;
         try {
 
             byte[] value = CQLDataAccessHelper
@@ -499,12 +493,12 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     public List<AndesMessageMetadata> getMetaDataList(String queueName, long firstMsgId,
                                                       long lastMsgID) throws AndesException {
         try {
-            List<AndesMessageMetadata> metadataList = CQLDataAccessHelper
+            return CQLDataAccessHelper
                     .getMessagesFromQueue(queueName,
                             CassandraConstants.META_DATA_COLUMN_FAMILY,
-                            CassandraConstants.KEYSPACE, firstMsgId, lastMsgID, 10000,
+                            CassandraConstants.KEYSPACE, firstMsgId, lastMsgID,
+                            CQLDataAccessHelper.STANDARD_PAGE_SIZE,
                             true, true);
-            return metadataList;
         } catch (CassandraDataAccessException e) {
             throw new AndesException(e);
         }
@@ -520,14 +514,14 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                                                                        long firstMsgId, int count)
             throws AndesException {
         try {
-            List<AndesMessageMetadata> metadataList = CQLDataAccessHelper
+            return CQLDataAccessHelper
                     .getMessagesFromQueue(storageQueueName,
                             CassandraConstants.META_DATA_COLUMN_FAMILY,
                             CassandraConstants.KEYSPACE, firstMsgId + 1,
                             Long.MAX_VALUE, count, true, true);
-            return metadataList;
         } catch (CassandraDataAccessException e) {
-            throw new AndesException(e);
+            throw new AndesException("Error while retrieving "+ count + " messages for queue : " +
+                    storageQueueName + " from message ID : " + firstMsgId,e);
         }
 
     }
@@ -570,9 +564,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         try {
             List<String> rows2Remove = new ArrayList<String>();
             for (long messageId : messageIdList) {
-                rows2Remove.add(new StringBuffer(
-                        AndesConstants.MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX).append(messageId)
-                        .toString());
+                rows2Remove.add(AndesConstants.MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX + messageId);
             }
             //remove content
             if (!rows2Remove.isEmpty()) {
@@ -641,30 +633,41 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     /**
      * {@inheritDoc}
      *
-     * @param queueName name of the queue being purged
+     * @param storageQueueName name of the queue being purged
      * @throws AndesException
      */
     @Override
-    public void deleteAllMessageMetadata(String queueName) throws AndesException {
+    public void deleteAllMessageMetadata(String storageQueueName) throws AndesException {
         try {
             CQLDataAccessHelper.deleteRowFromColumnFamily(CassandraConstants
-                    .META_DATA_COLUMN_FAMILY, queueName, CassandraConstants.KEYSPACE);
+                    .META_DATA_COLUMN_FAMILY, storageQueueName, CassandraConstants.KEYSPACE);
 
-            // Resetting counters is strictly prohibited by Cassandra by design,
-            // and even re-inserting a record
+        } catch (Exception e) {
+            throw new AndesException("Error while deleting messages from queue : " + storageQueueName, e);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * @param storageQueueName name of the queue being purged
+     * @throws AndesException
+     */
+    @Override
+    public void resetMessageCounterForQueue(String storageQueueName) throws AndesException {
+        try {
+
+            // Resetting counters is strictly prohibited by Cassandra by design, and even re-inserting a record
             // won't reset the value but set the counter to null.
             // Therefore we have to first get the counter value and decrement it in another query.
             // This could be problematic in a race condition between another counter modification.
-            Long messageCountOfQueue = CQLDataAccessHelper.getCountValue(CassandraConstants
-                    .KEYSPACE, CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, queueName,
+            Long messageCountOfQueue = CQLDataAccessHelper.getCountValue(CassandraConstants.KEYSPACE,
+                    CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, storageQueueName,
                     CassandraConstants.MESSAGE_COUNTERS_RAW_NAME);
-            CQLDataAccessHelper.decrementCounter(queueName,
-                    CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY,
-                    CassandraConstants.MESSAGE_COUNTERS_RAW_NAME,
-                    CassandraConstants.KEYSPACE, messageCountOfQueue);
+            CQLDataAccessHelper.decrementCounter(storageQueueName, CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY,
+                    CassandraConstants.MESSAGE_COUNTERS_RAW_NAME, CassandraConstants.KEYSPACE, messageCountOfQueue);
 
         } catch (Exception e) {
-            throw new AndesException("Error while deleting messages", e);
+            throw new AndesException("Error while resetting message counter for queue : " + storageQueueName, e);
         }
     }
 
@@ -672,7 +675,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
      * {@inheritDoc}
      */
     @Override
-    public List<Long> getMessageIDsAddressedToQueue(String queueName) throws AndesException {
+    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName) throws AndesException {
 
         try {
 
@@ -688,7 +691,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             while (!allRecordsRetrieved) {
                 try {
                     List<Long> currentPage = CQLDataAccessHelper.getColumnDataFromColumnFamily
-                            (queueName, CassandraConstants.META_DATA_COLUMN_FAMILY,
+                            (storageQueueName, CassandraConstants.META_DATA_COLUMN_FAMILY,
                                     CQLDataAccessHelper.MSG_KEY, CassandraConstants.KEYSPACE,
                                     lastProcessedID, pageSize);
 
@@ -708,14 +711,14 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 } catch (CassandraDataAccessException e) {
                     // we also need to escape loop in case of an exception and communicate the error
                     throw new AndesException("Error while getting message IDs for queue : " +
-                            queueName, e);
+                            storageQueueName, e);
                 }
             }
 
             return messageIDs;
 
         } catch (Exception e) {
-            throw new AndesException("Error while getting message IDs for queue : " + queueName, e);
+            throw new AndesException("Error while getting message IDs for queue : " + storageQueueName, e);
         }
     }
 
@@ -760,7 +763,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
      * {@inheritDoc}
      */
     @Override
-    public int deleteAllMessageMetadataFromDLC(String queueName, String DLCQueueName) throws
+    public int deleteAllMessageMetadataFromDLC(String storageQueueName, String DLCQueueName) throws
             AndesException {
 
         List<Statement> statements = new ArrayList<Statement>();
@@ -775,7 +778,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
             Boolean allRecordsRetrieved = false;
 
-            while (allRecordsRetrieved) {
+            while (!allRecordsRetrieved) {
                 try {
 
                     List<AndesMessageMetadata> metadataList = CQLDataAccessHelper
@@ -789,7 +792,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                         // to be retrieved for this queue
                     } else {
                         for (AndesMessageMetadata amm : metadataList) {
-                            if (amm.getDestination().equals(queueName)) {
+                            if (amm.getDestination().equals(storageQueueName)) {
 
                                 Delete delete = CQLDataAccessHelper
                                         .deleteLongColumnFromRaw(CassandraConstants.KEYSPACE,
@@ -810,7 +813,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 } catch (CassandraDataAccessException e) {
                     // we also need to escape loop in case of an exception and communicate the error
                     throw new AndesException("Error while getting messages in DLC for queue : " +
-                            queueName, e);
+                            storageQueueName, e);
                 }
             }
 
@@ -820,7 +823,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
         } catch (Exception e) {
             throw new AndesException("Error while getting messages in DLC for queue : " +
-                    queueName, e);
+                    storageQueueName, e);
         }
 
         return statements.size();

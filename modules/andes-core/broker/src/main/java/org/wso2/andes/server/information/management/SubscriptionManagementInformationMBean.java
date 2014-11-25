@@ -17,7 +17,11 @@
  */
 package org.wso2.andes.server.information.management;
 
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.management.common.mbeans.SubscriptionManagementInformation;
@@ -31,6 +35,8 @@ import java.util.List;
  * Class to Handle data for all subscription related UIs
  */
 public class SubscriptionManagementInformationMBean extends AMQManagedObject implements SubscriptionManagementInformation {
+
+    private static Log log = LogFactory.getLog(SubscriptionManagementInformationMBean.class);
 
     public SubscriptionManagementInformationMBean() throws NotCompliantMBeanException {
         super(SubscriptionManagementInformation.class, SubscriptionManagementInformation.TYPE);
@@ -118,23 +124,35 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
     /**
      * This method returns the formatted subscription string to be compatible with the UI processor.
+     * <p/>
+     * Format of the string : "subscriptionInfo =  subscriptionIdentifier |
+     * subscribedQueueOrTopicName | subscriberQueueBoundExchange | subscriberQueueName |
+     * isDurable | isActive | numberOfMessagesRemainingForSubscriber | subscriberNodeAddress"
+     *
      * @param subscription
      * @param pendingMessageCount
      * @return
      */
-    private static String renderSubscriptionForUI(AndesSubscription subscription, int pendingMessageCount) {
-
-        //  subscriptionInfo =  subscriptionIdentifier |  subscribedQueueOrTopicName | subscriberQueueBoundExchange |
-        // subscriberQueueName |  isDurable | isActive | numberOfMessagesRemainingForSubscriber | subscriberNodeAddress
-
-        String nodeId = subscription.getSubscribedNode().split("_")[1];
-        String subscriptionIdentifier = "1_"+nodeId+"@"+subscription.getTargetQueue();
-
-        //in case of topic whats in v2 is : topicSubscriber.getDestination() + "@" + topicSubscriber.boundTopicName; --
+    private static String renderSubscriptionForUI(AndesSubscription subscription,
+                                                  int pendingMessageCount) throws AndesException {
 
 
-        return subscriptionIdentifier + "|" + subscription.getTargetQueue() + "|" + subscription.getTargetQueueBoundExchangeName() +
-                "|" + subscription.getTargetQueue() + "|" + subscription.isDurable() + "|" + subscription.isBoundToTopic() +
-                "|" + pendingMessageCount + "|" + subscription.getSubscribedNode();
+        String nodeId = subscription.getSubscribedNode().split("/")[1];
+
+        if (!StringUtils.isBlank(nodeId)) {
+
+            String subscriptionIdentifier = "1_" + nodeId + "@" + subscription.getTargetQueue();
+
+            //in case of topic whats in v2 is : topicSubscriber.getDestination() + "@" +
+            // topicSubscriber.boundTopicName; --
+            return subscriptionIdentifier + "|" + subscription.getTargetQueue() + "|" + subscription
+                    .getTargetQueueBoundExchangeName() +
+                    "|" + subscription.getTargetQueue() + "|" + subscription.isDurable() + "|" +
+                    subscription.isBoundToTopic() +
+                    "|" + pendingMessageCount + "|" + subscription.getSubscribedNode();
+        } else {
+            throw new AndesException("Invalid format in Subscriber Node ID : " + subscription
+                    .getSubscribedNode() + ". Delimiter should be /.");
+        }
     }
 }
