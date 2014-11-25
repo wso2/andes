@@ -264,8 +264,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                 long messageID = entry.getMessage().getMessageNumber();
                 OnflightMessageTracker messageTracker = OnflightMessageTracker.getInstance();
 
-                boolean isRedelivered = messageTracker.checkAndRegisterSent(messageID,
-                        getChannel().getId(), deliveryTag);
+                boolean isRedelivered = messageTracker.checkAndRegisterSent(messageID, getChannel().getId());
 
                 //set redelivery header
                 if (isRedelivered) {
