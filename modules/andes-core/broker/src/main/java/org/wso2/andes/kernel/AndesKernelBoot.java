@@ -131,8 +131,7 @@ public class AndesKernelBoot {
     private static void initializeSlotMapForQueue(String queueName)
             throws AndesException {
         // Read slot window size from cluster configuration
-        int slotSize = ClusterResourceHolder.getInstance().getClusterConfiguration()
-                                            .getSlotWindowSize();
+        Integer slotSize = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
         List<AndesMessageMetadata> messageList = messageStore
                 .getNextNMessageMetadataFromQueue(queueName, 0, slotSize);
         int numberOfMessages = messageList.size();
