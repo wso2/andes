@@ -22,8 +22,6 @@ import java.util.UUID;
 
 public interface LocalSubscription extends AndesSubscription {
 
-	public int getnotAckedMsgCount();
-
     public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata)throws AndesException;
 
     public boolean isActive();

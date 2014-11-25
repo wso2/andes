@@ -37,6 +37,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -86,9 +87,10 @@ public class OnflightMessageTracker {
             ConcurrentHashMap<Slot, AtomicInteger>();
 
     /**
-     * count sent but not acked message count for all destinations
+     * count sent but not acknowledged message count for all the channels
+     * key: channelID, value: per channel non acknowledged message count
      */
-    private AtomicLong sentButNotAckedMessageCount = new AtomicLong();
+    private ConcurrentMap<UUID, AtomicInteger> unAckedMsgCountMap = new ConcurrentHashMap<UUID, AtomicInteger>();
 
     /**
      * Message status to keep track in which state message is
@@ -380,7 +382,6 @@ public class OnflightMessageTracker {
         if (trackingData.allAcksReceived() && getNumberOfScheduledDeliveries(messageID) == 0) {
             trackingData.ackreceived = true;
             setMessageStatus(MessageStatus.ACKED_BY_ALL, trackingData);
-            sentButNotAckedMessageCount.decrementAndGet();
             //record how much time took between delivery and ack receive
             long timeTook = (System.currentTimeMillis() - trackingData.timestamp);
             PerformanceCounter.recordAckReceived(trackingData.destination, (int) timeTook);
@@ -407,7 +408,6 @@ public class OnflightMessageTracker {
         }
         MsgData trackingData = getTrackingData(messageID);
         trackingData.timestamp = System.currentTimeMillis();
-        sentButNotAckedMessageCount.decrementAndGet();
         trackingData.addMessageStatus(MessageStatus.REJECTED_AND_BUFFERED);
         //release delivery tracing
         releaseMessageDeliveryFromTracking(channel, messageID);
@@ -513,6 +513,7 @@ public class OnflightMessageTracker {
             log.debug("Releasing tracking of messages sent by channel id = " + channelID);
         }
         messageSendingTracker.remove(channelID);
+        unAckedMsgCountMap.remove(channelID);
     }
 
     /**
@@ -597,12 +598,10 @@ public class OnflightMessageTracker {
             log.debug("Adding message to sending tracker channel id = " + channelID + " message id = " +
                     messageID);
         }
-        ConcurrentHashMap<Long, MsgData> messagesSentByChannel = messageSendingTracker
-                .get(channelID);
-        if (messagesSentByChannel == null) {
-            messagesSentByChannel = new ConcurrentHashMap<Long, MsgData>();
-            messageSendingTracker.put(channelID, messagesSentByChannel);
-        }
+        ConcurrentHashMap<Long, MsgData> messagesSentByChannel = messageSendingTracker.get(channelID);
+
+        // NOTE messagesSentByChannel shouldn't be null. At channel creation the map is added.
+        // See addNewChannelForTracking(...)
         MsgData trackingData = messagesSentByChannel.get(messageID);
         if (trackingData == null) {
             trackingData = msgId2MsgData.get(messageID);
@@ -615,10 +614,61 @@ public class OnflightMessageTracker {
             log.debug("Number of current deliveries for message id= " + messageID + " to Channel " + channelID + " is " + numOfCurrentDeliveries);
         }
 
-        sentButNotAckedMessageCount.incrementAndGet();
-
         //check if this is a redelivered message
         return trackingData.isRedelivered(channelID);
+    }
+
+    /**
+     * This initialise internal tracking maps for the given channelID. This needs to be called at channel creation.
+     * @param channelID channelID
+     */
+    public void addNewChannelForTracking(UUID channelID) {
+
+        if(null == messageSendingTracker.putIfAbsent(channelID, new ConcurrentHashMap<Long, MsgData>())) {
+            log.warn("Trying to initialise tracking for channel" + channelID + " which is already initialised.");
+        }
+        if(null == unAckedMsgCountMap.putIfAbsent(channelID, new AtomicInteger(0))) {
+            log.warn("Trying to initialise tracking for channel" + channelID + " which is already initialised.");
+        }
+    }
+
+    /**
+     * Number of un acknowledged messages for the given channel is returned
+     * @param channelID  channelID
+     * @return number of un acknowledged messages
+     */
+    public int getNotAckedMessageCount(UUID channelID){
+        // NOTE channelID should be in map. ChannelID added to map at channel creation
+        return unAckedMsgCountMap.get(channelID).get();
+    }
+
+    /**
+     * Decrements non acknowledged message count for a channel
+     *
+     * When acknowledgement for a message is received for a given channel by calling this method should be called to
+     * decrement the non acknowledged message count
+     * @param chanelID channelID
+     */
+    public void decrementNonAckedMessageCount(UUID chanelID){
+        // NOTE channelID should be in map. ChannelID added to map at channel creation
+        int msgCount = unAckedMsgCountMap.get(chanelID).decrementAndGet();
+        if(log.isDebugEnabled()){
+            log.debug("message sent channel="+ this + " pending Count" + msgCount);
+        }
+    }
+
+    /**
+     * Increments the non acknowledged message count for the channel
+     *
+     * When a message is sent from Andes non acknowledged message count should be incremented
+     * @param channelID channelID
+     */
+    public void incrementNonAckedMessageCount(UUID channelID){
+        // NOTE channelID should be in map. ChannelID added to map at channel creation
+        int intCount = unAckedMsgCountMap.get(channelID).incrementAndGet();
+        if(log.isDebugEnabled()){
+            log.debug("ack received channel="+ this + " pending Count" + intCount);
+        }
     }
 
     /**

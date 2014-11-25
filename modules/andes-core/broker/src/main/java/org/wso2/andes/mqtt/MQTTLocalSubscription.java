@@ -169,12 +169,6 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
     }
 
     @Override
-    public int getnotAckedMsgCount() {
-        return 0;
-    }
-
-
-    @Override
     public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata) throws AndesException {
         //Should get the message from the list
         ByteBuffer message = MQTTUtils.getContentFromMetaInformation(messageMetadata);
@@ -187,7 +181,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
 
                 OnflightMessageTracker.getInstance().addMessageToSendingTracker(getChannelID(),
                         messageMetadata.getMessageID());
-
+                OnflightMessageTracker.getInstance().incrementNonAckedMessageCount(channelID);
                 //We will indicate the ack to the kernal at this stage
                 //For MQTT QOS 0 we do not get ack from subscriber, hence will be implicitely creating an ack
                 if (0 == getSubscriberQOS()) {

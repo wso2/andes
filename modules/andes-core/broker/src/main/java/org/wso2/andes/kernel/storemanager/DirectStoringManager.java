@@ -180,6 +180,8 @@ public class DirectStoringManager extends BasicStoringManager implements Message
                 }
                 removableMetadata.add(new AndesRemovableMetadata(ack.messageID, ack.destination, ack.msgStorageDestination));
             }
+
+            OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(ack.channelID);
             //record ack received
             PerformanceCounter.recordMessageRemovedAfterAck();
         }

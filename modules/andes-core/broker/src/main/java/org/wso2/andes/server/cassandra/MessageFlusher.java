@@ -349,9 +349,8 @@ public class MessageFlusher {
      * @return is subscription ready to accept messages
      */
     private boolean isThisSubscriptionHasRoom(LocalSubscription localSubscription) {
-        //
-        int notAckedMsgCount = localSubscription.getnotAckedMsgCount();
 
+        int notAckedMsgCount = OnflightMessageTracker.getInstance().getNotAckedMessageCount(localSubscription.getChannelID());
 
         //Here we ignore messages that has been scheduled but not executed,
         // so it might send few messages than maxNumberOfUnAckedMessages
