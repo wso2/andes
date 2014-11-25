@@ -62,7 +62,7 @@ public class PerformanceCounter {
                     queueReceiveCount.set(0);
 
                     if(queueReceiveCount.get() > 0){
-                        log.info("PerfCount: summary ["+new Date()+"] deliveryThoughput = "+deliverythroughput +", receiveThoughput="+ receivethroughput 
+                        log.debug("PerfCount: summary ["+new Date()+"] deliveryThoughput = "+deliverythroughput +", receiveThoughput="+ receivethroughput 
                                 + "delivered=" + totmessagesDelivered + ", received " + totMessagesReceived );
                     }
                     lastEmitTs = System.currentTimeMillis(); 
@@ -164,7 +164,7 @@ public class PerformanceCounter {
             if(startTime == -1){
                 startTime = System.currentTimeMillis();
             }else{
-                log.info("[mbperf] Acks "+ackCount+" Received, Submit Throughput =" + (int)(queueDeliveryCount.get()*1000d/(System.currentTimeMillis() - startTime)) + ", avg latency ="+ ackLatency.get()/queueDeliveryCount.get());
+                log.debug("[mbperf] Acks "+ackCount+" Received, Submit Throughput =" + (int)(queueDeliveryCount.get()*1000d/(System.currentTimeMillis() - startTime)) + ", avg latency ="+ ackLatency.get()/queueDeliveryCount.get());
             }
         }
         ackReceivedCounter.notifyEvent(false);
@@ -189,9 +189,9 @@ public class PerformanceCounter {
     public static void printLine(String label, ThroughputCounter tc, LatencyCounter lc ){
         long count = tc.count.get(); 
         if(lc == null){
-            log.info("[mbperf1]["+count+"]"+label+"=(T=" + tc.getThroughput() + "("+tc.getLast1000Throughput()+")");
+            log.debug("[mbperf1]["+count+"]"+label+"=(T=" + tc.getThroughput() + "("+tc.getLast1000Throughput()+")");
         }else{
-             log.info("[mbperf1]["+count+"]"+label+"=(T=" + tc.getThroughput() + "("+tc.getLast1000Throughput()+"), L="+ lc.getLatency() + Arrays.toString(lc.getHistorgram()));
+             log.debug("[mbperf1]["+count+"]"+label+"=(T=" + tc.getThroughput() + "("+tc.getLast1000Throughput()+"), L="+ lc.getLatency() + Arrays.toString(lc.getHistorgram()));
         }
     }
 
@@ -245,7 +245,7 @@ public class PerformanceCounter {
                     return false;
                 }
                 if(print){
-                    log.info("[mbperf1]"+label+"> throughput"+ getThroughput() + " messageCount =" + count.get());
+                    log.debug("[mbperf1]"+label+"> throughput"+ getThroughput() + " messageCount =" + count.get());
                 }
                 last1000Throughput = (int)(messagesBetweenTwoEmits*1000d/(System.currentTimeMillis() - lastTime));
                 lastTime = System.currentTimeMillis();
@@ -296,7 +296,7 @@ public class PerformanceCounter {
                     startTime = System.currentTimeMillis();
                 }
                 if(print){
-                    log.info("[mbperf1]"+label+"> avg Latency"+ getLatency() + " messageCount =" + count.get());
+                    log.debug("[mbperf1]"+label+"> avg Latency"+ getLatency() + " messageCount =" + count.get());
                 }
                 lastLatency = (int)total.get()/count.get();
                 return true;

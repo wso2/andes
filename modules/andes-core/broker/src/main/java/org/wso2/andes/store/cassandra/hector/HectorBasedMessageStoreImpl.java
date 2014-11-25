@@ -190,7 +190,9 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                         metadataList.size());
             }
 
-            PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(latency);
+            if(log.isDebugEnabled()) {
+                PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(latency);
+            }
 
         } catch (Exception e) {
             //TODO handle Cassandra failures
@@ -326,9 +328,11 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             //batch execute
             insertMutator.execute();
 
-            PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(
-                    (int) (System.currentTimeMillis() -
-                            start));
+            if(log.isDebugEnabled()) {
+                PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(
+                        (int) (System.currentTimeMillis() -
+                                start));
+            }
 
             // Step 2 - Delete the old meta data when inserting new meta is complete to avoid
             // losing messages
@@ -414,7 +418,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                 HectorDataAccessHelper
                         .deleteLongColumnFromRaw(
                                 CassandraConstants.META_DATA_COLUMN_FAMILY,
-                                queueName, message.messageID, mutator, false);
+                                queueName, message.getMessageID(), mutator, false);
             }
 
             //batch execute

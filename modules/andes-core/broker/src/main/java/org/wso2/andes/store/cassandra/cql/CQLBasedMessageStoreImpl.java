@@ -45,6 +45,7 @@ import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
  */
 public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageStore {
     private static Log log = LogFactory.getLog(CQLBasedMessageStoreImpl.class);
+    private int queryLimit = 1000;
 
     private AlreadyProcessedMessageTracker alreadyMovedMessageTracker;
 
@@ -81,6 +82,15 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
         alreadyMovedMessageTracker = new AlreadyProcessedMessageTracker("Message-move-tracker",
                 15000000000L, 10);
+        //get range query limit if configured
+        String limit = connectionProperties.getProperty("QueryLimit");
+        if(null != limit && !limit.isEmpty()) {
+            try {
+                queryLimit = Integer.valueOf(limit);
+            } catch (NumberFormatException e) {
+                log.error("Error in setting value to QueryLimit property, andes-virtualhosts.xml", e);
+            }
+        }
 
         return cqlConnection;
     }
@@ -254,7 +264,9 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 log.warn("Cassandra writing took " + latency + " millisecoonds for batch of " +
                         metadataList.size());
             }
-            PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(latency);
+            if(log.isDebugEnabled()) {
+                PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(latency);
+            }
 
            /*
             Client waits for these message ID to be written, this signal those,
@@ -433,9 +445,11 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE,
                     inserts.toArray(new Insert[inserts.size()]));
 
-            PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(
-                    (int) (System.currentTimeMillis() -
-                            start));
+            if(log.isDebugEnabled()) {
+                PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(
+                        (int) (System.currentTimeMillis() -
+                                start));
+            }
 
             // Step 2 - Delete the old meta data when inserting new meta is complete to avoid
             // losing messages
@@ -544,7 +558,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 Delete delete = CQLDataAccessHelper
                         .deleteLongColumnFromRaw(CassandraConstants.KEYSPACE,
                                 CassandraConstants.META_DATA_COLUMN_FAMILY,
-                                storageQueueName, message.messageID, false);
+                                storageQueueName, message.getMessageID(), false);
                 statements.add(delete);
             }
             GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE,

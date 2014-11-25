@@ -26,7 +26,6 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 
 import com.lmax.disruptor.EventHandler;
-import org.wso2.andes.server.slot.SlotMessageCounter;
 
 /**
  * We do this to make Listener take turns while running. So we can run many copies of these and control number
@@ -62,14 +61,14 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
     }
 
     public void onEvent(final CassandraDataEvent event, final long sequence, final boolean endOfBatch) throws Exception {
-        if (event.isPart) {
+        if (event.isPart()) {
             //If part, we write randomly
-            int calculatedTurn = (int) Math.abs(event.part.getMessageID() % writerCount);
+            int calculatedTurn = (int) Math.abs(event.getMessagePart().getMessageID() % writerCount);
 
             if (calculatedTurn == turn) {
                 //Message parts we write on the fly. It is trade off of memory vs. batching
                 //May be we need better handling .. batch that data as well
-                partList.add(event.part);
+                partList.add(event.getMessagePart());
                 //totalPendingEventLength += event.part.getDataLength();
                 totalPendingItems += 1;
             }
@@ -77,11 +76,11 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
 
 
             //If messageID, we write in sequence per queue
-            int calculatedTurn = Math.abs(event.metadata.getDestination().hashCode() %
+            int calculatedTurn = Math.abs(event.getMetadata().getDestination().hashCode() %
                     writerCount);
 
             if (calculatedTurn == turn) {
-                metaList.add(event.metadata);
+                metaList.add(event.getMetadata());
                 //totalPendingEventLength += event.metadata.getMetadata().length;
                 totalPendingItems += 1;
             }
@@ -103,7 +102,7 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
             // Write message meta list to cassandra
             if (metaList.size() > 0) {
                 if (log.isDebugEnabled()) {
-                    log.debug("Number of message metadata sent to message store: " + partList.size
+                    log.debug("Number of message metadata sent to message store: " + metaList.size
                             ());
                 }
 

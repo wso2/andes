@@ -82,7 +82,7 @@ public class MessageExpirationWorker extends Thread {
                             String messagesQueuedForExpiry = "";
 
                             for (AndesRemovableMetadata arm : expiredMessages) {
-                                messagesQueuedForExpiry += arm.messageID + ",";
+                                messagesQueuedForExpiry += arm.getMessageID() + ",";
                             }
                             log.trace("Expired messages queued for deletion : " + messagesQueuedForExpiry);
                         }

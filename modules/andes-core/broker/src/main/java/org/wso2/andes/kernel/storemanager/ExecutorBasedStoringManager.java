@@ -474,29 +474,29 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
         Map<String, Integer> destinationSeparatedMsgCounts = new HashMap<String, Integer>();
 
         for (AndesRemovableMetadata message : messagesToRemove) {
-            idsOfMessagesToRemove.add(message.messageID);
+            idsOfMessagesToRemove.add(message.getMessageID());
 
             //update <storageQueue, metadata> map
             List<AndesRemovableMetadata> messages = storageQueueSeparatedRemoveMessages
-                    .get(message.storageDestination);
+                    .get(message.getStorageDestination());
             if (messages == null) {
                 messages = new ArrayList
                         <AndesRemovableMetadata>();
             }
             messages.add(message);
-            storageQueueSeparatedRemoveMessages.put(message.storageDestination, messages);
+            storageQueueSeparatedRemoveMessages.put(message.getStorageDestination(), messages);
 
             //update <destination, Msgcount> map
-            Integer count = destinationSeparatedMsgCounts.get(message.messageDestination);
+            Integer count = destinationSeparatedMsgCounts.get(message.getMessageDestination());
             if(count == null) {
                 count = 0;
             }
             count = count + 1;
-            destinationSeparatedMsgCounts.put(message.messageDestination, count);
+            destinationSeparatedMsgCounts.put(message.getMessageDestination(), count);
 
             //if to move, move to DLC. This is costy. Involves per message read and writes
             if (moveToDeadLetterChannel) {
-                AndesMessageMetadata metadata = messageStore.getMetaData(message.messageID);
+                AndesMessageMetadata metadata = messageStore.getMetaData(message.getMessageID());
                 messageStore
                         .addMetaDataToQueue(AndesConstants.DEAD_LETTER_QUEUE_NAME, metadata);
             }

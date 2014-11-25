@@ -648,7 +648,9 @@ public class CQLDataAccessHelper {
             List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>();
             CQLQueryBuilder.CqlSelect cqlSelect = new CQLQueryBuilder.CqlSelect(columnFamilyName,
                                                                                 count,
-                                                                                true);
+                                                                                false);
+            cqlSelect.addCondition(MSG_ROW_ID, rowName, WHERE_OPERATORS.EQ);
+
             cqlSelect.addColumn(MSG_VALUE);
             cqlSelect.addColumn(MSG_KEY);
             if (isRange) {
@@ -658,7 +660,6 @@ public class CQLDataAccessHelper {
                 cqlSelect.addCondition(MSG_KEY, lastProcessedId, WHERE_OPERATORS.EQ);
             }
 
-            cqlSelect.addCondition(MSG_ROW_ID, rowName, WHERE_OPERATORS.EQ);
             Select select = CQLQueryBuilder.buildSelect(cqlSelect);
             if (log.isDebugEnabled()) {
                 log.debug(" getMessageMetaDataOfMessage : " + select.toString());
@@ -1270,9 +1271,9 @@ public class CQLDataAccessHelper {
                                                                                 MESSAGE_DESTINATION),
                                                                         row.getString(
                                                                                 MESSAGE_DESTINATION));
-                arm.isForTopic = row.getBool(MESSAGE_IS_FOR_TOPIC);
+                arm.setForTopic(row.getBool(MESSAGE_IS_FOR_TOPIC));
 
-                if (arm.messageID > 0) {
+                if (arm.getMessageID() > 0) {
                     expiredMessages.add(arm);
                 }
             }
