@@ -25,6 +25,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cassandra.MessageFlusher;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
+import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
@@ -62,10 +63,6 @@ public class MessagingEngine {
      * Cluster wide unique message id generator
      */
     private MessageIdGenerator messageIdGenerator;
-
-    // todo: remove referring to this from MessagingEngine. Use within MessageStoreManager
-    // implementations
-    private MessageStore durableMessageStore;
 
     /**
      * reference to subscription store
@@ -127,9 +124,6 @@ public class MessagingEngine {
         configureMessageIDGenerator();
 
         messageStoreManager = MessageStoreManagerFactory.create(messageStore);
-        // TODO: These message store references need to be removed. Message stores need to be
-        // Accessed via MessageStoreManager
-        durableMessageStore = messageStore;
         subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         messagePartsCache = new HashMap<Long, List<AndesMessagePart>>();
         //register listeners for queue changes
@@ -157,8 +151,15 @@ public class MessagingEngine {
         }
     }
 
+    /**
+     * Return the requested chunk of a message's content.
+     * @param messageID Unique ID of the Message
+     * @param offsetInMessage The offset of the required chunk in the Message content.
+     * @return AndesMessagePart
+     * @throws AndesException
+     */
     public AndesMessagePart getMessageContentChunk(long messageID, int offsetInMessage) throws AndesException {
-        return durableMessageStore.getContent(messageID, offsetInMessage);
+        return messageStoreManager.getMessagePart(messageID,offsetInMessage);
     }
 
     /**
@@ -173,9 +174,8 @@ public class MessagingEngine {
         try {
 
             if (message.getExpirationTime() > 0l) {
-                //store message in MESSAGES_FOR_EXPIRY_COLUMN_FAMILY Queue
-                // todo: MessageStoreManager needs to replace the method
-                durableMessageStore.addMessageToExpiryQueue(message.getMessageID(),
+                //store message in a special messages-for-expiration collection
+                messageStoreManager.storeMessageInExpiryQueue(message.getMessageID(),
                         message.getExpirationTime(),
                         message.isTopic(),
                         message.getDestination());
@@ -195,7 +195,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public AndesMessageMetadata getMessageMetaData(long messageID) throws AndesException {
-        return durableMessageStore.getMetaData(messageID);
+        return messageStoreManager.getMetadataOfMessage(messageID);
     }
 
     /**
@@ -487,11 +487,7 @@ public class MessagingEngine {
     public void close() {
 
         stopMessageDelivery();
-        //todo: hasitha - we need to wait all jobs are finished, all executors have no future tasks
         stopMessageExpirationWorker();
-        durableMessageStore.close();
-
-
     }
 
     /**
@@ -582,7 +578,7 @@ public class MessagingEngine {
                 List<Long> messageIdList = new ArrayList<Long>();
                 messageIdList.add(message.getMessageID());
                 //todo: at this moment content is still in disruptor.
-                durableMessageStore.deleteMessageParts(messageIdList);
+                messageStoreManager.deleteMessageParts(messageIdList);
             }
 
         } else {

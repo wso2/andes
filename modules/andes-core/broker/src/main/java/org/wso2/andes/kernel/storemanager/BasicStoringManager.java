@@ -133,7 +133,7 @@ public abstract class BasicStoringManager implements MessageStoreManager {
             // or to break from original DLC pattern and maintain multiple DLC queues per each queue.
             Integer messageCountFromDLC = messageStore.deleteAllMessageMetadataFromDLC
                     (DLCQueueUtils.identifyTenantInformationAndGenerateDLCString
-                    (storageQueueName, AndesConstants.DEAD_LETTER_QUEUE_NAME), storageQueueName);
+                            (storageQueueName, AndesConstants.DEAD_LETTER_QUEUE_NAME), storageQueueName);
 
             // Clear message content leisurely / asynchronously using retrieved message IDs
             messageStore.deleteMessageParts(messageIDsAddressedToQueue);
@@ -143,14 +143,43 @@ public abstract class BasicStoringManager implements MessageStoreManager {
             // we do not necessarily have to rush it here.
             // messageStore.deleteMessagesFromExpiryQueue(messageIDsAddressedToQueue);
 
-            // If any other places in the store keep track of messages ,
+            // If any other places in the store keep track of messages in future,
             // they should also be cleared here.
 
             return messageCountInStore + messageCountFromDLC;
 
         } catch (AndesException e) {
+            // This will be a store-specific error. We could make all 5 operations into one atomic transaction so
+            // that in case of an error data won't be obsolete, but we must do it in a proper generic manner (to
+            // allow any collection of store methods to be executed in a single transaction.). To be done as a
+            // separate task.
             throw new AndesException("Error occurred when purging queue from store : " + storageQueueName, e);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     * @param messageId ID of message
+     * @param expirationTime The timestamp at which the message is set to expire
+     * @param isMessageForTopic True if the message is addressed to a durable topic
+     * @param destination final destination of the message.
+     * @throws AndesException
+     */
+    @Override
+    public void storeMessageInExpiryQueue(Long messageId, Long expirationTime,
+                                          boolean isMessageForTopic, String destination) throws AndesException {
+        messageStore.addMessageToExpiryQueue(messageId,expirationTime,isMessageForTopic,destination);
+    }
+
+    /**
+     * {@inheritDoc}
+     * @param messageId ID of message
+     * @return
+     * @throws AndesException
+     */
+    @Override
+    public AndesMessageMetadata getMetadataOfMessage(Long messageId) throws AndesException {
+        return messageStore.getMetaData(messageId);
     }
 
     /**
