@@ -35,6 +35,11 @@ public class HazelcastAgent {
     private static Log log = LogFactory.getLog(HazelcastAgent.class);
 
     /**
+     * Value used to indicate the cluster initialization success state
+     */
+    private static final long INIT_SUCCESSFUL = 1L;
+
+    /**
      * Singleton HazelcastAgent Instance.
      */
     private static HazelcastAgent hazelcastAgentInstance = new HazelcastAgent();
@@ -102,6 +107,17 @@ public class HazelcastAgent {
      */
 
     private int uniqueIdOfLocalMember;
+
+    /**
+     * Lock used to initialize the Slot map used by the Slot manager.
+     */
+    private ILock initializationLock;
+
+    /**
+     * This is used to indicate if the cluster initialization was done properly. Used a atomic long
+     * since am atomic boolean is not available in the current Hazelcast implementation.
+     */
+    private IAtomicLong initializationDoneIndicator;
 
     /**
      * Private constructor.
@@ -189,6 +205,13 @@ public class HazelcastAgent {
          * Initialize hazelcast map fot thrift server details
          */
         thriftServerDetailsMap = hazelcastInstance.getMap(CoordinationConstants.THRIFT_SERVER_DETAILS_MAP_NAME);
+
+        /**
+         * Initialize distributed lock and boolean related to slot map initialization
+         */
+        initializationLock = hazelcastInstance.getLock(CoordinationConstants.INITIALIZATION_LOCK);
+        initializationDoneIndicator = hazelcastInstance
+                .getAtomicLong(CoordinationConstants.INITIALIZATION_DONE_INDICATOR);
 
         log.info("Successfully initialized Hazelcast Agent");
 
@@ -357,6 +380,49 @@ public class HazelcastAgent {
      */
     public IMap<String, String> getThriftServerDetailsMap() {
         return thriftServerDetailsMap;
+    }
+
+    /**
+     * Acquire the distributed lock related to cluster initialization. This lock is required to
+     * avoid two nodes initializing the map twice.
+     */
+    public void acquireInitializationLock() {
+        if (log.isDebugEnabled()) {
+            log.debug("Trying to acquire initialization lock.");
+        }
+
+        initializationLock.lock();
+
+        if (log.isDebugEnabled()) {
+            log.debug("Initialization lock acquired.");
+        }
+    }
+
+    /**
+     * Inform other members in the cluster that the cluster was initialized properly.
+     */
+    public void indicateSuccessfulInitilization() {
+        initializationDoneIndicator.set(INIT_SUCCESSFUL);
+    }
+
+    /**
+     * Check if a member has already initialized the cluster
+     *
+     * @return true if cluster is already initialized
+     */
+    public boolean isClusterInitializedSuccessfully() {
+        return initializationDoneIndicator.get() == INIT_SUCCESSFUL;
+    }
+
+    /**
+     * Release the initialization lock.
+     */
+    public void releaseInitializationLock() {
+        initializationLock.unlock();
+
+        if (log.isDebugEnabled()) {
+            log.debug("Initialization lock released.");
+        }
     }
 
 }

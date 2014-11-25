@@ -25,14 +25,18 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
+import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
+import org.wso2.andes.server.slot.SlotManager;
 import org.wso2.andes.server.slot.thrift.MBThriftServer;
+import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 import org.wso2.andes.subscription.SubscriptionStore;
 
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -52,6 +56,11 @@ public class AndesKernelBoot {
     private static ScheduledExecutorService andesRecoveryTaskScheduler;
 
     /**
+     * Used to get information from context store
+     */
+    private static AndesContextStore contextStore;
+
+    /**
      * This will boot up all the components in Andes kernel and bring the server to working state
      */
     public static void bootAndesKernel() throws Exception {
@@ -67,6 +76,75 @@ public class AndesKernelBoot {
         startThriftServer();
         startMessaging();
 
+    }
+
+    /**
+     * This will recreate slot mapping for queues which have messages left in the message store.
+     * The slot mapping is required only for the cluster implementation.
+     *
+     * First we acquire the slot initialization lock and check if the cluster is already
+     * initialized using a distributed variable. Then if the cluster is not initialized, the
+     * server will iterate through all the queues available in the context store and inform the
+     * slot manager to recreate the slot mapping. Finally the distribute variable is updated to
+     * indicate the success and the lock is released.
+     *
+     * @throws AndesException
+     */
+    public static void recoverDistributedSlotMap() throws AndesException {
+        // Slot recreation is required in the clustering mode
+        if (AndesContext.getInstance().isClusteringEnabled()) {
+            log.info("Restoring slot mapping in the cluster.");
+            HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
+
+            try {
+                hazelcastAgent.acquireInitializationLock();
+                if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
+
+                    List<AndesQueue> queueList = contextStore.getAllQueuesStored();
+
+                    for (AndesQueue queue : queueList) {
+                        // Skip slot creation for Dead letter Channel
+                        if (AndesConstants.DEAD_LETTER_QUEUE_NAME.equals(queue.queueName)) {
+                            continue;
+                        }
+
+                        initializeSlotMapForQueue(queue.queueName);
+                    }
+
+                    hazelcastAgent.indicateSuccessfulInitilization();
+                }
+            } finally {
+                hazelcastAgent.releaseInitializationLock();
+            }
+        }
+    }
+
+    /**
+     * Create slots for the given queue name. This is done by reading all the messages from the
+     * message store and creating slots according to the slot window size.
+     *
+     * @param queueName
+     *         Name of the queue
+     * @throws AndesException
+     */
+    private static void initializeSlotMapForQueue(String queueName)
+            throws AndesException {
+        // Read slot window size from cluster configuration
+        int slotSize = ClusterResourceHolder.getInstance().getClusterConfiguration()
+                                            .getSlotWindowSize();
+        List<AndesMessageMetadata> messageList = messageStore
+                .getNextNMessageMetadataFromQueue(queueName, 0, slotSize);
+        int numberOfMessages = messageList.size();
+        long lastMessageID;
+
+        while (numberOfMessages > 0) {
+            lastMessageID = messageList.get(messageList.size() - 1).getMessageID();
+            SlotManager.getInstance().updateMessageID(queueName, lastMessageID);
+
+            messageList = messageStore
+                    .getNextNMessageMetadataFromQueue(queueName, lastMessageID, slotSize);
+            numberOfMessages = messageList.size();
+        }
     }
 
     /**
@@ -130,6 +208,7 @@ public class AndesKernelBoot {
                 virtualHostsConfiguration.getAndesContextStoreProperties()
         );
         AndesContext.getInstance().setAndesContextStore(andesContextStore);
+        AndesKernelBoot.contextStore = andesContextStore;
 
         //create subscription store
         SubscriptionStore subscriptionStore = new SubscriptionStore();
