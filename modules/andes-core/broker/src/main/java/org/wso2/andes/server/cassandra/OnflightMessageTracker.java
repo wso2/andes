@@ -39,7 +39,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This class will track message delivery by broker
@@ -87,7 +86,7 @@ public class OnflightMessageTracker {
             ConcurrentHashMap<Slot, AtomicInteger>();
 
     /**
-     * count sent but not acknowledged message count for all the channels
+     * Count sent but not acknowledged message count for all the channels
      * key: channelID, value: per channel non acknowledged message count
      */
     private ConcurrentMap<UUID, AtomicInteger> unAckedMsgCountMap = new ConcurrentHashMap<UUID, AtomicInteger>();
@@ -338,13 +337,8 @@ public class OnflightMessageTracker {
      *
      * @return boolean if the message is being redelivered
      */
-    public boolean checkAndRegisterSent(long messageId, UUID channelID, long deliverTag)
-            throws AMQException {
-
-        MsgData trackingData = msgId2MsgData.get(messageId);
-
+    public boolean checkAndRegisterSent(long messageId, UUID channelID) throws AMQException {
         return addMessageToSendingTracker(channelID, messageId);
-
     }
 
     /**
@@ -455,7 +449,7 @@ public class OnflightMessageTracker {
         MsgData trackingData = getTrackingData(messageID);
 
         //decrement delivery count
-        int numOfDeliveries = trackingData.decrementDeliveryCount(channel);
+        trackingData.decrementDeliveryCount(channel);
 
         setMessageStatus(MessageStatus.ACKED, trackingData);
 
@@ -705,10 +699,10 @@ public class OnflightMessageTracker {
     public void addNewChannelForTracking(UUID channelID) {
 
         if(null == messageSendingTracker.putIfAbsent(channelID, new ConcurrentHashMap<Long, MsgData>())) {
-            log.warn("Trying to initialise tracking for channel" + channelID + " which is already initialised.");
+            log.warn("Trying to initialise tracking for channel " + channelID + " which is already initialised.");
         }
         if(null == unAckedMsgCountMap.putIfAbsent(channelID, new AtomicInteger(0))) {
-            log.warn("Trying to initialise tracking for channel" + channelID + " which is already initialised.");
+            log.warn("Trying to initialise tracking for channel " + channelID + " which is already initialised.");
         }
     }
 
@@ -733,7 +727,7 @@ public class OnflightMessageTracker {
         // NOTE channelID should be in map. ChannelID added to map at channel creation
         int msgCount = unAckedMsgCountMap.get(chanelID).decrementAndGet();
         if(log.isDebugEnabled()){
-            log.debug("message sent channel="+ this + " pending Count" + msgCount);
+            log.debug("message sent channel= "+ this + " pending Count" + msgCount);
         }
     }
 
@@ -747,7 +741,7 @@ public class OnflightMessageTracker {
         // NOTE channelID should be in map. ChannelID added to map at channel creation
         int intCount = unAckedMsgCountMap.get(channelID).incrementAndGet();
         if(log.isDebugEnabled()){
-            log.debug("ack received channel="+ this + " pending Count" + intCount);
+            log.debug("ack received channel= "+ this + " pending Count" + intCount);
         }
     }
 
