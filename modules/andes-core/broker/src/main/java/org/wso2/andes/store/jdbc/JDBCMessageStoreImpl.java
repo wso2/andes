@@ -576,7 +576,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
                     .prepareStatement(JDBCConstants.PS_DELETE_METADATA_FROM_QUEUE);
             for (AndesRemovableMetadata md : messagesToRemove) {
                 preparedStatement.setInt(1, queueID);
-                preparedStatement.setLong(2, md.messageID);
+                preparedStatement.setLong(2, md.getMessageID());
                 preparedStatement.addBatch();
             }
             preparedStatement.executeBatch();
@@ -662,7 +662,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
         try {
             preparedStatement = connection.prepareStatement(JDBCConstants.PS_DELETE_EXPIRY_DATA);
             for (AndesRemovableMetadata md : messagesToRemove) {
-                preparedStatement.setLong(1, md.messageID);
+                preparedStatement.setLong(1, md.getMessageID());
                 preparedStatement.addBatch();
             }
             preparedStatement.executeBatch();

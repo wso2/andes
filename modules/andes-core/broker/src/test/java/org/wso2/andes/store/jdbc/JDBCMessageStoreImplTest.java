@@ -418,8 +418,8 @@ public class JDBCMessageStoreImplTest {
         Assert.assertEquals(3, list.size());
         for (int i = 0; i < list.size(); i++) {
             AndesRemovableMetadata md = list.get(i);
-            Assert.assertEquals(i * 2, md.messageID);
-            Assert.assertEquals(destQueue_1, md.storageDestination);
+            Assert.assertEquals(i * 2, md.getMessageID());
+            Assert.assertEquals(destQueue_1, md.getStorageDestination());
         }
 
         // delete them
@@ -430,12 +430,12 @@ public class JDBCMessageStoreImplTest {
         Assert.assertEquals(2, list.size());
 
         AndesRemovableMetadata md = list.get(0);
-        Assert.assertEquals(6, md.messageID);
-        Assert.assertEquals(destQueue_2, md.storageDestination);
+        Assert.assertEquals(6, md.getMessageID());
+        Assert.assertEquals(destQueue_2, md.getStorageDestination());
 
         md = list.get(1);
-        Assert.assertEquals(8, md.messageID);
-        Assert.assertEquals(destQueue_2, md.storageDestination);
+        Assert.assertEquals(8, md.getMessageID());
+        Assert.assertEquals(destQueue_2, md.getStorageDestination());
 
     }
 

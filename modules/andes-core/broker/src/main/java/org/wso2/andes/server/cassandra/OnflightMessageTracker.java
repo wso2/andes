@@ -467,7 +467,9 @@ public class OnflightMessageTracker {
             setMessageStatus(MessageStatus.ACKED_BY_ALL, trackingData);
             //record how much time took between delivery and ack receive
             long timeTook = (System.currentTimeMillis() - trackingData.timestamp);
-            PerformanceCounter.recordAckReceived(trackingData.destination, (int) timeTook);
+            if(log.isDebugEnabled()) {
+                PerformanceCounter.recordAckReceived(trackingData.destination, (int) timeTook);
+            }
             decrementMessageCountInSlotAndCheckToResend(trackingData.slot);
 
             isOKToDeleteMessage = true;

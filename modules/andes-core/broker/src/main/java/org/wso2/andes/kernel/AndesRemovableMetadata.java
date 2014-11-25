@@ -18,16 +18,52 @@
 
 package org.wso2.andes.kernel;
 
+/**
+ * Wrapper class of message removable meta data
+ *
+ */
 public class AndesRemovableMetadata {
 
-    public long messageID;
-    public String storageDestination;
-    public String messageDestination;
-    public boolean isForTopic;
+    private long messageID;
+    private String storageDestination;
+    private String messageDestination;
+    private boolean isForTopic;
 
     public AndesRemovableMetadata(long messageID, String messageDestination, String storageDestination){
         this.messageID = messageID;
         this.messageDestination = messageDestination;
         this.storageDestination = storageDestination;
+    }
+
+    public long getMessageID() {
+        return messageID;
+    }
+
+    public void setMessageID(long messageID) {
+        this.messageID = messageID;
+    }
+
+    public String getStorageDestination() {
+        return storageDestination;
+    }
+
+    public void setStorageDestination(String storageDestination) {
+        this.storageDestination = storageDestination;
+    }
+
+    public String getMessageDestination() {
+        return messageDestination;
+    }
+
+    public void setMessageDestination(String messageDestination) {
+        this.messageDestination = messageDestination;
+    }
+
+    public boolean isForTopic() {
+        return isForTopic;
+    }
+
+    public void setForTopic(boolean isForTopic) {
+        this.isForTopic = isForTopic;
     }
 }

@@ -141,7 +141,9 @@ public class QpidAMQPBridge {
 
             MessagingEngine.getInstance().messageReceived(metadata);
 
-            PerformanceCounter.recordMessageReceived(queue, incomingMessage.getReceivedChunkCount());
+            if(log.isDebugEnabled()) {
+                PerformanceCounter.recordMessageReceived(queue, incomingMessage.getReceivedChunkCount());
+            }
         } catch (AndesException e) {
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while storing incoming message metadata", e);
         }

@@ -157,9 +157,9 @@ public class SlotDeliveryWorker extends Thread {
                                                 messagesRead, currentSlot);
                                     } else {
                                         currentSlot.setSlotInActive();
+                                        MBThriftClient.deleteSlot(storageQueueName, currentSlot, nodeId);
                                         //Release all message trackings for messages of slot
                                         OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(currentSlot);
-                                        MBThriftClient.deleteSlot(storageQueueName, currentSlot, nodeId);
                                         /*If there are messages to be sent in the message
                                         buffer in MessageFlusher send them */
                                         sendFromMessageBuffer(destinationOfMessagesInQueue);
@@ -355,18 +355,17 @@ public class SlotDeliveryWorker extends Thread {
 
         } else {
             /*
-            Acks for all sent messages fro this slot has been received,
+            Acks for all sent messages from this slot has been received,
             however slot is not empty. This happens when we write messages to message store out of
             order. Therefore we resend those messages.
              */
             List<AndesMessageMetadata> messagesRead =
                     MessagingEngine.getInstance().getMetaDataList(
                             slot.getStorageQueueName(), slot.getStartMessageId(), slot.getEndMessageId());
-            if (messagesRead != null &&
-                !messagesRead.isEmpty()) {
+            if (messagesRead != null && !messagesRead.isEmpty()) {
                 if (log.isDebugEnabled()) {
                     log.debug(
-                            "Resending missing" + messagesRead.size() + "messages " +
+                            "Resending missing " + messagesRead.size() + " messages " +
                             "for slot: " + slot.toString());
                 }
                 Iterator<AndesMessageMetadata> iterator = messagesRead.iterator();
@@ -384,8 +383,6 @@ public class SlotDeliveryWorker extends Thread {
 
                         if (isClusteringEnabled) {
                             MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
-                            //Release all message trackings for messages of slot
-                            OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
                         }
                     } catch (ConnectionException e) {
                         throw new AndesException(
