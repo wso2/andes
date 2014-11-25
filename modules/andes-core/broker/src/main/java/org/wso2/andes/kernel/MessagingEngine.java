@@ -635,6 +635,17 @@ public class MessagingEngine {
      * @param channelID id of the closed connection
      */
     public void clientConnectionClosed(UUID channelID) {
+        // TODO; move to message store manager method, handle according to event handling method async or direct
         OnflightMessageTracker.getInstance().releaseAllMessagesOfChannelFromTracking(channelID);
+
+    }
+
+    /**
+     * notify client connection is opened. This is for message tracking purposes on Andes side
+     * @param channelID channelID of the client connection
+     */
+    public void clientConnectionCreated(UUID channelID) {
+        // TODO; move to message store manager method, handle according to event handling method async or direct
+        OnflightMessageTracker.getInstance().addNewChannelForTracking(channelID);
     }
 }

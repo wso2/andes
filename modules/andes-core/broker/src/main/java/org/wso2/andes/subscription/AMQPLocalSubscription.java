@@ -30,6 +30,7 @@ import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
+import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
@@ -74,10 +75,6 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
         if (amqpSubscription != null && amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
             channel = ((SubscriptionImpl.AckSubscription) amqpSubscription).getChannel();
         }
-    }
-
-    public int getnotAckedMsgCount() {
-        return channel.getNotAckedMessageCount();
     }
 
     public boolean isActive() {
@@ -151,7 +148,7 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
         try {
             AMQProtocolSession session = channel.getProtocolSession();
             ((AMQMessage) queueEntry.getMessage()).setClientIdentifier(session);
-            channel.incrementNonAckedMessageCount();
+            OnflightMessageTracker.getInstance().incrementNonAckedMessageCount(getChannelID());
             if (amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
                 //this check is needed to detect if subscription has suddenly closed
                 if (log.isDebugEnabled()) {

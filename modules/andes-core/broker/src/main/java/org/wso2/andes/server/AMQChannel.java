@@ -150,8 +150,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     private final UUID _id;
     private long _createTime = System.currentTimeMillis();
 
-    private AtomicInteger inflightMessageCount = new AtomicInteger();
-
     private static SequentialThreadPoolExecutor messageRoutingExecutor = null;
 
     private AMQChannelMBean _managedObject;
@@ -179,6 +177,8 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                     getClusterConfiguration().getInternalSequentialThreadPoolSize()),"messageRoutingExecutor");
         }
 
+        // message tracking related to this channel is initialised
+        MessagingEngine.getInstance().clientConnectionCreated(_id);
         try {
             _managedObject = new AMQChannelMBean(this);
             _managedObject.register();
@@ -912,8 +912,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                           .ackReceived(this.getId(), entry.getMessage().getMessageNumber(),
                                        entry.getMessage().getRoutingKey(),
                                        isTopic);
-            //TODO: we need to do it when processing the ack?
-            this.decrementNonAckedMessageCount();
         }
 
         updateTransactionalActivity();
@@ -1596,31 +1594,12 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     }
 
     public void forgetMessages4Channel(){
-        inflightMessageCount.set(0);
         while (isMessagesAcksProcessing){
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        }
-    }
-
-    public int getNotAckedMessageCount(){
-        return inflightMessageCount.get();
-    }
-
-    public void decrementNonAckedMessageCount(){
-        int msgCount = inflightMessageCount.decrementAndGet();
-        if(_logger.isDebugEnabled()){
-            _logger.debug("message sent channel="+ this + " pending Count" + msgCount);
-        }
-    }
-
-    public void incrementNonAckedMessageCount(){
-        int intCount = inflightMessageCount.incrementAndGet();
-        if(_logger.isDebugEnabled()){
-            _logger.debug("ack received channel="+ this + " pending Count" + intCount);
         }
     }
 
