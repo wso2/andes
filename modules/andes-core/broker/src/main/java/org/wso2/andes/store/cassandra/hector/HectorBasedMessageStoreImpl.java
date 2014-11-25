@@ -24,7 +24,7 @@ import me.prettyprint.hector.api.factory.HFactory;
 import me.prettyprint.hector.api.mutation.Mutator;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.ConfigurationProperties;
+import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;

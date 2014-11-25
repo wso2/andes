@@ -18,8 +18,11 @@
 
 package org.wso2.andes.kernel.storemanager;
 
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
@@ -114,8 +117,8 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
 
         //this task will periodically remove message contents from store
         messageContentRemoverTask = new MessageContentRemoverTask(messageStore);
-        int schedulerPeriod = ClusterResourceHolder.getInstance().getClusterConfiguration()
-                .getContentRemovalTaskInterval();
+        Integer schedulerPeriod = AndesConfigurationManager.getInstance().readConfigurationValue
+                (AndesConfiguration.PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TASK_INTERVAL);
         asyncStoreTasksScheduler.scheduleAtFixedRate(messageContentRemoverTask,
                 schedulerPeriod,
                 schedulerPeriod,

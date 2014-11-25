@@ -24,7 +24,7 @@ import java.util.Arrays;
 
 import junit.framework.TestCase;
 
-import org.wso2.andes.server.configuration.plugins.ConfigurationPlugin;
+import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.logging.UnitTestMessageLogger;
 import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.server.logging.actors.TestLogActor;

@@ -18,8 +18,11 @@
 
 package org.wso2.andes.store;
 
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -55,12 +58,12 @@ public class MessageContentRemoverTask implements Runnable {
      * DurableStoreConnection to message store
      * @param messageStore MessageStore
      */
-    public MessageContentRemoverTask(MessageStore messageStore) {
+    public MessageContentRemoverTask(MessageStore messageStore) throws AndesException {
         this.contentDeletionTasksMap = new ConcurrentSkipListMap<Long, Long>();
         this.messageStore = messageStore;
 
-        int contentRemovalTimeDifference = ClusterResourceHolder.getInstance()
-                .getClusterConfiguration().getContentRemovalTimeDifference();
+        Integer contentRemovalTimeDifference = AndesConfigurationManager.getInstance()
+                .readConfigurationValue(AndesConfiguration.PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TIME_DIFFERENCE);
         // Convert to nanoseconds, since contentRemovalTimeDifference is in milliseconds
         timeOutPerMessage = contentRemovalTimeDifference * 1000000L;
     }

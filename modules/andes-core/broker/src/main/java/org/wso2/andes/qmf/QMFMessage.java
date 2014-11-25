@@ -18,7 +18,7 @@
 
 package org.wso2.andes.qmf;
 
-import org.wso2.andes.server.configuration.SessionConfig;
+import org.wso2.andes.configuration.qpid.SessionConfig;
 import org.wso2.andes.server.message.*;
 import org.wso2.andes.transport.codec.BBEncoder;
 

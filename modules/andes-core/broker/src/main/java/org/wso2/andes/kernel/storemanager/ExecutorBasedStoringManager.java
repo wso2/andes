@@ -1,7 +1,10 @@
 package org.wso2.andes.kernel.storemanager;
 
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
@@ -10,7 +13,6 @@ import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.MessageStoreManager;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.store.MessageContentRemoverTask;
 
@@ -80,7 +82,7 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
     private MessageContentRemoverTask messageContentRemoverTask;
 
     //Content deletion task will run once this num of seconds
-    private int messageContntDeletionTaskInterval;
+    private Integer messageContentDeletionTaskInterval;
 
     //content removal time difference in seconds
     private int contentRemovalTimeDifference;
@@ -91,7 +93,8 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
      * @param messageStore message store to operate on
      * @throws AndesException in case of init
      */
-    public ExecutorBasedStoringManager(MessageStore messageStore) throws AndesException {
+    public ExecutorBasedStoringManager(MessageStore messageStore) throws AndesException,
+            ConfigurationException {
         super(messageStore);
         this.messageStore = messageStore;
         initialise(messageStore);
@@ -99,7 +102,7 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
 
 
 
-    private void initialise(final MessageStore messageStore) throws AndesException {
+    private void initialise(final MessageStore messageStore) throws AndesException, ConfigurationException {
 
         bufferFlushingInterval = 15;
 
@@ -117,8 +120,8 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
 
         contentRemovalTimeDifference = 30;
 
-        messageContntDeletionTaskInterval = ClusterResourceHolder.getInstance().getClusterConfiguration()
-                                                                 .getContentRemovalTaskInterval();
+        messageContentDeletionTaskInterval = AndesConfigurationManager.getInstance()
+                .readConfigurationValue(AndesConfiguration.PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TASK_INTERVAL);
 
         directMessageStoreManager = MessageStoreManagerFactory
                 .createDirectMessageStoreManager(messageStore);
@@ -185,7 +188,7 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
 
         asyncStoreTasksScheduler.scheduleAtFixedRate(messageContentRemoverTask,
                                                      10,
-                                                     messageContntDeletionTaskInterval,
+                messageContentDeletionTaskInterval,
                                                      TimeUnit.SECONDS);
 
     }

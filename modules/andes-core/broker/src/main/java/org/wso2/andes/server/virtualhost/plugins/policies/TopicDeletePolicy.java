@@ -22,7 +22,7 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.server.configuration.plugins.ConfigurationPlugin;
+import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.exchange.TopicExchange;
 import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.server.protocol.AMQSessionModel;

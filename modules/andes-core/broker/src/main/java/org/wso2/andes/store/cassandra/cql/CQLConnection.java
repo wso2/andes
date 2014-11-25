@@ -21,7 +21,7 @@ package org.wso2.andes.store.cassandra.cql;
 import com.datastax.driver.core.Cluster;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.ConfigurationProperties;
+import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesKernelBoot;
 import org.wso2.andes.kernel.DurableStoreConnection;

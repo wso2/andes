@@ -30,7 +30,7 @@ public class BrokerOptions
     /** serialVersionUID */
     private static final long serialVersionUID = 8051825964945442234L;
     public static final String DEFAULT_CONFIG_FILE = "etc/config.xml";
-    public static final String DEFAULT_ANDES_CONFIG_FILE = "andes-config.xml";
+    public static final String DEFAULT_ANDES_CONFIG_FILE = "qpid-config.xml";
     public static final String DEFAULT_LOG_CONFIG_FILE = "etc/log4j.xml";
     public static final String ANDES_HOME = "ANDES_HOME";
     public static final Integer DEFAULT_MQTT_PORT = 1883;

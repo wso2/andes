@@ -14,7 +14,7 @@ import org.dna.mqtt.moquette.proto.messages.*;
 import org.dna.mqtt.moquette.server.Constants;
 import org.dna.mqtt.moquette.server.IAuthenticator;
 import org.dna.mqtt.moquette.server.ServerChannel;
-
+import org.wso2.andes.kernel.AndesException;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -177,7 +177,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
         }
     }
 
-    private void processInit(Properties props) {
+    private void processInit(Properties props) throws AndesException {
         m_storageService = new HawtDBStorageService();
         m_storageService.initStore();
       /*  m_storageService = new MemoryStorageService();
@@ -185,10 +185,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
         subscriptions.init(m_storageService);
 
-        String passwdPath = props.getProperty("password_file");
-        String configPath = System.getProperty("moquette.path", "");
-        IAuthenticator authenticator = new FileAuthenticator(configPath + passwdPath);
-
+        IAuthenticator authenticator = new UserAuthenticator();
         m_processor.init(subscriptions, m_storageService, authenticator);
     }
 

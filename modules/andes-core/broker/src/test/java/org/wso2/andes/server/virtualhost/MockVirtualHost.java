@@ -23,12 +23,12 @@ package org.wso2.andes.server.virtualhost;
 import java.util.UUID;
 
 import org.wso2.andes.server.binding.BindingFactory;
-import org.wso2.andes.server.configuration.BrokerConfig;
-import org.wso2.andes.server.configuration.ConfigStore;
-import org.wso2.andes.server.configuration.ConfiguredObject;
-import org.wso2.andes.server.configuration.VirtualHostConfig;
-import org.wso2.andes.server.configuration.VirtualHostConfigType;
-import org.wso2.andes.server.configuration.VirtualHostConfiguration;
+import org.wso2.andes.configuration.qpid.BrokerConfig;
+import org.wso2.andes.configuration.qpid.ConfigStore;
+import org.wso2.andes.configuration.qpid.ConfiguredObject;
+import org.wso2.andes.configuration.qpid.VirtualHostConfig;
+import org.wso2.andes.configuration.qpid.VirtualHostConfigType;
+import org.wso2.andes.configuration.qpid.VirtualHostConfiguration;
 import org.wso2.andes.server.connection.IConnectionRegistry;
 import org.wso2.andes.server.exchange.ExchangeFactory;
 import org.wso2.andes.server.exchange.ExchangeRegistry;

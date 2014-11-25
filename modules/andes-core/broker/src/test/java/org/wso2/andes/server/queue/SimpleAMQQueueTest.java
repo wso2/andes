@@ -32,7 +32,7 @@ import org.wso2.andes.framing.BasicContentHeaderProperties;
 import org.wso2.andes.framing.ContentHeaderBody;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
-import org.wso2.andes.server.configuration.VirtualHostConfiguration;
+import org.wso2.andes.configuration.qpid.VirtualHostConfiguration;
 import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.message.MessageMetaData;

@@ -18,8 +18,14 @@
 
 package org.wso2.andes.kernel;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
 import org.apache.log4j.Logger;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.storemanager.MessageStoreManagerFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
@@ -30,19 +36,12 @@ import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.slot.SlotManager;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.subscription.SubscriptionStore;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
-
 
 /**
  * This class will handle all message related functions of WSO2 Message Broker
@@ -73,11 +72,6 @@ public class MessagingEngine {
      * Cache to keep message parts until message routing happens
      */
     private HashMap<Long, List<AndesMessagePart>> messagePartsCache;
-
-    /**
-     * Cluster related configurations
-     */
-    private BrokerConfiguration config;
 
     /**
      * Manages how the message content is persisted. Eg in async mode or stored in memory etc
@@ -120,7 +114,6 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public void initialise(MessageStore messageStore) throws AndesException {
-        config = ClusterResourceHolder.getInstance().getClusterConfiguration();
         configureMessageIDGenerator();
 
         messageStoreManager = MessageStoreManagerFactory.create(messageStore);
@@ -131,9 +124,6 @@ public class MessagingEngine {
 
     }
 
-    public BrokerConfiguration getConfig() {
-        return config;
-    }
 
     /**
      * Message content is stored in database as chunks. Call this method for all the message
@@ -432,9 +422,10 @@ public class MessagingEngine {
 
     }
 
-    private void configureMessageIDGenerator() {
+    private void configureMessageIDGenerator() throws AndesException {
         // Configure message ID generator
-        String idGeneratorImpl = config.getMessageIdGeneratorClass();
+        String idGeneratorImpl = AndesConfigurationManager.getInstance().readConfigurationValue
+                (AndesConfiguration.PERSISTENCE_ID_GENERATOR);
         if (idGeneratorImpl != null && !"".equals(idGeneratorImpl)) {
             try {
                 Class clz = Class.forName(idGeneratorImpl);
@@ -495,7 +486,7 @@ public class MessagingEngine {
     /**
      * Start Checking for Expired Messages (JMS Expiration)
      */
-    public void startMessageExpirationWorker() {
+    public void startMessageExpirationWorker() throws AndesException {
 
         MessageExpirationWorker mew = ClusterResourceHolder.getInstance().getMessageExpirationWorker();
 

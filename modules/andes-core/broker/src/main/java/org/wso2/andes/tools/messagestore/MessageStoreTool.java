@@ -20,7 +20,7 @@ package org.wso2.andes.tools.messagestore;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.configuration.ConfigurationException;
-import org.wso2.andes.configuration.Configuration;
+import org.wso2.andes.configuration.qpid.Configuration;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.registry.ConfigurationFileApplicationRegistry;

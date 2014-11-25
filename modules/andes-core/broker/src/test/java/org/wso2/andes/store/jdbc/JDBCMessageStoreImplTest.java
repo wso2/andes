@@ -21,7 +21,7 @@ package org.wso2.andes.store.jdbc;
 import junit.framework.Assert;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.*;
-import org.wso2.andes.configuration.ConfigurationProperties;
+import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesRemovableMetadata;

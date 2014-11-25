@@ -18,10 +18,13 @@
 
 package org.wso2.andes.amqp;
 
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInternalException;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
@@ -280,8 +283,10 @@ public class QpidAMQPBridge {
             }
 
             if (subscription instanceof SubscriptionImpl.BrowserSubscription) {
-                boolean isInMemoryMode = ClusterResourceHolder.getInstance().getClusterConfiguration().isInMemoryMode();
-                QueueBrowserDeliveryWorker deliveryWorker = new QueueBrowserDeliveryWorker(subscription, queue, ((SubscriptionImpl.BrowserSubscription) subscription).getProtocolSession(), isInMemoryMode);
+                Boolean isInMemoryMode = AndesConfigurationManager.getInstance().readConfigurationValue
+                        (AndesConfiguration.PERSISTENCE_IS_IN_MEMORY_ENABLED);
+                QueueBrowserDeliveryWorker deliveryWorker = new QueueBrowserDeliveryWorker(subscription, queue,
+                        ((SubscriptionImpl.BrowserSubscription) subscription).getProtocolSession(), isInMemoryMode);
                 deliveryWorker.send();
             } else {
                 if (log.isDebugEnabled()) {

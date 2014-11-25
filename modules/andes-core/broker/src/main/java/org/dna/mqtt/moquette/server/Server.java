@@ -4,10 +4,12 @@ import org.dna.mqtt.moquette.messaging.spi.impl.SimpleMessaging;
 import org.dna.mqtt.moquette.server.netty.NettyAcceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesException;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.Properties;
 /**
  * Launch a  configured version of the server.
@@ -16,50 +18,41 @@ import java.util.Properties;
 public class Server {
 
     public static final int DEFAULT_MQTT_PORT = 1833;
-    private static final Logger LOG = LoggerFactory.getLogger(Server.class);
+    private static final Logger log = LoggerFactory.getLogger(Server.class);
     
     public static final String STORAGE_FILE_PATH = System.getProperty("user.home") + 
             File.separator + "moquette_store.hawtdb";
 
     private ServerAcceptor m_acceptor;
     SimpleMessaging messaging;
-    
-/*    public static void main(String[] args) throws IOException {
-        
-        final Server server = new Server();
-        server.startServer();
-        System.out.println("Server started, version 0.5");
-        //Bind  a shutdown hook
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            @Override
-            public void run() {
-                server.stopServer();
-            }
-        });
-        
-    }*/
 
-    public void startServer(int port) throws IOException {
+    public void startServer(int port) throws IOException, AndesException {
         Properties configProps = loadConfigurations();
         configProps.put("port",Integer.toString(port));
         serverInit(configProps);
     }
     
-    public void startServer() throws IOException {
+    public void startServer() throws IOException, AndesException {
         Properties configProps = loadConfigurations();
         serverInit(configProps);
     }
 
-    private Properties loadConfigurations() {
-        ConfigurationParser confParser = new ConfigurationParser();
-        try {
-            String configPath = System.getProperty("moquette.path", "");
-            confParser.parse(new File(configPath + "mqtt/moquette.conf"));
-        } catch (ParseException pex) {
-            LOG.warn("An error occured in parsing configuration, fallback on default configuration", pex);
-        }
+    private Properties loadConfigurations() throws AndesException {
 
-        return confParser.getProperties();
+        Properties mqttProperties = new Properties();
+
+        mqttProperties.put("port",
+                AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
+                        .TRANSPORTS_MQTT_PORT));
+
+        mqttProperties.put("sslPort",
+                AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
+                        .TRANSPORTS_MQTT_SSL_PORT));
+
+        mqttProperties.put("host",AndesConfigurationManager.getInstance().readConfigurationValue
+                (AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
+
+        return mqttProperties;
     }
 
     private void serverInit(Properties configProps) throws IOException {
@@ -71,9 +64,9 @@ public class Server {
     }
 
     public void stopServer() {
-        System.out.println("Server stopping...");
+        log.info("MQTT Server is stopping...");
         messaging.stop();
         m_acceptor.close();
-        System.out.println("Server stopped");
+        log.info("MQTT Server has stopped.");
     }
 }

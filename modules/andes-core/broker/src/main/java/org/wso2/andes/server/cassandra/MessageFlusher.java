@@ -24,8 +24,8 @@ import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.configuration.BrokerConfiguration;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.subscription.SubscriptionStore;
 
@@ -40,10 +40,10 @@ import java.util.concurrent.ConcurrentSkipListSet;
 public class MessageFlusher {
     private static Log log = LogFactory.getLog(MessageFlusher.class);
 
-    private int maxNumberOfUnAckedMessages = 100000;
+    private Integer maxNumberOfUnAckedMessages = 100000;
 
     //per destination
-    private int maxNumberOfReadButUndeliveredMessages = 5000;
+    private Integer maxNumberOfReadButUndeliveredMessages = 5000;
 
     private SequentialThreadPoolExecutor executor;
 
@@ -52,6 +52,7 @@ public class MessageFlusher {
     private static final int THREADPOOL_RECOVERY_ATTEMPTS = 2;
 
     private final int queueWorkerWaitInterval;
+    private static Integer PUBLISHER_POOL_SIZE;
 
     /**
      * Subscribed destination wise information
@@ -62,19 +63,30 @@ public class MessageFlusher {
 
     private SubscriptionStore subscriptionStore;
 
-    private static MessageFlusher messageFlusher = new MessageFlusher(1000);
+    private static MessageFlusher messageFlusher;
 
-    public MessageFlusher(final int queueWorkerWaitInterval) {
-        this.executor = new SequentialThreadPoolExecutor(
-                (ClusterResourceHolder.getInstance().getClusterConfiguration().
-                        getPublisherPoolSize()), "QueueMessagePublishingExecutor");
+    static {
+        try {
+            messageFlusher = new MessageFlusher(1000);
+        } catch (AndesException e) {
+            log.error("Error occurred during configuration access",e);
+        }
+    }
+
+    public MessageFlusher(final int queueWorkerWaitInterval) throws AndesException {
+
+        PUBLISHER_POOL_SIZE = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
+                .PERFORMANCE_TUNING_DELIVERY_PUBLISHER_POOL_SIZE);
+
+        this.maxNumberOfUnAckedMessages = AndesConfigurationManager.getInstance().readConfigurationValue
+                (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
+
+        this.executor = new SequentialThreadPoolExecutor((PUBLISHER_POOL_SIZE), "QueueMessagePublishingExecutor");
         this.queueWorkerWaitInterval = queueWorkerWaitInterval;
 
-        BrokerConfiguration clusterConfiguration = ClusterResourceHolder.getInstance()
-                .getClusterConfiguration();
-        this.maxNumberOfUnAckedMessages = clusterConfiguration.getMaxNumberOfUnackedMessages();
-        this.maxNumberOfReadButUndeliveredMessages = clusterConfiguration
-                .getMaxNumberOfReadButUndeliveredMessages();
+        this.maxNumberOfReadButUndeliveredMessages = AndesConfigurationManager.getInstance().readConfigurationValue
+                (AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_MAX_READ_BUT_UNDELIVERED_MESSAGES);
+
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
     }
 

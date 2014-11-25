@@ -18,15 +18,17 @@
 
 package org.wso2.andes.kernel;
 
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.VirtualHostsConfiguration;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.StoreConfiguration;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
 import org.wso2.andes.server.slot.SlotManager;
@@ -46,7 +48,6 @@ import java.util.concurrent.TimeUnit;
  */
 public class AndesKernelBoot {
     private static Log log = LogFactory.getLog(AndesKernelBoot.class);
-    private static BrokerConfiguration clusterConfiguration;
     private static VirtualHost virtualHost;
     private static MessageStore messageStore;
 
@@ -175,22 +176,13 @@ public class AndesKernelBoot {
     }
 
     /**
-     * load configurations to andes kernel
-     *
-     * @param configuration configuration to load
-     */
-    public static void loadConfigurations(BrokerConfiguration configuration) {
-        clusterConfiguration = configuration;
-    }
-
-    /**
      * start all andes stores message store/context store and AMQP construct store
      * @throws Exception
      */
     public static void startAndesStores() throws Exception {
 
-        VirtualHostsConfiguration virtualHostsConfiguration = AndesContext.getInstance()
-                                                                          .getVirtualHostsConfiguration();
+        StoreConfiguration virtualHostsConfiguration = AndesContext.getInstance()
+                                                                          .getStoreConfiguration();
         //create a andes context store and register
         String contextStoreClassName = virtualHostsConfiguration.getAndesContextStoreClassName();
         Class contextStoreClass = Class.forName(contextStoreClassName);
@@ -205,7 +197,7 @@ public class AndesKernelBoot {
 
         AndesContextStore andesContextStore = (AndesContextStore) contextStoreInstance;
         andesContextStore.init(
-                virtualHostsConfiguration.getAndesContextStoreProperties()
+                virtualHostsConfiguration.getContextStoreProperties()
         );
         AndesContext.getInstance().setAndesContextStore(andesContextStore);
         AndesKernelBoot.contextStore = andesContextStore;
@@ -279,10 +271,11 @@ public class AndesKernelBoot {
      *
      * @throws Exception
      */
-    public static void startHouseKeepingThreads() throws Exception {
+    public static void startHouseKeepingThreads() throws AndesException {
         //reload exchanges/queues/bindings and subscriptions
         AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask();
-        int scheduledPeriod = clusterConfiguration.getAndesRecoveryTaskInterval();
+        Integer scheduledPeriod = AndesConfigurationManager.getInstance().readConfigurationValue
+                (AndesConfiguration.PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL);
         andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod,
                                                        scheduledPeriod, TimeUnit.SECONDS);
         ClusterResourceHolder.getInstance().setAndesRecoveryTask(andesRecoveryTask);
@@ -368,11 +361,11 @@ public class AndesKernelBoot {
      */
     public static void reInitializeAndesStores() throws Exception {
         log.info("Reinitializing Andes Stores...");
-        VirtualHostsConfiguration virtualHostsConfiguration =
-                AndesContext.getInstance().getVirtualHostsConfiguration();
+        StoreConfiguration virtualHostsConfiguration =
+                AndesContext.getInstance().getStoreConfiguration();
         messageStore.initializeMessageStore(virtualHostsConfiguration.getMessageStoreProperties());
         AndesContextStore andesContextStore = AndesContext.getInstance().getAndesContextStore();
-        andesContextStore.init(virtualHostsConfiguration.getAndesContextStoreProperties());
+        andesContextStore.init(virtualHostsConfiguration.getContextStoreProperties());
     }
 
     /**
@@ -410,10 +403,9 @@ public class AndesKernelBoot {
      * Start the thrift server
      * @throws AndesException
      */
-    private static void startThriftServer() throws AndesException {
+    private static void startThriftServer() throws AndesException, ConfigurationException {
         MBThriftServer.getInstance().start(AndesContext.getInstance().getThriftServerHost(),
                 AndesContext.getInstance().getThriftServerPort(), "MB-ThriftServer-main-thread");
-
 
     }
 

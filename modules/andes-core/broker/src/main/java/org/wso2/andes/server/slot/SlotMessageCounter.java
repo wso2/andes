@@ -20,10 +20,10 @@ package org.wso2.andes.server.slot;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
 
 import java.util.List;
@@ -43,19 +43,35 @@ public class SlotMessageCounter {
      * Timeout in milliseconds for messages in the slot. When this timeout is exceeded slot will be
      * submitted to the coordinator
      */
-    private long timeOutForMessagesInQueue = ClusterResourceHolder.getInstance()
-            .getClusterConfiguration().getSlotSubmitTimeOut();
+    private Long timeOutForMessagesInQueue;
     private Timer submitSlotToCoordinatorTimer = new Timer();
     private Log log = LogFactory.getLog(SlotMessageCounter.class);
-    private BrokerConfiguration clusterConfiguration;
     private static SlotMessageCounter slotMessageCounter = new SlotMessageCounter();
-    private int slotWindowSize;
+    private Integer slotWindowSize;
 
     private SlotMessageCounter() {
-        clusterConfiguration = ClusterResourceHolder.getInstance().getClusterConfiguration();
         scheduleSubmitSlotToCoordinatorTimer();
-        slotWindowSize = clusterConfiguration.getSlotWindowSize();
-        timeOutForMessagesInQueue = clusterConfiguration.getSlotSubmitTimeOut();
+
+        try {
+            slotWindowSize = AndesConfigurationManager.getInstance().readConfigurationValue
+                    (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
+        } catch (AndesException e) {
+            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE.toString(),e);
+            //Set default value
+            slotWindowSize = Integer.valueOf(AndesConfiguration
+                    .PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE.get().getDefaultValue());
+        }
+
+        try {
+            timeOutForMessagesInQueue = AndesConfigurationManager.getInstance()
+                    .readConfigurationValue(AndesConfiguration
+                            .PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY);
+        } catch (AndesException e) {
+            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY.toString(),e);
+            // Set default value
+            timeOutForMessagesInQueue = Long.valueOf(AndesConfiguration
+                    .PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY.get().getDefaultValue());
+        }
     }
 
     /**
