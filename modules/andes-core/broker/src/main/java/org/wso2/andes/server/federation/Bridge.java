@@ -19,9 +19,9 @@ package org.wso2.andes.server.federation;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.configuration.qpid.configuration.BridgeConfig;
-import org.wso2.andes.configuration.qpid.configuration.BridgeConfigType;
-import org.wso2.andes.configuration.qpid.configuration.ConfiguredObject;
+import org.wso2.andes.configuration.qpid.BridgeConfig;
+import org.wso2.andes.configuration.qpid.BridgeConfigType;
+import org.wso2.andes.configuration.qpid.ConfiguredObject;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.exchange.ExchangeRegistry;
 import org.wso2.andes.server.flow.FlowCreditManager_0_10;

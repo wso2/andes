@@ -30,7 +30,7 @@ import javax.security.auth.Subject;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.protocol.AMQConstant;
-import org.wso2.andes.configuration.qpid.configuration.ConnectionConfig;
+import org.wso2.andes.configuration.qpid.ConnectionConfig;
 import org.wso2.andes.server.logging.LogActor;
 import org.wso2.andes.server.logging.LogSubject;
 import org.wso2.andes.server.logging.actors.CurrentActor;

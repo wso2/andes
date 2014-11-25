@@ -23,7 +23,7 @@ package org.wso2.andes.server.txn;
 import java.nio.ByteBuffer;
 
 import org.apache.commons.lang.NotImplementedException;
-import org.wso2.andes.configuration.qpid.configuration.SessionConfig;
+import org.wso2.andes.configuration.qpid.SessionConfig;
 import org.wso2.andes.server.message.AMQMessageHeader;
 import org.wso2.andes.server.message.MessageReference;
 import org.wso2.andes.server.message.ServerMessage;

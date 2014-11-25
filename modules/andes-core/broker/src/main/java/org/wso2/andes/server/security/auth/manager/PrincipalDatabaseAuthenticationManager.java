@@ -42,8 +42,8 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.PropertyException;
 import org.wso2.andes.configuration.PropertyUtils;
-import org.wso2.andes.configuration.qpid.configuration.plugins.ConfigurationPlugin;
-import org.wso2.andes.configuration.qpid.configuration.plugins.ConfigurationPluginFactory;
+import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
+import org.wso2.andes.configuration.qpid.plugins.ConfigurationPluginFactory;
 import org.wso2.andes.server.security.auth.AuthenticationResult;
 import org.wso2.andes.server.security.auth.AuthenticationResult.AuthenticationStatus;
 import org.wso2.andes.server.security.auth.database.PrincipalDatabase;
@@ -245,7 +245,7 @@ public class PrincipalDatabaseAuthenticationManager implements AuthenticationMan
     }
 
     /**
-     * @see org.wso2.andes.server.plugins.Plugin#configure(org.wso2.andes.configuration.qpid.configuration.plugins.ConfigurationPlugin)
+     * @see org.wso2.andes.server.plugins.Plugin#configure(org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin)
      */
     public void configure(final ConfigurationPlugin config) throws ConfigurationException
     {

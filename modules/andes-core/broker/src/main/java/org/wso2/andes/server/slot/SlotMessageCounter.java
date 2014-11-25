@@ -18,7 +18,6 @@
 
 package org.wso2.andes.server.slot;
 
-import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -57,6 +56,8 @@ public class SlotMessageCounter {
             slotWindowSize = AndesConfigurationManager.getInstance().readConfigurationValue
                     (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
         } catch (AndesException e) {
+            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE.toString(),e);
+            //Set default value
             slotWindowSize = Integer.valueOf(AndesConfiguration
                     .PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE.get().getDefaultValue());
         }
@@ -66,6 +67,8 @@ public class SlotMessageCounter {
                     .readConfigurationValue(AndesConfiguration
                             .PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY);
         } catch (AndesException e) {
+            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY.toString(),e);
+            // Set default value
             timeOutForMessagesInQueue = Long.valueOf(AndesConfiguration
                     .PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY.get().getDefaultValue());
         }

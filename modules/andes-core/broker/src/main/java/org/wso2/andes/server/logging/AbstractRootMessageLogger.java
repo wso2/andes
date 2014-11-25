@@ -17,7 +17,7 @@
  */
 package org.wso2.andes.server.logging;
 
-import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
 
 public abstract class AbstractRootMessageLogger implements RootMessageLogger
 {

@@ -25,7 +25,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import junit.framework.AssertionFailedError;
-import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
 
 /**
  * Virtualhost Test Cases

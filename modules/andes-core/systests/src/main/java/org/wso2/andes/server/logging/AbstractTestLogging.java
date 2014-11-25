@@ -28,7 +28,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.apache.commons.configuration.ConfigurationException;
-import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.server.logging.subjects.AbstractTestLogSubject;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.util.InternalBrokerBaseCase;

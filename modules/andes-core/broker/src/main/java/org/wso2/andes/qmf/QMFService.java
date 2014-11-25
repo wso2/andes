@@ -20,8 +20,9 @@ package org.wso2.andes.qmf;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.common.Closeable;
+import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.qmf.schema.BrokerSchema;
-import org.wso2.andes.configuration.qpid.configuration.*;
+import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.server.registry.IApplicationRegistry;
 
 import java.util.Collection;
@@ -119,7 +120,7 @@ public class QMFService implements ConfigStore.ConfigEventListener, Closeable
             new   ConfigObjectAdapter<BrokerSchema.SystemObject,
                                       BrokerSchema.SystemClass,
                                       BrokerSchema.SystemDelegate,
-                                      SystemConfigType,
+                    SystemConfigType,
                                       SystemConfig>(SystemConfigType.getInstance(),
                                                     PACKAGE.getQMFClassInstance(BrokerSchema.SystemClass.class))
             {
@@ -182,7 +183,7 @@ public class QMFService implements ConfigStore.ConfigEventListener, Closeable
                                       BrokerSchema.ExchangeClass,
                                       BrokerSchema.ExchangeDelegate,
                                       ExchangeConfigType,
-                                      ExchangeConfig>(ExchangeConfigType.getInstance(),
+                    ExchangeConfig>(ExchangeConfigType.getInstance(),
                                                       PACKAGE.getQMFClassInstance(BrokerSchema.ExchangeClass.class))
             {
 

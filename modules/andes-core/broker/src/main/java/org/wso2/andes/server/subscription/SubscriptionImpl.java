@@ -24,6 +24,7 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.common.AMQPFilterTypes;
 import org.wso2.andes.common.ClientProperties;
+import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -31,7 +32,7 @@ import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.configuration.qpid.configuration.*;
+import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.server.filter.FilterManager;
 import org.wso2.andes.server.filter.FilterManagerFactory;
 import org.wso2.andes.server.flow.FlowCreditManager;
@@ -61,7 +62,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * that was given out by the broker and the channel id. <p/>
  */
 public abstract class SubscriptionImpl implements Subscription, FlowCreditManager.FlowCreditManagerListener,
-                                                  SubscriptionConfig
+        SubscriptionConfig
 {
 
 

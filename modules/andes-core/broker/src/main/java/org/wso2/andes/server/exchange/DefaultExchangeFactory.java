@@ -23,7 +23,7 @@ import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.AMQUnknownExchangeType;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.qmf.ManagementExchange;
-import org.wso2.andes.configuration.qpid.configuration.VirtualHostConfiguration;
+import org.wso2.andes.configuration.qpid.VirtualHostConfiguration;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 

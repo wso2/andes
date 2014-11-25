@@ -18,9 +18,10 @@
  * under the License.
  *
  */
-package org.wso2.andes.configuration.qpid.configuration;
+package org.wso2.andes.configuration.qpid;
 
 import org.apache.commons.configuration.ConfigurationException;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.test.utils.QpidBrokerTestCase;
 
 /**

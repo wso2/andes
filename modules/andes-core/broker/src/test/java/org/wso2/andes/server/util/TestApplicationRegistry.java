@@ -23,11 +23,11 @@ package org.wso2.andes.server.util;
 import java.util.Properties;
 
 import org.apache.commons.configuration.ConfigurationException;
-import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.server.logging.NullRootMessageLogger;
 import org.wso2.andes.server.logging.actors.BrokerActor;
 import org.wso2.andes.server.logging.actors.CurrentActor;
-import org.wso2.andes.configuration.qpid.configuration.plugins.ConfigurationPlugin;
+import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.security.auth.database.PropertiesPrincipalDatabase;
 import org.wso2.andes.server.security.auth.manager.AuthenticationManager;
@@ -64,7 +64,7 @@ public class TestApplicationRegistry extends ApplicationRegistry
         {
 
             /**
-             * @see org.wso2.andes.server.security.auth.manager.PrincipalDatabaseAuthenticationManager#configure(org.wso2.andes.configuration.qpid.configuration.plugins.ConfigurationPlugin)
+             * @see org.wso2.andes.server.security.auth.manager.PrincipalDatabaseAuthenticationManager#configure(org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin)
              */
             @Override
             public void configure(ConfigurationPlugin config) throws ConfigurationException

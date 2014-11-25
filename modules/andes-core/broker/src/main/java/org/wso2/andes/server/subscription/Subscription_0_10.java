@@ -18,10 +18,11 @@
 package org.wso2.andes.server.subscription;
 
 import org.wso2.andes.AMQException;
+import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.BasicContentHeaderProperties;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.configuration.qpid.configuration.*;
+import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.server.filter.FilterManager;
 import org.wso2.andes.server.flow.CreditCreditManager;
 import org.wso2.andes.server.flow.FlowCreditManager;

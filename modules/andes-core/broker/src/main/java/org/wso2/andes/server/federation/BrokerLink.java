@@ -17,12 +17,12 @@
  */
 package org.wso2.andes.server.federation;
 
-import org.wso2.andes.configuration.qpid.configuration.ConfigStore;
-import org.wso2.andes.configuration.qpid.configuration.ConfiguredObject;
-import org.wso2.andes.configuration.qpid.configuration.ConnectionConfig;
-import org.wso2.andes.configuration.qpid.configuration.ConnectionConfigType;
-import org.wso2.andes.configuration.qpid.configuration.LinkConfig;
-import org.wso2.andes.configuration.qpid.configuration.LinkConfigType;
+import org.wso2.andes.configuration.qpid.ConfigStore;
+import org.wso2.andes.configuration.qpid.ConfiguredObject;
+import org.wso2.andes.configuration.qpid.ConnectionConfig;
+import org.wso2.andes.configuration.qpid.ConnectionConfigType;
+import org.wso2.andes.configuration.qpid.LinkConfig;
+import org.wso2.andes.configuration.qpid.LinkConfigType;
 import org.wso2.andes.server.transport.ServerSession;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.transport.Binary;

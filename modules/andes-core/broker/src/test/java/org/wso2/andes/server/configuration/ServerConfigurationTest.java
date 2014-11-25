@@ -18,7 +18,7 @@
  * under the License.
  *
  */
-package org.wso2.andes.configuration.qpid.configuration;
+package org.wso2.andes.configuration.qpid;
 
 import static org.wso2.andes.transport.ConnectionSettings.WILDCARD_ADDRESS;
 
@@ -29,6 +29,9 @@ import java.util.Locale;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
+import org.wso2.andes.configuration.qpid.ExchangeConfiguration;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.VirtualHostConfiguration;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.registry.ApplicationRegistry;

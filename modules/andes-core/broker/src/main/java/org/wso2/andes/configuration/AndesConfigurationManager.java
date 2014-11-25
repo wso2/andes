@@ -96,23 +96,30 @@ public class AndesConfigurationManager {
         addDerivedProperties();
     }
 
-    public static AndesConfigurationManager getInstance() throws AndesException {
-        if (instance == null) {
-            synchronized (AndesConfigurationManager.class) {
-                try {
-                    instance = new AndesConfigurationManager();
-                } catch (ConfigurationException e) {
-                    throw new AndesException("Error occurred when trying to construct configurations from " + "files" +
-                            ".", e);
-                    // The error is not propagated upwards here, because every point in code that
-                    // accesses configurations will need to handle it. code duplication.)
-                    // Since we have default values to use in a failure,
-                    // logging the error here is sufficient.
-                } catch (UnknownHostException e) {
-                    throw new AndesException("Error occurred when trying to derive the bind address for messaging.", e);
-                }
-            }
+    /***
+     * Initialize the configuration manager.
+     * @throws AndesException
+     */
+    public static void Initialize() throws AndesException {
+        try {
+            instance = new AndesConfigurationManager();
+        } catch (ConfigurationException e) {
+            throw new AndesException("Error occurred when trying to construct configurations from " + "files" +
+                    ".", e);
+            // The error is not propagated upwards here, because every point in code that
+            // accesses configurations will need to handle it. code duplication.)
+            // Since we have default values to use in a failure,
+            // logging the error here is sufficient.
+        } catch (UnknownHostException e) {
+            throw new AndesException("Error occurred when trying to derive the bind address for messaging.", e);
         }
+    }
+
+    /**
+     * The instance MUST be initialized with initialize() prior to calling this.
+     * @return AndesConfigurationManager instance
+     */
+    public static AndesConfigurationManager getInstance() {
         return instance;
     }
 

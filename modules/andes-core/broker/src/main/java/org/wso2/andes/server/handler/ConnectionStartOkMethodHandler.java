@@ -22,7 +22,7 @@ import javax.security.sasl.SaslServer;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
-import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.framing.ConnectionCloseBody;
 import org.wso2.andes.framing.ConnectionSecureBody;
 import org.wso2.andes.framing.ConnectionStartOkBody;

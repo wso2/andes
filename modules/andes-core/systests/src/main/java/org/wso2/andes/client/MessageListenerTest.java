@@ -20,7 +20,7 @@
  */
 package org.wso2.andes.client;
 
-import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.test.utils.QpidBrokerTestCase;
 import org.wso2.andes.util.LogMonitor;
 

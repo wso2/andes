@@ -19,9 +19,9 @@ package org.wso2.andes.server.virtualhost;
 
 import org.wso2.andes.common.Closeable;
 import org.wso2.andes.server.binding.BindingFactory;
-import org.wso2.andes.configuration.qpid.configuration.ConfigStore;
-import org.wso2.andes.configuration.qpid.configuration.VirtualHostConfig;
-import org.wso2.andes.configuration.qpid.configuration.VirtualHostConfiguration;
+import org.wso2.andes.configuration.qpid.ConfigStore;
+import org.wso2.andes.configuration.qpid.VirtualHostConfig;
+import org.wso2.andes.configuration.qpid.VirtualHostConfiguration;
 import org.wso2.andes.server.connection.IConnectionRegistry;
 import org.wso2.andes.server.exchange.ExchangeFactory;
 import org.wso2.andes.server.exchange.ExchangeRegistry;

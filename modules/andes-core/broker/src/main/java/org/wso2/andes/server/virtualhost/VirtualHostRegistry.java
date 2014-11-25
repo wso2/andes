@@ -19,7 +19,7 @@ package org.wso2.andes.server.virtualhost;
 
 import org.wso2.andes.common.Closeable;
 import org.wso2.andes.server.registry.ApplicationRegistry;
-import org.wso2.andes.configuration.qpid.configuration.ConfigStore;
+import org.wso2.andes.configuration.qpid.ConfigStore;
 
 import java.util.ArrayList;
 import java.util.Collection;

@@ -27,7 +27,7 @@ import javax.jms.Session;
 import org.wso2.andes.client.AMQDestination;
 import org.wso2.andes.client.AMQSession;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.util.FileUtils;
 

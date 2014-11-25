@@ -35,7 +35,7 @@ import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.framing.amqp_8_0.BasicConsumeBodyImpl;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.configuration.qpid.configuration.VirtualHostConfiguration;
+import org.wso2.andes.configuration.qpid.VirtualHostConfiguration;
 import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.exchange.ExchangeRegistry;

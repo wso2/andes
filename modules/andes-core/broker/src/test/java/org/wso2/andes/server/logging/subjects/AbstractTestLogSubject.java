@@ -24,7 +24,7 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.LogActor;
 import org.wso2.andes.server.logging.LogMessage;

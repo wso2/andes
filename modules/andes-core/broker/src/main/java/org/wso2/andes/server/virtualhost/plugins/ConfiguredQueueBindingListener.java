@@ -24,7 +24,7 @@ import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.configuration.qpid.configuration.plugins.SlowConsumerDetectionQueueConfiguration;
+import org.wso2.andes.configuration.qpid.plugins.SlowConsumerDetectionQueueConfiguration;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.exchange.Exchange.BindingListener;
 import org.wso2.andes.server.queue.AMQQueue;

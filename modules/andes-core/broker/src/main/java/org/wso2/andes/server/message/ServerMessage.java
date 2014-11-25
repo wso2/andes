@@ -19,7 +19,7 @@ package org.wso2.andes.server.message;
 
 import java.nio.ByteBuffer;
 
-import org.wso2.andes.configuration.qpid.configuration.SessionConfig;
+import org.wso2.andes.configuration.qpid.SessionConfig;
 
 public interface ServerMessage extends EnqueableMessage, MessageContentSource
 {

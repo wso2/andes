@@ -18,12 +18,14 @@
  * under the License.
  *
  */
-package org.wso2.andes.configuration.qpid.configuration;
+package org.wso2.andes.configuration.qpid;
 
 import junit.framework.TestCase;
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
+import org.wso2.andes.configuration.qpid.QueueConfiguration;
+import org.wso2.andes.configuration.qpid.VirtualHostConfiguration;
 
 public class QueueConfigurationTest extends TestCase
 {

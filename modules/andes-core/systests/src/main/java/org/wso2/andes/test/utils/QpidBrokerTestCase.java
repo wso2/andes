@@ -64,7 +64,7 @@ import org.wso2.andes.management.common.mbeans.ConfigurationManagement;
 import org.wso2.andes.server.Broker;
 import org.wso2.andes.server.BrokerOptions;
 import org.wso2.andes.server.ProtocolExclusion;
-import org.wso2.andes.configuration.qpid.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.server.protocol.AmqpProtocolVersion;
 import org.wso2.andes.url.URLSyntaxException;
 import org.wso2.andes.util.FileUtils;
