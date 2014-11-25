@@ -56,6 +56,7 @@ public class SlotMessageCounter {
             slotWindowSize = AndesConfigurationManager.getInstance().readConfigurationValue
                     (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
         } catch (AndesException e) {
+            // This could only happen if the defined default value for PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE cannot be parsed.
             log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE.toString(),e);
             //Set default value
             slotWindowSize = Integer.valueOf(AndesConfiguration
@@ -67,6 +68,7 @@ public class SlotMessageCounter {
                     .readConfigurationValue(AndesConfiguration
                             .PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY);
         } catch (AndesException e) {
+            // This could only happen if the defined default value for PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY cannot be parsed.
             log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY.toString(),e);
             // Set default value
             timeOutForMessagesInQueue = Long.valueOf(AndesConfiguration

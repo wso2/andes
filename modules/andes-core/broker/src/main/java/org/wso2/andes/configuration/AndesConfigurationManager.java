@@ -97,10 +97,10 @@ public class AndesConfigurationManager {
     }
 
     /***
-     * Initialize the configuration manager.
+     * initialize the configuration manager.
      * @throws AndesException
      */
-    public static void Initialize() throws AndesException {
+    public static void initialize() throws AndesException {
         try {
             instance = new AndesConfigurationManager();
         } catch (ConfigurationException e) {

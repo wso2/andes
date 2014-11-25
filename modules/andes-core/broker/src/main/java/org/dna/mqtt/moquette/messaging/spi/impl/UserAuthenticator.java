@@ -28,9 +28,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * This is the class used to authenticate MQTT activities against users. The configured users are used temporarily.
+ * Once proper authentication model is bought for MQTT, this should support working with the carbon authentication
+ * model.
+ */
 public class UserAuthenticator implements IAuthenticator {
-    
-    private Map<String, String> m_identities = new HashMap<String, String>();
+
+
+    private Map<String, String> users = new HashMap<String, String>();
     
     UserAuthenticator() throws AndesException {
 
@@ -43,12 +49,12 @@ public class UserAuthenticator implements IAuthenticator {
             String password = AndesConfigurationManager.getInstance().readPropertyOfChildByIndex
                     (AndesConfiguration.TRANSPORTS_MQTT_PASSWORD, i);
 
-            m_identities.put(userName,password);
+            users.put(userName, password);
         }
     }
     
     public boolean checkValid(String username, String password) {
-        String foundPwq = m_identities.get(username);
+        String foundPwq = users.get(username);
         return !StringUtils.isBlank(foundPwq) && foundPwq.equals(password);
     }
     

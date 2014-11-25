@@ -72,43 +72,4 @@ public class MergeConfigurationTest extends TestingBaseCase
         topicConsumer(Session.AUTO_ACKNOWLEDGE, true);
     }
 
-
-//
-//    public void testMerge() throws ConfigurationException, AMQException
-//    {
-//
-//        AMQQueue queue = AMQQueueFactory.createAMQQueueImpl(new AMQShortString(getName()+":stockSubscription"), false, new AMQShortString("testowner"),
-//                                                    false, false, _virtualHost, null);
-//
-//        _virtualHost.getQueueRegistry().registerQueue(queue);
-//        Exchange defaultExchange = _virtualHost.getExchangeRegistry().getDefaultExchange();
-//        _virtualHost.getBindingFactory().addBinding(getName(), queue, defaultExchange, null);
-//
-//
-//        Exchange topicExchange = _virtualHost.getExchangeRegistry().getExchange(ExchangeDefaults.TOPIC_EXCHANGE_NAME);
-//        _virtualHost.getBindingFactory().addBinding("stocks.nyse.orcl", queue, topicExchange, null);
-//
-//        TopicConfig config = queue.getConfiguration().getConfiguration(TopicConfig.class.getName());
-//
-//        assertNotNull("Queue should have topic configuration bound to it.", config);
-//        assertEquals("Configuration name not correct", getName() + ":stockSubscription", config.getSubscriptionName());
-//
-//        ConfigurationPlugin scdConfig = queue.getConfiguration().getConfiguration(SlowConsumerDetectionQueueConfiguration.class.getName());
-//        if (scdConfig instanceof org.wso2.andes.configuration.qpid.plugin.SlowConsumerDetectionQueueConfiguration)
-//        {
-//            System.err.println("********************** scd is a SlowConsumerDetectionQueueConfiguration.");
-//        }
-//        else
-//        {
-//            System.err.println("********************** Test SCD "+SlowConsumerDetectionQueueConfiguration.class.getClassLoader());
-//            System.err.println("********************** Broker SCD "+scdConfig.getClass().getClassLoader());
-//                 System.err.println("********************** Broker SCD "+scdConfig.getClass().isAssignableFrom(SlowConsumerDetectionQueueConfiguration.class));
-//            System.err.println("********************** is a "+scdConfig.getClass());
-//        }
-//
-//        assertNotNull("Queue should have scd configuration bound to it.", scdConfig);
-//        assertEquals("MessageCount is not correct", 10 , ((SlowConsumerDetectionQueueConfiguration)scdConfig).getMessageCount());
-//        assertEquals("Policy is not correct", TopicDeletePolicy.class.getName() , ((SlowConsumerDetectionQueueConfiguration)scdConfig).getPolicy().getClass().getName());
-//    }
-
 }
