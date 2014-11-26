@@ -191,7 +191,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
             } catch (MQTTException e) {
                 final String error = "Error occured while delivering message to the subscriber for message :" +
                         messageMetadata.getMessageID();
-                log.error(error);
+                log.error(error, e);
                 throw new AndesException(error, e);
             }
         }

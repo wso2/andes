@@ -146,6 +146,7 @@ public class MQTTUtils {
             message.put(messagePart.getData());
         } catch (AndesException e) {
             final String errorMessage = "Error in getting content for message";
+            log.error(errorMessage, e);
             throw new AndesException(errorMessage, e);
         }
         return message;

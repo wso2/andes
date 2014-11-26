@@ -90,7 +90,7 @@ public class MQTTChannel {
 
         } catch (AndesException e) {
             final String error = "Error while adding the message header to the andes kernal ";
-            log.error(error + e.getMessage());
+            log.error(error, e);
             throw new MQTTException(error, e);
         }
     }
@@ -182,7 +182,7 @@ public class MQTTChannel {
             }
         } catch (AndesException e) {
             final String message = "Error ocured while creating the topic subscription in the kernal";
-            log.error(message);
+            log.error(message, e);
             throw new MQTTException(message, e);
         }
     }
@@ -213,7 +213,7 @@ public class MQTTChannel {
 
         } catch (AndesException e) {
             final String message = "Error occured while removing the subscriber ";
-            log.error(message + e.getMessage());
+            log.error(message, e);
             throw new MQTTException(message, e);
         }
     }
