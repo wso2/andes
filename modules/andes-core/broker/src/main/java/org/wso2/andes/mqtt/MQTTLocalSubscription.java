@@ -175,7 +175,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
         //Will publish the message to the respective queue
         if (mqqtServerChannel != null) {
             try {
-                mqqtServerChannel.distributeMessageToSubscriber(/*messageMetadata.getStorageQueueName()*/
+                mqqtServerChannel.distributeMessageToSubscriber(
                         this.getStorageQueueName(), message, messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
                         messageMetadata.isPersistent(), getMqttSubscriptionID(), getChannelID(), getSubscriberQOS());
 
@@ -186,9 +186,9 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
                 //For MQTT QOS 0 we do not get ack from subscriber, hence will be implicitely creating an ack
                 if (0 == getSubscriberQOS()) {
                     mqqtServerChannel.implicitAck(getSubscribedDestination(), messageMetadata.getMessageID(),
-                       /* messageMetadata.getStorageQueueName()*/ this.getStorageQueueName(), getChannelID());
+                            this.getStorageQueueName(), getChannelID());
                 }
-            } catch (Exception e) {
+            } catch (MQTTException e) {
                 final String error = "Error occured while delivering message to the subscriber for message :" +
                         messageMetadata.getMessageID();
                 log.error(error);

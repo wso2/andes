@@ -70,7 +70,7 @@ public final class AndesMQTTBridge {
      * @return The bridge instance that will allow connectivity between the kernal and mqtt protocol
      */
     public static AndesMQTTBridge getBridgeInstance() throws MQTTException {
-        if (mqttProtocolHandlingEngine != null) {
+        if (null != mqttProtocolHandlingEngine) {
             return instance;
         } else {
             //Will capture the exception here and will not throw it any further
@@ -147,8 +147,7 @@ public final class AndesMQTTBridge {
      * @param mqttClientChannelID the id of the channel where the message was published
      * @param messageID           the id of the message
      */
-    public void onAckReceived(String mqttClientChannelID, int messageID) {
-        //TODO need to call the method defined under the TopicManager
+    public void onAckReceived(String mqttClientChannelID, int messageID) throws MQTTException {
         if (log.isDebugEnabled()) {
             log.debug("Message ack received for message with id " + messageID + " and subscription " +
                     mqttClientChannelID);
@@ -156,10 +155,10 @@ public final class AndesMQTTBridge {
         try {
             MQTTopicManager.getInstance().onMessageAck(mqttClientChannelID, messageID);
         } catch (MQTTException e) {
-            //Will not throw this any further
             final String message = "Error occured while the subscription ack was received for channel "
                     + mqttClientChannelID + " and for messsage " + messageID;
-            log.error(message);
+            log.error(message, e);
+            throw e;
         }
     }
 
@@ -175,7 +174,7 @@ public final class AndesMQTTBridge {
     public void distributeMessageToSubscriptions(String topic, int qos, ByteBuffer message, boolean retain,
                                                  int messageID, String channelID) {
 
-        if (mqttProtocolHandlingEngine != null) {
+        if (null != mqttProtocolHandlingEngine) {
             //Need to set do a re possition of bytes for writing to the buffer
             //Since the buffer needs to be initialized for reading before sending out
             final int bytesPossition = 0;

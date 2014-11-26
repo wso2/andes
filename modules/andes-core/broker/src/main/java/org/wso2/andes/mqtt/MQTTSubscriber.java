@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * levels will be maintained here
  */
 public class MQTTSubscriber {
-    //TODO QOS level information should be accessed for use cases which will be implimented in future
+    //TODO QOS level information should be accessed for use cases which will be implimented in future for in memory model
     //The level of QOS the subscriber is bound to
     private int QOS_Level;
     //Specifies whether the subscription is durable or not
@@ -44,7 +44,8 @@ public class MQTTSubscriber {
     //Each subscription object will maintain the ids of the messages that were sent out for delivery
     //Upon recieving of an ack the message element will be removed
     //Cluster message id to local messages the key will be the local id of the map and the value will be cluster id
-    //TODO check if a concurrent hashmap is neccessary here
+    //We use a concurrent hashmap since this map is accessible by multiple threads. Accessed by both andes kernal for
+    //put oprations and remove is done when the ack arrives
     private Map<Integer, Long> clusterMessageToLocalMessage = new ConcurrentHashMap<Integer, Long>();
     //Will hold the message id which was last processed
     //Will generate a unique id
@@ -63,8 +64,6 @@ public class MQTTSubscriber {
         lastGeneratedMessageID = lastGeneratedMessageID + 1;
         if (lastGeneratedMessageID == Short.MAX_VALUE) {
             //Then we need to reduce
-            //TODO add a debug log here
-            //TODO assuming that the acks are receved on the oreder which was sent, this is wrong need to re think
             log.warn("The message ids will be refreshed since it exceeded the maximum limit ");
             lastGeneratedMessageID = 1;
 
@@ -81,7 +80,6 @@ public class MQTTSubscriber {
      * @return the cluster specific message if of the message which received the ack
      */
     public long ackReceived(int localMessageID) {
-        //TODO throw exception if the id cannot be correlated
         long custerID = clusterMessageToLocalMessage.remove(localMessageID);
         return custerID;
     }

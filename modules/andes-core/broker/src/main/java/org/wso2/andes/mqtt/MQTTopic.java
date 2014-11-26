@@ -21,8 +21,8 @@ package org.wso2.andes.mqtt;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Each topic will have multiple relationships with its subscribers, the list of subscribers and the topics will be
@@ -38,8 +38,7 @@ public class MQTTopic {
     //private String clusterSpecificClientID;
     //Will map between the relationship of topics and subscribers key will be the channel id of the subscriber
     //Value will be the properties associated with the subscriber
-    //TODO check whether concurrency should be considered here
-    private Map<String, MQTTSubscriber> subscribers = new ConcurrentHashMap<String, MQTTSubscriber>();
+    private Map<String, MQTTSubscriber> subscribers = new HashMap<String, MQTTSubscriber>();
 
     /**
      * Will construct the topic object which will hold references to all the subscribers
