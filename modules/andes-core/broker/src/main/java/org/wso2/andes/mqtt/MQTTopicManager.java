@@ -148,7 +148,7 @@ public class MQTTopicManager {
             //In case if an error occurs we need to rollback the subscription created cluster wide
             MQTTChannel.getInstance().removeSubscriber(this, topicName, subscriptionID);
             final String message = "Error while adding the subscriber to the cluser";
-            log.error(message);
+            log.error(message, ex);
             throw ex;
         }
     }
@@ -187,7 +187,7 @@ public class MQTTopicManager {
                     //Should re state the connection of the subscriber back to the map
                     mqttTopic.addSubscriber(mqttClientChannelID, subscriber);
                     final String error = "Error occured while removing the subscription " + mqttClientChannelID;
-                    log.error(error);
+                    log.error(error, ex);
                     throw ex;
                 }
 
@@ -318,7 +318,7 @@ public class MQTTopicManager {
             MQTTChannel.getInstance().messageAck(messageID, topic, storageName, subChannelID);
         } catch (AndesException ex) {
             final String message = "Error occurred while cleaning up the acked message";
-            log.error(message);
+            log.error(message, ex);
             throw new MQTTException(message, ex);
         }
     }
