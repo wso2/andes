@@ -23,9 +23,9 @@ import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.kernel.AndesException;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Will manage and hold topic informaton,
@@ -39,14 +39,13 @@ public class MQTTopicManager {
     //The instance which will be referred
     private static MQTTopicManager instance = new MQTTopicManager();
     //The topic name will be defined as the key and the value will hold the subscription information
-    //TODO check whether its required the hashmap to be concurrent
-    private Map<String, MQTTopic> topics = new ConcurrentHashMap<String, MQTTopic>();
+    private Map<String, MQTTopic> topics = new HashMap<String, MQTTopic>();
     //Will keep the reference with the bridge
     private static AndesMQTTBridge mqttAndesConnectingBridge = null;
     //Will correlate between topic and subscribers
     //The map will be used when subscriber disconnection is called where the corresponding topic needs to be identified
     //The key of the map will be the client id and the value will be the topic
-    private Map<String, String> clientTopicCorrelate = new ConcurrentHashMap<String, String>();
+    private Map<String, String> clientTopicCorrelate = new HashMap<String, String>();
 
 
     /**
@@ -121,9 +120,9 @@ public class MQTTopicManager {
      */
     public void addTopicSubscription(String topicName, String mqttClientChannelID, int qos,
                                      boolean isCleanSession) throws MQTTException {
-        //TODO what if the subscribers disconnect while topic is conceptually removed
         //Will extract out the topic information if the topic is created already
         MQTTopic topic = topics.get(topicName);
+        String subscriptionID = null;
         //If the topic has not being created before
         if (null == topic) {
             //First the topic should be registered in the cluster
@@ -137,13 +136,14 @@ public class MQTTopicManager {
                 log.debug("The topic " + topic + "has local subsbscriptions already");
             }
         }
-        //TODO address the possibility of two nodes subscribing to the same topic in the same manner
-        //First the topic should be registered in the cluster
-        String subscriptionID = registerTopicSubscriptionInCluster(topicName, mqttClientChannelID, isCleanSession, qos);
         //Will add the subscription to the topic
         //The status will be false if the subscriber with the same channel id exists
         try {
+            //First the topic should be registered in the cluster
+            subscriptionID = registerTopicSubscriptionInCluster(topicName, mqttClientChannelID, isCleanSession, qos);
             topic.addSubscriber(mqttClientChannelID, qos, isCleanSession, subscriptionID);
+            //Finally will register the the topic subscription for the topic
+            clientTopicCorrelate.put(mqttClientChannelID, topicName);
         } catch (MQTTException ex) {
             //In case if an error occurs we need to rollback the subscription created cluster wide
             MQTTChannel.getInstance().removeSubscriber(this, topicName, subscriptionID);
@@ -151,8 +151,6 @@ public class MQTTopicManager {
             log.error(message);
             throw ex;
         }
-        //Finally will register the the topic subscription for the topic
-        clientTopicCorrelate.put(mqttClientChannelID, topicName);
     }
 
     /**
@@ -199,9 +197,7 @@ public class MQTTopicManager {
             }
 
         } else {
-            final String message = "Error occured while disconnecting the subscriber, " +
-                    "topic doesn't exist for client id " + mqttClientChannelID;
-            throw new MQTTException(message);
+            log.warn("Connection with id " + mqttClientChannelID + " lost, publisher connection not closed properly");
         }
     }
 
@@ -226,17 +222,30 @@ public class MQTTopicManager {
         String topic = clientTopicCorrelate.get(channelID);
         //We need to keep track of the message if the QOS level is > 0
         if (subscriberQOS > 0) {
-            //We need to add the message information to maintain state, inorder to identify the messages once the acks receive
+            //We need to add the message information to maintain state, inorder to identify the messages
+            // once the acks receive
             MQTTopic mqttopic = topics.get(topic);
             MQTTSubscriber mqttSubscriber = mqttopic.getSubscription(channelID);
-            //Will mark the message as sent to subscribers
-            mqttLocalMessageID = mqttSubscriber.markSend(messageID);
-            //Will add the information that will be neccassary to process once the acks arrive
-            mqttSubscriber.setStorageIdentifier(storageName);
-            mqttSubscriber.setSubscriptionChannel(subChannelID);
+            //There could be a situation where the message was published, but before it arrived to the subscirpion
+            //The subscriber has disconnected at a situation as such we have to indicate the disconnection
+            if (null != mqttSubscriber) {
+                //Will mark the message as sent to subscribers
+                mqttLocalMessageID = mqttSubscriber.markSend(messageID);
+                //Will add the information that will be neccassary to process once the acks arrive
+                mqttSubscriber.setStorageIdentifier(storageName);
+                mqttSubscriber.setSubscriptionChannel(subChannelID);
+                //Subscriber state will not be handled for the case of QoS 0, hence if the subscription has disconnected it
+                // will be handled from the protocol engine
+                AndesMQTTBridge.getBridgeInstance().distributeMessageToSubscriptions(topic, publishedQOS, message,
+                        shouldRetain, mqttLocalMessageID, channelID);
+            } else {
+                throw new MQTTException("The subscriber with id " + channelID +
+                        " has diconnected hence message will not be published to " + messageID);
+            }
+        } else {
+            AndesMQTTBridge.getBridgeInstance().distributeMessageToSubscriptions(topic, publishedQOS, message,
+                    shouldRetain, mqttLocalMessageID, channelID);
         }
-        AndesMQTTBridge.getBridgeInstance().distributeMessageToSubscriptions(topic, publishedQOS, message, shouldRetain,
-                mqttLocalMessageID, channelID);
     }
 
     /**

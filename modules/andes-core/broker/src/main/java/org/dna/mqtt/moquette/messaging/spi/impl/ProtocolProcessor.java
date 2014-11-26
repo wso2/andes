@@ -216,7 +216,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         //Will inform the cluser that the message was removed
         try {
             AndesMQTTBridge.getBridgeInstance().onAckReceived(clientID, messageID);
-        } catch (Exception e) {
+        } catch (MQTTException e) {
             final String message = "Error while reciving ack from the client " + clientID + " for message " + messageID;
             log.error(message, e);
         }
