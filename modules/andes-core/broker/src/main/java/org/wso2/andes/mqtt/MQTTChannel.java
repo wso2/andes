@@ -39,50 +39,6 @@ public class MQTTChannel {
     private static final String MQTT_TOPIC_DESTINATION = "destination";
     private static final String MQTT_QUEUE_IDENTIFIER = "targetQueue";
 
-
-    /**
-     * Adds the message body to the andes kernal interfaces
-     *
-     * @param messageBody        message content
-     * @param mqttLocalMessageID channel id in which the message was published
-     * @throws MQTTException
-     */
-    private void addMessageBody(AndesMessagePart messageBody, int mqttLocalMessageID) throws MQTTException {
-        try {
-            MessagingEngine.getInstance().messageContentReceived(messageBody);
-            if (log.isDebugEnabled()) {
-                log.debug("Content of the message with id " + mqttLocalMessageID + " added to the kernal");
-            }
-        } catch (AndesException ex) {
-            final String message = "Error while adding message content ";
-            log.error(message, ex);
-            throw new MQTTException(message, ex);
-        }
-    }
-
-    /**
-     * Adds the message meta data to the kernal
-     *
-     * @param messageHeader      the meta information of the specific mqtt message
-     * @param mqttLocalMessageID the channel id which is generated through mqtt protocol engine
-     * @throws MQTTException at an event where the kernal could not intert the header
-     */
-    private void addMessageHeader(AndesMessageMetadata messageHeader, int mqttLocalMessageID) throws MQTTException {
-        try {
-
-            MessagingEngine.getInstance().messageReceived(messageHeader);
-            if (log.isDebugEnabled()) {
-                log.debug("Message meta data added for the message with id " + mqttLocalMessageID);
-            }
-
-        } catch (AndesException e) {
-            final String error = "Error while adding the message header to the andes kernal ";
-            log.error(error, e);
-            throw new MQTTException(error, e);
-        }
-    }
-
-
     /**
      * The acked messages will be informed to the kernal
      *
@@ -95,7 +51,7 @@ public class MQTTChannel {
             throws AndesException {
         AndesAckData andesAckData = new AndesAckData(subChannelID, messageID,
                 topicName, storageName, true);
-        MessagingEngine.getInstance().ackReceived(andesAckData);
+        Andes.getInstance().ackReceived(andesAckData);
     }
 
     /**
@@ -120,10 +76,14 @@ public class MQTTChannel {
             //Will Create the Andes Header
             AndesMessageMetadata messageHeader = MQTTUtils.convertToAndesHeader(messageID, topic, qosLevel,
                     messageData.length, retain, publisherID);
-            //Will write the message body
-            addMessageBody(messagePart, mqttLocalMessageID);
-            //Will add the message header
-            addMessageHeader(messageHeader, mqttLocalMessageID);
+
+            AndesMessage andesMessage = new AndesMessage(messageHeader);
+            andesMessage.addMessagePart(messagePart);
+            Andes.getInstance().messageReceived(andesMessage);
+            if(log.isDebugEnabled()) {
+                log.debug(" Message added with message id " + mqttLocalMessageID);
+            }
+
         } else {
             throw new MQTTException("Message content is not backed by an array, or the array is read-only .");
         }
@@ -199,7 +159,7 @@ public class MQTTChannel {
                     true, qos, subscriptionChannelID, topic, true, true);
             //Shold indicate the record in the cluster
             try {
-                ClusterResourceHolder.getInstance().getSubscriptionManager().addSubscription(mqttTopicSubscriber);
+                Andes.getInstance().openLocalSubscription(mqttTopicSubscriber);
                 //First will register the subscription as a queue
                 if (log.isDebugEnabled()) {
                     log.debug("Subscription registered to the " + topic + " with channel id " + clientID);
@@ -219,9 +179,9 @@ public class MQTTChannel {
             //Shold indicate the record in the cluster
             try {
                 //Will record the subscription as a topic
-                ClusterResourceHolder.getInstance().getSubscriptionManager().addSubscription(mqttTopicSubscriber);
+                Andes.getInstance().openLocalSubscription(mqttTopicSubscriber);
                 //Will record the subscription as a queue
-                ClusterResourceHolder.getInstance().getSubscriptionManager().addSubscription(mqttQueueSubscriber);
+                Andes.getInstance().openLocalSubscription(mqttQueueSubscriber);
                 //First will register the subscription as a queue
                 if (log.isDebugEnabled()) {
                     log.debug("Subscription registered to the " + topic + " with channel id " + clientID);
@@ -235,7 +195,7 @@ public class MQTTChannel {
         }
 
         //Finally will notify on the client connection
-        MessagingEngine.getInstance().clientConnectionCreated(subscriptionChannelID);
+        Andes.getInstance().clientConnectionCreated(subscriptionChannelID);
     }
 
     /**
@@ -258,7 +218,7 @@ public class MQTTChannel {
                 MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscribedTopic,
                         subscriptionChannelID, subscriptionChannelID,
                         true, 0, subscriberChannel, subscribedTopic, true, false);
-                ClusterResourceHolder.getInstance().getSubscriptionManager().closeLocalSubscription(mqttTopicSubscriber);
+                Andes.getInstance().closeLocalSubscription(mqttTopicSubscriber);
             } else {
                 //This will be similer to a durable subscription of AMQP
                 MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscribedTopic,
@@ -267,11 +227,11 @@ public class MQTTChannel {
                 MQTTLocalSubscription mqttQueueSubscriber = createSubscription(channel, queue_identifier,
                         subscriptionChannelID, subscriptionChannelID, false, 0, subscriberChannel, queue_identifier,
                         false, true);
-                ClusterResourceHolder.getInstance().getSubscriptionManager().closeLocalSubscription(mqttTopicSubscriber);
-                ClusterResourceHolder.getInstance().getSubscriptionManager().closeLocalSubscription(mqttQueueSubscriber);
+                Andes.getInstance().closeLocalSubscription(mqttTopicSubscriber);
+                Andes.getInstance().closeLocalSubscription(mqttQueueSubscriber);
             }
             //Will inicate the closure of the subscription connection
-            MessagingEngine.getInstance().clientConnectionClosed(subscriberChannel);
+            Andes.getInstance().clientConnectionClosed(subscriberChannel);
             if (log.isDebugEnabled()) {
                 log.debug("Disconnected subscriber from topic " + subscribedTopic);
             }

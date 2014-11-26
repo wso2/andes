@@ -177,7 +177,7 @@ public class AndesKernelBoot {
         stopAndesComponents();
         //close stores
         AndesContext.getInstance().getAndesContextStore().close();
-        MessagingEngine.getInstance().close();
+        Andes.getInstance().shutDown();
     }
 
     /**
@@ -235,6 +235,10 @@ public class AndesKernelBoot {
         AndesKernelBoot.messageStore = messageStore;
 
         /**
+         * When message stores are initialised initialise the AndesAPI as well.
+         */
+        Andes.getInstance().initialise(subscriptionStore);
+        /**
          * initialize amqp constructs syncing into Qpid
          */
         VirtualHostConfigSynchronizer _VirtualHostConfigSynchronizer = new
@@ -274,7 +278,7 @@ public class AndesKernelBoot {
     /**
      * start andes house keeping threads for the broker
      *
-     * @throws Exception
+     * @throws AndesException
      */
     public static void startHouseKeepingThreads() throws AndesException {
         //reload exchanges/queues/bindings and subscriptions
@@ -346,8 +350,7 @@ public class AndesKernelBoot {
         /**
          * initialize subscription managing
          */
-        AndesSubscriptionManager subscriptionManager =
-                new AndesSubscriptionManager();
+        AndesSubscriptionManager subscriptionManager = new AndesSubscriptionManager();
         ClusterResourceHolder.getInstance().setSubscriptionManager(subscriptionManager);
         subscriptionManager.init();
 
@@ -393,8 +396,8 @@ public class AndesKernelBoot {
      * @throws Exception
      */
     public static void startMessaging() throws Exception {
-        MessagingEngine.getInstance().startMessageDelivery();
-        MessagingEngine.getInstance().startMessageExpirationWorker();
+        Andes.getInstance().startMessageDelivery();
+        Andes.getInstance().startMessageExpirationWorker();
     }
 
     /**
@@ -403,9 +406,9 @@ public class AndesKernelBoot {
      * @throws Exception
      */
     private static void stopMessaging() throws Exception {
-        MessagingEngine.getInstance().stopMessageExpirationWorker();
+        Andes.getInstance().stopMessageExpirationWorker();
         //this will un-assign all slots currently owned
-        MessagingEngine.getInstance().stopMessageDelivery();
+        Andes.getInstance().stopMessageDelivery();
     }
 
 

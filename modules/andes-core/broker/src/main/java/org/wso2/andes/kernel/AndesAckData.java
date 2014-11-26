@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -18,14 +18,10 @@
 
 package org.wso2.andes.kernel;
 
-import com.lmax.disruptor.EventFactory;
-import org.wso2.andes.server.AMQChannel;
-
 import java.util.UUID;
 
 /**
  * Wrapper class of message acknowledgment data publish to disruptor
- *
  */
 public class AndesAckData {
 
@@ -38,7 +34,6 @@ public class AndesAckData {
     public AndesAckData(){}
 
     public AndesAckData(UUID channelID, long messageID, String destination, String msgStorageDestination, boolean isTopic) {
-        super();
         this.channelID = channelID;
         this.messageID = messageID;
         this.destination = destination;
@@ -48,17 +43,6 @@ public class AndesAckData {
 
     public AndesRemovableMetadata convertToRemovableMetaData() {
         return new AndesRemovableMetadata(this.messageID, this.msgStorageDestination, this.destination);
-    }
-    
-    public static class AndesAckDataEventFactory implements EventFactory<AndesAckData> {
-        @Override
-        public AndesAckData newInstance() {
-            return new AndesAckData();
-        }
-    }
-
-    public static EventFactory<AndesAckData> getFactory() {
-        return new AndesAckDataEventFactory();
     }
 
     public long getMessageID() {

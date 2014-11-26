@@ -17,7 +17,6 @@
  */
 package org.wso2.andes.server;
 
-import org.apache.commons.configuration.ConfigurationException;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
@@ -29,17 +28,13 @@ import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.framing.*;
 import org.wso2.andes.framing.abstraction.ContentChunk;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
-import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.queue.*;
 import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMapImpl;
 import org.wso2.andes.server.cassandra.SequentialThreadPoolExecutor;
-import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.flow.FlowCreditManager;
 import org.wso2.andes.server.flow.Pre0_10CreditManager;
@@ -189,7 +184,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         }
 
         // message tracking related to this channel is initialised
-        MessagingEngine.getInstance().clientConnectionCreated(_id);
+        Andes.getInstance().clientConnectionCreated(_id);
         try {
             _managedObject = new AMQChannelMBean(this);
             _managedObject.register();
@@ -300,7 +295,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
             MessageMetaData mmd = _currentMessage.headersReceived();
             //TODO find a proper way to get the IP of the client
-            mmd.set_clientIP(_session.toString().substring(0,_session.toString().indexOf(":")));
+            mmd.set_clientIP(_session.toString().substring(0,_session.toString().indexOf(':')));
 
             final StoredMessage<MessageMetaData> handle = this.addAMQPMessage(mmd);
             if( handle instanceof StoredAMQPMessage){
@@ -309,7 +304,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             _currentMessage.setStoredMessage(handle);
 
             routeCurrentMessage();
-
 
             _transaction.addPostTransactionAction(new ServerTransaction.Action()
             {
@@ -392,12 +386,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                      * happen here
                      */
 
-                    QpidAMQPBridge.getInstance().messageMetaDataReceived(incomingMessage, this.getId());
-
-                    AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
-                    AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message, this.getId());
-                    metadata.setExpirationTime(incomingMessage.getExpiration());
-                    metadata.setArrivalTime(incomingMessage.getArrivalTime());
+                    QpidAMQPBridge.getInstance().messageReceived(incomingMessage, this.getId());
 
                 } catch (Throwable e) {
                     _logger.error("Error processing completed messages, we will close this session", e);

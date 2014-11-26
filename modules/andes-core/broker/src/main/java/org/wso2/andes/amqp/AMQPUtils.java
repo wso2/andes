@@ -187,6 +187,7 @@ public class AMQPUtils {
         AndesMessageMetadata metadata = new AndesMessageMetadata(amqMessage.getMessageId(),underlying,true);
         metadata.setChannelId(channelID);
         metadata.setSlot(amqMessage.getSlot());
+        metadata.setExpirationTime(amqMessage.getExpiration());
         metadata.setArrivalTime(amqMessage.getArrivalTime());
 
         return metadata;

@@ -36,10 +36,7 @@ import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.store.MessageContentRemoverTask;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -108,8 +105,7 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
     private void initialise(final MessageStore messageStore) throws AndesException {
 
         this.messageStore = messageStore;
-        disruptorBasedExecutor = new DisruptorBasedExecutor
-                (MessageStoreManagerFactory.createDirectMessageStoreManager(messageStore));
+        disruptorBasedExecutor = new DisruptorBasedExecutor(messageStore);
 
         int threadPoolCount = 2;
         contentRemovalTimeDifference = 30;

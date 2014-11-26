@@ -26,9 +26,9 @@ import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.exceptions.HectorException;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
+import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
-import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.store.util.HectorDataAccessHelper;
 import org.wso2.andes.store.cassandra.CassandraConstants;
 import org.wso2.andes.store.cassandra.cql.dao.GenericCQLDAO;
@@ -294,10 +294,9 @@ public class HectorConnection implements DurableStoreConnection {
      */
     private void startTasks() {
         try {
-            MessagingEngine.getInstance().startMessageDelivery();
+            Andes.getInstance().startMessageDelivery();
         } catch (Exception e) {
-            throw new RuntimeException("Error while starting broker tasks back. Not retrying...",
-                    e);
+            throw new RuntimeException("Error while starting broker tasks back. Not retrying.", e);
         }
     }
 
@@ -305,6 +304,6 @@ public class HectorConnection implements DurableStoreConnection {
      * Stop all background threads accessing durable store
      */
     private void stopTasks() {
-        MessagingEngine.getInstance().stopMessageDelivery();
+        Andes.getInstance().stopMessageDelivery();
     }
 }

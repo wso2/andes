@@ -67,7 +67,7 @@ public class MQTTUtils {
     public static long generateMessageID() {
         //Message ids will not be directly generated from the kernal since in future if there's a MQTT specific
         //id generation mechanism
-        return MessagingEngine.getInstance().generateNewMessageId();
+        return Andes.getInstance().generateNewMessageId();
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -151,7 +151,11 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
         try {
             AMQProtocolSession session = channel.getProtocolSession();
             ((AMQMessage) queueEntry.getMessage()).setClientIdentifier(session);
-            OnflightMessageTracker.getInstance().incrementNonAckedMessageCount(getChannelID());
+            
+            // TODO: We might have to carefully implement this in every new subscription type we implement
+            // shall we move this up to LocalSubscription level?
+            OnflightMessageTracker.getInstance().incrementNonAckedMessageCount(channel.getId());
+
             if (amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
                 //this check is needed to detect if subscription has suddenly closed
                 if (log.isDebugEnabled()) {

@@ -1,6 +1,6 @@
 /*
  *
- *   Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *   Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  *   WSO2 Inc. licenses this file to you under the Apache License,
  *   Version 2.0 (the "License"); you may not use this file except
@@ -73,7 +73,7 @@ public class OnflightMessageTracker {
     /**
      * In memory map keeping sent message statistics by message id
      */
-    private ConcurrentHashMap<Long, MsgData> msgId2MsgData = new ConcurrentHashMap<Long, MsgData>();
+    private ConcurrentHashMap<Long, MsgData> msgId2MsgData;
 
     /**
      * Map to track messages being buffered to be sent <slot reference, messageID, MsgData
@@ -99,13 +99,6 @@ public class OnflightMessageTracker {
      * key: channelID, value: per channel non acknowledged message count
      */
     private ConcurrentMap<UUID, AtomicInteger> unAckedMsgCountMap = new ConcurrentHashMap<UUID, AtomicInteger>();
-
-    private OnflightMessageTracker() throws AndesException {
-
-        this.maximumRedeliveryTimes = AndesConfigurationManager.getInstance()
-                .readConfigurationValue(AndesConfiguration.TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS);
-
-    }
 
     /**
      * Message status to keep track in which state message is
@@ -317,6 +310,19 @@ public class OnflightMessageTracker {
         private boolean allAcksReceived() {
             return channelToNumOfDeliveries.isEmpty();
         }
+    }
+
+
+    private OnflightMessageTracker() throws AndesException {
+
+        this.maximumRedeliveryTimes = AndesConfigurationManager.getInstance()
+                .readConfigurationValue(AndesConfiguration.TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS);
+        /*
+         * for all add and remove, following is executed, and it will remove the oldest entry if
+         * needed
+         */
+        msgId2MsgData = new ConcurrentHashMap<Long, MsgData>();
+
     }
 
     /**
