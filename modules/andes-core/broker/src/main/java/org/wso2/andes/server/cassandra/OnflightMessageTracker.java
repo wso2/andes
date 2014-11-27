@@ -241,7 +241,7 @@ public class OnflightMessageTracker {
             this.destination = destination;
             this.timestamp = timestamp;
             this.expirationTime = expirationTime;
-            this.channelToNumOfDeliveries = new HashMap<UUID, Integer>();
+            this.channelToNumOfDeliveries = new ConcurrentHashMap<UUID, Integer>();
             this.messageStatus = new ArrayList<MessageStatus>();
             this.messageStatus.add(messageStatus);
             this.numberOfScheduledDeliveries = new AtomicInteger(0);
