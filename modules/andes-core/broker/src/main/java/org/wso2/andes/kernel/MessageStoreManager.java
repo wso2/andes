@@ -236,5 +236,4 @@ public interface MessageStoreManager {
      */
     public AndesMessageMetadata getMetadataOfMessage(Long messageId) throws AndesException;
 
-
 }

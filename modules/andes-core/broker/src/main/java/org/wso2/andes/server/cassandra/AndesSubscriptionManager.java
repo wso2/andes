@@ -52,7 +52,7 @@ public class AndesSubscriptionManager {
     public void init() {
         subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         //adding subscription listeners
-        addSubscriptionListener(new MessageDeliveryThreadHandler());
+        addSubscriptionListener(new OrphanedMessageHandler());
         addSubscriptionListener(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
         if (AndesContext.getInstance().isClusteringEnabled()) {
             addSubscriptionListener(new OrphanedSlotHandler());
@@ -139,6 +139,31 @@ public class AndesSubscriptionManager {
             }
         }
 
+    }
+
+    /**
+     * check if any local active non durable subscription exists for a given topic consider
+     * hierarchical subscription case as well
+     *
+     * @param boundTopicName
+     *         name of the topic (bound destination)
+     * @return true if any subscription exists
+     */
+    public boolean checkIfActiveNonDurableLocalSubscriptionExistsForTopic(String boundTopicName)
+                                                                             throws AndesException {
+        boolean subscriptionExists = false;
+        List<LocalSubscription> activeSubscriptions = (List<LocalSubscription>) subscriptionStore.
+                                                                           getActiveLocalSubscribers(
+                                                                           boundTopicName,
+                                                                           true);
+        for(LocalSubscription sub : activeSubscriptions) {
+            if(!sub.isDurable()) {
+                subscriptionExists = true;
+                break;
+            }
+        }
+
+        return subscriptionExists;
     }
 
     /**

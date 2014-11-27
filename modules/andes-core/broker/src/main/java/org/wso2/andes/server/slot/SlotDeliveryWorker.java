@@ -292,21 +292,6 @@ public class SlotDeliveryWorker extends Thread {
     }
 
     /**
-     * Clear all in memory messages addressed to the queue and update the last purged timestamp for the given queue at its MessageDeliveryInfo object.
-     *
-     * @param destination destination name of the purging queue (NOT the storage queue name.)
-     * @param purgedTimestamp   time stamp of the purged queue
-     * @return number of messages cleared from in-memory queues.
-     * @throws AndesException
-     */
-    public int purgeInMemoryMessagesFromQueue(String destination, long purgedTimestamp) throws AndesException {
-
-        messageFlusher.getMessageDeliveryInfo(destination).setLastPurgedTimestamp(purgedTimestamp);
-
-        return messageFlusher.getMessageDeliveryInfo(destination).clearReadButUndeliveredMessages();
-    }
-
-    /**
      * Get queue list belongs to this thread
      *
      * @return queue list

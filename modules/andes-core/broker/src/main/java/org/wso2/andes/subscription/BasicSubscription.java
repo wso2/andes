@@ -270,12 +270,11 @@ public class BasicSubscription implements AndesSubscription {
      */
     private void setStorageQueueName() {
         if (isBoundToTopic && !isDurable) {  // for normal topic subscriptions
-            // We need to add a prefix so that we could differentiate if queue is created under the same name
-            storageQueueName = AndesUtils.TOPIC_NODE_QUEUE_PREFIX + "|" + destination + "|" + subscribedNode;
+            storageQueueName = AndesUtils.getStorageQueueForDestination(destination, subscribedNode, true);
         } else if (isBoundToTopic && isDurable) {  //for durable topic subscriptions
-            storageQueueName = targetQueue;
+            storageQueueName = AndesUtils.getStorageQueueForDestination(targetQueue, subscribedNode, false);
         } else { //For queue subscriptions. This is a must. Otherwise queue will not be shared among nodes
-            storageQueueName = destination;
+            storageQueueName = AndesUtils.getStorageQueueForDestination(targetQueue, subscribedNode, false);
         }
     }
 

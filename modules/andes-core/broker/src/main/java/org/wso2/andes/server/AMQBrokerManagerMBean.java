@@ -303,10 +303,6 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
         }
         try
         {
-            if(subscriptionStore.getActiveClusterSubscribersForDestination(queueName, false).size() >0) {
-                throw new JMException("Queue" + queueName +" Has Active Subscribers. Please Stop Them First.");
-            }
-
             CurrentActor.set(new ManagementActor(_logActor.getRootMessageLogger()));
             queue.delete();
             if (queue.isDurable())
