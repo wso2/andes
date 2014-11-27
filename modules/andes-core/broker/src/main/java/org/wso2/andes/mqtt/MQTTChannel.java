@@ -145,19 +145,22 @@ public class MQTTChannel {
      * Will add and indicate the subscription to the kernal the bridge will be provided as the channel
      * since per topic we will only be creating one channel with andes
      *
-     * @param channel       the bridge connection as the channel
-     * @param topic         the name of the topic which has subscriber/s
-     * @param clientID      the id which will distinguish the topic channel
-     * @param mqttChannel   the subscription id which is local to the subscriber
-     * @param isCleanSesion should the connection be durable
-     * @param qos           the subscriber specific qos this can be either 0,1 or 2
+     * @param channel               the bridge connection as the channel
+     * @param topic                 the name of the topic which has subscriber/s
+     * @param clientID              the id which will distinguish the topic channel
+     * @param mqttChannel           the subscription id which is local to the subscriber
+     * @param isCleanSesion         should the connection be durable
+     * @param qos                   the subscriber specific qos this can be either 0,1 or 2
+     * @param subscriptionChannelID will hold the unique idenfier of the subscription
+     * @throws MQTTException
      */
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttChannel,
-                              boolean isCleanSesion, int qos) throws MQTTException {
+                              boolean isCleanSesion, int qos, UUID subscriptionChannelID) throws MQTTException {
         //Will create a new local subscription object
         final String isBoundToTopic = "isBoundToTopic";
         final String subscribedNode = "subscribedNode";
         final String isDurable = "isDurable";
+        //   final UUID subscriptionChannelID = UUID.randomUUID();
         final String myNodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         MQTTLocalSubscription localSubscription = new MQTTLocalSubscription(MQTT_TOPIC_DESTINATION + "=" +
                 topic + "," + MQTT_QUEUE_IDENTIFIER + "=" + (isCleanSesion ? topic : topic + mqttChannel) + "," +
@@ -167,7 +170,7 @@ public class MQTTChannel {
         localSubscription.setTargetBoundExchange(isCleanSesion ? AMQPUtils.TOPIC_EXCHANGE_NAME :
                 AMQPUtils.DIRECT_EXCHANGE_NAME);
         localSubscription.setMqqtServerChannel(channel);
-        localSubscription.setChannelID(UUID.randomUUID());
+        localSubscription.setChannelID(subscriptionChannelID);
         localSubscription.setTopic(topic);
         localSubscription.setSubscriptionID(clientID);
         localSubscription.setMqttSubscriptionID(mqttChannel);
@@ -177,6 +180,8 @@ public class MQTTChannel {
         try {
             //First will register the subscription as a queue
             ClusterResourceHolder.getInstance().getSubscriptionManager().addSubscription(localSubscription);
+            //Will indicate the subscription connection to the tracker
+            MessagingEngine.getInstance().clientConnectionCreated(subscriptionChannelID);
             if (log.isDebugEnabled()) {
                 log.debug("Subscription registered to the " + topic + " with channel id " + clientID);
             }
@@ -190,11 +195,13 @@ public class MQTTChannel {
     /**
      * Will trigger when subscriber disconnets from the session
      *
-     * @param channel         the connection refference to the bridge
-     * @param subscribedTopic the topic the subscription disconnection should be made
-     * @param clientID        the channel id of the diconnection client
+     * @param channel           the connection refference to the bridge
+     * @param subscribedTopic   the topic the subscription disconnection should be made
+     * @param clientID          the channel id of the diconnection client
+     * @param subscriberChannel the cluster wide unique idenfication of the subscription
      */
-    public void removeSubscriber(MQTTopicManager channel, String subscribedTopic, String clientID)
+    public void removeSubscriber(MQTTopicManager channel, String subscribedTopic, String clientID,
+                                 UUID subscriberChannel)
             throws MQTTException {
         try {
             //Will create a new local subscription object
@@ -206,7 +213,10 @@ public class MQTTChannel {
             localSubscription.setIsTopic();
             localSubscription.setIsActive(false);
             localSubscription.setTargetBoundExchange(AMQPUtils.TOPIC_EXCHANGE_NAME);
+            localSubscription.setChannelID(subscriberChannel);
             ClusterResourceHolder.getInstance().getSubscriptionManager().closeLocalSubscription(localSubscription);
+            //Will inicate the closure of the subscription connection
+            MessagingEngine.getInstance().clientConnectionClosed(subscriberChannel);
             if (log.isDebugEnabled()) {
                 log.debug("Disconnected subscriber from topic " + subscribedTopic);
             }

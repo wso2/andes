@@ -23,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Each topic will have multiple relationships with its subscribers, the list of subscribers and the topics will be
@@ -64,10 +65,12 @@ public class MQTTopic {
      * @param qos                 the level of qos which can be of value 0,1 or 2
      * @param isCleanSession      the durability of the session
      * @param clusterSpecificID   the id generated for the subscriber which is unique across the cluster
+     * @param subscripionChannel  will hold the unique cluser wide subscription identifier
      * @throws MQTTException if the subscriber with the same channel id exist
      */
-    public void addSubscriber(String mqttClientChannelID, int qos, boolean isCleanSession, String clusterSpecificID)
-            throws MQTTException {
+    public void addSubscriber(String mqttClientChannelID, int qos, boolean isCleanSession,
+                              String clusterSpecificID, UUID subscripionChannel)
+    throws MQTTException {
         MQTTSubscriber subscriber = subscribers.get(mqttClientChannelID);
         //Will create a new subscriber if the susbscriber do not exist
         if (null == subscriber) {
@@ -78,6 +81,8 @@ public class MQTTopic {
             subscriber.setCleanSession(isCleanSession);
             //Will set the subscriber channel id
             subscriber.setSubscriberChannelID(clusterSpecificID);
+            //Will set the subscription channel
+            subscriber.setSubscriptionChannel(subscripionChannel);
             //Will register the subscriber
             subscribers.put(mqttClientChannelID, subscriber);
             if (log.isDebugEnabled()) {

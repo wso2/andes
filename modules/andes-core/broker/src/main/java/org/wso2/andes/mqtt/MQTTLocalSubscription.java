@@ -177,7 +177,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
             try {
                 mqqtServerChannel.distributeMessageToSubscriber(
                         this.getStorageQueueName(), message, messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
-                        messageMetadata.isPersistent(), getMqttSubscriptionID(), getChannelID(), getSubscriberQOS());
+                        messageMetadata.isPersistent(), getMqttSubscriptionID(), getSubscriberQOS());
 
                 OnflightMessageTracker.getInstance().addMessageToSendingTracker(getChannelID(),
                         messageMetadata.getMessageID());
