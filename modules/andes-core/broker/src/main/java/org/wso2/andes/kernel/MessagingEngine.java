@@ -31,7 +31,6 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cassandra.MessageFlusher;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
@@ -41,6 +40,7 @@ import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.slot.SlotManager;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
 import org.wso2.andes.server.util.AndesConstants;
+import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 /**
@@ -81,7 +81,7 @@ public class MessagingEngine {
 
     /**
      * This listener is primarily added so that messaging engine and communicate a queue purge situation to the cluster.
-     * Addition/Deletion of queues are done through QpidAMQPBridge
+     * Addition/Deletion of queues are done through AndesContextInformationManager
      */
     private QueueListener queueListener;
 
@@ -251,35 +251,34 @@ public class MessagingEngine {
     }
 
     /**
-     * Remove in-memory message buffers of the queue matching to given destination queue in this
-     * node.
-     * This is called from the HazelcastAgent when it receives a queue purged event.
+     * Remove in-memory message buffers of the destination matching to given destination in this
+     * node. This is called from the HazelcastAgent when it receives a queue purged event.
      *
-     * @param storageQueueName destination queue name to match
+     * @param destination queue or topic name (subscribed routing key) whose messages should be removed
      * @return number of messages removed
      * @throws AndesException
      */
-    public int clearMessagesFromQueueInMemory(String storageQueueName,
+    public int clearMessagesFromQueueInMemory(String destination,
                                               Long purgedTimestamp) throws AndesException {
 
-        // Notify and clear any and all in memory messages addressed to the queue
-        return SlotDeliveryWorkerManager.getInstance().purgeMessagesFromActiveDeliveryWorkers
-                (storageQueueName, purgedTimestamp);
+        MessageFlusher messageFlusher = MessageFlusher.getInstance();
+        messageFlusher.getMessageDeliveryInfo(destination).setLastPurgedTimestamp(purgedTimestamp);
+        return messageFlusher.getMessageDeliveryInfo(destination).clearReadButUndeliveredMessages();
     }
-
 
     /**
      * This is the andes-specific purge method and can be called from AMQPBridge,
      * MQTTBridge or UI MBeans (QueueManagementInformationMBean)
      * Remove messages of the queue matching to given destination queue (cassandra / h2 / mysql etc. )
      *
-     * @param destinationQueue destination queue name to match
+     * @param destination queue or topic name (subscribed routing key) whose messages should be removed
      * @param ownerName The user who initiated the purge request
+     * @param isTopic weather purging happens for a topic
      * @return number of messages removed (in memory message count may not be 100% accurate
      * since we cannot guarantee that we caught all messages in delivery threads.)
      * @throws AndesException
      */
-    public int purgeQueue(String destinationQueue, String ownerName) throws AndesException {
+    public int purgeMessages(String destination, String ownerName, boolean isTopic) throws AndesException {
 
         // The timestamp is recorded to track messages that came before the purge event.
         // Refer OnflightMessageTracker:evaluateDeliveryRules method for more details.
@@ -287,23 +286,31 @@ public class MessagingEngine {
 
         // Clear all slots assigned to the Queue. This should ideally stop any messages being buffered during the purge.
         // This call clears all slot associations for the queue in all nodes. (could take time)
-        SlotManager.getInstance().clearAllActiveSlotRelationsToQueue(destinationQueue);
+        SlotManager.getInstance().clearAllActiveSlotRelationsToQueue(destination);
 
         // clear in memory messages of self (node)
-        clearMessagesFromQueueInMemory(destinationQueue, purgedTimestamp);
+        clearMessagesFromQueueInMemory(destination, purgedTimestamp);
 
-        // Notification object to the cluster is prepared.
-        AndesQueue purgedQueue = new AndesQueue(destinationQueue,ownerName,false,true);
-        purgedQueue.setLastPurgedTimestamp(purgedTimestamp);
+        //Notify the cluster if queues
+        if(!isTopic) {
+            // The queueOwner here is passed as null since its not used from the notification object.
+            // The user permissions are validated at the andes feature component level.
+            AndesQueue purgedQueue = new AndesQueue(destination, ownerName, false, true);
+            purgedQueue.setLastPurgedTimestamp(purgedTimestamp);
 
-        //Notify the cluster
-        queueListener.handleLocalQueuesChanged(purgedQueue, QueueListener.QueueChange.Purged);
+            queueListener.handleLocalQueuesChanged(purgedQueue, QueueListener.QueueChange.Purged);
+        }
 
         // Clear any and all message references addressed to the queue from the persistent store.
         // We can measure the message count in store, but cannot exactly infer the message count
         // in memory within all nodes at the time of purging. (Adding that could unnecessarily
         // block critical pub sub flows.)
-        return messageStoreManager.purgeQueueFromStore(destinationQueue);
+        // for queues destination = storage queue. But for topics it is different
+        String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        String storageQueueName = AndesUtils.getStorageQueueForDestination(destination, nodeID, isTopic);
+        int purgedNumOfMessages =  messageStoreManager.purgeQueueFromStore(storageQueueName);
+        log.info("Purged messages of destination " + destination);
+        return purgedNumOfMessages;
     }
 
     /**

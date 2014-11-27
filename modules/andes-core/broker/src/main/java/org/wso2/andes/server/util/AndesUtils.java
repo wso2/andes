@@ -137,6 +137,23 @@ public class AndesUtils {
         }
 
     }
-    
-    
+
+    /**
+     * Generate storage queue name for a given destination
+     * @param destination subscribed routing key
+     * @param nodeID id of this node
+     * @param isTopic is destination represent a topic
+     * @return  storage queue name for destination
+     */
+    public static String getStorageQueueForDestination(String destination, String nodeID, boolean isTopic) {
+        String storageQueueName;
+        // We need to add a prefix so that we could differentiate if queue is created under the same name
+        //as topic
+        if(isTopic) {
+            storageQueueName = TOPIC_NODE_QUEUE_PREFIX + "|" + destination + "|" + nodeID;
+        } else {
+            storageQueueName = destination;
+        }
+        return storageQueueName;
+    }
 }

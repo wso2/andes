@@ -581,7 +581,7 @@ public class SubscriptionStore {
                 throw new AndesException("There is no active subscriber to close subscribed to " + subscription.getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
             } else if (hasDurableSubscriptionAlreadyInPlace && type == SubscriptionChange.Added) {
                 //not permitted
-                throw new AndesException("A subscription already exists for Durable subscriptions on " + subscription.getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
+                //throw new AndesException("A subscription already exists for Durable subscriptions on " + subscription.getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
             }
 
         }

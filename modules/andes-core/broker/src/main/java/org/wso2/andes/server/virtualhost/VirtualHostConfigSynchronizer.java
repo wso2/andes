@@ -118,6 +118,7 @@ public class VirtualHostConfigSynchronizer implements
      */
     public void clusterQueueRemoved(AndesQueue queue) throws AndesException {
         try {
+            log.info("Queue removal request received queue= " + queue.queueName);
             removeQueue(queue.queueName);
             AndesContext.getInstance().getAMQPConstructStore().removeQueue(queue.queueName, false);
         } catch (Exception e) {
@@ -134,6 +135,7 @@ public class VirtualHostConfigSynchronizer implements
      */
     public void clusterQueuePurged(AndesQueue queue) throws AndesException {
         try {
+            log.info("Queue purge request received queue= " + queue.queueName);
             MessagingEngine.getInstance().clearMessagesFromQueueInMemory(queue.queueName,
                     queue.getLastPurgedTimestamp());
 

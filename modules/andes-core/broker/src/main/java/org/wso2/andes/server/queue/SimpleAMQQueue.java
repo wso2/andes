@@ -407,14 +407,18 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
         
         if (hasExclusiveSubscriber())
         {
-            throw new ExistingExclusiveSubscription();
+            if(!(this.checkIfBoundToTopicExchange() && this.isDurable())) {
+                throw new ExistingExclusiveSubscription();
+            }
         }
 
         if (exclusive && !subscription.isTransient())
         {
             if (getConsumerCount() != 0)
             {
-                throw new ExistingSubscriptionPreventsExclusive();
+                if(!(this.checkIfBoundToTopicExchange() && this.isDurable())) {
+                    throw new ExistingSubscriptionPreventsExclusive();
+                }
             }
             else
             {

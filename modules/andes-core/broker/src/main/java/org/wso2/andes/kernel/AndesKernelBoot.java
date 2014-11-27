@@ -346,6 +346,11 @@ public class AndesKernelBoot {
         subscriptionManager.init();
 
         /**
+         * initialize context information managing (exchanges/bindings etc)
+         */
+        AndesContextInformationManager.getInstance().initialize();
+
+        /**
          * initialize cluster manager for managing nodes in MB cluster
          */
         ClusterManager clusterManager = new ClusterManager();
