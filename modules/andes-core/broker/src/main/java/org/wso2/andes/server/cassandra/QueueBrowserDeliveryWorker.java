@@ -67,12 +67,7 @@ public class QueueBrowserDeliveryWorker {
     private static Log log = LogFactory.getLog(QueueBrowserDeliveryWorker.class);
 
     public QueueBrowserDeliveryWorker(Subscription subscription, AMQQueue queue,
-                                      AMQProtocolSession session) throws AndesException {
-        this(subscription,queue,session,false);
-    }
-
-    public QueueBrowserDeliveryWorker(Subscription subscription, AMQQueue queue,
-                                      AMQProtocolSession session, boolean isInMemoryMode) throws
+                                      AMQProtocolSession session) throws
             AndesException {
         this.subscription = subscription;
         this.queue = queue;

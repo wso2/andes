@@ -24,6 +24,7 @@ import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.poi.ss.formula.functions.T;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.util.ConfigurationProperty;
 import org.wso2.andes.kernel.AndesException;
@@ -63,6 +64,12 @@ public class AndesConfigurationManager {
 
     private final CompositeConfiguration compositeConfiguration;
 
+    /**
+     * Decisive configurations coming from carbon.xml that affect the MB configs. e.g port Offset
+     * These are injected as custom logic when reading the configurations.
+     */
+    private int portOffset;
+
     private AndesConfigurationManager() throws AndesException, ConfigurationException, UnknownHostException {
 
         compositeConfiguration = new CompositeConfiguration();
@@ -100,9 +107,11 @@ public class AndesConfigurationManager {
      * initialize the configuration manager.
      * @throws AndesException
      */
-    public static void initialize() throws AndesException {
+    public static void initialize(int portOffset) throws AndesException {
         try {
             instance = new AndesConfigurationManager();
+            // set portOffset coming from carbon
+            instance.portOffset = portOffset;
         } catch (ConfigurationException e) {
             throw new AndesException("Error occurred when trying to construct configurations from " + "files" +
                     ".", e);
@@ -135,6 +144,11 @@ public class AndesConfigurationManager {
      *
      */
     public <T> T readConfigurationValue(ConfigurationProperty configurationProperty) throws AndesException {
+
+        // If the property requests a port value, we need to apply the carbon offset to it.
+        if (configurationProperty.get().getName().endsWith("_PORT")) {
+            return (T) readPortProperty(configurationProperty);
+        }
 
         String valueInFile = compositeConfiguration.getString(configurationProperty.get()
                 .getKeyInFile());
@@ -321,6 +335,38 @@ public class AndesConfigurationManager {
             InetAddress host = InetAddress.getLocalHost();
             compositeConfiguration.setProperty(AndesConfiguration.TRANSPORTS_BIND_ADDRESS.get().getKeyInFile(),
                     host.getHostAddress());
+        }
+    }
+
+    /**
+     * This method is used when reading a port value from configuration. It is intended to abstract the port offset
+     * logic.If the enum contains keyword "_PORT", this will be called
+     *
+     * @param configurationProperty relevant enum value (e.g.- above scenario -> config.enums.AndesConfiguration
+     *                              .TRANSPORTS_MQTT_PORT)
+     * @return port with carbon port offset
+     */
+    private Integer readPortProperty(ConfigurationProperty configurationProperty) {
+
+        if (!Integer.class.equals(configurationProperty.get().getDataType())) {
+            log.error("This property does not contain a port value : " + configurationProperty.toString());
+            return 0;
+        }
+
+        try {
+            String valueInFile = compositeConfiguration.getString(configurationProperty.get().getKeyInFile());
+
+            Integer portFromConfiguration = (Integer) deriveValidConfigurationValue(configurationProperty.get()
+                    .getKeyInFile(), configurationProperty.get().getDataType(),
+                    configurationProperty.get().getDefaultValue(), valueInFile);
+
+            return portFromConfiguration + portOffset;
+
+        } catch (ConfigurationException e) {
+            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR + configurationProperty.toString(),e);
+
+            //recover and return default port with offset value.
+            return Integer.parseInt(configurationProperty.get().getDefaultValue()) + portOffset;
         }
     }
 
