@@ -23,10 +23,10 @@ package org.wso2.andes.server.cassandra;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.slot.SlotDeliveryWorker;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
@@ -56,7 +56,7 @@ public class OnflightMessageTracker {
         try {
             instance = new OnflightMessageTracker();
         } catch (AndesException e) {
-            log.error("Error occurred when reading configurations : ",e);
+            log.error("Error occurred when reading configurations : ", e);
         }
     }
 
@@ -467,7 +467,7 @@ public class OnflightMessageTracker {
             setMessageStatus(MessageStatus.ACKED_BY_ALL, trackingData);
             //record how much time took between delivery and ack receive
             long timeTook = (System.currentTimeMillis() - trackingData.timestamp);
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 PerformanceCounter.recordAckReceived(trackingData.destination, (int) timeTook);
             }
             decrementMessageCountInSlotAndCheckToResend(trackingData.slot);
@@ -705,54 +705,59 @@ public class OnflightMessageTracker {
 
     /**
      * This initialise internal tracking maps for the given channelID. This needs to be called at channel creation.
+     *
      * @param channelID channelID
      */
     public void addNewChannelForTracking(UUID channelID) {
-
-        if(null == messageSendingTracker.putIfAbsent(channelID, new ConcurrentHashMap<Long, MsgData>())) {
+        //We would check if the method returns and object,
+        // if it does it means there was a prviouse key linked with the object
+        if (null != messageSendingTracker.putIfAbsent(channelID, new ConcurrentHashMap<Long, MsgData>())) {
             log.warn("Trying to initialise tracking for channel " + channelID + " which is already initialised.");
         }
-        if(null == unAckedMsgCountMap.putIfAbsent(channelID, new AtomicInteger(0))) {
+        if (null != unAckedMsgCountMap.putIfAbsent(channelID, new AtomicInteger(0))) {
             log.warn("Trying to initialise tracking for channel " + channelID + " which is already initialised.");
         }
     }
 
     /**
      * Number of un acknowledged messages for the given channel is returned
-     * @param channelID  channelID
+     *
+     * @param channelID channelID
      * @return number of un acknowledged messages
      */
-    public int getNotAckedMessageCount(UUID channelID){
+    public int getNotAckedMessageCount(UUID channelID) {
         // NOTE channelID should be in map. ChannelID added to map at channel creation
         return unAckedMsgCountMap.get(channelID).get();
     }
 
     /**
      * Decrements non acknowledged message count for a channel
-     *
+     * <p/>
      * When acknowledgement for a message is received for a given channel by calling this method should be called to
      * decrement the non acknowledged message count
+     *
      * @param chanelID channelID
      */
-    public void decrementNonAckedMessageCount(UUID chanelID){
+    public void decrementNonAckedMessageCount(UUID chanelID) {
         // NOTE channelID should be in map. ChannelID added to map at channel creation
         int msgCount = unAckedMsgCountMap.get(chanelID).decrementAndGet();
-        if(log.isDebugEnabled()){
-            log.debug("message sent channel= "+ this + " pending Count" + msgCount);
+        if (log.isDebugEnabled()) {
+            log.debug("message sent channel= " + this + " pending Count" + msgCount);
         }
     }
 
     /**
      * Increments the non acknowledged message count for the channel
-     *
+     * <p/>
      * When a message is sent from Andes non acknowledged message count should be incremented
+     *
      * @param channelID channelID
      */
-    public void incrementNonAckedMessageCount(UUID channelID){
+    public void incrementNonAckedMessageCount(UUID channelID) {
         // NOTE channelID should be in map. ChannelID added to map at channel creation
         int intCount = unAckedMsgCountMap.get(channelID).incrementAndGet();
-        if(log.isDebugEnabled()){
-            log.debug("ack received channel= "+ this + " pending Count" + intCount);
+        if (log.isDebugEnabled()) {
+            log.debug("ack received channel= " + this + " pending Count" + intCount);
         }
     }
 

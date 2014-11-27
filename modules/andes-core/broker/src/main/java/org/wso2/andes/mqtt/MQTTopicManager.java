@@ -123,6 +123,8 @@ public class MQTTopicManager {
         //Will extract out the topic information if the topic is created already
         MQTTopic topic = topics.get(topicName);
         String subscriptionID = null;
+        //Will generate a uniqe identier for the subscription
+        final UUID subscriptionChannelID = UUID.randomUUID();
         //If the topic has not being created before
         if (null == topic) {
             //First the topic should be registered in the cluster
@@ -140,13 +142,14 @@ public class MQTTopicManager {
         //The status will be false if the subscriber with the same channel id exists
         try {
             //First the topic should be registered in the cluster
-            subscriptionID = registerTopicSubscriptionInCluster(topicName, mqttClientChannelID, isCleanSession, qos);
-            topic.addSubscriber(mqttClientChannelID, qos, isCleanSession, subscriptionID);
+            subscriptionID = registerTopicSubscriptionInCluster(topicName, mqttClientChannelID, isCleanSession,
+                    qos, subscriptionChannelID);
+            topic.addSubscriber(mqttClientChannelID, qos, isCleanSession, subscriptionID, subscriptionChannelID);
             //Finally will register the the topic subscription for the topic
             clientTopicCorrelate.put(mqttClientChannelID, topicName);
         } catch (MQTTException ex) {
             //In case if an error occurs we need to rollback the subscription created cluster wide
-            MQTTChannel.getInstance().removeSubscriber(this, topicName, subscriptionID);
+            MQTTChannel.getInstance().removeSubscriber(this, topicName, subscriptionID, subscriptionChannelID);
             final String message = "Error while adding the subscriber to the cluser";
             log.error(message, ex);
             throw ex;
@@ -173,11 +176,12 @@ public class MQTTopicManager {
                 //Will remove the subscription entitiy
                 MQTTSubscriber subscriber = mqttTopic.removeSubscriber(mqttClientChannelID);
                 String subscriberChannelID = subscriber.getSubscriberChannelID();
+                UUID subscriberChannel = subscriber.getSubscriptionChannel();
                 //The corresponding subscription created cluster wide will be topic name and the local channel id
                 //Will remove the subscriber clusterwide
                 try {
-                    MQTTChannel.getInstance().removeSubscriber(this, topic, subscriberChannelID);
                     //Will indicate the disconnection of the topic
+                    MQTTChannel.getInstance().removeSubscriber(this, topic, subscriberChannelID, subscriberChannel);
                     if (log.isDebugEnabled()) {
                         final String message = "Subscription with cluster id " + subscriberChannelID + " disconnected " +
                                 "from topic " + topic;
@@ -213,7 +217,7 @@ public class MQTTopicManager {
      * @throws MQTTException during a failure to deliver the message to the subscribers
      */
     public void distributeMessageToSubscriber(String storageName, ByteBuffer message, long messageID, int publishedQOS,
-                                              boolean shouldRetain, String channelID, UUID subChannelID, int subscriberQOS)
+                                              boolean shouldRetain, String channelID, int subscriberQOS)
             throws MQTTException {
         //Will generate a uniqe id, cannot force MQTT to have a long as the message id since the protocol looks for
         //unsigned short
@@ -233,7 +237,7 @@ public class MQTTopicManager {
                 mqttLocalMessageID = mqttSubscriber.markSend(messageID);
                 //Will add the information that will be neccassary to process once the acks arrive
                 mqttSubscriber.setStorageIdentifier(storageName);
-                mqttSubscriber.setSubscriptionChannel(subChannelID);
+                //mqttSubscriber.setSubscriptionChannel(subChannelID);
                 //Subscriber state will not be handled for the case of QoS 0, hence if the subscription has disconnected it
                 // will be handled from the protocol engine
                 AndesMQTTBridge.getBridgeInstance().distributeMessageToSubscriptions(topic, publishedQOS, message,
@@ -283,13 +287,15 @@ public class MQTTopicManager {
     /**
      * Will interact with the kernal and will create a cluster wide indication of the topic
      *
-     * @param topicName      the name of the topic which should be registered in the cluster
-     * @param mqttChannel    the subscriber id which is local to the node
-     * @param isCleanSession should the subscription be identified as durable
-     * @param qos            the subscriber level qos
+     * @param topicName             the name of the topic which should be registered in the cluster
+     * @param mqttChannel           the subscriber id which is local to the node
+     * @param isCleanSession        should the subscription be identified as durable
+     * @param qos                   the subscriber level qos
+     * @param subscriptionChannelID the unique identifer of the subscription channel
      * @return topic subscription id which will represent the topic in the cluster
      */
-    private String registerTopicSubscriptionInCluster(String topicName, String mqttChannel, boolean isCleanSession, int qos)
+    private String registerTopicSubscriptionInCluster(String topicName, String mqttChannel, boolean isCleanSession,
+                                                      int qos, UUID subscriptionChannelID)
             throws MQTTException {
         //Will generate a unique id for the client
         //Per topic only one subscription will be created across the cluster
@@ -300,7 +306,8 @@ public class MQTTopicManager {
         }
 
         //Will register the topic cluster wide
-        MQTTChannel.getInstance().addSubscriber(this, topicName, topicSpecificClientID, mqttChannel, isCleanSession, qos);
+        MQTTChannel.getInstance().addSubscriber(this, topicName, topicSpecificClientID, mqttChannel, isCleanSession,
+                qos, subscriptionChannelID);
 
         return topicSpecificClientID;
     }
