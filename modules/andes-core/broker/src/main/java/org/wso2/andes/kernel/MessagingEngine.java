@@ -308,7 +308,9 @@ public class MessagingEngine {
         // for queues destination = storage queue. But for topics it is different
         String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         String storageQueueName = AndesUtils.getStorageQueueForDestination(destination, nodeID, isTopic);
-        return messageStoreManager.purgeQueueFromStore(storageQueueName);
+        int purgedNumOfMessages =  messageStoreManager.purgeQueueFromStore(storageQueueName);
+        log.info("Purged messages of destination " + destination);
+        return purgedNumOfMessages;
     }
 
     /**

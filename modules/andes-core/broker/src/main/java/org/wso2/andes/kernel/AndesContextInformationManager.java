@@ -148,10 +148,7 @@ public class AndesContextInformationManager {
         if(queueSubscriptions.isEmpty()) {
             //purge the queue cluster-wide
             MessagingEngine.getInstance().purgeMessages(queueName, null, false);
-            //delete queue from context store
-            AndesContext.getInstance().getAndesContextStore().deleteQueueInformation(queueName);
-            AndesContext.getInstance().getAndesContextStore().removeMessageCounterForQueue(queueName);
-            //Notify cluster to delete queue
+            //identify queue to delete
             AndesQueue queueToDelete = null;
             List<AndesQueue> queueList = AndesContext.getInstance().getAndesContextStore().getAllQueuesStored();
             for(AndesQueue queue : queueList) {
@@ -160,13 +157,21 @@ public class AndesContextInformationManager {
                     break;
                 }
             }
+            //delete queue from context store
+            AndesContext.getInstance().getAndesContextStore().deleteQueueInformation(queueName);
+            AndesContext.getInstance().getAndesContextStore().removeMessageCounterForQueue(queueName);
+            //Notify cluster to delete queue
             notifyQueueListeners(queueToDelete, QueueListener.QueueChange.Deleted);
 
             //delete all subscription entries if remaining (inactive entries)
             ClusterResourceHolder.getInstance().getSubscriptionManager().deleteSubscriptionsOfBoundQueue(queueName);
+            log.info("Deleted queue " + queueName);
 
         } else {
-            throw new AndesException("Queue " + queueName + " Has Active Subscribers. Please Stop Them First.");
+            log.warn("Cannot Delete Queue " + queueName + " During Queue Delete or Unsubscribe," +
+                     " as It Has Active Subscribers. Please Stop Them First.");
+            throw new AndesException("Cannot Delete Queue " + queueName + " During Queue Delete or Unsubscribe," +
+                                     " as It Has Active Subscribers. Please Stop Them First.");
         }
     }
 
