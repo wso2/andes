@@ -369,18 +369,23 @@ public class OnflightMessageTracker {
                 .getMessageDeliveryInfo(trackingData.destination).getLastPurgedTimestamp();
 
         if (numOfDeliveriesOfCurrentMsg > maximumRedeliveryTimes) {
+
             log.warn("Number of Maximum Redelivery Tries Has Breached. Routing Message to DLC : id= " +
                     messageId);
             isOKToDeliver = false;
-            //check if destination entry has expired. Any expired message will not be delivered
+
+        //check if destination entry has expired. Any expired message will not be delivered
         } else if (trackingData.isExpired()) {
+
             stampMessageAsExpired(messageId);
             log.warn("Message is expired. Routing Message to DLC : id= " + messageId);
             isOKToDeliver = false;
+
         } else if (trackingData.arrivalTime <= lastPurgedTimestampOfQueue) {
+
             log.warn("Message was sent at " + trackingData.arrivalTime + " before last purge event at " +
-                    "" + lastPurgedTimestampOfQueue + ". Will be skipped. id= " +
-                    messageId);
+                    + lastPurgedTimestampOfQueue + ". Will be skipped. id= " + messageId);
+
             trackingData.addMessageStatus(MessageStatus.PURGED);
             isOKToDeliver = false;
         }

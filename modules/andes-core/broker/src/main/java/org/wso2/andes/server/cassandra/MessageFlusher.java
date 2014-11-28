@@ -130,7 +130,7 @@ public class MessageFlusher {
         }
 
         /***
-         * clear the read-but-undelivered collection of messages of the given queue from memory
+         * Clear the read-but-undelivered collection of messages of the given queue from memory
          * @return Number of messages that was in the read-but-undelivered buffer
          */
         public int clearReadButUndeliveredMessages() {
@@ -150,7 +150,7 @@ public class MessageFlusher {
         }
 
         /**
-         * set last purged timestamp for queue.
+         * Set last purged timestamp for queue.
          * @param lastPurgedTimestamp the time at which the destination queue was last purged.         */
         public void setLastPurgedTimestamp(Long lastPurgedTimestamp) {
             this.lastPurgedTimestamp = lastPurgedTimestamp;
@@ -468,10 +468,10 @@ public class MessageFlusher {
                         }
                         sentMessageCount++;
                     } else {
-                        log.debug(
-                                "All subscriptions for destination " + destination + " have max unacked " +
-                                        "messages " + message
-                                        .getDestination());
+                        if (log.isDebugEnabled()) {
+                            log.debug("All subscriptions for destination " + destination + " have max unacked " +
+                                            "messages " + message.getDestination());
+                        }
                         //if we continue message order will break
                         break;
                     }

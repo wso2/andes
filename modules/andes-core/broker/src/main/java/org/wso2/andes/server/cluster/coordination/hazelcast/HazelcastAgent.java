@@ -353,8 +353,7 @@ public class HazelcastAgent {
         try {
             this.queueChangedNotifierChannel.publish(clusterNotification);
         } catch (Exception e) {
-            log.error("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(),
-                    e);
+            log.error("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), e);
             throw new AndesException("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), e);
         }
     }
@@ -364,8 +363,8 @@ public class HazelcastAgent {
         try {
             this.exchangeChangeNotifierChannel.publish(clusterNotification);
         } catch (Exception e) {
-            log.error("Error while sending exchange change notification", e);
-            throw new AndesException("Error while sending exchange change notification", e);
+            log.error("Error while sending exchange change notification" + clusterNotification.getEncodedObjectAsString(), e);
+            throw new AndesException("Error while sending exchange change notification" + clusterNotification.getEncodedObjectAsString(), e);
         }
     }
 
@@ -374,8 +373,8 @@ public class HazelcastAgent {
         try {
             this.bindingChangeNotifierChannel.publish(clusterNotification);
         } catch (Exception e) {
-            log.error("Error while sending binding change notification", e);
-            throw new AndesException("Error while sending binding change notification", e);
+            log.error("Error while sending binding change notification" + clusterNotification.getEncodedObjectAsString(), e);
+            throw new AndesException("Error while sending binding change notification" + clusterNotification.getEncodedObjectAsString(), e);
         }
     }
 
