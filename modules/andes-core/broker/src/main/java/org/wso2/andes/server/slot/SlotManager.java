@@ -98,9 +98,21 @@ public class SlotManager {
         synchronized (lockKey) {
             TreeSet<Slot> slotsFromUnassignedSlotMap = unAssignedSlotMap.get(queueName);
             if (slotsFromUnassignedSlotMap != null && !slotsFromUnassignedSlotMap.isEmpty()) {
-                slotToBeAssigned = unAssignedSlotMap.get(queueName).pollFirst();
+                slotToBeAssigned = slotsFromUnassignedSlotMap.pollFirst();
+                //update hazelcast map
+                unAssignedSlotMap.set(queueName,slotsFromUnassignedSlotMap);
+                if(log.isDebugEnabled()) {
+                    if(null != slotToBeAssigned) {
+                        log.debug("Slot Manager - giving a slot from unAssignedSlotMap. Slot= " + slotToBeAssigned.toString());
+                    }
+                }
             } else {
                 slotToBeAssigned = getFreshSlot(queueName);
+                if(log.isDebugEnabled()) {
+                    if(null != slotToBeAssigned) {
+                        log.debug("Slot Manager - giving a slot from fresh pool. Slot= " + slotToBeAssigned.toString());
+                    }
+                }
             }
             if (null != slotToBeAssigned) {
                 updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
