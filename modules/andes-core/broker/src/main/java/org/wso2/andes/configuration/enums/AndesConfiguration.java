@@ -67,7 +67,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     /**
      * The SSL port used to listen for amqp messages/commands by the MB server.
      */
-    TRANSPORTS_AMQP_SSL_PORT("transports/amqp/sslPort", "8762", Integer.class),
+    TRANSPORTS_AMQP_SSL_PORT("transports/amqp/sslPort", "8672", Integer.class),
 
     /**
      * By default, expired messages are sent to the Dead Letter Channel for later revival/reference. But,
