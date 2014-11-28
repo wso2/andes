@@ -119,6 +119,11 @@ public abstract class BasicStoringManager implements MessageStoreManager {
 
             Integer messageCountInStore = messageIDsAddressedToQueue.size();
 
+            // Clear all message expiry data.
+            // Data should be removed from expiry data tables before deleting data from meta data table since expiry
+            // data table holds a foreign key constraint to meta data table.
+            messageStore.deleteMessagesFromExpiryQueue(messageIDsAddressedToQueue);
+
             //  Clear message metadata from queues
             messageStore.deleteAllMessageMetadata(storageQueueName);
 
@@ -137,11 +142,6 @@ public abstract class BasicStoringManager implements MessageStoreManager {
 
             // Clear message content leisurely / asynchronously using retrieved message IDs
             messageStore.deleteMessageParts(messageIDsAddressedToQueue);
-
-            // We can also delete messages from the messagesForExpiry store,
-            // but since we have a thread running to clear them up as they expire,
-            // we do not necessarily have to rush it here.
-            // messageStore.deleteMessagesFromExpiryQueue(messageIDsAddressedToQueue);
 
             // If any other places in the store keep track of messages in future,
             // they should also be cleared here.
