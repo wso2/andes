@@ -27,6 +27,7 @@ public final class ImmutableMetaProperties implements MetaProperties {
     private final String keyInFile;
     private final String defaultValue;
     private final Class<?> dataType;
+    private final String name;
 
     /**
      * constructor
@@ -35,7 +36,8 @@ public final class ImmutableMetaProperties implements MetaProperties {
      * @param defaultValue default value of property in case its not specified or found in config files.
      * @param dataType expected data type of the property
      */
-    public ImmutableMetaProperties(String keyInFile, String defaultValue, Class<?> dataType) {
+    public ImmutableMetaProperties(String name,String keyInFile, String defaultValue, Class<?> dataType) {
+        this.name = name;
         this.keyInFile = keyInFile;
         this.defaultValue = defaultValue;
         this.dataType = dataType;
@@ -65,6 +67,17 @@ public final class ImmutableMetaProperties implements MetaProperties {
         return dataType;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String toString() {
         return "Property : " + keyInFile + " data-type : " + dataType.getName() + " default value" +

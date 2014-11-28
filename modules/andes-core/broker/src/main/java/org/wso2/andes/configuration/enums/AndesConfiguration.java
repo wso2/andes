@@ -47,7 +47,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Node ID is the unique identifier of a node within a cluster. By default, its generated using the IP of the node.
      * However, with this property, the Node ID can be explicitly set.
      */
-    COORDINATION_NODE_ID("coordination/nodeID", "auto", String.class),
+    COORDINATION_NODE_ID("coordination/nodeID", "default", String.class),
 
     /**
      * The IP address to which mqtt/amqp channels should be bound.
@@ -284,20 +284,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * NOT USED FOR NOW.
      */
     FLOW_CONTROL_CONNECTION_BASED_PER_CONNECTION_MESSAGE_THRESHOLD("flowControl/connectionBased" +
-            "/perConnectionMessageThreshold", "1000", Integer.class),
-
-    /**
-     * This specifies if the server is running with in-memory messages or with added persistence support to avoid out
-     * of memory scenarios.
-     * In-memory mode is only recommended for low-usage scenarios.
-     */
-    PERSISTENCE_IS_IN_MEMORY_ENABLED("persistence/@isInMemory", "true", Boolean.class);
+            "/perConnectionMessageThreshold", "1000", Integer.class);
 
 
     private final MetaProperties metaProperties;
 
     private AndesConfiguration(String keyInFile, String defaultValue, Class<?> dataType) {
-        this.metaProperties = new ImmutableMetaProperties(keyInFile, defaultValue, dataType);
+        // We need to pass the enum name as the identifier : therefore this.name()
+        this.metaProperties = new ImmutableMetaProperties(this.name(),keyInFile, defaultValue, dataType);
     }
 
     @Override

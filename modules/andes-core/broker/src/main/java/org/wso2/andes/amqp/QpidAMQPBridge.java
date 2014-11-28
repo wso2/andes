@@ -243,10 +243,8 @@ public class QpidAMQPBridge {
             }
 
             if (subscription instanceof SubscriptionImpl.BrowserSubscription) {
-                Boolean isInMemoryMode = AndesConfigurationManager.getInstance().readConfigurationValue
-                        (AndesConfiguration.PERSISTENCE_IS_IN_MEMORY_ENABLED);
                 QueueBrowserDeliveryWorker deliveryWorker = new QueueBrowserDeliveryWorker(subscription, queue,
-                        ((SubscriptionImpl.BrowserSubscription) subscription).getProtocolSession(), isInMemoryMode);
+                        ((SubscriptionImpl.BrowserSubscription) subscription).getProtocolSession());
                 deliveryWorker.send();
             } else {
                 if (log.isDebugEnabled()) {

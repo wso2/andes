@@ -22,7 +22,9 @@ import org.apache.axis2.clustering.ClusteringAgent;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.carbon.base.api.ServerConfigurationService;
 
 import java.util.List;
 import java.util.Map;

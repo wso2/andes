@@ -32,6 +32,7 @@ import org.wso2.andes.server.slot.SlotCoordinationConstants;
 import org.wso2.andes.server.slot.SlotManager;
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -175,9 +176,25 @@ public class ClusterManager {
         return 0;
     }
 
-    private void initStandaloneMode() throws Exception {
+    /**
+     * Initialize the node in stand alone mode without hazelcast.
+     * @throws AndesException, UnknownHostException
+     */
+    private void initStandaloneMode() throws AndesException, UnknownHostException {
 
-        this.nodeId = CoordinationConstants.NODE_NAME_PREFIX + InetAddress.getLocalHost().toString();
+        // Get Node ID configured by user in broker.xml (if not "default" we must use it as the ID)
+        try {
+            this.nodeId = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration.COORDINATION_NODE_ID);
+
+            if (AndesConfiguration.COORDINATION_NODE_ID.get().getDefaultValue().equals(this.nodeId)) {
+                this.nodeId = CoordinationConstants.NODE_NAME_PREFIX + InetAddress.getLocalHost().toString();
+            }
+
+        } catch (AndesException e) {
+            // Since we cannot infer user's node ID, we will assign our default generated ID.
+            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration.COORDINATION_NODE_ID.toString(), e);
+            this.nodeId = AndesConfiguration .COORDINATION_NODE_ID.get().getDefaultValue();
+        }
 
         //update node information in durable store
         List<String> nodeList = new ArrayList<String>(andesContextStore.getAllStoredNodeData().keySet());
@@ -187,7 +204,9 @@ public class ClusterManager {
         }
 
         clearAllPersistedStatesOfDisappearedNode(nodeId);
+
         log.info("NodeID:" + this.nodeId);
+
         andesContextStore.storeNodeDetails(nodeId, (String)AndesConfigurationManager.getInstance()
                 .readConfigurationValue(AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
     }
