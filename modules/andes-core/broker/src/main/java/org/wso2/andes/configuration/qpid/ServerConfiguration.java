@@ -21,7 +21,10 @@ package org.wso2.andes.configuration.qpid;
 import org.apache.commons.configuration.*;
 import org.apache.commons.configuration.Configuration;
 import org.apache.log4j.Logger;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostRegistry;
@@ -501,8 +504,20 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         return getIntValue("connector.processors", 4);
     }
 
+    /**
+     * Retrieve Port from Andes configurations(broker.xml).
+     *
+     * @return Port
+     */
     public List getPorts() {
-        return getListValue("connector.port", Collections.<Integer>singletonList(DEFAULT_PORT));
+        Integer port;
+        try {
+            port = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
+                    .TRANSPORTS_AMQP_PORT);
+        } catch (AndesException e) {
+            port = DEFAULT_PORT;
+        }
+        return Collections.<Integer>singletonList(port);
     }
 
     public List getPortExclude010() {
@@ -521,8 +536,18 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         return getListValue("connector.non08port");
     }
 
+    /**
+     * Retrieve bind address from Andes configurations(broker.xml).
+     *
+     * @return Bind address
+     */
     public String getBind() {
-        return getStringValue("connector.bind", WILDCARD_ADDRESS);
+        try {
+            return AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
+                    .TRANSPORTS_BIND_ADDRESS);
+        } catch (AndesException e) {
+            return WILDCARD_ADDRESS;
+        }
     }
 
     public int getReceiveBufferSize() {
@@ -549,8 +574,20 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
         return getBooleanValue("connector.ssl.sslOnly");
     }
 
+    /**
+     * Retrieve SSL Port from Andes configurations(broker.xml).
+     *
+     * @return SSL Port List
+     */
     public List getSSLPorts() {
-        return getListValue("connector.ssl.port", Collections.<Integer>singletonList(DEFAULT_SSL_PORT));
+        Integer sslPort;
+        try {
+            sslPort = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
+                    .TRANSPORTS_AMQP_SSL_PORT);
+        } catch (AndesException e) {
+            sslPort = DEFAULT_SSL_PORT;
+        }
+        return Collections.<Integer>singletonList(sslPort);
     }
 
     public String getKeystorePath() {
