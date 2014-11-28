@@ -175,13 +175,21 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
         //Will publish the message to the respective queue
         if (mqqtServerChannel != null) {
             try {
-                mqqtServerChannel.distributeMessageToSubscriber(
-                        this.getStorageQueueName(), message, messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
-                        messageMetadata.isPersistent(), getMqttSubscriptionID(), getSubscriberQOS());
-
+                OnflightMessageTracker.getInstance().incrementNonAckedMessageCount(channelID);
                 OnflightMessageTracker.getInstance().addMessageToSendingTracker(getChannelID(),
                         messageMetadata.getMessageID());
-                OnflightMessageTracker.getInstance().incrementNonAckedMessageCount(channelID);
+                try {
+                    mqqtServerChannel.distributeMessageToSubscriber(
+                        this.getStorageQueueName(), message, messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
+                        messageMetadata.isPersistent(), getMqttSubscriptionID(), getSubscriberQOS());
+                } catch (MQTTException ex) {
+                    //We need to decrement the tracker count
+                    OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(channelID);
+                    final String error = "Error occured while sending the message to subscriber ";
+                    log.error(error, ex);
+                    throw new AndesException(error, ex);
+                }
+
                 //We will indicate the ack to the kernal at this stage
                 //For MQTT QOS 0 we do not get ack from subscriber, hence will be implicitely creating an ack
                 if (0 == getSubscriberQOS()) {
