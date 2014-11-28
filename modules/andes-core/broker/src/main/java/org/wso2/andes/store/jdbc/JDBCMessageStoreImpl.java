@@ -36,7 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class JDBCMessageStoreImpl implements MessageStore {
 
-    private static final Logger logger = Logger.getLogger(JDBCMessageStoreImpl.class);
+    private static final Logger log = Logger.getLogger(JDBCMessageStoreImpl.class);
     /**
      * Cache queue name to queue_id mapping to avoid extra sql queries
      */
@@ -63,7 +63,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
         // read data source name from config and use
         jdbcConnection.initialize(connectionProperties);
         datasource = jdbcConnection.getDataSource();
-        logger.info("Message Store initialised");
+        log.info("Message Store initialised");
         return jdbcConnection;
     }
 
@@ -182,8 +182,8 @@ public class JDBCMessageStoreImpl implements MessageStore {
             addListToExpiryTable(connection, metadataList);
             connection.commit();
 
-            if (logger.isDebugEnabled()) {
-                logger.debug("Metadata list added. Metadata count: " + metadataList.size());
+            if (log.isDebugEnabled()) {
+                log.debug("Metadata list added. Metadata count: " + metadataList.size());
             }
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_ADDING_METADATA_LIST);
@@ -213,8 +213,8 @@ public class JDBCMessageStoreImpl implements MessageStore {
             addToExpiryTable(connection, metadata);
             connection.commit();
 
-            if (logger.isDebugEnabled()) {
-                logger.debug("Metadata added: msgID: " + metadata.getMessageID() +
+            if (log.isDebugEnabled()) {
+                log.debug("Metadata added: msgID: " + metadata.getMessageID() +
                         " Destination: " + metadata.getStorageQueueName());
             }
         } catch (SQLException e) {
@@ -494,8 +494,8 @@ public class JDBCMessageStoreImpl implements MessageStore {
                 );
                 metadataList.add(md);
             }
-            if (logger.isDebugEnabled()) {
-                logger.debug("request: metadata range (" + firstMsgId + " , " + lastMsgID +
+            if (log.isDebugEnabled()) {
+                log.debug("request: metadata range (" + firstMsgId + " , " + lastMsgID +
                         ") in destination queue " + queueName
                         + "\nresponse: metadata count " + metadataList.size());
             }
@@ -582,8 +582,8 @@ public class JDBCMessageStoreImpl implements MessageStore {
             preparedStatement.executeBatch();
             connection.commit();
 
-            if (logger.isDebugEnabled()) {
-                logger.debug("Metadata removed. " + messagesToRemove.size() +
+            if (log.isDebugEnabled()) {
+                log.debug("Metadata removed. " + messagesToRemove.size() +
                         " metadata from destination " + storageQueueName);
             }
         } catch (SQLException e) {
@@ -746,7 +746,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
                 queueID = resultSet.getInt(JDBCConstants.QUEUE_ID);
             }
         } catch (SQLException e) {
-            logger.error("Error occurred while retrieving destination queue id " +
+            log.error("Error occurred while retrieving destination queue id " +
                     "for destination queue " + destinationQueueName, e);
             throw e;
         } finally {
@@ -789,12 +789,12 @@ public class JDBCMessageStoreImpl implements MessageStore {
             }
             preparedStatement.close();
             if (queueID == -1) {
-                logger.warn("Creating queue with queue name " + destinationQueueName + " failed.");
+                log.warn("Creating queue with queue name " + destinationQueueName + " failed.");
             } else {
                 queueMap.put(destinationQueueName, queueID);
             }
         } catch (SQLException e) {
-            logger.error(
+            log.error(
                     "Error occurred while inserting destination queue [" + destinationQueueName +
                             "] to database ");
             throw e;
@@ -828,7 +828,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             try {
                 connection.close();
             } catch (SQLException e) {
-                logger.error("Failed to close connection after " + task, e);
+                log.error("Failed to close connection after " + task, e);
             }
         }
     }
@@ -844,7 +844,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             try {
                 connection.rollback();
             } catch (SQLException e) {
-                logger.warn("Rollback failed on " + task, e);
+                log.warn("Rollback failed on " + task, e);
             }
         }
     }
@@ -860,7 +860,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             try {
                 preparedStatement.close();
             } catch (SQLException e) {
-                logger.error("Closing prepared statement failed after " + task, e);
+                log.error("Closing prepared statement failed after " + task, e);
             }
         }
     }
@@ -876,7 +876,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             try {
                 resultSet.close();
             } catch (SQLException e) {
-                logger.error("Closing result set failed after " + task, e);
+                log.error("Closing result set failed after " + task, e);
             }
         }
     }
@@ -916,8 +916,8 @@ public class JDBCMessageStoreImpl implements MessageStore {
             preparedStatement.execute();
             connection.commit();
 
-            if (logger.isDebugEnabled()) {
-                logger.debug("Deleted all message metadata from " + storageQueueName +
+            if (log.isDebugEnabled()) {
+                log.debug("Deleted all message metadata from " + storageQueueName +
                         " with queue ID " + queueID);
             }
         } catch (SQLException e) {
@@ -957,8 +957,8 @@ public class JDBCMessageStoreImpl implements MessageStore {
             preparedStatement.execute();
             connection.commit();
 
-            if (logger.isDebugEnabled()) {
-                logger.debug("Reset message counter for queue " + storageQueueName +
+            if (log.isDebugEnabled()) {
+                log.debug("Reset message counter for queue " + storageQueueName +
                         " with queue ID " + queueID);
             }
         } catch (SQLException e) {
@@ -981,7 +981,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
 
         List<Long> messageIDs = new ArrayList<Long>();
 
-        Connection connection;
+        Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
 
@@ -1003,8 +1003,9 @@ public class JDBCMessageStoreImpl implements MessageStore {
             throw new AndesException("Error while getting message IDs for queue : " +
                     storageQueueName, e);
         } finally {
-            close(results, JDBCConstants.TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE);
-            close(preparedStatement, JDBCConstants.TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE);
+            close(results, JDBCConstants.TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE + storageQueueName);
+            close(preparedStatement, JDBCConstants.TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE + storageQueueName);
+            close(connection, JDBCConstants.TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE + storageQueueName);
         }
 
         return messageIDs;
@@ -1016,8 +1017,8 @@ public class JDBCMessageStoreImpl implements MessageStore {
      *
      *
      * @param storageQueueName name of the queue being purged
-     * @param DLCQueueName
-     * @return
+     * @param DLCQueueName Name of the DLC queue used within the resident tenant.
+     * @return number of deleted messages.
      * @throws AndesException
      */
     @Override
@@ -1070,9 +1071,9 @@ public class JDBCMessageStoreImpl implements MessageStore {
                 }
             }
         } catch (SQLException e) {
-            // This could be thrown only from the while loop reading messages in DLC. The bat
-            throw new AndesException("Error while deleting messages in DLC for queue : " +
-                    storageQueueName, e);
+            // This could be thrown only from the while loop reading messages in DLC.
+            log.error("Error while deleting messages in DLC for queue : " + storageQueueName,e);
+            throw new AndesException("Error while deleting messages in DLC for queue : " + storageQueueName, e);
         }
 
         // Execute Batch Delete
@@ -1080,15 +1081,13 @@ public class JDBCMessageStoreImpl implements MessageStore {
             preparedStatement.executeBatch();
             connection.commit();
 
-            if (logger.isDebugEnabled()) {
-                logger.debug("Removed. " + messageCountInDLCForQueue +
+            if (log.isDebugEnabled()) {
+                log.debug("Removed. " + messageCountInDLCForQueue +
                         " messages from DLC for destination " + storageQueueName);
             }
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
-            throw new AndesException("Error occurred while deleting message metadata from queue :" +
-                    storageQueueName,
-                    e);
+            throw new AndesException("Error occurred while deleting message metadata from queue :" + storageQueueName,e);
         } finally {
             String task = JDBCConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName;
             close(preparedStatement, task);

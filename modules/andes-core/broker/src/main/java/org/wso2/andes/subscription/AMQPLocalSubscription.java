@@ -159,20 +159,15 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
                 }
                 amqpSubscription.send(queueEntry);
             } else {
-                throw new AndesException("Unexpected Subscription type");
+                throw new AndesException("Unexpected Subscription type for message with ID : " + msgHeaderStringID);
             }
         } catch (AMQException e) {
-            throw new AndesException(e);
+            // The error is not logged here since this will be caught safely higher up in the execution plan :
+            // MessageFlusher.deliverAsynchronously. If we have more context, its better to log here too,
+            // but since this is a general explanation of many possible errors, no point in logging at this state.
+            throw new AndesException("Error occurred while delivering message with ID : " + msgHeaderStringID, e);
         } catch (AndesException e) {
-            if (e.getErrorCode().equals(AndesException.MESSAGE_CONTENT_OBSOLETE)) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Message content for message id : " + msgHeaderStringID + " has " +
-                            "been removed from store due to a queue purge or a previous " +
-                            "acknowledgement of the message. This message won't be retried.", e);
-                }
-            } else {
-                throw new AndesException(e);
-            }
+            throw new AndesException("Error occurred while delivering message with ID : " + msgHeaderStringID, e);
         }
     }
 

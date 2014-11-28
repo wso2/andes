@@ -29,7 +29,6 @@ import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.AMQBrokerManagerMBean;
 import org.wso2.andes.server.binding.BindingFactory;
-import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.server.connection.ConnectionRegistry;
 import org.wso2.andes.server.connection.IConnectionRegistry;
 import org.wso2.andes.server.exchange.*;
@@ -65,57 +64,55 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class VirtualHostImpl implements VirtualHost {
-    private static final Logger _logger = Logger.getLogger(VirtualHostImpl.class);
+    private static final Logger log = Logger.getLogger(VirtualHostImpl.class);
 
-    private final String _name;
+    private final String name;
 
-    private ConnectionRegistry _connectionRegistry;
+    private ConnectionRegistry connectionRegistry;
 
-    private QueueRegistry _queueRegistry;
+    private QueueRegistry queueRegistry;
 
-    private ExchangeRegistry _exchangeRegistry;
+    private ExchangeRegistry exchangeRegistry;
 
-    private ExchangeFactory _exchangeFactory;
+    private ExchangeFactory exchangeFactory;
 
-    private MessageStore _messageStore;
+    private MessageStore messageStore;
 
-    private MessageStore cassandraMessageStore;
+    protected VirtualHostMBean virtualHostMBean;
 
-    protected VirtualHostMBean _virtualHostMBean;
+    private AMQBrokerManagerMBean brokerMBean;
 
-    private AMQBrokerManagerMBean _brokerMBean;
+    private QueueManagementInformationMBean queueManagementInformationMBean;
 
-    private QueueManagementInformationMBean _queueManagementInformationMBean;
+    private final AuthenticationManager authenticationManager;
 
-    private final AuthenticationManager _authenticationManager;
+    private SecurityManager securityManager;
 
-    private SecurityManager _securityManager;
+    private final ScheduledThreadPoolExecutor houseKeepingTasks;
+    private final IApplicationRegistry appRegistry;
+    private VirtualHostConfiguration configuration;
+    private DurableConfigurationStore durableConfigurationStore;
+    private BindingFactory bindingFactory;
+    private BrokerConfig broker;
+    private UUID id;
 
-    private final ScheduledThreadPoolExecutor _houseKeepingTasks;
-    private final IApplicationRegistry _appRegistry;
-    private VirtualHostConfiguration _configuration;
-    private DurableConfigurationStore _durableConfigurationStore;
-    private BindingFactory _bindingFactory;
-    private BrokerConfig _broker;
-    private UUID _id;
+    private boolean statisticsEnabled = false;
+    private StatisticsCounter messagesDelivered, dataDelivered, messagesReceived, dataReceived;
 
-    private boolean _statisticsEnabled = false;
-    private StatisticsCounter _messagesDelivered, _dataDelivered, _messagesReceived, _dataReceived;
-
-    private final long _createTime = System.currentTimeMillis();
-    private final ConcurrentHashMap<BrokerLink, BrokerLink> _links = new ConcurrentHashMap<BrokerLink, BrokerLink>();
+    private final long createTime = System.currentTimeMillis();
+    private final ConcurrentHashMap<BrokerLink, BrokerLink> links = new ConcurrentHashMap<BrokerLink, BrokerLink>();
     private static final int HOUSEKEEPING_SHUTDOWN_TIMEOUT = 5;
 
     public IConnectionRegistry getConnectionRegistry() {
-        return _connectionRegistry;
+        return connectionRegistry;
     }
 
     public VirtualHostConfiguration getConfiguration() {
-        return _configuration;
+        return configuration;
     }
 
     public UUID getId() {
-        return _id;
+        return id;
     }
 
     public VirtualHostConfigType getConfigType() {
@@ -142,11 +139,11 @@ public class VirtualHostImpl implements VirtualHost {
         }
 
         public String getObjectInstanceName() {
-            return ObjectName.quote(_name);
+            return ObjectName.quote(name);
         }
 
         public String getName() {
-            return _name;
+            return name;
         }
 
         public VirtualHostImpl getVirtualHost() {
@@ -168,44 +165,44 @@ public class VirtualHostImpl implements VirtualHost {
             throw new IllegalAccessException("HostConfig and MessageStore cannot be null");
         }
 
-        _appRegistry = appRegistry;
-        _broker = _appRegistry.getBroker();
-        _configuration = hostConfig;
-        _name = _configuration.getName();
+        this.appRegistry = appRegistry;
+        broker = this.appRegistry.getBroker();
+        configuration = hostConfig;
+        name = configuration.getName();
 
-        _id = _appRegistry.getConfigStore().createId();
+        id = this.appRegistry.getConfigStore().createId();
 
-        CurrentActor.get().message(VirtualHostMessages.CREATED(_name));
+        CurrentActor.get().message(VirtualHostMessages.CREATED(name));
 
-        if (_name == null || _name.length() == 0) {
-            throw new IllegalArgumentException("Illegal name (" + _name + ") for virtualhost.");
+        if (name == null || name.length() == 0) {
+            throw new IllegalArgumentException("Illegal name (" + name + ") for virtualhost.");
         }
 
-        _securityManager = new SecurityManager(_appRegistry.getSecurityManager());
-        _securityManager.configureHostPlugins(_configuration);
+        securityManager = new SecurityManager(this.appRegistry.getSecurityManager());
+        securityManager.configureHostPlugins(configuration);
 
-        _virtualHostMBean = new VirtualHostMBean();
+        virtualHostMBean = new VirtualHostMBean();
 
-        _connectionRegistry = new ConnectionRegistry();
+        connectionRegistry = new ConnectionRegistry();
 
-        _houseKeepingTasks = new ScheduledThreadPoolExecutor(_configuration.getHouseKeepingThreadCount());
+        houseKeepingTasks = new ScheduledThreadPoolExecutor(configuration.getHouseKeepingThreadCount());
 
-        _queueRegistry = new DefaultQueueRegistry(this);
+        queueRegistry = new DefaultQueueRegistry(this);
 
-        _exchangeFactory = new DefaultExchangeFactory(this);
-        _exchangeFactory.initialise(_configuration);
+        exchangeFactory = new DefaultExchangeFactory(this);
+        exchangeFactory.initialise(configuration);
 
-        _exchangeRegistry = new DefaultExchangeRegistry(this);
+        exchangeRegistry = new DefaultExchangeRegistry(this);
 
         StartupRoutingTable configFileRT = new StartupRoutingTable();
 
-        _durableConfigurationStore = configFileRT;
+        durableConfigurationStore = configFileRT;
 
-        _bindingFactory = new BindingFactory(this);
+        bindingFactory = new BindingFactory(this);
 
         if (store != null) {
-            _messageStore = store;
-            _durableConfigurationStore = store;
+            messageStore = store;
+            durableConfigurationStore = store;
         } else {
             initialiseAndesStores(hostConfig);
         }
@@ -213,16 +210,16 @@ public class VirtualHostImpl implements VirtualHost {
         AndesKernelBoot.recoverDistributedSlotMap();
 
         // This needs to be after the RT has been defined as it creates the default durable exchanges.
-        initialiseModel(_configuration);
-        _exchangeRegistry.initialise();
+        initialiseModel(configuration);
+        exchangeRegistry.initialise();
 
-        _authenticationManager = ApplicationRegistry.getInstance().getAuthenticationManager();
+        authenticationManager = ApplicationRegistry.getInstance().getAuthenticationManager();
 
-        _brokerMBean = new AMQBrokerManagerMBean(_virtualHostMBean);
-        _brokerMBean.register();
+        brokerMBean = new AMQBrokerManagerMBean(virtualHostMBean);
+        brokerMBean.register();
 
-        _queueManagementInformationMBean = new QueueManagementInformationMBean(_virtualHostMBean);
-        _queueManagementInformationMBean.register();
+        queueManagementInformationMBean = new QueueManagementInformationMBean(virtualHostMBean);
+        queueManagementInformationMBean.register();
 
         initialiseHouseKeeping(hostConfig.getHousekeepingExpiredMessageCheckPeriod());
 
@@ -239,29 +236,34 @@ public class VirtualHostImpl implements VirtualHost {
                 }
 
                 public void execute() {
-                    for (AMQQueue q : _queueRegistry.getQueues()) {
-                        _logger.debug("Checking message status for queue: "
-                                + q.getName());
+                    for (AMQQueue q : queueRegistry.getQueues()) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Checking message status for queue: " + q.getName());
+                        }
                         try {
                             q.checkMessageStatus();
                         } catch (Exception e) {
-                            _logger.error("Exception in housekeeping for queue: "
+                            log.error("Exception in housekeeping for queue: "
                                     + q.getNameShortString().toString(), e);
                             //Don't throw exceptions as this will stop the
                             // house keeping task from running.
                         }
                     }
                     for (AMQConnectionModel connection : getConnectionRegistry().getConnections()) {
-                        _logger.debug("Checking for long running open transactions on connection " + connection);
+                        if (log.isDebugEnabled()) {
+                            log.debug("Checking for long running open transactions on connection " + connection);
+                        }
                         for (AMQSessionModel session : connection.getSessionModels()) {
-                            _logger.debug("Checking for long running open transactions on session " + session);
+                            if (log.isDebugEnabled()) {
+                                log.debug("Checking for long running open transactions on session " + session);
+                            }
                             try {
-                                session.checkTransactionStatus(_configuration.getTransactionTimeoutOpenWarn(),
-                                        _configuration.getTransactionTimeoutOpenClose(),
-                                        _configuration.getTransactionTimeoutIdleWarn(),
-                                        _configuration.getTransactionTimeoutIdleClose());
+                                session.checkTransactionStatus(configuration.getTransactionTimeoutOpenWarn(),
+                                        configuration.getTransactionTimeoutOpenClose(),
+                                        configuration.getTransactionTimeoutIdleWarn(),
+                                        configuration.getTransactionTimeoutIdleClose());
                             } catch (Exception e) {
-                                _logger.error("Exception in housekeeping for connection: " + connection.toString(), e);
+                                log.error("Exception in housekeeping for connection: " + connection.toString(), e);
                             }
                         }
                     }
@@ -282,13 +284,13 @@ public class VirtualHostImpl implements VirtualHost {
 
                         // If we had configuration for the plugin the schedule it.
                         if (plugin != null) {
-                            _houseKeepingTasks.scheduleAtFixedRate(plugin, plugin.getDelay() / 2,
+                            houseKeepingTasks.scheduleAtFixedRate(plugin, plugin.getDelay() / 2,
                                     plugin.getDelay(), plugin.getTimeUnit());
 
-                            _logger.info("Loaded VirtualHostPlugin:" + plugin);
+                            log.info("Loaded VirtualHostPlugin:" + plugin);
                         }
                     } catch (RuntimeException e) {
-                        _logger.error("Unable to load VirtualHostPlugin:" + pluginName + " due to:" + e.getMessage(), e);
+                        log.error("Unable to load VirtualHostPlugin:" + pluginName + " due to:" + e.getMessage(), e);
                     }
                 }
             }
@@ -302,29 +304,29 @@ public class VirtualHostImpl implements VirtualHost {
      * @param task   The task to run.
      */
     public void scheduleHouseKeepingTask(long period, HouseKeepingTask task) {
-        _houseKeepingTasks.scheduleAtFixedRate(task, period / 2, period,
+        houseKeepingTasks.scheduleAtFixedRate(task, period / 2, period,
                 TimeUnit.MILLISECONDS);
     }
 
     public long getHouseKeepingTaskCount() {
-        return _houseKeepingTasks.getTaskCount();
+        return houseKeepingTasks.getTaskCount();
     }
 
     public long getHouseKeepingCompletedTaskCount() {
-        return _houseKeepingTasks.getCompletedTaskCount();
+        return houseKeepingTasks.getCompletedTaskCount();
     }
 
     public int getHouseKeepingPoolSize() {
-        return _houseKeepingTasks.getCorePoolSize();
+        return houseKeepingTasks.getCorePoolSize();
     }
 
     public void setHouseKeepingPoolSize(int newSize) {
-        _houseKeepingTasks.setCorePoolSize(newSize);
+        houseKeepingTasks.setCorePoolSize(newSize);
     }
 
 
     public int getHouseKeepingActiveCount() {
-        return _houseKeepingTasks.getActiveCount();
+        return houseKeepingTasks.getActiveCount();
     }
 
 
@@ -364,15 +366,17 @@ public class VirtualHostImpl implements VirtualHost {
                 hostConfig.getStoreConfiguration(),
                 storeLogSubject);
 
-        _messageStore = messageStore;
-        _durableConfigurationStore = messageStore;
+        this.messageStore = messageStore;
+        durableConfigurationStore = messageStore;
 
         //cassandraMessageStore = CassandraMessageStore.getInstance();
         //cassandraMessageStore.configureMessageStore(this.getName(),recoveryHandler,hostConfig.getStoreConfiguration(),storeLogSubject);
     }
 
     private void initialiseModel(VirtualHostConfiguration config) throws ConfigurationException, AMQException {
-        _logger.debug("Loading configuration for virtualhost: " + config.getName());
+        if (log.isDebugEnabled()) {
+            log.debug("Loading configuration for virtualhost: " + config.getName());
+        }
 
         List exchangeNames = config.getExchanges();
 
@@ -393,18 +397,18 @@ public class VirtualHostImpl implements VirtualHost {
         AMQShortString exchangeName = new AMQShortString(exchangeConfiguration.getName());
 
         Exchange exchange;
-        exchange = _exchangeRegistry.getExchange(exchangeName);
+        exchange = exchangeRegistry.getExchange(exchangeName);
         if (exchange == null) {
 
             AMQShortString type = new AMQShortString(exchangeConfiguration.getType());
             boolean durable = exchangeConfiguration.getDurable();
             boolean autodelete = exchangeConfiguration.getAutoDelete();
 
-            Exchange newExchange = _exchangeFactory.createExchange(exchangeName, type, durable, autodelete, 0);
-            _exchangeRegistry.registerExchange(newExchange);
+            Exchange newExchange = exchangeFactory.createExchange(exchangeName, type, durable, autodelete, 0);
+            exchangeRegistry.registerExchange(newExchange);
 
             if (newExchange.isDurable()) {
-                _durableConfigurationStore.createExchange(newExchange);
+                durableConfigurationStore.createExchange(newExchange);
 
                 //tell Andes kernel to create Exchange
                 QpidAMQPBridge.getInstance().createExchange(newExchange);
@@ -424,10 +428,10 @@ public class VirtualHostImpl implements VirtualHost {
 
         String exchangeName = queueConfiguration.getExchange();
 
-        Exchange exchange = _exchangeRegistry.getExchange(exchangeName == null ? null : new AMQShortString(exchangeName));
+        Exchange exchange = exchangeRegistry.getExchange(exchangeName == null ? null : new AMQShortString(exchangeName));
 
         if (exchange == null) {
-            exchange = _exchangeRegistry.getDefaultExchange();
+            exchange = exchangeRegistry.getDefaultExchange();
         }
 
         if (exchange == null) {
@@ -441,99 +445,99 @@ public class VirtualHostImpl implements VirtualHost {
 
         for (Object routingKeyNameObj : routingKeys) {
             AMQShortString routingKey = new AMQShortString(String.valueOf(routingKeyNameObj));
-            if (_logger.isInfoEnabled()) {
-                _logger.info("Binding queue:" + queue + " with routing key '" + routingKey + "' to exchange:" + this);
+            if (log.isInfoEnabled()) {
+                log.info("Binding queue:" + queue + " with routing key '" + routingKey + "' to exchange:" + this);
             }
-            _bindingFactory.addBinding(routingKey.toString(), queue, exchange, null);
+            bindingFactory.addBinding(routingKey.toString(), queue, exchange, null);
         }
 
-        if (exchange != _exchangeRegistry.getDefaultExchange()) {
-            _bindingFactory.addBinding(queue.getNameShortString().toString(), queue, exchange, null);
+        if (exchange != exchangeRegistry.getDefaultExchange()) {
+            bindingFactory.addBinding(queue.getNameShortString().toString(), queue, exchange, null);
         }
     }
 
     public String getName() {
-        return _name;
+        return name;
     }
 
     public BrokerConfig getBroker() {
-        return _broker;
+        return broker;
     }
 
     public String getFederationTag() {
-        return _broker.getFederationTag();
+        return broker.getFederationTag();
     }
 
     public void setBroker(final BrokerConfig broker) {
-        _broker = broker;
+        this.broker = broker;
     }
 
     public long getCreateTime() {
-        return _createTime;
+        return createTime;
     }
 
     public QueueRegistry getQueueRegistry() {
-        return _queueRegistry;
+        return queueRegistry;
     }
 
     public ExchangeRegistry getExchangeRegistry() {
-        return _exchangeRegistry;
+        return exchangeRegistry;
     }
 
     public ExchangeFactory getExchangeFactory() {
-        return _exchangeFactory;
+        return exchangeFactory;
     }
 
     public MessageStore getMessageStore() {
-        return _messageStore;
+        return messageStore;
     }
 
     public TransactionLog getTransactionLog() {
-        return _messageStore;
+        return messageStore;
     }
 
     public DurableConfigurationStore getDurableConfigurationStore() {
-        return _durableConfigurationStore;
+        return durableConfigurationStore;
     }
 
     public AuthenticationManager getAuthenticationManager() {
-        return _authenticationManager;
+        return authenticationManager;
     }
 
     public SecurityManager getSecurityManager() {
-        return _securityManager;
+        return securityManager;
     }
 
     public void close() {
         //Stop Connections
-        _connectionRegistry.close();
+        connectionRegistry.close();
 
         //Stop the Queues processing
-        if (_queueRegistry != null) {
-            for (AMQQueue queue : _queueRegistry.getQueues()) {
+        if (queueRegistry != null) {
+            for (AMQQueue queue : queueRegistry.getQueues()) {
                 queue.stop();
             }
         }
 
         //Stop Housekeeping
-        if (_houseKeepingTasks != null) {
-            _houseKeepingTasks.shutdown();
+        if (houseKeepingTasks != null) {
+            houseKeepingTasks.shutdown();
 
             try {
-                if (!_houseKeepingTasks.awaitTermination(HOUSEKEEPING_SHUTDOWN_TIMEOUT, TimeUnit.SECONDS)) {
-                    _houseKeepingTasks.shutdownNow();
+                if (!houseKeepingTasks.awaitTermination(HOUSEKEEPING_SHUTDOWN_TIMEOUT, TimeUnit.SECONDS)) {
+                    houseKeepingTasks.shutdownNow();
                 }
             } catch (InterruptedException e) {
-                _logger.warn("Interrupted during Housekeeping shutdown:" + e.getMessage());
+                log.warn("Interrupted during Housekeeping shutdown:" + e.getMessage());
                 // Swallowing InterruptedException ok as we are shutting down.
             }
         }
 
         //Close MessageStore
-        if (_messageStore != null) {
+        if (messageStore != null) {
             //Remove MessageStore Interface should not throw Exception
             try {
-                _messageStore.close();
+                messageStore.close();
             } catch (Exception e) {
                 e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
             }
@@ -543,84 +547,84 @@ public class VirtualHostImpl implements VirtualHost {
     }
 
     public ManagedObject getBrokerMBean() {
-        return _brokerMBean;
+        return brokerMBean;
     }
 
     public ManagedObject getManagedObject() {
-        return _virtualHostMBean;
+        return virtualHostMBean;
     }
 
     public UUID getBrokerId() {
-        return _appRegistry.getBrokerId();
+        return appRegistry.getBrokerId();
     }
 
     public IApplicationRegistry getApplicationRegistry() {
-        return _appRegistry;
+        return appRegistry;
     }
 
     public BindingFactory getBindingFactory() {
-        return _bindingFactory;
+        return bindingFactory;
     }
 
     public void registerMessageDelivered(long messageSize) {
         if (isStatisticsEnabled()) {
-            _messagesDelivered.registerEvent(1L);
-            _dataDelivered.registerEvent(messageSize);
+            messagesDelivered.registerEvent(1L);
+            dataDelivered.registerEvent(messageSize);
         }
-        _appRegistry.registerMessageDelivered(messageSize);
+        appRegistry.registerMessageDelivered(messageSize);
     }
 
     public void registerMessageReceived(long messageSize, long timestamp) {
         if (isStatisticsEnabled()) {
-            _messagesReceived.registerEvent(1L, timestamp);
-            _dataReceived.registerEvent(messageSize, timestamp);
+            messagesReceived.registerEvent(1L, timestamp);
+            dataReceived.registerEvent(messageSize, timestamp);
         }
-        _appRegistry.registerMessageReceived(messageSize, timestamp);
+        appRegistry.registerMessageReceived(messageSize, timestamp);
     }
 
     public StatisticsCounter getMessageReceiptStatistics() {
-        return _messagesReceived;
+        return messagesReceived;
     }
 
     public StatisticsCounter getDataReceiptStatistics() {
-        return _dataReceived;
+        return dataReceived;
     }
 
     public StatisticsCounter getMessageDeliveryStatistics() {
-        return _messagesDelivered;
+        return messagesDelivered;
     }
 
     public StatisticsCounter getDataDeliveryStatistics() {
-        return _dataDelivered;
+        return dataDelivered;
     }
 
     public void resetStatistics() {
-        _messagesDelivered.reset();
-        _dataDelivered.reset();
-        _messagesReceived.reset();
-        _dataReceived.reset();
+        messagesDelivered.reset();
+        dataDelivered.reset();
+        messagesReceived.reset();
+        dataReceived.reset();
 
-        for (AMQConnectionModel connection : _connectionRegistry.getConnections()) {
+        for (AMQConnectionModel connection : connectionRegistry.getConnections()) {
             connection.resetStatistics();
         }
     }
 
     public void initialiseStatistics() {
         setStatisticsEnabled(!StatisticsCounter.DISABLE_STATISTICS &&
-                _appRegistry.getConfiguration().isStatisticsGenerationVirtualhostsEnabled());
+                appRegistry.getConfiguration().isStatisticsGenerationVirtualhostsEnabled());
 
-        _messagesDelivered = new StatisticsCounter("messages-delivered-" + getName());
-        _dataDelivered = new StatisticsCounter("bytes-delivered-" + getName());
-        _messagesReceived = new StatisticsCounter("messages-received-" + getName());
-        _dataReceived = new StatisticsCounter("bytes-received-" + getName());
+        messagesDelivered = new StatisticsCounter("messages-delivered-" + getName());
+        dataDelivered = new StatisticsCounter("bytes-delivered-" + getName());
+        messagesReceived = new StatisticsCounter("messages-received-" + getName());
+        dataReceived = new StatisticsCounter("bytes-received-" + getName());
     }
 
     public boolean isStatisticsEnabled() {
-        return _statisticsEnabled;
+        return statisticsEnabled;
     }
 
     public void setStatisticsEnabled(boolean enabled) {
-        _statisticsEnabled = enabled;
+        statisticsEnabled = enabled;
     }
 
     public void createBrokerConnection(final String transport,
@@ -632,7 +636,7 @@ public class VirtualHostImpl implements VirtualHost {
                                        final String username,
                                        final String password) {
         BrokerLink blink = new BrokerLink(this, transport, host, port, vhost, durable, authMechanism, username, password);
-        if (_links.putIfAbsent(blink, blink) != null) {
+        if (links.putIfAbsent(blink, blink) != null) {
             getConfigStore().addConfiguredObject(blink);
         }
     }
@@ -646,7 +650,7 @@ public class VirtualHostImpl implements VirtualHost {
     }
 
     public void removeBrokerConnection(BrokerLink blink) {
-        blink = _links.get(blink);
+        blink = links.get(blink);
         if (blink != null) {
             blink.close();
             getConfigStore().removeConfiguredObject(blink);
@@ -749,6 +753,6 @@ public class VirtualHostImpl implements VirtualHost {
 
     @Override
     public String toString() {
-        return _name;
+        return name;
     }
 }

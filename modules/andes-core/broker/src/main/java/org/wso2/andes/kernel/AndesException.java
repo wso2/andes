@@ -18,6 +18,10 @@
 
 package org.wso2.andes.kernel;
 
+/**
+ * This should be used to expose exceptional scenarios specific to wso2 mb logic. Can also be used to unify and expose different
+ * exceptions coming from different components into relevant error messages.
+ */
 public class AndesException extends Exception{
 
     /***

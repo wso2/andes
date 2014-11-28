@@ -114,8 +114,7 @@ public abstract class BasicStoringManager implements MessageStoreManager {
         try {
             // Retrieve message IDs addressed to the queue and keep track of message count for
             // the queue in the store
-            List<Long> messageIDsAddressedToQueue = messageStore.getMessageIDsAddressedToQueue
-                    (storageQueueName);
+            List<Long> messageIDsAddressedToQueue = messageStore.getMessageIDsAddressedToQueue(storageQueueName);
 
             Integer messageCountInStore = messageIDsAddressedToQueue.size();
 
@@ -131,9 +130,9 @@ public abstract class BasicStoringManager implements MessageStoreManager {
             // to the given queue, We still have to get all 1000
             // into memory. Options are to delete dlc messages leisurely with another thread,
             // or to break from original DLC pattern and maintain multiple DLC queues per each queue.
-            Integer messageCountFromDLC = messageStore.deleteAllMessageMetadataFromDLC
-                    (DLCQueueUtils.identifyTenantInformationAndGenerateDLCString
-                            (storageQueueName, AndesConstants.DEAD_LETTER_QUEUE_NAME), storageQueueName);
+            Integer messageCountFromDLC = messageStore.deleteAllMessageMetadataFromDLC(DLCQueueUtils
+                    .identifyTenantInformationAndGenerateDLCString(storageQueueName,
+                            AndesConstants.DEAD_LETTER_QUEUE_NAME), storageQueueName);
 
             // Clear message content leisurely / asynchronously using retrieved message IDs
             messageStore.deleteMessageParts(messageIDsAddressedToQueue);

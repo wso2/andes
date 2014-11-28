@@ -26,8 +26,11 @@ public class AndesQueue {
     public boolean isExclusive;
     public boolean isDurable;
     public int subscriptionCount;
-    // Added to infer the state of the queue during concurrent message delivery. Initial value
-    // before a purge should be 0
+
+    /**
+     * Added to infer the state of the queue during concurrent message delivery.
+     * Initial value before the first purge within this server session should be 0.
+     */
     private Long lastPurgedTimestamp;
 
     /**

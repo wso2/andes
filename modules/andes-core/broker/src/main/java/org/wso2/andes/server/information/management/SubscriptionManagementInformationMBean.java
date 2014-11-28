@@ -36,8 +36,6 @@ import java.util.List;
  */
 public class SubscriptionManagementInformationMBean extends AMQManagedObject implements SubscriptionManagementInformation {
 
-    private static Log log = LogFactory.getLog(SubscriptionManagementInformationMBean.class);
-
     public SubscriptionManagementInformationMBean() throws NotCompliantMBeanException {
         super(SubscriptionManagementInformation.class, SubscriptionManagementInformation.TYPE);
     }
@@ -129,9 +127,9 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
      * subscribedQueueOrTopicName | subscriberQueueBoundExchange | subscriberQueueName |
      * isDurable | isActive | numberOfMessagesRemainingForSubscriber | subscriberNodeAddress"
      *
-     * @param subscription
-     * @param pendingMessageCount
-     * @return
+     * @param subscription AndesSubscription object that is to be translated to UI view
+     * @param pendingMessageCount Number of pending messages of subscription
+     * @return String representation of the subscription meta information and pending message count
      */
     private static String renderSubscriptionForUI(AndesSubscription subscription,
                                                   int pendingMessageCount) throws AndesException {

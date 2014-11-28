@@ -19,6 +19,7 @@
 package org.wso2.andes.server.slot;
 
 import com.hazelcast.core.IMap;
+import com.kenai.jaffl.annotations.Synchronized;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
@@ -341,17 +342,20 @@ public class SlotManager {
         // Clear slots assigned to the queue
         if (AndesContext.getInstance().isClusteringEnabled()) {
             String nodeId = HazelcastAgent.getInstance().getNodeId();
-            String lockKey = (nodeId + SlotManager.class).intern();
 
-            synchronized (lockKey) {
-                // The requirement here is to clear slot associations for the queue on all nodes.
-                Set<Map.Entry<String,HashMap<String,List<Slot>>>> nodeEntries = slotAssignmentMap.entrySet();
+            // The requirement here is to clear slot associations for the queue on all nodes.
+            List<String> nodeIDs = HazelcastAgent.getInstance().getMembersNodeIDs();
 
-                Iterator<Map.Entry<String,HashMap<String,List<Slot>>>> iterator = nodeEntries.iterator();
+            for (String nodeID : nodeIDs) {
+               String lockKey = (nodeID + SlotManager.class).intern();
 
-                while(iterator.hasNext()) {
-                    iterator.next().getValue().put(queueName,new ArrayList<Slot>());
-                }
+               synchronized (lockKey) {
+                   HashMap<String, List<Slot>> queueToSlotMap = slotAssignmentMap.get(nodeId);
+                   if (queueToSlotMap != null) {
+                       queueToSlotMap.remove(queueName);
+                       slotAssignmentMap.set(nodeId, queueToSlotMap);
+                   }
+               }
             }
         }
 

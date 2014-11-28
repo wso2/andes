@@ -25,6 +25,9 @@ import org.wso2.andes.management.common.mbeans.annotations.MBeanAttribute;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
 import javax.management.MBeanException;
 
+/**
+ * This interface contains all operations invoked by the UI console with relation to queues. (addition, deletion, purging, etc.)
+ */
 public interface QueueManagementInformation {
 
     static final String TYPE = "QueueManagementInformation";
@@ -39,8 +42,7 @@ public interface QueueManagementInformation {
     /***
      * Retrieve current message count of a queue. This may be only a rough estimate in a fast pub/sub scenario.
      * @param queueName name of queue
-     * @param msgPattern The exchange type used to transfer messages with the given queueName. e
-     *                   .g. "queue" or "topic"
+     * @param msgPattern The exchange type used to transfer messages with the given queueName. e.g. "queue" or "topic"
      * @return Count of messages in store for the given queue.
      */
     @MBeanAttribute(name="MessageCount",description = "Message count of the queue")

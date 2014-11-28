@@ -288,7 +288,7 @@ public class MessagingEngine {
         // This call clears all slot associations for the queue in all nodes. (could take time)
         SlotManager.getInstance().clearAllActiveSlotRelationsToQueue(destination);
 
-        // clear in memory messages of self (node)
+        // Clear in memory messages of self (node)
         clearMessagesFromQueueInMemory(destination, purgedTimestamp);
 
         //Notify the cluster if queues
@@ -305,7 +305,7 @@ public class MessagingEngine {
         // We can measure the message count in store, but cannot exactly infer the message count
         // in memory within all nodes at the time of purging. (Adding that could unnecessarily
         // block critical pub sub flows.)
-        // for queues destination = storage queue. But for topics it is different
+        // queues destination = storage queue. But for topics it is different
         String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         String storageQueueName = AndesUtils.getStorageQueueForDestination(destination, nodeID, isTopic);
         int purgedNumOfMessages =  messageStoreManager.purgeQueueFromStore(storageQueueName);

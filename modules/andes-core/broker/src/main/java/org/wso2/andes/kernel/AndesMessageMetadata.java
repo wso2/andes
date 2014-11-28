@@ -38,10 +38,25 @@ import java.util.UUID;
 public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 
 
+    /**
+     * Unique identifier of the message
+     */
     long messageID;
+    /**
+     * AMQ metadata of the message
+     */
     byte[] metadata;
+    /**
+     * The timestamp at which the message is set to expire.
+     */
     long expirationTime;
+    /**
+     * true if the message is addressed to a topic exchange.
+     */
     boolean isTopic;
+    /**
+     * The timestamp at which the message arrived at the first gates of the broker.
+     */
     long arrivalTime;
 
     /**
@@ -61,7 +76,14 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
      */
     private String storageQueueName;
 
+    /**
+     * True if the message is sent with JMS persistent mode.
+     */
     private boolean isPersistent;
+
+    /**
+     * True if the message has been delivered more than once.
+     */
     private boolean reDelivered;
     Map<UUID, PendingJob> pendingJobsTracker;
     private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
