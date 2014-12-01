@@ -917,7 +917,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             connection.commit();
 
             if (log.isDebugEnabled()) {
-                log.debug("Deleted all message metadata from " + storageQueueName +
+                log.debug("DELETED all message metadata from " + storageQueueName +
                         " with queue ID " + queueID);
             }
         } catch (SQLException e) {

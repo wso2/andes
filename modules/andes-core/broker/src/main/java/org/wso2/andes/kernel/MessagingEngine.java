@@ -172,7 +172,7 @@ public class MessagingEngine {
                         message.isTopic(),
                         message.getDestination());
             }
-            routeAMQPMetadata(message);
+            routeMetadata(message);
 
         } catch (Exception e) {
             throw new AndesException("Error in storing the message to the store", e);
@@ -252,7 +252,7 @@ public class MessagingEngine {
 
     /**
      * Remove in-memory message buffers of the destination matching to given destination in this
-     * node. This is called from the HazelcastAgent when it receives a queue purged event.
+     * node. This is called from the Hazelcast Agent when it receives a queue purged event.
      *
      * @param destination queue or topic name (subscribed routing key) whose messages should be removed
      * @return number of messages removed
@@ -298,7 +298,7 @@ public class MessagingEngine {
             AndesQueue purgedQueue = new AndesQueue(destination, ownerName, false, true);
             purgedQueue.setLastPurgedTimestamp(purgedTimestamp);
 
-            queueListener.handleLocalQueuesChanged(purgedQueue, QueueListener.QueueChange.Purged);
+            queueListener.handleLocalQueuesChanged(purgedQueue, QueueListener.QueueEvent.PURGED);
         }
 
         // Clear any and all message references addressed to the queue from the persistent store.
@@ -314,7 +314,7 @@ public class MessagingEngine {
     }
 
     /**
-     * Delete messages from store. Optinally move to dead letter channel
+     * Delete messages from store. Optionally move to dead letter channel
      *
      * @param messagesToRemove        List of messages to remove
      * @param moveToDeadLetterChannel if to move to DLC
@@ -532,7 +532,7 @@ public class MessagingEngine {
      * @param message message to route
      * @throws AndesException
      */
-    private void routeAMQPMetadata(AndesMessageMetadata message) throws AndesException {
+    private void routeMetadata(AndesMessageMetadata message) throws AndesException {
         if (message.isTopic) {
             String messageRoutingKey = message.getDestination();
             //get all topic subscriptions in the cluster matching to routing key

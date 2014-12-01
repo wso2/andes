@@ -35,17 +35,17 @@ public class ClusterCoordinationHandler implements QueueListener, ExchangeListen
     }
 
     @Override
-    public void handleClusterQueuesChanged(AndesQueue andesQueue, QueueChange changeType) throws AndesException {
+    public void handleClusterQueuesChanged(AndesQueue andesQueue, QueueEvent changeType) throws AndesException {
         switch (changeType) {
-            case Added:
+            case ADDED:
                 //create a queue
                 ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterQueueAdded(andesQueue);
                 break;
-            case Deleted:
+            case DELETED:
                 //delete queue
                 ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterQueueRemoved(andesQueue);
                 break;
-            case Purged:
+            case PURGED:
                 //purge queue
                 ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterQueuePurged(andesQueue);
                 break;
@@ -60,7 +60,7 @@ public class ClusterCoordinationHandler implements QueueListener, ExchangeListen
      * @throws AndesException
      */
     @Override
-    public void handleLocalQueuesChanged(AndesQueue andesQueue, QueueChange changeType) throws AndesException {
+    public void handleLocalQueuesChanged(AndesQueue andesQueue, QueueEvent changeType) throws AndesException {
         //notify cluster that queues are changed
         if (AndesContext.getInstance().isClusteringEnabled()) {
             // Notify global listeners
@@ -100,13 +100,13 @@ public class ClusterCoordinationHandler implements QueueListener, ExchangeListen
     }
 
     @Override
-    public void handleClusterBindingsChanged(AndesBinding binding, BindingChange changeType) throws AndesException {
+    public void handleClusterBindingsChanged(AndesBinding binding, BindingEvent changeType) throws AndesException {
         switch (changeType) {
-            case Added:
+            case ADDED:
                 //create a binding
                 ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterBindingAdded(binding);
                 break;
-            case Deleted:
+            case DELETED:
                 //delete binding
                 ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterBindingRemoved(binding);
                 break;
@@ -114,7 +114,7 @@ public class ClusterCoordinationHandler implements QueueListener, ExchangeListen
     }
 
     @Override
-    public void handleLocalBindingsChanged(AndesBinding binding, BindingChange changeType) throws AndesException {
+    public void handleLocalBindingsChanged(AndesBinding binding, BindingEvent changeType) throws AndesException {
         //notify cluster that bindings are changed
         if (AndesContext.getInstance().isClusteringEnabled()) {
             ClusterNotification clusterNotification = new ClusterNotification(binding.encodeAsString(),

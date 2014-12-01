@@ -112,13 +112,13 @@ public class DLCQueueUtils {
 
             QueueListener queueListener = new ClusterCoordinationHandler(HazelcastAgent
                     .getInstance());
-            queueListener.handleLocalQueuesChanged(andesQueue, QueueListener.QueueChange.Added);
+            queueListener.handleLocalQueuesChanged(andesQueue, QueueListener.QueueEvent.ADDED);
 
             LocalSubscription mockSubscription = new AMQPLocalSubscription(queueRegistry.getQueue(new
                     AMQShortString(dlcQueueName)), null, "0", dlcQueueName, false, false, false, null,
                     dlcQueueName, owner, ExchangeDefaults.DIRECT_EXCHANGE_NAME.toString(), "DIRECT", null, false);
             AndesContext.getInstance().getSubscriptionStore().createDisconnectOrRemoveClusterSubscription
-                    (mockSubscription, SubscriptionListener.SubscriptionChange.Added);
+                    (mockSubscription, SubscriptionListener.SubscriptionChange.ADDED);
 
             log.info(dlcQueueName + " Queue Created as Dead Letter Channel");
         }

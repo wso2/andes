@@ -53,10 +53,10 @@ public class OrphanedSlotHandler implements SubscriptionListener {
                                                 SubscriptionChange changeType)
             throws AndesException {
         switch (changeType) {
-            case Deleted:
+            case DELETED:
                 reAssignSlotsIfNeeded(subscription);
                 break;
-            case Disconnected:
+            case DISCONNECTED:
                 reAssignSlotsIfNeeded(subscription);
                 break;
         }

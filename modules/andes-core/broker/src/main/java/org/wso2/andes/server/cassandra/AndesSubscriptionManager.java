@@ -86,14 +86,14 @@ public class AndesSubscriptionManager {
     public void addSubscription(LocalSubscription localSubscription) throws AndesException {
 
         //store subscription in context store
-        subscriptionStore.createDisconnectOrRemoveLocalSubscription(localSubscription, SubscriptionListener.SubscriptionChange.Added);
+        subscriptionStore.createDisconnectOrRemoveLocalSubscription(localSubscription, SubscriptionListener.SubscriptionChange.ADDED);
 
         //start a slot delivery worker on the destination (or topicQueue) subscription refers
         SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
         slotDeliveryWorkerManager.startSlotDeliveryWorker(localSubscription.getStorageQueueName(), localSubscription.getSubscribedDestination());
 
         //notify the local subscription change to listeners
-        notifyLocalSubscriptionHasChanged(localSubscription, SubscriptionListener.SubscriptionChange.Added);
+        notifyLocalSubscriptionHasChanged(localSubscription, SubscriptionListener.SubscriptionChange.ADDED);
 
     }
 
@@ -112,9 +112,9 @@ public class AndesSubscriptionManager {
         if (!activeSubscriptions.isEmpty()) {
             for (AndesSubscription sub : activeSubscriptions) {
                 //close and notify
-                subscriptionStore.createDisconnectOrRemoveClusterSubscription(sub, SubscriptionListener.SubscriptionChange.Deleted);
+                subscriptionStore.createDisconnectOrRemoveClusterSubscription(sub, SubscriptionListener.SubscriptionChange.DELETED);
                 //this is like closing local subscribers of that node thus we need to notify to cluster
-                notifyLocalSubscriptionHasChanged((LocalSubscription) sub, SubscriptionListener.SubscriptionChange.Deleted);
+                notifyLocalSubscriptionHasChanged((LocalSubscription) sub, SubscriptionListener.SubscriptionChange.DELETED);
             }
         }
 
@@ -134,8 +134,8 @@ public class AndesSubscriptionManager {
         if (!activeSubscriptions.isEmpty()) {
             for (LocalSubscription sub : activeSubscriptions) {
                 //close and notify
-                subscriptionStore.createDisconnectOrRemoveLocalSubscription(sub, SubscriptionListener.SubscriptionChange.Deleted);
-                notifyLocalSubscriptionHasChanged(sub, SubscriptionListener.SubscriptionChange.Deleted);
+                subscriptionStore.createDisconnectOrRemoveLocalSubscription(sub, SubscriptionListener.SubscriptionChange.DELETED);
+                notifyLocalSubscriptionHasChanged(sub, SubscriptionListener.SubscriptionChange.DELETED);
             }
         }
 
@@ -203,9 +203,9 @@ public class AndesSubscriptionManager {
          * Topic subscription representing durable topic is deleted when binding is deleted
          */
         if(subscription.isBoundToTopic() && subscription.isDurable()) {
-            chageType = SubscriptionListener.SubscriptionChange.Disconnected;
+            chageType = SubscriptionListener.SubscriptionChange.DISCONNECTED;
         } else {
-            chageType = SubscriptionListener.SubscriptionChange.Deleted;
+            chageType = SubscriptionListener.SubscriptionChange.DELETED;
         }
         subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, chageType);
         notifyLocalSubscriptionHasChanged(subscription, chageType);
@@ -219,8 +219,8 @@ public class AndesSubscriptionManager {
     public void deleteSubscriptionsOfBoundQueue(String boundQueueName) throws AndesException{
         List<LocalSubscription> subscriptionsOfQueue = subscriptionStore.getListOfSubscriptionsBoundToQueue(boundQueueName);
         for(LocalSubscription subscription : subscriptionsOfQueue) {
-            subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, SubscriptionListener.SubscriptionChange.Deleted);
-            notifyLocalSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.Deleted);
+            subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, SubscriptionListener.SubscriptionChange.DELETED);
+            notifyLocalSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.DELETED);
         }
     }
 
@@ -277,7 +277,7 @@ public class AndesSubscriptionManager {
                 newSubscriptionList.removeAll(oldSubscriptionList);
                 for (AndesSubscription subscription : newSubscriptionList) {
                     log.warn("Recovering node. Adding subscription " + subscription.toString());
-                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.Added);
+                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.ADDED);
                 }
 
                 /**
@@ -287,7 +287,7 @@ public class AndesSubscriptionManager {
                 oldSubscriptionList.removeAll(duplicatedNewSubscriptionList);
                 for (AndesSubscription subscription : oldSubscriptionList) {
                     log.warn("Recovering node. Removing subscription " + subscription.toString());
-                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.Deleted);
+                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.DELETED);
                 }
             }
         }
@@ -332,7 +332,7 @@ public class AndesSubscriptionManager {
                 newSubscriptionList.removeAll(oldSubscriptionList);
                 for (AndesSubscription subscription : newSubscriptionList) {
                     log.warn("Recovering node. Adding subscription " + subscription.toString());
-                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.Added);
+                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.ADDED);
                 }
 
                 /**
@@ -342,7 +342,7 @@ public class AndesSubscriptionManager {
                 oldSubscriptionList.removeAll(duplicatedNewSubscriptionList);
                 for (AndesSubscription subscription : oldSubscriptionList) {
                     log.warn("Recovering node. Removing subscription " + subscription.toString());
-                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.Deleted);
+                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.DELETED);
                 }
             }
         }
@@ -370,7 +370,7 @@ public class AndesSubscriptionManager {
                 newSubscriptionList.removeAll(oldSubscriptionList);
                 for (AndesSubscription subscription : newSubscriptionList) {
                     log.warn("Recovering node. Adding subscription " + subscription.toString());
-                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.Added);
+                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.ADDED);
                 }
 
                 /**
@@ -380,7 +380,7 @@ public class AndesSubscriptionManager {
                 oldSubscriptionList.removeAll(duplicatedNewSubscriptionList);
                 for (AndesSubscription subscription : oldSubscriptionList) {
                     log.warn("Recovering node. Removing subscription " + subscription.toString());
-                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.Deleted);
+                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.DELETED);
                 }
             }
         }

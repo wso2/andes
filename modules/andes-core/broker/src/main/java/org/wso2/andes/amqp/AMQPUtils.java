@@ -51,6 +51,8 @@ public class AMQPUtils {
 
     public static String TOPIC_EXCHANGE_NAME = "amq.topic";
 
+    public static String DEFAULT_EXCHANGE_NAME = "<<default>>";
+
     public static final int DEFAULT_CONTENT_CHUNK_SIZE = 65534;
 
     private static Log log = LogFactory.getLog(AMQPUtils.class);

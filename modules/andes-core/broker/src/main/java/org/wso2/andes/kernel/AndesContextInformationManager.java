@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -18,7 +18,8 @@
 
 package org.wso2.andes.kernel;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
@@ -33,7 +34,7 @@ import java.util.List;
  */
 public class AndesContextInformationManager {
 
-    private static final Logger log;
+    private static final Log log = LogFactory.getLog(AndesContextInformationManager.class);
 
     private static AndesContextInformationManager contextManager;
 
@@ -51,7 +52,6 @@ public class AndesContextInformationManager {
     private SubscriptionStore subscriptionStore;
 
     static {
-        log = Logger.getLogger(AndesContextInformationManager.class);
         contextManager = new AndesContextInformationManager();
     }
 
@@ -130,7 +130,7 @@ public class AndesContextInformationManager {
      */
     public void createQueue(AndesQueue queue) throws AndesException {
         AndesContext.getInstance().getAMQPConstructStore().addQueue(queue, true);
-        notifyQueueListeners(queue, QueueListener.QueueChange.Added);
+        notifyQueueListeners(queue, QueueListener.QueueEvent.ADDED);
     }
 
     /**
@@ -161,11 +161,11 @@ public class AndesContextInformationManager {
             AndesContext.getInstance().getAndesContextStore().deleteQueueInformation(queueName);
             AndesContext.getInstance().getAndesContextStore().removeMessageCounterForQueue(queueName);
             //Notify cluster to delete queue
-            notifyQueueListeners(queueToDelete, QueueListener.QueueChange.Deleted);
+            notifyQueueListeners(queueToDelete, QueueListener.QueueEvent.DELETED);
 
             //delete all subscription entries if remaining (inactive entries)
             ClusterResourceHolder.getInstance().getSubscriptionManager().deleteSubscriptionsOfBoundQueue(queueName);
-            log.info("Deleted queue " + queueName);
+            log.info("DELETED queue " + queueName);
 
         } else {
             log.warn("Cannot Delete Queue " + queueName + " During Queue Delete or Unsubscribe," +
@@ -182,7 +182,7 @@ public class AndesContextInformationManager {
      */
     public void createBinding(AndesBinding andesBinding) throws AndesException {
         AndesContext.getInstance().getAMQPConstructStore().addBinding(andesBinding, true);
-        notifyBindingListeners(andesBinding, BindingListener.BindingChange.Added);
+        notifyBindingListeners(andesBinding, BindingListener.BindingEvent.ADDED);
     }
 
     /**
@@ -194,7 +194,7 @@ public class AndesContextInformationManager {
         AndesContext.getInstance().getAMQPConstructStore().removeBinding(andesBinding.boundExchangeName,
                                                                          andesBinding.boundQueue.queueName,
                                                                          true);
-        notifyBindingListeners(andesBinding, BindingListener.BindingChange.Deleted);
+        notifyBindingListeners(andesBinding, BindingListener.BindingEvent.DELETED);
     }
 
     private void notifyExchangeListeners(AndesExchange exchange, ExchangeListener.ExchangeChange change) throws AndesException {
@@ -203,13 +203,13 @@ public class AndesContextInformationManager {
         }
     }
 
-    private void notifyQueueListeners(AndesQueue queue, QueueListener.QueueChange change) throws AndesException {
+    private void notifyQueueListeners(AndesQueue queue, QueueListener.QueueEvent change) throws AndesException {
         for(QueueListener listener : queueListeners) {
             listener.handleLocalQueuesChanged(queue, change);
         }
     }
 
-    private void notifyBindingListeners(AndesBinding binding, BindingListener.BindingChange change) throws AndesException {
+    private void notifyBindingListeners(AndesBinding binding, BindingListener.BindingEvent change) throws AndesException {
         for(BindingListener listener : bindingListeners) {
             listener.handleLocalBindingsChanged(binding, change);
         }
