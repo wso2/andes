@@ -21,6 +21,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.server.binding.Binding;
@@ -40,12 +42,16 @@ import org.wso2.andes.subscription.AMQPLocalSubscription;
 
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class AMQPUtils {
 
     public static String DIRECT_EXCHANGE_NAME = "amq.direct";
 
     public static String TOPIC_EXCHANGE_NAME = "amq.topic";
+
+    public static String DEFAULT_EXCHANGE_NAME = "<<default>>";
 
     public static final int DEFAULT_CONTENT_CHUNK_SIZE = 65534;
 
@@ -143,7 +149,7 @@ public class AMQPUtils {
      * @return andes message metadata
      * @throws AndesException
      */
-    public static AndesMessageMetadata convertAMQMessageToAndesMetadata(AMQMessage amqMessage, int channelID) throws AndesException {
+    public static AndesMessageMetadata convertAMQMessageToAndesMetadata(AMQMessage amqMessage, UUID channelID) throws AndesException {
         MessageMetaData amqMetadata = amqMessage.getMessageMetaData();
         String queue = amqMetadata.getMessagePublishInfo().getRoutingKey().toString();
 
@@ -155,15 +161,10 @@ public class AMQPUtils {
         buf = buf.slice();
         amqMetadata.writeToBuffer(0, buf);
 
-        AndesMessageMetadata metadata = new AndesMessageMetadata();
-
-        metadata.setMessageID(amqMessage.getMessageId());
-        metadata.setMetadata(underlying);
-        metadata.setDestination(queue);
-        metadata.setPersistent(amqMetadata.isPersistent());
+        AndesMessageMetadata metadata = new AndesMessageMetadata(amqMessage.getMessageId(),underlying,true);
         metadata.setChannelId(channelID);
-        metadata.setTopic(amqMetadata.getMessagePublishInfo().getExchange().equals("amq.topic"));
         metadata.setSlot(amqMessage.getSlot());
+        metadata.setArrivalTime(amqMessage.getArrivalTime());
 
         return metadata;
     }
@@ -183,8 +184,8 @@ public class AMQPUtils {
         String subscriptionID = String.valueOf(subscription.getSubscriptionID());
         Exchange exchange = b.getExchange();
         String destination = b.getBindingKey();
+        String subscribedNode = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         String queueOwner = (queue.getOwner() == null) ? null : queue.getOwner().toString();
-        String nodeQueueName = "";
         String queueBoundExchangeName = "";
         String queueBoundExchangeType = exchange.getType().toString();
         Short isqueueBoundExchangeAutoDeletable = Short.parseShort(exchange.isAutoDelete() ? Integer.toString(1) : Integer.toString(0));
@@ -197,17 +198,15 @@ public class AMQPUtils {
         //TODO: extend to other types of exchanges
         if (exchange.getType().equals(DirectExchange.TYPE)) {
             queueBoundExchangeName = DirectExchange.TYPE.getDefaultExchangeName().toString();
-            nodeQueueName = MessagingEngine.getMyNodeQueueName();
             isBoundToTopic = false;
         } else if (exchange.getType().equals(TopicExchange.TYPE)) {
-            nodeQueueName = AndesUtils.getTopicNodeQueueName();
             queueBoundExchangeName = TopicExchange.TYPE.getDefaultExchangeName().toString();
             isBoundToTopic = true;
         }
 
         AMQPLocalSubscription localSubscription = new AMQPLocalSubscription(queue,
                 subscription, subscriptionID, destination, isBoundToTopic, queue.isExclusive(), queue.isDurable(),
-                nodeQueueName, queue.getName(), queueOwner, queueBoundExchangeName, queueBoundExchangeType, isqueueBoundExchangeAutoDeletable, subscription.isActive());
+                subscribedNode, queue.getName(), queueOwner, queueBoundExchangeName, queueBoundExchangeType, isqueueBoundExchangeAutoDeletable, subscription.isActive());
 
         return localSubscription;
     }
@@ -233,7 +232,6 @@ public class AMQPUtils {
 
             AndesMessagePart messagePart = resolveCacheAndRetrieveMessagePart(messageId, indexToQuery);
 
-
             int messagePartSize = messagePart.getDataLength();
             int remainingSizeOfBuffer = initialBufferSize - dst.position();
             int numOfBytesAvailableToRead = messagePartSize - positionToReadFromChunk;
@@ -248,7 +246,12 @@ public class AMQPUtils {
                 numOfBytesToRead = initialBufferSize - written;
             }
 
-            dst.put(messagePart.getData(), positionToReadFromChunk, numOfBytesToRead);
+            // message content can be returned as null if a sudden queue purge occurs and clears all message content in store.
+            // This has to be handled.
+            if (messagePart.getData() != null) {
+                dst.put(messagePart.getData(), positionToReadFromChunk, numOfBytesToRead);
+            }
+
             written += numOfBytesToRead;
 
             if (messagePartSize < DEFAULT_CONTENT_CHUNK_SIZE) { // Last message chunk has been received
@@ -304,12 +307,13 @@ public class AMQPUtils {
      * create andes ack data message
      * @param channelID id of the connection message was received
      * @param messageID id of the message
-     * @param queueName  queue name
+     * @param destination  destination subscription who sent this ack is bound
+     * @param storageDestination store destination of subscriber from which ack came from
      * @param isTopic is ack comes from a topic subscriber
      * @return Andes Ack Data
      */
-    public static AndesAckData generateAndesAckMessage(UUID channelID, long messageID, String queueName, boolean isTopic) {
-        return new AndesAckData(channelID, messageID,queueName,isTopic);
+    public static AndesAckData generateAndesAckMessage(UUID channelID, long messageID, String destination, String storageDestination, boolean isTopic) {
+        return new AndesAckData(channelID, messageID,destination,storageDestination,isTopic);
     }
 
     /**
@@ -356,5 +360,27 @@ public class AMQPUtils {
             exchangeName = TopicExchange.TYPE.getDefaultExchangeName().toString();
         }
         return new AndesBinding(exchangeName, AMQPUtils.createAndesQueue(queue), routingKey.toString());
+    }
+
+    public static String generateQueueName() {
+        return "tmp_" + ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID() + UUID.randomUUID();
+    }
+
+    public static boolean isTargetQueueBoundByMatchingToRoutingKey(String queueBoundRoutingKey, String messageRoutingKey) {
+        boolean isMatching = false;
+        if (queueBoundRoutingKey.equals(messageRoutingKey)) {
+            isMatching = true;
+        } else if (queueBoundRoutingKey.indexOf(".#") > 1) {
+            String p = queueBoundRoutingKey.substring(0, queueBoundRoutingKey.indexOf(".#"));
+            Pattern pattern = Pattern.compile(p + ".*");
+            Matcher matcher = pattern.matcher(messageRoutingKey);
+            isMatching = matcher.matches();
+        } else if (queueBoundRoutingKey.indexOf(".*") > 1) {
+            String p = queueBoundRoutingKey.substring(0, queueBoundRoutingKey.indexOf(".*"));
+            Pattern pattern = Pattern.compile("^" + p + "[.][^.]+$");
+            Matcher matcher = pattern.matcher(messageRoutingKey);
+            isMatching = matcher.matches();
+        }
+        return isMatching;
     }
 }

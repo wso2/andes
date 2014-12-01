@@ -19,7 +19,7 @@ package org.wso2.andes.server.exchange;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.server.configuration.VirtualHostConfiguration;
+import org.wso2.andes.configuration.qpid.VirtualHostConfiguration;
 
 import java.util.Collection;
 

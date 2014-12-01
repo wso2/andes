@@ -22,13 +22,13 @@ import javax.security.sasl.SaslServer;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.framing.ConnectionCloseBody;
 import org.wso2.andes.framing.ConnectionSecureBody;
 import org.wso2.andes.framing.ConnectionStartOkBody;
 import org.wso2.andes.framing.ConnectionTuneBody;
 import org.wso2.andes.framing.MethodRegistry;
 import org.wso2.andes.protocol.AMQConstant;
-import org.wso2.andes.server.configuration.ServerConfiguration;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.security.auth.AuthenticationResult;

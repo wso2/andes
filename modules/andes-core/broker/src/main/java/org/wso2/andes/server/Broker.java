@@ -21,11 +21,12 @@ import org.apache.commons.logging.Log;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.log4j.xml.QpidLog4JConfigurator;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesKernelBoot;
-import org.wso2.andes.server.configuration.BrokerConfiguration;
-import org.wso2.andes.server.configuration.ServerConfiguration;
-import org.wso2.andes.server.configuration.ServerNetworkTransportConfiguration;
-import org.wso2.andes.server.configuration.management.ConfigurationManagementMBean;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.ServerNetworkTransportConfiguration;
+import org.wso2.andes.configuration.qpid.management.ConfigurationManagementMBean;
 import org.wso2.andes.server.information.management.ServerInformationMBean;
 import org.wso2.andes.server.logging.SystemOutMessageLogger;
 import org.wso2.andes.server.logging.actors.BrokerActor;
@@ -123,14 +124,8 @@ public class Broker
         final String qpidHome = options.getQpidHome();
         File configFile = null;
 
-        if(System.getProperty(ANDES_CONFIG) != null) {
-            configFile =  getConfigFile(options.getConfigFile(),
-                                    System.getProperty(ANDES_CONFIG), qpidHome, true);
-        } else {
-
-            configFile = getConfigFile(options.getConfigFile(),
-                                    BrokerOptions.DEFAULT_ANDES_CONFIG_FILE, qpidHome, true);
-        }
+        configFile = getConfigFile(options.getConfigFile(),
+                                BrokerOptions.DEFAULT_ANDES_CONFIG_FILE, qpidHome, true);
 
         CurrentActor.get().message(BrokerMessages.CONFIG(configFile.getAbsolutePath()));
 
@@ -143,23 +138,16 @@ public class Broker
         ServerConfiguration serverConfig = config.getConfiguration();
         updateManagementPort(serverConfig, options.getJmxPort());
 
-        BrokerConfiguration clusterConfiguration = new BrokerConfiguration(serverConfig);
-        if("*".equals(serverConfig.getBind())) {
-            InetAddress host = InetAddress.getLocalHost();
-            clusterConfiguration.setBindIpAddress(host.getHostAddress());
-        } else {
-            clusterConfiguration.setBindIpAddress(serverConfig.getBind());
-        }
-        ClusterResourceHolder.getInstance().setClusterConfiguration(clusterConfiguration);
-        AndesKernelBoot.loadConfigurations(clusterConfiguration);
-
          /* Registering the memory threshold ratio configured in the qpid-config.xml */
-        double memoryThresholdRatio = clusterConfiguration.getGlobalMemoryThresholdRatio();
+        Double memoryThresholdRatio = AndesConfigurationManager.getInstance()
+                .readConfigurationValue(AndesConfiguration.FLOW_CONTROL_MEMORY_BASED_GLOBAL_MEMORY_THRESHOLD_RATIO);
         this.registerFlowControlMemoryThreshold(memoryThresholdRatio);
 
         /* Registering the memory monitor */
-        double recoveryThresholdRatio = clusterConfiguration.getGlobalMemoryRecoveryThresholdRatio();
-        long memoryCheckInterval = clusterConfiguration.getMemoryCheckInterval();
+        Double recoveryThresholdRatio = AndesConfigurationManager.getInstance()
+                .readConfigurationValue(AndesConfiguration.FLOW_CONTROL_MEMORY_BASED_GLOBAL_MEMORY_RECOVERY_THRESHOLD_RATIO);
+        Long memoryCheckInterval = AndesConfigurationManager.getInstance().readConfigurationValue
+                (AndesConfiguration.FLOW_CONTROL_MEMORY_BASED_MEMORY_CHECK_INTERVAL);
         this.registerMemoryMonitor(recoveryThresholdRatio, memoryCheckInterval);
 
         ApplicationRegistry.initialise(config);

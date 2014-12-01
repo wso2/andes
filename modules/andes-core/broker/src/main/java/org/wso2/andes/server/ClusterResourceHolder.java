@@ -20,10 +20,7 @@ package org.wso2.andes.server;
 import org.wso2.andes.kernel.AndesRecoveryTask;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
-import org.wso2.andes.server.cassandra.QueueDeliveryWorker;
-import org.wso2.andes.server.cassandra.TopicDeliveryWorker;
 import org.wso2.andes.server.cluster.ClusterManager;
-import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.store.QpidDeprecatedMessageStore;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 
@@ -48,12 +45,6 @@ public class ClusterResourceHolder {
 
 
     /**
-     * Holds the Cluster Configuration Data
-     */
-    private BrokerConfiguration clusterConfiguration;
-
-
-    /**
      * Holds VirtualHost Config Synchronizer
      */
     private VirtualHostConfigSynchronizer virtualHostConfigSynchronizer;
@@ -68,12 +59,6 @@ public class ClusterResourceHolder {
      * holds cluster manager
      */
     private ClusterManager clusterManager;
-
-    /**
-     * Holds the topic Delivery Worker Thread for the node
-     */
-    private TopicDeliveryWorker topicDeliveryWorker;
-    private QueueDeliveryWorker queueDeliveryWorker;
     private MessageExpirationWorker messageExpirationWorker;
 
     private ClusterResourceHolder() {
@@ -119,14 +104,6 @@ public class ClusterResourceHolder {
         return this.clusterManager;
     }
 
-    public BrokerConfiguration getClusterConfiguration() {
-        return clusterConfiguration;
-    }
-
-    public void setClusterConfiguration(BrokerConfiguration clusterConfiguration) {
-        this.clusterConfiguration = clusterConfiguration;
-    }
-
     public VirtualHostConfigSynchronizer getVirtualHostConfigSynchronizer() {
         return virtualHostConfigSynchronizer;
     }
@@ -141,22 +118,6 @@ public class ClusterResourceHolder {
 
     public void setAndesRecoveryTask(AndesRecoveryTask andesRecoveryTask) {
         this.andesRecoveryTask = andesRecoveryTask;
-    }
-
-    public TopicDeliveryWorker getTopicDeliveryWorker() {
-        return topicDeliveryWorker;
-    }
-
-    public void setTopicDeliveryWorker(TopicDeliveryWorker topicDeliveryWorker) {
-        this.topicDeliveryWorker = topicDeliveryWorker;
-    }
-
-    public void setQueueDeliveryWorker(QueueDeliveryWorker queueDeliveryWorker) {
-        this.queueDeliveryWorker = queueDeliveryWorker;
-    }
-
-    public QueueDeliveryWorker getQueueDeliveryWorker() {
-        return queueDeliveryWorker;
     }
 
     public MessageExpirationWorker getMessageExpirationWorker() {

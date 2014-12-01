@@ -19,9 +19,14 @@
 package org.wso2.andes.kernel;
 
 import org.apache.axis2.clustering.ClusteringAgent;
-import org.wso2.andes.configuration.VirtualHostsConfiguration;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.StoreConfiguration;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.carbon.base.api.ServerConfigurationService;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,31 +36,19 @@ import java.util.Map;
 public class AndesContext {
     private SubscriptionStore subscriptionStore;
     private AndesContextStore andesContextStore;
-    private VirtualHostsConfiguration virtualHostsConfiguration;
+    private StoreConfiguration storeConfiguration;
 	private Map<String, AndesSubscription> dataSenderMap;
     private ClusteringAgent clusteringAgent;
     private boolean isClusteringEnabled;
     private AMQPConstructStore AMQPConstructStore;
     private static AndesContext instance = new AndesContext();
-    private String thriftServerHost;
-    private int thriftServerPort;
-    private String thriftCoordinatorServerIP;
-    private int thriftCoordinatorServerPort;
-
-    /**
-     * Set virtual host configuration
-     * @param configuration VirtualHostsConfiguration
-     */
-    public void setVirtualHostConfiguration(VirtualHostsConfiguration configuration) {
-        this.virtualHostsConfiguration = configuration;
-    }
 
     /**
      * Get virtual host configuration object
-     * @return VirtualHostsConfiguration
+     * @return StoreConfiguration
      */
-    public VirtualHostsConfiguration getVirtualHostsConfiguration() {
-        return virtualHostsConfiguration;
+    public StoreConfiguration getStoreConfiguration() {
+        return storeConfiguration;
     }
 
     /**
@@ -159,63 +152,55 @@ public class AndesContext {
      *  get thrift server host ip
      * @return  thrift server host ip
      */
-    public String getThriftServerHost() {
-        return thriftServerHost;
-    }
-
-    /**
-     * set thrift server host ip
-     * @param thriftServerHost
-     */
-    public void setThriftServerHost(String thriftServerHost) {
-        this.thriftServerHost = thriftServerHost;
+    public String getThriftServerHost() throws AndesException {
+        return AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
+                .COORDINATION_THRIFT_SERVER_HOST);
     }
 
     /**
      * get thrift server port
      * @return
      */
-    public int getThriftServerPort() {
-        return thriftServerPort;
+    public Integer getThriftServerPort() throws AndesException {
+        return AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
+                .COORDINATION_THRIFT_SERVER_PORT);
     }
 
-    /**
-     * return thrift server port
-     * @param thriftServerPort
+    /***
+     * Read configuration properties related to persistent stores and construct semantic object
+     * for simple reference.
      */
-    public void setThriftServerPort(int thriftServerPort) {
-        this.thriftServerPort = thriftServerPort;
-    }
+    public void constructStoreConfiguration() throws AndesException {
 
-    /**
-     * get IP address of thrift coordinator
-     * @return  IP of the Slot Manager
-     */
-    public String getThriftCoordinatorServerIP() {
-        return thriftCoordinatorServerIP;
-    }
+        try {
+            storeConfiguration = new StoreConfiguration();
 
-    /**
-     * set IP of the thrift coordinator
-     * @param thriftCoordinatorServerIP
-     */
-    public void setThriftCoordinatorServerIP(String thriftCoordinatorServerIP) {
-        this.thriftCoordinatorServerIP = thriftCoordinatorServerIP;
-    }
+            storeConfiguration.setMessageStoreClassName((String)AndesConfigurationManager.getInstance()
+                    .readConfigurationValue(AndesConfiguration.PERSISTENCE_MESSAGE_STORE_HANDLER));
 
-    /**
-     * get thrift coordinator port
-     * @return slot manager port
-     */
-    public int getThriftCoordinatorServerPort() {
-        return thriftCoordinatorServerPort;
-    }
+            List<String> messageStoreProperties = AndesConfigurationManager.getInstance().readPropertyList(AndesConfiguration.LIST_PERSISTENCE_MESSAGE_STORE_PROPERTIES);
 
-    /**
-     * set thrift coordinator port
-     * @param thriftCoordinatorServerPort
-     */
-    public void setThriftCoordinatorServerPort(int thriftCoordinatorServerPort) {
-        this.thriftCoordinatorServerPort = thriftCoordinatorServerPort;
+            for (String messageStoreProperty : messageStoreProperties) {
+                storeConfiguration.addMessageStoreProperty(messageStoreProperty,(String)AndesConfigurationManager.getInstance().readValueOfChildByKey(AndesConfiguration.PERSISTENCE_MESSAGE_STORE_PROPERTY,messageStoreProperty));
+            }
+
+            storeConfiguration.setAndesContextStoreClassName((String)AndesConfigurationManager
+                    .getInstance().readConfigurationValue(AndesConfiguration
+                            .PERSISTENCE_CONTEXT_STORE_HANDLER));
+
+            List<String> contextStoreProperties = AndesConfigurationManager.getInstance().readPropertyList(AndesConfiguration.LIST_PERSISTENCE_CONTEXT_STORE_PROPERTIES);
+
+            for (String contextStoreProperty : contextStoreProperties) {
+                storeConfiguration.addContextStoreProperty(contextStoreProperty, (String) AndesConfigurationManager
+                        .getInstance().readValueOfChildByKey(AndesConfiguration.PERSISTENCE_CONTEXT_STORE_PROPERTY,
+                                contextStoreProperty));
+            }
+
+        }catch (AndesException e) {
+            // The possible configuration related error is propagated as an AndesException since this method is triggered from the
+            // business-messaging component. (common.lang.ConfigurationException is not visible
+            // there.)
+            throw e; //Since this exception is already having meaningful info.
+        }
     }
 }

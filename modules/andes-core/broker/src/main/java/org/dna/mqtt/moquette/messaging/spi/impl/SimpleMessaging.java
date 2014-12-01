@@ -4,6 +4,8 @@ import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.IMessaging;
 import org.dna.mqtt.moquette.messaging.spi.IStorageService;
 import org.dna.mqtt.moquette.messaging.spi.impl.events.*;
@@ -12,9 +14,7 @@ import org.dna.mqtt.moquette.proto.messages.*;
 import org.dna.mqtt.moquette.server.Constants;
 import org.dna.mqtt.moquette.server.IAuthenticator;
 import org.dna.mqtt.moquette.server.ServerChannel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import org.wso2.andes.kernel.AndesException;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -23,10 +23,10 @@ import java.util.concurrent.TimeUnit;
 
 public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SimpleMessaging.class);
-    
+    private static Log log = LogFactory.getLog(SimpleMessaging.class);
+
     private SubscriptionsStore subscriptions;
-    
+
     private RingBuffer<ValueEvent> m_ringBuffer;
 
     private IStorageService m_storageService;
@@ -35,11 +35,11 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
     BatchEventProcessor<ValueEvent> m_eventProcessor;
 
     private static SimpleMessaging INSTANCE;
-    
+
     private ProtocolProcessor m_processor = new ProtocolProcessor();
-    
+
     CountDownLatch m_stopLatch;
-    
+
     private SimpleMessaging() {
     }
 
@@ -65,22 +65,24 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
         disruptorPublish(new InitEvent(configProps));
     }
 
-    
+
     private void disruptorPublish(MessagingEvent msgEvent) {
-        LOG.debug("disruptorPublish publishing event {}", msgEvent);
+        if (log.isDebugEnabled()) {
+            log.debug("disruptorPublish publishing event " + msgEvent);
+        }
         long sequence = m_ringBuffer.next();
         ValueEvent event = m_ringBuffer.get(sequence);
 
         event.setEvent(msgEvent);
-        
-        m_ringBuffer.publish(sequence); 
+
+        m_ringBuffer.publish(sequence);
     }
-    
+
 
     public void disconnect(ServerChannel session) {
         disruptorPublish(new DisconnectEvent(session));
     }
-    
+
     public void lostConnection(String clientID) {
         disruptorPublish(new LostConnectionEvent(clientID));
     }
@@ -96,16 +98,18 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
             //wait the callback notification from the protocol processor thread
             boolean elapsed = !m_stopLatch.await(10, TimeUnit.SECONDS);
             if (elapsed) {
-                LOG.error("Can't stop the server in 10 seconds");
+                log.warn("Can't stop the server in 10 seconds");
             }
         } catch (InterruptedException ex) {
-            LOG.error(null, ex);
+            log.error(null, ex);
         }
     }
-    
+
     public void onEvent(ValueEvent t, long l, boolean bln) throws Exception {
         MessagingEvent evt = t.getEvent();
-        LOG.info("onEvent processing messaging event from input ringbuffer {}", evt);
+        if (log.isDebugEnabled()) {
+            log.debug("onEvent processing messaging event from input ringbuffer " + evt);
+        }
         if (evt instanceof PublishEvent) {
             m_processor.processPublish((PublishEvent) evt);
         } else if (evt instanceof StopEvent) {
@@ -119,7 +123,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
             AbstractMessage message = ((ProtocolEvent) evt).getMessage();
             if (message instanceof ConnectMessage) {
                 m_processor.processConnect(session, (ConnectMessage) message);
-            } else if (message instanceof  PublishMessage) {
+            } else if (message instanceof PublishMessage) {
                 PublishEvent pubEvt;
                 String clientID = (String) session.getAttribute(Constants.ATTR_CLIENTID);
                 pubEvt = new PublishEvent((PublishMessage) message, clientID, session);
@@ -173,27 +177,28 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
         }
     }
 
-    private void processInit(Properties props) {
+    private void processInit(Properties props) throws AndesException {
         m_storageService = new HawtDBStorageService();
         m_storageService.initStore();
+      /*  m_storageService = new MemoryStorageService();
+        m_storageService.initStore();*/
 
         subscriptions.init(m_storageService);
-        
-        String passwdPath = props.getProperty("password_file");
-        String configPath = System.getProperty("moquette.path", "");
-        IAuthenticator authenticator = new FileAuthenticator(configPath + passwdPath);
-        
+
+        IAuthenticator authenticator = new UserAuthenticator();
         m_processor.init(subscriptions, m_storageService, authenticator);
     }
 
 
     private void processStop() {
-        LOG.debug("processStop invoked");
+        if (log.isDebugEnabled()) {
+            log.debug("processStop invoked");
+        }
         m_storageService.close();
 
 //        m_eventProcessor.halt();
         m_executor.shutdown();
-        
+
         subscriptions = null;
         m_stopLatch.countDown();
     }

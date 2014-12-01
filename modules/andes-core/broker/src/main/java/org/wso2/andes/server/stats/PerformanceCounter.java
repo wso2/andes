@@ -35,7 +35,6 @@ public class PerformanceCounter {
     
     private static AtomicLong queueDeliveryCount =  new AtomicLong();
     private static AtomicLong queueReceiveCount =  new AtomicLong();
-    private static AtomicLong queueGlobalQueueMoveCount =  new AtomicLong();
     private static AtomicLong pendingMessagesToBeWrittenToCassandra = new AtomicLong();
     
     private static long startTime = -1; 
@@ -61,14 +60,10 @@ public class PerformanceCounter {
                     
                     float receivethroughput = queueReceiveCount.get()*1000/timeTookSinceEmit; 
                     queueReceiveCount.set(0);
-                    
-                    float globalQueueMovethroughput = queueGlobalQueueMoveCount.get()*1000/timeTookSinceEmit; 
-                    queueGlobalQueueMoveCount.set(0);
-
 
                     if(queueReceiveCount.get() > 0){
-                        log.info("PerfCount: summary ["+new Date()+"] deliveryThoughput = "+deliverythroughput +", receiveThoughput="+ receivethroughput 
-                                +", qquaueMoveT="+globalQueueMovethroughput+" delivered=" + totmessagesDelivered + ", received " + totMessagesReceived );                    
+                        log.debug("PerfCount: summary ["+new Date()+"] deliveryThoughput = "+deliverythroughput +", receiveThoughput="+ receivethroughput 
+                                + "delivered=" + totmessagesDelivered + ", received " + totMessagesReceived );
                     }
                     lastEmitTs = System.currentTimeMillis(); 
                 }
@@ -169,7 +164,7 @@ public class PerformanceCounter {
             if(startTime == -1){
                 startTime = System.currentTimeMillis();
             }else{
-                log.info("[mbperf] Acks "+ackCount+" Received, Submit Throughput =" + (int)(queueDeliveryCount.get()*1000d/(System.currentTimeMillis() - startTime)) + ", avg latency ="+ ackLatency.get()/queueDeliveryCount.get());
+                log.debug("[mbperf] Acks "+ackCount+" Received, Submit Throughput =" + (int)(queueDeliveryCount.get()*1000d/(System.currentTimeMillis() - startTime)) + ", avg latency ="+ ackLatency.get()/queueDeliveryCount.get());
             }
         }
         ackReceivedCounter.notifyEvent(false);
@@ -194,19 +189,12 @@ public class PerformanceCounter {
     public static void printLine(String label, ThroughputCounter tc, LatencyCounter lc ){
         long count = tc.count.get(); 
         if(lc == null){
-            log.info("[mbperf1]["+count+"]"+label+"=(T=" + tc.getThroughput() + "("+tc.getLast1000Throughput()+")");
+            log.debug("[mbperf1]["+count+"]"+label+"=(T=" + tc.getThroughput() + "("+tc.getLast1000Throughput()+")");
         }else{
-             log.info("[mbperf1]["+count+"]"+label+"=(T=" + tc.getThroughput() + "("+tc.getLast1000Throughput()+"), L="+ lc.getLatency() + Arrays.toString(lc.getHistorgram()));
+             log.debug("[mbperf1]["+count+"]"+label+"=(T=" + tc.getThroughput() + "("+tc.getLast1000Throughput()+"), L="+ lc.getLatency() + Arrays.toString(lc.getHistorgram()));
         }
     }
-    
 
-    
-    public static void recordGlobalQueueMsgMove(int messagesMoved){
-        queueGlobalQueueMoveCount.addAndGet(messagesMoved);
-    }
-
-    
     public static void recordMessageSentToConsumer(){
         messageSentToConsumerCounter.notifyEvent(false);
     }
@@ -257,7 +245,7 @@ public class PerformanceCounter {
                     return false;
                 }
                 if(print){
-                    log.info("[mbperf1]"+label+"> throughput"+ getThroughput() + " messageCount =" + count.get());
+                    log.debug("[mbperf1]"+label+"> throughput"+ getThroughput() + " messageCount =" + count.get());
                 }
                 last1000Throughput = (int)(messagesBetweenTwoEmits*1000d/(System.currentTimeMillis() - lastTime));
                 lastTime = System.currentTimeMillis();
@@ -308,7 +296,7 @@ public class PerformanceCounter {
                     startTime = System.currentTimeMillis();
                 }
                 if(print){
-                    log.info("[mbperf1]"+label+"> avg Latency"+ getLatency() + " messageCount =" + count.get());
+                    log.debug("[mbperf1]"+label+"> avg Latency"+ getLatency() + " messageCount =" + count.get());
                 }
                 lastLatency = (int)total.get()/count.get();
                 return true;

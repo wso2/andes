@@ -27,7 +27,7 @@ import java.net.SocketAddress;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
-import org.wso2.andes.server.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.security.Result;
 import org.wso2.andes.server.security.access.plugins.Firewall;

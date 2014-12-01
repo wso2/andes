@@ -55,4 +55,18 @@ public class AndesMessagePart {
     public void setDataLength(int dataLength) {
         this.dataLength = dataLength;
     }
+
+    /**
+     * Create a clone, with new message ID
+     * @param messageId message id
+     * @return returns AndesMessagePart
+     */
+    public  AndesMessagePart deepClone(long messageId){
+        AndesMessagePart clone = new AndesMessagePart();
+        clone.messageID = messageId;
+        clone.offSet = offSet;
+        clone.data = data.clone();
+        clone.dataLength = dataLength;
+        return clone;
+    }
 }

@@ -61,27 +61,6 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
     }
 
     /**
-     * Get the array of global queues assigned for a given node.
-     *
-     * @param nodeId to represent the node
-     * @return array of global queue names
-     */
-    public String[] getGlobalQueuesAssigned(String nodeId) {
-        return clusterManager.getGlobalQueuesAssigned(nodeId);
-    }
-
-    /**
-     * Move a queue from current node to another node.
-     *
-     * @param queueToBeMoved  name of the queue to be moved
-     * @param newNodeToAssign node ID of the new node
-     * @return true if the queue is successfully moved
-     */
-    public boolean updateWorkerForQueue(String queueToBeMoved, String newNodeToAssign) {
-        return clusterManager.updateWorkerForQueue(queueToBeMoved, newNodeToAssign);
-    }
-
-    /**
      * Check whether clustering is enabled
      *
      * @return true if clustering is enabled
@@ -146,7 +125,8 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
         return queueList;
     }
 
-    @Override
+    //TODO: this is not relevant now
+    @Override @Deprecated
     public int getNodeQueueMessageCount(@MBeanOperationParameter(name = "nodeId",
                                                                  description = "node id") String
                                                     nodeId,
@@ -156,6 +136,7 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
         return 0;
     }
 
+    //TODO: rename method to return queueSubscriberCountPerNode
     public int getNodeQueueSubscriberCount(String nodeId, String destinationQueue) {
         //TODO:Should be implemented.
         throw new UnsupportedOperationException();

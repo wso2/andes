@@ -210,5 +210,30 @@ public interface MessageStoreManager {
                                           List<AndesMessageMetadata> metadataList) throws
                                                                                    AndesException;
 
+    /***
+     * Clear all references to all message metadata / content addressed to a specific queue. Used when purging.
+     * @param storageQueueName name of storage queue
+     * @throws AndesException
+     */
+    public int purgeQueueFromStore(String storageQueueName) throws AndesException;
+
+    /**
+     * Store message information in messages-for-expiration collection. this collection is periodically checked any already expired messages are cleared at that point.
+     * @param messageId ID of message
+     * @param expirationTime The timestamp at which the message is set to expire
+     * @param isMessageForTopic True if the message is addressed to a durable topic
+     * @param destination final destination of the message.
+     * @throws AndesException
+     */
+    public void storeMessageInExpiryQueue(Long messageId, Long expirationTime,
+                                          boolean isMessageForTopic, String destination) throws AndesException;
+
+    /**
+     * Retrieve metadata of a single message from the store
+     * @param messageId ID of message
+     * @return AndesMessageMetadata
+     * @throws AndesException
+     */
+    public AndesMessageMetadata getMetadataOfMessage(Long messageId) throws AndesException;
 
 }

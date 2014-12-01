@@ -18,13 +18,15 @@
 
 package org.wso2.andes.kernel;
 
-public interface LocalSubscription extends AndesSubscription {
+import java.util.UUID;
 
-	public int getnotAckedMsgCount();
+public interface LocalSubscription extends AndesSubscription {
 
     public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata)throws AndesException;
 
     public boolean isActive();
+
+    public UUID getChannelID();
 
     public LocalSubscription createQueueToListentoTopic();
 }

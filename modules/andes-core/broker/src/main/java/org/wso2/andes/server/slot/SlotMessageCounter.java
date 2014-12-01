@@ -20,10 +20,10 @@ package org.wso2.andes.server.slot;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.configuration.BrokerConfiguration;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
 
 import java.util.List;
@@ -43,19 +43,37 @@ public class SlotMessageCounter {
      * Timeout in milliseconds for messages in the slot. When this timeout is exceeded slot will be
      * submitted to the coordinator
      */
-    private long timeOutForMessagesInQueue = ClusterResourceHolder.getInstance()
-            .getClusterConfiguration().getSlotSubmitTimeOut();
+    private Long timeOutForMessagesInQueue;
     private Timer submitSlotToCoordinatorTimer = new Timer();
     private Log log = LogFactory.getLog(SlotMessageCounter.class);
-    private BrokerConfiguration clusterConfiguration;
     private static SlotMessageCounter slotMessageCounter = new SlotMessageCounter();
-    private int slotWindowSize;
+    private Integer slotWindowSize;
 
     private SlotMessageCounter() {
-        clusterConfiguration = ClusterResourceHolder.getInstance().getClusterConfiguration();
         scheduleSubmitSlotToCoordinatorTimer();
-        slotWindowSize = clusterConfiguration.getSlotWindowSize();
-        timeOutForMessagesInQueue = clusterConfiguration.getSlotSubmitTimeOut();
+
+        try {
+            slotWindowSize = AndesConfigurationManager.getInstance().readConfigurationValue
+                    (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
+        } catch (AndesException e) {
+            // This could only happen if the defined default value for PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE cannot be parsed.
+            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE.toString(),e);
+            //Set default value
+            slotWindowSize = Integer.valueOf(AndesConfiguration
+                    .PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE.get().getDefaultValue());
+        }
+
+        try {
+            timeOutForMessagesInQueue = AndesConfigurationManager.getInstance()
+                    .readConfigurationValue(AndesConfiguration
+                            .PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY);
+        } catch (AndesException e) {
+            // This could only happen if the defined default value for PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY cannot be parsed.
+            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY.toString(),e);
+            // Set default value
+            timeOutForMessagesInQueue = Long.valueOf(AndesConfiguration
+                    .PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY.get().getDefaultValue());
+        }
     }
 
     /**
@@ -92,7 +110,7 @@ public class SlotMessageCounter {
     public void recordMetaDataCountInSlot(List<AndesMessageMetadata> metadataList) {
         //If metadata list is null this method is called from time out thread
         for (AndesMessageMetadata md : metadataList) {
-            String queueName = md.getDestination();
+            String storageQueueName = md.getStorageQueueName();
             //If this is the first message to that queue
             Slot currentSlot;
             synchronized (this) {
@@ -100,7 +118,7 @@ public class SlotMessageCounter {
             }
             if (currentSlot.getMessageCount() >= slotWindowSize) {
                 try {
-                    submitSlot(queueName);
+                    submitSlot(storageQueueName);
                 } catch (AndesException e) {
                     /*
                     We do not do anything here since this operation will be run by timeout thread also
@@ -115,24 +133,24 @@ public class SlotMessageCounter {
     /**
      * Update in-memory queue to slot map. This method is synchronized since many publishers can
      * be access this thread simultaneously.
-     * @param metadata
+     * @param metadata  Andes metadata whose ID needs to be reported to SlotManager
      * @return Current slot which this metadata belongs to
      */
     private synchronized Slot updateQueueToSlotMap(AndesMessageMetadata metadata) {
-        String queueName = metadata.getDestination();
-        Slot currentSlot = queueToSlotMap.get(queueName);
+        String storageQueueName = metadata.getStorageQueueName();
+        Slot currentSlot = queueToSlotMap.get(storageQueueName);
         if (currentSlot == null) {
             currentSlot = new Slot();
             currentSlot.setEndMessageId(metadata.getMessageID());
             currentSlot.setMessageCount(1L);
-            queueToSlotMap.put(queueName, currentSlot);
-            slotTimeOutMap.put(queueName, System.currentTimeMillis());
+            queueToSlotMap.put(storageQueueName, currentSlot);
+            slotTimeOutMap.put(storageQueueName, System.currentTimeMillis());
         } else {
             long currentMsgCount = currentSlot.getMessageCount();
             long newMessageCount = currentMsgCount + 1;
             currentSlot.setMessageCount(newMessageCount);
             currentSlot.setEndMessageId(metadata.getMessageID());
-            queueToSlotMap.put(queueName, currentSlot);
+            queueToSlotMap.put(storageQueueName, currentSlot);
         }
         return currentSlot;
     }
@@ -140,15 +158,15 @@ public class SlotMessageCounter {
     /**
      * Submit last message ID in the slot to SlotManager.
      *
-     * @param queueName
+     * @param storageQueueName  name of the queue which this slot belongs to
      */
-    public void submitSlot(String queueName) throws AndesException {
-        Slot slot = queueToSlotMap.get(queueName);
+    public void submitSlot(String storageQueueName) throws AndesException {
+        Slot slot = queueToSlotMap.get(storageQueueName);
         if (null != slot) {
             try {
-                MBThriftClient.updateMessageId(queueName, slot.getEndMessageId());
-                queueToSlotMap.remove(queueName);
-                slotTimeOutMap.remove(queueName);
+                MBThriftClient.updateMessageId(storageQueueName, slot.getEndMessageId());
+                queueToSlotMap.remove(storageQueueName);
+                slotTimeOutMap.remove(storageQueueName);
 
             } catch (ConnectionException e) {
                  /* we only log here since this thread will be run every 3

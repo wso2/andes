@@ -28,7 +28,9 @@ import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.AMQChannel;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
+import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
@@ -37,6 +39,7 @@ import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
 
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -74,12 +77,13 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
         }
     }
 
-    public int getnotAckedMsgCount() {
-        return channel.getNotAckedMessageCount();
-    }
-
     public boolean isActive() {
         return amqpSubscription.isActive();
+    }
+
+    @Override
+    public UUID getChannelID() {
+        return channel.getId();
     }
 
     @Override
@@ -133,25 +137,37 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
      * @throws AndesException
      */
     private void sendMessage(QueueEntry queueEntry) throws AndesException {
+
+        String msgHeaderStringID = "";
+
+        if (queueEntry != null) {
+            msgHeaderStringID = (String) queueEntry.getMessageHeader().
+                    getHeader("msgID");
+        }
+
         try {
             AMQProtocolSession session = channel.getProtocolSession();
             ((AMQMessage) queueEntry.getMessage()).setClientIdentifier(session);
-            channel.incrementNonAckedMessageCount();
+            OnflightMessageTracker.getInstance().incrementNonAckedMessageCount(getChannelID());
             if (amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
                 //this check is needed to detect if subscription has suddenly closed
                 if (log.isDebugEnabled()) {
-                    String msgHeaderStringID = (String) queueEntry.getMessageHeader().
-                            getHeader("msgID");
                     log.debug("TRACING>> QDW- sent queue/durable topic message " +
                             (msgHeaderStringID == null ? "" : msgHeaderStringID + " messageID-" +
-                                    queueEntry.getMessage().getMessageNumber()) + "-to subscription " + amqpSubscription);
+                                    queueEntry.getMessage().getMessageNumber()) + "-to " +
+                            "subscription " + amqpSubscription);
                 }
                 amqpSubscription.send(queueEntry);
             } else {
-                throw new AndesException("Unexpected Subscription type");
+                throw new AndesException("Unexpected Subscription type for message with ID : " + msgHeaderStringID);
             }
         } catch (AMQException e) {
-            throw new AndesException(e);
+            // The error is not logged here since this will be caught safely higher up in the execution plan :
+            // MessageFlusher.deliverAsynchronously. If we have more context, its better to log here too,
+            // but since this is a general explanation of many possible errors, no point in logging at this state.
+            throw new AndesException("Error occurred while delivering message with ID : " + msgHeaderStringID, e);
+        } catch (AndesException e) {
+            throw new AndesException("Error occurred while delivering message with ID : " + msgHeaderStringID, e);
         }
     }
 
@@ -183,8 +199,9 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
 
     public LocalSubscription createQueueToListentoTopic() {
         //todo:hasitha:verify passing null values
+        String subscribedNode = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         return new AMQPLocalSubscription(amqQueue,
-                amqpSubscription, subscriptionID, targetQueue, false, isExclusive, true, MessagingEngine.getMyNodeQueueName(), amqQueue.getName(),
+                amqpSubscription, subscriptionID, targetQueue, false, isExclusive, true, subscribedNode, amqQueue.getName(),
                 amqQueue.getOwner().toString(), AMQPUtils.DIRECT_EXCHANGE_NAME, DirectExchange.TYPE.toString(), Short.parseShort("0"), true);
     }
 

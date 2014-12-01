@@ -64,6 +64,12 @@ public interface AndesSubscription {
 	public String getTargetQueue();
 
     /**
+     * @return name of the queue in message store messages addressed to
+     * this subscription is stored
+     */
+    public String getStorageQueueName();
+
+    /**
      * @return owner of the subscribed queue
      */
     public String getTargetQueueOwner();

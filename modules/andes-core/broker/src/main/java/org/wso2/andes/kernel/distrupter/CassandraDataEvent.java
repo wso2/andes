@@ -23,11 +23,15 @@ import org.wso2.andes.kernel.AndesMessagePart;
 
 import com.lmax.disruptor.EventFactory;
 
+/**
+ * Wrapper class of cassandra data publish to disruptor
+ *
+ */
 public class CassandraDataEvent {
-    // Used to write data to the Cassandra
-    public boolean isPart = false;
-    public AndesMessageMetadata metadata;
-    public AndesMessagePart part;
+
+    private boolean isPart = false;
+    private AndesMessageMetadata metadata;
+    private AndesMessagePart messagePart;
 
     public static class CassandraDEventFactory implements EventFactory<CassandraDataEvent> {
         @Override
@@ -40,4 +44,27 @@ public class CassandraDataEvent {
         return new CassandraDEventFactory();
     }
 
+    public boolean isPart() {
+        return isPart;
+    }
+
+    public void setPart(boolean isPart) {
+        this.isPart = isPart;
+    }
+
+    public AndesMessageMetadata getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(AndesMessageMetadata metadata) {
+        this.metadata = metadata;
+    }
+
+    public AndesMessagePart getMessagePart() {
+        return messagePart;
+    }
+
+    public void setMessagePart(AndesMessagePart messagePart) {
+        this.messagePart = messagePart;
+    }
 }

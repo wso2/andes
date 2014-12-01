@@ -18,9 +18,8 @@
 
 package org.wso2.andes.tools.utils;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.*;
 
 import org.apache.commons.logging.Log;
@@ -39,16 +38,15 @@ public class DisruptorBasedExecutor {
     private static DisruptorRuntime<CassandraDataEvent> cassandraRWDisruptorRuntime;
     private static DisruptorRuntime<AndesAckData> ackDataEvenRuntime;
     //private static DisruptorRuntime<SubscriptionDataEvent> dataDeliveryDisruptorRuntime;
-    private static Map<Long, PendingJob> pendingJobsTracker = new ConcurrentHashMap<Long, PendingJob>();
+    private static Map<UUID, PendingJob> pendingJobsTracker = new ConcurrentHashMap<UUID, PendingJob>();
     private MessageStoreManager messageStoreManager;
-
 
     public DisruptorBasedExecutor(MessageStoreManager messageStoreManager) {
         this.messageStoreManager = messageStoreManager;
         int MAX_WRITE_HANDLERS = 10;
         AlternatingCassandraWriter[] writerHandlers = new AlternatingCassandraWriter[MAX_WRITE_HANDLERS];
         for (int i = 0; i < writerHandlers.length; i++) {
-            writerHandlers[i] = new AlternatingCassandraWriter(MAX_WRITE_HANDLERS, i, messageStoreManager);
+            writerHandlers[i] = new AlternatingCassandraWriter(MAX_WRITE_HANDLERS, i, this.messageStoreManager);
         }
         cassandraRWDisruptorRuntime = new DisruptorRuntime<CassandraDataEvent>(CassandraDataEvent.getFactory(), writerHandlers);
 
@@ -66,14 +64,14 @@ public class DisruptorBasedExecutor {
         long sequence = ringBuffer.next();
         CassandraDataEvent event = ringBuffer.get(sequence);
 
-        event.isPart = true;
-        event.part = part;
+        event.setPart(true);
+        event.setMessagePart(part);
         // make the event available to EventProcessors
         ringBuffer.publish(sequence);
     }
 
     public void messageCompleted(final AndesMessageMetadata metadata) {
-        long channelID = metadata.getChannelId();
+        UUID channelID = metadata.getChannelId();
         //This count how many jobs has finished
         synchronized (pendingJobsTracker) {
             PendingJob pendingJob = pendingJobsTracker.get(channelID);
@@ -87,9 +85,9 @@ public class DisruptorBasedExecutor {
         RingBuffer<CassandraDataEvent> ringBuffer = cassandraRWDisruptorRuntime.getRingBuffer();
         long sequence = ringBuffer.next();
         CassandraDataEvent event = ringBuffer.get(sequence);
-        event.isPart = false;
-        event.metadata = metadata;
-        event.metadata.setPendingJobsTracker(pendingJobsTracker);
+        event.setPart(false);
+        event.setMetadata(metadata);
+        event.getMetadata().setPendingJobsTracker(pendingJobsTracker);
         // make the event available to EventProcessors
         //todo uncomment this and comment executer
         ringBuffer.publish(sequence);
@@ -100,8 +98,11 @@ public class DisruptorBasedExecutor {
         RingBuffer<AndesAckData> ringBuffer = ackDataEvenRuntime.getRingBuffer();
         long sequence = ringBuffer.next();
         AndesAckData event = ringBuffer.get(sequence);
-        event.messageID = ackData.messageID;
-        event.qName = ackData.qName;
+        event.setMessageID(ackData.getMessageID());
+        event.setDestination(ackData.getDestination());
+        event.setMsgStorageDestination(ackData.getMsgStorageDestination());
+        event.setChannelID(ackData.getChannelID());
+        event.setTopic(ackData.isTopic());
         // make the event available to EventProcessors
         ringBuffer.publish(sequence);
     }

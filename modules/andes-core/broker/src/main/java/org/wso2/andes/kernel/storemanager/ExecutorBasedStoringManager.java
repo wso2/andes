@@ -1,7 +1,10 @@
 package org.wso2.andes.kernel.storemanager;
 
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
@@ -10,8 +13,6 @@ import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.MessageStoreManager;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.store.MessageContentRemoverTask;
 
@@ -81,7 +82,7 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
     private MessageContentRemoverTask messageContentRemoverTask;
 
     //Content deletion task will run once this num of seconds
-    private int messageContntDeletionTaskInterval;
+    private Integer messageContentDeletionTaskInterval;
 
     //content removal time difference in seconds
     private int contentRemovalTimeDifference;
@@ -92,7 +93,8 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
      * @param messageStore message store to operate on
      * @throws AndesException in case of init
      */
-    public ExecutorBasedStoringManager(MessageStore messageStore) throws AndesException {
+    public ExecutorBasedStoringManager(MessageStore messageStore) throws AndesException,
+            ConfigurationException {
         super(messageStore);
         this.messageStore = messageStore;
         initialise(messageStore);
@@ -100,7 +102,7 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
 
 
 
-    private void initialise(final MessageStore messageStore) throws AndesException {
+    private void initialise(final MessageStore messageStore) throws AndesException, ConfigurationException {
 
         bufferFlushingInterval = 15;
 
@@ -118,8 +120,8 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
 
         contentRemovalTimeDifference = 30;
 
-        messageContntDeletionTaskInterval = ClusterResourceHolder.getInstance().getClusterConfiguration()
-                                                                 .getContentRemovalTaskInterval();
+        messageContentDeletionTaskInterval = AndesConfigurationManager.getInstance()
+                .readConfigurationValue(AndesConfiguration.PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TASK_INTERVAL);
 
         directMessageStoreManager = MessageStoreManagerFactory
                 .createDirectMessageStoreManager(messageStore);
@@ -186,7 +188,7 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
 
         asyncStoreTasksScheduler.scheduleAtFixedRate(messageContentRemoverTask,
                                                      10,
-                                                     messageContntDeletionTaskInterval,
+                messageContentDeletionTaskInterval,
                                                      TimeUnit.SECONDS);
 
     }
@@ -468,41 +470,47 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove,
                                boolean moveToDeadLetterChannel) throws AndesException {
         List<Long> idsOfMessagesToRemove = new ArrayList<Long>();
-        Map<String, List<AndesRemovableMetadata>> queueSeparatedRemoveMessages = new HashMap<String, List<AndesRemovableMetadata>>();
+        Map<String, List<AndesRemovableMetadata>> storageQueueSeparatedRemoveMessages = new HashMap<String, List<AndesRemovableMetadata>>();
+        Map<String, Integer> destinationSeparatedMsgCounts = new HashMap<String, Integer>();
 
         for (AndesRemovableMetadata message : messagesToRemove) {
-            idsOfMessagesToRemove.add(message.messageID);
+            idsOfMessagesToRemove.add(message.getMessageID());
 
-            List<AndesRemovableMetadata> messages = queueSeparatedRemoveMessages
-                    .get(message.destination);
+            //update <storageQueue, metadata> map
+            List<AndesRemovableMetadata> messages = storageQueueSeparatedRemoveMessages
+                    .get(message.getStorageDestination());
             if (messages == null) {
                 messages = new ArrayList
                         <AndesRemovableMetadata>();
             }
             messages.add(message);
-            queueSeparatedRemoveMessages.put(message.destination, messages);
+            storageQueueSeparatedRemoveMessages.put(message.getStorageDestination(), messages);
 
-            //update server side message trackings
-   /*         OnflightMessageTracker onflightMessageTracker = OnflightMessageTracker.getInstance();
-            onflightMessageTracker.updateDeliveredButNotAckedMessages(message.messageID);*/
-
+            //update <destination, Msgcount> map
+            Integer count = destinationSeparatedMsgCounts.get(message.getMessageDestination());
+            if(count == null) {
+                count = 0;
+            }
+            count = count + 1;
+            destinationSeparatedMsgCounts.put(message.getMessageDestination(), count);
 
             //if to move, move to DLC. This is costy. Involves per message read and writes
             if (moveToDeadLetterChannel) {
-                AndesMessageMetadata metadata = messageStore.getMetaData(message.messageID);
+                AndesMessageMetadata metadata = messageStore.getMetaData(message.getMessageID());
                 messageStore
                         .addMetaDataToQueue(AndesConstants.DEAD_LETTER_QUEUE_NAME, metadata);
             }
         }
 
         //remove metadata
-        for (String queueName : queueSeparatedRemoveMessages.keySet()) {
-            messageStore.deleteMessageMetadataFromQueue(queueName,
-                                                        queueSeparatedRemoveMessages
-                                                                .get(queueName));
-            //decrement message count of queue
-            decrementQueueCount(queueName, queueSeparatedRemoveMessages
-                    .get(queueName).size());
+        for (String storageQueueName : storageQueueSeparatedRemoveMessages.keySet()) {
+            messageStore.deleteMessageMetadataFromQueue(storageQueueName,
+                                                        storageQueueSeparatedRemoveMessages
+                                                                .get(storageQueueName));
+        }
+        //decrement message counts
+        for(String destination: destinationSeparatedMsgCounts.keySet()) {
+            decrementQueueCount(destination, destinationSeparatedMsgCounts.get(destination));
         }
 
         if (!moveToDeadLetterChannel) {

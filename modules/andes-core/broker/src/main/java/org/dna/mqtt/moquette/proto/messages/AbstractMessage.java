@@ -2,7 +2,7 @@ package org.dna.mqtt.moquette.proto.messages;
 
 /**
  * Basic abstract message for all MQTT protocol messages.
- * 
+ *
  * @author andrea
  */
 public abstract class AbstractMessage {
@@ -23,12 +23,35 @@ public abstract class AbstractMessage {
     public static final byte DISCONNECT = 14; //Client is Disconnecting
 
     public static enum QOSType {
-        MOST_ONE, LEAST_ONE, EXACTLY_ONCE, RESERVED;
-        
+        MOST_ONE(0), LEAST_ONE(1), EXACTLY_ONCE(2), RESERVED(3);
+
+        private final int value; //The value can be either 0,1 or 2
+
+        private QOSType(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return this.value;
+        }
+
+        public static QOSType valueOf(int qos) {
+            QOSType type = null;
+            for (QOSType qosType : QOSType.values()) {
+                if (qosType.getValue() == qos) {
+                    type = qosType;
+                    break;
+                }
+            }
+
+            return type;
+        }
+
         public static String formatQoS(QOSType qos) {
             return String.format("%d - %s", qos.ordinal(), qos.name());
         }
     }
+
     //type
     protected boolean m_dupFlag;
     protected QOSType m_qos;
@@ -74,7 +97,7 @@ public abstract class AbstractMessage {
     public int getRemainingLength() {
         return m_remainingLength;
     }
-    
+
     /**
      * TOBE used only internally
      */

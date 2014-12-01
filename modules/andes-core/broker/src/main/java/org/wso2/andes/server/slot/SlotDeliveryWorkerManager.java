@@ -19,7 +19,11 @@
 package org.wso2.andes.server.slot;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import org.wso2.andes.server.ClusterResourceHolder;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesException;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,11 +41,11 @@ public class SlotDeliveryWorkerManager {
 
     private ExecutorService slotDeliveryWorkerExecutor;
 
+    private static Log log = LogFactory.getLog(SlotDeliveryWorkerManager.class);
 
     /**
      * Number of slot delivery worker threads running inn one MB node
      */
-
     private static ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat
             ("SlotDeliveryWorkerExecutor-%d").build();
 
@@ -49,18 +53,26 @@ public class SlotDeliveryWorkerManager {
     /*
     number of slot delivery worker threads running inn one MB node
      */
-    private int numberOfThreads;
+    private Integer numberOfThreads;
 
     /**
      * SlotDeliveryWorker instance
      */
-    private static SlotDeliveryWorkerManager slotDeliveryWorkerManagerManager =
-            new SlotDeliveryWorkerManager();
+    private static SlotDeliveryWorkerManager slotDeliveryWorkerManagerManager;
+
+    static {
+        try {
+            slotDeliveryWorkerManagerManager = new SlotDeliveryWorkerManager();
+        } catch (AndesException e) {
+            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR +
+                    AndesConfiguration.PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT.toString(),e);
+        }
+    }
 
 
-    private SlotDeliveryWorkerManager() {
-        numberOfThreads = ClusterResourceHolder.getInstance().getClusterConfiguration()
-                .getNumberOFSlotDeliveryWorkerThreads();
+    private SlotDeliveryWorkerManager() throws AndesException {
+        numberOfThreads = AndesConfigurationManager.getInstance().readConfigurationValue
+                (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT);
         this.slotDeliveryWorkerExecutor = Executors.newFixedThreadPool(numberOfThreads, namedThreadFactory);
     }
 
@@ -73,23 +85,30 @@ public class SlotDeliveryWorkerManager {
 
     /**
      * When a subscription is added this method will be called. This method will decide which
-     * SlotDeliveryWorker thread is assigned to which queue
+     * SlotDeliveryWorker thread is assigned to which queue. If a worker is already running on
+     * the queue, it will not start a new one.
      *
-     * @param queueName
+     * @param storageQueueName  name of the queue to start slot delivery worker for
      */
-    public synchronized void startSlotDeliveryWorker(String queueName) {
-        int slotDeliveryWorkerId = getIdForSlotDeliveryWorker(queueName);
+    public synchronized void startSlotDeliveryWorker(String storageQueueName, String destinaton) {
+        int slotDeliveryWorkerId = getIdForSlotDeliveryWorker(storageQueueName);
         if (getSlotDeliveryWorkerMap().containsKey(slotDeliveryWorkerId)) {
             //if this queue is not already in the queue
-            if (!getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId).getQueueList()
-                    .contains(queueName)) {
+            if (getSlotDeliveryWorkerMap().get(slotDeliveryWorkerId).getStorageQueueNameToDestinationMap()
+                    .get(storageQueueName) == null) {
                 SlotDeliveryWorker slotDeliveryWorker = getSlotDeliveryWorkerMap()
                         .get(slotDeliveryWorkerId);
-                slotDeliveryWorker.addQueueToThread(queueName);
+                slotDeliveryWorker.addQueueToThread(storageQueueName, destinaton);
+                if(log.isDebugEnabled()) {
+                    log.debug("Assigned Already Running Slot Delivery Worker. Reading messages storageQ= " + storageQueueName + " MsgDest= " + destinaton);
+                }
             }
         } else {
             SlotDeliveryWorker slotDeliveryWorker = new SlotDeliveryWorker();
-            slotDeliveryWorker.addQueueToThread(queueName);
+            if(log.isDebugEnabled()) {
+                log.debug("Slot Delivery Worker Started. Reading messages storageQ= " + storageQueueName + " MsgDest= " + destinaton);
+            }
+            slotDeliveryWorker.addQueueToThread(storageQueueName, destinaton);
             getSlotDeliveryWorkerMap().put(slotDeliveryWorkerId, slotDeliveryWorker);
             slotDeliveryWorkerExecutor.execute(slotDeliveryWorker);
         }
@@ -98,11 +117,12 @@ public class SlotDeliveryWorkerManager {
     /**
      * This method is to decide slotDeliveryWorkerId for the queue
      *
-     * @param queueName
+     * @param queueName name of the newly created queue
      * @return slot delivery worker ID
      */
     public int getIdForSlotDeliveryWorker(String queueName) {
-        return queueName.hashCode() % numberOfThreads;
+        // Get the absolute value since String.hashCode() can give both positive and negative values.
+        return Math.abs(queueName.hashCode() % numberOfThreads);
     }
 
 
@@ -118,7 +138,10 @@ public class SlotDeliveryWorkerManager {
     }
 
     /**
-     * @return SlotDeliveryWorkerMap
+     * @return SlotDeliveryWorkerMap  a map which stores slot delivery worker ID against
+     * SlotDelivery
+     * Worker
+     * object references
      */
     private Map<Integer, SlotDeliveryWorker> getSlotDeliveryWorkerMap() {
         return slotDeliveryWorkerMap;
@@ -140,12 +163,10 @@ public class SlotDeliveryWorkerManager {
     /**
      * Returns SlotDeliveryWorker mapped to a given queue
      *
-     * @param queueName
+     * @param queueName name of the queue
      * @return SlotDeliveryWorker instance
      */
     public SlotDeliveryWorker getSlotWorker(String queueName) {
         return slotDeliveryWorkerMap.get(getIdForSlotDeliveryWorker(queueName));
     }
-
-
 }

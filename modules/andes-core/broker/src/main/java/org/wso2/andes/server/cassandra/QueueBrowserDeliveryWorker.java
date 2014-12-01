@@ -17,9 +17,12 @@
  */
 package org.wso2.andes.server.cassandra;
 
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.message.AMQMessage;
@@ -38,16 +41,16 @@ import java.util.List;
  * From JMS Spec
  * -----------------
  *
- * A client uses a QueueBrowser to look at messages on a queue without removing
+ * A client uses a QueueBrowser to look at messages on a destination without removing
  * them.
  * The browse methods return a java.util.Enumeration that is used to scan the
- * queue’s messages. It may be an enumeration of the entire content of a queue or
+ * destination’s messages. It may be an enumeration of the entire content of a destination or
  * it may only contain the messages matching a message selector.
  * Messages may be arriving and expiring while the scan is done. JMS does not
- * require the content of an enumeration to be a static snapshot of queue content.
+ * require the content of an enumeration to be a static snapshot of destination content.
  * Whether these changes are visible or not depends on the JMS provider.
  * 
- * When someone made a QueueBroswer Subscription, we read messages for that queue and
+ * When someone made a QueueBroswer Subscription, we read messages for that destination and
  * send them to that subscription. 
  */
 
@@ -59,22 +62,20 @@ public class QueueBrowserDeliveryWorker {
     private String id;
     private int defaultMessageCount = Integer.MAX_VALUE;
     private int messageCount;
-    private int messageBatchSize;
+    private Integer messageBatchSize;
 
     private static Log log = LogFactory.getLog(QueueBrowserDeliveryWorker.class);
 
-    public QueueBrowserDeliveryWorker(Subscription subscription, AMQQueue queue, AMQProtocolSession session){
-        this(subscription,queue,session,false);
-    }
-
-    public QueueBrowserDeliveryWorker(Subscription subscription, AMQQueue queue, AMQProtocolSession session, boolean isInMemoryMode) {
+    public QueueBrowserDeliveryWorker(Subscription subscription, AMQQueue queue,
+                                      AMQProtocolSession session) throws
+            AndesException {
         this.subscription = subscription;
         this.queue = queue;
         this.session = session;
         this.id = "" + subscription.getSubscriptionID();
         this.messageCount = defaultMessageCount;
-        this.messageBatchSize = ClusterResourceHolder.getInstance().getClusterConfiguration().
-                getMessageBatchSizeForBrowserSubscriptions();
+        this.messageBatchSize = AndesConfigurationManager.getInstance().readConfigurationValue
+                (AndesConfiguration.MANAGEMENT_CONSOLE_MESSAGE_BATCH_SIZE_FOR_BROWSER_SUBSCRIPTIONS);
 
     }
 
@@ -94,7 +95,7 @@ public class QueueBrowserDeliveryWorker {
 
     /**
      * Sends the browser subscription's messages to client
-     * @param messages - matching messages of queue
+     * @param messages - matching messages of destination
      */
     private void sendMessagesToClient(List<QueueEntry> messages){
             if (messages.size() > 0) {
@@ -118,7 +119,7 @@ public class QueueBrowserDeliveryWorker {
     }
 
     /**
-     * Get message queue entries sorted using the message Id in the ascending order.
+     * Get message destination entries sorted using the message Id in the ascending order.
      *
      * @return Sorted QueueEntry List
      * @throws AndesException

@@ -21,7 +21,7 @@ import java.io.File;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.wso2.andes.AMQException;
-import org.wso2.andes.server.configuration.ServerConfiguration;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.server.logging.actors.BrokerActor;
 import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.server.management.JMXManagedObjectRegistry;

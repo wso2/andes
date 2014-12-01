@@ -18,18 +18,11 @@
 package org.wso2.andes.server.subscription;
 
 import org.wso2.andes.AMQException;
-import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.BasicContentHeaderProperties;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.AndesAckData;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.binding.*;
-import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.server.configuration.*;
+import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.server.filter.FilterManager;
 import org.wso2.andes.server.flow.CreditCreditManager;
 import org.wso2.andes.server.flow.FlowCreditManager;
@@ -48,7 +41,6 @@ import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.transport.ServerSession;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
-import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.transport.*;
 
 import java.nio.ByteBuffer;

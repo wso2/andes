@@ -19,6 +19,10 @@
 package org.wso2.andes.server.cassandra;
 
 
+import org.apache.commons.configuration.ConfigurationException;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.ClusterResourceHolder;
 import java.nio.ByteBuffer;
 import java.util.LinkedHashMap;
@@ -27,8 +31,12 @@ import java.util.Map;
 public class CassandraMessageContentCache {
 
 
-    private final int cacheSize = ClusterResourceHolder.getInstance().
-            getClusterConfiguration().getMessageReadCacheSize();
+    private final Integer cacheSize;
+
+    public CassandraMessageContentCache() throws AndesException {
+        cacheSize = AndesConfigurationManager.getInstance().readConfigurationValue
+                (AndesConfiguration.PERFORMANCE_TUNING_STORE_OPERATIONS_MESSAGE_CONTENT_CACHE);
+    }
 
     LinkedHashMap<String, byte[]> topicContentCache = new LinkedHashMap<String, byte[]>() {
         @Override

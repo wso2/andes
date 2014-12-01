@@ -29,7 +29,7 @@ import javax.security.sasl.SaslServer;
 
 import junit.framework.TestCase;
 
-import org.wso2.andes.server.configuration.plugins.ConfigurationPlugin;
+import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.security.auth.AuthenticationResult;
 import org.wso2.andes.server.security.auth.AuthenticationResult.AuthenticationStatus;
 import org.wso2.andes.server.security.auth.manager.AuthenticationManager;

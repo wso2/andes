@@ -22,11 +22,11 @@ import org.apache.felix.framework.Felix;
 import org.apache.felix.framework.util.StringMap;
 import org.apache.log4j.Logger;
 import org.wso2.andes.common.Closeable;
-import org.wso2.andes.server.configuration.TopicConfiguration;
-import org.wso2.andes.server.configuration.plugins.ConfigurationPluginFactory;
-import org.wso2.andes.server.configuration.plugins.SlowConsumerDetectionConfiguration.SlowConsumerDetectionConfigurationFactory;
-import org.wso2.andes.server.configuration.plugins.SlowConsumerDetectionPolicyConfiguration.SlowConsumerDetectionPolicyConfigurationFactory;
-import org.wso2.andes.server.configuration.plugins.SlowConsumerDetectionQueueConfiguration.SlowConsumerDetectionQueueConfigurationFactory;
+import org.wso2.andes.configuration.qpid.TopicConfiguration;
+import org.wso2.andes.configuration.qpid.plugins.ConfigurationPluginFactory;
+import org.wso2.andes.configuration.qpid.plugins.SlowConsumerDetectionConfiguration.SlowConsumerDetectionConfigurationFactory;
+import org.wso2.andes.configuration.qpid.plugins.SlowConsumerDetectionPolicyConfiguration.SlowConsumerDetectionPolicyConfigurationFactory;
+import org.wso2.andes.configuration.qpid.plugins.SlowConsumerDetectionQueueConfiguration.SlowConsumerDetectionQueueConfigurationFactory;
 import org.wso2.andes.server.exchange.ExchangeType;
 import org.wso2.andes.server.security.SecurityManager;
 import org.wso2.andes.server.security.SecurityPluginFactory;
@@ -151,9 +151,9 @@ public class PluginManager implements Closeable
                 "org.wso2.andes.management.common.mbeans.annotations; " + QPID_VER_SUFFIX +
                 "org.wso2.andes.protocol; " + QPID_VER_SUFFIX +
                 "org.wso2.andes.server.binding; " + QPID_VER_SUFFIX +
-                "org.wso2.andes.server.configuration; " + QPID_VER_SUFFIX +
-                "org.wso2.andes.server.configuration.plugins; " + QPID_VER_SUFFIX +
-                "org.wso2.andes.server.configuration.management; " + QPID_VER_SUFFIX +
+                "org.wso2.andes.configuration.qpid; " + QPID_VER_SUFFIX +
+                "org.wso2.andes.configuration.qpid.plugins; " + QPID_VER_SUFFIX +
+                "org.wso2.andes.configuration.qpid.management; " + QPID_VER_SUFFIX +
                 "org.wso2.andes.server.exchange; " + QPID_VER_SUFFIX +
                 "org.wso2.andes.server.logging; " + QPID_VER_SUFFIX +
                 "org.wso2.andes.server.logging.actors; " + QPID_VER_SUFFIX +

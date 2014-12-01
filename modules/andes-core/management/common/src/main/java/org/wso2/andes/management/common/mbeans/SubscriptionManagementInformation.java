@@ -57,6 +57,8 @@ public interface SubscriptionManagementInformation {
      * @param destinationName
      * @return
      */
+    //TODO: there is noting like message count of node now
+    @Deprecated
     @MBeanAttribute(name="MessageCount", description = "Number of messages pending for the destination")
     int getMessageCount(
             @MBeanOperationParameter(name = "subscribedNode" ,description = "Subscribed node address") String subscribedNode,

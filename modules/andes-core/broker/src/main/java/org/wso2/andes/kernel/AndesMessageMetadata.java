@@ -18,14 +18,12 @@
 
 package org.wso2.andes.kernel;
 
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.framing.ContentHeaderBody;
-import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.mqtt.MQTTMessageMetaData;
-import org.wso2.andes.server.message.CustomMessagePublishInfo;
+import org.wso2.andes.mqtt.MQTTMetaDataHandler;
 import org.wso2.andes.server.message.MessageMetaData;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.store.MessageMetaDataType;
@@ -35,31 +33,66 @@ import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.UUID;
 
 public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 
 
+    /**
+     * Unique identifier of the message
+     */
     long messageID;
+    /**
+     * AMQ metadata of the message
+     */
     byte[] metadata;
+    /**
+     * The timestamp at which the message is set to expire.
+     */
     long expirationTime;
+    /**
+     * true if the message is addressed to a topic exchange.
+     */
     boolean isTopic;
+    /**
+     * The timestamp at which the message arrived at the first gates of the broker.
+     */
+    long arrivalTime;
 
     /**
      *through which connection this message came into broker
+     * or rejected to the broker
      */
-    int channelId;
+    UUID channelId;
 
+    /**
+     * Destination (routing key) of message
+     */
     private String destination;
+
+    /**
+     * Queue name in store in which message
+     * should be saved
+     */
+    private String storageQueueName;
+
+    /**
+     * True if the message is sent with JMS persistent mode.
+     */
     private boolean isPersistent;
+
+    /**
+     * True if the message has been delivered more than once.
+     */
     private boolean reDelivered;
-    Map<Long, PendingJob> pendingJobsTracker;
-    public QueueAddress queueAddress;
+    Map<UUID, PendingJob> pendingJobsTracker;
     private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
 
     /**
      *Added for MQTT usage
      */
     private int messageContentLength;
+    private int qosLevel;
 
     /**
      *slotID which this metadata belongs
@@ -75,7 +108,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 		if(parse){
 			parseMetaData();
 		}
-        
+
 	}
 
 	public long getMessageID() {
@@ -86,6 +119,22 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         this.messageID = messageID;
     }
 
+    /**
+     * Will retive the level of QOS of the message. This will be applicable only if the message is MQTT
+     * @return the level of qos it can be either 0,1 or 2
+     */
+    public int getQosLevel() {
+        return qosLevel;
+    }
+
+    /**
+     * The level of qos the message is published at
+     * @param qosLevel the qos level can be of value 0,1 or 2
+     */
+    public void setQosLevel(int qosLevel) {
+        this.qosLevel = qosLevel;
+    }
+
     public byte[] getMetadata() {
         return metadata;
     }
@@ -94,11 +143,11 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         this.metadata = metadata;
     }
 
-    public Map<Long, PendingJob> getPendingJobsTracker() {
+    public Map<UUID, PendingJob> getPendingJobsTracker() {
         return pendingJobsTracker;
     }
 
-    public void setPendingJobsTracker(Map<Long, PendingJob> pendingJobsTracker) {
+    public void setPendingJobsTracker(Map<UUID, PendingJob> pendingJobsTracker) {
         this.pendingJobsTracker = pendingJobsTracker;
     }
 
@@ -126,6 +175,14 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         this.destination = destination;
     }
 
+    public String getStorageQueueName() {
+        return storageQueueName;
+    }
+
+    public void setStorageQueueName(String storageQueueName) {
+        this.storageQueueName = storageQueueName;
+    }
+
     public boolean isPersistent() {
         return isPersistent;
     }
@@ -134,15 +191,22 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         isPersistent = persistent;
     }
 
-    public int getChannelId() {
+    public UUID getChannelId() {
         return channelId;
     }
 
-    public void setChannelId(int channelId) {
+    public void setChannelId(UUID channelId) {
         this.channelId = channelId;
     }
 
-    
+    public long getArrivalTime() {
+        return arrivalTime;
+    }
+
+    public void setArrivalTime(long arrivalTime) {
+        this.arrivalTime = arrivalTime;
+    }
+
     /**
      * Create a clone, with new message ID
      * @param messageId message id
@@ -155,17 +219,26 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         clone.channelId = channelId;
     	clone.expirationTime = expirationTime;
         clone.isTopic = isTopic;
-        clone.destination = destination; 
+        clone.destination = destination;
+        clone.storageQueueName = storageQueueName;
         clone.isPersistent = isPersistent;
-        clone.pendingJobsTracker = pendingJobsTracker; 
-        clone.queueAddress = queueAddress;
+        clone.pendingJobsTracker = pendingJobsTracker;
         clone.slot = slot;
+        clone.arrivalTime = arrivalTime;
         return clone;
     }
-    
-    
-    public void updateMetadata(String newDestination){
-    	this.metadata = createNewMetadata(this.metadata, newDestination, this.messageID);
+
+
+    /**
+     * Update metadata of message. This will change AMQP bytes representing
+     * metadata. Routing key and exchange name will be set to the
+     * given values.
+     * @param newDestination  new routing key to set
+     * @param newExchangeName new exchange name to set
+     */
+    public void updateMetadata(String newDestination, String newExchangeName){
+    	this.metadata = createNewMetadata(this.metadata, newDestination, newExchangeName);
+        this.destination = newDestination;
         log.debug("updated andes message metadata id= " + messageID + " new destination = " + newDestination);
     }
 
@@ -197,17 +270,17 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         if (type.equals(MessageMetaDataType.META_DATA_0_10) || type.equals(MessageMetaDataType.META_DATA_0_8)) {
             isPersistent = ((MessageMetaData) mdt).isPersistent();
             expirationTime = ((MessageMetaData) mdt).getMessageHeader().getExpiration();
+            arrivalTime = ((MessageMetaData) mdt).getArrivalTime();
             destination = ((MessageMetaData) mdt).getMessagePublishInfo().getRoutingKey().toString();
             isTopic = ((MessageMetaData) mdt).getMessagePublishInfo().getExchange().equals(AMQPUtils.TOPIC_EXCHANGE_NAME);
-            queueAddress = new QueueAddress(QueueAddress.QueueType.GLOBAL_QUEUE, AndesUtils.getGlobalQueueNameForDestinationQueue(destination));
         }
         //For MQTT Specific Types
         if (type.equals(MessageMetaDataType.META_DATA_MQTT)) {
-            this.messageID = ((MQTTMessageMetaData) mdt).getMessageID();
             this.isTopic = ((MQTTMessageMetaData) mdt).isTopic();
             this.destination = ((MQTTMessageMetaData) mdt).getDestination();
             this.isPersistent = ((MQTTMessageMetaData) mdt).isPersistent();
             this.messageContentLength = ((MQTTMessageMetaData) mdt).getContentSize();
+            this.qosLevel = ((MQTTMessageMetaData) mdt).getQosLevel();
         }
 
     }
@@ -222,7 +295,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         return((MessageMetaData)mdt).getMessageHeader().getHeader(header);
     }
 
-    private byte[] createNewMetadata(byte[] originalMetadata, String routingKey, long messageID){
+    private byte[] createNewMetadata(byte[] originalMetadata, String routingKey, String exchangeName){
 		ByteBuffer buf = ByteBuffer.wrap(originalMetadata);
 		buf.position(1);
 		buf = buf.slice();
@@ -230,8 +303,19 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 		StorableMessageMetaData original_mdt = type.getFactory()
 				.createMetaData(buf);
 
-		ContentHeaderBody contentHeaderBody = ((MessageMetaData) original_mdt)
-				.getContentHeaderBody();
+        byte[] underlying;
+        MetaDataHandler handler;
+        //TODO need to impliment factory pattern here
+        if(type.equals(MessageMetaDataType.META_DATA_MQTT)){
+            handler = new MQTTMetaDataHandler();
+        }else{
+            handler = new AMQPMetaDataHandler();
+        }
+
+        underlying = handler.constructMetadata(routingKey, buf, original_mdt, exchangeName);
+        //TODO uncomment this once the logic is confirmed - Hasitha to review the change
+/*		ContentHeaderBody contentHeaderBody = ((MessageMetaData) original_mdt)
+                .getContentHeaderBody();
 		int contentChunkCount = ((MessageMetaData) original_mdt)
 				.getContentChunkCount();
 		long arrivalTime = ((MessageMetaData) original_mdt).getArrivalTime();
@@ -240,6 +324,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 		MessagePublishInfo messagePublishInfo = new CustomMessagePublishInfo(
 				original_mdt);
 		messagePublishInfo.setRoutingKey(new AMQShortString(routingKey));
+        messagePublishInfo.setExchange(new AMQShortString(exchangeName));
 		MessageMetaData modifiedMetaData = new MessageMetaData(
 				messagePublishInfo, contentHeaderBody, contentChunkCount,
 				arrivalTime);
@@ -250,7 +335,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 		buf = java.nio.ByteBuffer.wrap(underlying);
 		buf.position(1);
 		buf = buf.slice();
-		modifiedMetaData.writeToBuffer(0, buf);
+		modifiedMetaData.writeToBuffer(0, buf);*/
 		
 		return underlying;
     }

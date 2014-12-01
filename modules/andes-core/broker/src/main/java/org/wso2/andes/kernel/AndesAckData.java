@@ -19,27 +19,35 @@
 package org.wso2.andes.kernel;
 
 import com.lmax.disruptor.EventFactory;
+import org.wso2.andes.server.AMQChannel;
 
 import java.util.UUID;
 
+/**
+ * Wrapper class of message acknowledgment data publish to disruptor
+ *
+ */
 public class AndesAckData {
-    
+
+    private long messageID;
+    private String destination;
+    private String msgStorageDestination;
+    private boolean isTopic;
+    private UUID channelID;
+
     public AndesAckData(){}
-    
-    public AndesAckData(UUID channelID, long messageID, String qName, boolean isTopic) {
+
+    public AndesAckData(UUID channelID, long messageID, String destination, String msgStorageDestination, boolean isTopic) {
         super();
         this.channelID = channelID;
         this.messageID = messageID;
-        this.qName = qName;
+        this.destination = destination;
+        this.msgStorageDestination = msgStorageDestination;
         this.isTopic = isTopic;
     }
-    public long messageID; 
-    public String qName;
-    public boolean isTopic;
-    public UUID channelID;
 
     public AndesRemovableMetadata convertToRemovableMetaData() {
-        return new AndesRemovableMetadata(this.messageID, this.qName);
+        return new AndesRemovableMetadata(this.messageID, this.msgStorageDestination, this.destination);
     }
     
     public static class AndesAckDataEventFactory implements EventFactory<AndesAckData> {
@@ -51,6 +59,46 @@ public class AndesAckData {
 
     public static EventFactory<AndesAckData> getFactory() {
         return new AndesAckDataEventFactory();
+    }
+
+    public long getMessageID() {
+        return messageID;
+    }
+
+    public void setMessageID(long messageID) {
+        this.messageID = messageID;
+    }
+
+    public String getDestination() {
+        return destination;
+    }
+
+    public void setDestination(String destination) {
+        this.destination = destination;
+    }
+
+    public String getMsgStorageDestination() {
+        return msgStorageDestination;
+    }
+
+    public void setMsgStorageDestination(String msgStorageDestination) {
+        this.msgStorageDestination = msgStorageDestination;
+    }
+
+    public boolean isTopic() {
+        return isTopic;
+    }
+
+    public void setTopic(boolean isTopic) {
+        this.isTopic = isTopic;
+    }
+
+    public UUID getChannelID() {
+        return channelID;
+    }
+
+    public void setChannelID(UUID channelID) {
+        this.channelID = channelID;
     }
 
 }

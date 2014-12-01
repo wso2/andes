@@ -42,7 +42,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
             SlotInfo slotInfo = new SlotInfo();
             if (null != slot) {
                 slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(),
-                        slot.getQueueName());
+                        slot.getStorageQueueName());
             }
             return slotInfo;
         } else {
@@ -65,7 +65,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
             Slot slot = new Slot();
             slot.setStartMessageId(slotInfo.getStartMessageId());
             slot.setEndMessageId(slotInfo.getEndMessageId());
-            slot.setQueueName(slotInfo.getQueueName());
+            slot.setStorageQueueName(slotInfo.getQueueName());
             slotManager.deleteSlot(queueName, slot, nodeId);
         } else {
             throw new TException("This node is not the slot coordinator right now");

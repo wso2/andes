@@ -20,14 +20,7 @@ package org.wso2.andes.kernel.storemanager;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesAckData;
-import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.AndesRemovableMetadata;
-import org.wso2.andes.kernel.MessageStore;
-import org.wso2.andes.kernel.MessageStoreManager;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.slot.SlotMessageCounter;
 import org.wso2.andes.server.stats.PerformanceCounter;
@@ -77,7 +70,9 @@ public class DirectStoringManager extends BasicStoringManager implements Message
 
         incrementQueueCount(metadata.getDestination(), 1);
         //record the successfully written message count
-        PerformanceCounter.recordIncomingMessageWrittenToStore();
+        if(log.isDebugEnabled()) {
+            PerformanceCounter.recordIncomingMessageWrittenToStore();
+        }
     }
 
     /**
@@ -98,25 +93,26 @@ public class DirectStoringManager extends BasicStoringManager implements Message
             SlotMessageCounter.getInstance().recordMetaDataCountInSlot(messageMetadata);
         }
         PerformanceCounter.warnIfTookMoreTime("Store Metadata", start, 200);
-        Map<String, List<AndesMessageMetadata>> queueSeparatedMetadata = new HashMap<String,
-                List<AndesMessageMetadata>>();
+        Map<String, Integer> destinationSeparatedMetadataCount = new HashMap<String,
+                Integer>();
         for (AndesMessageMetadata message : messageMetadata) {
             //separate metadata queue-wise
-            List<AndesMessageMetadata> messages = queueSeparatedMetadata
+            Integer msgCount = destinationSeparatedMetadataCount
                     .get(message.getDestination());
-            if (messages == null) {
-                messages = new ArrayList
-                        <AndesMessageMetadata>();
+            if (msgCount == null) {
+                msgCount =0;
             }
-            messages.add(message);
-            queueSeparatedMetadata.put(message.getDestination(), messages);
+            msgCount = msgCount + 1;
+            destinationSeparatedMetadataCount.put(message.getDestination(), msgCount);
 
             //record the successfully written message count
-            PerformanceCounter.recordIncomingMessageWrittenToStore();
+            if(log.isDebugEnabled()) {
+                PerformanceCounter.recordIncomingMessageWrittenToStore();
+            }
         }
         //increment message count for queues
-        for(String queue : queueSeparatedMetadata.keySet()) {
-            incrementQueueCount(queue, queueSeparatedMetadata.get(queue).size());
+        for(String queue : destinationSeparatedMetadataCount.keySet()) {
+            incrementQueueCount(queue, destinationSeparatedMetadataCount.get(queue));
         }
     }
 
@@ -170,19 +166,26 @@ public class DirectStoringManager extends BasicStoringManager implements Message
     public void ackReceived(List<AndesAckData> ackList) throws AndesException {
         List<AndesRemovableMetadata> removableMetadata = new ArrayList<AndesRemovableMetadata>();
         for (AndesAckData ack : ackList) {
-            removableMetadata.add(new AndesRemovableMetadata(ack.messageID, ack.qName));
+            if(log.isDebugEnabled()) {
+                log.debug("ack - direct store manager");
+            }
+            //for topics message is shared. If all acks are received only we should remove message
+            boolean isOkToDeleteMessage = OnflightMessageTracker.getInstance().handleAckReceived(ack.getChannelID(), ack.getMessageID());
+            if(isOkToDeleteMessage) {
+                if(log.isDebugEnabled()) {
+                    log.debug("Ok to delete message id= " + ack.getMessageID());
+                }
+                removableMetadata.add(new AndesRemovableMetadata(ack.getMessageID(), ack.getDestination(), ack.getMsgStorageDestination()));
+            }
+
+            OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(ack.getChannelID());
             //record ack received
-            PerformanceCounter.recordMessageRemovedAfterAck();
+            if(log.isDebugEnabled()) {
+                PerformanceCounter.recordMessageRemovedAfterAck();
+            }
         }
         //remove messages permanently from store
         this.deleteMessages(removableMetadata, false);
-
-        //this should happen if and only if messages are removed from store
-        for (AndesAckData ack : ackList) {
-            OnflightMessageTracker.getInstance().ackReceived(ack.channelID, ack.messageID);
-            //record ack received
-            PerformanceCounter.recordMessageRemovedAfterAck();
-        }
     }
 
     /**
@@ -236,41 +239,48 @@ public class DirectStoringManager extends BasicStoringManager implements Message
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove,
                                boolean moveToDeadLetterChannel) throws AndesException {
         List<Long> idsOfMessagesToRemove = new ArrayList<Long>();
-        Map<String, List<AndesRemovableMetadata>> queueSeparatedRemoveMessages = new HashMap<String, List<AndesRemovableMetadata>>();
+        Map<String, List<AndesRemovableMetadata>> storageQueueSeparatedRemoveMessages = new HashMap<String, List<AndesRemovableMetadata>>();
+        Map<String, Integer> destinationSeparatedMsgCounts = new HashMap<String, Integer>();
 
         for (AndesRemovableMetadata message : messagesToRemove) {
-            idsOfMessagesToRemove.add(message.messageID);
+            idsOfMessagesToRemove.add(message.getMessageID());
 
-            List<AndesRemovableMetadata> messages = queueSeparatedRemoveMessages
-                    .get(message.destination);
+            //update <storageQueue, metadata> map
+            List<AndesRemovableMetadata> messages = storageQueueSeparatedRemoveMessages
+                    .get(message.getStorageDestination());
             if (messages == null) {
                 messages = new ArrayList
                         <AndesRemovableMetadata>();
             }
             messages.add(message);
-            queueSeparatedRemoveMessages.put(message.destination, messages);
+            storageQueueSeparatedRemoveMessages.put(message.getStorageDestination(), messages);
 
-            //update server side message trackings
-        /*    OnflightMessageTracker onflightMessageTracker = OnflightMessageTracker.getInstance();
-            onflightMessageTracker.updateDeliveredButNotAckedMessages(message.messageID);*/
-
+            //update <destination, Msgcount> map
+            Integer count = destinationSeparatedMsgCounts.get(message.getMessageDestination());
+            if(count == null) {
+                count = 0;
+            }
+            count = count + 1;
+            destinationSeparatedMsgCounts.put(message.getMessageDestination(), count);
 
             //if to move, move to DLC. This is costy. Involves per message read and writes
             if (moveToDeadLetterChannel) {
-                AndesMessageMetadata metadata = messageStore.getMetaData(message.messageID);
+                AndesMessageMetadata metadata = messageStore.getMetaData(message.getMessageID());
                 messageStore
                         .addMetaDataToQueue(AndesConstants.DEAD_LETTER_QUEUE_NAME, metadata);
             }
         }
 
         //remove metadata
-        for (String queueName : queueSeparatedRemoveMessages.keySet()) {
-            messageStore.deleteMessageMetadataFromQueue(queueName,
-                                                               queueSeparatedRemoveMessages
-                                                                       .get(queueName));
-            //decrement message count of queue
-            decrementQueueCount(queueName, queueSeparatedRemoveMessages
-                    .get(queueName).size());
+        for (String storageQueueName : storageQueueSeparatedRemoveMessages.keySet()) {
+            messageStore.deleteMessageMetadataFromQueue(storageQueueName,
+                                                               storageQueueSeparatedRemoveMessages
+                                                                       .get(storageQueueName));
+        }
+
+        //decrement message counts
+        for(String destination: destinationSeparatedMsgCounts.keySet()) {
+            decrementQueueCount(destination, destinationSeparatedMsgCounts.get(destination));
         }
 
         if (!moveToDeadLetterChannel) {

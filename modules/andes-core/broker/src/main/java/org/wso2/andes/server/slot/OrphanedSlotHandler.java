@@ -53,10 +53,10 @@ public class OrphanedSlotHandler implements SubscriptionListener {
                                                 SubscriptionChange changeType)
             throws AndesException {
         switch (changeType) {
-            case Deleted:
+            case DELETED:
                 reAssignSlotsIfNeeded(subscription);
                 break;
-            case Disconnected:
+            case DISCONNECTED:
                 reAssignSlotsIfNeeded(subscription);
                 break;
         }
@@ -66,7 +66,7 @@ public class OrphanedSlotHandler implements SubscriptionListener {
     /**
      * Re-assign slots back to the slot manager if this is the last subscriber of this node.
      *
-     * @param subscription
+     * @param subscription current subscription fo the leaving node
      * @throws AndesException
      */
     private void reAssignSlotsIfNeeded(AndesSubscription subscription) throws AndesException {

@@ -47,6 +47,16 @@ public final class CoordinationConstants {
     public static String HAZELCAST_COORDINATOR_CHANGED_NOTIFIER_TOPIC_NAME = "COORDINATOR_CHANGED";
 
     /**
+     * Distributed lock name used to initialize the slot map
+     */
+    public static final String INITIALIZATION_LOCK = "InitializationLock";
+
+    /**
+     * Distributed variable used to indicate success of the cluster initialization
+     */
+    public static final String INITIALIZATION_DONE_INDICATOR = "InitializationDone";
+
+    /**
      * Prefix to generate node ID
      */
     public static String NODE_NAME_PREFIX = "NODE";
@@ -78,6 +88,5 @@ public final class CoordinationConstants {
     public static String SLOT_ASSIGNMENT_MAP_NAME = "slotAssignmentMap";
 
     public static String THRIFT_SERVER_DETAILS_MAP_NAME = "thriftServerDetailsMap";
-
 
 }

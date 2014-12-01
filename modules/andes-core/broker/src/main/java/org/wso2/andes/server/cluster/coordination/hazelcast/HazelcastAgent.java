@@ -11,7 +11,7 @@
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
+ * KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations
  * under the License.
  */
@@ -20,8 +20,9 @@ package org.wso2.andes.server.cluster.coordination.hazelcast;
 import com.hazelcast.core.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.MessagePurgeHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
@@ -34,6 +35,11 @@ import java.util.*;
  */
 public class HazelcastAgent {
     private static Log log = LogFactory.getLog(HazelcastAgent.class);
+
+    /**
+     * Value used to indicate the cluster initialization success state
+     */
+    private static final long INIT_SUCCESSFUL = 1L;
 
     /**
      * Singleton HazelcastAgent Instance.
@@ -104,7 +110,16 @@ public class HazelcastAgent {
 
     private int uniqueIdOfLocalMember;
 
+    /**
+     * Lock used to initialize the Slot map used by the Slot manager.
+     */
+    private ILock initializationLock;
 
+    /**
+     * This is used to indicate if the cluster initialization was done properly. Used a atomic long
+     * since am atomic boolean is not available in the current Hazelcast implementation.
+     */
+    private IAtomicLong initializationDoneIndicator;
 
     /**
      * Private constructor.
@@ -164,7 +179,6 @@ public class HazelcastAgent {
                 CoordinationConstants.HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME);
         ClusterQueueChangedListener clusterQueueChangedListener = new ClusterQueueChangedListener();
         clusterQueueChangedListener.addQueueListener(new ClusterCoordinationHandler(this));
-        clusterQueueChangedListener.addQueueListener(new MessagePurgeHandler());
         this.queueChangedNotifierChannel.addMessageListener(clusterQueueChangedListener);
 
         /**
@@ -194,20 +208,48 @@ public class HazelcastAgent {
          */
         thriftServerDetailsMap = hazelcastInstance.getMap(CoordinationConstants.THRIFT_SERVER_DETAILS_MAP_NAME);
 
+        /**
+         * Initialize distributed lock and boolean related to slot map initialization
+         */
+        initializationLock = hazelcastInstance.getLock(CoordinationConstants.INITIALIZATION_LOCK);
+        initializationDoneIndicator = hazelcastInstance
+                .getAtomicLong(CoordinationConstants.INITIALIZATION_DONE_INDICATOR);
+
         log.info("Successfully initialized Hazelcast Agent");
 
-        log.debug("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
+        if (log.isDebugEnabled()) {
+            log.debug("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
+        }
     }
 
     /**
      * Node ID is generated in the format of "NODE/<host IP>:<Port>"
-     *
-     * @return NodeId
+     * @return NodeId Identifier of the node in the cluster
      */
     public String getNodeId() {
-        Member localMember = hazelcastInstance.getCluster().getLocalMember();
-        return CoordinationConstants.NODE_NAME_PREFIX +
-                localMember.getInetSocketAddress();
+
+        String nodeId;
+
+        // Get Node ID configured by user in broker.xml (if not "default" we must use it as the ID)
+        try {
+            nodeId = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration.COORDINATION_NODE_ID);
+
+            // If the config value is "default" we must generate the ID
+            if (AndesConfiguration.COORDINATION_NODE_ID.get().getDefaultValue().equals(nodeId)) {
+                Member localMember = hazelcastInstance.getCluster().getLocalMember();
+                nodeId = CoordinationConstants.NODE_NAME_PREFIX + localMember.getSocketAddress();
+            }
+
+        } catch (AndesException e) {
+            // Since we cannot infer user's node ID, we will assign our default generated ID.
+            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration.COORDINATION_NODE_ID.toString(), e);
+
+            // Generate ID with default logic
+            Member localMember = hazelcastInstance.getCluster().getLocalMember();
+            nodeId = CoordinationConstants.NODE_NAME_PREFIX + localMember.getSocketAddress();
+        }
+
+        return nodeId;
     }
 
     /**
@@ -229,7 +271,7 @@ public class HazelcastAgent {
         List<String> nodeIDList = new ArrayList<String>();
         for (Member member : members) {
             nodeIDList.add(CoordinationConstants.NODE_NAME_PREFIX +
-                    member.getInetSocketAddress());
+                    member.getSocketAddress());
         }
 
         return nodeIDList;
@@ -270,7 +312,7 @@ public class HazelcastAgent {
      */
     public String getIdOfNode(Member node) {
         return CoordinationConstants.NODE_NAME_PREFIX +
-                node.getInetSocketAddress();
+                node.getSocketAddress();
     }
 
     /**
@@ -311,8 +353,8 @@ public class HazelcastAgent {
         try {
             this.queueChangedNotifierChannel.publish(clusterNotification);
         } catch (Exception e) {
-            log.error("Error while sending queue change notification", e);
-            throw new AndesException("Error while sending queue change notification", e);
+            log.error("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), e);
+            throw new AndesException("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), e);
         }
     }
 
@@ -321,8 +363,8 @@ public class HazelcastAgent {
         try {
             this.exchangeChangeNotifierChannel.publish(clusterNotification);
         } catch (Exception e) {
-            log.error("Error while sending exchange change notification", e);
-            throw new AndesException("Error while sending exchange change notification", e);
+            log.error("Error while sending exchange change notification" + clusterNotification.getEncodedObjectAsString(), e);
+            throw new AndesException("Error while sending exchange change notification" + clusterNotification.getEncodedObjectAsString(), e);
         }
     }
 
@@ -331,8 +373,8 @@ public class HazelcastAgent {
         try {
             this.bindingChangeNotifierChannel.publish(clusterNotification);
         } catch (Exception e) {
-            log.error("Error while sending binding change notification", e);
-            throw new AndesException("Error while sending binding change notification", e);
+            log.error("Error while sending binding change notification" + clusterNotification.getEncodedObjectAsString(), e);
+            throw new AndesException("Error while sending binding change notification" + clusterNotification.getEncodedObjectAsString(), e);
         }
     }
 
@@ -358,6 +400,49 @@ public class HazelcastAgent {
      */
     public IMap<String, String> getThriftServerDetailsMap() {
         return thriftServerDetailsMap;
+    }
+
+    /**
+     * Acquire the distributed lock related to cluster initialization. This lock is required to
+     * avoid two nodes initializing the map twice.
+     */
+    public void acquireInitializationLock() {
+        if (log.isDebugEnabled()) {
+            log.debug("Trying to acquire initialization lock.");
+        }
+
+        initializationLock.lock();
+
+        if (log.isDebugEnabled()) {
+            log.debug("Initialization lock acquired.");
+        }
+    }
+
+    /**
+     * Inform other members in the cluster that the cluster was initialized properly.
+     */
+    public void indicateSuccessfulInitilization() {
+        initializationDoneIndicator.set(INIT_SUCCESSFUL);
+    }
+
+    /**
+     * Check if a member has already initialized the cluster
+     *
+     * @return true if cluster is already initialized
+     */
+    public boolean isClusterInitializedSuccessfully() {
+        return initializationDoneIndicator.get() == INIT_SUCCESSFUL;
+    }
+
+    /**
+     * Release the initialization lock.
+     */
+    public void releaseInitializationLock() {
+        initializationLock.unlock();
+
+        if (log.isDebugEnabled()) {
+            log.debug("Initialization lock released.");
+        }
     }
 
 }

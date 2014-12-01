@@ -44,15 +44,29 @@ public class Slot implements Serializable, Comparable<Slot> {
     /**
      * QueueName which the slot belongs to. This is set when the slot is assigned to a subscriber
      */
-    private String queueName;
+    private String storageQueueName;
+
+    /**
+     * Keep if slot is active, if not it is eligible to be removed
+     */
+    private boolean isSlotActive;
+
+    /**
+     * Keep actual destination of messages in slot
+     */
+    private String destinationOfMessagesInSlot;
 
 
-    public void setQueueName(String queueName) {
-        this.queueName = queueName;
+    public Slot() {
+        isSlotActive = true;
     }
 
-    public String getQueueName() {
-        return queueName;
+    public void setStorageQueueName(String storageQueueName) {
+        this.storageQueueName = storageQueueName;
+    }
+
+    public String getStorageQueueName() {
+        return storageQueueName;
     }
 
     public long getMessageCount() {
@@ -79,6 +93,22 @@ public class Slot implements Serializable, Comparable<Slot> {
         this.startMessageId = startMessageId;
     }
 
+    public void setSlotInActive() {
+        isSlotActive = false;
+    }
+
+    public boolean isSlotActive() {
+        return isSlotActive;
+    }
+
+    public String getDestinationOfMessagesInSlot() {
+        return destinationOfMessagesInSlot;
+    }
+
+    public void setDestinationOfMessagesInSlot(String destinationOfMessagesInSlot) {
+        this.destinationOfMessagesInSlot = destinationOfMessagesInSlot;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -88,7 +118,7 @@ public class Slot implements Serializable, Comparable<Slot> {
 
         if (endMessageId != slot.endMessageId) return false;
         if (startMessageId != slot.startMessageId) return false;
-        if (!queueName.equals(slot.queueName)) return false;
+        if (!storageQueueName.equals(slot.storageQueueName)) return false;
 
         return true;
     }
@@ -97,7 +127,7 @@ public class Slot implements Serializable, Comparable<Slot> {
     public int hashCode() {
         int result = (int) (startMessageId ^ (startMessageId >>> 32));
         result = 31 * result + (int) (endMessageId ^ (endMessageId >>> 32));
-        result = 31 * result + queueName.hashCode();
+        result = 31 * result + storageQueueName.hashCode();
         return result;
     }
 
@@ -105,7 +135,7 @@ public class Slot implements Serializable, Comparable<Slot> {
     public String toString() {
         return "Slot{" +
                 "startMessageId=" + startMessageId +
-                ", queueName='" + queueName + '\'' +
+                ", storageQueueName='" + storageQueueName + '\'' +
                 ", endMessageId=" + endMessageId +
                 '}';
     }
@@ -116,7 +146,7 @@ public class Slot implements Serializable, Comparable<Slot> {
      * @return slot message id
      */
     public String getId() {
-        return queueName + "|" + startMessageId + "-" + endMessageId;
+        return storageQueueName + "|" + startMessageId + "-" + endMessageId;
     }
 
     @Override

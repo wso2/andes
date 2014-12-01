@@ -21,14 +21,15 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.pool.ReadWriteRunnable;
 import org.wso2.andes.pool.ReferenceCountingExecutorService;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.server.configuration.*;
-import org.wso2.andes.server.configuration.plugins.ConfigurationPlugin;
+import org.wso2.andes.configuration.qpid.*;
+import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.LogActor;
 import org.wso2.andes.server.logging.LogSubject;
@@ -406,14 +407,18 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
         
         if (hasExclusiveSubscriber())
         {
-            throw new ExistingExclusiveSubscription();
+            if(!(this.checkIfBoundToTopicExchange() && this.isDurable())) {
+                throw new ExistingExclusiveSubscription();
+            }
         }
 
         if (exclusive && !subscription.isTransient())
         {
             if (getConsumerCount() != 0)
             {
-                throw new ExistingSubscriptionPreventsExclusive();
+                if(!(this.checkIfBoundToTopicExchange() && this.isDurable())) {
+                    throw new ExistingSubscriptionPreventsExclusive();
+                }
             }
             else
             {
@@ -452,7 +457,6 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
         }
 
         deliverAsync(subscription);
-//        CassandraMessageStore.getInstance().addNodeQueueToGlobalQueue(this.getResourceName(),subscription.getSubscriptionID()+"");
 
     }
 

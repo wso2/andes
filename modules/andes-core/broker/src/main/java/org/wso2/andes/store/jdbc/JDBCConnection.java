@@ -19,7 +19,7 @@
 package org.wso2.andes.store.jdbc;
 
 import org.apache.log4j.Logger;
-import org.wso2.andes.configuration.ConfigurationProperties;
+import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
 
@@ -55,7 +55,7 @@ public class JDBCConnection implements DurableStoreConnection {
             throw new AndesException("Connecting to database failed with jndi lookup", e);
         } catch (NamingException e) {
             throw new AndesException("Couldn't look up jndi entry for " +
-                                     "\"" + jndiLookupName + "\"" + e);
+                                     "\"" + jndiLookupName + "\"", e);
         } finally {
             String task = "Initialising database";
             close(connection, task);
@@ -90,8 +90,7 @@ public class JDBCConnection implements DurableStoreConnection {
     /**
      * Closes the provided connection. on failure log the error;
      *
-     * @param connection
-     *         Connection
+     * @param connection Connection
      * @param task task that was done before closing
      */
     private void close(Connection connection, String task) {

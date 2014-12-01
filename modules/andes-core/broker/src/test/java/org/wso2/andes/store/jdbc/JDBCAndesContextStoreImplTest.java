@@ -21,21 +21,20 @@ package org.wso2.andes.store.jdbc;
 import junit.framework.Assert;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.*;
-import org.wso2.andes.configuration.ConfigurationProperties;
+import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesExchange;
 import org.wso2.andes.kernel.AndesQueue;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
-import javax.naming.NameAlreadyBoundException;
 import java.sql.*;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Unit test class for H2BasedAndesContextStoreImpl
- * Basic implementation of methods are tested in this class
+ * Unit test class for JDBCAndesContextStoreImpl
+ * Basic functionality of implemented methods are tested in this test class
  */
 public class JDBCAndesContextStoreImplTest {
 
@@ -44,7 +43,6 @@ public class JDBCAndesContextStoreImplTest {
 
     @BeforeClass
     public static void BeforeClass() throws Exception {
-        try {
             // Create initial context
             String jdbcUrl = "jdbc:h2:mem:msg_store;DB_CLOSE_ON_EXIT=FALSE";
             System.setProperty(Context.INITIAL_CONTEXT_FACTORY,
@@ -60,8 +58,6 @@ public class JDBCAndesContextStoreImplTest {
 
             Class.forName("org.h2.Driver");
             connection = DriverManager.getConnection(jdbcUrl);
-        } catch (NameAlreadyBoundException ignored) {
-        }
     }
 
     @Before
@@ -80,11 +76,11 @@ public class JDBCAndesContextStoreImplTest {
         dropTables();
     }
 
-    @AfterClass
-    public static void afterClass() {
-
-    }
-
+    /**
+     * Test storing a durable subscription is done properly through method
+     * storeDurableSubscription(...)
+     * @throws Exception
+     */
     @Test
     public void testStoreDurableSubscription() throws Exception {
         String destIdentifier = "destination";
@@ -299,6 +295,11 @@ public class JDBCAndesContextStoreImplTest {
         Assert.assertEquals(startValue - decrementBy, resultSet.getLong(JDBCConstants.QUEUE_COUNT));
     }
 
+    /**
+     * Test functionality of getAllStoredDurableSubscriptions() method by populating the db and
+     * then retrieving the durableSubscriptions using the method
+     * @throws Exception
+     */
     @Test
     public void testGetAllDurableSubscriptions() throws Exception {
         String insert = "INSERT INTO " + JDBCConstants.DURABLE_SUB_TABLE + " (" +
@@ -342,6 +343,13 @@ public class JDBCAndesContextStoreImplTest {
         Assert.assertEquals(dataTwo, subscriberList.get(0));
     }
 
+    /**
+     * Test functionality of getAllStoredDurableSubscriptions() with populating the database with
+     * multiple durable subscriptions for the same destination.
+     * Since map returned use the destination as the key this tests whether multiple values for the
+     * same destination is returned properly.
+     * @throws Exception
+     */
     @Test
     public void testGetAllSubscribersWithSameDestinationForALL() throws Exception {
         String insert = "INSERT INTO " + JDBCConstants.DURABLE_SUB_TABLE + " (" +
@@ -382,6 +390,10 @@ public class JDBCAndesContextStoreImplTest {
         Assert.assertEquals(dataTwo, subscriberList.get(1));
     }
 
+    /**
+     * Test whether already existing durable subscriptions removed from database properly
+     * @throws Exception
+     */
     @Test
     public void testRemoveDurableSubscription() throws Exception {
         String insert = "INSERT INTO " + JDBCConstants.DURABLE_SUB_TABLE + " (" +
@@ -418,6 +430,10 @@ public class JDBCAndesContextStoreImplTest {
         Assert.assertEquals(false, resultSet.first());
     }
 
+    /**
+     * Test a node detail is stored properly to disk
+     * @throws Exception
+     */
     @Test
     public void testStoreNodeDetails() throws Exception {
         String nodeId = "nodeId";
@@ -440,6 +456,11 @@ public class JDBCAndesContextStoreImplTest {
         Assert.assertEquals(data, resultSet.getString(JDBCConstants.NODE_INFO));
     }
 
+    /**
+     * Test all the nodes details present in database are retrieved properly through
+     * getAllStoredNodeData() method
+     * @throws Exception
+     */
     @Test
     public void testGetAllNodeDetails() throws Exception {
         String insert = "INSERT INTO " + JDBCConstants.NODE_INFO_TABLE + "( " +
@@ -472,6 +493,10 @@ public class JDBCAndesContextStoreImplTest {
         Assert.assertEquals(nodeDataTwo, nodeDataMap.get(nodeIdTwo));
     }
 
+    /**
+     * Test node data are removed properly from database on method call removeNodeData()
+     * @throws Exception
+     */
     @Test
     public void testRemoveNodeData() throws Exception {
         String insert = "INSERT INTO " + JDBCConstants.NODE_INFO_TABLE + "( " +
@@ -513,6 +538,10 @@ public class JDBCAndesContextStoreImplTest {
 
     }
 
+    /**
+     * Test exchanges are stored properly to database by method call storeExchangeInformation(...)
+     * @throws Exception
+     */
     @Test
     public void testStoreExchange() throws Exception {
         String exchange1 = "exchange1";
@@ -545,6 +574,11 @@ public class JDBCAndesContextStoreImplTest {
         Assert.assertEquals(exchangeInfo2, resultSet.getString(JDBCConstants.EXCHANGE_DATA));
     }
 
+    /**
+     * Test all the exchanges stored in database are returned properly by method
+     * getAllExchangesStored(...)
+     * @throws Exception
+     */
     @Test
     public void testGetAllExchangesStored() throws Exception {
         String exchange1 = "exchange1";
@@ -576,6 +610,11 @@ public class JDBCAndesContextStoreImplTest {
         Assert.assertEquals(exchangeCount, exchangeList.size());
     }
 
+    /**
+     * Test exchanges are removed properly from database by method
+     * deleteExchangeInformation(...)
+     * @throws Exception
+     */
     @Test
     public void testDeleteExchange() throws Exception {
         String exchange1 = "exchange1";
@@ -616,6 +655,11 @@ public class JDBCAndesContextStoreImplTest {
         Assert.assertEquals(false, resultSet.next());
     }
 
+    /**
+     * Test queue information are stored properly to database though method
+     * storeQueueInformation(...)
+     * @throws Exception
+     */
     @Test
     public void testStoreQueueInformation() throws Exception {
 
@@ -647,8 +691,13 @@ public class JDBCAndesContextStoreImplTest {
         Assert.assertEquals(queueInfo2, resultSet.getString(JDBCConstants.QUEUE_INFO));
     }
 
+    /**
+     * Test queue information stored in database are retrieved properly through method
+     * getAllQueuesStored(...)
+     * @throws Exception
+     */
     @Test
-    public void testAllQueuesStored() throws Exception {
+    public void testGetAllQueuesStored() throws Exception {
 
         AndesQueue andesQueue1 = new AndesQueue("queue1", "owner1", true, false);
         AndesQueue andesQueue2 = new AndesQueue("queue2", "owner2", true, false);
@@ -688,6 +737,11 @@ public class JDBCAndesContextStoreImplTest {
         Assert.assertEquals(queueCount, queueList.size());
     }
 
+    /**
+     * Test queue information in database are deleted properly through method
+     * deleteQueueInformation(...)
+     * @throws Exception
+     */
     @Test
     public void testDeleteQueueInformation() throws Exception {
         AndesQueue andesQueue1 = new AndesQueue("queue1", "owner1", true, false);
@@ -728,6 +782,10 @@ public class JDBCAndesContextStoreImplTest {
 
     }
 
+    /**
+     * Test binding are stored to database properly with method storeBindingInformation(...)
+     * @throws Exception
+     */
     @Test
     public void testStoreBinding() throws Exception {
         String exchange1 = "exchange1";
@@ -781,6 +839,11 @@ public class JDBCAndesContextStoreImplTest {
 
     }
 
+    /**
+     * Test all the binding information stored in database for a given exchange is retrieved from
+     * method getBindingsStoredForExchange(...)
+     * @throws Exception
+     */
     @Test
     public void testGetBindingStoredForExchange() throws Exception {
         String exchange1 = "exchange1";
@@ -810,6 +873,11 @@ public class JDBCAndesContextStoreImplTest {
 
     }
 
+    /**
+     * Test binding information stored in database for a particular queue in particular exchange can
+     * be deleted properly through method deleteBindingInformation(...)
+     * @throws Exception
+     */
     @Test
     public void testDeleteBindingInformation() throws Exception {
         String exchange1 = "exchange1";
@@ -840,7 +908,10 @@ public class JDBCAndesContextStoreImplTest {
 
     }
 
-
+    /**
+     * Create tables used by JDBCAndesContextStoreImpl
+     * @throws Exception
+     */
     private void createTables() throws Exception {
 
         String[] queries = {
@@ -891,6 +962,10 @@ public class JDBCAndesContextStoreImplTest {
         stmt.close();
     }
 
+    /**
+     * Drop all the tables used by JDBCAndesContextStoreImpl
+     * @throws Exception
+     */
     private void dropTables() throws Exception {
         String[] queries = {
                 "DROP TABLE durable_subscriptions;",

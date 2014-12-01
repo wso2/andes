@@ -18,47 +18,32 @@
 package org.wso2.andes.server.store.util;
 
 
-import static org.wso2.andes.store.cassandra.CassandraConstants.INTEGER_TYPE;
-import static org.wso2.andes.store.cassandra.CassandraConstants.LONG_TYPE;
-import static org.wso2.andes.store.cassandra.CassandraConstants.STRING_TYPE;
-import static org.wso2.andes.store.cassandra.dao.GenericCQLDAO.CLUSTER_SESSION;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.AndesRemovableMetadata;
-import org.wso2.andes.server.cassandra.MessageExpirationWorker;
-import org.wso2.andes.store.cassandra.dao.CQLQueryBuilder;
-import org.wso2.andes.store.cassandra.dao.CQLQueryBuilder.Table;
-import org.wso2.andes.store.cassandra.dao.CassandraHelper.WHERE_OPERATORS;
-import org.wso2.andes.store.cassandra.dao.GenericCQLDAO;
 
-import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.*;
 import com.datastax.driver.core.Cluster.Builder;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.Host;
-import com.datastax.driver.core.HostDistance;
-import com.datastax.driver.core.PoolingOptions;
-import com.datastax.driver.core.ProtocolOptions;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.SocketOptions;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.policies.ConstantReconnectionPolicy;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
 import com.datastax.driver.core.querybuilder.Delete;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.Select;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.AndesRemovableMetadata;
+import org.wso2.andes.server.cassandra.MessageExpirationWorker;
+import org.wso2.andes.store.cassandra.cql.dao.CQLQueryBuilder;
+import org.wso2.andes.store.cassandra.cql.dao.CQLQueryBuilder.Table;
+import org.wso2.andes.store.cassandra.cql.dao.CassandraHelper.WHERE_OPERATORS;
+import org.wso2.andes.store.cassandra.cql.dao.GenericCQLDAO;
+
+import java.util.*;
+
+import static org.wso2.andes.store.cassandra.CassandraConstants.*;
+import static org.wso2.andes.store.cassandra.cql.dao.GenericCQLDAO.CLUSTER_SESSION;
 
 
 /**
@@ -74,6 +59,9 @@ public class CQLDataAccessHelper {
     public static final String MSG_COUNTER_COLUMN = "counter_value";
     public static final String MSG_COUNTER_QUEUE = "queue_name";
     public static final String MSG_COUNTER_ROW = "counter_row_id";
+
+    public static final int STANDARD_PAGE_SIZE = 1000; // Standard row count retrieved in one call
+    // during a paginated data retrieval.
 
     //cql table column which store slice column key (compound primary key)
     public static final String MSG_KEY = "message_key";
@@ -380,7 +368,7 @@ public class CQLDataAccessHelper {
         try {
             CQLQueryBuilder.CqlUpdate update = new CQLQueryBuilder.CqlUpdate(keyspace, cfName);
             update.addColumnAndValue(MSG_COUNTER_COLUMN, MSG_COUNTER_COLUMN);
-            update.addCounterColumnAndValue(MSG_COUNTER_COLUMN, 1);
+            update.addCounterColumnAndValue(MSG_COUNTER_COLUMN, 0);
             update.addCondition(MSG_COUNTER_ROW, counterRowName, WHERE_OPERATORS.EQ);
             update.addCondition(MSG_COUNTER_QUEUE, queueColumn, WHERE_OPERATORS.EQ);
             GenericCQLDAO.update(keyspace, update);
@@ -410,7 +398,7 @@ public class CQLDataAccessHelper {
             cqlDelete.addCondition(MSG_COUNTER_QUEUE, queueColumn, WHERE_OPERATORS.EQ);
             cqlDelete.addCondition(MSG_COUNTER_ROW, counterRowName, WHERE_OPERATORS.EQ);
             Delete delete = CQLQueryBuilder.buildSingleDelete(cqlDelete);
-            GenericCQLDAO.executeAsync(keyspace, delete.getQueryString());
+            GenericCQLDAO.execute(keyspace, delete.getQueryString());
         } catch (Exception e) {
             if (e.getMessage()
                  .contains("All host pools marked down. Retry burden pushed out to client")) {
@@ -445,7 +433,7 @@ public class CQLDataAccessHelper {
             CQLQueryBuilder.CqlUpdate update = new CQLQueryBuilder.CqlUpdate(keyspace,
                                                                              columnFamily);
             update.addColumnAndValue(MSG_COUNTER_COLUMN, MSG_COUNTER_COLUMN);
-            update.addCounterColumnAndValue(MSG_COUNTER_COLUMN, 1);
+            update.addCounterColumnAndValue(MSG_COUNTER_COLUMN, +incrementBy);
             update.addCondition(MSG_COUNTER_ROW, rawID, WHERE_OPERATORS.EQ);
             update.addCondition(MSG_COUNTER_QUEUE, columnName, WHERE_OPERATORS.EQ);
             GenericCQLDAO.update(keyspace, update);
@@ -517,7 +505,7 @@ public class CQLDataAccessHelper {
             cqlSelect.addCondition(MSG_COUNTER_ROW, key, WHERE_OPERATORS.EQ);
             Select select = CQLQueryBuilder.buildSelect(cqlSelect);
             if (log.isDebugEnabled()) {
-                log.debug(" getMessageMetaDataFromQueue : " + select.toString());
+                log.debug(" getMessageMetaDataOfMessage : " + select.toString());
             }
 
             ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
@@ -604,7 +592,7 @@ public class CQLDataAccessHelper {
             cqlSelect.addCondition(MSG_KEY, Long.MAX_VALUE, WHERE_OPERATORS.LTE);
             Select select = CQLQueryBuilder.buildSelect(cqlSelect);
             if (log.isDebugEnabled()) {
-                log.debug(" getMessageMetaDataFromQueue : " + select.toString());
+                log.debug(" getMessageMetaDataOfMessage : " + select.toString());
             }
 
             ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
@@ -614,8 +602,7 @@ public class CQLDataAccessHelper {
                 Row row = iter.next();
                 value = CQLQueryBuilder.convertToByteArray(row, MSG_VALUE);
             }
-
-
+            //TODO: should we set storage queue name as well?
             return value;
         } catch (Exception e) {
             throw new CassandraDataAccessException(
@@ -661,7 +648,9 @@ public class CQLDataAccessHelper {
             List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>();
             CQLQueryBuilder.CqlSelect cqlSelect = new CQLQueryBuilder.CqlSelect(columnFamilyName,
                                                                                 count,
-                                                                                true);
+                                                                                false);
+            cqlSelect.addCondition(MSG_ROW_ID, rowName, WHERE_OPERATORS.EQ);
+
             cqlSelect.addColumn(MSG_VALUE);
             cqlSelect.addColumn(MSG_KEY);
             if (isRange) {
@@ -671,10 +660,9 @@ public class CQLDataAccessHelper {
                 cqlSelect.addCondition(MSG_KEY, lastProcessedId, WHERE_OPERATORS.EQ);
             }
 
-            cqlSelect.addCondition(MSG_ROW_ID, rowName, WHERE_OPERATORS.EQ);
             Select select = CQLQueryBuilder.buildSelect(cqlSelect);
             if (log.isDebugEnabled()) {
-                log.debug(" getMessageMetaDataFromQueue : " + select.toString());
+                log.debug(" getMessageMetaDataOfMessage : " + select.toString());
             }
 
             ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
@@ -686,6 +674,8 @@ public class CQLDataAccessHelper {
                 long msgId = row.getLong(MSG_KEY);
                 if (value != null && value.length > 0) {
                     AndesMessageMetadata tmpEntry = new AndesMessageMetadata(msgId, value, parse);
+                    //set back storage queue name
+                    tmpEntry.setStorageQueueName(rowName);
                     if (!MessageExpirationWorker.isExpired(tmpEntry.getExpirationTime())) {
                         metadataList.add(tmpEntry);
                     }
@@ -694,6 +684,78 @@ public class CQLDataAccessHelper {
             }
 
             return metadataList;
+        } catch (Exception e) {
+            throw new CassandraDataAccessException(
+                    "Error while getting data from " + columnFamilyName, e);
+        }
+    }
+
+    /**
+     * Get a list of values of a single Long column (in our case ; the message ID) from the given
+     * column family
+     *
+     * @param rowKey key value of the row
+     * @param columnFamilyName name of columnfamily from which data is read
+     * @param columnKey key value of the column in the <rowKey> row
+     * @param keyspace keyspace name of which the data is read
+     * @param lastProcessedId for pagination purposes. The last read ID is used to ignore the
+     *                        already read records when making the query.
+     * @param limit number of rows to be retrieved
+     * @return
+     * @throws CassandraDataAccessException
+     */
+    public static List<Long> getColumnDataFromColumnFamily(String rowKey,
+                                                           String columnFamilyName,
+                                                           String columnKey,
+                                                           String keyspace,
+                                                           long lastProcessedId,
+                                                           long limit)
+            throws CassandraDataAccessException {
+
+        if (StringUtils.isBlank(keyspace) || StringUtils.isBlank(columnFamilyName)) {
+            throw new CassandraDataAccessException("Can't access Data. The input keyspace or " +
+                    "column family is invalid.");
+        }
+
+        if (StringUtils.isBlank(columnFamilyName) || StringUtils.isBlank(rowKey)) {
+            throw new CassandraDataAccessException(
+                    "Can't access data with column family = " + columnFamilyName +
+                            " and row key=" + rowKey);
+        }
+
+        try {
+
+            List<Long> valueList = new ArrayList<Long>();
+            CQLQueryBuilder.CqlSelect cqlSelect = new CQLQueryBuilder.CqlSelect(columnFamilyName,
+                    limit,
+                    true);
+            cqlSelect.addColumn(columnKey);
+
+            cqlSelect.addCondition(MSG_ROW_ID, rowKey, WHERE_OPERATORS.EQ);
+
+            // Add this condition only if the request needs messages from a specific point
+            if (lastProcessedId > 0) {
+                cqlSelect.addCondition(MSG_KEY, lastProcessedId, WHERE_OPERATORS.GTE);
+            }
+
+            Select select = CQLQueryBuilder.buildSelect(cqlSelect);
+
+            if (log.isDebugEnabled()) {
+                log.debug(" getMessageMetaDataFromQueue : " + select.toString());
+            }
+
+            ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
+
+            List<Row> rows = result.all();
+
+            Iterator<Row> iter = rows.iterator();
+            while (iter.hasNext()) {
+                Row row = iter.next();
+                long msgId = row.getLong(MSG_KEY);
+                valueList.add(msgId);
+            }
+
+            return valueList;
         } catch (Exception e) {
             throw new CassandraDataAccessException(
                     "Error while getting data from " + columnFamilyName, e);
@@ -747,18 +809,21 @@ public class CQLDataAccessHelper {
             ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
             List<Row> rows = result.all();
             Iterator<Row> iterator = rows.iterator();
-            Row row = iterator.next();
-            byte[] value = CQLQueryBuilder.convertToByteArray(row, MSG_VALUE);
 
-            if (value != null && value.length > 0) {
-                messagePart.setData(value);
-                messagePart.setMessageID(messageId);
-                messagePart.setDataLength(value.length);
-                messagePart.setOffSet(offset);
-            } else {
-                throw new CassandraDataAccessException(
-                        "Message part with offset " + offset + " for the message " +
-                        messageId + " was not found.");
+            if (iterator.hasNext()) {
+                Row row = iterator.next();
+                byte[] value = CQLQueryBuilder.convertToByteArray(row, MSG_VALUE);
+
+                if (value != null && value.length > 0) {
+                    messagePart.setData(value);
+                    messagePart.setMessageID(messageId);
+                    messagePart.setDataLength(value.length);
+                    messagePart.setOffSet(offset);
+                } else {
+                    throw new CassandraDataAccessException(
+                            "Message part with offset " + offset + " for the message " +
+                            messageId + " was not found.");
+                }
             }
 
 
@@ -810,7 +875,7 @@ public class CQLDataAccessHelper {
             }
             Select select = CQLQueryBuilder.buildSelect(cqlSelect);
             if (log.isDebugEnabled()) {
-                log.debug(" getMessageMetaDataFromQueue : " + select.toString());
+                log.debug(" getMessageMetaDataOfMessage : " + select.toString());
             }
 
             ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
@@ -826,22 +891,22 @@ public class CQLDataAccessHelper {
         }
     }
 
-    public static Insert addMessageToQueue(String keySpace, String columnFamily, String queue,
+    public static Insert addMessageToQueue(String keySpace, String columnFamily, String storageQueueName,
                                            long messageId,
                                            byte[] message, boolean execute)
             throws CassandraDataAccessException {
 
-        if (columnFamily == null || queue == null || message == null) {
+        if (columnFamily == null || storageQueueName == null || message == null) {
             throw new CassandraDataAccessException(
                     "Can't add data with queueType = " + columnFamily +
-                    " and queue=" + queue + " message id  = " + messageId + " message = " +
+                    " and storageQueueName=" + storageQueueName + " message id  = " + messageId + " message = " +
                     message);
         }
 
         try {
 
             Map<String, Object> keyValueMap = new HashMap<String, Object>();
-            keyValueMap.put(MSG_ROW_ID, queue);
+            keyValueMap.put(MSG_ROW_ID, storageQueueName);
             keyValueMap.put(MSG_KEY, messageId);
             keyValueMap.put(MSG_VALUE, java.nio.ByteBuffer.wrap(message));
             Insert insert = CQLQueryBuilder.buildSingleInsert(keySpace, columnFamily, keyValueMap);
@@ -1053,6 +1118,8 @@ public class CQLDataAccessHelper {
 
     }
 
+
+
     /**
      * delete a list of integer rows from a column family
      *
@@ -1088,6 +1155,36 @@ public class CQLDataAccessHelper {
         } catch (Exception e) {
             throw new CassandraDataAccessException("Error while deleting data", e);
         }
+    }
+
+    /**
+     * Delete a single row from given column family
+     *
+     * @param columnFamily
+     * @param rowKey
+     * @param keyspace
+     */
+    public static void deleteRowFromColumnFamily(String columnFamily, String rowKey,
+                                                 String keyspace) throws
+            CassandraDataAccessException {
+
+        if (StringUtils.isBlank(keyspace)) {
+            throw new CassandraDataAccessException("Cannot delete data, no keyspace provided");
+        }
+
+        try {
+
+            CQLQueryBuilder.CqlDelete cqlDelete = new CQLQueryBuilder.CqlDelete(keyspace,
+                    columnFamily);
+
+            cqlDelete.addCondition(MSG_ROW_ID, rowKey, WHERE_OPERATORS.EQ);
+            Delete delete = CQLQueryBuilder.buildSingleDelete(cqlDelete);
+            GenericCQLDAO.execute(keyspace, delete.getQueryString());
+        } catch (Exception e) {
+            throw new CassandraDataAccessException("Error while deleting data", e);
+        }
+
+
     }
 
     public static Map<String, List<String>> listAllStringRows(String columnFamilyName,
@@ -1170,11 +1267,13 @@ public class CQLDataAccessHelper {
 
             for (Row row : rows) {
                 AndesRemovableMetadata arm = new AndesRemovableMetadata(row.getLong(MESSAGE_ID),
-                        row.getString(
-                                MESSAGE_DESTINATION));
-                arm.isForTopic = row.getBool(MESSAGE_IS_FOR_TOPIC);
+                                                                        row.getString(
+                                                                                MESSAGE_DESTINATION),
+                                                                        row.getString(
+                                                                                MESSAGE_DESTINATION));
+                arm.setForTopic(row.getBool(MESSAGE_IS_FOR_TOPIC));
 
-                if (arm.messageID > 0) {
+                if (arm.getMessageID() > 0) {
                     expiredMessages.add(arm);
                 }
             }

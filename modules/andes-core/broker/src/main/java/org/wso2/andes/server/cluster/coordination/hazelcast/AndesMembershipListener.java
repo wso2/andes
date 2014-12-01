@@ -11,17 +11,23 @@
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
+ * KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.wso2.andes.server.cluster.coordination.hazelcast;
 
 import com.hazelcast.core.Member;
+import com.hazelcast.core.MemberAttributeEvent;
 import com.hazelcast.core.MembershipEvent;
 import com.hazelcast.core.MembershipListener;
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.ClusterManager;
 
@@ -34,30 +40,43 @@ public class AndesMembershipListener implements MembershipListener {
     /**
      * This is triggered when a new member joined to the cluster.
      *
-     * @param membershipEvent contains the information about the added node.
+     * @param membershipEvent
+     *         contains the information about the added node.
      */
     @Override
     public void memberAdded(MembershipEvent membershipEvent) {
         Member member = membershipEvent.getMember();
-        log.info("Handling cluster gossip: New member joined to the cluster. Member Socket Address:" +
-                member.getInetSocketAddress() +
-                " UUID:" +
-                member.getUuid());
-        ClusterResourceHolder.getInstance().getClusterManager().memberAdded(member);
+        log.info("Handling cluster gossip: New member joined to the cluster. Member Socket Address:"
+                 + member.getSocketAddress() + " UUID:" + member.getUuid());
+        try {
+            ClusterResourceHolder.getInstance().getClusterManager().memberAdded(member);
+        } catch (AndesException e) {
+            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR,e);
+        }
+    }
+
+    /**
+     * Invoked when an attribute of a member was changed.
+     *
+     * @param memberAttributeEvent
+     *         information about the changed member attribute
+     */
+    @Override
+    public void memberAttributeChanged(MemberAttributeEvent memberAttributeEvent) {
+        // do nothing here, since member attributes are not used in the implementation
     }
 
     /**
      * This is triggered when a node left the cluster.
      *
-     * @param membershipEvent contains the information about the removed node.
+     * @param membershipEvent
+     *         contains the information about the removed node.
      */
     @Override
     public void memberRemoved(MembershipEvent membershipEvent) {
         Member member = membershipEvent.getMember();
-        log.info("Handling cluster gossip: A member left the cluster. Member Socket Address:" +
-                member.getInetSocketAddress() +
-                " UUID:" +
-                member.getUuid());
+        log.info("Handling cluster gossip: A member left the cluster. Member Socket Address:"
+                 + member.getSocketAddress() + " UUID:" + member.getUuid());
         ClusterManager clusterManager = ClusterResourceHolder.getInstance().getClusterManager();
         try {
             clusterManager.memberRemoved(member);

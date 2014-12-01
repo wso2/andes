@@ -18,7 +18,7 @@
 
 package org.wso2.andes.kernel;
 
-import org.wso2.andes.configuration.ConfigurationProperties;
+import org.wso2.andes.configuration.util.ConfigurationProperties;
 
 import java.util.List;
 
@@ -146,24 +146,24 @@ public interface MessageStore {
     /**
      * read  a metadata list from store specifying a starting message id and a count
      *
-     * @param queueName name of the queue
+     * @param storageQueueName name of the queue
      * @param firstMsgId first id
      * @param count how many messages to read
      * @return list of metadata
      * @throws AndesException
      */
-    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName,
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String storageQueueName,
                                                                        long firstMsgId, int count)
             throws AndesException;
 
     /**
      * delete message metadata of messages for a queue
      *
-     * @param queueName name of the queue
+     * @param storageQueueName name of the queue
      * @param messagesToRemove messages to remove
      * @throws AndesException
      */
-    public void deleteMessageMetadataFromQueue(final String queueName,
+    public void deleteMessageMetadataFromQueue(final String storageQueueName,
                                                List<AndesRemovableMetadata> messagesToRemove)
             throws AndesException;
 
@@ -196,6 +196,36 @@ public interface MessageStore {
     public void addMessageToExpiryQueue(Long messageId, Long expirationTime,
                                         boolean isMessageForTopic, String destination)
             throws AndesException;
+
+    /***
+     * Store level method to remove all metadata references to all messages addressed to a specific queue.
+     * @param storageQueueName name of the queue being purged
+     * @throws AndesException
+     */
+    public void deleteAllMessageMetadata(String storageQueueName) throws AndesException;
+
+    /**
+     * Store level method to reset the message counter of a given queue to 0.
+     * @param storageQueueName name of the queue being purged
+     * @throws AndesException
+     */
+    public void resetMessageCounterForQueue(String storageQueueName) throws AndesException;
+
+    /***
+     * Store level method to remove all DLC records of all messages addressed to a specific queue.
+     *
+     * @param storageQueueName name of the queue being purged
+     * @return int number of deleted messages
+     * @throws AndesException
+     */
+    public int deleteAllMessageMetadataFromDLC(String storageQueueName, String DLCQueueName) throws AndesException;
+
+    /***
+     * Get Message ID list addressed to a specific queue.
+     * @param storageQueueName name of the queue being purged.
+     * @throws AndesException
+     */
+    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName) throws AndesException;
 
     /**
      * close the message store

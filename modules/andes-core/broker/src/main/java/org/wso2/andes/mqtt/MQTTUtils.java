@@ -1,21 +1,20 @@
 /*
-*
-*  Copyright (c) 2005-2010, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
-*
-*  WSO2 Inc. licenses this file to you under the Apache License,
-*  Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.wso2.andes.mqtt;
 
 import org.apache.commons.logging.Log;
@@ -27,6 +26,7 @@ import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.MessagingEngine;
 
 import java.nio.ByteBuffer;
+import java.util.UUID;
 
 /**
  * This class will contain operations such as convertion of message which are taken from the protocol to be complient
@@ -40,6 +40,7 @@ public class MQTTUtils {
     private static final String DESTINATION = "Destination";
     private static final String PERSISTENCE = "Persistant";
     private static final String MESSAGE_CONTENT_LENGTH = "MessageContentLength";
+    private static final String QOSLEVEL = "QOSLevel";
     //This will be required to be at the initial byte stream the meta data will have since when the message is proccessed
     //back from andes since the message relevency is checked ex :- whether its amqp, mqtt etc
     private static final String MQTT_META_INFO = "\u0002MQTT Protocol v3.1";
@@ -52,14 +53,12 @@ public class MQTTUtils {
      * @param messagID the message identifier
      * @return AndesMessagePart which wrapps the message into a Andes kernal complient object
      */
-    public static AndesMessagePart convertToAndesMessage(ByteBuffer message, long messagID) {
+    public static AndesMessagePart convertToAndesMessage(byte[] message, long messagID) {
         AndesMessagePart messageBody = new AndesMessagePart();
-        //TODO need to check if this causes any memory leakes, it would be good to transfer the bytestream forward as buffer
-        byte[] data = message.array();
         messageBody.setOffSet(0);
-        messageBody.setData(data);
+        messageBody.setData(message);
         messageBody.setMessageID(messagID);
-        messageBody.setDataLength(data.length);
+        messageBody.setDataLength(message.length);
         return messageBody;
     }
 
@@ -69,6 +68,8 @@ public class MQTTUtils {
      * @return the unique message identifier
      */
     public static long generateMessageID() {
+        //Message ids will not be directly generated from the kernal since in future if there's a MQTT specific
+        //id generation mechanism
         return MessagingEngine.getInstance().generateNewMessageId();
     }
 
@@ -83,14 +84,15 @@ public class MQTTUtils {
      * @param destination   the definition where the message should be sent to
      * @param persistance   should this message be persisted
      * @param contentLength the lengthe of the message content
+     * @param qos           the level of qos the message was published at
      * @return the collective information as a bytes object
      */
-    public static byte[] encodeMetaInfo(String metaData, long messageID, boolean topic, String destination,
+    public static byte[] encodeMetaInfo(String metaData, long messageID, boolean topic, int qos, String destination,
                                         boolean persistance, int contentLength) {
         byte[] metaInformation;
         String information = metaData + ":" + MESSAGE_ID + "=" + messageID + "," + TOPIC + "=" + topic +
                 "," + DESTINATION + "=" + destination + "," + PERSISTENCE + "=" + persistance
-                + "," + MESSAGE_CONTENT_LENGTH + "=" + contentLength;
+                + "," + MESSAGE_CONTENT_LENGTH + "=" + contentLength + "," + QOSLEVEL + "=" + qos;
         metaInformation = information.getBytes();
         return metaInformation;
     }
@@ -112,15 +114,16 @@ public class MQTTUtils {
         messageHeader.setTopic(true);
         messageHeader.setDestination(topic);
         messageHeader.setPersistent(true);
-        messageHeader.setChannelId(1);
+        messageHeader.setChannelId(UUID.randomUUID());
         messageHeader.setMessageContentLength(messageContentLength);
+        messageHeader.setStorageQueueName(topic);
         if (log.isDebugEnabled()) {
             log.debug("Message with id " + messageID + " having the topic " + topic + " with QOS" + qosLevel
                     + " and retain flag set to " + retain + " was created");
         }
 
         byte[] andesMetaData = encodeMetaInfo(MQTT_META_INFO, messageHeader.getMessageID(), messageHeader.isTopic(),
-                messageHeader.getDestination(), messageHeader.isPersistent(), messageContentLength);
+                qosLevel, messageHeader.getDestination(), messageHeader.isPersistent(), messageContentLength);
         messageHeader.setMetadata(andesMetaData);
         return messageHeader;
     }
@@ -139,10 +142,11 @@ public class MQTTUtils {
             //offset value will always be set to 0 since mqtt doesn't support chunking the messsages, always the message
             //will be in the first chunk but in AMQP there will be chunks
             final int mqttOffset = 0;
-            AndesMessagePart messagePart = MessagingEngine.getInstance().getContent(metadata.getMessageID(),mqttOffset);
+            AndesMessagePart messagePart = MessagingEngine.getInstance().getContent(metadata.getMessageID(), mqttOffset);
             message.put(messagePart.getData());
         } catch (AndesException e) {
             final String errorMessage = "Error in getting content for message";
+            log.error(errorMessage, e);
             throw new AndesException(errorMessage, e);
         }
         return message;
@@ -166,19 +170,16 @@ public class MQTTUtils {
      * @return the level which is complient by the mqtt library
      */
     public static AbstractMessage.QOSType getMQTTQOSTypeFromInteger(int qos) {
-        AbstractMessage.QOSType message = null;
-        switch (qos) {
-            case 0:
-                message = AbstractMessage.QOSType.MOST_ONE;
-                break;
-            case 1:
-                message = AbstractMessage.QOSType.LEAST_ONE;
-                break;
-            case 2:
-                message = AbstractMessage.QOSType.EXACTLY_ONCE;
-                break;
-        }
+        return AbstractMessage.QOSType.valueOf(qos);
+    }
 
-        return message;
+    /**
+     * Will get the qos type defined through the protocol and will send the integer representation of it
+     *
+     * @param qos the level of qos which will be MOST_ONE, LEAST_ONE or EXACTLY_ONCE
+     * @return the level of qos as an integer which can be either 0,1 or 2
+     */
+    public static int convertMQTTProtocolTypeToInteger(AbstractMessage.QOSType qos) {
+        return qos.getValue();
     }
 }

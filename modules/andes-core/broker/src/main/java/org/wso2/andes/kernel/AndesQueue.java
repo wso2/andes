@@ -28,6 +28,12 @@ public class AndesQueue {
     public int subscriptionCount;
 
     /**
+     * Added to infer the state of the queue during concurrent message delivery.
+     * Initial value before the first purge within this server session should be 0.
+     */
+    private Long lastPurgedTimestamp;
+
+    /**
      * create an instance of andes queue
      *
      * @param queueName   name of the queue
@@ -41,6 +47,15 @@ public class AndesQueue {
         this.isExclusive = isExclusive;
         this.isDurable = isDurable;
         this.subscriptionCount = 1;
+        this.lastPurgedTimestamp = 0l;
+    }
+
+    public Long getLastPurgedTimestamp() {
+        return lastPurgedTimestamp;
+    }
+
+    public void setLastPurgedTimestamp(Long lastPurgedTimestamp) {
+        this.lastPurgedTimestamp = lastPurgedTimestamp;
     }
 
     /**
@@ -54,12 +69,14 @@ public class AndesQueue {
             String[] tokens = pt.split("=");
             if (tokens[0].equals("queueName")) {
                 this.queueName = tokens[1];
-            } else if (tokens[0].equals("queueOwner")) {
+            } else if ("queueOwner".equals(tokens[0])) {
                 this.queueOwner = tokens[1].equals("null") ? null : tokens[1];
-            } else if (tokens[0].equals("isExclusive")) {
+            } else if ("isExclusive".equals(tokens[0])) {
                 this.isExclusive = Boolean.parseBoolean(tokens[1]);
-            } else if (tokens[0].equals("isDurable")) {
+            } else if ("isDurable".equals(tokens[0])) {
                 this.isDurable = Boolean.parseBoolean(tokens[1]);
+            } else if ("lastPurgedTimestamp".equals(tokens[0])) {
+                this.lastPurgedTimestamp = Long.parseLong(tokens[1]);
             }
         }
     }
@@ -68,14 +85,16 @@ public class AndesQueue {
         return "[" + queueName + "] " +
                 "OW=" + queueOwner +
                 "/X=" + isExclusive +
-                "/D" + isDurable;
+                "/D" + isDurable +
+                "/LPT" + lastPurgedTimestamp;
     }
 
     public String encodeAsString() {
         return "queueName=" + queueName +
                 ",queueOwner=" + queueOwner +
                 ",isExclusive=" + isExclusive +
-                ",isDurable=" + isDurable;
+                ",isDurable=" + isDurable +
+                ",lastPurgedTimestamp=" + lastPurgedTimestamp;
     }
 
     public boolean equals(Object o) {

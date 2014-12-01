@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.wso2.andes.server.configuration.plugins.ConfigurationPluginFactory;
+import org.wso2.andes.configuration.qpid.plugins.ConfigurationPluginFactory;
 import org.wso2.andes.server.exchange.ExchangeType;
 import org.wso2.andes.server.security.SecurityPluginFactory;
 

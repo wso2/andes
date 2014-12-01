@@ -36,7 +36,7 @@ public class DisruptorRuntime<T> {
     // TODO : Multiple disruptor runtime for seq and mul
     public DisruptorRuntime(EventFactory<T> eventFactory, EventHandler<T>[] handlers) {
         disruptor = new Disruptor<T>(eventFactory, executorPool,
-                new MultiThreadedLowContentionClaimStrategy(65536), // this is for multiple publishers
+                new MultiThreadedClaimStrategy(65536), // this is for multiple publishers
                 new BlockingWaitStrategy());
 // Using Blocking wait strategy over Sleeping wait strategy to over come CPU load issue happening when starting up the sever. With this it will
 // to resolve the issue https://wso2.org/jira/browse/MB-372

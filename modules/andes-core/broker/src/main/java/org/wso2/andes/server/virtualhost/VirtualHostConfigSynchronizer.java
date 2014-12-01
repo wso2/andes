@@ -24,6 +24,7 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInternalException;
 import org.wso2.andes.AMQSecurityException;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.*;
@@ -32,6 +33,7 @@ import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.AMQQueueFactory;
 import org.wso2.andes.server.store.ConfigurationRecoveryHandler;
+import org.wso2.andes.server.util.AndesConstants;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -118,11 +120,29 @@ public class VirtualHostConfigSynchronizer implements
      */
     public void clusterQueueRemoved(AndesQueue queue) throws AndesException {
         try {
+            log.info("Queue removal request received queue= " + queue.queueName);
             removeQueue(queue.queueName);
             AndesContext.getInstance().getAMQPConstructStore().removeQueue(queue.queueName, false);
         } catch (Exception e) {
             log.error("could not remove cluster queue", e);
             throw new AndesException("could not remove cluster queue : " + queue.toString(), e);
+        }
+    }
+
+    /**
+     * purge queue from local node - clear all in memory message buffers for the queue in this node.
+     *
+     * @param queue
+     * @throws AndesException
+     */
+    public void clusterQueuePurged(AndesQueue queue) throws AndesException {
+        try {
+            log.info("Queue purge request received queue= " + queue.queueName);
+            MessagingEngine.getInstance().clearMessagesFromQueueInMemory(queue.queueName,
+                    queue.getLastPurgedTimestamp());
+
+        } catch (AndesException e) {
+            throw new AndesException("Could not purge cluster queue : " + queue.toString(), e);
         }
     }
 
@@ -232,10 +252,25 @@ public class VirtualHostConfigSynchronizer implements
 
                     Map<String, Object> argumentMap = FieldTable.convertToMap(argumentsFT);
 
+                    boolean isBindingAlreadyPresent = true;
                     if (bf.getBinding(bindingKey, queue, exchange, argumentMap) == null) {
-
+                        //for direct exchange do an additional check to see if a binding is
+                        //already added to default exchange. We do not need duplicates as default
+                        //exchange is an direct exchange
+                        if (exchange.getName().equals(AMQPUtils.DIRECT_EXCHANGE_NAME)) {
+                            Exchange testExchange = _virtualHost.getExchangeRegistry().getExchange(
+                                    AMQPUtils.DEFAULT_EXCHANGE_NAME);
+                            if (bf.getBinding(bindingKey, queue, testExchange,
+                                              argumentMap) == null) {
+                                isBindingAlreadyPresent = false;
+                            }
+                        } else {
+                            isBindingAlreadyPresent = false;
+                        }
+                    }
+                    if(!isBindingAlreadyPresent) {
                         _logger.info("Binding Sync - Added  Binding: (Exchange: " + exchange.getNameShortString() + ", Queue: " + queueName
-                                + ", Routing Key: " + bindingKey + ", Arguments: " + argumentsFT + ")");
+                                     + ", Routing Key: " + bindingKey + ", Arguments: " + argumentsFT + ")");
 
                         bf.restoreBinding(bindingKey, queue, exchange, argumentMap);
                     }

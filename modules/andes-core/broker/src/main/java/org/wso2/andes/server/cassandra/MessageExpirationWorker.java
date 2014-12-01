@@ -19,10 +19,11 @@ package org.wso2.andes.server.cassandra;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.configuration.BrokerConfiguration;
 
 import java.util.List;
 
@@ -35,17 +36,18 @@ public class MessageExpirationWorker extends Thread {
     private volatile boolean working = false;
 
     //configurations
-    private final int workerWaitInterval;
-    private final int messageBatchSize;
-    private final boolean saveExpiredToDLC;
+    private final Integer workerWaitInterval;
+    private final Integer messageBatchSize;
+    private final Boolean saveExpiredToDLC;
 
-    public MessageExpirationWorker() {
+    public MessageExpirationWorker() throws AndesException {
 
-        BrokerConfiguration clusterConfiguration = ClusterResourceHolder.getInstance().getClusterConfiguration();
-
-        workerWaitInterval = clusterConfiguration.getJMSExpirationCheckInterval();
-        messageBatchSize = clusterConfiguration.getExpirationMessageBatchSize();
-        saveExpiredToDLC = clusterConfiguration.getSaveExpiredToDLC();
+        workerWaitInterval = AndesConfigurationManager.getInstance().readConfigurationValue
+                (AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_EXPIRATION_CHECK_INTERVAL);
+        messageBatchSize = AndesConfigurationManager.getInstance().readConfigurationValue
+                (AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_EXPIRATION_BATCH_SIZE);
+        saveExpiredToDLC = AndesConfigurationManager.getInstance().readConfigurationValue
+                (AndesConfiguration.TRANSPORTS_AMQP_SEND_EXPIRED_MESSAGES_TO_DLC);
 
         this.start();
         this.startWorking();
@@ -80,7 +82,7 @@ public class MessageExpirationWorker extends Thread {
                             String messagesQueuedForExpiry = "";
 
                             for (AndesRemovableMetadata arm : expiredMessages) {
-                                messagesQueuedForExpiry += arm.messageID + ",";
+                                messagesQueuedForExpiry += arm.getMessageID() + ",";
                             }
                             log.trace("Expired messages queued for deletion : " + messagesQueuedForExpiry);
                         }

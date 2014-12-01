@@ -18,12 +18,13 @@
  * under the License.
  *
  */
-package org.wso2.andes.server.configuration;
+package org.wso2.andes.configuration.qpid;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInternalException;
 import org.wso2.andes.AMQSecurityException;
+import org.wso2.andes.configuration.qpid.TopicConfig;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.server.exchange.Exchange;
