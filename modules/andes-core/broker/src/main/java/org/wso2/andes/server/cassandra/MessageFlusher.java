@@ -528,6 +528,8 @@ public class MessageFlusher {
                 } catch (Throwable e) {
                     log.error("Error while delivering message. Moving to Dead Letter Queue ", e);
 
+                    // If message is a queue message we move the message to the Dead Letter Channel
+                    // since topics doesn't have a Dead Letter Channel
                     if (!message.isTopic()) {
                         AndesRemovableMetadata removableMessage = new AndesRemovableMetadata(message.getMessageID(),
                                 message.getDestination(), message.getStorageQueueName());
@@ -537,8 +539,13 @@ public class MessageFlusher {
 
                         try {
                             MessagingEngine.getInstance().deleteMessages(messageToMoveToDLC, true);
-                        } catch (AndesException e1) {
-                            log.error("Error moving message " + +message.getMessageID() + " to dead letter channel");
+                        } catch (AndesException dlcException) {
+                            // If an exception occur in this level, it means that there is a message store level error.
+                            // There's a possibility that we might lose this message
+                            // If the message is not removed the slot will not get removed which will lead to an
+                            // inconsistency
+                            log.error("Error moving message " + +message.getMessageID() + " to dead letter channel",
+                                    dlcException);
                         }
                     }
                 } finally {
