@@ -20,10 +20,7 @@ package org.wso2.andes.server.cassandra;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.server.slot.Slot;
@@ -528,20 +525,44 @@ public class MessageFlusher {
                     } else {
                         reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
                     }
-                    OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message.getMessageID());
                 } catch (Throwable e) {
                     log.error("Error while delivering message. Moving to Dead Letter Queue ", e);
+
+                    // If message is a queue message we move the message to the Dead Letter Channel
+                    // since topics doesn't have a Dead Letter Channel
+                    if (!message.isTopic()) {
+                        AndesRemovableMetadata removableMessage = new AndesRemovableMetadata(message.getMessageID(),
+                                message.getDestination(), message.getStorageQueueName());
+
+                        List<AndesRemovableMetadata> messageToMoveToDLC = new ArrayList<AndesRemovableMetadata>();
+                        messageToMoveToDLC.add(removableMessage);
+
+                        try {
+                            MessagingEngine.getInstance().deleteMessages(messageToMoveToDLC, true);
+                        } catch (AndesException dlcException) {
+                            // If an exception occur in this level, it means that there is a message store level error.
+                            // There's a possibility that we might lose this message
+                            // If the message is not removed the slot will not get removed which will lead to an
+                            // inconsistency
+                            log.error("Error moving message " + +message.getMessageID() + " to dead letter channel",
+                                    dlcException);
+                        }
+                    }
+                } finally {
                     OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message.getMessageID());
-                    //todo - hasitha - here we have already tried three times to deliver.
                 }
             }
         };
         if (log.isDebugEnabled()) {
-            log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription.toString());
+            log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " +
+                    subscription.toString());
         }
+
+        // Increment the counter before the thread is submitted to start because otherwise the thread might decrement
+        // this counter before increment is completed
+        OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
         executor.submit(r, (subscription.getTargetQueue() + subscription.getSubscriptionID())
                 .hashCode());
-        OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
     }
 
     //TODO: in multiple subscription case this can cause message duplication
