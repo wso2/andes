@@ -23,9 +23,9 @@ package org.wso2.andes.kernel;
  */
 public interface BindingListener {
 
-    public static enum BindingChange {
-        Added,
-        Deleted
+    public static enum BindingEvent {
+        ADDED,
+        DELETED
     }
 
     /**
@@ -35,7 +35,7 @@ public interface BindingListener {
      * @param changeType the change
      * @throws AndesException
      */
-    public void handleClusterBindingsChanged(AndesBinding binding, BindingChange changeType) throws AndesException;
+    public void handleClusterBindingsChanged(AndesBinding binding, BindingEvent changeType) throws AndesException;
 
     /**
      * handle when binding is changed in local node
@@ -44,5 +44,5 @@ public interface BindingListener {
      * @param changeType the change
      * @throws AndesException
      */
-    public void handleLocalBindingsChanged(AndesBinding binding, BindingChange changeType) throws AndesException;
+    public void handleLocalBindingsChanged(AndesBinding binding, BindingEvent changeType) throws AndesException;
 }

@@ -21,10 +21,8 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.mqtt.MQTTLocalSubscription;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
-import org.wso2.andes.subscription.BasicSubscription;
 
 /**
  * This class will handle removing messages depending on subscription behaviour
@@ -33,25 +31,39 @@ public class OrphanedMessageHandler implements SubscriptionListener {
     private static Log log = LogFactory.getLog(OrphanedMessageHandler.class);
     AndesSubscriptionManager subscriptionManager = ClusterResourceHolder.getInstance().getSubscriptionManager();
 
+    /**
+     * handle subscription changes in cluster. This will perform
+     * what needs to be done to the messages addressed to the subscriber
+     * @param subscription subscription changed
+     * @param changeType type of change happened
+     * @throws AndesException
+     */
     @Override
     public void handleClusterSubscriptionsChanged(AndesSubscription subscription, SubscriptionChange changeType) throws AndesException {
 
     }
 
+    /**
+     * handle local subscription changes. This will perform
+     * what needs to be done to the messages addressed to the subscriber
+     * @param localSubscription subscription changed
+     * @param changeType type of change happened
+     * @throws AndesException
+     */
     @Override
     public void handleLocalSubscriptionsChanged(LocalSubscription localSubscription,
                                                 SubscriptionChange changeType)
             throws AndesException {
 
         switch (changeType) {
-            case Added:
+            case ADDED:
                 break;
             /**
              * When a normal topic subscription closes, check if there is any other subscription
              * available for subscribed destination (considering hierarchical case). If there is
              * none purge all messages addressed to the storage queue belonging to this node
              */
-            case Disconnected:
+            case DISCONNECTED:
                 if (localSubscription.getTargetQueueBoundExchangeName()
                                      .equals(AMQPUtils.TOPIC_EXCHANGE_NAME) && !localSubscription
                                       .isDurable()) {
@@ -67,7 +79,7 @@ public class OrphanedMessageHandler implements SubscriptionListener {
 
                 }
                 break;
-            case Deleted:
+            case DELETED:
                 /**
                  * When a normal topic subscription closes, check if there is any other subscription
                  * available for subscribed destination (considering hierarchical case). If there is

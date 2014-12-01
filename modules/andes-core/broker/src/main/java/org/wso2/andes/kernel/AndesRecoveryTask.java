@@ -108,7 +108,7 @@ public class AndesRecoveryTask implements Runnable {
         for (AndesQueue queue : fromDB) {
             for (QueueListener listener : queueListeners) {
                 log.warn("Recovering node. Adding queue " + queue.toString());
-                listener.handleClusterQueuesChanged(queue, QueueListener.QueueChange.Added);
+                listener.handleClusterQueuesChanged(queue, QueueListener.QueueEvent.ADDED);
             }
         }
 
@@ -116,7 +116,7 @@ public class AndesRecoveryTask implements Runnable {
         for (AndesQueue queue : fromMap) {
             for (QueueListener listener : queueListeners) {
                 log.warn("Recovering node. Removing queue " + queue.toString());
-                listener.handleClusterQueuesChanged(queue, QueueListener.QueueChange.Deleted);
+                listener.handleClusterQueuesChanged(queue, QueueListener.QueueEvent.DELETED);
             }
         }
     }
@@ -131,7 +131,7 @@ public class AndesRecoveryTask implements Runnable {
             for (AndesBinding binding : fromDB) {
                 for (BindingListener listener : bindingListeners) {
                     log.warn("Recovering node. Adding binding " + binding.toString());
-                    listener.handleClusterBindingsChanged(binding, BindingListener.BindingChange.Added);
+                    listener.handleClusterBindingsChanged(binding, BindingListener.BindingEvent.ADDED);
                 }
             }
 
@@ -139,7 +139,7 @@ public class AndesRecoveryTask implements Runnable {
             for (AndesBinding binding : fromMap) {
                 for (BindingListener listener : bindingListeners) {
                     log.warn("Recovering node. removing binding " + binding.toString());
-                    listener.handleClusterBindingsChanged(binding, BindingListener.BindingChange.Deleted);
+                    listener.handleClusterBindingsChanged(binding, BindingListener.BindingEvent.DELETED);
                 }
             }
         }

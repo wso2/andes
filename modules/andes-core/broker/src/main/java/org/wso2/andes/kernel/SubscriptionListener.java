@@ -21,9 +21,10 @@ package org.wso2.andes.kernel;
 public interface SubscriptionListener {
 
 	static enum SubscriptionChange{
-        Added,
-        Deleted,
-        Disconnected}
+        ADDED,
+        DELETED,
+        DISCONNECTED
+    }
 
     /**
      * handle subscription changes in cluster

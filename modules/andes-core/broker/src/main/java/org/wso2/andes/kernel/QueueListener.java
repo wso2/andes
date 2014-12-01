@@ -23,10 +23,10 @@ package org.wso2.andes.kernel;
  */
 public interface QueueListener {
 
-    public static enum QueueChange {
-        Added,
-        Deleted,
-        Purged
+    public static enum QueueEvent {
+        ADDED,
+        DELETED,
+        PURGED
     }
 
     /**
@@ -35,7 +35,7 @@ public interface QueueListener {
      * @param andesQueue changed queue
      * @param changeType what type of change has happened
      */
-    public void handleClusterQueuesChanged(AndesQueue andesQueue, QueueChange changeType) throws AndesException;
+    public void handleClusterQueuesChanged(AndesQueue andesQueue, QueueEvent changeType) throws AndesException;
 
     /**
      * Handle the event where a queue has changed in another node
@@ -43,5 +43,5 @@ public interface QueueListener {
      * @param andesQueue changed queue
      * @param changeType what type of change has happened
      */
-    public void handleLocalQueuesChanged(AndesQueue andesQueue, QueueChange changeType) throws AndesException;
+    public void handleLocalQueuesChanged(AndesQueue andesQueue, QueueEvent changeType) throws AndesException;
 }

@@ -20,7 +20,6 @@ package org.wso2.andes.server.util;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.queue.QueueEntry;
 
 import java.io.BufferedWriter;
@@ -28,7 +27,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class AndesUtils {
@@ -150,7 +148,7 @@ public class AndesUtils {
         // We need to add a prefix so that we could differentiate if queue is created under the same name
         //as topic
         if(isTopic) {
-            storageQueueName = TOPIC_NODE_QUEUE_PREFIX + "|" + destination + "|" + nodeID;
+            storageQueueName = new StringBuilder("TOPIC_NODE_QUEUE_PREFIX").append("|").append(destination).append("|").append(nodeID).toString();
         } else {
             storageQueueName = destination;
         }

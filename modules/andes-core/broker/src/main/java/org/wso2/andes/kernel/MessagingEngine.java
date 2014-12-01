@@ -298,7 +298,7 @@ public class MessagingEngine {
             AndesQueue purgedQueue = new AndesQueue(destination, ownerName, false, true);
             purgedQueue.setLastPurgedTimestamp(purgedTimestamp);
 
-            queueListener.handleLocalQueuesChanged(purgedQueue, QueueListener.QueueChange.Purged);
+            queueListener.handleLocalQueuesChanged(purgedQueue, QueueListener.QueueEvent.PURGED);
         }
 
         // Clear any and all message references addressed to the queue from the persistent store.

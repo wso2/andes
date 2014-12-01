@@ -23,7 +23,6 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
-import org.wso2.andes.server.util.AndesUtils;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -460,7 +459,7 @@ public class SubscriptionStore {
         String destination = subscription.getSubscribedDestination();
         List<AndesSubscription> subscriptionList = clusterSubscriptionMap.get(destination);
 
-        if (type == SubscriptionChange.Added) {
+        if (type == SubscriptionChange.ADDED) {
             if (subscriptionList != null) {
                 //iterate and remove all similar subscriptions
                 //TODO: hasitha - wrap this list by a map to reduce cost
@@ -480,7 +479,7 @@ public class SubscriptionStore {
             }
             log.debug("Added Subscription to map. queue name:" + subscription.getTargetQueue() + ", Type: " + subscription.getTargetQueueBoundExchangeType());
 
-        } else if (type == SubscriptionChange.Disconnected) {
+        } else if (type == SubscriptionChange.DISCONNECTED) {
             if (subscriptionList == null) {
                 subscriptionList = new ArrayList<AndesSubscription>();
             }
@@ -497,7 +496,7 @@ public class SubscriptionStore {
 
             log.debug("Disconnected Subscription from map: " + subscription.encodeAsStr());
 
-        } else if (type == SubscriptionChange.Deleted) {
+        } else if (type == SubscriptionChange.DELETED) {
             if (subscriptionList == null) {
                 subscriptionList = new ArrayList<AndesSubscription>();
             }
@@ -512,7 +511,7 @@ public class SubscriptionStore {
             if (subscriptionList.size() == 0) {
                 clusterSubscriptionMap.remove(destination);
             }
-            log.debug("Deleted Subscription from map. queue name:" + subscription.getTargetQueue() + ", Type: " + subscription.getTargetQueueBoundExchangeType());
+            log.debug("DELETED Subscription from map. queue name:" + subscription.getTargetQueue() + ", Type: " + subscription.getTargetQueueBoundExchangeType());
         }
 
         log.debug("+++++++++++++++++Updated cluster subscription maps++++++++++++++++");
@@ -577,16 +576,16 @@ public class SubscriptionStore {
             }
 
 
-            if (!hasDurableSubscriptionAlreadyInPlace && type == SubscriptionChange.Disconnected) {
+            if (!hasDurableSubscriptionAlreadyInPlace && type == SubscriptionChange.DISCONNECTED) {
                 throw new AndesException("There is no active subscriber to close subscribed to " + subscription.getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
-            } else if (hasDurableSubscriptionAlreadyInPlace && type == SubscriptionChange.Added) {
+            } else if (hasDurableSubscriptionAlreadyInPlace && type == SubscriptionChange.ADDED) {
                 //not permitted
                 //throw new AndesException("A subscription already exists for Durable subscriptions on " + subscription.getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
             }
 
         }
 
-        if (type == SubscriptionChange.Added || type == SubscriptionChange.Disconnected) {
+        if (type == SubscriptionChange.ADDED || type == SubscriptionChange.DISCONNECTED) {
 
             String destinationQueue = subscription.getSubscribedDestination();
             //Store the subscription
@@ -594,7 +593,7 @@ public class SubscriptionStore {
             String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
             andesContextStore.storeDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
 
-            if (type == SubscriptionChange.Added) {
+            if (type == SubscriptionChange.ADDED) {
                 log.info("New Local Subscription Added " + subscription.toString());
             } else {
                 log.info("New Local Subscription Disconnected " + subscription.toString());
@@ -618,7 +617,7 @@ public class SubscriptionStore {
                 localTopicSubscriptionMap.put(destinationQueue, localSubscriptions);
             }
 
-        } else if (type == SubscriptionChange.Deleted) {
+        } else if (type == SubscriptionChange.DELETED) {
             removeLocalSubscription(subscription);
             log.info("Local Subscription Removed " + subscription.toString());
         }

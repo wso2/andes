@@ -147,7 +147,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      */
     @Override
     public void deleteMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "messageIDs",
-            description = "ID of the Messages to Be Deleted") String[] messageIDs,
+            description = "ID of the Messages to Be DELETED") String[] messageIDs,
                                                   @MBeanOperationParameter(name = "deadLetterQueueName",
             description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName) {
         List<Long> andesMessageIdList = getValidAndesMessageIdList(messageIDs);
