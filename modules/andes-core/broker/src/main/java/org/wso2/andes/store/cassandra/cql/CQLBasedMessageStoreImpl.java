@@ -484,12 +484,16 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
     /**
      * {@inheritDoc}
+     * CQL range query may return more records than limit size of STANDARD_PAGE_SIZE because slot hasn't a hard limit.
+     * In such case we need to get all metadata between firstMsgId and lastMsgID
      */
     @Override
     public List<AndesMessageMetadata> getMetaDataList(String queueName, long firstMsgId,
                                                       long lastMsgID) throws AndesException {
         try {
+            //Contains all metadata between firstMsgId and lastMsgID
             List<AndesMessageMetadata> allMetadataList = new ArrayList<AndesMessageMetadata>();
+            //Get first set of metadata list between firstMsgId and lastMsgID
             List<AndesMessageMetadata> metadataList = CQLDataAccessHelper
                     .getMessagesFromQueue(queueName,
                             CassandraConstants.META_DATA_COLUMN_FAMILY,
@@ -498,9 +502,11 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                             true, true);
             allMetadataList.addAll(metadataList);
             int metadataCount = metadataList.size();
-            //Retry until get all messages in range query
+            //Check metadata list size equal to greater than to STANDARD_PAGE_SIZE to retry again
             while (metadataCount >= CQLDataAccessHelper.STANDARD_PAGE_SIZE) {
+                //Get nextFirstMsgId
                 long nextFirstMsgId = metadataList.get(metadataCount - 1).getMessageID();
+                //Break retrying if all messages received
                 if(nextFirstMsgId == lastMsgID) {
                     break;
                 }
