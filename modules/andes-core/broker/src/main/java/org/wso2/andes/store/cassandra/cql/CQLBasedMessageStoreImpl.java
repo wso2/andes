@@ -45,7 +45,6 @@ import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
  */
 public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageStore {
     private static Log log = LogFactory.getLog(CQLBasedMessageStoreImpl.class);
-    private int queryLimit = 1000;
 
     private AlreadyProcessedMessageTracker alreadyMovedMessageTracker;
 
@@ -82,15 +81,6 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
         alreadyMovedMessageTracker = new AlreadyProcessedMessageTracker("Message-move-tracker",
                 15000000000L, 10);
-        //get range query limit if configured
-        String limit = connectionProperties.getProperty("QueryLimit");
-        if(null != limit && !limit.isEmpty()) {
-            try {
-                queryLimit = Integer.valueOf(limit);
-            } catch (NumberFormatException e) {
-                log.error("Error in setting value to QueryLimit property, andes-virtualhosts.xml", e);
-            }
-        }
 
         return cqlConnection;
     }
@@ -499,12 +489,31 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     public List<AndesMessageMetadata> getMetaDataList(String queueName, long firstMsgId,
                                                       long lastMsgID) throws AndesException {
         try {
-            return CQLDataAccessHelper
+            List<AndesMessageMetadata> allMetadataList = new ArrayList<AndesMessageMetadata>();
+            List<AndesMessageMetadata> metadataList = CQLDataAccessHelper
                     .getMessagesFromQueue(queueName,
                             CassandraConstants.META_DATA_COLUMN_FAMILY,
                             CassandraConstants.KEYSPACE, firstMsgId, lastMsgID,
                             CQLDataAccessHelper.STANDARD_PAGE_SIZE,
                             true, true);
+            allMetadataList.addAll(metadataList);
+            int metadataCount = metadataList.size();
+            //Retry until get all messages in range query
+            while (metadataCount >= CQLDataAccessHelper.STANDARD_PAGE_SIZE) {
+                long nextFirstMsgId = metadataList.get(metadataCount - 1).getMessageID();
+                if(nextFirstMsgId == lastMsgID) {
+                    break;
+                }
+                metadataList = CQLDataAccessHelper
+                        .getMessagesFromQueue(queueName,
+                                CassandraConstants.META_DATA_COLUMN_FAMILY,
+                                CassandraConstants.KEYSPACE, nextFirstMsgId, lastMsgID,
+                                CQLDataAccessHelper.STANDARD_PAGE_SIZE,
+                                true, true);
+                allMetadataList.addAll(metadataList);
+                metadataCount = metadataList.size();
+            }
+            return allMetadataList;
         } catch (CassandraDataAccessException e) {
             log.error("Error while getting meta data for queue : " + queueName + " from msgId : " + firstMsgId + " to msgID : " + lastMsgID,e);
             throw new AndesException("Error while getting meta data for queue : " + queueName + " from msgId : " + firstMsgId + " to msgID : " + lastMsgID,e);

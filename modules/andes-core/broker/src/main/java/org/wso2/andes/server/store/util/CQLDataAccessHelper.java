@@ -60,7 +60,7 @@ public class CQLDataAccessHelper {
     public static final String MSG_COUNTER_QUEUE = "queue_name";
     public static final String MSG_COUNTER_ROW = "counter_row_id";
 
-    public static final int STANDARD_PAGE_SIZE = 10000; // Standard row count retrieved in one call
+    public static final int STANDARD_PAGE_SIZE = 1000; // Standard row count retrieved in one call
     // during a paginated data retrieval.
 
     //cql table column which store slice column key (compound primary key)
