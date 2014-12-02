@@ -194,6 +194,18 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "/publisherPoolSize", "50", Integer.class),
 
     /**
+     * This is the ring buffer size of the delivery disruptor. This value should be a power of 2 (E.g. 1024, 2048,
+     * 4096). Use a small ring size if you want to reduce the memory usage.
+     */
+    PERFORMANCE_TUNING_DELIVERY_RING_BUFFER_SIZE("performanceTuning/delivery/ringBufferSize", "4096", Integer.class),
+
+    /**
+     * Number of parallel readers used to used to read content from message store. Increasing this value will speedup
+     * the message sending mechanism. But the load on the data store will increase.
+     */
+    PERFORMANCE_TUNING_DELIVERY_PARALLEL_CONTENT_READERS("performanceTuning/delivery/parallelContentReaders", "5",
+                                                         Integer.class),
+    /**
      * Message delivery from server to the client will be paused temporarily if number of delivered but
      * unacknowledged message count reaches this size. Should be set considering message consume rate.
      */

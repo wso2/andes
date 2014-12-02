@@ -20,6 +20,7 @@ package org.wso2.andes.mqtt;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
@@ -168,10 +169,13 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
         this.hasExternalSubscriptions = isActive;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata) throws AndesException {
+    public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata, AndesContent content) throws AndesException {
         //Should get the message from the list
-        ByteBuffer message = MQTTUtils.getContentFromMetaInformation(messageMetadata);
+        ByteBuffer message = MQTTUtils.getContentFromMetaInformation(content);
         //Will publish the message to the respective queue
         if (mqqtServerChannel != null) {
             try {
