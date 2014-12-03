@@ -208,7 +208,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     PERFORMANCE_TUNING_DELIVERY_RING_BUFFER_SIZE("performanceTuning/delivery/ringBufferSize", "4096", Integer.class),
 
     /**
-     * Number of parallel readers used to used to read content from message store. Increasing this value will speedup
+     * Number of parallel readers used to read content from message store. Increasing this value will speedup
      * the message sending mechanism. But the load on the data store will increase.
      */
     PERFORMANCE_TUNING_DELIVERY_PARALLEL_CONTENT_READERS("performanceTuning/delivery/parallelContentReaders", "5",
@@ -220,6 +220,21 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     PERFORMANCE_TUNING_DELIVERY_PARALLEL_DELIVERY_HANDLERS("performanceTuning/delivery/parallelDeliveryHandlers", "5",
                                                          Integer.class),
+
+    /**
+     * Number of parallel writers used to write content to message store. Increasing this value will speedup
+     * the message receiving mechanism. But the load on the data store will increase.
+     */
+    PERFORMANCE_TUNING_PARALLEL_CONTENT_WRITERS("performanceTuning/inbound/parallelContentWriters", "8",
+            Integer.class),
+
+    /**
+     * Size of the Disruptor ring buffer for inbound event handling. Buffer size should be a value of power of two
+     * For publishing at higher rates increasing the buffer size may give some advantage to keep messages in memory and
+     * write.
+     */
+    PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE("performanceTuning/inbound/bufferSize", "65536",
+            Integer.class),
 
     /**
      * Message delivery from server to the client will be paused temporarily if number of delivered but

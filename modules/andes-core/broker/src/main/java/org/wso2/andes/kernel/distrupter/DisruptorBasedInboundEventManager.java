@@ -26,6 +26,8 @@ import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.subscription.SubscriptionStore;
 
@@ -47,9 +49,13 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
 
     public DisruptorBasedInboundEventManager(SubscriptionStore subscriptionStore) throws AndesException {
 
-        Integer bufferSize = 65536;
-        Integer writeHandlerCount = 1;
-        Integer ackHandlerCount = 5;
+        AndesConfigurationManager configurationManager = AndesConfigurationManager.getInstance();
+        Integer bufferSize = configurationManager.readConfigurationValue(
+                AndesConfiguration.PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE);
+        Integer writeHandlerCount = configurationManager.readConfigurationValue(
+                AndesConfiguration.PERFORMANCE_TUNING_PARALLEL_CONTENT_WRITERS);
+        Integer ackHandlerCount = configurationManager.readConfigurationValue(
+                AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLER_COUNT);
 
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                                     .setNameFormat("Disruptor Inbound Event Thread %d").build();
