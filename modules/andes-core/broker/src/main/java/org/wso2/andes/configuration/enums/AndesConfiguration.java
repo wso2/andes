@@ -89,7 +89,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * client id. Enabling this configuration, multiple subscribers can use same client id and
      * share the messages
      */
-    ALLOW_SHARED_SHARED_SUBSCRIBERS("transports/amqp/allowSharedTopicSubscription",
+    ALLOW_SHARED_SHARED_SUBSCRIBERS("transports/amqp/allowSharedTopicSubscriptions",
              "false", Boolean.class),
 
     /**
