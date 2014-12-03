@@ -52,39 +52,42 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
             log.debug("[ sequence " + sequence + " ] Event received from disruptor. Event type: "
                     + event.getEventType() );
         }
-
-        switch (event.getEventType()) {
-            case MESSAGE_EVENT:
-                // TODO Batch event processing?
-                batchAndUpdateOnMetaDataEvent(event, endOfBatch);
-                break;
-            case CHANNEL_CLOSE_EVENT:
-                clientConnectionClosed((UUID) event.getData());
-                break;
-            case CHANNEL_OPEN_EVENT:
-                clientConnectionOpened((UUID) event.getData());
-                break;
-            case STOP_MESSAGE_DELIVERY_EVENT:
-                stopMessageDelivery();
-                break;
-            case START_MESSAGE_DELIVERY_EVENT:
-                startMessageDelivery();
-                break;
-            case START_EXPIRATION_WORKER_EVENT:
-                startMessageExpirationWorker();
-                break;
-            case STOP_EXPIRATION_WORKER_EVENT:
-                stopMessageExpirationWorker();
-                break;
-            case SHUTDOWN_MESSAGING_ENGINE_EVENT:
-                shutdownMessagingEngine();
-                break;
-            case OPEN_SUBSCRIPTION_EVENT:
-                openLocalSubscription((LocalSubscription) event.getData());
-                break;
-            case CLOSE_SUBSCRIPTION_EVENT:
-                closeLocalSubscription((LocalSubscription) event.getData());
-                break;
+        try {
+            switch (event.getEventType()) {
+                case MESSAGE_EVENT:
+                    // TODO Batch event processing?
+                    batchAndUpdateOnMetaDataEvent(event, endOfBatch);
+                    break;
+                case CHANNEL_CLOSE_EVENT:
+                    clientConnectionClosed((UUID) event.getData());
+                    break;
+                case CHANNEL_OPEN_EVENT:
+                    clientConnectionOpened((UUID) event.getData());
+                    break;
+                case STOP_MESSAGE_DELIVERY_EVENT:
+                    stopMessageDelivery();
+                    break;
+                case START_MESSAGE_DELIVERY_EVENT:
+                    startMessageDelivery();
+                    break;
+                case START_EXPIRATION_WORKER_EVENT:
+                    startMessageExpirationWorker();
+                    break;
+                case STOP_EXPIRATION_WORKER_EVENT:
+                    stopMessageExpirationWorker();
+                    break;
+                case SHUTDOWN_MESSAGING_ENGINE_EVENT:
+                    shutdownMessagingEngine();
+                    break;
+                case OPEN_SUBSCRIPTION_EVENT:
+                    openLocalSubscription((LocalSubscription) event.getData());
+                    break;
+                case CLOSE_SUBSCRIPTION_EVENT:
+                    closeLocalSubscription((LocalSubscription) event.getData());
+                    break;
+            }
+        } finally {
+            event.clear();
         }
     }
 
@@ -219,7 +222,10 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      * Handle event of shutting down MessagingEngine
      */
     public static void shutdownMessagingEngine() {
-        MessagingEngine.getInstance().close();
+        try {
+            MessagingEngine.getInstance().close();
+        } catch (InterruptedException e) {
+            log.error("Interrupted while closing messaging engine. ", e);
+        }
     }
-
  }

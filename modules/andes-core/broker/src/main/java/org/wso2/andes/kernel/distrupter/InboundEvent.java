@@ -96,6 +96,7 @@ public class InboundEvent {
 
     public InboundEvent() {
         messageList = new ArrayList<AndesMessage>();
+        eventType = Type.IGNORE_EVENT;
     }
 
     public final Type getEventType() {
@@ -114,6 +115,13 @@ public class InboundEvent {
         return data;
     }
 
+
+    public void clear() {
+        messageList.clear();
+        ackData = null;
+        data = null;
+        eventType = Type.IGNORE_EVENT;
+    }
     /**
      * Disruptor uses this factory to populate the ring with inboundEvent objects
      */
