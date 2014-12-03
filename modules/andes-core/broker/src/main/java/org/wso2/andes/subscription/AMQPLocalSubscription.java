@@ -23,10 +23,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
-import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
@@ -86,12 +86,15 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
         return channel.getId();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata) throws AndesException {
-        AMQMessage message = AMQPUtils.getAMQMessageFromAndesMetaData(messageMetadata);
+    public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata, AndesContent content)
+            throws AndesException {
+        AMQMessage message = AMQPUtils.getAMQMessageForDelivery(messageMetadata, content);
         sendAMQMessageToSubscriber(message, messageMetadata.getRedelivered());
     }
-
 
     /**
      * send message to the internal subscription
@@ -114,7 +117,7 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
      * @param message message to send
      * @throws AndesException
      */
-    private void sendQueueEntryToSubscriber(QueueEntry message) throws AndesException {
+    public void sendQueueEntryToSubscriber(QueueEntry message) throws AndesException {
         if (message.getQueue().checkIfBoundToTopicExchange()) {
             //topic messages should be sent to all matching subscriptions
             String routingKey = message.getMessage().getRoutingKey();
