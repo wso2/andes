@@ -139,10 +139,16 @@ public class AndesKernelBoot {
 
         while (numberOfMessages > 0) {
             lastMessageID = messageList.get(messageList.size() - 1).getMessageID();
+
+            if (log.isDebugEnabled()) {
+                log.debug("Created a slot with " + messageList.size() + " messages for queue (" + queueName + ")");
+            }
             SlotManager.getInstance().updateMessageID(queueName, lastMessageID);
 
+            // We need to increment lastMessageID since the getNextNMessageMetadataFromQueue returns message list
+            // including the given starting ID.
             messageList = messageStore
-                    .getNextNMessageMetadataFromQueue(queueName, lastMessageID, slotSize);
+                    .getNextNMessageMetadataFromQueue(queueName, lastMessageID + 1, slotSize);
             numberOfMessages = messageList.size();
         }
     }
