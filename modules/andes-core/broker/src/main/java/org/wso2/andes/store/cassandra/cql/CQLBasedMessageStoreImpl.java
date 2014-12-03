@@ -23,11 +23,14 @@ import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.querybuilder.Delete;
 import com.datastax.driver.core.querybuilder.Insert;
-import java.util.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.AndesRemovableMetadata;
+import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
@@ -38,6 +41,12 @@ import org.wso2.andes.store.cassandra.cql.dao.CQLQueryBuilder;
 import org.wso2.andes.store.cassandra.cql.dao.CassandraHelper;
 import org.wso2.andes.store.cassandra.cql.dao.GenericCQLDAO;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * This is the implementation of MessageStore that deals with Cassandra no SQL DB.
@@ -539,7 +548,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             return CQLDataAccessHelper
                     .getMessagesFromQueue(storageQueueName,
                             CassandraConstants.META_DATA_COLUMN_FAMILY,
-                            CassandraConstants.KEYSPACE, firstMsgId + 1,
+                            CassandraConstants.KEYSPACE, firstMsgId,
                             Long.MAX_VALUE, count, true, true);
         } catch (CassandraDataAccessException e) {
             log.error("Error while retrieving "+ count + " messages for queue : " +
