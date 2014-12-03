@@ -337,7 +337,7 @@ public class VirtualHostConfigSynchronizer implements
                     _logger.info("Binding Sync - Removed binding: (Exchange: " + exchange.getNameShortString() + ", Queue: " + queueName
                             + ", Routing Key: " + bindingKey + ", Arguments: " + argumentsFT + ")");
 
-                    bf.removeBinding(bindingKey, queue, exchange, argumentMap);
+                    bf.removeBinding(bindingKey, queue, exchange, argumentMap, false);
                 }
             }
         }

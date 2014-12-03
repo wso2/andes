@@ -723,7 +723,7 @@ public class ServerSessionDelegate extends SessionDelegate
             {
                 try
                 {
-                    virtualHost.getBindingFactory().removeBinding(method.getBindingKey(), queue, exchange, null);
+                    virtualHost.getBindingFactory().removeBinding(method.getBindingKey(), queue, exchange, null, true);
                 }
                 catch (AMQException e)
                 {

@@ -388,7 +388,7 @@ public class QpidAMQPBridge {
      */
     public void removeBinding(Binding b, VirtualHost virtualHost) throws AndesException {
         if (log.isDebugEnabled()) {
-            log.debug("AMQP BRIDGE: removeBinding binding key: " + b.getBindingKey() + " queue: " + b.getQueue().getName());
+            log.debug("AMQP BRIDGE: removeBinding binding key: " + b.getBindingKey() + " exchange: " + b.getExchange().getName() + " queue: " + b.getQueue().getName());
         }
         AndesBinding binding = AMQPUtils.createAndesBinding(b.getExchange(), b.getQueue(), new AMQShortString(b.getBindingKey()));
         AndesContextInformationManager.getInstance().removeBinding(binding);
