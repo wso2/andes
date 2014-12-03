@@ -42,15 +42,6 @@ public class CQLConnection implements DurableStoreConnection {
     private static Log log = LogFactory.getLog(CQLConnection.class);
     private boolean isCassandraConnectionLive = false;
     private int gcGraceSeconds;
-    private final static String DEFAULT_GC_GRACE_SECONDS = "864000";
-    private final static String DEFAULT_REPLICATION_FACTOR = "1";
-    private final static String DEFAULT_STRATEGY_CLASS = "org.apache.cassandra.locator" +
-                                                         ".SimpleStrategy";
-
-    private final static String DEFAULT_READ_CONSISTENCY = "QUORUM";
-    private final static String DEFAULT_WRITE_CONSISTENCY = "QUORUM";
-
-
 
     @Override
     public void initialize(ConfigurationProperties connectionProperties) throws AndesException {
@@ -63,30 +54,30 @@ public class CQLConnection implements DurableStoreConnection {
             String replicationFactor = connectionProperties.getProperty(CassandraConstants
                                                                                 .PROP_REPLICATION_FACTOR);
             if(replicationFactor.isEmpty()){
-                replicationFactor = DEFAULT_REPLICATION_FACTOR;
+                replicationFactor = CassandraConstants.DEFAULT_REPLICATION_FACTOR;
             }
             String strategyClass = connectionProperties.getProperty(CassandraConstants
                                                                             .PROP_STRATEGY_CLASS);
 
             if (strategyClass.isEmpty()){
-                strategyClass = DEFAULT_STRATEGY_CLASS;
+                strategyClass = CassandraConstants.DEFAULT_STRATEGY_CLASS;
             }
-            String readConsistancyLevel = connectionProperties.getProperty(CassandraConstants.PROP_READ_CONSISTENCY);
-            if (readConsistancyLevel.isEmpty()) {
-                readConsistancyLevel = DEFAULT_READ_CONSISTENCY;
+            String readConsistencyLevel = connectionProperties.getProperty(CassandraConstants.PROP_READ_CONSISTENCY);
+            if (readConsistencyLevel.isEmpty()) {
+                readConsistencyLevel = CassandraConstants.DEFAULT_READ_CONSISTENCY;
             }
 
-            String writeConsistancyLevel = connectionProperties.getProperty(CassandraConstants
+            String writeConsistencyLevel = connectionProperties.getProperty(CassandraConstants
                                                                                     .PROP_WRITE_CONSISTENCY);
-            if(writeConsistancyLevel.isEmpty()) {
-                writeConsistancyLevel = DEFAULT_WRITE_CONSISTENCY;
+            if(writeConsistencyLevel.isEmpty()) {
+                writeConsistencyLevel = CassandraConstants.DEFAULT_WRITE_CONSISTENCY;
             }
 
             String gcGraceSeconds = connectionProperties.getProperty(CassandraConstants
                                                                                    .PROP_GC_GRACE_SECONDS);
 
             if(gcGraceSeconds.isEmpty()) {
-                gcGraceSeconds = DEFAULT_GC_GRACE_SECONDS;
+                gcGraceSeconds = CassandraConstants.DEFAULT_GC_GRACE_SECONDS;
             }
 
             setGcGraceSeconds(Integer.parseInt(gcGraceSeconds));
@@ -99,8 +90,8 @@ public class CQLConnection implements DurableStoreConnection {
             createKeySpace(Integer.parseInt(replicationFactor), strategyClass);
 
 	        //set consistency levels
-	        CassandraConstants.setReadConsistencyLevel(readConsistancyLevel);
-	        CassandraConstants.setWriteConsistencyLevel(writeConsistancyLevel);
+	        GenericCQLDAO.setReadConsistencyLevel(readConsistencyLevel);
+	        GenericCQLDAO.setWriteConsistencyLevel(writeConsistencyLevel);
 
 	        GenericCQLDAO.setCluster(cluster);
 	        createKeySpace(Integer.parseInt(replicationFactor),strategyClass);

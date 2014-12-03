@@ -30,6 +30,7 @@ import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.store.util.HectorDataAccessHelper;
 import org.wso2.andes.store.cassandra.CassandraConstants;
+import org.wso2.andes.store.cassandra.cql.dao.GenericCQLDAO;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -99,8 +100,8 @@ public class HectorConnection implements DurableStoreConnection {
 	        }
 
 	        //Setting consistency levels
-	        CassandraConstants.setWriteConsistencyLevel(writeConsistencyLevel);
-	        CassandraConstants.setReadConsistencyLevel(readConsistencyLevel);
+	        GenericCQLDAO.setWriteConsistencyLevel(writeConsistencyLevel);
+	        GenericCQLDAO.setReadConsistencyLevel(readConsistencyLevel);
 
 
             String gcGraceSeconds = connectionProperties.getProperty(CassandraConstants

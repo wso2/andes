@@ -55,7 +55,17 @@ public class GenericCQLDAO {
 	
 	private static final ConcurrentHashMap<String,Session> sessioCache = new ConcurrentHashMap<String,Session>();
 	private static Cluster cluster;
-	
+
+	/**
+	 * Cassandra read consistency level values : ONE, TWO, ALL, QUORUM, LOCAL_ONE
+	 */
+	private static String readConsistencyLevel;
+
+	/**
+	 * Cassandra write consistency level values : ONE, TWO, ALL, QUORUM, LOCAL_ONE
+	 */
+	private static String writeConsistencyLevel;
+
 	public static void setCluster(Cluster cl){
 		try{
 			writeLock.lock();
@@ -162,7 +172,7 @@ public class GenericCQLDAO {
 		try {
 			Query statement = new SimpleStatement(query);
 			statement.setConsistencyLevel(
-					ConsistencyLevel.valueOf(CassandraConstants.getReadConsistencyLevel()));
+					ConsistencyLevel.valueOf(readConsistencyLevel));
 			result = getSession(keySpace).execute(statement);
 		} catch (UnavailableException e) {
 			throw new CassandraDataAccessException("Error occurred due to unavailable seeds", e);
@@ -186,7 +196,7 @@ public class GenericCQLDAO {
 		try {
 			Statement statement = new SimpleStatement(query);
 			statement.setConsistencyLevel(
-					ConsistencyLevel.valueOf(CassandraConstants.getWriteConsistencyLevel()));
+					ConsistencyLevel.valueOf(writeConsistencyLevel));
 			result = getSession(keySpace).execute(statement);
 		} catch (UnavailableException e) {
 			throw new CassandraDataAccessException(
@@ -210,7 +220,7 @@ public class GenericCQLDAO {
 		try {
 			Statement statement = new SimpleStatement(query);
 			statement.setConsistencyLevel(
-					ConsistencyLevel.valueOf(CassandraConstants.getReadConsistencyLevel()));
+					ConsistencyLevel.valueOf(readConsistencyLevel));
 			ResultSetFuture result = getSession(keySpace).executeAsync(statement);
 			return result;
 		} catch (UnavailableException e) {
@@ -232,7 +242,7 @@ public class GenericCQLDAO {
 		try {
 			Statement statement = new SimpleStatement(query);
 			statement.setConsistencyLevel(
-					ConsistencyLevel.valueOf(CassandraConstants.getWriteConsistencyLevel()));
+					ConsistencyLevel.valueOf(writeConsistencyLevel));
 			ResultSetFuture result = getSession(keySpace).executeAsync(statement);
 			return result;
 		} catch (UnavailableException e) {
@@ -257,7 +267,7 @@ public class GenericCQLDAO {
 		}
 		//setting consistency level
 		insert.setConsistencyLevel(
-				ConsistencyLevel.valueOf(CassandraConstants.getWriteConsistencyLevel()));
+				ConsistencyLevel.valueOf(writeConsistencyLevel));
 		getSession(keySpace).execute(insert);
 	}
 
@@ -288,7 +298,7 @@ public class GenericCQLDAO {
 		Statement statement = new SimpleStatement(sql);
 		//setting consistency level
 		statement.setConsistencyLevel(
-				ConsistencyLevel.valueOf(CassandraConstants.getWriteConsistencyLevel()));
+				ConsistencyLevel.valueOf(writeConsistencyLevel));
 		getSession(keySpace).execute(statement);
 	}
 
@@ -307,7 +317,7 @@ public class GenericCQLDAO {
 		}
 		//setting consistency level
 		delete.setConsistencyLevel(
-				ConsistencyLevel.valueOf(CassandraConstants.getWriteConsistencyLevel()));
+				ConsistencyLevel.valueOf(writeConsistencyLevel));
 		getSession(keySpace).execute(delete);
 	}
 
@@ -323,7 +333,7 @@ public class GenericCQLDAO {
 			throws CassandraDataAccessException {
 		Select select = CQLQueryBuilder.buildSelect(cqlSelect);
 		select.setConsistencyLevel(
-				ConsistencyLevel.valueOf(CassandraConstants.getReadConsistencyLevel()));
+				ConsistencyLevel.valueOf(readConsistencyLevel));
 		return getSession(keySpace).execute(select);
 	}
 
@@ -354,7 +364,7 @@ public class GenericCQLDAO {
 		Query batch = batch(statements);
 		//setting consistency level
 		batch.setConsistencyLevel(
-				ConsistencyLevel.valueOf(CassandraConstants.getWriteConsistencyLevel()));
+				ConsistencyLevel.valueOf(writeConsistencyLevel));
 		getSession(keySpace).execute(batch);
 
 	}
@@ -375,9 +385,45 @@ public class GenericCQLDAO {
 		Query batch = batch(statements);
 		// setting consistency level
 		batch.setConsistencyLevel(
-				ConsistencyLevel.valueOf(CassandraConstants.getReadConsistencyLevel()));
+				ConsistencyLevel.valueOf(readConsistencyLevel));
 		getSession(keySpace).execute(batch);
 
+	}
+
+	/**
+	 * Set configured read consistency level
+	 *
+	 * @param text consistency level
+	 */
+	public static void setReadConsistencyLevel(String text) {
+		readConsistencyLevel = text;
+	}
+
+	/**
+	 * Set configured write consistency level
+	 *
+	 * @param text consistency level
+	 */
+	public static void setWriteConsistencyLevel(String text) {
+		writeConsistencyLevel = text;
+	}
+
+	/**
+	 * Returns read consistency level
+	 *
+	 * @return configured read consistency level
+	 */
+	public static String getReadConsistencyLevel() {
+		return readConsistencyLevel;
+	}
+
+	/**
+	 * Returns write consistency level
+	 *
+	 * @return configured write consistency level
+	 */
+	public static String getWriteConsistencyLevel() {
+		return writeConsistencyLevel;
 	}
 
 

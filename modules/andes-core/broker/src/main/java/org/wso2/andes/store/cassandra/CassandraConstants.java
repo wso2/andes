@@ -144,53 +144,14 @@ public class CassandraConstants {
     public final static String DEFAULT_STRATEGY_CLASS = "org.apache.cassandra.locator" +
             ".SimpleStrategy";
 
-	/**
-	 * Default read consistency for Cassandra.
-	 */
-	public final static String DEFAULT_READ_CONSISTENCY = "ONE";
+    /**
+     * Default read consistency for Cassandra.
+     */
+    public final static String DEFAULT_READ_CONSISTENCY = "ONE";
 
-	/**
-	 * Default write consistency for Cassandra.
-	 */
-	public final static String DEFAULT_WRITE_CONSISTENCY = "ONE";
-
-	private static String readConsistencyLevel;
-	private static String writeConsistencyLevel;
-
-	/**
-	 * Returns read consistency level
-	 *
-	 * @return configured read consistency level
-	 */
-	public static String getReadConsistencyLevel() {
-		return readConsistencyLevel;
-	}
-
-	/**
-	 * Returns write consistency level
-	 *
-	 * @return configured write consistency level
-	 */
-	public static String getWriteConsistencyLevel() {
-		return writeConsistencyLevel;
-	}
-
-	/**
-	 * Set configured read consistency level
-	 *
-	 * @param text consistency level
-	 */
-	public static void setReadConsistencyLevel(String text) {
-		readConsistencyLevel = text;
-	}
-
-	/**
-	 * Set configured write consistency level
-	 *
-	 * @param text consistency level
-	 */
-	public static void setWriteConsistencyLevel(String text) {
-		writeConsistencyLevel = text;
-	}
+    /**
+     * Default write consistency for Cassandra.
+     */
+    public final static String DEFAULT_WRITE_CONSISTENCY = "ONE";
 
 }
