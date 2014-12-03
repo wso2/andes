@@ -260,7 +260,7 @@ public class CQLDataAccessHelper {
         String sql = "CREATE KEYSPACE " + keySpace + " WITH replication " + "= {'class':'" +
                      strategyClass + "', 'replication_factor':" + replicationFactor + "};";
 
-        GenericCQLDAO.execute(CLUSTER_SESSION, sql);
+        GenericCQLDAO.executeWrite(CLUSTER_SESSION, sql);
 
     }
 
@@ -289,7 +289,7 @@ public class CQLDataAccessHelper {
         String query = "SELECT columnfamily_name FROM System.schema_columnfamilies WHERE " +
                        "keyspace_name='" + keySpace
                 .toLowerCase() + "' and columnfamily_name='" + table.toLowerCase() + "';";
-        ResultSet result = GenericCQLDAO.execute(GenericCQLDAO.CLUSTER_SESSION, query);
+        ResultSet result = GenericCQLDAO.executeRead(GenericCQLDAO.CLUSTER_SESSION, query);
         List<Row> rows = result.all();
         String name = null;
         if (rows != null && !rows.isEmpty()) {
@@ -304,7 +304,7 @@ public class CQLDataAccessHelper {
         String query = "select keyspace_name from system.schema_keyspaces WHERE keyspace_name='"
                        + keySpace
                 .toLowerCase() + "';";
-        ResultSet result = GenericCQLDAO.execute(GenericCQLDAO.CLUSTER_SESSION, query);
+        ResultSet result = GenericCQLDAO.executeRead(GenericCQLDAO.CLUSTER_SESSION, query);
         List<Row> rows = result.all();
         String name = null;
         if (rows != null && !rows.isEmpty()) {
@@ -344,7 +344,7 @@ public class CQLDataAccessHelper {
             table.getPrimaryKeys().add(MSG_COUNTER_ROW);
             table.getPrimaryKeys().add(MSG_COUNTER_QUEUE);
             String query = CQLQueryBuilder.buildTableQuery(table);
-            GenericCQLDAO.execute(keySpace, query);
+            GenericCQLDAO.executeWrite(keySpace, query);
         }
 
     }
@@ -398,7 +398,7 @@ public class CQLDataAccessHelper {
             cqlDelete.addCondition(MSG_COUNTER_QUEUE, queueColumn, WHERE_OPERATORS.EQ);
             cqlDelete.addCondition(MSG_COUNTER_ROW, counterRowName, WHERE_OPERATORS.EQ);
             Delete delete = CQLQueryBuilder.buildSingleDelete(cqlDelete);
-            GenericCQLDAO.execute(keyspace, delete.getQueryString());
+            GenericCQLDAO.executeWrite(keyspace, delete.getQueryString());
         } catch (Exception e) {
             if (e.getMessage()
                  .contains("All host pools marked down. Retry burden pushed out to client")) {
@@ -508,7 +508,7 @@ public class CQLDataAccessHelper {
                 log.debug(" getMessageMetaDataOfMessage : " + select.toString());
             }
 
-            ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
+            ResultSet result = GenericCQLDAO.executeRead(keyspace, select.getQueryString());
             List<Row> rows = result.all();
             Iterator<Row> iter = rows.iterator();
             if (iter.hasNext()) {
@@ -565,7 +565,7 @@ public class CQLDataAccessHelper {
             table.getPrimaryKeys().add(MSG_ROW_ID);
             table.getPrimaryKeys().add(MSG_KEY);
             String query = CQLQueryBuilder.buildTableQuery(table);
-            GenericCQLDAO.execute(keySpace, query);
+            GenericCQLDAO.executeWrite(keySpace, query);
         }
     }
 
@@ -595,7 +595,7 @@ public class CQLDataAccessHelper {
                 log.debug(" getMessageMetaDataOfMessage : " + select.toString());
             }
 
-            ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
+            ResultSet result = GenericCQLDAO.executeRead(keyspace, select.getQueryString());
             List<Row> rows = result.all();
             Iterator<Row> iter = rows.iterator();
             if (iter.hasNext()) {
@@ -665,7 +665,7 @@ public class CQLDataAccessHelper {
                 log.debug(" getMessageMetaDataOfMessage : " + select.toString());
             }
 
-            ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
+            ResultSet result = GenericCQLDAO.executeRead(keyspace, select.getQueryString());
             List<Row> rows = result.all();
             Iterator<Row> iter = rows.iterator();
             while (iter.hasNext()) {
@@ -744,7 +744,7 @@ public class CQLDataAccessHelper {
                 log.debug(" getMessageMetaDataFromQueue : " + select.toString());
             }
 
-            ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
+            ResultSet result = GenericCQLDAO.executeRead(keyspace, select.getQueryString());
 
             List<Row> rows = result.all();
 
@@ -806,7 +806,7 @@ public class CQLDataAccessHelper {
                 log.debug(" getMessageContent : " + select.toString());
             }
 
-            ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
+            ResultSet result = GenericCQLDAO.executeRead(keyspace, select.getQueryString());
             List<Row> rows = result.all();
             Iterator<Row> iterator = rows.iterator();
 
@@ -878,7 +878,7 @@ public class CQLDataAccessHelper {
                 log.debug(" getMessageMetaDataOfMessage : " + select.toString());
             }
 
-            ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
+            ResultSet result = GenericCQLDAO.executeRead(keyspace, select.getQueryString());
             List<Row> rows = result.all();
             if (rows == null) {
                 rows = Collections.EMPTY_LIST;
@@ -911,7 +911,7 @@ public class CQLDataAccessHelper {
             keyValueMap.put(MSG_VALUE, java.nio.ByteBuffer.wrap(message));
             Insert insert = CQLQueryBuilder.buildSingleInsert(keySpace, columnFamily, keyValueMap);
             if (execute) {
-                GenericCQLDAO.execute(keySpace, insert.getQueryString());
+                GenericCQLDAO.executeWrite(keySpace, insert.getQueryString());
             }
             return insert;
         } catch (Exception e) {
@@ -954,7 +954,7 @@ public class CQLDataAccessHelper {
         keyValueMap.put(MSG_VALUE, java.nio.ByteBuffer.wrap(value));
         Insert insert = CQLQueryBuilder.buildSingleInsert(keySpace, columnFamily, keyValueMap);
         if (execute) {
-            GenericCQLDAO.execute(keySpace, insert.getQueryString());
+            GenericCQLDAO.executeWrite(keySpace, insert.getQueryString());
         }
 
         return insert;
@@ -995,7 +995,7 @@ public class CQLDataAccessHelper {
             Insert insert = CQLQueryBuilder.buildSingleInsert(keySpace, columnFamily, keyValueMap);
 
             if (execute) {
-                GenericCQLDAO.execute(keySpace, insert.getQueryString());
+                GenericCQLDAO.executeWrite(keySpace, insert.getQueryString());
             }
             return insert;
         } catch (Exception e) {
@@ -1069,7 +1069,7 @@ public class CQLDataAccessHelper {
             cqlDelete.addCondition(MSG_ROW_ID, row, WHERE_OPERATORS.EQ);
             cqlDelete.addCondition(MSG_KEY, key, WHERE_OPERATORS.EQ);
             Delete delete = CQLQueryBuilder.buildSingleDelete(cqlDelete);
-            GenericCQLDAO.executeAsync(keyspace, delete.getQueryString());
+            GenericCQLDAO.executeWriteAsync(keyspace, delete.getQueryString());
         } catch (Exception e) {
             throw new CassandraDataAccessException(
                     "Error while deleting " + key + " from " + columnFamily + " as cassandra " +
@@ -1151,7 +1151,7 @@ public class CQLDataAccessHelper {
             cqlDelete.addCondition(MSG_ROW_ID, rows.toArray(new String[rows.size()]),
                                    WHERE_OPERATORS.IN);
             Delete delete = CQLQueryBuilder.buildSingleDelete(cqlDelete);
-            GenericCQLDAO.execute(keyspace, delete.getQueryString());
+            GenericCQLDAO.executeWrite(keyspace, delete.getQueryString());
         } catch (Exception e) {
             throw new CassandraDataAccessException("Error while deleting data", e);
         }
@@ -1179,7 +1179,7 @@ public class CQLDataAccessHelper {
 
             cqlDelete.addCondition(MSG_ROW_ID, rowKey, WHERE_OPERATORS.EQ);
             Delete delete = CQLQueryBuilder.buildSingleDelete(cqlDelete);
-            GenericCQLDAO.execute(keyspace, delete.getQueryString());
+            GenericCQLDAO.executeWrite(keyspace, delete.getQueryString());
         } catch (Exception e) {
             throw new CassandraDataAccessException("Error while deleting data", e);
         }
@@ -1200,7 +1200,7 @@ public class CQLDataAccessHelper {
 
         Select select = CQLQueryBuilder.buildSelect(cqlSelect);
 
-        ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
+        ResultSet result = GenericCQLDAO.executeRead(keyspace, select.getQueryString());
         List<Row> rows = result.all();
         Iterator<Row> iter = rows.iterator();
         while (iter.hasNext()) {
@@ -1262,7 +1262,7 @@ public class CQLDataAccessHelper {
                 log.debug(" getExpiredMessages : " + select.toString());
             }
 
-            ResultSet result = GenericCQLDAO.execute(keyspace, select.getQueryString());
+            ResultSet result = GenericCQLDAO.executeRead(keyspace, select.getQueryString());
             List<Row> rows = result.all();
 
             for (Row row : rows) {
@@ -1316,7 +1316,7 @@ public class CQLDataAccessHelper {
             table.getPrimaryKeys().add(MESSAGE_ID);
             table.getPrimaryKeys().add(MESSAGE_EXPIRATION_TIME);
             String query = CQLQueryBuilder.buildTableQuery(table);
-            GenericCQLDAO.execute(keySpace, query);
+            GenericCQLDAO.executeRead(keySpace, query);
         }
     }
 }

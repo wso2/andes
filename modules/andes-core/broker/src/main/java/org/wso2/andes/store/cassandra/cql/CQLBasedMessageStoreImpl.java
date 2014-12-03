@@ -143,7 +143,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                         part.getData(), false);
                 inserts.add(insert);
             }
-            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE,
+            GenericCQLDAO.batchExecuteWrite(CassandraConstants.KEYSPACE,
                     inserts.toArray(new Insert[inserts.size()]));
 
         } catch (CassandraDataAccessException e) {
@@ -253,7 +253,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             }
             long start = System.currentTimeMillis();
 
-            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
+            GenericCQLDAO.batchExecuteWrite(CassandraConstants.KEYSPACE, inserts.toArray(new Insert[inserts.size()]));
             int latency = (int) (System.currentTimeMillis() - start);
             if (latency > 1000) {
 
@@ -302,7 +302,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                     metadata.getMessageID(),
                     metadata.getMetadata(), false);
 
-            GenericCQLDAO.execute(CassandraConstants.KEYSPACE, insert.getQueryString());
+            GenericCQLDAO.executeWrite(CassandraConstants.KEYSPACE, insert.getQueryString());
             log.info("Metadata added to cassandra MessageID = " + metadata.getMessageID());
         } catch (CassandraDataAccessException e) {
             String errorString = "Error writing incoming message to cassandra.";
@@ -339,7 +339,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                     metadata.getMessageID(),
                     metadata.getMetadata(), false);
 
-            GenericCQLDAO.execute(CassandraConstants.KEYSPACE, insert.getQueryString());
+            GenericCQLDAO.executeWrite(CassandraConstants.KEYSPACE, insert.getQueryString());
         } catch (CassandraDataAccessException e) {
             String errorString = "Error writing incoming message to cassandra.";
             log.error(errorString, e);
@@ -369,7 +369,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                         metadata.getMetadata(), false);
             }
             if (insert != null) {
-                GenericCQLDAO.execute(CassandraConstants.KEYSPACE, insert.getQueryString());
+                GenericCQLDAO.executeWrite(CassandraConstants.KEYSPACE, insert.getQueryString());
             }
         } catch (CassandraDataAccessException e) {
             String errorString = "Error writing incoming message to cassandra.";
@@ -435,7 +435,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
 
             long start = System.currentTimeMillis();
-            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE,
+            GenericCQLDAO.batchExecuteWrite(CassandraConstants.KEYSPACE,
                     inserts.toArray(new Insert[inserts.size()]));
 
             if(log.isDebugEnabled()) {
@@ -456,7 +456,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 statements.add(delete);
             }
 
-            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE,
+            GenericCQLDAO.batchExecuteWrite(CassandraConstants.KEYSPACE,
                     statements.toArray(new Statement[statements.size
                             ()]));
 
@@ -580,7 +580,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                                 storageQueueName, message.getMessageID(), false);
                 statements.add(delete);
             }
-            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE,
+            GenericCQLDAO.batchExecuteWrite(CassandraConstants.KEYSPACE,
                     statements.toArray(new Statement[statements.size()]));
 
         } catch (CassandraDataAccessException e) {
@@ -654,7 +654,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             Insert insert = CQLQueryBuilder
                     .buildSingleInsert(CassandraConstants.KEYSPACE, columnFamily, keyValueMap);
 
-            GenericCQLDAO.execute(CassandraConstants.KEYSPACE, insert.getQueryString());
+            GenericCQLDAO.executeWrite(CassandraConstants.KEYSPACE, insert.getQueryString());
 
         } catch (CassandraDataAccessException e) {
             log.error("Error while adding message to expiry queue", e);
@@ -781,7 +781,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             // But that could result in inconsistent data overall.
             // If a message has been added to the queue between expiry checker invocation and this method, it could be lost.
             // Therefore, the above approach to delete.
-            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE,
+            GenericCQLDAO.batchExecuteWrite(CassandraConstants.KEYSPACE,
                     statements.toArray(new Statement[statements.size()]));
         } catch (CassandraDataAccessException e) {
             log.error("Error while deleting messages", e);
@@ -842,7 +842,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             }
 
             // Execute Batch Delete
-            GenericCQLDAO.batchExecute(CassandraConstants.KEYSPACE,
+            GenericCQLDAO.batchExecuteWrite(CassandraConstants.KEYSPACE,
                     statements.toArray(new Statement[statements.size()]));
 
         } catch (CassandraDataAccessException e) {
