@@ -18,7 +18,9 @@
 
 package org.wso2.andes.store.cassandra.hector;
 
+import me.prettyprint.cassandra.model.ConfigurableConsistencyLevel;
 import me.prettyprint.hector.api.Cluster;
+import me.prettyprint.hector.api.HConsistencyLevel;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.exceptions.HectorException;
 import org.apache.log4j.Logger;
@@ -83,17 +85,23 @@ public class HectorConnection implements DurableStoreConnection {
             if (strategyClass.isEmpty()) {
                 strategyClass = CassandraConstants.DEFAULT_STRATEGY_CLASS;
             }
-//            String readConsistancyLevel = connectionProperties.getProperty(CassandraConstants
-//                    .PROP_READ_CONSISTENCY);
-//            if (readConsistancyLevel.isEmpty()) {
-//                readConsistancyLevel = CassandraConstants.DEFAULT_READ_CONSISTENCY;
-//            }
-//
-//            String writeConsistancyLevel = connectionProperties.getProperty(CassandraConstants
-//                    .PROP_WRITE_CONSISTENCY);
-//            if(writeConsistancyLevel.isEmpty()) {
-//                writeConsistancyLevel = CassandraConstants.DEFAULT_WRITE_CONSISTENCY;
-//            }
+
+	        String readConsistencyLevel = connectionProperties.getProperty(CassandraConstants
+			                                                                       .PROP_READ_CONSISTENCY);
+	        if (readConsistencyLevel.isEmpty()) {
+		        readConsistencyLevel = CassandraConstants.DEFAULT_READ_CONSISTENCY;
+	        }
+
+	        String writeConsistencyLevel = connectionProperties.getProperty(CassandraConstants
+			                                                                        .PROP_WRITE_CONSISTENCY);
+	        if (writeConsistencyLevel.isEmpty()) {
+		        writeConsistencyLevel = CassandraConstants.DEFAULT_WRITE_CONSISTENCY;
+	        }
+
+	        //Setting consistency levels
+	        CassandraConstants.setWriteConsistencyLevel(writeConsistencyLevel);
+	        CassandraConstants.setReadConsistencyLevel(readConsistencyLevel);
+
 
             String gcGraceSeconds = connectionProperties.getProperty(CassandraConstants
                     .PROP_GC_GRACE_SECONDS);
@@ -108,28 +116,17 @@ public class HectorConnection implements DurableStoreConnection {
                 cluster = InitialContext.doLookup(jndiLookupName);
             }
 
-            createKeySpace(Integer.parseInt(replicationFactor), strategyClass);
+	        // set consistency levels
+	        ConfigurableConsistencyLevel configurableConsistencyLevel = new
+			        ConfigurableConsistencyLevel();
+	        configurableConsistencyLevel.setDefaultReadConsistencyLevel(HConsistencyLevel.valueOf(
+			        readConsistencyLevel));
+	        configurableConsistencyLevel.setDefaultWriteConsistencyLevel(HConsistencyLevel.valueOf(
+			        writeConsistencyLevel));
+	        //create keyspace with consistency levels
+	        createKeySpace(Integer.parseInt(replicationFactor), strategyClass,configurableConsistencyLevel);
 
-            /*ConfigurableConsistencyLevel configurableConsistencyLevel = new
-            ConfigurableConsistencyLevel();
-            if (readConsistancyLevel == null || readConsistancyLevel.isEmpty()) {
-                configurableConsistencyLevel.setDefaultReadConsistencyLevel(HConsistencyLevel
-                .QUORUM);
-            } else {
-                configurableConsistencyLevel.setDefaultReadConsistencyLevel(HConsistencyLevel
-                .valueOf(readConsistancyLevel));
-            }
-            if (writeConsistancyLevel == null || writeConsistancyLevel.isEmpty()) {
-                configurableConsistencyLevel.setDefaultWriteConsistencyLevel(HConsistencyLevel
-                .QUORUM);
-            } else {
-                configurableConsistencyLevel.setDefaultWriteConsistencyLevel(HConsistencyLevel
-                .valueOf(writeConsistancyLevel));
-            }
-
-            keyspace.setConsistencyLevelPolicy(configurableConsistencyLevel);
-*/
-            //start Cassandra connection live check
+	        //start Cassandra connection live check
             isCassandraConnectionLive = true;
             checkCassandraConnection();
 
@@ -214,10 +211,10 @@ public class HectorConnection implements DurableStoreConnection {
      * @param replicationFactor replication factor to configured in Keyspace
      * @param strategyClass Cassandra strategy class
      */
-    private void createKeySpace(int replicationFactor, String strategyClass) {
+    private void createKeySpace(int replicationFactor, String strategyClass, ConfigurableConsistencyLevel ccl) {
         this.keyspace = HectorDataAccessHelper.createKeySpace(cluster,
                 CassandraConstants.KEYSPACE,
-                replicationFactor, strategyClass);
+                replicationFactor, strategyClass,ccl);
     }
 
     /**

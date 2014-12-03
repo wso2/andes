@@ -98,25 +98,14 @@ public class CQLConnection implements DurableStoreConnection {
             GenericCQLDAO.setCluster(cluster);
             createKeySpace(Integer.parseInt(replicationFactor), strategyClass);
 
-            /*ConfigurableConsistencyLevel configurableConsistencyLevel = new
-            ConfigurableConsistencyLevel();
-            if (readConsistancyLevel == null || readConsistancyLevel.isEmpty()) {
-                configurableConsistencyLevel.setDefaultReadConsistencyLevel(HConsistencyLevel
-                .QUORUM);
-            } else {
-                configurableConsistencyLevel.setDefaultReadConsistencyLevel(HConsistencyLevel
-                .valueOf(readConsistancyLevel));
-            }
-            if (writeConsistancyLevel == null || writeConsistancyLevel.isEmpty()) {
-                configurableConsistencyLevel.setDefaultWriteConsistencyLevel(HConsistencyLevel
-                .QUORUM);
-            } else {
-                configurableConsistencyLevel.setDefaultWriteConsistencyLevel(HConsistencyLevel
-                .valueOf(writeConsistancyLevel));
-            }
+	        //set consistency levels
+	        CassandraConstants.setReadConsistencyLevel(readConsistancyLevel);
+	        CassandraConstants.setWriteConsistencyLevel(writeConsistancyLevel);
 
-            keyspace.setConsistencyLevelPolicy(configurableConsistencyLevel);
-*/
+	        GenericCQLDAO.setCluster(cluster);
+	        createKeySpace(Integer.parseInt(replicationFactor),strategyClass);
+
+
             //start Cassandra connection live check
             isCassandraConnectionLive = true;
             checkCassandraConnection();
