@@ -158,273 +158,260 @@ public class GenericCQLDAO {
 		}
 	}
 
-	/**
-	 * This method is written to do cql read operations with read consistency level, like  'SELECT' operations
-	 *
-	 * @param keySpace KeySpace name
-	 * @param query    query
-	 * @return Result Set
-	 * @throws CassandraDataAccessException
-	 */
-	public static ResultSet executeRead(String keySpace, String query)
-			throws CassandraDataAccessException {
-		ResultSet result;
-		try {
-			Query statement = new SimpleStatement(query);
-			statement.setConsistencyLevel(
-					ConsistencyLevel.valueOf(readConsistencyLevel));
-			result = getSession(keySpace).execute(statement);
-		} catch (UnavailableException e) {
-			throw new CassandraDataAccessException("Error occurred due to unavailable seeds", e);
-		} catch (Exception e) {
-			throw new CassandraDataAccessException("Error while executing statement", e);
-		}
-		return result;
-	}
+    /**
+     * This method is written to do cql read operations with read consistency level, like  'SELECT' operations
+     *
+     * @param keySpace KeySpace name
+     * @param query    query
+     * @return Result Set
+     * @throws CassandraDataAccessException
+     */
+    public static ResultSet executeRead(String keySpace, String query)
+            throws CassandraDataAccessException {
+        ResultSet result;
+        try {
+            Query statement = new SimpleStatement(query);
+            statement.setConsistencyLevel(ConsistencyLevel.valueOf(readConsistencyLevel));
+            result = getSession(keySpace).execute(statement);
+        } catch (UnavailableException e) {
+            throw new CassandraDataAccessException("Error occurred due to unavailable seeds", e);
+        } catch (Exception e) {
+            throw new CassandraDataAccessException("Error while executing statement", e);
+        }
+        return result;
+    }
 
-	/**
-	 * This method is written to do cql write operations with write consistency level, like  'INSERT'/'UPDATE'/'DELETE' operations
-	 *
-	 * @param keySpace KeySpace name
-	 * @param query    query
-	 * @return Result Set
-	 * @throws CassandraDataAccessException
-	 */
-	public static ResultSet executeWrite(String keySpace, String query)
-			throws CassandraDataAccessException {
-		ResultSet result;
-		try {
-			Statement statement = new SimpleStatement(query);
-			statement.setConsistencyLevel(
-					ConsistencyLevel.valueOf(writeConsistencyLevel));
-			result = getSession(keySpace).execute(statement);
-		} catch (UnavailableException e) {
-			throw new CassandraDataAccessException(
-					"Error occurred due to unavailable seeds", e);
-		} catch (Exception e) {
-			throw new CassandraDataAccessException("Error while executing statement", e);
-		}
-		return result;
-	}
+    /**
+     * This method is written to do cql write operations with write consistency level, like  'INSERT'/'UPDATE'/'DELETE' operations
+     *
+     * @param keySpace KeySpace name
+     * @param query    query
+     * @return Result Set
+     * @throws CassandraDataAccessException
+     */
+    public static ResultSet executeWrite(String keySpace, String query)
+            throws CassandraDataAccessException {
+        ResultSet result;
+        try {
+            Statement statement = new SimpleStatement(query);
+            statement.setConsistencyLevel(ConsistencyLevel.valueOf(writeConsistencyLevel));
+            result = getSession(keySpace).execute(statement);
+        } catch (UnavailableException e) {
+            throw new CassandraDataAccessException("Error occurred due to unavailable seeds", e);
+        } catch (Exception e) {
+            throw new CassandraDataAccessException("Error while executing statement", e);
+        }
+        return result;
+    }
 
-	/**
-	 * This method is written to do cql asynchronous read operations with write consistency level,
-	 *
-	 * @param keySpace KeySpace name
-	 * @param query    query
-	 * @return Result Set
-	 * @throws CassandraDataAccessException
-	 */
-	public static ResultSetFuture executeReadAsync(String keySpace, String query)
-			throws CassandraDataAccessException {
-		try {
-			Statement statement = new SimpleStatement(query);
-			statement.setConsistencyLevel(
-					ConsistencyLevel.valueOf(readConsistencyLevel));
-			ResultSetFuture result = getSession(keySpace).executeAsync(statement);
-			return result;
-		} catch (UnavailableException e) {
-			throw new CassandraDataAccessException("Error occurred due to unavailable seeds", e);
-		}
-	}
+    /**
+     * This method is written to do cql asynchronous read operations with write consistency level,
+     *
+     * @param keySpace KeySpace name
+     * @param query    query
+     * @return Result Set
+     * @throws CassandraDataAccessException
+     */
+    public static ResultSetFuture executeReadAsync(String keySpace, String query)
+            throws CassandraDataAccessException {
+        try {
+            Statement statement = new SimpleStatement(query);
+            statement.setConsistencyLevel(ConsistencyLevel.valueOf(readConsistencyLevel));
+            ResultSetFuture result = getSession(keySpace).executeAsync(statement);
+            return result;
+        } catch (UnavailableException e) {
+            throw new CassandraDataAccessException("Error occurred due to unavailable seeds", e);
+        }
+    }
 
-	/**
-	 * This method is written to do cql asynchronous write operations with write consistency level, like  'INSERT'/'UPDATE'/'DELETE' operations
-	 * cql write operations
-	 *
-	 * @param keySpace KeySpace name
-	 * @param query    query
-	 * @return Result Set
-	 * @throws CassandraDataAccessException
-	 */
-	public static ResultSetFuture executeWriteAsync(String keySpace, String query)
-			throws CassandraDataAccessException {
-		try {
-			Statement statement = new SimpleStatement(query);
-			statement.setConsistencyLevel(
-					ConsistencyLevel.valueOf(writeConsistencyLevel));
-			ResultSetFuture result = getSession(keySpace).executeAsync(statement);
-			return result;
-		} catch (UnavailableException e) {
-			throw new CassandraDataAccessException(
-					"Error occurred due to unavailable seeds", e);
-		}
-	}
+    /**
+     * This method is written to do cql asynchronous write operations with write consistency level, like  'INSERT'/'UPDATE'/'DELETE' operations
+     * cql write operations
+     *
+     * @param keySpace KeySpace name
+     * @param query    query
+     * @return Result Set
+     * @throws CassandraDataAccessException
+     */
+    public static ResultSetFuture executeWriteAsync(String keySpace, String query)
+            throws CassandraDataAccessException {
+        try {
+            Statement statement = new SimpleStatement(query);
+            statement.setConsistencyLevel(ConsistencyLevel.valueOf(writeConsistencyLevel));
+            ResultSetFuture result = getSession(keySpace).executeAsync(statement);
+            return result;
+        } catch (UnavailableException e) {
+            throw new CassandraDataAccessException("Error occurred due to unavailable seeds", e);
+        }
+    }
 
-	/**
-	 * This method is written to do cql insert operations with write consistency level.
-	 *
-	 * @param keySpace    KeySpace name
-	 * @param table       table
-	 * @param keyValueMap insert Map
-	 * @throws CassandraDataAccessException
-	 */
-	public static void insert(String keySpace, String table, Map<String, Object> keyValueMap)
-			throws CassandraDataAccessException {
-		Insert insert = CQLQueryBuilder.buildSingleInsert(keySpace, table, keyValueMap);
-		if (insert == null) {
-			throw new CassandraDataAccessException(" Insert statement can not be null");
-		}
-		//setting consistency level
-		insert.setConsistencyLevel(
-				ConsistencyLevel.valueOf(writeConsistencyLevel));
-		getSession(keySpace).execute(insert);
-	}
+    /**
+     * This method is written to do cql insert operations with write consistency level.
+     *
+     * @param keySpace    KeySpace name
+     * @param table       table
+     * @param keyValueMap insert Map
+     * @throws CassandraDataAccessException
+     */
+    public static void insert(String keySpace, String table, Map<String, Object> keyValueMap)
+            throws CassandraDataAccessException {
+        Insert insert = CQLQueryBuilder.buildSingleInsert(keySpace, table, keyValueMap);
+        if (insert == null) {
+            throw new CassandraDataAccessException(" Insert statement can not be null");
+        }
+        //setting consistency level
+        insert.setConsistencyLevel(ConsistencyLevel.valueOf(writeConsistencyLevel));
+        getSession(keySpace).execute(insert);
+    }
 
-	/**
-	 * This method is written to do cql update operations with write consistency level.
-	 *
-	 * @param keySpace  KeySpace name
-	 * @param cqlUpdate cql update
-	 * @throws CassandraDataAccessException
-	 */
-	public static void update(String keySpace, CQLQueryBuilder.CqlUpdate cqlUpdate)
-			throws CassandraDataAccessException {
-		Update update = CQLQueryBuilder.buildSingleUpdate(cqlUpdate);
-		if (update == null) {
-			throw new CassandraDataAccessException(" Update statement can not be null");
-		}
-		Map<String, Object> counters = cqlUpdate.getCounterColumnValue();
-		String sql = update.getQueryString();
-		if (counters != null) {
-			Set<Entry<String, Object>> entries = counters.entrySet();
-			Iterator<Entry<String, Object>> iter = entries.iterator();
-			while (iter.hasNext()) {
-				Entry<String, Object> entry = iter.next();
-				sql = sql.replaceFirst("'" + entry.getKey() + "'",
-				                       entry.getKey() + "+" + entry.getValue());
-			}
-		}
-		Statement statement = new SimpleStatement(sql);
-		//setting consistency level
-		statement.setConsistencyLevel(
-				ConsistencyLevel.valueOf(writeConsistencyLevel));
-		getSession(keySpace).execute(statement);
-	}
+    /**
+     * This method is written to do cql update operations with write consistency level.
+     *
+     * @param keySpace  KeySpace name
+     * @param cqlUpdate cql update
+     * @throws CassandraDataAccessException
+     */
+    public static void update(String keySpace, CQLQueryBuilder.CqlUpdate cqlUpdate)
+            throws CassandraDataAccessException {
+        Update update = CQLQueryBuilder.buildSingleUpdate(cqlUpdate);
+        if (update == null) {
+            throw new CassandraDataAccessException(" Update statement can not be null");
+        }
+        Map<String, Object> counters = cqlUpdate.getCounterColumnValue();
+        String sql = update.getQueryString();
+        if (counters != null) {
+            Set<Entry<String, Object>> entries = counters.entrySet();
+            Iterator<Entry<String, Object>> iter = entries.iterator();
+            while (iter.hasNext()) {
+                Entry<String, Object> entry = iter.next();
+                sql = sql.replaceFirst("'" + entry.getKey() + "'", entry.getKey() + "+" + entry.getValue());
+            }
+        }
+        Statement statement = new SimpleStatement(sql);
+        //setting consistency level
+        statement.setConsistencyLevel(ConsistencyLevel.valueOf(writeConsistencyLevel));
+        getSession(keySpace).execute(statement);
+    }
 
-	/**
-	 * This method is written to do cql delete operations with write consistency level.
-	 *
-	 * @param keySpace  KeySpace name
-	 * @param cqlDelete cql delete
-	 * @throws CassandraDataAccessException
-	 */
-	public static void delete(String keySpace, CQLQueryBuilder.CqlDelete cqlDelete)
-			throws CassandraDataAccessException {
-		Delete delete = CQLQueryBuilder.buildSingleDelete(cqlDelete);
-		if (delete == null) {
-			throw new CassandraDataAccessException(" Delete statement can not be null");
-		}
-		//setting consistency level
-		delete.setConsistencyLevel(
-				ConsistencyLevel.valueOf(writeConsistencyLevel));
-		getSession(keySpace).execute(delete);
-	}
+    /**
+     * This method is written to do cql select operations with read consistency level.
+     *
+     * @param keySpace  KeySpace name
+     * @param cqlSelect cql Select
+     * @return Result Set
+     * @throws CassandraDataAccessException
+     */
+    public static ResultSet select(String keySpace, CQLQueryBuilder.CqlSelect cqlSelect)
+            throws CassandraDataAccessException {
+        Select select = CQLQueryBuilder.buildSelect(cqlSelect);
+        select.setConsistencyLevel(ConsistencyLevel.valueOf(readConsistencyLevel));
+        return getSession(keySpace).execute(select);
+    }
 
-	/**
-	 * This method is written to do cql select operations with read consistency level.
-	 *
-	 * @param keySpace  KeySpace name
-	 * @param cqlSelect cql Select
-	 * @return Result Set
-	 * @throws CassandraDataAccessException
-	 */
-	public static ResultSet select(String keySpace, CQLQueryBuilder.CqlSelect cqlSelect)
-			throws CassandraDataAccessException {
-		Select select = CQLQueryBuilder.buildSelect(cqlSelect);
-		select.setConsistencyLevel(
-				ConsistencyLevel.valueOf(readConsistencyLevel));
-		return getSession(keySpace).execute(select);
-	}
+    public static void batchInsert(String keySpace, String table, List<Map<String, Object>> rows)
+            throws CassandraDataAccessException {
+        List<Insert> statementList = new ArrayList<Insert>();
+        for (Map<String, Object> keyValue : rows) {
+            Insert insert = CQLQueryBuilder.buildSingleInsert(keySpace, table, keyValue);
+            statementList.add(insert);
+        }
 
-	public static void batchInsert(String keySpace, String table, List<Map<String, Object>> rows)
-			throws CassandraDataAccessException {
-		List<Insert> statementList = new ArrayList<Insert>();
-		for (Map<String, Object> keyValue : rows) {
-			Insert insert = CQLQueryBuilder.buildSingleInsert(keySpace, table, keyValue);
-			statementList.add(insert);
-		}
+        batchExecuteWrite(keySpace, statementList.toArray(new Statement[statementList.size()]));
+    }
 
-		batchExecuteWrite(keySpace, statementList.toArray(new Statement[statementList.size()]));
-	}
+    /**
+     * This method is written to do cql batch write operations with write consistency level.like 'INSERT'/'UPDATE' operations
+     *
+     * @param keySpace   KeySpace name
+     * @param statements statements
+     * @throws CassandraDataAccessException
+     */
+    public static void batchExecuteWrite(String keySpace, Statement[] statements)
+            throws CassandraDataAccessException {
 
-	/**
-	 * This method is written to do cql batch write operations with write consistency level.like 'INSERT'/'UPDATE' operations
-	 *
-	 * @param keySpace   KeySpace name
-	 * @param statements statements
-	 * @throws CassandraDataAccessException
-	 */
-	public static void batchExecuteWrite(String keySpace, Statement[] statements)
-			throws CassandraDataAccessException {
+        if (statements == null || statements.length == 0) {
+            return;
+        }
+        Query batch = batch(statements);
+        //setting consistency level
+        batch.setConsistencyLevel(ConsistencyLevel.valueOf(writeConsistencyLevel));
+        getSession(keySpace).execute(batch);
 
-		if (statements == null || statements.length == 0) {
-			return;
-		}
-		Query batch = batch(statements);
-		//setting consistency level
-		batch.setConsistencyLevel(
-				ConsistencyLevel.valueOf(writeConsistencyLevel));
-		getSession(keySpace).execute(batch);
+    }
 
-	}
+    /**
+     * This method is written to do cql batch read operations with write consistency level.
+     *
+     * @param keySpace   KeySpace name
+     * @param statements statements
+     * @throws CassandraDataAccessException
+     */
+    public static void batchExecuteRead(String keySpace, Statement[] statements)
+            throws CassandraDataAccessException {
 
-	/**
-	 * This method is written to do cql batch read operations with write consistency level.
-	 *
-	 * @param keySpace   KeySpace name
-	 * @param statements statements
-	 * @throws CassandraDataAccessException
-	 */
-	public static void batchExecuteRead(String keySpace, Statement[] statements)
-			throws CassandraDataAccessException {
+        if (statements == null || statements.length == 0) {
+            return;
+        }
+        Query batch = batch(statements);
+        // setting consistency level
+        batch.setConsistencyLevel(ConsistencyLevel.valueOf(readConsistencyLevel));
+        getSession(keySpace).execute(batch);
 
-		if (statements == null || statements.length == 0) {
-			return;
-		}
-		Query batch = batch(statements);
-		// setting consistency level
-		batch.setConsistencyLevel(
-				ConsistencyLevel.valueOf(readConsistencyLevel));
-		getSession(keySpace).execute(batch);
+    }
 
-	}
+    /**
+     * Set configured read consistency level
+     *
+     * @param text consistency level
+     */
+    public static void setReadConsistencyLevel(String text) {
+        readConsistencyLevel = text;
+    }
 
-	/**
-	 * Set configured read consistency level
-	 *
-	 * @param text consistency level
-	 */
-	public static void setReadConsistencyLevel(String text) {
-		readConsistencyLevel = text;
-	}
+    /**
+     * Set configured write consistency level
+     *
+     * @param text consistency level
+     */
+    public static void setWriteConsistencyLevel(String text) {
+        writeConsistencyLevel = text;
+    }
 
-	/**
-	 * Set configured write consistency level
-	 *
-	 * @param text consistency level
-	 */
-	public static void setWriteConsistencyLevel(String text) {
-		writeConsistencyLevel = text;
-	}
+    /**
+     * Returns read consistency level
+     *
+     * @return configured read consistency level
+     */
+    public static String getReadConsistencyLevel() {
+        return readConsistencyLevel;
+    }
 
-	/**
-	 * Returns read consistency level
-	 *
-	 * @return configured read consistency level
-	 */
-	public static String getReadConsistencyLevel() {
-		return readConsistencyLevel;
-	}
+    /**
+     * Returns write consistency level
+     *
+     * @return configured write consistency level
+     */
+    public static String getWriteConsistencyLevel() {
+        return writeConsistencyLevel;
+    }
 
-	/**
-	 * Returns write consistency level
-	 *
-	 * @return configured write consistency level
-	 */
-	public static String getWriteConsistencyLevel() {
-		return writeConsistencyLevel;
-	}
+    /**
+     * This method is written to do cql delete operations with write consistency level.
+     *
+     * @param keySpace  KeySpace name
+     * @param cqlDelete cql delete
+     * @throws CassandraDataAccessException
+     */
+    public static void delete(String keySpace, CQLQueryBuilder.CqlDelete cqlDelete)
+            throws CassandraDataAccessException {
+        Delete delete = CQLQueryBuilder.buildSingleDelete(cqlDelete);
+        if (delete == null) {
+            throw new CassandraDataAccessException(" Delete statement can not be null");
+        }
+        //setting consistency level
+        delete.setConsistencyLevel(ConsistencyLevel.valueOf(writeConsistencyLevel));
+        getSession(keySpace).execute(delete);
+    }
 
 
 }

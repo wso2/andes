@@ -18,6 +18,7 @@
 
 package org.wso2.andes.store.cassandra.hector;
 
+import com.datastax.driver.core.exceptions.UnavailableException;
 import me.prettyprint.cassandra.model.ConfigurableConsistencyLevel;
 import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.HConsistencyLevel;
@@ -209,13 +210,19 @@ public class HectorConnection implements DurableStoreConnection {
     /**
      * Create a keyspace
      *
-     * @param replicationFactor replication factor to configured in Keyspace
+     * @param replicationFactor replication factor to configured in keyspace
      * @param strategyClass Cassandra strategy class
+     * @param consistencyLevel ConfigurableConsistencyLevel
      */
-    private void createKeySpace(int replicationFactor, String strategyClass, ConfigurableConsistencyLevel ccl) {
-        this.keyspace = HectorDataAccessHelper.createKeySpace(cluster,
-                CassandraConstants.KEYSPACE,
-                replicationFactor, strategyClass,ccl);
+    private void createKeySpace(int replicationFactor, String strategyClass,
+                                ConfigurableConsistencyLevel consistencyLevel) throws AndesException {
+        try{
+            this.keyspace = HectorDataAccessHelper.createKeySpace(cluster,
+                    CassandraConstants.KEYSPACE,
+                    replicationFactor, strategyClass,consistencyLevel);
+        }catch(UnavailableException e){
+            throw new AndesException("Not enough nodes for replication" + e);
+        }
     }
 
     /**

@@ -76,7 +76,7 @@ public class HectorDataAccessHelper {
      * @return Keyspace
      */
     public static Keyspace createKeySpace(Cluster cluster, String keySpaceName, int replicationFactor,
-                                          String strategyClass,ConfigurableConsistencyLevel policy) {
+                                          String strategyClass, ConfigurableConsistencyLevel policy) {
         //Define the keySpaceName
         ThriftKsDef thriftKsDef = new ThriftKsDef(keySpaceName);
         thriftKsDef.setReplicationFactor(replicationFactor);
