@@ -35,7 +35,7 @@ import java.util.List;
  */
 public class ClusterBindingChangedListener implements MessageListener {
 
-    private static Log log = LogFactory.getLog(ClusterQueueChangedListener.class);
+    private static Log log = LogFactory.getLog(ClusterBindingChangedListener.class);
     private List<BindingListener> bindingListeners = new ArrayList<BindingListener>();
 
     /**

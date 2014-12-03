@@ -18,6 +18,11 @@
 
 package org.wso2.andes.kernel;
 
+/**
+ * Subscription Listener Interface. This has methods related to local subscription changes
+ * and cluster subscription changes. Any handler handling a subscription change should implement
+ * this interface
+ */
 public interface SubscriptionListener {
 
 	static enum SubscriptionChange{

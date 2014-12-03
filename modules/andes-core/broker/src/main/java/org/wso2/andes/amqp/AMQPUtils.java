@@ -227,6 +227,14 @@ public class AMQPUtils {
             isBoundToTopic = true;
         }
 
+        /**
+         * For durable topic subscriptions subscription ID should be unique for a client ID.
+         * Thus we are redefining the subscription id to client ID
+         */
+        if(queue.isDurable() && isBoundToTopic) {
+            subscriptionID = queue.getName();
+        }
+
         AMQPLocalSubscription localSubscription = new AMQPLocalSubscription(queue,
                 subscription, subscriptionID, destination, isBoundToTopic, queue.isExclusive(), queue.isDurable(),
                 subscribedNode, queue.getName(), queueOwner, queueBoundExchangeName, queueBoundExchangeType, isqueueBoundExchangeAutoDeletable, subscription.isActive());

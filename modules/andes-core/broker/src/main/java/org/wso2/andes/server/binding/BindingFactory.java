@@ -122,17 +122,17 @@ public class BindingFactory {
 
     public boolean addBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments) throws AMQSecurityException, AMQInternalException {
         //    CassandraMessageStore.getInstance().addBinding(exchange,queue,bindingKey);
-        return makeBinding(bindingKey, queue, exchange, arguments, false, false);
+        return makeBinding(bindingKey, queue, exchange, arguments, false, false, true);
     }
 
     public boolean replaceBinding(final String bindingKey,
                                   final AMQQueue queue,
                                   final Exchange exchange,
                                   final Map<String, Object> arguments) throws AMQSecurityException, AMQInternalException {
-        return makeBinding(bindingKey, queue, exchange, arguments, false, true);
+        return makeBinding(bindingKey, queue, exchange, arguments, false, true, true);
     }
 
-    private boolean makeBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments, boolean restore, boolean force) throws AMQSecurityException, AMQInternalException {
+    private synchronized boolean makeBinding(String bindingKey, AMQQueue queue, Exchange exchange, Map<String, Object> arguments, boolean restore, boolean force, boolean isLocal) throws AMQSecurityException, AMQInternalException {
         assert queue != null;
         if (bindingKey == null) {
             bindingKey = "";
@@ -173,9 +173,10 @@ public class BindingFactory {
                 _configSource.getDurableConfigurationStore().bindQueue
                         (exchange, new AMQShortString(bindingKey), queue, FieldTable.convertToFieldTable(arguments));
 
-                //tell Andes kernel to create binding
-                QpidAMQPBridge.getInstance().createBinding(exchange, new AMQShortString(bindingKey), queue, FieldTable.convertToFieldTable(arguments));
-
+                if(isLocal) {
+                    //tell Andes kernel to create binding
+                    QpidAMQPBridge.getInstance().createBinding(exchange, new AMQShortString(bindingKey), queue, FieldTable.convertToFieldTable(arguments));
+                }
             }
 
             queue.addQueueDeleteTask(binding);
@@ -210,15 +211,15 @@ public class BindingFactory {
     public void restoreBinding(final String bindingKey, final AMQQueue queue,
                                final Exchange exchange, final Map<String, Object> argumentMap)
             throws AMQSecurityException, AMQInternalException {
-        makeBinding(bindingKey, queue, exchange, argumentMap, true, false);
+        makeBinding(bindingKey, queue, exchange, argumentMap, true, false, false);
     }
 
     public void removeBinding(final Binding b) throws AMQSecurityException, AMQInternalException {
-        removeBinding(b.getBindingKey(), b.getQueue(), b.getExchange(), b.getArguments());
+        removeBinding(b.getBindingKey(), b.getQueue(), b.getExchange(), b.getArguments(), true);
     }
 
-    public Binding removeBinding(String bindingKey, AMQQueue queue, Exchange exchange,
-                                 Map<String, Object> arguments) throws AMQSecurityException, AMQInternalException {
+    public synchronized Binding removeBinding(String bindingKey, AMQQueue queue, Exchange exchange,
+                                 Map<String, Object> arguments, boolean isLocal) throws AMQSecurityException, AMQInternalException {
         assert queue != null;
         if (bindingKey == null) {
             bindingKey = "";
@@ -241,9 +242,10 @@ public class BindingFactory {
         try {
             if (binding != null) {
                 if (binding.isDurable()) {
-                    //inform andes kernel to remove binding.
-                    QpidAMQPBridge.getInstance().removeBinding(binding, getVirtualHost());
-
+                    if(isLocal) {
+                        //inform andes kernel to remove binding.
+                        QpidAMQPBridge.getInstance().removeBinding(binding, getVirtualHost());
+                    }
                     _configSource.getDurableConfigurationStore().unbindQueue(exchange,
                             new AMQShortString(bindingKey),
                             queue,

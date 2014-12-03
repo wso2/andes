@@ -452,7 +452,7 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
             _logger.error("Unexpected exception while processing frame.  Closing connection.", e);
 
             e.printStackTrace();
-//            closeProtocolSession();
+            closeProtocolSession();
         }
     }
 

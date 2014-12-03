@@ -168,7 +168,7 @@ public abstract class AbstractExchangeMBean<T extends AbstractExchange> extends 
         CurrentActor.set(new ManagementActor(_logActor.getRootMessageLogger()));
         try
         {
-            vhost.getBindingFactory().removeBinding(binding, queue, _exchange, Collections.<String, Object>emptyMap());
+            vhost.getBindingFactory().removeBinding(binding, queue, _exchange, Collections.<String, Object>emptyMap(), true);
 
         }
         catch (AMQException ex)

@@ -174,7 +174,7 @@ public class SimpleAMQQueueTest extends InternalBrokerBaseCase
         assertEquals("Wrong exchange bound", _exchange,
                 _queue.getBindings().get(0).getExchange());
 
-        _virtualHost.getBindingFactory().removeBinding(String.valueOf(_routingKey), _queue, _exchange, Collections.EMPTY_MAP);
+        _virtualHost.getBindingFactory().removeBinding(String.valueOf(_routingKey), _queue, _exchange, Collections.EMPTY_MAP, true);
         assertFalse("Routing key was still bound",
                 _exchange.isBound(_routingKey));
 

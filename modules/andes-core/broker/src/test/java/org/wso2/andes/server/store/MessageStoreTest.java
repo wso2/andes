@@ -825,7 +825,7 @@ public class MessageStoreTest extends InternalBrokerBaseCase
 
         try
         {
-            getVirtualHost().getBindingFactory().removeBinding(String.valueOf(routingKey), queue, exchange, FieldTable.convertToMap(bindArguments));
+            getVirtualHost().getBindingFactory().removeBinding(String.valueOf(routingKey), queue, exchange, FieldTable.convertToMap(bindArguments), true);
         }
         catch (Exception e)
         {
