@@ -19,6 +19,8 @@ package org.wso2.andes.server.cassandra;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -203,7 +205,21 @@ public class AndesSubscriptionManager {
          * Topic subscription representing durable topic is deleted when binding is deleted
          */
         if(subscription.isBoundToTopic() && subscription.isDurable()) {
-            chageType = SubscriptionListener.SubscriptionChange.DISCONNECTED;
+            Boolean allowSharedSubscribers =  AndesConfigurationManager.getInstance().readConfigurationValue
+                    (AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
+            /**
+             * If multiple subscriptions are allowed mark as disconnected if all local
+             * subscriptions to underlying queue is gone
+             */
+            if(allowSharedSubscribers) {
+                if(subscriptionStore.getActiveLocalSubscribers(subscription.getTargetQueue(),false).isEmpty()) {
+                    chageType = SubscriptionListener.SubscriptionChange.DISCONNECTED;
+                } else {
+                   return;
+                }
+            } else {
+                chageType = SubscriptionListener.SubscriptionChange.DISCONNECTED;
+            }
         } else {
             chageType = SubscriptionListener.SubscriptionChange.DELETED;
         }
@@ -216,8 +232,9 @@ public class AndesSubscriptionManager {
      * @param boundQueueName queue name to delete subscriptions
      * @throws AndesException
      */
-    public void deleteSubscriptionsOfBoundQueue(String boundQueueName) throws AndesException{
-        List<LocalSubscription> subscriptionsOfQueue = subscriptionStore.getListOfSubscriptionsBoundToQueue(boundQueueName);
+    public synchronized void deleteAllLocalSubscriptionsOfBoundQueue(String boundQueueName) throws AndesException{
+        List<LocalSubscription> subscriptionsOfQueue = subscriptionStore.getListOfLocalSubscriptionsBoundToQueue(
+                boundQueueName);
         for(LocalSubscription subscription : subscriptionsOfQueue) {
             subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, SubscriptionListener.SubscriptionChange.DELETED);
             notifyLocalSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.DELETED);

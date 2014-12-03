@@ -18,6 +18,7 @@
 
 package org.wso2.andes.configuration.enums;
 
+import org.apache.xpath.operations.Bool;
 import org.wso2.andes.configuration.util.ConfigurationProperty;
 import org.wso2.andes.configuration.util.ImmutableMetaProperties;
 import org.wso2.andes.configuration.util.MetaProperties;
@@ -82,6 +83,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS("transports/amqp/maximumRedeliveryAttempts",
             "10", Integer.class),
+
+    /**
+     * For durable topics there can be only one topic subscriber cluster-wide per a particular
+     * client id. Enabling this configuration, multiple subscribers can use same client id and
+     * share the messages
+     */
+    ALLOW_SHARED_SHARED_SUBSCRIBERS("transports/amqp/allowSharedTopicSubscription",
+             "false", Boolean.class),
 
     /**
      * Enable this to support lightweight messaging with the MQTT protocol.

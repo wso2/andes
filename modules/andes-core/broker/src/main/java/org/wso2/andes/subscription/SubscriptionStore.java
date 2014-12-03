@@ -21,6 +21,8 @@ package org.wso2.andes.subscription;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
 
@@ -85,29 +87,30 @@ public class SubscriptionStore {
      * @return list of andes subscriptions
      * @throws AndesException
      */
-    public List<AndesSubscription> getActiveClusterSubscribersForDestination(String destination, boolean isTopic) throws AndesException {
+    public List<AndesSubscription> getClusterSubscribersForDestination(String destination,
+                                                                       boolean isTopic) throws AndesException {
         Map<String, List<AndesSubscription>> subMap = isTopic ? clusterTopicSubscriptionMap: clusterQueueSubscriptionMap;
-        List<AndesSubscription> subscriptionsHavingExternalSubscriber = new ArrayList<AndesSubscription>();
+        List<AndesSubscription> subscriptionList = new ArrayList<AndesSubscription>();
         for(Map.Entry<String,List<AndesSubscription>> entry: subMap.entrySet()) {
             String subDestination = entry.getKey();
             if(AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(subDestination, destination)) {
                 List<AndesSubscription> subscriptionsOfDestination = entry.getValue();
                 if (subscriptionsOfDestination != null) {
                     for (AndesSubscription subscription : subscriptionsOfDestination) {
-                        subscriptionsHavingExternalSubscriber.add(subscription);
+                        subscriptionList.add(subscription);
                     }
                 }
             }
         }
 
-        return subscriptionsHavingExternalSubscriber;
+        return subscriptionList;
     }
 
-    public List<AndesSubscription> getAllActiveClusterSubscriptions(boolean isTopic) throws AndesException {
+    public List<AndesSubscription> getAllClusterSubscriptions(boolean isTopic) throws AndesException {
         List<AndesSubscription> allActiveSubscriptions = new ArrayList<AndesSubscription>();
         Set<String> destinations = isTopic ? clusterTopicSubscriptionMap.keySet() : clusterQueueSubscriptionMap.keySet();
         for(String destination : destinations) {
-           allActiveSubscriptions.addAll(getActiveClusterSubscribersForDestination(destination,isTopic));
+           allActiveSubscriptions.addAll(getClusterSubscribersForDestination(destination, isTopic));
         }
         return allActiveSubscriptions;
     }
@@ -200,7 +203,8 @@ public class SubscriptionStore {
 
 
     public int numberOfSubscriptionsForDestinationAtNode(String destination, String nodeID) throws AndesException {
-        List<AndesSubscription> subscriptions = getActiveClusterSubscribersForDestination(destination, false);
+        List<AndesSubscription> subscriptions = getClusterSubscribersForDestination(destination,
+                                                                                    false);
         int count = 0;
         if (subscriptions != null && !subscriptions.isEmpty()) {
             for (AndesSubscription sub : subscriptions) {
@@ -281,8 +285,9 @@ public class SubscriptionStore {
      * @return number of subscriptions in cluster
      * @throws AndesException
      */
-    public int numberOfSubscriptionsInCluster(String destination, boolean isTopic) throws AndesException {
-        return getActiveClusterSubscribersForDestination(destination, isTopic).size();
+    public int numberOfSubscriptionsInCluster(String destination, boolean isTopic) throws
+                                                                                   AndesException {
+        return getClusterSubscribersForDestination(destination, isTopic).size();
     }
 
     /**
@@ -322,9 +327,11 @@ public class SubscriptionStore {
     public List<AndesSubscription> getActiveClusterSubscriptionList(String destination, boolean isTopic) {
         List<AndesSubscription> activeSubscriptions = new ArrayList<AndesSubscription>();
         List<AndesSubscription> allSubscriptions = getClusterSubscriptionList(destination, isTopic);
-        for(AndesSubscription sub : allSubscriptions) {
-            if(sub.hasExternalSubscriptions()) {
-               activeSubscriptions.add(sub);
+        if(null != allSubscriptions) {
+            for(AndesSubscription sub : allSubscriptions) {
+                if(sub.hasExternalSubscriptions()) {
+                    activeSubscriptions.add(sub);
+                }
             }
         }
         return activeSubscriptions;
@@ -354,7 +361,7 @@ public class SubscriptionStore {
      * @return  List if matching subscriptions
      * @throws AndesException
      */
-    public List<LocalSubscription> getListOfSubscriptionsBoundToQueue(String queueName) throws AndesException{
+    public List<LocalSubscription> getListOfLocalSubscriptionsBoundToQueue(String queueName) throws AndesException{
         List<LocalSubscription> subscriptionsOfQueue = new ArrayList<LocalSubscription>();
         Map<String, LocalSubscription> queueSubscriptionMap =  localQueueSubscriptionMap.get(queueName);
         if(queueSubscriptionMap != null) {
@@ -375,6 +382,34 @@ public class SubscriptionStore {
         return subscriptionsOfQueue;
     }
 
+
+    /**
+     * Get ALL (ACTIVE + INACTIVE) cluster subscriptions whose bound queue is given
+     * This might have topic subscriptions bound to the given queue as well
+     * @param queueName Queue name to search
+     * @return  List if matching subscriptions
+     * @throws AndesException
+     */
+    public List<AndesSubscription> getListOfClusterSubscriptionsBoundToQueue(String queueName) throws AndesException{
+        List<AndesSubscription> subscriptionsOfQueue = new ArrayList<AndesSubscription>();
+        List<AndesSubscription> queueSubscriptionList =  clusterQueueSubscriptionMap.get(queueName);
+        if(queueSubscriptionList != null) {
+            subscriptionsOfQueue.addAll(queueSubscriptionList);
+        }
+        Map<String, List<AndesSubscription>> topicSubscriptionMap  =  clusterTopicSubscriptionMap;
+        for(String destination : topicSubscriptionMap.keySet()) {
+            List<AndesSubscription> topicSubsOfDest = topicSubscriptionMap.get(destination);
+            if(topicSubsOfDest != null) {
+                for(AndesSubscription sub : topicSubsOfDest) {
+                    if(sub.getTargetQueue().equals(queueName)) {
+                        subscriptionsOfQueue.add(sub);
+                    }
+                }
+            }
+        }
+        return subscriptionsOfQueue;
+    }
+
     /**
      * get a List of node queues having subscriptions to the given destination queue
      *
@@ -382,7 +417,8 @@ public class SubscriptionStore {
      * @return list of node queue names
      */
     public Set<String> getNodesHavingSubscriptionsForQueue(String queueName) throws AndesException {
-        List<AndesSubscription> nodesHavingSubscriptions4Queue = getActiveClusterSubscribersForDestination(queueName, false);
+        List<AndesSubscription> nodesHavingSubscriptions4Queue = getClusterSubscribersForDestination(
+                queueName, false);
         HashSet<String> nodes = new HashSet<String>();
         for (AndesSubscription subscrption : nodesHavingSubscriptions4Queue) {
             nodes.add(subscrption.getSubscribedNode());
@@ -398,7 +434,8 @@ public class SubscriptionStore {
      * @throws AndesException
      */
     public Set<String> getNodesHavingSubscriptionsForTopic(String topicName) throws AndesException {
-        List<AndesSubscription> nodesHavingSubscriptions4Topic = getActiveClusterSubscribersForDestination(topicName, true);
+        List<AndesSubscription> nodesHavingSubscriptions4Topic = getClusterSubscribersForDestination(
+                topicName, true);
         HashSet<String> nodes = new HashSet<String>();
         for (AndesSubscription subscrption : nodesHavingSubscriptions4Topic) {
             nodes.add(subscrption.getSubscribedNode());
@@ -434,7 +471,8 @@ public class SubscriptionStore {
     public Map<String, Integer> getSubscriptionCountInformation(String destination, boolean isTopic) throws AndesException {
 
         Map<String, Integer> nodeSubscriptionCountMap = new HashMap<String, Integer>();
-        List<AndesSubscription> subscriptions = getActiveClusterSubscribersForDestination(destination, isTopic);
+        List<AndesSubscription> subscriptions = getClusterSubscribersForDestination(destination,
+                                                                                    isTopic);
         for (AndesSubscription sub : subscriptions) {
             Integer count = nodeSubscriptionCountMap.get(sub.getSubscribedNode());
             if (count == null) {
@@ -548,6 +586,8 @@ public class SubscriptionStore {
      * @throws AndesException
      */
     public synchronized void createDisconnectOrRemoveLocalSubscription(LocalSubscription subscription, SubscriptionChange type) throws AndesException {
+        Boolean allowSharedSubscribers =  AndesConfigurationManager.getInstance().readConfigurationValue
+                (AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
         //We need to handle durable topic subscriptions
         boolean hasDurableSubscriptionAlreadyInPlace = false;
         if (subscription.isBoundToTopic() && subscription.isDurable()) {
@@ -575,12 +615,20 @@ public class SubscriptionStore {
                 }
             }
 
-
             if (!hasDurableSubscriptionAlreadyInPlace && type == SubscriptionChange.DISCONNECTED) {
-                throw new AndesException("There is no active subscriber to close subscribed to " + subscription.getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
+                //when there are multiple subscribers possible with same clientID we keep only one
+                //topic subscription record for all of them. Thus when closing there can be no subscriber
+                //to close in multiple durable topic subscription case
+                if(!allowSharedSubscribers) {
+                    throw new AndesException("There is no active subscriber to close subscribed to " + subscription.
+                                             getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
+                }
             } else if (hasDurableSubscriptionAlreadyInPlace && type == SubscriptionChange.ADDED) {
-                //not permitted
-                //throw new AndesException("A subscription already exists for Durable subscriptions on " + subscription.getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
+                if(!allowSharedSubscribers) {
+                    //not permitted
+                    throw new AndesException("A subscription already exists for Durable subscriptions on " +
+                                             subscription.getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
+                }
             }
 
         }

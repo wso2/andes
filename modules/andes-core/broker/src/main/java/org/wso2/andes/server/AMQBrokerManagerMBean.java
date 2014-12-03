@@ -32,6 +32,7 @@ import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.server.logging.LogMessage;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.management.common.mbeans.ManagedBroker;
 import org.wso2.andes.management.common.mbeans.ManagedQueue;
@@ -292,10 +293,8 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
      * @throws JMException
      * @throws MBeanException
      */
-    public void deleteQueue(String queueName) throws JMException, MBeanException
+    public void deleteQueue(final String queueName) throws JMException, MBeanException
     {
-    	SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-
         AMQQueue queue = _queueRegistry.getQueue(new AMQShortString(queueName));
         if (queue == null)
         {
@@ -303,22 +302,41 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
         }
         try
         {
-            CurrentActor.set(new ManagementActor(_logActor.getRootMessageLogger()));
-            queue.delete();
-            if (queue.isDurable())
-            {
-                _durableConfig.removeQueue(queue);
-            }
+            boolean isQueueDeletable = ClusterResourceHolder.getInstance().
+                    getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queueName);
+            if(isQueueDeletable) {
+                CurrentActor.set(new ManagementActor(_logActor.getRootMessageLogger()));
+                queue.delete();
+                if (queue.isDurable())
+                {
+                    _durableConfig.removeQueue(queue);
+                }
 
-            //tell Andes kernel to remove queue
-            QpidAMQPBridge.getInstance().deleteQueue(queue);
+                //tell Andes kernel to remove queue
+                QpidAMQPBridge.getInstance().deleteQueue(queue);
+            } else {
+                _logActor.message( new LogMessage()
+                {
+                    String message = "Cannot Delete Queue" + queueName + " It Has Registered Subscriptions.";
+                    public String toString()
+                    {
+                        return message;
+                    }
+
+                    public String getLogHierarchy()
+                    {
+                        return "amqp.queue";
+                    }
+                });
+                throw new AMQException("Cannot Delete Queue" + queueName + " It Has Registered Subscriptions.");
+            }
         }
         catch (AMQException ex)
         {
             JMException jme = new JMException(ex.toString());
             if(ex.toString().contains("not a registered queue")) {
                 throw new MBeanException(jme, "The Queue " + queueName + " is not a registered queue.");
-            } else if (ex.toString().contains("Has Active Subscribers")) {
+            } else if (ex.toString().contains("Has Registered Subscriptions")) {
                 throw new MBeanException(jme, "Queue " +queueName +" has active subscribers. Please stop them first.");
             } else {
                 throw new MBeanException(jme, "Error in deleting queue " + queueName + ":");

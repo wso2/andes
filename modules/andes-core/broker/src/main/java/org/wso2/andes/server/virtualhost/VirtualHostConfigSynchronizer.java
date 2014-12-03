@@ -33,7 +33,6 @@ import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.AMQQueueFactory;
 import org.wso2.andes.server.store.ConfigurationRecoveryHandler;
-import org.wso2.andes.server.util.AndesConstants;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -126,6 +125,21 @@ public class VirtualHostConfigSynchronizer implements
         } catch (Exception e) {
             log.error("could not remove cluster queue", e);
             throw new AndesException("could not remove cluster queue : " + queue.toString(), e);
+        }
+    }
+
+    /**
+     * Check if queue is deletable
+     * @param queueName name of the queue
+     * @return possibility of deleting queue
+     * @throws AMQException
+     */
+    public boolean checkIfQueueDeletable(String queueName) throws AMQException{
+        try {
+            return AndesContextInformationManager.getInstance().checkIfQueueDeletable(queueName);
+        } catch (AndesException e) {
+            log.error("error while checking if queue is deletable", e);
+            throw new AMQException("error while checking if queue is deletable : " + queueName, e);
         }
     }
 

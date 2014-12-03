@@ -22,6 +22,7 @@ import org.wso2.andes.AMQUnknownExchangeType;
 import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.exchange.*;
 import org.wso2.andes.server.filter.FilterManager;
 import org.wso2.andes.server.filter.FilterManagerFactory;
@@ -1067,15 +1068,24 @@ public class ServerSessionDelegate extends SessionDelegate
                     
                     try
                     {
-                        queue.delete();
-                        if (queue.isDurable() && !queue.isAutoDelete())
-                        {
-                            DurableConfigurationStore store = virtualHost.getDurableConfigurationStore();
-                            store.removeQueue(queue);
 
-                            //tell Andes Kernel to remove queue
-                            QpidAMQPBridge.getInstance().deleteQueue(queue);
+                        boolean isQueueDeletable = ClusterResourceHolder.getInstance().
+                                getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queue.getName());
 
+                        if(isQueueDeletable) {
+                            queue.delete();
+                            if (queue.isDurable() && !queue.isAutoDelete())
+                            {
+                                DurableConfigurationStore store = virtualHost.getDurableConfigurationStore();
+                                store.removeQueue(queue);
+
+                                //tell Andes Kernel to remove queue
+                                QpidAMQPBridge.getInstance().deleteQueue(queue);
+
+                            }
+                        }  else {
+                            log.warn("Cannot Delete Queue" + queue.getName() + " It Has Registered Subscriptions.");
+                            throw new AMQException("Cannot Delete Queue" + queueName + " It Has Registered Subscriptions.");
                         }
                     }
                     catch (AMQException e)

@@ -538,7 +538,7 @@ public class MessagingEngine {
             //get all topic subscriptions in the cluster matching to routing key
             //including hierarchical topic case
             List<AndesSubscription> subscriptionList = subscriptionStore
-                    .getActiveClusterSubscribersForDestination(messageRoutingKey, true);
+                    .getClusterSubscribersForDestination(messageRoutingKey, true);
             boolean isMessageRouted = false;
             List<String> alreadyStoredQueueNames = new ArrayList<String>();
             for (AndesSubscription subscription : subscriptionList) {

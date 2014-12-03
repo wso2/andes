@@ -21,6 +21,8 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.AndesException;
@@ -404,10 +406,22 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
             throw new AMQSecurityException("Subscription to " + AndesConstants.DEAD_LETTER_QUEUE_NAME + " Queue is " +
                     "Not Allowed !, Please use a Different Alias");
         }
-        
+
+        Boolean sharedSubscribersAllowed;
+        try {
+            sharedSubscribersAllowed = AndesConfigurationManager.getInstance().readConfigurationValue
+                    (AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
+        } catch (AndesException e) {
+            _logger.error("Error while reading broker configuration" , e);
+            throw new RuntimeException(e);
+        }
         if (hasExclusiveSubscriber())
         {
-            if(!(this.checkIfBoundToTopicExchange() && this.isDurable())) {
+            if(sharedSubscribersAllowed) {
+                if(!(this.checkIfBoundToTopicExchange() && this.isDurable())) {
+                    throw new ExistingExclusiveSubscription();
+                }
+            } else {
                 throw new ExistingExclusiveSubscription();
             }
         }
@@ -416,7 +430,11 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
         {
             if (getConsumerCount() != 0)
             {
-                if(!(this.checkIfBoundToTopicExchange() && this.isDurable())) {
+                if(sharedSubscribersAllowed) {
+                    if(!(this.checkIfBoundToTopicExchange() && this.isDurable())) {
+                        throw new ExistingSubscriptionPreventsExclusive();
+                    }
+                }  else {
                     throw new ExistingSubscriptionPreventsExclusive();
                 }
             }

@@ -134,45 +134,50 @@ public class AndesContextInformationManager {
     }
 
     /**
+     * Check if queue is deletable
+     * @param queueName name of the queue
+     * @return possibility of deleting queue
+     * @throws AndesException
+     */
+    public boolean checkIfQueueDeletable(String queueName) throws AndesException {
+        boolean queueDeletable = false;
+        List<AndesSubscription> queueSubscriptions = subscriptionStore.getActiveClusterSubscriptionList(
+                queueName, false);
+        if(queueSubscriptions.isEmpty()) {
+            queueDeletable = true;
+        }
+        return queueDeletable;
+    }
+
+    /**
      * Delete the queue from broker. This will purge the queue and
      * delete cluster-wide
      * @param queueName  name of the queue
      * @throws AndesException
      */
     public void deleteQueue(String queueName) throws AndesException {
-        //check if there are active subscribers for the queue. It is enough
-        //to get queue subscribers as for durable topics we consider queue subscriptions
-        //hierarchical topic subscription case is also considered here
-        //if a subscription is inactive it is not considered
-        List<AndesSubscription> queueSubscriptions = subscriptionStore.getActiveClusterSubscribersForDestination(queueName,false);
-        if(queueSubscriptions.isEmpty()) {
-            //purge the queue cluster-wide
-            MessagingEngine.getInstance().purgeMessages(queueName, null, false);
-            //identify queue to delete
-            AndesQueue queueToDelete = null;
-            List<AndesQueue> queueList = AndesContext.getInstance().getAndesContextStore().getAllQueuesStored();
-            for(AndesQueue queue : queueList) {
-                if(queue.queueName.equals(queueName)) {
-                    queueToDelete = queue;
-                    break;
-                }
+        //purge the queue cluster-wide
+        MessagingEngine.getInstance().purgeMessages(queueName, null, false);
+        //identify queue to delete
+        AndesQueue queueToDelete = null;
+        List<AndesQueue> queueList = AndesContext.getInstance().getAndesContextStore()
+                                                 .getAllQueuesStored();
+        for (AndesQueue queue : queueList) {
+            if (queue.queueName.equals(queueName)) {
+                queueToDelete = queue;
+                break;
             }
-            //delete queue from context store
-            AndesContext.getInstance().getAndesContextStore().deleteQueueInformation(queueName);
-            AndesContext.getInstance().getAndesContextStore().removeMessageCounterForQueue(queueName);
-            //Notify cluster to delete queue
-            notifyQueueListeners(queueToDelete, QueueListener.QueueEvent.DELETED);
-
-            //delete all subscription entries if remaining (inactive entries)
-            ClusterResourceHolder.getInstance().getSubscriptionManager().deleteSubscriptionsOfBoundQueue(queueName);
-            log.info("DELETED queue " + queueName);
-
-        } else {
-            log.warn("Cannot Delete Queue " + queueName + " During Queue Delete or Unsubscribe," +
-                     " as It Has Active Subscribers. Please Stop Them First.");
-            throw new AndesException("Cannot Delete Queue " + queueName + " During Queue Delete or Unsubscribe," +
-                                     " as It Has Active Subscribers. Please Stop Them First.");
         }
+        //delete queue from context store
+        AndesContext.getInstance().getAndesContextStore().deleteQueueInformation(queueName);
+        AndesContext.getInstance().getAndesContextStore().removeMessageCounterForQueue(queueName);
+        //Notify cluster to delete queue
+        notifyQueueListeners(queueToDelete, QueueListener.QueueEvent.DELETED);
+
+        //delete all subscription entries if remaining (inactive entries)
+        ClusterResourceHolder.getInstance().getSubscriptionManager()
+                             .deleteAllLocalSubscriptionsOfBoundQueue(queueName);
+        log.info("DELETED queue " + queueName);
     }
 
     /**
