@@ -94,12 +94,12 @@ public class AndesKernelBoot {
     public static void recoverDistributedSlotMap() throws AndesException {
         // Slot recreation is required in the clustering mode
         if (AndesContext.getInstance().isClusteringEnabled()) {
-            log.info("Restoring slot mapping in the cluster.");
             HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
 
             try {
                 hazelcastAgent.acquireInitializationLock();
                 if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
+                    log.info("Restoring slot mapping in the cluster.");
 
                     List<AndesQueue> queueList = contextStore.getAllQueuesStored();
 
