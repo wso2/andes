@@ -191,7 +191,6 @@ public class SlotManager {
      */
     public void updateMessageID(String queueName, Long lastMessageIdInTheSlot) {
         boolean isMessageIdRangeOutdated = false;
-        String lockKey = queueName + SlotManager.class;
 
         TreeSet<Long> messageIdSet = slotIDMap.get(queueName);
         if (messageIdSet == null) {
@@ -199,6 +198,7 @@ public class SlotManager {
             slotIDMap.putIfAbsent(queueName, messageIdSet);
             messageIdSet = slotIDMap.get(queueName);
         }
+        String lockKey = queueName + SlotManager.class;
         synchronized (lockKey.intern()) {
             /**
              *Insert the messageID only if last processed ID of this queue is less than this
