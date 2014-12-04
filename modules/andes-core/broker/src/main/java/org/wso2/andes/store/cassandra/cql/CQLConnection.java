@@ -86,9 +86,6 @@ public class CQLConnection implements DurableStoreConnection {
                 cluster = InitialContext.doLookup(jndiLookupName);
             }
 
-            GenericCQLDAO.setCluster(cluster);
-            createKeySpace(Integer.parseInt(replicationFactor), strategyClass);
-
             //set consistency levels
             GenericCQLDAO.setReadConsistencyLevel(readConsistencyLevel);
             GenericCQLDAO.setWriteConsistencyLevel(writeConsistencyLevel);
