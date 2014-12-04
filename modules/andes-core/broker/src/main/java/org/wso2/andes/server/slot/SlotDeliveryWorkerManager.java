@@ -50,8 +50,8 @@ public class SlotDeliveryWorkerManager {
             ("SlotDeliveryWorkerExecutor-%d").build();
 
 
-    /*
-    number of slot delivery worker threads running inn one MB node
+    /**
+    Number of slot delivery worker threads running in one MB node
      */
     private Integer numberOfThreads;
 
