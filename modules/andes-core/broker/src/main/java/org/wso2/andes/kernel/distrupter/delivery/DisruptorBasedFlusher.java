@@ -62,7 +62,7 @@ public class DisruptorBasedFlusher {
 
         ContentCacheCreator[] contentReaders = new ContentCacheCreator[parallelContentReaders];
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < parallelContentReaders; i++) {
             contentReaders[i] = new ContentCacheCreator(i, parallelContentReaders);
         }
 
