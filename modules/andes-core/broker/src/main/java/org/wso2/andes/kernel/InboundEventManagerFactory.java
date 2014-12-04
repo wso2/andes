@@ -23,9 +23,8 @@ import org.wso2.andes.subscription.SubscriptionStore;
 
 public class InboundEventManagerFactory {
 
-    public static InboundEventManager createEventManager(SubscriptionStore subscriptionStore) {
+    public static InboundEventManager createEventManager(SubscriptionStore subscriptionStore) throws AndesException {
 
-//        Boolean isAsyncStoring = Boolean.parseBoolean(AndesContext.getInstance().getStoreConfiguration().getMessageStoreProperties().getProperty(StoreConfiguration.ASYNC_STORING));
         return new DisruptorBasedInboundEventManager(subscriptionStore);
     }
 

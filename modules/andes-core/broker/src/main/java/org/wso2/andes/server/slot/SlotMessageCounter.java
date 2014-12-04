@@ -114,9 +114,7 @@ public class SlotMessageCounter {
             String storageQueueName = message.getMetadata().getStorageQueueName();
             //If this is the first message to that queue
             Slot currentSlot;
-            synchronized (this) {
-                currentSlot = updateQueueToSlotMap(message.getMetadata());
-            }
+            currentSlot = updateQueueToSlotMap(message.getMetadata());
             if (currentSlot.getMessageCount() >= slotWindowSize) {
                 try {
                     submitSlot(storageQueueName);
@@ -132,12 +130,12 @@ public class SlotMessageCounter {
     }
 
     /**
-     * Update in-memory queue to slot map. This method is synchronized since many publishers can
-     * be access this thread simultaneously.
+     * Update in-memory queue to slot map. This method is is not synchronized. Single publisher should access this.
+     * Ideally through a disruptor event handler
      * @param metadata  Andes metadata whose ID needs to be reported to SlotManager
      * @return Current slot which this metadata belongs to
      */
-    private synchronized Slot updateQueueToSlotMap(AndesMessageMetadata metadata) {
+    private Slot updateQueueToSlotMap(AndesMessageMetadata metadata) {
         String storageQueueName = metadata.getStorageQueueName();
         Slot currentSlot = queueToSlotMap.get(storageQueueName);
         if (currentSlot == null) {

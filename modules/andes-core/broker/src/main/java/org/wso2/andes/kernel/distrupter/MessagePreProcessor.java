@@ -23,11 +23,14 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This event processor goes through the ring buffer first and update AndesMessage data event objects.
@@ -37,9 +40,11 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
 
     private static final Log log = LogFactory.getLog(MessagePreProcessor.class);
     private final SubscriptionStore subscriptionStore;
+    private final MessageIDGenerator idGenerator;
 
     public MessagePreProcessor(SubscriptionStore subscriptionStore) {
         this.subscriptionStore = subscriptionStore;
+        idGenerator = new MessageIDGenerator();
     }
 
     @Override
@@ -144,7 +149,7 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
      * @return Cloned reference of AndesMessage
      */
     private AndesMessage cloneAndesMessageMetadataAndContent(AndesMessage message) {
-        long newMessageId = MessagingEngine.getInstance().generateNewMessageId();
+        long newMessageId = idGenerator.getNextId();
         AndesMessageMetadata clonedMetadata = message.getMetadata().deepClone(newMessageId);
         AndesMessage clonedMessage = new AndesMessage(clonedMetadata);
 
@@ -164,11 +169,59 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
      * @param message messageID
      */
     private void setMessageID(AndesMessage message) {
-        long messageId = MessagingEngine.getInstance().generateNewMessageId();
+        long messageId = idGenerator.getNextId();
         message.getMetadata().setMessageID(messageId);
 
         for (AndesMessagePart messagePart: message.getContentChunkList()) {
             messagePart.setMessageID(messageId);
+        }
+    }
+
+    /**
+     * Generates IDs. This id generator cannot be used in a multi threaded environment. Removed any locking behaviour to
+     * improve id generation in single threaded approach
+     */
+    private static class MessageIDGenerator {
+
+        /** REFERENCE_START time set to 2011 */
+        private static final long REFERENCE_START = 41L * 365L * 24L * 60L * 60L * 10000L;
+        private int uniqueIdForNode;
+        private long lastTimestamp;
+        private long lastID;
+        private int offset;
+
+        MessageIDGenerator() {
+            uniqueIdForNode = 0;
+            lastTimestamp = 0;
+            lastID = 0;
+            int offset = 0;
+        }
+
+        /**
+         * Out of 64 bits for long, we will use the range as follows
+         * [1 sign bit][45bits for time spent from reference time in milliseconds][8bit node id][10 bit offset for ID falls within the same timestamp]
+         * This assumes there will not be more than 1024 hits within a given millisecond. Range is sufficient for 6029925857 years.
+         *
+         * @return Generated ID
+         */
+        public long getNextId() {
+
+            // id might change at runtime. Hence reading the value
+            uniqueIdForNode = ClusterResourceHolder.getInstance().getClusterManager().getUniqueIdForLocalNode();
+            long ts = System.currentTimeMillis();
+
+            if (ts == lastTimestamp) {
+                offset = offset + 1;
+            } else {
+                offset = 0;
+            }
+            lastTimestamp = ts;
+            long id = (ts - REFERENCE_START) * 256 * 1024 + uniqueIdForNode * 1024 + offset;
+            if (lastID == id) {
+                throw new RuntimeException("duplicate ids detected. This should never happen");
+            }
+            lastID = id;
+            return id;
         }
     }
 }

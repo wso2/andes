@@ -233,8 +233,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * For publishing at higher rates increasing the buffer size may give some advantage to keep messages in memory and
      * write.
      */
-    PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE("performanceTuning/inbound/bufferSize", "65536",
-            Integer.class),
+    PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE("performanceTuning/inbound/bufferSize", "65536", Integer.class),
 
     /**
      * Message delivery from server to the client will be paused temporarily if number of delivered but
