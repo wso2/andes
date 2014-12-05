@@ -218,7 +218,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Number of parallel delivery handlers used to send messages to subscribers. Increasing this value will speedup
      * the message sending mechanism. But the system load will increase.
      */
-    PERFORMANCE_TUNING_DELIVERY_PARALLEL_DELIVERY_HANDLERS("performanceTuning/delivery/parallelDeliveryHandlers", "10",
+    PERFORMANCE_TUNING_DELIVERY_PARALLEL_DELIVERY_HANDLERS("performanceTuning/delivery/parallelDeliveryHandlers", "5",
                                                          Integer.class),
 
     /**
