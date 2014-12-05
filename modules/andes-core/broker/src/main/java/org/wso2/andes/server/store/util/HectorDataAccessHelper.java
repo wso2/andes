@@ -50,6 +50,7 @@ import java.util.*;
  */
 public class HectorDataAccessHelper {
 
+    public static final int STANDARD_PAGE_SIZE = 1000;
     /**
      * Serializes used for Cassandra data operations
      */

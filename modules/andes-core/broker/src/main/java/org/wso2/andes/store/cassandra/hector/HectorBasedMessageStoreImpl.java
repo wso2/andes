@@ -370,14 +370,36 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
 
     /**
      * {@inheritDoc}
+     * Hector range query may return more records than limit size of STANDARD_PAGE_SIZE because slot hasn't a hard limit.
+     * In such case we need to get all metadata between firstMsgId and lastMsgID
      */
     @Override
     public List<AndesMessageMetadata> getMetaDataList(String queueName, long firstMsgId,
                                                       long lastMsgID) throws AndesException {
         try {
-            return HectorDataAccessHelper.getMessagesFromQueue
+            //Contains all metadata between firstMsgId and lastMsgID
+            List<AndesMessageMetadata> allMetadataList = new ArrayList<AndesMessageMetadata>();
+            //Get first set of metadata list between firstMsgId and lastMsgID
+            List<AndesMessageMetadata> metadataList = HectorDataAccessHelper.getMessagesFromQueue
                     (queueName, CassandraConstants.META_DATA_COLUMN_FAMILY, keyspace, firstMsgId,
-                            lastMsgID, 1000, true);
+                            lastMsgID, HectorDataAccessHelper.STANDARD_PAGE_SIZE, true);
+            allMetadataList.addAll(metadataList);
+            int metadataCount = metadataList.size();
+            //Check metadata list size equal to greater than to STANDARD_PAGE_SIZE to retry again
+            while (metadataCount >= HectorDataAccessHelper.STANDARD_PAGE_SIZE) {
+                //Get nextFirstMsgId
+                long nextFirstMsgId = metadataList.get(metadataCount - 1).getMessageID();
+                //Break retrying if all messages received
+                if(nextFirstMsgId == lastMsgID) {
+                    break;
+                }
+                metadataList = HectorDataAccessHelper.getMessagesFromQueue
+                        (queueName, CassandraConstants.META_DATA_COLUMN_FAMILY, keyspace, firstMsgId,
+                                lastMsgID, HectorDataAccessHelper.STANDARD_PAGE_SIZE, true);
+                allMetadataList.addAll(metadataList);
+                metadataCount = metadataList.size();
+            }
+            return allMetadataList;
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while reading meta data list for message IDs " +
                     "from " + firstMsgId + " to " + lastMsgID, e);
@@ -395,7 +417,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             return HectorDataAccessHelper
                     .getMessagesFromQueue(queueName,
                             CassandraConstants.META_DATA_COLUMN_FAMILY,
-                            keyspace, firstMsgId + 1, Long.MAX_VALUE,
+                            keyspace, firstMsgId, Long.MAX_VALUE,
                             Integer.MAX_VALUE, true);
 
         } catch (CassandraDataAccessException e) {
