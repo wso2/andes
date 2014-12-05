@@ -206,7 +206,7 @@ public class SlotManager {
              */
             Long lastAssignedMessageId = queueToLastAssignedIDMap.get(queueName);
             if (lastAssignedMessageId != null) {
-                if (lastMessageIdInTheSlot < lastAssignedMessageId) {
+                if (lastMessageIdInTheSlot <= lastAssignedMessageId) {
                     isMessageIdRangeOutdated = true;
                 }
             }
