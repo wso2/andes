@@ -230,16 +230,6 @@ public class MessagingEngine {
     }
 
     /**
-     * Ack received.
-     *
-     * @param ackData information on Ack
-     * @throws AndesException
-     */
-    public void ackReceived(AndesAckData ackData) throws AndesException {
-        messageStoreManager.ackReceived(ackData);
-    }
-
-    /**
      * Message is rejected
      *
      * @param metadata message that is rejected. It must bare id of channel reject came from
@@ -396,8 +386,7 @@ public class MessagingEngine {
         //remove metadata
         for (String storageQueueName : storageQueueSeparatedRemoveMessages.keySet()) {
             messageStore.deleteMessageMetadataFromQueue(storageQueueName,
-                    storageQueueSeparatedRemoveMessages
-                            .get(storageQueueName));
+                    storageQueueSeparatedRemoveMessages.get(storageQueueName));
         }
         //decrement message counts
         for(String destination: destinationSeparatedMsgCounts.keySet()) {

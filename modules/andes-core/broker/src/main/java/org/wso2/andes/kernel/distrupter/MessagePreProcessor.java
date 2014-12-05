@@ -24,13 +24,11 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This event processor goes through the ring buffer first and update AndesMessage data event objects.
@@ -51,7 +49,7 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
     public void onEvent(InboundEvent inboundEvent, long sequence, boolean endOfBatch ) throws Exception {
 
         if(InboundEvent.Type.MESSAGE_EVENT == inboundEvent.getEventType()) {
-            updateRoutingInformation(inboundEvent);
+            updateRoutingInformation(inboundEvent, sequence);
         }
     }
 
@@ -62,7 +60,7 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
      *
      * @param event InboundEvent containing the message list
      */
-    private void updateRoutingInformation(InboundEvent event) {
+    private void updateRoutingInformation(InboundEvent event, long sequence) {
 
         // NOTE: This is the MESSAGE_EVENT and this is the first processing event for this message published to ring
         // Therefore there should be exactly one message in the list.
@@ -75,7 +73,8 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
         setMessageID(message);
 
         if(log.isDebugEnabled()){
-            log.debug("Pre processing message. Message ID " + message.getMetadata().getMessageID());
+            log.debug("[ Sequence " + sequence + " ] Pre processing message. Message ID "
+                    + message.getMetadata().getMessageID());
         }
 
         if (message.getMetadata().isTopic()) {
@@ -184,7 +183,7 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
     private static class MessageIDGenerator {
 
         /** REFERENCE_START time set to 2011 */
-        private static final long REFERENCE_START = 41L * 365L * 24L * 60L * 60L * 10000L;
+        private static final long REFERENCE_START = 41L * 365L * 24L * 60L * 60L * 1000L;
         private int uniqueIdForNode;
         private long lastTimestamp;
         private long lastID;
@@ -194,7 +193,7 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
             uniqueIdForNode = 0;
             lastTimestamp = 0;
             lastID = 0;
-            int offset = 0;
+            offset = 0;
         }
 
         /**

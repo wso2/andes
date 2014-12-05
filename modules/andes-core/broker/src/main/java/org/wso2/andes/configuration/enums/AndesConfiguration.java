@@ -225,7 +225,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Number of parallel writers used to write content to message store. Increasing this value will speedup
      * the message receiving mechanism. But the load on the data store will increase.
      */
-    PERFORMANCE_TUNING_PARALLEL_CONTENT_WRITERS("performanceTuning/inbound/parallelContentWriters", "8",
+    PERFORMANCE_TUNING_PARALLEL_CONTENT_WRITERS("performanceTuning/inbound/parallelContentWriters", "2",
             Integer.class),
 
     /**
@@ -259,8 +259,13 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Number of parallel threads that will handle acknowledgement of a message receipt from a consumer.
      */
     PERFORMANCE_TUNING_ACK_HANDLING_WORKER_THREAD_COUNT
-            ("performanceTuning/ackHandling/workerThreadCount", "5", Integer.class),
+            ("performanceTuning/ackHandling/workerThreadCount", "50", Integer.class),
 
+    /**
+     * Ack handler count for disruptor based event handling.
+     */
+    PERFORMANCE_TUNING_ACK_HANDLER_COUNT("performanceTuning/ackHandling/handlerCount", "8",
+            Integer.class ),
     /**
      * Time interval after which the server will remove message content from the store in the background. If the
      * message rate is very high users can set this to a lower value.

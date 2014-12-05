@@ -154,7 +154,7 @@ public class DirectStoringManager extends BasicStoringManager implements Message
      */
     @Override
     public void ackReceived(List<AndesAckData> ackList) throws AndesException {
-        AckHandler.ackReceived(ackList);
+//        AckHandler.ackReceived(ackList);
     }
 
     /**

@@ -22,6 +22,7 @@ import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 
 import java.util.ArrayList;
@@ -47,6 +48,7 @@ public class ConcurrentMessageWriter implements EventHandler<InboundEvent> {
 
     @Override
     public void onEvent(InboundEvent inboundEvent, long sequence, boolean endOfBatch) throws Exception {
+
         if (InboundEvent.Type.MESSAGE_EVENT == inboundEvent.getEventType()) {
 
             long calculatedTurn = sequence % concurrentWritersCount;
@@ -63,13 +65,21 @@ public class ConcurrentMessageWriter implements EventHandler<InboundEvent> {
             }
         }
 
-        if (totalPendingItems > MAX_ITEM_COUNT || (endOfBatch)) {
+        if ((totalPendingItems > MAX_ITEM_COUNT) || (endOfBatch)) {
             // Write message part list to database
             if (messageList.size() > 0) {
                 if (log.isDebugEnabled()) {
                     log.debug("Number of message content sent to message store: " + messageList.size());
                 }
                 MessagingEngine.getInstance().messagesReceived(messageList);
+
+                if(log.isDebugEnabled()) {
+                    String msgs = "";
+                    for (AndesMessage message: messageList ) {
+                        msgs = msgs + message.getMetadata().getMessageID() + " , ";
+                    }
+                    log.debug("Messages WRITTEN: " + msgs);
+                }
                 messageList.clear();
             }
 

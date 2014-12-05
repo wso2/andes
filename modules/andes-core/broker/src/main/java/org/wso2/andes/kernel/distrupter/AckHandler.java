@@ -31,7 +31,7 @@ import org.wso2.andes.server.stats.PerformanceCounter;
 public class AckHandler implements EventHandler<InboundEvent> {
 
     private static Log log = LogFactory.getLog(AckHandler.class);
-    private int maxAckCount = 100;
+    private int maxAckCount = 50;
     private final List<AndesAckData> ackList;
     private int writerCount;
     private long turn;
@@ -46,29 +46,36 @@ public class AckHandler implements EventHandler<InboundEvent> {
     public void onEvent(final InboundEvent event, final long sequence, final boolean endOfBatch) throws Exception {
 
         if (InboundEvent.Type.ACKNOWLEDGEMENT_EVENT == event.getEventType()) {
-            // if the turn to process an ack add it to process batch
+
+                // if the turn to process an ack add it to process batch
             long calculatedTurn = sequence % writerCount;
             if (calculatedTurn == turn) {
-                AndesAckData ackData = (AndesAckData) event.getData();
-                ackList.add(ackData);
-                if (log.isDebugEnabled()) {
-                    log.debug("[ sequence " + sequence + " ] Ack for message id " + ackData.getMessageID() + " added " +
-                            "to ack processing batch.");
+                try {
+                    AndesAckData ackData = (AndesAckData) event.getData();
+                    ackList.add(ackData);
+                    if (log.isDebugEnabled()) {
+                        log.debug("[ sequence " + sequence + " ] Ack for message id " + ackData.getMessageID() + " added " +
+                                "to ack processing batch.");
+                    }
+                } finally {
+                    event.clear();
                 }
             }
+
+
         }
 
         // Irrespective of the event (ACKNOWLEDGEMENT_EVENT) this should execute. endOfBatch might come in any event.
-        if (endOfBatch || ackList.size() > maxAckCount) {
+        if (endOfBatch || (ackList.size() > maxAckCount)) {
             ackReceived(ackList);
             if (log.isDebugEnabled() && (ackList.size() > 0)) {
-                log.debug(ackList.size() + " Acknowledgments processed.");
+                log.debug(ackList.size() + " Acknowledgements processed.");
             }
             ackList.clear();
         }
     }
 
-    public static void ackReceived(List<AndesAckData> ackList) throws AndesException {
+    public void ackReceived(List<AndesAckData> ackList) throws AndesException {
         List<AndesRemovableMetadata> removableMetadata = new ArrayList<AndesRemovableMetadata>();
         for (AndesAckData ack : ackList) {
             // For topics message is shared. If all acknowledgements are received only we should remove message

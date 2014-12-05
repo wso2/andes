@@ -37,12 +37,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
 
     private static Log log = LogFactory.getLog(StateEventHandler.class);
 
-    private List<AndesMessage> messageList;
-    private int maxBatchSize;
-
     public StateEventHandler() {
-        maxBatchSize = 50;
-        messageList = new ArrayList<AndesMessage>(maxBatchSize);
     }
 
     @Override
@@ -87,7 +82,9 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
                     break;
             }
         } finally {
-            event.clear();
+            if(InboundEvent.Type.ACKNOWLEDGEMENT_EVENT != event.getEventType()) {
+                event.clear();
+            }
         }
     }
 
@@ -98,12 +95,14 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      * @throws AndesException
      */
     private void batchAndUpdateOnMetaDataEvent(InboundEvent event, boolean endOfBatch) throws AndesException {
-        messageList.addAll(event.messageList);
-
-        if (endOfBatch || messageList.size() > maxBatchSize) {
-            updateSlotsAndQueueCounts(messageList);
-            messageList.clear();
+        if(log.isDebugEnabled()) {
+            String msgs = "";
+            for (AndesMessage message : event.messageList) {
+                msgs = msgs + message.getMetadata().getMessageID() + " , ";
+            }
+            log.debug("Added to Message List: " + msgs);
         }
+        updateSlotsAndQueueCounts(event.messageList);
     }
 
     /**
@@ -111,13 +110,20 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      * @param messageList AndesMessage List
      * @throws AndesException
      */
-    public static void updateSlotsAndQueueCounts(List<AndesMessage> messageList)
+    public void updateSlotsAndQueueCounts(List<AndesMessage> messageList)
             throws AndesException {
 
         // update last message ID in slot message counter. When the slot is filled the last message
         // ID of the slot will be submitted to the slot manager by SlotMessageCounter
         if (AndesContext.getInstance().isClusteringEnabled()) {
             SlotMessageCounter.getInstance().recordMetaDataCountInSlot(messageList);
+        }
+        if(log.isDebugEnabled()) {
+            String msgs = "";
+            for (AndesMessage message : messageList) {
+                msgs = msgs + message.getMetadata().getMessageID() + " , ";
+            }
+            log.debug("Messages STATE UPDATED: " + msgs);
         }
 
         Map<String, Integer> destinationSeparatedMetadataCount = new HashMap<String, Integer>();
@@ -145,7 +151,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      * Handle client connection open event state change
      * @param channelID channel ID of the opened channel
      */
-    public static void clientConnectionOpened(UUID channelID) {
+    public void clientConnectionOpened(UUID channelID) {
         OnflightMessageTracker.getInstance().addNewChannelForTracking(channelID);
     }
 
@@ -153,7 +159,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      * Handle event for closing connection
      * @param channelID channel ID of the closing connection
      */
-    public static void clientConnectionClosed(UUID channelID) {
+    public void clientConnectionClosed(UUID channelID) {
         OnflightMessageTracker.getInstance().releaseAllMessagesOfChannelFromTracking(channelID);
     }
 
@@ -161,7 +167,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      * Handle new local subscription creation event. Update the internal state of Andes
      * @param localSubscription LocalSubscription
      */
-    public static void openLocalSubscription(LocalSubscription localSubscription) {
+    public void openLocalSubscription(LocalSubscription localSubscription) {
         AndesSubscriptionManager subscriptionManager = ClusterResourceHolder.getInstance().getSubscriptionManager();
         try {
             subscriptionManager.addSubscription(localSubscription);
@@ -175,7 +181,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      * Handle closing of local subscription event. Update the internal state of Andes
      * @param localSubscription LocalSubscription
      */
-    public static void closeLocalSubscription(LocalSubscription localSubscription) {
+    public void closeLocalSubscription(LocalSubscription localSubscription) {
         AndesSubscriptionManager subscriptionManager = ClusterResourceHolder.getInstance().getSubscriptionManager();
         try {
             subscriptionManager.closeLocalSubscription(localSubscription);
@@ -188,21 +194,21 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
     /**
      * Start message delivery threads in Andes
      */
-    public static void startMessageDelivery() {
+    public void startMessageDelivery() {
         MessagingEngine.getInstance().startMessageDelivery();
     }
 
     /**
      * Stop message delivery threads in Andes
      */
-    public static void stopMessageDelivery() {
+    public void stopMessageDelivery() {
         MessagingEngine.getInstance().stopMessageDelivery();
     }
 
     /**
      * Handle event of start message expiration worker
      */
-    public static void startMessageExpirationWorker() {
+    public void startMessageExpirationWorker() {
         try {
             MessagingEngine.getInstance().startMessageExpirationWorker();
         } catch (AndesException e) {
@@ -214,14 +220,14 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
     /**
      * Handle stopping message expiration worker
      */
-    public static void stopMessageExpirationWorker() {
+    public void stopMessageExpirationWorker() {
         MessagingEngine.getInstance().stopMessageExpirationWorker();
     }
 
     /**
      * Handle event of shutting down MessagingEngine
      */
-    public static void shutdownMessagingEngine() {
+    public void shutdownMessagingEngine() {
         try {
             MessagingEngine.getInstance().close();
         } catch (InterruptedException e) {

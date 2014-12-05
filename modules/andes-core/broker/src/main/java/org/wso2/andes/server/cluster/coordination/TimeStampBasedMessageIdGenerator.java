@@ -46,7 +46,7 @@ public class TimeStampBasedMessageIdGenerator implements MessageIdGenerator {
     /** If two instances for the same time stamp comes add offset values to differentiate them */
     private AtomicInteger offset = new AtomicInteger();
 
-    private static final long REFERENCE_START = 41L * 365L * 24L * 60L * 60L * 10000L; //this is 2011
+    private static final long REFERENCE_START = 41L * 365L * 24L * 60L * 60L * 1000L; //this is 2011
 
     /**
      * Out of 64 bits for long, we will use the range as follows

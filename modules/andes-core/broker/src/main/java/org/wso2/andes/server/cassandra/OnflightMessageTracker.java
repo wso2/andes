@@ -746,7 +746,7 @@ public class OnflightMessageTracker {
         // NOTE channelID should be in map. ChannelID added to map at channel creation
         int msgCount = unAckedMsgCountMap.get(chanelID).decrementAndGet();
         if (log.isDebugEnabled()) {
-            log.debug("message sent channel= " + this + " pending Count" + msgCount);
+            log.debug("Decrement non acked message count. Channel " + chanelID + " pending Count " + msgCount);
         }
     }
 
@@ -761,7 +761,7 @@ public class OnflightMessageTracker {
         // NOTE channelID should be in map. ChannelID added to map at channel creation
         int intCount = unAckedMsgCountMap.get(channelID).incrementAndGet();
         if (log.isDebugEnabled()) {
-            log.debug("ack received channel= " + this + " pending Count" + intCount);
+            log.debug("Increment acked message count. Channel " + channelID + " pending Count " + intCount);
         }
     }
 
