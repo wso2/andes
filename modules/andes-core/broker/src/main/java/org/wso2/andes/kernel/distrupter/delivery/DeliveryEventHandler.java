@@ -41,6 +41,21 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
     private static final Logger log = Logger.getLogger(DeliveryEventHandler.class);
 
     /**
+     * Used to identify the subscribers that need to be processed by this handler
+     */
+    private final long ordinal;
+
+    /**
+     * Total number of DeliveryEventHandler
+     */
+    private final long numberOfConsumers;
+
+    public DeliveryEventHandler(long ordinal, long numberOfHandlers) {
+        this.ordinal = ordinal;
+        this.numberOfConsumers = numberOfHandlers;
+    }
+
+    /**
      * Send message to subscriber
      *
      * @param deliveryEventData
@@ -54,25 +69,29 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
     @Override
     public void onEvent(DeliveryEventData deliveryEventData, long sequence, boolean endOfBatch) throws Exception {
         LocalSubscription subscription = deliveryEventData.getLocalSubscription();
-        AndesMessageMetadata message = deliveryEventData.getMetadata();
 
-        try {
-            if (deliveryEventData.isErrorOccurred()) {
+        // Filter tasks assigned to this handler
+        if ((subscription.getChannelID().hashCode() % numberOfConsumers) == ordinal) {
+            AndesMessageMetadata message = deliveryEventData.getMetadata();
+
+            try {
+                if (deliveryEventData.isErrorOccurred()) {
+                    handleSendError(message);
+                    return;
+                }
+
+                if (subscription.isActive()) {
+                    subscription.sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
+                } else {
+                    MessageFlusher.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
+                }
+            } catch (Throwable e) {
+                log.error("Error while delivering message. Moving to Dead Letter Queue.", e);
                 handleSendError(message);
-                return;
+            } finally {
+                OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message.getMessageID());
+                deliveryEventData.clearData();
             }
-
-            if (subscription.isActive()) {
-                subscription.sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
-            } else {
-                MessageFlusher.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
-            }
-        } catch (Throwable e) {
-            log.error("Error while delivering message. Moving to Dead Letter Queue.", e);
-            handleSendError(message);
-        } finally {
-            OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message.getMessageID());
-            deliveryEventData.clearData();
         }
     }
 
