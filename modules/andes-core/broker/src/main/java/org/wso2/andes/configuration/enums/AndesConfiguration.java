@@ -18,7 +18,6 @@
 
 package org.wso2.andes.configuration.enums;
 
-import org.apache.xpath.operations.Bool;
 import org.wso2.andes.configuration.util.ConfigurationProperty;
 import org.wso2.andes.configuration.util.ImmutableMetaProperties;
 import org.wso2.andes.configuration.util.MetaProperties;
@@ -214,6 +213,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     PERFORMANCE_TUNING_DELIVERY_PARALLEL_CONTENT_READERS("performanceTuning/delivery/parallelContentReaders", "5",
                                                          Integer.class),
+
+    /**
+     * Number of parallel delivery handlers used to send messages to subscribers. Increasing this value will speedup
+     * the message sending mechanism. But the system load will increase.
+     */
+    PERFORMANCE_TUNING_DELIVERY_PARALLEL_DELIVERY_HANDLERS("performanceTuning/delivery/parallelDeliveryHandlers", "10",
+                                                         Integer.class),
+
     /**
      * Message delivery from server to the client will be paused temporarily if number of delivered but
      * unacknowledged message count reaches this size. Should be set considering message consume rate.

@@ -18,6 +18,7 @@
 
 package org.wso2.andes.kernel.distrupter.delivery;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.MultiThreadedClaimStrategy;
 import com.lmax.disruptor.RingBuffer;
@@ -30,6 +31,7 @@ import org.wso2.andes.kernel.LocalSubscription;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 /**
  * Disruptor based message flusher. This use a ring buffer to deliver message to subscribers
@@ -51,8 +53,11 @@ public class DisruptorBasedFlusher {
                 AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_RING_BUFFER_SIZE);
         Integer parallelContentReaders = AndesConfigurationManager.getInstance().readConfigurationValue(
                 AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_PARALLEL_CONTENT_READERS);
+        Integer parallelDeliveryHandlers = AndesConfigurationManager.getInstance().readConfigurationValue(
+                AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_PARALLEL_DELIVERY_HANDLERS);
 
-        Executor threadPool = Executors.newCachedThreadPool();
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("DisruptorBasedFlusher-%d").build();
+        Executor threadPool = Executors.newCachedThreadPool(namedThreadFactory);
 
         disruptor = new Disruptor<DeliveryEventData>(new DeliveryEventData.DeliveryEventDataFactory(), threadPool,
                                                      new MultiThreadedClaimStrategy(ringBufferSize),
@@ -60,13 +65,19 @@ public class DisruptorBasedFlusher {
 
         disruptor.handleExceptionsWith(new DeliveryExceptionHandler());
 
+        // Initialize content readers
         ContentCacheCreator[] contentReaders = new ContentCacheCreator[parallelContentReaders];
-
         for (int i = 0; i < parallelContentReaders; i++) {
             contentReaders[i] = new ContentCacheCreator(i, parallelContentReaders);
         }
 
-        disruptor.handleEventsWith(contentReaders).then(new DeliveryEventHandler());
+        // Initialize delivery handlers
+        DeliveryEventHandler[] deliveryEventHandlers = new DeliveryEventHandler[parallelDeliveryHandlers];
+        for (int i = 0; i < parallelDeliveryHandlers; i++) {
+            deliveryEventHandlers[i] = new DeliveryEventHandler(i, parallelDeliveryHandlers);
+        }
+
+        disruptor.handleEventsWith(contentReaders).then(deliveryEventHandlers);
 
         disruptor.start();
         ringBuffer = disruptor.getRingBuffer();
