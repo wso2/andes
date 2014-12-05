@@ -394,7 +394,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                     break;
                 }
                 metadataList = HectorDataAccessHelper.getMessagesFromQueue
-                        (queueName, CassandraConstants.META_DATA_COLUMN_FAMILY, keyspace, firstMsgId,
+                        (queueName, CassandraConstants.META_DATA_COLUMN_FAMILY, keyspace, nextFirstMsgId,
                                 lastMsgID, HectorDataAccessHelper.STANDARD_PAGE_SIZE, true);
                 allMetadataList.addAll(metadataList);
                 metadataCount = metadataList.size();
