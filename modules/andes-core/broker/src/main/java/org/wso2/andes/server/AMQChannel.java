@@ -1603,7 +1603,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     }
 
     public <T extends StorableMessageMetaData> StoredMessage<T> addAMQPMessage(T metaData){
-        long mid = MessagingEngine.getInstance().generateNewMessageId();
+        long mid = 0; // Message IDs will be given By Andes
         if (_logger.isDebugEnabled()) {
             _logger.debug("MessageID generated:" + mid);
         }

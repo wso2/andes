@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+@Deprecated
 public class ExecutorBasedStoringManager extends BasicStoringManager implements MessageStoreManager {
 
     private static Log log = LogFactory.getLog(ExecutorBasedStoringManager.class);

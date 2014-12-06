@@ -361,8 +361,7 @@ public class MessagingEngine {
             List<AndesRemovableMetadata> messages = storageQueueSeparatedRemoveMessages
                     .get(message.getStorageDestination());
             if (messages == null) {
-                messages = new ArrayList
-                        <AndesRemovableMetadata>();
+                messages = new ArrayList<AndesRemovableMetadata>();
             }
             messages.add(message);
             storageQueueSeparatedRemoveMessages.put(message.getStorageDestination(), messages);
@@ -378,8 +377,7 @@ public class MessagingEngine {
             //if to move, move to DLC. This is costy. Involves per message read and writes
             if (moveToDeadLetterChannel) {
                 AndesMessageMetadata metadata = messageStore.getMetaData(message.getMessageID());
-                messageStore
-                        .addMetaDataToQueue(AndesConstants.DEAD_LETTER_QUEUE_NAME, metadata);
+                messageStore.addMetaDataToQueue(AndesConstants.DEAD_LETTER_QUEUE_NAME, metadata);
             }
         }
 
@@ -599,14 +597,14 @@ public class MessagingEngine {
      * Start message delivery. Start threads. If not created create.
      */
     public void startMessageDelivery() {
-        log.info("Starting SlotDelivery Workers...");
+        log.info("Starting SlotDelivery Workers.");
         //Start all slotDeliveryWorkers
         SlotDeliveryWorkerManager.getInstance().startAllSlotDeliveryWorkers();
         //Start thrift reconnecting thread if started
         if (MBThriftClient.isReconnectingStarted()) {
             MBThriftClient.setReconnectingFlag(true);
         }
-        log.info("Start Disruptor writing messages to store...");
+        log.info("Start Disruptor writing messages to store.");
     }
 
     /**
@@ -614,14 +612,14 @@ public class MessagingEngine {
      */
     public void stopMessageDelivery() {
 
-        log.info("Stopping SlotDelivery Worker...");
+        log.info("Stopping SlotDelivery Worker.");
         //Stop all slotDeliveryWorkers
         SlotDeliveryWorkerManager.getInstance().stopSlotDeliveryWorkers();
         //Stop thrift reconnecting thread if started
         if (MBThriftClient.isReconnectingStarted()) {
             MBThriftClient.setReconnectingFlag(false);
         }
-        log.info("Stopping Disruptor writing messages to store...");
+        log.info("Stopping Disruptor writing messages to store.");
     }
 
     public void close() throws InterruptedException {
@@ -663,12 +661,11 @@ public class MessagingEngine {
      */
     public void stopMessageExpirationWorker() {
 
-        MessageExpirationWorker mew = ClusterResourceHolder.getInstance()
+        MessageExpirationWorker messageExpirationWorker = ClusterResourceHolder.getInstance()
                 .getMessageExpirationWorker();
 
-        if (mew != null && mew.isWorking()) {
-            mew.stopWorking();
+        if (messageExpirationWorker != null && messageExpirationWorker.isWorking()) {
+            messageExpirationWorker.stopWorking();
         }
-
     }
 }

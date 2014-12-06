@@ -78,7 +78,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
             processors[turn] = new ConcurrentBatchProcessor(
                     disruptor.getRingBuffer(),
                     barrier,
-                    new ConcurrentMessageWriter(),
+                    new messageWriter(),
                     turn,
                     writeHandlerCount,
                     writerBatchSize,
@@ -167,7 +167,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
     }
 
     @Override
-    public void purgeQueue(String destinationQueue, String ownerName) throws AndesException {
+    public void purgeQueue(String destinationQueue, String ownerName, boolean isTopic) throws AndesException {
     }
 
     @Override

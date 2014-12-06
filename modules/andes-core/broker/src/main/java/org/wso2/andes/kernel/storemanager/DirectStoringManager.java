@@ -37,6 +37,7 @@ import java.util.*;
 /**
  * This DurableDirectStoringManager stores messages directly to the message store
  */
+@Deprecated
 public class DirectStoringManager extends BasicStoringManager implements MessageStoreManager{
 
     private static Log log = LogFactory.getLog(DirectStoringManager.class);
@@ -76,34 +77,8 @@ public class DirectStoringManager extends BasicStoringManager implements Message
     public void storeMetaData(List<AndesMessageMetadata> messageMetadata) throws AndesException {
         long start = System.currentTimeMillis();
         messageStore.addMetaData(messageMetadata);
-
-        // update last message ID in slot message counter. When the slot is filled the last message
-        // ID of the slot will be submitted to the slot manager by SlotMessageCounter
-//        if (AndesContext.getInstance().isClusteringEnabled()) {
-//            SlotMessageCounter.getInstance().recordMetaDataCountInSlot(messageMetadata);
-//        }
         PerformanceCounter.warnIfTookMoreTime("Store Metadata", start, 200);
-//        Map<String, Integer> destinationSeparatedMetadataCount = new HashMap<String,
-//                Integer>();
-//        for (AndesMessageMetadata message : messageMetadata) {
-//            //separate metadata queue-wise
-//            Integer msgCount = destinationSeparatedMetadataCount
-//                    .get(message.getDestination());
-//            if (msgCount == null) {
-//                msgCount =0;
-//            }
-//            msgCount = msgCount + 1;
-//            destinationSeparatedMetadataCount.put(message.getDestination(), msgCount);
-//
-//            //record the successfully written message count
-//            if(log.isDebugEnabled()) {
-//                PerformanceCounter.recordIncomingMessageWrittenToStore();
-//            }
-//        }
-//        //increment message count for queues
-//        for(String queue : destinationSeparatedMetadataCount.keySet()) {
-//            incrementQueueCount(queue, destinationSeparatedMetadataCount.get(queue));
-//        }
+
     }
 
     /**

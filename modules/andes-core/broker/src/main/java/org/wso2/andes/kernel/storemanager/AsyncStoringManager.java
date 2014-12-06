@@ -45,6 +45,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * This message store manager stores messages through disruptor with batching (async storing)
  */
+@Deprecated
 public class AsyncStoringManager extends BasicStoringManager implements MessageStoreManager {
 
     private static Log log = LogFactory.getLog(AsyncStoringManager.class);

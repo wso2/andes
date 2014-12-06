@@ -26,12 +26,15 @@ import org.wso2.andes.kernel.MessagingEngine;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ConcurrentMessageWriter implements BatchEventHandler {
+/**
+ * Writes messages in Disruptor ring buffer to message store in batches.
+ */
+public class messageWriter implements BatchEventHandler {
 
-    private static Log log = LogFactory.getLog(ConcurrentMessageWriter.class);
+    private static Log log = LogFactory.getLog(messageWriter.class);
     private final List<AndesMessage> messageList;
 
-    public ConcurrentMessageWriter() {
+    public messageWriter() {
         messageList = new ArrayList<AndesMessage>();
     }
 
@@ -40,6 +43,7 @@ public class ConcurrentMessageWriter implements BatchEventHandler {
 
         messageList.clear();
 
+        // For topics there may be multiple messages in one event.
         for (InboundEvent event : eventList) {
             messageList.addAll(event.messageList);
         }

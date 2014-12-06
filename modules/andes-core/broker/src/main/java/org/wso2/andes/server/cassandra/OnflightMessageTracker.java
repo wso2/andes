@@ -761,7 +761,7 @@ public class OnflightMessageTracker {
         // NOTE channelID should be in map. ChannelID added to map at channel creation
         int intCount = unAckedMsgCountMap.get(channelID).incrementAndGet();
         if (log.isDebugEnabled()) {
-            log.debug("Increment acked message count. Channel " + channelID + " pending Count " + intCount);
+            log.debug("Increment non acked message count. Channel " + channelID + " pending Count " + intCount);
         }
     }
 

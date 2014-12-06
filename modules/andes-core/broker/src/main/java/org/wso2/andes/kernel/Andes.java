@@ -82,7 +82,7 @@ public class Andes {
     }
 
     /**
-     * Connection Client to client is closed
+     * Connection Client to client is closed.
      *
      * @param channelID id of the closed connection
      */
@@ -114,7 +114,8 @@ public class Andes {
     }
 
     /**
-     * Start delivery workers. For message delivery.
+     * Notify client connection is closed from protocol level
+     * State related to connection will be updated within Andes
      * @throws Exception
      */
     public void startMessageDelivery() throws Exception {
@@ -139,9 +140,8 @@ public class Andes {
     /**
      * Start message expiration task. This will periodically delete any expired messages
      * NOTE: This is package specific. We don't need access outside from kernel for this task
-     * @throws AndesException
      */
-    void startMessageExpirationWorker() throws AndesException {
+    void startMessageExpirationWorker() {
         inboundEventManager.startMessageExpirationWorker();
     }
 
@@ -238,8 +238,7 @@ public class Andes {
     }
 
     /**
-     * Move the messages meta data in the given message to the Dead Letter Channel and
-     * remove those meta data from the original queue.
+     * Move the messages meta data in the given message to the Dead Letter Channel.
      *
      * @param messageId            The message Id to be removed
      * @param destinationQueueName The original destination queue of the message

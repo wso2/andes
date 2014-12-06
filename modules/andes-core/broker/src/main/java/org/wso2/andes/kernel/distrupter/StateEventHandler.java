@@ -193,7 +193,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
             subscriptionManager.addSubscription(localSubscription);
         } catch (AndesException e) {
             log.error("Error occurred while opening local subscription. Subscription id "
-                    + localSubscription.getSubscriptionID());
+                    + localSubscription.getSubscriptionID(), e);
         }
     }
 
@@ -208,7 +208,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
             subscriptionManager.closeLocalSubscription(localSubscription);
         } catch (AndesException e) {
             log.error("Error occurred while closing subscription. Subscription id "
-                    + localSubscription.getSubscriptionID());
+                    + localSubscription.getSubscriptionID(), e);
         }
     }
 
