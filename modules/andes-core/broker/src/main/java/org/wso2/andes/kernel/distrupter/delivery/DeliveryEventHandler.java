@@ -69,9 +69,12 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
     @Override
     public void onEvent(DeliveryEventData deliveryEventData, long sequence, boolean endOfBatch) throws Exception {
         LocalSubscription subscription = deliveryEventData.getLocalSubscription();
+        
+        // Taking the absolute value since hashCode can be a negative value
+        long channelModulus = Math.abs(subscription.getChannelID().hashCode() % numberOfConsumers);
 
         // Filter tasks assigned to this handler
-        if ((Math.abs(subscription.getChannelID().hashCode() % numberOfConsumers)) == ordinal) {
+        if (channelModulus == ordinal) {
             AndesMessageMetadata message = deliveryEventData.getMetadata();
 
             try {
