@@ -106,7 +106,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
     public MQTTLocalSubscription(String mqttTopicSubscription) {
         super(mqttTopicSubscription);
         //setTargetBoundExchange();
-        setIsTopic();
+        setIsTopic(true);
         setNodeInfo();
         setIsActive(true);
     }
@@ -149,8 +149,8 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
      * In MQTT all the messages will be exchanged through topics
      * So will overide the is bound to always have the value true
      */
-    public void setIsTopic() {
-        this.isBoundToTopic = true;
+    public void setIsTopic(boolean isTopic) {
+        this.isBoundToTopic = isTopic;
     }
 
     /**
@@ -184,8 +184,8 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
                         messageMetadata.getMessageID());
                 try {
                     mqqtServerChannel.distributeMessageToSubscriber(
-                        this.getStorageQueueName(), message, messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
-                        messageMetadata.isPersistent(), getMqttSubscriptionID(), getSubscriberQOS());
+                            this.getStorageQueueName(), message, messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
+                            messageMetadata.isPersistent(), getMqttSubscriptionID(), getSubscriberQOS());
                 } catch (MQTTException ex) {
                     //We need to decrement the tracker count
                     OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(channelID);

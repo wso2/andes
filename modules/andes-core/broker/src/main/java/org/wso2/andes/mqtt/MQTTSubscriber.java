@@ -53,7 +53,6 @@ public class MQTTSubscriber {
     //Will log the events
     private static Log log = LogFactory.getLog(MQTTSubscriber.class);
 
-
     /**
      * Will add the details of the message that will be delivered among the subscriptions
      *
@@ -80,8 +79,8 @@ public class MQTTSubscriber {
      * @return the cluster specific message if of the message which received the ack
      */
     public long ackReceived(int localMessageID) {
-        long custerID = clusterMessageToLocalMessage.remove(localMessageID);
-        return custerID;
+        return clusterMessageToLocalMessage.remove(localMessageID);
+
     }
 
     /**
@@ -91,6 +90,10 @@ public class MQTTSubscriber {
      */
     public UUID getSubscriptionChannel() {
         return subscriptionChannel;
+    }
+
+    public boolean isCleanSession() {
+        return isCleanSession;
     }
 
     /**
