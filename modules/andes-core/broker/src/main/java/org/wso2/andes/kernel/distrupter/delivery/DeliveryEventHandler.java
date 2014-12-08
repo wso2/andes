@@ -71,7 +71,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
         LocalSubscription subscription = deliveryEventData.getLocalSubscription();
 
         // Filter tasks assigned to this handler
-        if ((subscription.getChannelID().hashCode() % numberOfConsumers) == ordinal) {
+        if ((Math.abs(subscription.getChannelID().hashCode() % numberOfConsumers)) == ordinal) {
             AndesMessageMetadata message = deliveryEventData.getMetadata();
 
             try {
