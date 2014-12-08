@@ -28,14 +28,13 @@ import org.wso2.andes.server.message.MessageMetaData;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
-import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.UUID;
 
-public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
+public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
 
     /**
@@ -60,7 +59,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
     long arrivalTime;
 
     /**
-     *through which connection this message came into broker
+     * through which connection this message came into broker
      * or rejected to the broker
      */
     UUID channelId;
@@ -89,29 +88,30 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
     private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
 
     /**
-     *Added for MQTT usage
+     * Added for MQTT usage
      */
     private int messageContentLength;
     private int qosLevel;
 
     /**
-     *slotID which this metadata belongs
+     * slotID which this metadata belongs
      */
     private Slot slot;
 
-    public AndesMessageMetadata(){}
+    public AndesMessageMetadata() {
+    }
 
     public AndesMessageMetadata(long messageID, byte[] metadata, boolean parse) {
-		super();
-		this.messageID = messageID;
-		this.metadata = metadata;
-		if(parse){
-			parseMetaData();
-		}
+        super();
+        this.messageID = messageID;
+        this.metadata = metadata;
+        if (parse) {
+            parseMetaData();
+        }
 
-	}
+    }
 
-	public long getMessageID() {
+    public long getMessageID() {
         return messageID;
     }
 
@@ -121,6 +121,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 
     /**
      * Will retive the level of QOS of the message. This will be applicable only if the message is MQTT
+     *
      * @return the level of qos it can be either 0,1 or 2
      */
     public int getQosLevel() {
@@ -129,6 +130,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 
     /**
      * The level of qos the message is published at
+     *
      * @param qosLevel the qos level can be of value 0,1 or 2
      */
     public void setQosLevel(int qosLevel) {
@@ -209,15 +211,16 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 
     /**
      * Create a clone, with new message ID
+     *
      * @param messageId message id
      * @return returns AndesMessageMetadata
      */
-    public  AndesMessageMetadata deepClone(long messageId){
-    	AndesMessageMetadata clone = new AndesMessageMetadata();
-    	clone.messageID = messageId;
-    	clone.metadata = metadata;
+    public AndesMessageMetadata deepClone(long messageId) {
+        AndesMessageMetadata clone = new AndesMessageMetadata();
+        clone.messageID = messageId;
+        clone.metadata = metadata;
         clone.channelId = channelId;
-    	clone.expirationTime = expirationTime;
+        clone.expirationTime = expirationTime;
         clone.isTopic = isTopic;
         clone.destination = destination;
         clone.storageQueueName = storageQueueName;
@@ -233,11 +236,12 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
      * Update metadata of message. This will change AMQP bytes representing
      * metadata. Routing key and exchange name will be set to the
      * given values.
+     *
      * @param newDestination  new routing key to set
      * @param newExchangeName new exchange name to set
      */
-    public void updateMetadata(String newDestination, String newExchangeName){
-    	this.metadata = createNewMetadata(this.metadata, newDestination, newExchangeName);
+    public void updateMetadata(String newDestination, String newExchangeName) {
+        this.metadata = createNewMetadata(this.metadata, newDestination, newExchangeName);
         this.destination = newDestination;
         log.debug("updated andes message metadata id= " + messageID + " new destination = " + newDestination);
     }
@@ -251,11 +255,10 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
     }
 
     public boolean isExpired() {
-            if (expirationTime != 0L)
-            {
-                long now = System.currentTimeMillis();
-                return (now > expirationTime);
-            }
+        if (expirationTime != 0L) {
+            long now = System.currentTimeMillis();
+            return (now > expirationTime);
+        }
         return false;
     }
 
@@ -292,23 +295,25 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
         MessageMetaDataType type = MessageMetaDataType.values()[metadata[0]];
         StorableMessageMetaData mdt = type.getFactory()
                 .createMetaData(buf);
-        return((MessageMetaData)mdt).getMessageHeader().getHeader(header);
+        return ((MessageMetaData) mdt).getMessageHeader().getHeader(header);
     }
 
-    private byte[] createNewMetadata(byte[] originalMetadata, String routingKey, String exchangeName){
-		ByteBuffer buf = ByteBuffer.wrap(originalMetadata);
-		buf.position(1);
-		buf = buf.slice();
-		MessageMetaDataType type = MessageMetaDataType.values()[originalMetadata[0]];
-		StorableMessageMetaData original_mdt = type.getFactory()
-				.createMetaData(buf);
+    private byte[] createNewMetadata(byte[] originalMetadata, String routingKey, String exchangeName) {
+        ByteBuffer buf = ByteBuffer.wrap(originalMetadata);
+        buf.position(1);
+        buf = buf.slice();
+        MessageMetaDataType type = MessageMetaDataType.values()[originalMetadata[0]];
+        StorableMessageMetaData original_mdt = type.getFactory()
+                .createMetaData(buf);
 
         byte[] underlying;
         MetaDataHandler handler;
         //TODO need to impliment factory pattern here
-        if(type.equals(MessageMetaDataType.META_DATA_MQTT)){
+        if (type.equals(MessageMetaDataType.META_DATA_MQTT)) {
             handler = new MQTTMetaDataHandler();
-        }else{
+            //This needs to be set to the latest queue name
+            setStorageQueueName(routingKey);
+        } else {
             handler = new AMQPMetaDataHandler();
         }
 
@@ -336,8 +341,8 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 		buf.position(1);
 		buf = buf.slice();
 		modifiedMetaData.writeToBuffer(0, buf);*/
-		
-		return underlying;
+
+        return underlying;
     }
 
     public int getMessageContentLength() {
@@ -358,7 +363,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata>{
 
     @Override
     public int compareTo(AndesMessageMetadata other) {
-        if(this.getMessageID() == other.getMessageID()) {
+        if (this.getMessageID() == other.getMessageID()) {
             return 0;
         } else {
             return this.getMessageID() > other.getMessageID() ? 1 : -1;

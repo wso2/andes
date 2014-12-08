@@ -44,7 +44,7 @@ public class MQTTUtils {
     private static final String QOSLEVEL = "QOSLevel";
     //This will be required to be at the initial byte stream the meta data will have since when the message is proccessed
     //back from andes since the message relevency is checked ex :- whether its amqp, mqtt etc
-    private static final String MQTT_META_INFO = "\u0002MQTT Protocol v3.1";
+    public static final String MQTT_META_INFO = "\u0002MQTT Protocol v3.1";
 
     /**
      * The pulished messages will be taken in as a byte stream, the mesage will be transformed into AndesMessagePart as
