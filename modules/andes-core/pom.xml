@@ -210,8 +210,8 @@
         </dependency>
 
         <dependency>
-            <groupId>com.datastax.cassandra.wso2</groupId>
-            <artifactId>cql-driver</artifactId>
+            <groupId>com.datastax.cassandra</groupId>
+            <artifactId>cassandra-driver-core</artifactId>
         </dependency>
 
         <!--eclipse set-->

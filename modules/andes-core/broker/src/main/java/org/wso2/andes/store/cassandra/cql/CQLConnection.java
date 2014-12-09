@@ -113,7 +113,7 @@ public class CQLConnection implements DurableStoreConnection {
         } catch (InterruptedException e) {
             //silently ignore
         }
-        cluster.shutdown();
+        cluster.close();
     }
 
     @Override

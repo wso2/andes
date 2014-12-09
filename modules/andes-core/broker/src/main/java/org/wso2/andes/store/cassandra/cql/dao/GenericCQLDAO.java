@@ -21,10 +21,7 @@ package org.wso2.andes.store.cassandra.cql.dao;
 
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.UnavailableException;
-import com.datastax.driver.core.querybuilder.Delete;
-import com.datastax.driver.core.querybuilder.Insert;
-import com.datastax.driver.core.querybuilder.Select;
-import com.datastax.driver.core.querybuilder.Update;
+import com.datastax.driver.core.querybuilder.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
@@ -150,7 +147,7 @@ public class GenericCQLDAO {
 			Iterator<Entry<String, Session>> iter = entries.iterator();
 			while(iter.hasNext()){
 				Entry<String, Session> entry = iter.next();
-				entry.getValue().shutdown(200, TimeUnit.MILLISECONDS);
+				entry.getValue().close();
 			}
 			sessioCache.clear();
 		}finally{
@@ -170,7 +167,7 @@ public class GenericCQLDAO {
             throws CassandraDataAccessException {
         ResultSet result;
         try {
-            Query statement = new SimpleStatement(query);
+            Statement statement = new SimpleStatement(query);
             statement.setConsistencyLevel(ConsistencyLevel.valueOf(readConsistencyLevel));
             result = getSession(keySpace).execute(statement);
         } catch (UnavailableException e) {
@@ -316,7 +313,7 @@ public class GenericCQLDAO {
             statementList.add(insert);
         }
 
-        batchExecuteWrite(keySpace, statementList.toArray(new Statement[statementList.size()]));
+        batchExecuteWrite(keySpace, statementList.toArray(new RegularStatement[statementList.size()]));
     }
 
     /**
@@ -326,13 +323,13 @@ public class GenericCQLDAO {
      * @param statements statements
      * @throws CassandraDataAccessException
      */
-    public static void batchExecuteWrite(String keySpace, Statement[] statements)
+    public static void batchExecuteWrite(String keySpace, RegularStatement[] statements)
             throws CassandraDataAccessException {
 
         if (statements == null || statements.length == 0) {
             return;
         }
-        Query batch = batch(statements);
+        Batch batch = batch(statements);
         //setting consistency level
         batch.setConsistencyLevel(ConsistencyLevel.valueOf(writeConsistencyLevel));
         getSession(keySpace).execute(batch);
@@ -346,13 +343,13 @@ public class GenericCQLDAO {
      * @param statements statements
      * @throws CassandraDataAccessException
      */
-    public static void batchExecuteRead(String keySpace, Statement[] statements)
+    public static void batchExecuteRead(String keySpace, RegularStatement[] statements)
             throws CassandraDataAccessException {
 
         if (statements == null || statements.length == 0) {
             return;
         }
-        Query batch = batch(statements);
+        Batch batch = batch(statements);
         // setting consistency level
         batch.setConsistencyLevel(ConsistencyLevel.valueOf(readConsistencyLevel));
         getSession(keySpace).execute(batch);

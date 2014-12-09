@@ -20,7 +20,7 @@ package org.wso2.andes.store.cassandra.cql;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.Statement;
+import com.datastax.driver.core.RegularStatement;
 import com.datastax.driver.core.querybuilder.Delete;
 import com.datastax.driver.core.querybuilder.Insert;
 import org.apache.commons.logging.Log;
@@ -362,9 +362,9 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         List<AndesMessageMetadata> messageMetadataList = getMetaDataList(currentQueueName,
                 messageId, messageId);
 
-        if (messageMetadataList.size() == 0) {
+        if (messageMetadataList == null || messageMetadataList.size() == 0) {
             throw new AndesException(
-                    "Message MetaData not found to move the message to " + targetQueueName);
+                    "Message MetaData not found to move the message to Dead Letter Channel");
         }
         ArrayList<AndesRemovableMetadata> removableMetaDataList = new
                 ArrayList<AndesRemovableMetadata>();
@@ -412,8 +412,9 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                                 start));
             }
 
-            // Step 2 - Delete the old meta data when inserting new meta is complete to avoid losing messages
-            List<Statement> statements = new ArrayList<Statement>();
+            // Step 2 - Delete the old meta data when inserting new meta is complete to avoid
+            // losing messages
+            List<RegularStatement> statements = new ArrayList<RegularStatement>();
             for (AndesMessageMetadata metadata : metadataList) {
 
                 Delete delete = CQLDataAccessHelper
@@ -424,7 +425,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             }
 
             GenericCQLDAO.batchExecuteWrite(CassandraConstants.KEYSPACE,
-                    statements.toArray(new Statement[statements.size()]));
+                    statements.toArray(new RegularStatement[statements.size()]));
 
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error updating message meta data", e);
@@ -537,7 +538,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                                                List<AndesRemovableMetadata> messagesToRemove)
             throws AndesException {
         try {
-            List<Statement> statements = new ArrayList<Statement>();
+            List<RegularStatement> statements = new ArrayList<RegularStatement>();
             for (AndesRemovableMetadata message : messagesToRemove) {
                 Delete delete = CQLDataAccessHelper
                         .deleteLongColumnFromRaw(CassandraConstants.KEYSPACE,
@@ -546,7 +547,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 statements.add(delete);
             }
             GenericCQLDAO.batchExecuteWrite(CassandraConstants.KEYSPACE,
-                    statements.toArray(new Statement[statements.size()]));
+                    statements.toArray(new RegularStatement[statements.size()]));
 
         } catch (CassandraDataAccessException e) {
             log.error("Error while deleting messages", e);
@@ -727,7 +728,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     @Override
     public void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException {
         try {
-            List<Statement> statements = new ArrayList<Statement>();
+            List<RegularStatement> statements = new ArrayList<RegularStatement>();
             for (Long messageId : messagesToRemove) {
 
                 CQLQueryBuilder.CqlDelete cqlDelete = new CQLQueryBuilder.CqlDelete(
@@ -748,7 +749,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             // If a message has been added to the queue between expiry checker invocation and this method, it could be lost.
             // Therefore, the above approach to delete.
             GenericCQLDAO.batchExecuteWrite(CassandraConstants.KEYSPACE,
-                    statements.toArray(new Statement[statements.size()]));
+                    statements.toArray(new RegularStatement[statements.size()]));
         } catch (CassandraDataAccessException e) {
             String error = "Error while deleting messages";
             log.error(error, e);
@@ -763,7 +764,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
     public int deleteAllMessageMetadataFromDLC(String storageQueueName, String DLCQueueName) throws
             AndesException {
 
-        List<Statement> statements = new ArrayList<Statement>();
+        List<RegularStatement> statements = new ArrayList<RegularStatement>();
 
         try {
 
@@ -810,7 +811,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
             // Execute Batch Delete
             GenericCQLDAO.batchExecuteWrite(CassandraConstants.KEYSPACE,
-                    statements.toArray(new Statement[statements.size()]));
+                    statements.toArray(new RegularStatement[statements.size()]));
 
         } catch (CassandraDataAccessException e) {
             log.error("Error while getting messages in DLC for queue : " + storageQueueName,e);
