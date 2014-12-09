@@ -20,11 +20,7 @@ package org.wso2.andes.mqtt;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
-import org.wso2.andes.kernel.AndesContent;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.*;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
@@ -106,16 +102,17 @@ public class MQTTUtils {
      * @param qosLevel             the level of qos the message was published
      * @param messageContentLength the content length of the message
      * @param retain               should this message retain
+     * @param publisherID          the uuid which will uniquely identify the publisher
      * @return the meta information complient with the kernal
      */
     public static AndesMessageMetadata convertToAndesHeader(long messageID, String topic, int qosLevel,
-                                                            int messageContentLength, boolean retain) {
+                                                            int messageContentLength, boolean retain, UUID publisherID) {
         AndesMessageMetadata messageHeader = new AndesMessageMetadata();
         messageHeader.setMessageID(messageID);
         messageHeader.setTopic(true);
         messageHeader.setDestination(topic);
         messageHeader.setPersistent(true);
-        messageHeader.setChannelId(UUID.randomUUID());
+        messageHeader.setChannelId(publisherID);
         messageHeader.setMessageContentLength(messageContentLength);
         messageHeader.setStorageQueueName(topic);
         if (log.isDebugEnabled()) {
@@ -133,8 +130,7 @@ public class MQTTUtils {
      * Will extract out the message content from the meta data object provided, this will be called when a published
      * message is distributed among the subscribers
      *
-     * @param content
-     *         Content object which has access to the message content
+     * @param content Content object which has access to the message content
      * @return the byte stream of the message
      */
     public static ByteBuffer getContentFromMetaInformation(AndesContent content)

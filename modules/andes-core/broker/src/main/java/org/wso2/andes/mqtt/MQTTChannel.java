@@ -107,10 +107,11 @@ public class MQTTChannel {
      * @param qosLevel           the level of the qos the message was published
      * @param mqttLocalMessageID the channel id the subscriber is bound to
      * @param retain             whether the message requires to be persisted
+     * @param publisherID        the id which will uniquely identify the publisher
      * @throws MQTTException occurs if there was an errro while adding the message content
      */
     public void addMessage(ByteBuffer message, long messageID, String topic, int qosLevel,
-                           int mqttLocalMessageID, boolean retain) throws MQTTException {
+                           int mqttLocalMessageID, boolean retain, UUID publisherID) throws MQTTException {
         if (message.hasArray()) {
             //Will get the bytes of the message
             byte[] messageData = message.array();
@@ -118,7 +119,7 @@ public class MQTTChannel {
             AndesMessagePart messagePart = MQTTUtils.convertToAndesMessage(messageData, messageID);
             //Will Create the Andes Header
             AndesMessageMetadata messageHeader = MQTTUtils.convertToAndesHeader(messageID, topic, qosLevel,
-                    messageData.length, retain);
+                    messageData.length, retain, publisherID);
             //Will write the message body
             addMessageBody(messagePart, mqttLocalMessageID);
             //Will add the message header
@@ -248,7 +249,7 @@ public class MQTTChannel {
      */
     public void removeSubscriber(MQTTopicManager channel, String subscribedTopic, String subscriptionChannelID,
                                  UUID subscriberChannel, boolean isCleanSession, String mqttClientID)
-    throws MQTTException {
+            throws MQTTException {
         try {
 
             String queue_identifier = subscribedTopic + mqttClientID;
