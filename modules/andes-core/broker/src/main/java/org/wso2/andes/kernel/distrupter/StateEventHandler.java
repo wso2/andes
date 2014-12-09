@@ -21,6 +21,8 @@ package org.wso2.andes.kernel.distrupter;
 import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
@@ -37,21 +39,27 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
 
     private static Log log = LogFactory.getLog(StateEventHandler.class);
 
-    public StateEventHandler() {
+    private final Integer BATCH_SIZE;
+    private final List<AndesMessage> messageList;
+
+    StateEventHandler() throws AndesException {
+        BATCH_SIZE = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
+                .PERFORMANCE_TUNING_STATE_HANDLER_BATCH_SIZE);
+        messageList = new ArrayList<AndesMessage>(BATCH_SIZE);
     }
 
     @Override
     public void onEvent(InboundEvent event, long sequence, boolean endOfBatch) throws Exception {
 
-        if(log.isDebugEnabled()) {
+
+        if (log.isDebugEnabled()) {
             log.debug("[ sequence " + sequence + " ] Event received from disruptor. Event type: "
-                    + event.getEventType() );
+                    + event.getEventType() + " " + this);
         }
         try {
             switch (event.getEventType()) {
                 case MESSAGE_EVENT:
-                    // TODO Batch event processing?
-                    batchAndUpdateOnMetaDataEvent(event, endOfBatch);
+                    messageList.addAll(event.messageList);
                     break;
                 case CHANNEL_CLOSE_EVENT:
                     clientConnectionClosed((UUID) event.getData());
@@ -81,8 +89,11 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
                     closeLocalSubscription((LocalSubscription) event.getData());
                     break;
             }
+            // irrespective of the event update slots with new messages
+            batchAndUpdateOnMetaDataEvent(endOfBatch);
         } finally {
-            if(InboundEvent.Type.ACKNOWLEDGEMENT_EVENT != event.getEventType()) {
+            if (InboundEvent.Type.IGNORE_EVENT != event.getEventType()
+                    || InboundEvent.Type.ACKNOWLEDGEMENT_EVENT != event.getEventType()) {
                 event.clear();
             }
         }
@@ -90,23 +101,29 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
 
     /**
      * Batch Metadata related state change events and update Slots counter
-     * @param event InboundEvent
+     *
      * @param endOfBatch true if end of batch in disruptor and wise versa
      * @throws AndesException
      */
-    private void batchAndUpdateOnMetaDataEvent(InboundEvent event, boolean endOfBatch) throws AndesException {
-        if(log.isDebugEnabled()) {
-            String msgs = "";
-            for (AndesMessage message : event.messageList) {
-                msgs = msgs + message.getMetadata().getMessageID() + " , ";
+    private void batchAndUpdateOnMetaDataEvent(boolean endOfBatch) throws AndesException {
+
+        if (!messageList.isEmpty() && ((messageList.size() >= BATCH_SIZE) || endOfBatch)) {
+            updateSlotsAndQueueCounts(messageList);
+            if (log.isDebugEnabled()) {
+                StringBuilder messagesString = new StringBuilder();
+                for (AndesMessage message : messageList) {
+                    messagesString.append(message.getMetadata().getMessageID()).append(" , ");
+                }
+                log.debug("Added to Message List: " + messagesString);
             }
-            log.debug("Added to Message List: " + msgs);
+
+            messageList.clear();
         }
-        updateSlotsAndQueueCounts(event.messageList);
     }
 
     /**
      * Update slot message counters and queue counters
+     *
      * @param messageList AndesMessage List
      * @throws AndesException
      */
@@ -118,7 +135,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
         if (AndesContext.getInstance().isClusteringEnabled()) {
             SlotMessageCounter.getInstance().recordMetaDataCountInSlot(messageList);
         }
-        if(log.isDebugEnabled()) {
+        if (log.isDebugEnabled()) {
             String msgs = "";
             for (AndesMessage message : messageList) {
                 msgs = msgs + message.getMetadata().getMessageID() + " , ";
@@ -149,6 +166,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
 
     /**
      * Handle client connection open event state change
+     *
      * @param channelID channel ID of the opened channel
      */
     public void clientConnectionOpened(UUID channelID) {
@@ -157,6 +175,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
 
     /**
      * Handle event for closing connection
+     *
      * @param channelID channel ID of the closing connection
      */
     public void clientConnectionClosed(UUID channelID) {
@@ -165,6 +184,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
 
     /**
      * Handle new local subscription creation event. Update the internal state of Andes
+     *
      * @param localSubscription LocalSubscription
      */
     public void openLocalSubscription(LocalSubscription localSubscription) {
@@ -179,6 +199,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
 
     /**
      * Handle closing of local subscription event. Update the internal state of Andes
+     *
      * @param localSubscription LocalSubscription
      */
     public void closeLocalSubscription(LocalSubscription localSubscription) {
@@ -234,4 +255,4 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
             log.error("Interrupted while closing messaging engine. ", e);
         }
     }
- }
+}

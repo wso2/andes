@@ -236,6 +236,26 @@ public enum AndesConfiguration implements ConfigurationProperty {
     PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE("performanceTuning/inbound/bufferSize", "65536", Integer.class),
 
     /**
+     * Batch size of the state event handler. State events will be handled in batches when updating inbound messages.
+     */
+    PERFORMANCE_TUNING_STATE_HANDLER_BATCH_SIZE
+            ("performanceTuning/inbound/stateHandlerBatchSize", "50", Integer.class),
+
+    /**
+     * Average batch size of the batch write operation for inbound messages. Batch write of a message will vary around
+     * this number
+     */
+    PERFORMANCE_TUNING_MESSAGE_WRITER_BATCH_SIZE
+            ("performanceTuning/inbound/messageWriterBatchSize", "70", Integer.class),
+
+    /**
+     * Average batch size of the batch acknowledgement handling for message acknowledgements. Andes will be updated
+     * of acknowledgements batched around this number.
+     */
+    PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE
+            ("performanceTuning/ackHandling/ackHandlerBatchSize", "30", Integer.class),
+
+    /**
      * Message delivery from server to the client will be paused temporarily if number of delivered but
      * unacknowledged message count reaches this size. Should be set considering message consume rate.
      */
@@ -279,8 +299,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Specified in milliseconds.
      */
     PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TIME_DIFFERENCE
-            ("performanceTuning/messageDeletion/contentRemovalTimeDifference", "600000",
-                    Integer.class),
+            ("performanceTuning/messageDeletion/contentRemovalTimeDifference", "600000", Integer.class),
 
     /**
      * Since server startup, whenever this interval elapses, the expired messages will be cleared from the store.

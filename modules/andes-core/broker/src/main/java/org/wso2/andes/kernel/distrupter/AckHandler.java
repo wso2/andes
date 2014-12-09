@@ -24,66 +24,42 @@ import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
-import com.lmax.disruptor.EventHandler;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.stats.PerformanceCounter;
 
-public class AckHandler implements EventHandler<InboundEvent> {
+/**
+ * Acknowledgement Handler for the Disruptor based inbound event handling.
+ * This handler processes acknowledgements received from clients and updates Andes.
+ */
+public class AckHandler implements BatchEventHandler {
 
     private static Log log = LogFactory.getLog(AckHandler.class);
-    private int maxAckCount = 50;
-    private final List<AndesAckData> ackList;
-    private int writerCount;
-    private long turn;
-
-    public AckHandler(long turn, int writerCount) {
-        this.turn = turn;
-        this.writerCount = writerCount;
-        ackList = new ArrayList<AndesAckData>(maxAckCount);
-    }
 
     @Override
-    public void onEvent(final InboundEvent event, final long sequence, final boolean endOfBatch) throws Exception {
-
-        if (InboundEvent.Type.ACKNOWLEDGEMENT_EVENT == event.getEventType()) {
-
-                // if the turn to process an ack add it to process batch
-            long calculatedTurn = sequence % writerCount;
-            if (calculatedTurn == turn) {
-                try {
-                    AndesAckData ackData = (AndesAckData) event.getData();
-                    ackList.add(ackData);
-                    if (log.isDebugEnabled()) {
-                        log.debug("[ sequence " + sequence + " ] Ack for message id " + ackData.getMessageID() + " added " +
-                                "to ack processing batch.");
-                    }
-                } finally {
-                    event.clear();
-                }
-            }
-
-
+    public void onEvent(final List<InboundEvent> eventList) throws Exception {
+        if(log.isDebugEnabled()){
+            log.debug(eventList.size() + " acknowledgements received from disruptor.");
         }
-
-        // Irrespective of the event (ACKNOWLEDGEMENT_EVENT) this should execute. endOfBatch might come in any event.
-        if (endOfBatch || (ackList.size() > maxAckCount)) {
-            ackReceived(ackList);
-            if (log.isDebugEnabled() && (ackList.size() > 0)) {
-                log.debug(ackList.size() + " Acknowledgements processed.");
-            }
-            ackList.clear();
-        }
+        ackReceived(eventList);
     }
 
-    public void ackReceived(List<AndesAckData> ackList) throws AndesException {
+    /**
+     * Updates the state of Andes and deletes relevant messages. (For topics message deletion will happen only when
+     * all the clients acknowledges)
+     * @param eventList inboundEvent list
+     * @throws AndesException
+     */
+    public void ackReceived(final List<InboundEvent> eventList) throws AndesException {
         List<AndesRemovableMetadata> removableMetadata = new ArrayList<AndesRemovableMetadata>();
-        for (AndesAckData ack : ackList) {
+        for (InboundEvent event : eventList) {
+
+            AndesAckData ack = event.ackData;
             // For topics message is shared. If all acknowledgements are received only we should remove message
             boolean isOkToDeleteMessage = OnflightMessageTracker.getInstance()
                     .handleAckReceived(ack.getChannelID(), ack.getMessageID());
             if (isOkToDeleteMessage) {
                 if (log.isDebugEnabled()) {
-                    log.debug("Ok to delete message id= " + ack.getMessageID());
+                    log.debug("Ok to delete message id " + ack.getMessageID());
                 }
                 removableMetadata.add(new AndesRemovableMetadata(ack.getMessageID(), ack.getDestination(),
                         ack.getMsgStorageDestination()));

@@ -48,23 +48,23 @@ public class DisruptorBasedExecutor {
 
     public DisruptorBasedExecutor(MessageStore messageStore) {
 
-        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("DisruptorBasedExecutor-%d").build();
-        ExecutorService executorPool = Executors.newCachedThreadPool(namedThreadFactory);
-
-        disruptor = new Disruptor<CassandraDataEvent>(CassandraDataEvent.getFactory(), executorPool,
-                new MultiThreadedClaimStrategy(65536), // this is for multiple publishers)
-                new BlockingWaitStrategy());
-
-        int MAX_WRITE_HANDLERS = 8;
-        AlternatingCassandraWriter[] writerHandlers = new AlternatingCassandraWriter[MAX_WRITE_HANDLERS];
-        for (int i = 0; i < MAX_WRITE_HANDLERS; i++) {
-            writerHandlers[i] = new AlternatingCassandraWriter(MAX_WRITE_HANDLERS, i, messageStore);
-        }
-
-        AckHandler[] ackHandlers = new AckHandler[MAX_WRITE_HANDLERS];
-        for (int i = 0; i < MAX_WRITE_HANDLERS; i++) {
-            ackHandlers[i] = new AckHandler(i, MAX_WRITE_HANDLERS);
-        }
+//        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("DisruptorBasedExecutor-%d").build();
+//        ExecutorService executorPool = Executors.newCachedThreadPool(namedThreadFactory);
+//
+//        disruptor = new Disruptor<CassandraDataEvent>(CassandraDataEvent.getFactory(), executorPool,
+//                new MultiThreadedClaimStrategy(65536), // this is for multiple publishers)
+//                new BlockingWaitStrategy());
+//
+//        int MAX_WRITE_HANDLERS = 8;
+//        AlternatingCassandraWriter[] writerHandlers = new AlternatingCassandraWriter[MAX_WRITE_HANDLERS];
+//        for (int i = 0; i < MAX_WRITE_HANDLERS; i++) {
+//            writerHandlers[i] = new AlternatingCassandraWriter(MAX_WRITE_HANDLERS, i, messageStore);
+//        }
+//
+//        AckHandler[] ackHandlers = new AckHandler[MAX_WRITE_HANDLERS];
+//        for (int i = 0; i < MAX_WRITE_HANDLERS; i++) {
+//            ackHandlers[i] = new AckHandler(i, MAX_WRITE_HANDLERS);
+//        }
 //
 //        // Write handlers and ack handlers run in parallel. state change handler comes after them
 //        disruptor.handleEventsWith(writerHandlers).handleEventsWith(ackHandlers).then(new StateChangeHandler());

@@ -19,10 +19,7 @@
 package org.wso2.andes.kernel.distrupter;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.IgnoreExceptionHandler;
-import com.lmax.disruptor.MultiThreadedClaimStrategy;
-import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.*;
 import com.lmax.disruptor.dsl.Disruptor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -56,6 +53,10 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
                 AndesConfiguration.PERFORMANCE_TUNING_PARALLEL_CONTENT_WRITERS);
         Integer ackHandlerCount = configurationManager.readConfigurationValue(
                 AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLER_COUNT);
+        Integer writerBatchSize = configurationManager.readConfigurationValue(
+                AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_WRITER_BATCH_SIZE);
+        Integer ackHandlerBatchSize = configurationManager.readConfigurationValue(
+                AndesConfiguration.PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE);
 
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                                     .setNameFormat("Disruptor Inbound Event Thread %d").build();
@@ -66,26 +67,42 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
                 new MultiThreadedClaimStrategy(bufferSize),
                 new BlockingWaitStrategy());
 
-        ConcurrentMessageWriter[] writerHandlers = new ConcurrentMessageWriter[writeHandlerCount];
-        for (int i = 0; i < writeHandlerCount; i++) {
-            writerHandlers[i] = new ConcurrentMessageWriter(writeHandlerCount, i);
-        }
-
-        AckHandler[] ackHandlers = new AckHandler[ackHandlerCount];
-        for (int i = 0; i < ackHandlerCount; i++) {
-            ackHandlers[i] = new AckHandler(i, ackHandlerCount);
-        }
-
         // Pre processor runs first then Write handlers and ack handlers run in parallel. State event handler comes
         // after them
-        disruptor.handleEventsWith(new MessagePreProcessor(subscriptionStore)).then(writerHandlers);
+        SequenceBarrier barrier = disruptor.handleEventsWith(new MessagePreProcessor(subscriptionStore))
+                .asSequenceBarrier();
 
-        // TODO: Ack handlers and write handlers should be able to work in parallel.
-        disruptor.after(writerHandlers).handleEventsWith(ackHandlers);
+        ConcurrentBatchProcessor[] processors = new ConcurrentBatchProcessor[writeHandlerCount + ackHandlerCount];
+
+        for (int turn = 0; turn < writeHandlerCount; turn++) {
+            processors[turn] = new ConcurrentBatchProcessor(
+                    disruptor.getRingBuffer(),
+                    barrier,
+                    new ConcurrentMessageWriter(),
+                    turn,
+                    writeHandlerCount,
+                    writerBatchSize,
+                    InboundEvent.Type.MESSAGE_EVENT
+            );
+        }
+
+        for (int turn = 0; turn < ackHandlerCount; turn++) {
+            processors[writeHandlerCount + turn] = new ConcurrentBatchProcessor(
+                    disruptor.getRingBuffer(),
+                    barrier,
+                    new AckHandler(),
+                    turn,
+                    ackHandlerCount,
+                    ackHandlerBatchSize,
+                    InboundEvent.Type.ACKNOWLEDGEMENT_EVENT
+            );
+        }
+
+        disruptor.handleEventsWith(processors);
 
         // State event handler should run at last.
         // State event handler update the state of Andes after other handlers work is done.
-        disruptor.after(ackHandlers).handleEventsWith(new StateEventHandler());
+        disruptor.after(processors).handleEventsWith(new StateEventHandler());
 
         disruptor.handleExceptionsWith(new IgnoreExceptionHandler());
         ringBuffer = disruptor.start();
@@ -115,8 +132,19 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
      */
     @Override
     public void ackReceived(AndesAckData ackData) throws AndesException {
-        publishToRingBuffer(InboundEvent.Type.ACKNOWLEDGEMENT_EVENT, ackData,
-                "Message acknowledgement published to disruptor. Message id " + ackData.getMessageID());
+        // Publishers claim events in sequence
+        long sequence = ringBuffer.next();
+        InboundEvent event = ringBuffer.get(sequence);
+
+        event.setEventType(InboundEvent.Type.ACKNOWLEDGEMENT_EVENT);
+        event.ackData = ackData;
+        // make the event available to EventProcessors
+        ringBuffer.publish(sequence);
+
+        if (log.isDebugEnabled()) {
+            log.debug("[ sequence: " + sequence + " ] Message acknowledgement published to disruptor. Message id " +
+                    ackData.getMessageID());
+        }
     }
 
     @Override
