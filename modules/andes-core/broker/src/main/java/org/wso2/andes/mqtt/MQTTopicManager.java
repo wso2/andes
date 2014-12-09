@@ -45,7 +45,10 @@ public class MQTTopicManager {
     //Will correlate between topic and subscribers
     //The map will be used when subscriber disconnection is called where the corresponding topic needs to be identified
     //The key of the map will be the client id and the value will be the topic
-    private Map<String, String> clientTopicCorrelate = new HashMap<String, String>();
+    private Map<String, String> subscriberTopicCorrelate = new HashMap<String, String>();
+    //Will maintain the relation between the publisher client identifiers vs the id generated cluster wide
+    //Key of the map would be the mqtt specific client id and the value would be the cluser uuid
+    private Map<String, UUID> publisherTopicCorrelate = new HashMap<String, UUID>();
     //The channel reference which will be used to interact with the Andes Kernal
     private MQTTChannel mqttChannel = new MQTTChannel();
 
@@ -91,10 +94,11 @@ public class MQTTopicManager {
      * @param message            the message content
      * @param retain             whether the message should retain
      * @param mqttLocalMessageID the channel in which the message was published
+     * @param publisherID        identify of the publisher which is unique across the cluser
      * @throws MQTTException at a time where the message content doen't get registered
      */
     public void addTopicMessage(String topic, int qosLevel, ByteBuffer message, boolean retain,
-                                int mqttLocalMessageID) throws MQTTException {
+                                int mqttLocalMessageID, String publisherID) throws MQTTException {
 
         //Will generate a unique id for the message which will be unique across the cluster
         long clusterSpecificMessageID = MQTTUtils.generateMessageID();
@@ -105,9 +109,23 @@ public class MQTTopicManager {
                     " for mqtt local message id " + mqttLocalMessageID);
         }
 
+        UUID publisherClusterID = publisherTopicCorrelate.get(publisherID);
+        if (null == publisherClusterID) {
+            //We need to generate a uuid
+            publisherClusterID = UUID.randomUUID();
+            publisherTopicCorrelate.put(publisherID, publisherClusterID);
+        }
         //Will add the topic message to the cluster for distribution
-        mqttChannel.addMessage(message, clusterSpecificMessageID, topic, qosLevel,
-                mqttLocalMessageID, retain);
+        try {
+            mqttChannel.addMessage(message, clusterSpecificMessageID, topic, qosLevel,
+                    mqttLocalMessageID, retain, publisherClusterID);
+        } catch (MQTTException e) {
+            //Will need to rollback the state
+            publisherTopicCorrelate.remove(publisherID);
+            final String error = "Error occured while publishing the message";
+            log.error(error, e);
+            throw e;
+        }
 
     }
 
@@ -148,7 +166,7 @@ public class MQTTopicManager {
                     qos, subscriptionChannelID);
             topic.addSubscriber(mqttClientChannelID, qos, isCleanSession, subscriptionID, subscriptionChannelID);
             //Finally will register the the topic subscription for the topic
-            clientTopicCorrelate.put(mqttClientChannelID, topicName);
+            subscriberTopicCorrelate.put(mqttClientChannelID, topicName);
         } catch (MQTTException ex) {
             //In case if an error occurs we need to rollback the subscription created cluster wide
             mqttChannel.removeSubscriber(this, topicName, subscriptionID, subscriptionChannelID,
@@ -169,7 +187,7 @@ public class MQTTopicManager {
         //First the topic name will be taken from the subscriber channel
         //TODO what if the node crashes at this point the state will be lost before disconnection
         //TODO check if there're pending messages that are awaiting for acks
-        String topic = clientTopicCorrelate.get(mqttClientChannelID);
+        String topic = subscriberTopicCorrelate.get(mqttClientChannelID);
         //If the topic has correlators
         if (null != topic) {
             //Will get the corresponding topic
@@ -206,7 +224,11 @@ public class MQTTopicManager {
             }
 
         } else {
-            log.warn("Connection with id " + mqttClientChannelID + " lost, publisher connection not closed properly");
+            //If the connection is publisher based
+            UUID publisherID = publisherTopicCorrelate.remove(mqttClientChannelID);
+            if (null == publisherID) {
+                log.warn("Connection with id " + mqttClientChannelID + " lost, the connection info cannot be found.");
+            }
         }
     }
 
@@ -228,7 +250,7 @@ public class MQTTopicManager {
         //unsigned short
         int mqttLocalMessageID = 1;
         //Should get the topic name from the channel id
-        String topic = clientTopicCorrelate.get(channelID);
+        String topic = subscriberTopicCorrelate.get(channelID);
         //We need to keep track of the message if the QOS level is > 0
         if (subscriberQOS > 0) {
             //We need to add the message information to maintain state, inorder to identify the messages
@@ -264,7 +286,7 @@ public class MQTTopicManager {
      */
     public void onMessageAck(String mqttChannelID, int messageID) throws MQTTException {
         //Will retrive the topic
-        String topicName = clientTopicCorrelate.get(mqttChannelID);
+        String topicName = subscriberTopicCorrelate.get(mqttChannelID);
         //Will retrive the topic object out of the list
         MQTTopic mqttTopic = topics.get(topicName);
         //Will get the subscription object out of the topic
