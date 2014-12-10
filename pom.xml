@@ -528,6 +528,12 @@
                 <scope>test</scope>
             </dependency>
 
+            <dependency>
+                <groupId>custom-serializer</groupId>
+                <artifactId>custom-serializer</artifactId>
+                <version>1.0-SNAPSHOT</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 

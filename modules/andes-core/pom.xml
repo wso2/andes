@@ -425,6 +425,12 @@
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>custom-serializer</groupId>
+            <artifactId>custom-serializer</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>
