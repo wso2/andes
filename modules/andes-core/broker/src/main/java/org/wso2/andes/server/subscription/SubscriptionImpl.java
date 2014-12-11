@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -32,7 +32,6 @@ import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.server.filter.FilterManager;
 import org.wso2.andes.server.filter.FilterManagerFactory;
 import org.wso2.andes.server.flow.FlowCreditManager;
@@ -58,7 +57,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * Encapsulation of a supscription to a queue. <p/> Ties together the protocol session of a subscriber, the consumer tag
+ * Encapsulation of a subscription to a queue. <p/> Ties together the protocol session of a subscriber, the consumer tag
  * that was given out by the broker and the channel id. <p/>
  */
 public abstract class SubscriptionImpl implements Subscription, FlowCreditManager.FlowCreditManagerListener,
@@ -99,7 +98,6 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
     private UUID _id;
     private final AtomicLong _deliveredCount = new AtomicLong(0);
     private long _createTime = System.currentTimeMillis();
-    private static ConcurrentHashMap<Integer, AtomicLong> deliveryTagMap = new ConcurrentHashMap<Integer, AtomicLong>();
 
 
     public static final class BrowserSubscription extends SubscriptionImpl

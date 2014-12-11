@@ -18,10 +18,13 @@
 
 package org.wso2.andes.kernel.distrupter;
 
+import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 
 import com.lmax.disruptor.EventFactory;
+
+import java.util.UUID;
 
 /**
  * Wrapper class of cassandra data publish to disruptor
@@ -29,9 +32,19 @@ import com.lmax.disruptor.EventFactory;
  */
 public class CassandraDataEvent {
 
-    private boolean isPart = false;
-    private AndesMessageMetadata metadata;
-    private AndesMessagePart messagePart;
+    public enum EventType {
+        MESSAGE_PART_EVENT,
+        META_DATA_EVENT,
+        ACKNOWLEDGEMENT_EVENT,
+        CHANNEL_CLOSE_EVENT,
+        CHANNEL_OPEN_EVENT
+    }
+
+    public EventType eventType;
+    public AndesMessageMetadata metadata;
+    public AndesMessagePart part;
+    public AndesAckData ackData;
+    public UUID channelID;
 
     public static class CassandraDEventFactory implements EventFactory<CassandraDataEvent> {
         @Override
@@ -44,27 +57,4 @@ public class CassandraDataEvent {
         return new CassandraDEventFactory();
     }
 
-    public boolean isPart() {
-        return isPart;
-    }
-
-    public void setPart(boolean isPart) {
-        this.isPart = isPart;
-    }
-
-    public AndesMessageMetadata getMetadata() {
-        return metadata;
-    }
-
-    public void setMetadata(AndesMessageMetadata metadata) {
-        this.metadata = metadata;
-    }
-
-    public AndesMessagePart getMessagePart() {
-        return messagePart;
-    }
-
-    public void setMessagePart(AndesMessagePart messagePart) {
-        this.messagePart = messagePart;
-    }
 }

@@ -37,19 +37,23 @@ import java.util.concurrent.atomic.AtomicInteger;
  * where it will be incremented in case of message comes in same millisecond within the same node. With this approach
  * We can go up to 100,000 msg/s
  */
+// TODO class name
 public class TimeStampBasedMessageIdGenerator implements MessageIdGenerator {
-    int uniqueIdForNode = 0;
-    long lastTimestamp = 0;
-    long lastID = 0;
-    private AtomicInteger offsetOnthisslot = new AtomicInteger();
-    private long referenceStart = 41 * 365 * 24 * 60 * 60 * 10000; //this is 2011
+    private int uniqueIdForNode = 0;
+    private long lastTimestamp = 0;
+    private long lastID = 0;
+
+    /** If two instances for the same time stamp comes add offset values to differentiate them */
+    private AtomicInteger offset = new AtomicInteger();
+
+    private static final long REFERENCE_START = 41L * 365L * 24L * 60L * 60L * 1000L; //this is 2011
 
     /**
      * Out of 64 bits for long, we will use the range as follows
      * [1 sign bit][45bits for time spent from reference time in milliseconds][8bit node id][10 bit offset for ID falls within the same timestamp]
-     * This assumes there will not be more than 1024 hits within a given milisecond. Range is sufficient for 6029925857 years.
+     * This assumes there will not be more than 1024 hits within a given millisecond. Range is sufficient for 6029925857 years.
      *
-     * @return
+     * @return Generated ID
      */
     public synchronized long getNextId() {
         //TODO review on how we could optimize this code
@@ -57,12 +61,12 @@ public class TimeStampBasedMessageIdGenerator implements MessageIdGenerator {
         long ts = System.currentTimeMillis();
         int offset = 0;
         if (ts == lastTimestamp) {
-            offset = offsetOnthisslot.incrementAndGet();
+            offset = this.offset.incrementAndGet();
         } else {
-            offsetOnthisslot.set(0);
+            this.offset.set(0);
         }
         lastTimestamp = ts;
-        long id = (ts - referenceStart) * 256 * 1024 + uniqueIdForNode * 1024 + offset;
+        long id = (ts - REFERENCE_START) * 256 * 1024 + uniqueIdForNode * 1024 + offset;
         if (lastID == id) {
             throw new RuntimeException("duplicate ids detected. This should never happen");
         }

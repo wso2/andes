@@ -19,6 +19,7 @@
 package org.wso2.andes.kernel;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * This interface works as an abstraction for the actual implementation of how a message is
@@ -235,5 +236,4 @@ public interface MessageStoreManager {
      * @throws AndesException
      */
     public AndesMessageMetadata getMetadataOfMessage(Long messageId) throws AndesException;
-
 }

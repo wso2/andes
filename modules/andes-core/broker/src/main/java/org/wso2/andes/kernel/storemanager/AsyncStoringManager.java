@@ -36,10 +36,7 @@ import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.store.MessageContentRemoverTask;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -48,6 +45,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * This message store manager stores messages through disruptor with batching (async storing)
  */
+@Deprecated
 public class AsyncStoringManager extends BasicStoringManager implements MessageStoreManager {
 
     private static Log log = LogFactory.getLog(AsyncStoringManager.class);
@@ -70,11 +68,6 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
      * Executor service thread pool to execute content remover task
      */
     private ScheduledExecutorService asyncStoreTasksScheduler;
-
-    /**
-     * content removal time difference in seconds
-     */
-    private int contentRemovalTimeDifference;
 
     /**
      * message count will be flushed to DB in these interval in seconds
@@ -108,11 +101,9 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
     private void initialise(final MessageStore messageStore) throws AndesException {
 
         this.messageStore = messageStore;
-        disruptorBasedExecutor = new DisruptorBasedExecutor
-                (MessageStoreManagerFactory.createDirectMessageStoreManager(messageStore));
+        disruptorBasedExecutor = new DisruptorBasedExecutor(messageStore);
 
         int threadPoolCount = 2;
-        contentRemovalTimeDifference = 30;
         asyncStoreTasksScheduler = Executors.newScheduledThreadPool(threadPoolCount);
 
         //this task will periodically remove message contents from store
@@ -206,8 +197,7 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
      */
     public void deleteMessageParts(List<Long> messageIdList) throws AndesException {
         for (Long messageId : messageIdList) {
-            addContentDeletionTask(System.nanoTime() + contentRemovalTimeDifference * 1000000000,
-                    messageId);
+            addContentDeletionTask(messageId);
         }
     }
 
@@ -371,11 +361,10 @@ public class AsyncStoringManager extends BasicStoringManager implements MessageS
     /**
      * schedule to delete messages
      *
-     * @param nanoTimeToWait time gap to elapse from now until delete all is triggered
      * @param messageID      id of the message to be removed
      */
-    private void addContentDeletionTask(long nanoTimeToWait, long messageID) {
-        messageContentRemoverTask.put(nanoTimeToWait, messageID);
+    private void addContentDeletionTask(long messageID) {
+        messageContentRemoverTask.put(messageID);
     }
 
     /**

@@ -16,18 +16,15 @@ import org.wso2.andes.kernel.MessageStoreManager;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.store.MessageContentRemoverTask;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class ExecutorBasedStoringManager extends BasicStoringManager implements
-                                                                     MessageStoreManager {
+@Deprecated
+public class ExecutorBasedStoringManager extends BasicStoringManager implements MessageStoreManager {
 
     private static Log log = LogFactory.getLog(ExecutorBasedStoringManager.class);
 
@@ -84,10 +81,6 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
     //Content deletion task will run once this num of seconds
     private Integer messageContentDeletionTaskInterval;
 
-    //content removal time difference in seconds
-    private int contentRemovalTimeDifference;
-
-
     /**
      * Create an instance of ExecutorBasedStoringManager
      * @param messageStore message store to operate on
@@ -117,8 +110,6 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
         messageCountFlushInterval = 15;
 
         messageCountFlushNumberGap = 100;
-
-        contentRemovalTimeDifference = 30;
 
         messageContentDeletionTaskInterval = AndesConfigurationManager.getInstance()
                 .readConfigurationValue(AndesConfiguration.PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TASK_INTERVAL);
@@ -257,11 +248,10 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
     /**
      * schedule to delete messages
      *
-     * @param nanoTimeToWait time gap to elapse from now until delete all is triggered
      * @param messageID      id of the message to be removed
      */
-    private void addContentDeletionTask(long nanoTimeToWait, long messageID) {
-        messageContentRemoverTask.put(nanoTimeToWait, messageID);
+    private void addContentDeletionTask(long messageID) {
+        messageContentRemoverTask.put(messageID);
     }
 
     /**
@@ -385,8 +375,7 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
     @Override
     public void deleteMessageParts(List<Long> messageIdList) throws AndesException {
         for (Long messageId : messageIdList) {
-            addContentDeletionTask(System.nanoTime() + contentRemovalTimeDifference * 1000000000,
-                                   messageId);
+            addContentDeletionTask(messageId);
         }
     }
 
@@ -524,4 +513,5 @@ public class ExecutorBasedStoringManager extends BasicStoringManager implements
             incrementQueueCount(AndesConstants.DEAD_LETTER_QUEUE_NAME, messagesToRemove.size());
         }
     }
+
 }

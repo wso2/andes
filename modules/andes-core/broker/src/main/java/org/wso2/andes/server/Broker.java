@@ -127,7 +127,7 @@ public class Broker
         configFile = getConfigFile(options.getConfigFile(),
                                 BrokerOptions.DEFAULT_ANDES_CONFIG_FILE, qpidHome, true);
 
-        CurrentActor.get().message(BrokerMessages.CONFIG(configFile.getAbsolutePath()));
+        log.info("Starting Qpid using configuration : " + configFile.getAbsolutePath());
 
         /*File logConfigFile = getConfigFile(options.getLogConfigFile(),
                                     BrokerOptions.DEFAULT_LOG_CONFIG_FILE, qpidHome, false);

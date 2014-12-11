@@ -23,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
 
@@ -105,17 +106,15 @@ public class SlotMessageCounter {
     /**
      * Record metadata count in the current slot related to a particular queue.
      *
-     * @param metadataList metadata list to be record
+     * @param messageList AndesMessage list to be record
      */
-    public void recordMetaDataCountInSlot(List<AndesMessageMetadata> metadataList) {
+    public void recordMetaDataCountInSlot(List<AndesMessage> messageList) {
         //If metadata list is null this method is called from time out thread
-        for (AndesMessageMetadata md : metadataList) {
-            String storageQueueName = md.getStorageQueueName();
+        for (AndesMessage message : messageList) {
+            String storageQueueName = message.getMetadata().getStorageQueueName();
             //If this is the first message to that queue
             Slot currentSlot;
-            synchronized (this) {
-                currentSlot = updateQueueToSlotMap(md);
-            }
+            currentSlot = updateQueueToSlotMap(message.getMetadata());
             if (currentSlot.getMessageCount() >= slotWindowSize) {
                 try {
                     submitSlot(storageQueueName);
@@ -131,12 +130,12 @@ public class SlotMessageCounter {
     }
 
     /**
-     * Update in-memory queue to slot map. This method is synchronized since many publishers can
-     * be access this thread simultaneously.
+     * Update in-memory queue to slot map. This method is is not synchronized. Single publisher should access this.
+     * Ideally through a disruptor event handler
      * @param metadata  Andes metadata whose ID needs to be reported to SlotManager
      * @return Current slot which this metadata belongs to
      */
-    private synchronized Slot updateQueueToSlotMap(AndesMessageMetadata metadata) {
+    private Slot updateQueueToSlotMap(AndesMessageMetadata metadata) {
         String storageQueueName = metadata.getStorageQueueName();
         Slot currentSlot = queueToSlotMap.get(storageQueueName);
         if (currentSlot == null) {

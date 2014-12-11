@@ -22,32 +22,81 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.*;
 import com.lmax.disruptor.dsl.Disruptor;
 
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
 public class DisruptorRuntime<T> {
-    private static ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat
-            ("DisruptorBasedExecutor-%d").build();
-    private ExecutorService executorPool = Executors.newCachedThreadPool(namedThreadFactory);
+
     private Disruptor<T> disruptor;
-    private final RingBuffer<T> ringBuffer;
+    private RingBuffer<T> ringBuffer;
 
-    // TODO : Multiple disruptor runtime for seq and mul
-    public DisruptorRuntime(EventFactory<T> eventFactory, EventHandler<T>[] handlers) {
-        disruptor = new Disruptor<T>(eventFactory, executorPool,
-                new MultiThreadedClaimStrategy(65536), // this is for multiple publishers
-                new BlockingWaitStrategy());
-// Using Blocking wait strategy over Sleeping wait strategy to over come CPU load issue happening when starting up the sever. With this it will
-// to resolve the issue https://wso2.org/jira/browse/MB-372
-//                new SleepingWaitStrategy());
 
-        //cannot solve the warrning http://stackoverflow.com/questions/1445233/is-it-possible-to-solve-the-a-generic-array-of-t-is-created-for-a-varargs-param
-        disruptor.handleEventsWith(handlers);
+    private DisruptorRuntime(Builder<T> builder) {
+        disruptor = builder.disruptor;
+    }
+
+    private void start() {
         ringBuffer = disruptor.start();
     }
 
     public RingBuffer<T> getRingBuffer() {
         return ringBuffer;
+    }
+
+    /**
+     * Builder class for the Disruptor Runtime object
+     * @param <T> DisruptorRuntime<T>
+     */
+    public static class Builder<T> {
+
+        private static ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat
+                ("DisruptorBasedExecutor-%d").build();
+        private final Disruptor<T> disruptor;
+
+        public Builder(EventFactory<T> eventFactory, EventHandler<T>[] handlers) {
+
+            ExecutorService executorPool = Executors.newCachedThreadPool(namedThreadFactory);
+            disruptor = new Disruptor<T>(eventFactory, executorPool,
+                    new MultiThreadedClaimStrategy(65536), // this is for multiple publishers)
+                    new BlockingWaitStrategy());
+            // Using Blocking wait strategy over Sleeping wait strategy to over come CPU load issue happening when
+            // starting up the sever. With this it will to resolve the issue https://wso2.org/jira/browse/MB-372
+            // new SleepingWaitStrategy());
+
+            disruptor.handleEventsWith(handlers);
+            disruptor.handleExceptionsWith(new IgnoreExceptionHandler());
+        }
+
+        /**
+         * Set handlers to consume from ring buffer
+         * @param handlers EventHandler<T>[] array
+         */
+        public Builder<T> setHandlers(EventHandler<T>[] handlers) {
+            disruptor.handleEventsWith(handlers);
+            return this;
+        }
+
+        /**
+         * Make handlers run After a given set of handlers. For Instance make handlers A run before handlers B.
+         * @param dependsOn handlers that run run first (A)
+         * @param handleAfter handlers that runs after (B)
+         */
+        public Builder<T> setDependantHandlers( EventHandler<T>[] dependsOn,  EventHandler<T>[] handleAfter) {
+            disruptor.after(dependsOn).handleEventsWith(handleAfter);
+            return this;
+        }
+
+        /**
+         * Build the disruptor runtime object and starts the disruptor
+         * @return Return the built DisruptorRuntime object
+         */
+        public DisruptorRuntime<T> build() {
+
+            DisruptorRuntime<T> disruptorRuntime = new DisruptorRuntime<T>(this);
+            disruptorRuntime.start();
+            return disruptorRuntime;
+        }
     }
 }

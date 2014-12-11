@@ -22,10 +22,7 @@ import com.datastax.driver.core.Cluster;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesKernelBoot;
-import org.wso2.andes.kernel.DurableStoreConnection;
-import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 import org.wso2.andes.store.cassandra.CassandraConstants;
@@ -149,7 +146,7 @@ public class CQLConnection implements DurableStoreConnection {
     private void startTasks() {
         //TODO: Hasitha - review what to start
         try {
-            MessagingEngine.getInstance().startMessageDelivery();
+            Andes.getInstance().startMessageDelivery();
 
         } catch (Exception e) {
             log.error("Error while starting broker tasks back. Not retrying...", e);
@@ -163,7 +160,7 @@ public class CQLConnection implements DurableStoreConnection {
     private void stopTasks() {
         //TODO: Hasitha - review what to stop
 
-        MessagingEngine.getInstance().stopMessageDelivery();
+        Andes.getInstance().stopMessageDelivery();
     }
 
     /**

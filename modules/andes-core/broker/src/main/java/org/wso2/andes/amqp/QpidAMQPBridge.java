@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -18,21 +18,17 @@
 
 package org.wso2.andes.amqp;
 
-import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInternalException;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
+import org.wso2.andes.framing.abstraction.ContentChunk;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
 import org.wso2.andes.server.cassandra.QueueBrowserDeliveryWorker;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.message.AMQMessage;
@@ -82,10 +78,10 @@ public class QpidAMQPBridge {
      * @param channelID       id of the channel
      * @throws AMQException
      */
-    public void messageMetaDataReceived(IncomingMessage incomingMessage, UUID channelID) throws AMQException {
+    public void messageReceived(IncomingMessage incomingMessage, UUID channelID) throws AMQException {
         try {
             if (log.isDebugEnabled()) {
-                log.debug("AMQP BRIDGE: Message id= " + incomingMessage.getMessageNumber() + "received");
+                log.debug("Message id " + incomingMessage.getMessageNumber() + " received");
             }
             AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
             message.getMessageMetaData().setArrivalTime(incomingMessage.getArrivalTime());
@@ -95,9 +91,24 @@ public class QpidAMQPBridge {
 
             if (queue == null) {
                 log.error("Queue cannot be null, for " + incomingMessage.getMessageNumber());
+                return;
             }
 
-            MessagingEngine.getInstance().messageReceived(metadata);
+            AndesMessage andesMessage = new AndesMessage(metadata);
+
+            // Update Andes message with all the chunk details
+            int contentChunks = incomingMessage.getBodyCount();
+            int offset = 0;
+            for (int i = 0; i < contentChunks; i++) {
+                ContentChunk chunk = incomingMessage.getContentChunk(i);
+                AndesMessagePart messagePart = messageContentChunkReceived(
+                                                        metadata.getMessageID(), offset, chunk.getData().buf());
+                offset = offset + chunk.getSize();
+                andesMessage.addMessagePart(messagePart);
+            }
+
+            // Handover message to Andes
+            Andes.getInstance().messageReceived(andesMessage);
 
             if(log.isDebugEnabled()) {
                 PerformanceCounter.recordMessageReceived(queue, incomingMessage.getReceivedChunkCount());
@@ -142,15 +153,14 @@ public class QpidAMQPBridge {
      * @param offsetInMessage chunk offset
      * @param src             Bytebuffer with content bytes
      */
-    public void messageContentChunkReceived(long messageID, int offsetInMessage, ByteBuffer src) {
+    public AndesMessagePart messageContentChunkReceived(long messageID, int offsetInMessage, ByteBuffer src) {
 
         if (log.isDebugEnabled()) {
-            log.debug("AMQP BRIDGE: Content Part Received id= " + messageID + " offset= " + offsetInMessage);
+            log.debug("Content Part Received id " + messageID + ", offset " + offsetInMessage);
         }
         AndesMessagePart part = new AndesMessagePart();
         src = src.slice();
         final byte[] chunkData = new byte[src.limit()];
-
         src.duplicate().get(chunkData);
 
         part.setData(chunkData);
@@ -158,12 +168,7 @@ public class QpidAMQPBridge {
         part.setOffSet(offsetInMessage);
         part.setDataLength(chunkData.length);
 
-        try {
-            MessagingEngine.getInstance().messageContentReceived(part);
-        } catch (AndesException e) {
-            log.error("Error occured while publishing the message to the store ", e);
-            //TODO need to check if we could propagate this further and throw it
-        }
+        return part;
     }
 
     /**
@@ -190,17 +195,14 @@ public class QpidAMQPBridge {
             throws AMQException {
         try {
             if (log.isDebugEnabled()) {
-                log.debug(
-                        "AMQP BRIDGE: ack received for message id= " + messageID + " channelId= "
-                                + channelID);
+                log.debug("ack received for message id= " + messageID + " channelId= " + channelID);
             }
             AndesSubscription ackSentSubscription = AndesContext.getInstance().
                     getSubscriptionStore().getLocalSubscriptionForChannelId(channelID, routingKey, isTopic);
             if (ackSentSubscription == null) {
                 //TODO : if an ack came here after subscription is closed, should we discard message?
-                log.error(
-                        "Cannot handle Ack. Subscription is null for channel= " + channelID + " " +
-                                "Message Destination= " + routingKey);
+                log.error("Cannot handle Ack. Subscription is null for channel= " + channelID + "Message Destination= "
+                        + routingKey);
                 return;
             }
             //This can be different from routing key in hierarchical topic case
@@ -209,11 +211,10 @@ public class QpidAMQPBridge {
             AndesAckData andesAckData = AMQPUtils
                     .generateAndesAckMessage(channelID, messageID, subscriptionBoundDestination,
                             storageQueueNameOfSubscription, isTopic);
-            MessagingEngine.getInstance().ackReceived(andesAckData);
+            Andes.getInstance().ackReceived(andesAckData);
         } catch (AndesException e) {
             log.error("Exception occurred while handling ack", e);
-            throw new AMQException(AMQConstant.INTERNAL_ERROR,
-                    "Error in getting handling ack for " + messageID, e);
+            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error in getting handling ack for " + messageID, e);
         }
     }
 
@@ -402,8 +403,6 @@ public class QpidAMQPBridge {
      * @throws AndesException
      */
     private void addLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) throws AndesException {
-        AndesSubscriptionManager subscriptionManager = ClusterResourceHolder.
-                getInstance().getSubscriptionManager();
 
         List<Binding> bindingList = queue.getBindings();
         if (bindingList != null && !bindingList.isEmpty()) {
@@ -417,14 +416,14 @@ public class QpidAMQPBridge {
                     AndesBinding andesBinding = AMQPUtils.createAndesBinding(b.getExchange(), b.getQueue(), new AMQShortString(b.getBindingKey()));
                     if (uniqueBindings.add(andesBinding)) {
                         LocalSubscription localSubscription = AMQPUtils.createAMQPLocalSubscription(queue, subscription, b);
-                        subscriptionManager.addSubscription(localSubscription);
+                        Andes.getInstance().openLocalSubscription(localSubscription);
                         alreadyAddedSubscriptions.add(localSubscription);
                     }
                 }
             } catch (AndesException e) {
                 log.warn("Reverting already created subscription entries for subscription " + subscription, e);
                 for (LocalSubscription alreadyAddedSub : alreadyAddedSubscriptions) {
-                    subscriptionManager.closeLocalSubscription(alreadyAddedSub);
+                    Andes.getInstance().closeLocalSubscription(alreadyAddedSub);
                 }
                 throw new AndesException("error while adding the local subscription", e);
             }
@@ -439,8 +438,6 @@ public class QpidAMQPBridge {
      * @throws AndesException
      */
     private void closeLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) throws AndesException {
-        AndesSubscriptionManager subscriptionManager = ClusterResourceHolder.
-                getInstance().getSubscriptionManager();
         List<Binding> bindingList = queue.getBindings();
         if (bindingList != null && !bindingList.isEmpty()) {
             Set<AndesBinding> uniqueBindings = new HashSet<AndesBinding>();
@@ -451,7 +448,7 @@ public class QpidAMQPBridge {
                 AndesBinding andesBinding = AMQPUtils.createAndesBinding(b.getExchange(), b.getQueue(), new AMQShortString(b.getBindingKey()));
                 if (uniqueBindings.add(andesBinding)) {
                     LocalSubscription localSubscription = AMQPUtils.createAMQPLocalSubscription(queue, subscription, b);
-                    subscriptionManager.closeLocalSubscription(localSubscription);
+                    Andes.getInstance().closeLocalSubscription(localSubscription);
                 }
             }
         }
@@ -463,6 +460,6 @@ public class QpidAMQPBridge {
      * @param channelID id of the closed channel
      */
     public void channelIsClosing(UUID channelID) {
-        MessagingEngine.getInstance().clientConnectionClosed(channelID);
+        Andes.getInstance().clientConnectionClosed(channelID);
     }
 }

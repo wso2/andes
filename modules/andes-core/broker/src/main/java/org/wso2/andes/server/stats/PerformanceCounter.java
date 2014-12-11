@@ -86,7 +86,7 @@ public class PerformanceCounter {
     }
     
     
-    private static ConcurrentHashMap< String, QueuePerfData> perfMap = new ConcurrentHashMap<String, PerformanceCounter.QueuePerfData>(); 
+    private final static ConcurrentHashMap< String, QueuePerfData> perfMap = new ConcurrentHashMap<String, PerformanceCounter.QueuePerfData>();
     
     public static void recordMessageReceived(String qName, long sizeInChuncks){
         totMessagesReceived.incrementAndGet();

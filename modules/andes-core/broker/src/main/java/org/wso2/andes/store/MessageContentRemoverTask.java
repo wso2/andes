@@ -18,18 +18,12 @@
 
 package org.wso2.andes.store;
 
-import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessageStore;
-import org.wso2.andes.server.ClusterResourceHolder;
 
-import java.util.ArrayList;
-import java.util.SortedMap;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.*;
 
 /**
  * This class is used as a task to delete message content at scheduled period
@@ -39,19 +33,14 @@ public class MessageContentRemoverTask implements Runnable {
     private static Log log = LogFactory.getLog(MessageContentRemoverTask.class);
 
     /**
-     * To be deleted contents map
-     */
-    private SortedMap<Long, Long> contentDeletionTasksMap;
-
-    /**
      * Reference to message store
      */
-    private MessageStore messageStore;
+    private final MessageStore messageStore;
 
     /**
-     * Waiting time for message content removal of an acked message
+     * to be deleted content
      */
-    private final long timeOutPerMessage;
+    private final List<Long> messageToDelete;
 
     /**
      * Setup the content deletion task with the reference to MessageStore and
@@ -59,48 +48,35 @@ public class MessageContentRemoverTask implements Runnable {
      * @param messageStore MessageStore
      */
     public MessageContentRemoverTask(MessageStore messageStore) throws AndesException {
-        this.contentDeletionTasksMap = new ConcurrentSkipListMap<Long, Long>();
         this.messageStore = messageStore;
-
-        Integer contentRemovalTimeDifference = AndesConfigurationManager.getInstance()
-                .readConfigurationValue(AndesConfiguration.PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TIME_DIFFERENCE);
-        // Convert to nanoseconds, since contentRemovalTimeDifference is in milliseconds
-        timeOutPerMessage = contentRemovalTimeDifference * 1000000L;
+        messageToDelete = Collections.synchronizedList(new ArrayList<Long>());
     }
 
     public void run() {
-            try {
-                if (!contentDeletionTasksMap.isEmpty()) {
-                    long currentTime = System.nanoTime();
+        try {
+            if (!messageToDelete.isEmpty()) {
 
-                    //remove content for timeout messages
-                    SortedMap<Long, Long> timedOutContentList = contentDeletionTasksMap.headMap(currentTime - timeOutPerMessage);
-                    try {
-                        messageStore.deleteMessageParts(new ArrayList<Long>(timedOutContentList.values()));
-
-                        // remove from the deletion task map
-                        for (Long key : timedOutContentList.keySet()) {
-                            contentDeletionTasksMap.remove(key);
-                        }
-                        if (log.isDebugEnabled()) {
-                            log.debug("Message content removed of " + timedOutContentList.size()
-                                            + " messages.");
-                        }
-                    } catch (AndesException e) {
-                        log.error("Error while deleting message contents", e);
+                try {
+                    messageStore.deleteMessageParts(messageToDelete);
+                    // Remove from the deletion task map
+                    if (log.isDebugEnabled()) {
+                        log.debug("Message content removed of " + messageToDelete.size() + " messages.");
                     }
+                    messageToDelete.clear();
+                } catch (AndesException e) {
+                    log.error("Error while deleting message contents", e);
                 }
-            } catch (Throwable e) {
-                log.error("Error in removing message content details ", e);
             }
+        } catch (Throwable e) {
+            log.error("Error in removing message content details ", e);
+        }
     }
 
     /**
      * Data is put into the concurrent skip list map for deletion
-     * @param currentNanoTime current time in nano seconds
      * @param messageId message id of the content
      */
-    public void put(Long currentNanoTime, Long messageId) {
-        contentDeletionTasksMap.put(currentNanoTime, messageId);
+    public void put(Long messageId) {
+        messageToDelete.add(messageId);
     }
 }

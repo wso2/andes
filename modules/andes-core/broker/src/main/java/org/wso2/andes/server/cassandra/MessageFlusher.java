@@ -110,8 +110,7 @@ public class MessageFlusher {
 
         /***
          * In case of a purge, we must store the timestamp when the purge was called.
-         * This way we can identify messages received before that timestamp that fail and ignore
-         them.
+         * This way we can identify messages received before that timestamp that fail and ignore them.
          */
         private Long lastPurgedTimestamp;
 
@@ -476,6 +475,7 @@ public class MessageFlusher {
                 // to blindly check for a batch of deleted records.
                 // Given this situation, this loop should break so the sendFlusher can re-trigger it.
                 // for tracing purposes can use this : log.warn("NoSuchElementException thrown",ex);
+                log.warn("NoSuchElementException thrown. ",ex);
                 break;
             }
         }

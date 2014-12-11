@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -145,6 +145,14 @@ public class SlotDeliveryWorker extends Thread {
                                     List<AndesMessageMetadata> messagesRead =
                                             MessagingEngine.getInstance().getMetaDataList(
                                                     storageQueueName, firstMsgId, lastMsgId);
+
+                                    if(log.isDebugEnabled()) {
+                                        StringBuilder messageIDString = new StringBuilder();
+                                        for (AndesMessageMetadata metadata: messagesRead ) {
+                                            messageIDString.append(metadata.getMessageID()).append(" , ");
+                                        }
+                                        log.debug("Messages Read: " + messageIDString);
+                                    }
                                     if (messagesRead != null &&
                                         !messagesRead.isEmpty()) {
                                         if (log.isDebugEnabled()) {
@@ -180,6 +188,14 @@ public class SlotDeliveryWorker extends Thread {
                                                        .getNextNMessageMetadataFromQueue
                                                                (storageQueueName, startMessageId,
                                                                 slotWindowSize);
+                                if(log.isDebugEnabled()) {
+                                    StringBuilder messageIDString = new StringBuilder();
+                                    for (AndesMessageMetadata metadata: messagesRead ) {
+                                        messageIDString.append(metadata.getMessageID()).append(" , ");
+                                    }
+                                    log.debug("Messages Read: " + messageIDString);
+                                }
+
                                 if (messagesRead == null ||
                                     messagesRead.isEmpty()) {
                                     log.debug("No messages are read. StorageQ= " + storageQueueName);
@@ -235,7 +251,7 @@ public class SlotDeliveryWorker extends Thread {
                                             buffer in MessageFlusher send them */
                             if (log.isDebugEnabled()) {
                                 log.debug(
-                                        "The queue" + storageQueueName + " has no room. Thus sending " +
+                                        "The queue " + storageQueueName + " has no room. Thus sending " +
                                         "from buffer.");
                             }
                             sendFromMessageBuffer(destinationOfMessagesInQueue);

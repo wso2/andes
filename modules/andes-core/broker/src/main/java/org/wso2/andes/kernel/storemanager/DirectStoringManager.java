@@ -20,20 +20,24 @@ package org.wso2.andes.kernel.storemanager;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.*;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
-import org.wso2.andes.server.slot.SlotMessageCounter;
+import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.AndesRemovableMetadata;
+import org.wso2.andes.kernel.MessageStore;
+import org.wso2.andes.kernel.MessageStoreManager;
+import org.wso2.andes.kernel.distrupter.AckHandler;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.util.AndesConstants;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * This DurableDirectStoringManager stores messages directly to the message store
  */
+@Deprecated
 public class DirectStoringManager extends BasicStoringManager implements MessageStoreManager{
 
     private static Log log = LogFactory.getLog(DirectStoringManager.class);
@@ -57,22 +61,10 @@ public class DirectStoringManager extends BasicStoringManager implements Message
     public void storeMetadata(AndesMessageMetadata metadata) throws AndesException{
         long start = System.currentTimeMillis();
         messageStore.addMetaData(metadata);
-        List<AndesMessageMetadata> medatadataList = new ArrayList<AndesMessageMetadata>();
-        medatadataList.add(metadata);
-        /*
-        update last message ID in slot message counter. When the slot is filled the last message
-        ID of the slot will be submitted to the slot manager by SlotMessageCounter
-         */
-        if (AndesContext.getInstance().isClusteringEnabled()) {
-            SlotMessageCounter.getInstance().recordMetaDataCountInSlot(medatadataList);
-        }
         PerformanceCounter.warnIfTookMoreTime("Store Metadata" , start, 10);
-
-        incrementQueueCount(metadata.getDestination(), 1);
-        //record the successfully written message count
-        if(log.isDebugEnabled()) {
-            PerformanceCounter.recordIncomingMessageWrittenToStore();
-        }
+        List<AndesMessageMetadata> metaDataList = new ArrayList<AndesMessageMetadata>();
+        metaDataList.add(metadata);
+//        StateChangeHandler.updateSlotsAndQueueCounts(metaDataList);
     }
 
     /**
@@ -85,35 +77,8 @@ public class DirectStoringManager extends BasicStoringManager implements Message
     public void storeMetaData(List<AndesMessageMetadata> messageMetadata) throws AndesException {
         long start = System.currentTimeMillis();
         messageStore.addMetaData(messageMetadata);
-         /*
-        update last message ID in slot message counter. When the slot is filled the last message
-        ID of the slot will be submitted to the slot manager by SlotMessageCounter
-         */
-        if (AndesContext.getInstance().isClusteringEnabled()) {
-            SlotMessageCounter.getInstance().recordMetaDataCountInSlot(messageMetadata);
-        }
         PerformanceCounter.warnIfTookMoreTime("Store Metadata", start, 200);
-        Map<String, Integer> destinationSeparatedMetadataCount = new HashMap<String,
-                Integer>();
-        for (AndesMessageMetadata message : messageMetadata) {
-            //separate metadata queue-wise
-            Integer msgCount = destinationSeparatedMetadataCount
-                    .get(message.getDestination());
-            if (msgCount == null) {
-                msgCount =0;
-            }
-            msgCount = msgCount + 1;
-            destinationSeparatedMetadataCount.put(message.getDestination(), msgCount);
 
-            //record the successfully written message count
-            if(log.isDebugEnabled()) {
-                PerformanceCounter.recordIncomingMessageWrittenToStore();
-            }
-        }
-        //increment message count for queues
-        for(String queue : destinationSeparatedMetadataCount.keySet()) {
-            incrementQueueCount(queue, destinationSeparatedMetadataCount.get(queue));
-        }
     }
 
     /**
@@ -164,28 +129,7 @@ public class DirectStoringManager extends BasicStoringManager implements Message
      */
     @Override
     public void ackReceived(List<AndesAckData> ackList) throws AndesException {
-        List<AndesRemovableMetadata> removableMetadata = new ArrayList<AndesRemovableMetadata>();
-        for (AndesAckData ack : ackList) {
-            if(log.isDebugEnabled()) {
-                log.debug("ack - direct store manager");
-            }
-            //for topics message is shared. If all acks are received only we should remove message
-            boolean isOkToDeleteMessage = OnflightMessageTracker.getInstance().handleAckReceived(ack.getChannelID(), ack.getMessageID());
-            if(isOkToDeleteMessage) {
-                if(log.isDebugEnabled()) {
-                    log.debug("Ok to delete message id= " + ack.getMessageID());
-                }
-                removableMetadata.add(new AndesRemovableMetadata(ack.getMessageID(), ack.getDestination(), ack.getMsgStorageDestination()));
-            }
-
-            OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(ack.getChannelID());
-            //record ack received
-            if(log.isDebugEnabled()) {
-                PerformanceCounter.recordMessageRemovedAfterAck();
-            }
-        }
-        //remove messages permanently from store
-        this.deleteMessages(removableMetadata, false);
+//        AckHandler.ackReceived(ackList);
     }
 
     /**

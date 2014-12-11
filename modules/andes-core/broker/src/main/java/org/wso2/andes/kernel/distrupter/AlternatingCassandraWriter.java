@@ -26,6 +26,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 
 import com.lmax.disruptor.EventHandler;
+import org.wso2.andes.server.slot.SlotMessageCounter;
 
 /**
  * We do this to make Listener take turns while running. So we can run many copies of these and control number
@@ -42,11 +43,10 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
      */
     int totalPendingEventLength = 0;
     private int writerCount;
-    private int turn;
-    private MessageStoreManager messageStoreManager;
-    private List<AndesMessageMetadata> metaList = new ArrayList<AndesMessageMetadata>();
-
-    private List<AndesMessagePart> partList = new ArrayList<AndesMessagePart>();
+    private long turn;
+    private MessageStore messageStore;
+    private final List<AndesMessageMetadata> metaList;
+    private final List<AndesMessagePart> partList;
 
     /**
      * Maximum data length for a single write to data base
@@ -54,35 +54,45 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
     //private static final int MAX_DATA_LENGTH = 128000; // Before Item count based segmentation, this was used to partition cassandra writes.
     private static final int MAX_ITEM_COUNT = 50; // Max Item count allowed in a single Cassandra write
 
-    public AlternatingCassandraWriter(int writerCount, int turn, MessageStoreManager messageStoreManager) {
+    public AlternatingCassandraWriter(int writerCount, long turn, MessageStore messageStore) {
         this.writerCount = writerCount;
         this.turn = turn;
-        this.messageStoreManager = messageStoreManager;
+        this.messageStore = messageStore;
+        metaList = new ArrayList<AndesMessageMetadata>(MAX_ITEM_COUNT);
+        partList = new ArrayList<AndesMessagePart>(MAX_ITEM_COUNT);
     }
 
     public void onEvent(final CassandraDataEvent event, final long sequence, final boolean endOfBatch) throws Exception {
-        if (event.isPart()) {
-            //If part, we write randomly
-            int calculatedTurn = (int) Math.abs(event.getMessagePart().getMessageID() % writerCount);
+
+        if (CassandraDataEvent.EventType.MESSAGE_PART_EVENT == event.eventType) {
+
+            long calculatedTurn = sequence % writerCount;
 
             if (calculatedTurn == turn) {
                 //Message parts we write on the fly. It is trade off of memory vs. batching
                 //May be we need better handling .. batch that data as well
-                partList.add(event.getMessagePart());
+                partList.add(event.part);
                 //totalPendingEventLength += event.part.getDataLength();
                 totalPendingItems += 1;
+                if( log.isDebugEnabled() ) {
+                    log.debug("Message part added from ring buffer sequence " + sequence + " to batch with message id "
+                            + event.part.getMessageID() + " and offset " + event.part.getOffSet());
+                }
             }
-        } else {
-
+        } else if (CassandraDataEvent.EventType.META_DATA_EVENT == event.eventType) {
 
             //If messageID, we write in sequence per queue
-            int calculatedTurn = Math.abs(event.getMetadata().getDestination().hashCode() %
+            int calculatedTurn = Math.abs(event.metadata.getDestination().hashCode() %
                     writerCount);
 
             if (calculatedTurn == turn) {
-                metaList.add(event.getMetadata());
+                metaList.add(event.metadata);
                 //totalPendingEventLength += event.metadata.getMetadata().length;
                 totalPendingItems += 1;
+                if( log.isDebugEnabled() ) {
+                    log.debug("Message metadata added from ring buffer sequence " + sequence + " to batch with" +
+                            " message id " + event.metadata.getMessageID());
+                }
             }
         }
 
@@ -91,24 +101,19 @@ public class AlternatingCassandraWriter implements EventHandler<CassandraDataEve
             // Write message part list to database
             if (partList.size() > 0) {
                 if (log.isDebugEnabled()) {
-                    log.debug("Number of message content sent to message store: " + partList.size
-                            ());
+                    log.debug("Number of message content sent to message store: " + partList.size());
                 }
-                messageStoreManager.storeMessagePart(partList);
-
+                messageStore.storeMessagePart(partList);
                 partList.clear();
             }
 
             // Write message meta list to cassandra
             if (metaList.size() > 0) {
                 if (log.isDebugEnabled()) {
-                    log.debug("Number of message metadata sent to message store: " + metaList.size
-                            ());
+                    log.debug("Number of message metadata sent to message store: " + partList.size());
                 }
-
-                messageStoreManager.storeMetaData(metaList);
-
-                metaList = new ArrayList<AndesMessageMetadata>();
+                messageStore.addMetaData(metaList);
+                metaList.clear();
             }
 
             //totalPendingEventLength = 0;

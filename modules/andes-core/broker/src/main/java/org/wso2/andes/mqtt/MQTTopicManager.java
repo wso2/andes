@@ -100,13 +100,9 @@ public class MQTTopicManager {
     public void addTopicMessage(String topic, int qosLevel, ByteBuffer message, boolean retain,
                                 int mqttLocalMessageID, String publisherID) throws MQTTException {
 
-        //Will generate a unique id for the message which will be unique across the cluster
-        long clusterSpecificMessageID = MQTTUtils.generateMessageID();
         if (log.isDebugEnabled()) {
-            log.debug("Incoming message recived with id : " + mqttLocalMessageID + ", QOS level : " + qosLevel
+            log.debug("Incoming message received with id : " + mqttLocalMessageID + ", QOS level : " + qosLevel
                     + ", for topic :" + topic + ", with retain :" + retain);
-            log.debug("Generated message cluster specific message id " + clusterSpecificMessageID +
-                    " for mqtt local message id " + mqttLocalMessageID);
         }
 
         UUID publisherClusterID = publisherTopicCorrelate.get(publisherID);
@@ -117,8 +113,7 @@ public class MQTTopicManager {
         }
         //Will add the topic message to the cluster for distribution
         try {
-            mqttChannel.addMessage(message, clusterSpecificMessageID, topic, qosLevel,
-                    mqttLocalMessageID, retain, publisherClusterID);
+            mqttChannel.addMessage(message, topic, qosLevel, mqttLocalMessageID, retain, publisherClusterID);
         } catch (MQTTException e) {
             //Will need to rollback the state
             publisherTopicCorrelate.remove(publisherID);

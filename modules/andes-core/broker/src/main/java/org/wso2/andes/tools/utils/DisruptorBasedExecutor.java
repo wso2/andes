@@ -18,61 +18,81 @@
 
 package org.wso2.andes.tools.utils;
 
-import com.lmax.disruptor.RingBuffer;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesAckData;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.MessageStoreManager;
-import org.wso2.andes.kernel.distrupter.AckHandler;
-import org.wso2.andes.kernel.distrupter.AlternatingCassandraWriter;
-import org.wso2.andes.kernel.distrupter.CassandraDataEvent;
-import org.wso2.andes.kernel.distrupter.DisruptorRuntime;
-import org.wso2.andes.server.cassandra.SequentialThreadPoolExecutor;
-
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.lmax.disruptor.*;
+import com.lmax.disruptor.dsl.Disruptor;
+import com.lmax.disruptor.dsl.EventHandlerGroup;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.distrupter.*;
+import org.wso2.andes.server.cassandra.SequentialThreadPoolExecutor;
 
 public class DisruptorBasedExecutor {
 
     private static Log log = LogFactory.getLog(SequentialThreadPoolExecutor.class);
     private static boolean isDebugEnabled = log.isDebugEnabled();
 
-    private static DisruptorRuntime<CassandraDataEvent> cassandraRWDisruptorRuntime;
-    private static DisruptorRuntime<AndesAckData> ackDataEvenRuntime;
-    //private static DisruptorRuntime<SubscriptionDataEvent> dataDeliveryDisruptorRuntime;
-    private static Map<UUID, PendingJob> pendingJobsTracker = new ConcurrentHashMap<UUID, PendingJob>();
-    private MessageStoreManager messageStoreManager;
+//    private static DisruptorRuntime<CassandraDataEvent> cassandraRWDisruptorRuntime;
+//    private static DisruptorRuntime<CassandraDataEvent> ackDataEvenRuntime;
+    private final static Map<UUID, PendingJob> pendingJobsTracker = new ConcurrentHashMap<UUID, PendingJob>();
 
-    public DisruptorBasedExecutor(MessageStoreManager messageStoreManager) {
-        this.messageStoreManager = messageStoreManager;
-        int MAX_WRITE_HANDLERS = 10;
-        AlternatingCassandraWriter[] writerHandlers = new AlternatingCassandraWriter[MAX_WRITE_HANDLERS];
-        for (int i = 0; i < writerHandlers.length; i++) {
-            writerHandlers[i] = new AlternatingCassandraWriter(MAX_WRITE_HANDLERS, i, this.messageStoreManager);
-        }
-        cassandraRWDisruptorRuntime = new DisruptorRuntime<CassandraDataEvent>(CassandraDataEvent.getFactory(), writerHandlers);
+    private Disruptor<CassandraDataEvent> disruptor;
+    private RingBuffer<CassandraDataEvent> ringBuffer;
+//    private RingBuffer<CassandraDataEvent> ackRingBuffer;
 
-        ackDataEvenRuntime = new DisruptorRuntime<AndesAckData>(AndesAckData.getFactory(), new AckHandler[]{new AckHandler(
-                messageStoreManager)});
+    public DisruptorBasedExecutor(MessageStore messageStore) {
+
+//        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("DisruptorBasedExecutor-%d").build();
+//        ExecutorService executorPool = Executors.newCachedThreadPool(namedThreadFactory);
+//
+//        disruptor = new Disruptor<CassandraDataEvent>(CassandraDataEvent.getFactory(), executorPool,
+//                new MultiThreadedClaimStrategy(65536), // this is for multiple publishers)
+//                new BlockingWaitStrategy());
+//
+//        int MAX_WRITE_HANDLERS = 8;
+//        AlternatingCassandraWriter[] writerHandlers = new AlternatingCassandraWriter[MAX_WRITE_HANDLERS];
+//        for (int i = 0; i < MAX_WRITE_HANDLERS; i++) {
+//            writerHandlers[i] = new AlternatingCassandraWriter(MAX_WRITE_HANDLERS, i, messageStore);
+//        }
+//
+//        AckHandler[] ackHandlers = new AckHandler[MAX_WRITE_HANDLERS];
+//        for (int i = 0; i < MAX_WRITE_HANDLERS; i++) {
+//            ackHandlers[i] = new AckHandler(i, MAX_WRITE_HANDLERS);
+//        }
+//
+//        // Write handlers and ack handlers run in parallel. state change handler comes after them
+//        disruptor.handleEventsWith(writerHandlers).handleEventsWith(ackHandlers).then(new StateChangeHandler());
+//
+//        disruptor.handleExceptionsWith(new IgnoreExceptionHandler());
+//        ringBuffer = disruptor.start();
+//
+//        executorPool = Executors.newCachedThreadPool(namedThreadFactory);
+//        disruptor = new Disruptor<CassandraDataEvent>(CassandraDataEvent.getFactory(), executorPool,
+//                new MultiThreadedClaimStrategy(65536), // this is for multiple publishers)
+//                new BlockingWaitStrategy());
+//
+//        disruptor.handleEventsWith(new AckHandler()).then(new ChannelCloseEventHandler());
+//        disruptor.handleExceptionsWith(new IgnoreExceptionHandler());
+//
 
     }
 
 
     // TODO : Disruptor - pass the buffer and reuse
     public void messagePartReceived(AndesMessagePart part) {
-        // Get the Disruptor ring from the runtime
-        RingBuffer<CassandraDataEvent> ringBuffer = cassandraRWDisruptorRuntime.getRingBuffer();
+
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         CassandraDataEvent event = ringBuffer.get(sequence);
 
-        event.setPart(true);
-        event.setMessagePart(part);
+        event.eventType = CassandraDataEvent.EventType.MESSAGE_PART_EVENT;
+        event.part = part;
         // make the event available to EventProcessors
         ringBuffer.publish(sequence);
     }
@@ -89,27 +109,41 @@ public class DisruptorBasedExecutor {
             pendingJob.submittedJobs = pendingJob.submittedJobs + 1;
         }
 
-        RingBuffer<CassandraDataEvent> ringBuffer = cassandraRWDisruptorRuntime.getRingBuffer();
         long sequence = ringBuffer.next();
         CassandraDataEvent event = ringBuffer.get(sequence);
-        event.setPart(false);
-        event.setMetadata(metadata);
-        event.getMetadata().setPendingJobsTracker(pendingJobsTracker);
+        event.eventType = CassandraDataEvent.EventType.META_DATA_EVENT;
+        event.metadata = metadata;
+        event.metadata.setPendingJobsTracker(pendingJobsTracker);
         // make the event available to EventProcessors
         //todo uncomment this and comment executer
         ringBuffer.publish(sequence);
 
     }
 
-    public void ackReceived(AndesAckData ackData) {
-        RingBuffer<AndesAckData> ringBuffer = ackDataEvenRuntime.getRingBuffer();
+    public void channelCloseEvent(UUID channelID) {
+//        RingBuffer<CassandraDataEvent> ringBuffer = ackDataEvenRuntime.getRingBuffer();
         long sequence = ringBuffer.next();
-        AndesAckData event = ringBuffer.get(sequence);
-        event.setMessageID(ackData.getMessageID());
-        event.setDestination(ackData.getDestination());
-        event.setMsgStorageDestination(ackData.getMsgStorageDestination());
-        event.setChannelID(ackData.getChannelID());
-        event.setTopic(ackData.isTopic());
+        CassandraDataEvent event = ringBuffer.get(sequence);
+        event.eventType = CassandraDataEvent.EventType.CHANNEL_CLOSE_EVENT;
+        event.channelID = channelID;
+        ringBuffer.publish(sequence);
+    }
+
+    public void channelOpenEvent(UUID channelID) {
+//        RingBuffer<CassandraDataEvent> ringBuffer = ackDataEvenRuntime.getRingBuffer();
+        long sequence = ringBuffer.next();
+        CassandraDataEvent event = ringBuffer.get(sequence);
+        event.eventType = CassandraDataEvent.EventType.CHANNEL_OPEN_EVENT;
+        event.channelID = channelID;
+        ringBuffer.publish(sequence);
+    }
+
+    public void ackReceived(AndesAckData ackData) {
+//        RingBuffer<CassandraDataEvent> ringBuffer = ackDataEvenRuntime.getRingBuffer();
+        long sequence = ringBuffer.next();
+        CassandraDataEvent event = ringBuffer.get(sequence);
+        event.eventType = CassandraDataEvent.EventType.ACKNOWLEDGEMENT_EVENT;
+        event.ackData = ackData;
         // make the event available to EventProcessors
         ringBuffer.publish(sequence);
     }
@@ -127,7 +161,7 @@ public class DisruptorBasedExecutor {
                     log.debug("All " + pendingJobs.submittedJobs + " completed for channel " + channelId);
                 }
             } catch (InterruptedException e) {
-                log.warn("Closing Channnel " + channelId + "timedout waiting for submitted jobs to finish");
+                log.warn("Closing Channel " + channelId + " timed out waiting for submitted jobs to finish");
             } finally {
                 synchronized (pendingJobsTracker) {
                     pendingJobsTracker.remove(channelId);
