@@ -73,32 +73,32 @@ public class OnflightMessageTracker {
     /**
      * In memory map keeping sent message statistics by message id
      */
-    private ConcurrentHashMap<Long, MsgData> msgId2MsgData;
+    private final ConcurrentHashMap<Long, MsgData> msgId2MsgData;
 
     /**
      * Map to track messages being buffered to be sent <slot reference, messageID, MsgData
      * reference>
      */
-    private ConcurrentHashMap<Slot, ConcurrentHashMap<Long, MsgData>> messageBufferingTracker
+    private final ConcurrentHashMap<Slot, ConcurrentHashMap<Long, MsgData>> messageBufferingTracker
             = new ConcurrentHashMap<Slot, ConcurrentHashMap<Long, MsgData>>();
 
     /**
      * Map to track messages being sent <channel id, message id, MsgData reference>
      */
-    private ConcurrentHashMap<UUID, ConcurrentHashMap<Long, MsgData>> messageSendingTracker
+    private final ConcurrentHashMap<UUID, ConcurrentHashMap<Long, MsgData>> messageSendingTracker
             = new ConcurrentHashMap<UUID, ConcurrentHashMap<Long, MsgData>>();
 
     /**
      * Map to keep track of message counts pending to read
      */
-    private ConcurrentHashMap<Slot, AtomicInteger> pendingMessagesBySlot = new
+    private final ConcurrentHashMap<Slot, AtomicInteger> pendingMessagesBySlot = new
             ConcurrentHashMap<Slot, AtomicInteger>();
 
     /**
      * Count sent but not acknowledged message count for all the channels
      * key: channelID, value: per channel non acknowledged message count
      */
-    private ConcurrentMap<UUID, AtomicInteger> unAckedMsgCountMap = new ConcurrentHashMap<UUID, AtomicInteger>();
+    private final ConcurrentMap<UUID, AtomicInteger> unAckedMsgCountMap = new ConcurrentHashMap<UUID, AtomicInteger>();
 
     /**
      * Message status to keep track in which state message is
@@ -317,11 +317,12 @@ public class OnflightMessageTracker {
 
         this.maximumRedeliveryTimes = AndesConfigurationManager.getInstance()
                 .readConfigurationValue(AndesConfiguration.TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS);
-        /*
-         * for all add and remove, following is executed, and it will remove the oldest entry if
-         * needed
-         */
-        msgId2MsgData = new ConcurrentHashMap<Long, MsgData>();
+
+        // We don't know the size of the map at startup. hence using an arbitrary value of 16, Need to test
+        // Load factor set to default value 0.75
+        // Concurrency level set to 6. Currently SlotDeliveryWorker, AckHandler AckSubscription, DeliveryEventHandler,
+        // MessageFlusher access this. To be on the safe side set to 6.
+        msgId2MsgData = new ConcurrentHashMap<Long, MsgData>(16, 0.75f, 6);
 
     }
 
@@ -528,7 +529,7 @@ public class OnflightMessageTracker {
                     andesMessageMetadata.getExpirationTime(),
                     MessageStatus.BUFFERED, andesMessageMetadata.getArrivalTime());
             msgId2MsgData.put(messageID, trackingData);
-            messagesOfSlot.put(messageID, msgId2MsgData.get(messageID));
+            messagesOfSlot.put(messageID, trackingData);
             isOKToBuffer = true;
         } else {
             if (log.isDebugEnabled()) {

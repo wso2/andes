@@ -29,26 +29,33 @@ import java.util.List;
 /**
  * Writes messages in Disruptor ring buffer to message store in batches.
  */
-public class messageWriter implements BatchEventHandler {
+public class MessageWriter implements BatchEventHandler {
 
-    private static Log log = LogFactory.getLog(messageWriter.class);
+    private static Log log = LogFactory.getLog(MessageWriter.class);
     private final List<AndesMessage> messageList;
 
-    public messageWriter() {
-        messageList = new ArrayList<AndesMessage>();
+    /**
+     * Reference to messaging engine. This is used to store messages
+     */
+    private final MessagingEngine messagingEngine;
+
+    public MessageWriter(MessagingEngine messagingEngine, int messageBatchSize) {
+        this.messagingEngine = messagingEngine;
+        // For topics the size may be more than messageBatchSize since inbound event might contain more than one message
+        // But this is valid for queues.
+        messageList = new ArrayList<AndesMessage>(messageBatchSize);
+
     }
 
     @Override
     public void onEvent(final List<InboundEvent> eventList) throws Exception {
-
-        messageList.clear();
 
         // For topics there may be multiple messages in one event.
         for (InboundEvent event : eventList) {
             messageList.addAll(event.messageList);
         }
 
-        MessagingEngine.getInstance().messagesReceived(messageList);
+        messagingEngine.messagesReceived(messageList);
 
         if(log.isDebugEnabled()) {
             log.debug(messageList.size() + " messages received from disruptor.");
@@ -61,5 +68,8 @@ public class messageWriter implements BatchEventHandler {
             }
             log.trace(messageList.size() + " messages written : " + messageIDsString);
         }
+
+        // clear the messages
+        messageList.clear();
     }
 }

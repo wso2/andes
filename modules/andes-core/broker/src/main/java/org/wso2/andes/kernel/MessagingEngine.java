@@ -29,7 +29,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.storemanager.MessageStoreManagerFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cassandra.MessageFlusher;
@@ -42,6 +41,7 @@ import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.slot.SlotManager;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
+import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.store.MessageContentRemoverTask;
@@ -87,12 +87,6 @@ public class MessagingEngine {
      * reference to subscription store
      */
     private SubscriptionStore subscriptionStore;
-
-    /**
-     * Manages how the message content is persisted. Eg in async mode or stored in memory etc
-     * Underlying implementation of this interface handles the logic
-     */
-    private MessageStoreManager messageStoreManager;
 
     /**
      * Reference to MessageStore. This holds the messages received by andes
@@ -156,7 +150,6 @@ public class MessagingEngine {
         Integer schedulerPeriod = config.readConfigurationValue(
                 AndesConfiguration.PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TASK_INTERVAL);
 
-        messageStoreManager = MessageStoreManagerFactory.createDirectMessageStoreManager(messageStore);
         this.messageStore = messageStore;
         this.subscriptionStore = subscriptionStore;
         this.contextStore = contextStore;
@@ -196,7 +189,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public AndesMessagePart getMessageContentChunk(long messageID, int offsetInMessage) throws AndesException {
-        return messageStoreManager.getMessagePart(messageID,offsetInMessage);
+        return messageStore.getContent(messageID, offsetInMessage);
     }
 
     public void messagesReceived(List<AndesMessage> messageList) throws AndesException{
@@ -221,7 +214,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public AndesMessageMetadata getMessageMetaData(long messageID) throws AndesException {
-        return messageStoreManager.getMetadataOfMessage(messageID);
+        return messageStore.getMetaData(messageID);
     }
 
     /**
@@ -266,8 +259,9 @@ public class MessagingEngine {
         String deadLetterQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString
                 (destinationQueueName, AndesConstants.DEAD_LETTER_QUEUE_NAME);
 
-
-        messageStoreManager.moveMetaDataToQueue(messageId, destinationQueueName, deadLetterQueueName);
+        long start = System.currentTimeMillis();
+        messageStore.moveMetaDataToQueue(messageId, destinationQueueName, deadLetterQueueName);
+        PerformanceCounter.warnIfTookMoreTime("Move Metadata ", start, 10);
 
         //remove tracking of the message
         OnflightMessageTracker.getInstance()
@@ -332,9 +326,61 @@ public class MessagingEngine {
         // queues destination = storage queue. But for topics it is different
         String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         String storageQueueName = AndesUtils.getStorageQueueForDestination(destination, nodeID, isTopic);
-        int purgedNumOfMessages =  messageStoreManager.purgeQueueFromStore(storageQueueName);
+        int purgedNumOfMessages =  purgeQueueFromStore(storageQueueName);
         log.info("Purged messages of destination " + destination);
         return purgedNumOfMessages;
+    }
+
+    /***
+     * Clear all references to all message metadata / content addressed to a specific queue. Used when purging.
+     * @param storageQueueName name of storage queue
+     * @throws AndesException
+     */
+    public int purgeQueueFromStore(String storageQueueName) throws AndesException {
+
+        try {
+            // Retrieve message IDs addressed to the queue and keep track of message count for
+            // the queue in the store
+            List<Long> messageIDsAddressedToQueue = messageStore.getMessageIDsAddressedToQueue(storageQueueName);
+
+            Integer messageCountInStore = messageIDsAddressedToQueue.size();
+
+            // Clear all message expiry data.
+            // Data should be removed from expiry data tables before deleting data from meta data table since expiry
+            // data table holds a foreign key constraint to meta data table.
+            messageStore.deleteMessagesFromExpiryQueue(messageIDsAddressedToQueue);
+
+            //  Clear message metadata from queues
+            messageStore.deleteAllMessageMetadata(storageQueueName);
+
+            // Reset message count for the specific queue
+            messageStore.resetMessageCounterForQueue(storageQueueName);
+
+            // There is only 1 DLC queue per tenant. So we have to read and parse the message
+            // metadata and filter messages specific to a given queue.
+            // This is pretty exhaustive. If there are 1000 DLC messages and only 10 are relevant
+            // to the given queue, We still have to get all 1000
+            // into memory. Options are to delete dlc messages leisurely with another thread,
+            // or to break from original DLC pattern and maintain multiple DLC queues per each queue.
+            Integer messageCountFromDLC = messageStore.deleteAllMessageMetadataFromDLC(DLCQueueUtils
+                    .identifyTenantInformationAndGenerateDLCString(storageQueueName,
+                            AndesConstants.DEAD_LETTER_QUEUE_NAME), storageQueueName);
+
+            // Clear message content leisurely / asynchronously using retrieved message IDs
+            messageStore.deleteMessageParts(messageIDsAddressedToQueue);
+
+            // If any other places in the store keep track of messages in future,
+            // they should also be cleared here.
+
+            return messageCountInStore + messageCountFromDLC;
+
+        } catch (AndesException e) {
+            // This will be a store-specific error. We could make all 5 operations into one atomic transaction so
+            // that in case of an error data won't be obsolete, but we must do it in a proper generic manner (to
+            // allow any collection of store methods to be executed in a single transaction.). To be done as a
+            // separate task.
+            throw new AndesException("Error occurred when purging queue from store : " + storageQueueName, e);
+        }
     }
 
     /**
@@ -345,9 +391,10 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
-        List<Long> idsOfMessagesToRemove = new ArrayList<Long>();
-        Map<String, List<AndesRemovableMetadata>> storageQueueSeparatedRemoveMessages = new HashMap<String, List<AndesRemovableMetadata>>();
-        Map<String, Integer> destinationSeparatedMsgCounts = new HashMap<String, Integer>();
+        List<Long> idsOfMessagesToRemove = new ArrayList<Long>(messagesToRemove.size());
+        Map<String, List<AndesRemovableMetadata>> storageQueueSeparatedRemoveMessages
+                = new HashMap<String, List<AndesRemovableMetadata>>(messagesToRemove.size());
+        Map<String, Integer> destinationSeparatedMsgCounts = new HashMap<String, Integer>(messagesToRemove.size());
 
         for (AndesRemovableMetadata message : messagesToRemove) {
             idsOfMessagesToRemove.add(message.getMessageID());
@@ -377,13 +424,12 @@ public class MessagingEngine {
         }
 
         //remove metadata
-        for (String storageQueueName : storageQueueSeparatedRemoveMessages.keySet()) {
-            messageStore.deleteMessageMetadataFromQueue(storageQueueName,
-                    storageQueueSeparatedRemoveMessages.get(storageQueueName));
+        for (Map.Entry<String, List<AndesRemovableMetadata>> entry : storageQueueSeparatedRemoveMessages.entrySet()) {
+            messageStore.deleteMessageMetadataFromQueue(entry.getKey(), entry.getValue());
         }
         //decrement message counts
-        for(String destination: destinationSeparatedMsgCounts.keySet()) {
-            decrementQueueCount(destination, destinationSeparatedMsgCounts.get(destination));
+        for(Map.Entry<String, Integer> entry: destinationSeparatedMsgCounts.entrySet()) {
+            decrementQueueCount(entry.getKey(), entry.getValue());
         }
 
         if (!moveToDeadLetterChannel) {
@@ -438,7 +484,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
-        return messageStoreManager.getMessagePart(messageId, offsetValue);
+        return messageStore.getContent(messageId, offsetValue);
     }
 
     /**
@@ -462,7 +508,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getMetaDataList(final String queueName, long firstMsgId, long lastMsgID) throws AndesException {
-        return messageStoreManager.getMetaDataList(queueName, firstMsgId, lastMsgID);
+        return messageStore.getMetaDataList(queueName, firstMsgId, lastMsgID);
     }
 
     /**
@@ -476,7 +522,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId, int count) throws AndesException {
-        return messageStoreManager.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
+        return messageStore.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
     }
 
     /**
@@ -486,7 +532,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException {
-        return messageStoreManager.getExpiredMessages(limit);
+        return messageStore.getExpiredMessages(limit);
     }
 
     /**
@@ -499,7 +545,7 @@ public class MessagingEngine {
      */
     public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
             AndesException {
-        messageStoreManager.updateMetaDataInformation(currentQueueName, metadataList);
+        messageStore.updateMetaDataInformation(currentQueueName, metadataList);
     }
 
     /**
@@ -613,5 +659,4 @@ public class MessagingEngine {
             messageExpirationWorker.stopWorking();
         }
     }
-
 }

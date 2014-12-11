@@ -62,9 +62,9 @@ public class AckHandler implements BatchEventHandler {
 
             AndesAckData ack = event.ackData;
             // For topics message is shared. If all acknowledgements are received only we should remove message
-            boolean isOkToDeleteMessage = OnflightMessageTracker.getInstance()
+            boolean deleteMessage = OnflightMessageTracker.getInstance()
                     .handleAckReceived(ack.getChannelID(), ack.getMessageID());
-            if (isOkToDeleteMessage) {
+            if (deleteMessage) {
                 if (log.isDebugEnabled()) {
                     log.debug("Ok to delete message id " + ack.getMessageID());
                 }
