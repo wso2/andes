@@ -26,6 +26,7 @@ import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -100,9 +101,10 @@ public class JDBCMessageStoreImpl implements MessageStore {
 
     /**
      * {@inheritDoc}
+     * @param messageIdList
      */
     @Override
-    public void deleteMessageParts(List<Long> messageIdList) throws AndesException {
+    public void deleteMessageParts(Collection<Long> messageIdList) throws AndesException {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;

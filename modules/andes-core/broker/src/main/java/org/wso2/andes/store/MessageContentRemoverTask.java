@@ -24,6 +24,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessageStore;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class is used as a task to delete message content at scheduled period
@@ -38,9 +39,9 @@ public class MessageContentRemoverTask implements Runnable {
     private final MessageStore messageStore;
 
     /**
-     * to be deleted content
+     * To be deleted content
      */
-    private final List<Long> messageToDelete;
+    private final Map<Long, Long> messageToDeleteMap;
 
     /**
      * Setup the content deletion task with the reference to MessageStore and
@@ -49,20 +50,20 @@ public class MessageContentRemoverTask implements Runnable {
      */
     public MessageContentRemoverTask(MessageStore messageStore) throws AndesException {
         this.messageStore = messageStore;
-        messageToDelete = Collections.synchronizedList(new ArrayList<Long>());
+        messageToDeleteMap = new ConcurrentHashMap<Long, Long>();
     }
 
     public void run() {
         try {
-            if (!messageToDelete.isEmpty()) {
+            if (!messageToDeleteMap.isEmpty()) {
 
                 try {
-                    messageStore.deleteMessageParts(messageToDelete);
+                    messageStore.deleteMessageParts(messageToDeleteMap.values());
                     // Remove from the deletion task map
                     if (log.isDebugEnabled()) {
-                        log.debug("Message content removed of " + messageToDelete.size() + " messages.");
+                        log.debug("Message content removed of " + messageToDeleteMap.size() + " messages.");
                     }
-                    messageToDelete.clear();
+                    messageToDeleteMap.clear();
                 } catch (AndesException e) {
                     log.error("Error while deleting message contents", e);
                 }
@@ -77,6 +78,6 @@ public class MessageContentRemoverTask implements Runnable {
      * @param messageId message id of the content
      */
     public void put(Long messageId) {
-        messageToDelete.add(messageId);
+        messageToDeleteMap.put(messageId, messageId);
     }
 }
