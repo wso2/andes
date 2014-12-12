@@ -78,11 +78,12 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
             AndesMessageMetadata message = deliveryEventData.getMetadata();
 
             try {
+                //decrement number of schedule deliveries before send to subscriber to avoid parallel status update issues
+                OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message.getMessageID());
                 if (deliveryEventData.isErrorOccurred()) {
                     handleSendError(message);
                     return;
                 }
-
                 if (subscription.isActive()) {
                     subscription.sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
                 } else {
@@ -90,9 +91,10 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                 }
             } catch (Throwable e) {
                 log.error("Error while delivering message. Moving to Dead Letter Queue.", e);
+                //increment above schedule count because exception occurred while send message to subscriber
+                OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
                 handleSendError(message);
             } finally {
-                OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message.getMessageID());
                 deliveryEventData.clearData();
             }
         }
