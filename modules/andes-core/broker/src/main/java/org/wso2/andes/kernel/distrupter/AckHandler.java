@@ -37,6 +37,13 @@ public class AckHandler implements BatchEventHandler {
 
     @Override
     public void onEvent(final List<InboundEvent> eventList) throws Exception {
+        if (log.isTraceEnabled()) {
+            StringBuilder messageIDsString = new StringBuilder();
+            for (InboundEvent inboundEvent : eventList) {
+                messageIDsString.append(inboundEvent.ackData.getMessageID()).append(" , ");
+            }
+            log.trace(eventList.size() + " messages received : " + messageIDsString);
+        }
         if(log.isDebugEnabled()){
             log.debug(eventList.size() + " acknowledgements received from disruptor.");
         }
@@ -70,7 +77,13 @@ public class AckHandler implements BatchEventHandler {
 
             PerformanceCounter.recordMessageRemovedAfterAck();
         }
-
+        if (log.isTraceEnabled()) {
+            StringBuilder messageIDsString = new StringBuilder();
+            for (AndesRemovableMetadata metadata : removableMetadata) {
+                messageIDsString.append(metadata.getMessageID()).append(" , ");
+            }
+            log.trace(eventList.size() + " message ok to remove : " + messageIDsString);
+        }
         // Depending on the async or direct deletion strategy used in MessagingEngine messages will be deleted
         MessagingEngine.getInstance().deleteMessages(removableMetadata, false);
     }
