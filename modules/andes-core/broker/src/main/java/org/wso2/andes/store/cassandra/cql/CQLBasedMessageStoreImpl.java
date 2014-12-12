@@ -38,11 +38,7 @@ import org.wso2.andes.store.cassandra.cql.dao.CassandraHelper;
 import org.wso2.andes.store.cassandra.cql.dao.GenericCQLDAO;
 import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * This is the implementation of MessageStore that deals with Cassandra no SQL DB.
@@ -586,9 +582,10 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
     /**
      * {@inheritDoc}
+     * @param messageIdList
      */
     @Override
-    public void deleteMessageParts(List<Long> messageIdList) throws AndesException {
+    public void deleteMessageParts(Collection<Long> messageIdList) throws AndesException {
         try {
             List<String> rows2Remove = new ArrayList<String>();
             for (long messageId : messageIdList) {

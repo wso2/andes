@@ -20,6 +20,7 @@ package org.wso2.andes.kernel;
 
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -52,7 +53,7 @@ public interface MessageStore {
      * @param messageIdList ids of messages
      * @throws AndesException
      */
-    public void deleteMessageParts(List<Long> messageIdList) throws AndesException;
+    public void deleteMessageParts(Collection<Long> messageIdList) throws AndesException;
 
     /**
      * read content chunk from store

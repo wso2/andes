@@ -20,6 +20,9 @@ package org.wso2.andes.kernel.distrupter;
 
 import java.util.List;
 
+/**
+ * Batch event handler for ConcurrentBatchProcessor
+ */
 public interface BatchEventHandler {
 
     void onEvent(final List<InboundEvent> eventList) throws Exception;

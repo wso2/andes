@@ -36,7 +36,7 @@ import java.util.concurrent.ThreadFactory;
 
 /**
  * Disruptor based inbound event handling class.
- * Inbound events are represent Within the buffer as InboundEvent objects. Four types of event processors goes through
+ * Inbound events are represent within the buffer as InboundEvent objects. Four types of event processors goes through
  * the ring buffer processing events.
  */
 public class DisruptorBasedInboundEventManager implements InboundEventManager {
