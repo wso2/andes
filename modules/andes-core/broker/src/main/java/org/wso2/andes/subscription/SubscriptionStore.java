@@ -66,7 +66,12 @@ public class SubscriptionStore {
      * @throws AndesException
      */
     public List<AndesSubscription> getAllSubscribersForDestination(String destination, boolean isTopic) throws AndesException {
-        return new ArrayList<AndesSubscription>(isTopic ? clusterTopicSubscriptionMap.get(destination) : clusterQueueSubscriptionMap.get(destination));
+        // returing empty arraylist if requested map is empty
+        if (isTopic) {
+            return new ArrayList<AndesSubscription>(clusterTopicSubscriptionMap.get(destination) == null ? new ArrayList<AndesSubscription>() : clusterTopicSubscriptionMap.get(destination));
+        } else {
+            return new ArrayList<AndesSubscription>(clusterQueueSubscriptionMap.get(destination) == null ? new ArrayList<AndesSubscription>() : clusterQueueSubscriptionMap.get(destination));
+        }
     }
 
     /**
