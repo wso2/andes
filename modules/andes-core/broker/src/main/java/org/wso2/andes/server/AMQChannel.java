@@ -149,8 +149,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     private final UUID _id;
     private long _createTime = System.currentTimeMillis();
 
-    private static SequentialThreadPoolExecutor messageRoutingExecutor = null;
-
     private AMQChannelMBean _managedObject;
 
     public AMQChannel(AMQProtocolSession session, int channelId, MessageStore messageStore)
@@ -169,19 +167,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
         // by default the session is non-transactional
         _transaction = new AutoCommitTransaction(_messageStore);
-
-        if(messageRoutingExecutor == null){
-            try {
-                messageRoutingExecutor = new SequentialThreadPoolExecutor(((Integer)
-                        AndesConfigurationManager
-                        .getInstance().readConfigurationValue(AndesConfiguration.PERFORMANCE_TUNING_ROUTING_WORKER_THREAD_COUNT)),
-                        "messageRoutingExecutor");
-            } catch (AndesException e) {
-                throw new AMQException(AndesConfigurationManager
-                        .GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration
-                        .PERFORMANCE_TUNING_ROUTING_WORKER_THREAD_COUNT.toString(),e);
-            }
-        }
 
         // message tracking related to this channel is initialised
         Andes.getInstance().clientConnectionCreated(_id);

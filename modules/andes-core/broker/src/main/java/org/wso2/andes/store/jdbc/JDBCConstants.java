@@ -25,7 +25,7 @@ package org.wso2.andes.store.jdbc;
 public class JDBCConstants {
 
     // jndi lookup
-    protected static final String H2_MEM_JNDI_LOOKUP_NAME = "jdbc/InMemoryStore";
+    protected static final String H2_MEM_JNDI_LOOKUP_NAME = "WSO2MBInMemoryStoreDB";
 
     // Configuration properties
     protected static final String PROP_JNDI_LOOKUP_NAME = "dataSource";
