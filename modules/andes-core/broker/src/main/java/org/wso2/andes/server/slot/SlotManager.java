@@ -367,7 +367,7 @@ public class SlotManager {
                 slotAssignmentMap.set(nodeId, wrapper);
             }
         }
-        if (assignedSlotList != null) {
+        if (assignedSlotList != null && !assignedSlotList.isEmpty()) {
             String lockKeyForQueueName = queueName + SlotManager.class;
             synchronized (lockKeyForQueueName.intern()) {
                 TreeSetStringWrapper treeSetStringWrapper = unAssignedSlotMap.get(queueName);
@@ -377,6 +377,7 @@ public class SlotManager {
                     unAssignedSlotSet= treeSetStringWrapper.getStringTreeSet();
                 }
                 if (unAssignedSlotSet == null) {
+                    treeSetStringWrapper = new TreeSetStringWrapper();
                     unAssignedSlotSet = new TreeSet<String>();
                 }
                 for (String slotToBeReAssignedString : assignedSlotList) {
