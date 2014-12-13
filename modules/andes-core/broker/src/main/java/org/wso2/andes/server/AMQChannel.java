@@ -112,6 +112,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     private final Pre0_10CreditManager _creditManager = new Pre0_10CreditManager(0l,0l);
 
     /**
+     * Andes channel related to this local channel
+     */
+    private final AndesChannel andesChannel;
+
+    /**
      * The delivery tag is unique per channel. This is pre-incremented before putting into the deliver frame so that
      * value of this represents the <b>last</b> tag sent out
      */
@@ -190,6 +195,18 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
         // message tracking related to this channel is initialised
         Andes.getInstance().clientConnectionCreated(_id);
+        andesChannel = Andes.createChannel(new FlowControlListener() {
+            @Override
+            public void block() {
+                blockChannel();
+            }
+
+            @Override
+            public void unblock() {
+                unblockChannel();
+            }
+        });
+
         try {
             _managedObject = new AMQChannelMBean(this);
             _managedObject.register();
@@ -397,7 +414,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                      * happen here
                      */
 
-                    QpidAMQPBridge.getInstance().messageReceived(incomingMessage, this.getId());
+                    QpidAMQPBridge.getInstance().messageReceived(incomingMessage, this.getId(), andesChannel);
 
                 } catch (Throwable e) {
                     _logger.error("Error processing completed messages, we will close this session", e);

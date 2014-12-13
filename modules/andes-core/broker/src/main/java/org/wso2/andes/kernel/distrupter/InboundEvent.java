@@ -20,6 +20,7 @@ package org.wso2.andes.kernel.distrupter;
 
 import com.lmax.disruptor.EventFactory;
 import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesMessage;
 
 import java.util.ArrayList;
@@ -30,6 +31,16 @@ import java.util.List;
  * This class specifies the event type and any data that is relevant to that event.
  */
 public class InboundEvent {
+
+    private AndesChannel channel;
+
+    public AndesChannel getChannel() {
+        return channel;
+    }
+
+    public void setChannel(AndesChannel channel) {
+        this.channel = channel;
+    }
 
     /**
      * Inbound event type is specified by this enum

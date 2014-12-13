@@ -302,6 +302,18 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "/messageBatchSizeForBrowserSubscriptions", "200", Integer.class),
 
     /**
+     * This is the per publisher buffer size low limit which disable the flow control for a channel.
+     */
+    FLOW_CONTROL_BUFFER_BASED_LOW_LIMIT("flowControl/bufferBased" +
+                                        "/lowLimit", "100", Integer.class),
+
+    /**
+     * This is the per publisher buffer size high limit which enable the flow control for a channel.
+     */
+    FLOW_CONTROL_BUFFER_BASED_HIGH_LIMIT("flowControl/bufferBased" +
+                                         "/highLimit", "1000", Integer.class),
+
+     /**
      * The time interval at which the server should check for memory consumption and apply flow control to recover.
      */
     FLOW_CONTROL_MEMORY_BASED_MEMORY_CHECK_INTERVAL("flowControl/memoryBased" +

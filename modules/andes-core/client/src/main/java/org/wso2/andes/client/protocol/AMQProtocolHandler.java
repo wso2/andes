@@ -59,8 +59,6 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * AMQProtocolHandler is the client side protocol handler for AMQP, it handles all protocol events received from the
@@ -429,12 +427,9 @@ public class AMQProtocolHandler implements ProtocolEngine
         {
             _readBytes += msg.remaining();
             final ArrayList<AMQDataBlock> dataBlocks = _codecFactory.getDecoder().decodeBuffer(msg);
+            Job.fireAsynchEvent(_poolReference.getPool(), _readJob, new Runnable() {
 
-            Job.fireAsynchEvent(_poolReference.getPool(), _readJob, new Runnable()
-            {
-
-                public void run()
-                {
+                public void run() {
                     // Decode buffer
 
                     for (AMQDataBlock message : dataBlocks)

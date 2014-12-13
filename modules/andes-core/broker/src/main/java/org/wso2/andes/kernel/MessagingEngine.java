@@ -18,14 +18,6 @@
 
 package org.wso2.andes.kernel;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
@@ -47,6 +39,15 @@ import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.store.MessageContentRemoverTask;
 import org.wso2.andes.store.MessageCountFlusher;
 import org.wso2.andes.subscription.SubscriptionStore;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This class will handle all message related functions of WSO2 Message Broker

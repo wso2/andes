@@ -109,13 +109,9 @@ public class Job implements ReadWriteRunnable
                 e.run();
                 totTime = totTime + (System.nanoTime() - start) / 1000000;
                 count++;
-                if (count % 100 == 0) {
+                if (_logger.isDebugEnabled() && count % 100 == 0) {
                     _logger.debug("Runnable took " + totTime / count + " ms " + _eventQueue.size() + " jobs left");
-                   /* count = 0;
-                    totTime = 0;*/
                 }
-
-
             }
         }
         return false;

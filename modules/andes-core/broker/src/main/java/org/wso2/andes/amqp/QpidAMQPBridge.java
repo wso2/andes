@@ -76,9 +76,10 @@ public class QpidAMQPBridge {
      *
      * @param incomingMessage message coming in
      * @param channelID       id of the channel
+     * @param andesChannel
      * @throws AMQException
      */
-    public void messageReceived(IncomingMessage incomingMessage, UUID channelID) throws AMQException {
+    public void messageReceived(IncomingMessage incomingMessage, UUID channelID, AndesChannel andesChannel) throws AMQException {
         try {
             if (log.isDebugEnabled()) {
                 log.debug("Message id " + incomingMessage.getMessageNumber() + " received");
@@ -108,7 +109,7 @@ public class QpidAMQPBridge {
             }
 
             // Handover message to Andes
-            Andes.getInstance().messageReceived(andesMessage);
+            Andes.getInstance().messageReceived(andesMessage, andesChannel);
 
             if(log.isDebugEnabled()) {
                 PerformanceCounter.recordMessageReceived(queue, incomingMessage.getReceivedChunkCount());
