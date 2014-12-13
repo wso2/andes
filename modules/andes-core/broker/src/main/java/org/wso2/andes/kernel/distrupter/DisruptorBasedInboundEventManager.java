@@ -50,7 +50,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
         Integer bufferSize = configurationManager.readConfigurationValue(
                 AndesConfiguration.PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE);
         Integer writeHandlerCount = configurationManager.readConfigurationValue(
-                AndesConfiguration.PERFORMANCE_TUNING_PARALLEL_CONTENT_WRITERS);
+                AndesConfiguration.PERFORMANCE_TUNING_PARALLEL_MESSAGE_WRITERS);
         Integer ackHandlerCount = configurationManager.readConfigurationValue(
                 AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLER_COUNT);
         Integer writerBatchSize = configurationManager.readConfigurationValue(

@@ -225,7 +225,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Number of parallel writers used to write content to message store. Increasing this value will speedup
      * the message receiving mechanism. But the load on the data store will increase.
      */
-    PERFORMANCE_TUNING_PARALLEL_CONTENT_WRITERS("performanceTuning/inbound/parallelContentWriters", "1",
+    PERFORMANCE_TUNING_PARALLEL_MESSAGE_WRITERS("performanceTuning/inboundEvents/parallelMessageWriters", "1",
             Integer.class),
 
     /**
@@ -233,20 +233,20 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * For publishing at higher rates increasing the buffer size may give some advantage to keep messages in memory and
      * write.
      */
-    PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE("performanceTuning/inbound/bufferSize", "65536", Integer.class),
+    PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE("performanceTuning/inboundEvents/bufferSize", "65536", Integer.class),
 
     /**
      * Batch size of the state event handler. State events will be handled in batches when updating inbound messages.
      */
     PERFORMANCE_TUNING_STATE_HANDLER_BATCH_SIZE
-            ("performanceTuning/inbound/stateHandlerBatchSize", "50", Integer.class),
+            ("performanceTuning/inboundEvents/stateHandlerBatchSize", "50", Integer.class),
 
     /**
      * Average batch size of the batch write operation for inbound messages. Batch write of a message will vary around
      * this number
      */
     PERFORMANCE_TUNING_MESSAGE_WRITER_BATCH_SIZE
-            ("performanceTuning/inbound/messageWriterBatchSize", "70", Integer.class),
+            ("performanceTuning/inboundEvents/messageWriterBatchSize", "70", Integer.class),
 
     /**
      * Average batch size of the batch acknowledgement handling for message acknowledgements. Andes will be updated
@@ -254,6 +254,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE
             ("performanceTuning/ackHandling/ackHandlerBatchSize", "30", Integer.class),
+
+    /**
+     * Ack handler count for disruptor based event handling.
+     */
+    PERFORMANCE_TUNING_ACK_HANDLER_COUNT("performanceTuning/ackHandling/ackHandlerCount", "8",
+            Integer.class ),
 
     /**
      * Message delivery from server to the client will be paused temporarily if number of delivered but
@@ -270,22 +276,11 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "/vHostSyncTaskInterval", "3600", Integer.class),
 
     /**
-     * Number of parallel threads that will handle routing the messages received at the broker.
-     */
-    PERFORMANCE_TUNING_ROUTING_WORKER_THREAD_COUNT("performanceTuning/messageRouting/workerThreadCount",
-            "5", Integer.class),
-
-    /**
      * Number of parallel threads that will handle acknowledgement of a message receipt from a consumer.
      */
     PERFORMANCE_TUNING_ACK_HANDLING_WORKER_THREAD_COUNT
             ("performanceTuning/ackHandling/workerThreadCount", "50", Integer.class),
 
-    /**
-     * Ack handler count for disruptor based event handling.
-     */
-    PERFORMANCE_TUNING_ACK_HANDLER_COUNT("performanceTuning/ackHandling/handlerCount", "8",
-            Integer.class ),
     /**
      * Time interval after which the server will remove message content from the store in the background. If the
      * message rate is very high users can set this to a lower value.
@@ -294,14 +289,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TASK_INTERVAL
             ("performanceTuning/messageDeletion/contentRemovalTaskInterval", "600", Integer.class),
 
-    /**
-     * Time to wait before removing a message from the store in PubSub implementation.
-     * Specified in milliseconds.
-     */
-    PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TIME_DIFFERENCE
-            ("performanceTuning/messageDeletion/contentRemovalTimeDifference", "600000", Integer.class),
-
-    /**
+     /**
      * Since server startup, whenever this interval elapses, the expired messages will be cleared from the store.
      */
     PERFORMANCE_TUNING_MESSAGE_EXPIRATION_CHECK_INTERVAL
