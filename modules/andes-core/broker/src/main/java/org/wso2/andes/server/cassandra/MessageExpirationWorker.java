@@ -95,7 +95,8 @@ public class MessageExpirationWorker extends Thread {
                         // support different data models (like RDBMC) in future, the above approach is followed.
                     }
 
-                } catch (Throwable e) {
+                } catch (AndesException e) {
+                    log.error("Error running Message Expiration Checker " + e.getMessage(), e);
                     // The wait time here is designed to increase per failure to avoid unnecessary attempts to wake up the thread.
                     // However, given that the most probable error here could be a timeout during the database call, it could recover in the next few attempts.
                     // Therefore, no need to keep on delaying the worker.
@@ -108,7 +109,7 @@ public class MessageExpirationWorker extends Thread {
                     } catch (InterruptedException ignore) {
                         //silently ignore
                     }
-                    log.error("Error running Message Expiration Checker" + e.getMessage(), e);
+
                 }
             } else {
                 sleepForWaitInterval(workerWaitInterval);

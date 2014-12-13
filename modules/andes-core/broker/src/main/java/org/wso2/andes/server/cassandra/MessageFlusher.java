@@ -53,12 +53,7 @@ public class MessageFlusher {
     //per destination
     private Integer maxNumberOfReadButUndeliveredMessages = 5000;
 
-
-    private static final int THREADPOOL_RECOVERY_INTERVAL = 2000;
-    private static final int SAFE_THREAD_COUNT = 1000;
-    private static final int THREADPOOL_RECOVERY_ATTEMPTS = 2;
-
-    private final int queueWorkerWaitInterval;
+    private final int queueWorkerWaitInterval = 1000;
 
     /**
      * Subscribed destination wise information
@@ -73,18 +68,16 @@ public class MessageFlusher {
 
     static {
         try {
-            messageFlusher = new MessageFlusher(1000);
+            messageFlusher = new MessageFlusher();
         } catch (AndesException e) {
             log.error("Error occurred during configuration access",e);
         }
     }
 
-    public MessageFlusher(final int queueWorkerWaitInterval) throws AndesException {
+    public MessageFlusher() throws AndesException {
 
         this.maxNumberOfUnAckedMessages = AndesConfigurationManager.getInstance().readConfigurationValue
                 (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
-
-        this.queueWorkerWaitInterval = queueWorkerWaitInterval;
 
         this.maxNumberOfReadButUndeliveredMessages = AndesConfigurationManager.getInstance().readConfigurationValue
                 (AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_MAX_READ_BUT_UNDELIVERED_MESSAGES);
@@ -238,7 +231,6 @@ public class MessageFlusher {
     public void sendMessageToFlusher(List<AndesMessageMetadata> messagesRead,
                                      Slot slot) {
 
-        int pendingJobsToSendToTransport;
         long failureCount = 0;
         try {
             for (AndesMessageMetadata message : messagesRead) {
@@ -320,15 +312,6 @@ public class MessageFlusher {
         }
 
 
-    }
-
-
-    //TODO check if this method is required in future
-    private void sleep4waitInterval(long sleepInterval) {
-        try {
-            Thread.sleep(sleepInterval);
-        } catch (InterruptedException ignored) {
-        }
     }
 
     /**

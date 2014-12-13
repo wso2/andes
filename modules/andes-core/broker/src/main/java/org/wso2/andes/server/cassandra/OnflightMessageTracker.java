@@ -383,7 +383,7 @@ public class OnflightMessageTracker {
 
         } else if (trackingData.arrivalTime <= lastPurgedTimestampOfQueue) {
 
-            log.warn("Message was sent at " + trackingData.arrivalTime + " before last purge event at " +
+            log.warn("Message was sent at " + trackingData.arrivalTime + " before last purge event at "
                     + lastPurgedTimestampOfQueue + ". Will be skipped. id= " + messageId);
 
             trackingData.addMessageStatus(MessageStatus.PURGED);

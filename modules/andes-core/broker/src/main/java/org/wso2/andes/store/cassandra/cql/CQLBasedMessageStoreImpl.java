@@ -101,24 +101,17 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
      *
      * @throws CassandraDataAccessException
      */
-    private void createColumnFamilies(CQLConnection connection)
-            throws CassandraDataAccessException {
+    private void createColumnFamilies(CQLConnection connection) throws CassandraDataAccessException {
         int gcGraceSeconds = connection.getGcGraceSeconds();
+
         CQLDataAccessHelper.createColumnFamily(CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY,
-                CassandraConstants.KEYSPACE, this.cluster,
-                CassandraConstants.LONG_TYPE, DataType.blob(),
-                gcGraceSeconds);
+                CassandraConstants.KEYSPACE, this.cluster, CassandraConstants.LONG_TYPE, DataType.blob(), gcGraceSeconds);
         CQLDataAccessHelper.createColumnFamily(CassandraConstants.META_DATA_COLUMN_FAMILY,
-                CassandraConstants.KEYSPACE, this.cluster,
-                CassandraConstants.LONG_TYPE, DataType.blob(),
-                gcGraceSeconds);
-        CQLDataAccessHelper
-                .createCounterColumnFamily(CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY,
-                        CassandraConstants.KEYSPACE, this.cluster,
-                        gcGraceSeconds);
-        CQLDataAccessHelper.createMessageExpiryColumnFamily(
-                CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY, CassandraConstants.KEYSPACE,
-                this.cluster, gcGraceSeconds);
+                CassandraConstants.KEYSPACE, this.cluster, CassandraConstants.LONG_TYPE, DataType.blob(), gcGraceSeconds);
+        CQLDataAccessHelper.createCounterColumnFamily(CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY,
+                CassandraConstants.KEYSPACE, this.cluster, gcGraceSeconds);
+        CQLDataAccessHelper.createMessageExpiryColumnFamily(CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY,
+                CassandraConstants.KEYSPACE, gcGraceSeconds);
     }
 
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException {
@@ -505,8 +498,9 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             }
             return allMetadataList;
         } catch (CassandraDataAccessException e) {
-            log.error("Error while getting meta data for queue : " + queueName + " from msgId : " + firstMsgId + " to msgID : " + lastMsgID,e);
-            throw new AndesException("Error while getting meta data for queue : " + queueName + " from msgId : " + firstMsgId + " to msgID : " + lastMsgID,e);
+            String error = "Error while getting meta data for queue : " + queueName + " from msgId : " + firstMsgId + " to msgID : " + lastMsgID;
+            log.error(error,e);
+            throw new AndesException(error,e);
         }
 
 
@@ -760,8 +754,9 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             GenericCQLDAO.batchExecuteWrite(CassandraConstants.KEYSPACE,
                     statements.toArray(new Statement[statements.size()]));
         } catch (CassandraDataAccessException e) {
-            log.error("Error while deleting messages", e);
-            throw new AndesException("Error while deleting messages",e);
+            String error = "Error while deleting messages";
+            log.error(error, e);
+            throw new AndesException(error,e);
         }
     }
 

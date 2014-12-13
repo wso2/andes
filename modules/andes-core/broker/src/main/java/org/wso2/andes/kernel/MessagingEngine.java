@@ -634,15 +634,14 @@ public class MessagingEngine {
      */
     public void startMessageExpirationWorker() throws AndesException {
 
-        MessageExpirationWorker mew = ClusterResourceHolder.getInstance().getMessageExpirationWorker();
+        MessageExpirationWorker messageExpirationWorker = ClusterResourceHolder.getInstance().getMessageExpirationWorker();
 
-        if (mew == null) {
-            MessageExpirationWorker messageExpirationWorker = new MessageExpirationWorker();
-            ClusterResourceHolder.getInstance().setMessageExpirationWorker(messageExpirationWorker);
+        if (messageExpirationWorker == null) {
+            ClusterResourceHolder.getInstance().setMessageExpirationWorker(new MessageExpirationWorker());
 
         } else {
-            if (!mew.isWorking()) {
-                mew.startWorking();
+            if (!messageExpirationWorker.isWorking()) {
+                messageExpirationWorker.startWorking();
             }
         }
     }

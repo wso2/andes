@@ -37,6 +37,12 @@ public class Server {
         serverInit(configProps);
     }
 
+    /**
+     * Load configurations related to MQTT from Andes configuration files.
+     *
+     * @return Property collection
+     * @throws AndesException
+     */
     private Properties loadConfigurations() throws AndesException {
 
         Properties mqttProperties = new Properties();
