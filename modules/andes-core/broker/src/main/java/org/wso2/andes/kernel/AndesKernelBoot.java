@@ -196,8 +196,7 @@ public class AndesKernelBoot {
         if (!(contextStoreInstance instanceof AndesContextStore)) {
             throw new ClassCastException(
                     "Message store class must implement " + AndesContextStore.class + ". Class "
-                    + contextStoreClass +
-                    " does not.");
+                    + contextStoreClass + " does not.");
         }
 
         AndesContextStore andesContextStore = (AndesContextStore) contextStoreInstance;
@@ -223,24 +222,21 @@ public class AndesKernelBoot {
         if (!(messageStoreInstance instanceof org.wso2.andes.kernel.MessageStore)) {
             throw new ClassCastException(
                     "Message store class must implement " + MessageStore.class + ". Class " +
-                    messageStoreClass +
-                    " does not.");
+                    messageStoreClass + " does not.");
         }
 
         MessageStore messageStore = (MessageStore) messageStoreInstance;
         messageStore.initializeMessageStore(
                 virtualHostsConfiguration.getMessageStoreProperties()
         );
-        MessagingEngine.getInstance().initialise(messageStore);
+        MessagingEngine messagingEngine = MessagingEngine.getInstance();
+        messagingEngine.initialise(messageStore, andesContextStore,subscriptionStore);
         AndesKernelBoot.messageStore = messageStore;
 
-        /**
-         * When message stores are initialised initialise the AndesAPI as well.
-         */
-        Andes.getInstance().initialise(subscriptionStore);
-        /**
-         * initialize amqp constructs syncing into Qpid
-         */
+        // When message stores are initialised initialise Andes as well.
+        Andes.getInstance().initialise(subscriptionStore, messagingEngine);
+
+        // initialize amqp constructs syncing into Qpid
         VirtualHostConfigSynchronizer _VirtualHostConfigSynchronizer = new
                 VirtualHostConfigSynchronizer(
                 virtualHost);

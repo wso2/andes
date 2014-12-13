@@ -314,7 +314,6 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     /***
      * {@inheritDoc}
-     * @return
      */
     public int getSubscriptionCount( String queueName){
         try {

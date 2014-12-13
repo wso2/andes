@@ -85,13 +85,12 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
      * @return message count
      */
     public int getMessageCount(@MBeanOperationParameter(name = "queueName", description = "Name of the queue which message count is required") String queueName) {
-        int count;
         try {
-            count = MessagingEngine.getInstance().getMessageCountOfQueue(queueName);
+            Long count = MessagingEngine.getInstance().getMessageCountOfQueue(queueName);
+            return count.intValue();
         } catch (AndesException e) {
             throw new RuntimeException(e);
         }
-        return count;
     }
 
     /**
