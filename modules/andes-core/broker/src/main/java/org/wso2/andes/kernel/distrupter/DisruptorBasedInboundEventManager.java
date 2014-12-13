@@ -44,7 +44,8 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
     private static Log log = LogFactory.getLog(DisruptorBasedInboundEventManager.class);
     private final RingBuffer<InboundEvent> ringBuffer;
 
-    public DisruptorBasedInboundEventManager(SubscriptionStore subscriptionStore) throws AndesException {
+    public DisruptorBasedInboundEventManager(SubscriptionStore subscriptionStore,
+                                             MessagingEngine messagingEngine) throws AndesException {
 
         AndesConfigurationManager configurationManager = AndesConfigurationManager.getInstance();
         Integer bufferSize = configurationManager.readConfigurationValue(
@@ -102,7 +103,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
 
         // State event handler should run at last.
         // State event handler update the state of Andes after other handlers work is done.
-        disruptor.after(processors).handleEventsWith(new StateEventHandler());
+        disruptor.after(processors).handleEventsWith(new StateEventHandler(messagingEngine));
 
         disruptor.handleExceptionsWith(new IgnoreExceptionHandler());
         ringBuffer = disruptor.start();

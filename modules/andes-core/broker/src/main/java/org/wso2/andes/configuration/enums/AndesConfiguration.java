@@ -302,6 +302,19 @@ public enum AndesConfiguration implements ConfigurationProperty {
             ("performanceTuning/messageExpiration/messageBatchSize", "1000", Integer.class),
 
     /**
+     * Message counter tasks delay between the termination of one execution and the commencement of the next in seconds
+     */
+    PERFORMANCE_TUNING_MESSAGE_COUNTER_TASK_INTERVAL
+            ("performanceTuning/messageCounter/counterTaskInterval", "15", Integer.class),
+
+    /**
+     * Message count is updated in batches. Once the count exceed the batch size message count update is given to
+     * message count update task.
+     */
+    PERFORMANCE_TUNING_MESSAGE_COUNTER_UPDATE_BATCH_SIZE
+            ("performanceTuning/messageCounter/countUpdateBatchSize", "100", Integer.class),
+
+    /**
      * The number of messages to be cached in-memory
      */
     PERFORMANCE_TUNING_STORE_OPERATIONS_MESSAGE_CONTENT_CACHE

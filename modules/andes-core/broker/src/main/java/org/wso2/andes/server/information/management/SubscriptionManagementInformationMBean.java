@@ -18,8 +18,6 @@
 package org.wso2.andes.server.information.management;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
@@ -56,8 +54,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
                 List<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination(queue, false);
 
                 for (AndesSubscription s : subscriptions) {
-
-                    int pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(queue);
+                    Long pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(queue);
 
                     if (!isDurable.equals("*") && (Boolean.parseBoolean(isDurable) != s.isDurable())) {
                         continue;
@@ -66,7 +63,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
                         continue;
                     }
 
-                    allSubscriptionsForQueues.add(renderSubscriptionForUI(s,pendingMessageCount));
+                    allSubscriptionsForQueues.add(renderSubscriptionForUI(s,pendingMessageCount.intValue()));
                 }
             }
             return allSubscriptionsForQueues.toArray(new String[allSubscriptionsForQueues.size()]);
@@ -89,7 +86,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
                 for (AndesSubscription s : subscriptions) {
 
-                    int pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(s.getTargetQueue());
+                    Long pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(s.getTargetQueue());
 
                     if (!isDurable.equals("*") && (Boolean.parseBoolean(isDurable) != s.isDurable())) {
                         continue;
@@ -98,7 +95,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
                         continue;
                     }
 
-                    allSubscriptionsForTopics.add(renderSubscriptionForUI(s,pendingMessageCount));
+                    allSubscriptionsForTopics.add(renderSubscriptionForUI(s,pendingMessageCount.intValue()));
                 }
             }
             return allSubscriptionsForTopics.toArray(new String[allSubscriptionsForTopics.size()]);
@@ -110,14 +107,12 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
     @Override
     public int getMessageCount(String subscribedNode, String msgPattern ,String destinationName) {
-        int messageCount = 0;
         try {
-            messageCount = MessagingEngine.getInstance().getMessageCountOfQueue(destinationName);
-
+            Long messageCount = MessagingEngine.getInstance().getMessageCountOfQueue(destinationName);
+            return messageCount.intValue();
         }catch (Exception e) {
             throw new RuntimeException("Error in retrieving pending message count", e);
         }
-        return messageCount;
     }
 
     /**

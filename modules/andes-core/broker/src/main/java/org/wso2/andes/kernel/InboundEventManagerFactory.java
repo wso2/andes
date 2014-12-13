@@ -23,9 +23,10 @@ import org.wso2.andes.subscription.SubscriptionStore;
 
 public class InboundEventManagerFactory {
 
-    public static InboundEventManager createEventManager(SubscriptionStore subscriptionStore) throws AndesException {
+    public static InboundEventManager createEventManager(SubscriptionStore subscriptionStore,
+                                                         MessagingEngine messagingEngine) throws AndesException {
 
-        return new DisruptorBasedInboundEventManager(subscriptionStore);
+        return new DisruptorBasedInboundEventManager(subscriptionStore, messagingEngine);
     }
 
 
