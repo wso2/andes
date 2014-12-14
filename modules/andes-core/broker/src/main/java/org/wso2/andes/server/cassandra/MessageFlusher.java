@@ -64,22 +64,14 @@ public class MessageFlusher {
 
     private SubscriptionStore subscriptionStore;
 
-    private static MessageFlusher messageFlusher;
+    private static MessageFlusher messageFlusher = new MessageFlusher();
 
-    static {
-        try {
-            messageFlusher = new MessageFlusher();
-        } catch (AndesException e) {
-            log.error("Error occurred during configuration access",e);
-        }
-    }
+    public MessageFlusher() {
 
-    public MessageFlusher() throws AndesException {
-
-        this.maxNumberOfUnAckedMessages = AndesConfigurationManager.getInstance().readConfigurationValue
+        this.maxNumberOfUnAckedMessages = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
 
-        this.maxNumberOfReadButUndeliveredMessages = AndesConfigurationManager.getInstance().readConfigurationValue
+        this.maxNumberOfReadButUndeliveredMessages = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_MAX_READ_BUT_UNDELIVERED_MESSAGES);
 
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();

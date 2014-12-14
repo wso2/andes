@@ -40,13 +40,13 @@ public class MessageExpirationWorker extends Thread {
     private final Integer messageBatchSize;
     private final Boolean saveExpiredToDLC;
 
-    public MessageExpirationWorker() throws AndesException {
+    public MessageExpirationWorker() {
 
-        workerWaitInterval = AndesConfigurationManager.getInstance().readConfigurationValue
+        workerWaitInterval = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_EXPIRATION_CHECK_INTERVAL);
-        messageBatchSize = AndesConfigurationManager.getInstance().readConfigurationValue
+        messageBatchSize = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_EXPIRATION_BATCH_SIZE);
-        saveExpiredToDLC = AndesConfigurationManager.getInstance().readConfigurationValue
+        saveExpiredToDLC = AndesConfigurationManager.readValue
                 (AndesConfiguration.TRANSPORTS_AMQP_SEND_EXPIRED_MESSAGES_TO_DLC);
 
         this.start();

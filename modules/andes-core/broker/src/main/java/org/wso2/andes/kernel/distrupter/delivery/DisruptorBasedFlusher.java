@@ -48,12 +48,12 @@ public class DisruptorBasedFlusher {
      */
     private final RingBuffer<DeliveryEventData> ringBuffer;
 
-    public DisruptorBasedFlusher() throws AndesException {
-        Integer ringBufferSize = AndesConfigurationManager.getInstance().readConfigurationValue(
+    public DisruptorBasedFlusher() {
+        Integer ringBufferSize = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_RING_BUFFER_SIZE);
-        Integer parallelContentReaders = AndesConfigurationManager.getInstance().readConfigurationValue(
+        Integer parallelContentReaders = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_PARALLEL_CONTENT_READERS);
-        Integer parallelDeliveryHandlers = AndesConfigurationManager.getInstance().readConfigurationValue(
+        Integer parallelDeliveryHandlers = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_PARALLEL_DELIVERY_HANDLERS);
 
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("DisruptorBasedFlusher-%d").build();

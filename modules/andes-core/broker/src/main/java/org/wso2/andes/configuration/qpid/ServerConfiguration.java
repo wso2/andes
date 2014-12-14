@@ -510,14 +510,9 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      * @return Port
      */
     public List getPorts() {
-        Integer port;
-        try {
-            port = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
-                    .TRANSPORTS_AMQP_PORT);
-        } catch (AndesException e) {
-            port = DEFAULT_PORT;
-        }
-        return Collections.<Integer>singletonList(port);
+        Integer port = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_PORT);
+
+        return Collections.singletonList(port);
     }
 
     public List getPortExclude010() {
@@ -542,12 +537,7 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      * @return Bind address
      */
     public String getBind() {
-        try {
-            return AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
-                    .TRANSPORTS_BIND_ADDRESS);
-        } catch (AndesException e) {
-            return WILDCARD_ADDRESS;
-        }
+        return AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_BIND_ADDRESS);
     }
 
     public int getReceiveBufferSize() {
@@ -580,14 +570,9 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      * @return SSL Port List
      */
     public List getSSLPorts() {
-        Integer sslPort;
-        try {
-            sslPort = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
-                    .TRANSPORTS_AMQP_SSL_PORT);
-        } catch (AndesException e) {
-            sslPort = DEFAULT_SSL_PORT;
-        }
-        return Collections.<Integer>singletonList(sslPort);
+        Integer sslPort = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_PORT);
+
+        return Collections.singletonList(sslPort);
     }
 
     public String getKeystorePath() {

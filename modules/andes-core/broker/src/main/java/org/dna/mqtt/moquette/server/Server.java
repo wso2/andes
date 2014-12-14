@@ -26,13 +26,13 @@ public class Server {
     private ServerAcceptor m_acceptor;
     SimpleMessaging messaging;
 
-    public void startServer(int port) throws IOException, AndesException {
+    public void startServer(int port) throws IOException {
         Properties configProps = loadConfigurations();
         configProps.put("port",Integer.toString(port));
         serverInit(configProps);
     }
     
-    public void startServer() throws IOException, AndesException {
+    public void startServer() throws IOException {
         Properties configProps = loadConfigurations();
         serverInit(configProps);
     }
@@ -43,20 +43,15 @@ public class Server {
      * @return Property collection
      * @throws AndesException
      */
-    private Properties loadConfigurations() throws AndesException {
+    private Properties loadConfigurations() {
 
         Properties mqttProperties = new Properties();
 
-        mqttProperties.put("port",
-                AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
-                        .TRANSPORTS_MQTT_PORT));
+        mqttProperties.put("port",AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_PORT));
 
-        mqttProperties.put("sslPort",
-                AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
-                        .TRANSPORTS_MQTT_SSL_PORT));
+        mqttProperties.put("sslPort",AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_SSL_PORT));
 
-        mqttProperties.put("host",AndesConfigurationManager.getInstance().readConfigurationValue
-                (AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
+        mqttProperties.put("host",AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
 
         return mqttProperties;
     }

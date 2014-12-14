@@ -44,7 +44,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      */
     private final MessagingEngine messagingEngine;
 
-    StateEventHandler(MessagingEngine messagingEngine) throws AndesException {
+    StateEventHandler(MessagingEngine messagingEngine) {
         this.messagingEngine = messagingEngine;
     }
 
@@ -199,12 +199,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      * Handle event of start message expiration worker
      */
     public void startMessageExpirationWorker() {
-        try {
-            messagingEngine.startMessageExpirationWorker();
-        } catch (AndesException e) {
-            // TODO: throw a fatal error and stop the disruptor. Don't Ignore
-            log.error("Error occurred while initialising message expiration worker", e);
-        }
+        MessagingEngine.getInstance().startMessageExpirationWorker();
     }
 
     /**

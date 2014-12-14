@@ -45,18 +45,17 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
     private final RingBuffer<InboundEvent> ringBuffer;
 
     public DisruptorBasedInboundEventManager(SubscriptionStore subscriptionStore,
-                                             MessagingEngine messagingEngine) throws AndesException {
+                                             MessagingEngine messagingEngine) {
 
-        AndesConfigurationManager configurationManager = AndesConfigurationManager.getInstance();
-        Integer bufferSize = configurationManager.readConfigurationValue(
+        Integer bufferSize = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE);
-        Integer writeHandlerCount = configurationManager.readConfigurationValue(
+        Integer writeHandlerCount = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_PARALLEL_MESSAGE_WRITERS);
-        Integer ackHandlerCount = configurationManager.readConfigurationValue(
+        Integer ackHandlerCount = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLER_COUNT);
-        Integer writerBatchSize = configurationManager.readConfigurationValue(
+        Integer writerBatchSize = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_WRITER_BATCH_SIZE);
-        Integer ackHandlerBatchSize = configurationManager.readConfigurationValue(
+        Integer ackHandlerBatchSize = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE);
 
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()

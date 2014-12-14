@@ -48,7 +48,7 @@ public class MessageContentRemoverTask implements Runnable {
      * DurableStoreConnection to message store
      * @param messageStore MessageStore
      */
-    public MessageContentRemoverTask(MessageStore messageStore) throws AndesException {
+    public MessageContentRemoverTask(MessageStore messageStore) {
         this.messageStore = messageStore;
         messageToDeleteMap = new ConcurrentHashMap<Long, Long>();
     }
