@@ -28,10 +28,8 @@ import org.wso2.andes.server.message.MessageMetaData;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
-import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 
 import java.nio.ByteBuffer;
-import java.util.Map;
 import java.util.UUID;
 
 public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
@@ -84,7 +82,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      * True if the message has been delivered more than once.
      */
     private boolean reDelivered;
-    Map<UUID, PendingJob> pendingJobsTracker;
     private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
 
     /**
@@ -143,14 +140,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
     public void setMetadata(byte[] metadata) {
         this.metadata = metadata;
-    }
-
-    public Map<UUID, PendingJob> getPendingJobsTracker() {
-        return pendingJobsTracker;
-    }
-
-    public void setPendingJobsTracker(Map<UUID, PendingJob> pendingJobsTracker) {
-        this.pendingJobsTracker = pendingJobsTracker;
     }
 
     public long getExpirationTime() {
@@ -215,7 +204,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      * @param messageId message id
      * @return returns AndesMessageMetadata
      */
-    public AndesMessageMetadata deepClone(long messageId) {
+    public AndesMessageMetadata shallowCopy(long messageId) {
         AndesMessageMetadata clone = new AndesMessageMetadata();
         clone.messageID = messageId;
         clone.metadata = metadata;
@@ -225,7 +214,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         clone.destination = destination;
         clone.storageQueueName = storageQueueName;
         clone.isPersistent = isPersistent;
-        clone.pendingJobsTracker = pendingJobsTracker;
         clone.slot = slot;
         clone.arrivalTime = arrivalTime;
         return clone;

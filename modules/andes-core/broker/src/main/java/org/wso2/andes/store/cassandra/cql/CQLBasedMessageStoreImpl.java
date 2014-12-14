@@ -36,7 +36,6 @@ import org.wso2.andes.store.cassandra.CassandraConstants;
 import org.wso2.andes.store.cassandra.cql.dao.CQLQueryBuilder;
 import org.wso2.andes.store.cassandra.cql.dao.CassandraHelper;
 import org.wso2.andes.store.cassandra.cql.dao.GenericCQLDAO;
-import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 
 import java.util.*;
 
@@ -256,22 +255,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(latency);
             }
 
-           /*
-            Client waits for these message ID to be written, this signal those,
-            if there is a error
-            we will not signal and client who tries to close the connection will timeout.
-            We can do this better, but leaving this as is or now.
-            */
-            for (AndesMessageMetadata md : metadataList) {
-                Map<UUID, PendingJob> pendingJobMap = md.getPendingJobsTracker();
-                if (pendingJobMap != null) {
-                    PendingJob jobData = pendingJobMap.get(md.getChannelId());
-                    if (jobData != null) {
-                        jobData.semaphore.release();
-                    }
-                }
-            }
-        } catch (CassandraDataAccessException e) {
+         } catch (CassandraDataAccessException e) {
             log.error("Error writing incoming messages to Cassandra", e);
             throw new AndesException("Error writing incoming messages to Cassandra", e);
         }

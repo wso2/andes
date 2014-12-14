@@ -79,7 +79,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
             processors[turn] = new ConcurrentBatchProcessor(
                     disruptor.getRingBuffer(),
                     barrier,
-                    new messageWriter(),
+                    new MessageWriter(messagingEngine, writerBatchSize),
                     turn,
                     writeHandlerCount,
                     writerBatchSize,
@@ -132,7 +132,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
      * @inheritDoc
      */
     @Override
-    public void ackReceived(AndesAckData ackData) throws AndesException {
+    public void ackReceived(AndesAckData ackData) {
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEvent event = ringBuffer.get(sequence);
@@ -149,7 +149,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
     }
 
     @Override
-    public void messageRejected(AndesMessageMetadata metadata) throws AndesException {
+    public void messageRejected(AndesMessageMetadata metadata) {
 
     }
 

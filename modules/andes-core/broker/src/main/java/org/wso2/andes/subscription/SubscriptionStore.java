@@ -95,10 +95,8 @@ public class SubscriptionStore {
             String subDestination = entry.getKey();
             if(AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(subDestination, destination)) {
                 List<AndesSubscription> subscriptionsOfDestination = entry.getValue();
-                if (subscriptionsOfDestination != null) {
-                    for (AndesSubscription subscription : subscriptionsOfDestination) {
-                        subscriptionList.add(subscription);
-                    }
+                if (null != subscriptionsOfDestination) {
+                    subscriptionList.addAll(subscriptionsOfDestination);
                 }
             }
         }
