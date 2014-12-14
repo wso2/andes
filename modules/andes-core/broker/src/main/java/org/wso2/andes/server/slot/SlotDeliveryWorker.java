@@ -274,7 +274,11 @@ public class SlotDeliveryWorker extends Thread {
                 } catch (ConnectionException e) {
                     log.error("Error occurred while connecting to the thrift coordinator " +
                               e.getMessage(), e);
-                    setRunning(false);
+                    //setRunning(false);
+                    //Any exception should be caught here. Otherwise SDW thread will stop
+                    //and MB node will become useless
+                } catch (Exception e) {
+                    log.error("Error while running Slot Delivery Worker. ", e);
                 }
             }
         }

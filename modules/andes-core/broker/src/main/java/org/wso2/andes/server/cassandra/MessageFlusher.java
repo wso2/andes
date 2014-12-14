@@ -369,7 +369,11 @@ public class MessageFlusher {
                     Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
                     while (subscriptionIterator.hasNext()) {
                         LocalSubscription subscription = subscriptionIterator.next();
-                        if (subscription.isDurable()) {
+                        /**
+                         * Here we need to consider the arrival time of the message. Only topic
+                         * subscribers who appeared before publishing this message should receive it
+                         */
+                        if (subscription.isDurable() || (subscription.getSubscribeTime() > message.getArrivalTime())) {
                             subscriptionIterator.remove();
                         }
                     }

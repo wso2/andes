@@ -209,6 +209,7 @@ public class AMQPUtils {
         Exchange exchange = b.getExchange();
         String destination = b.getBindingKey();
         String subscribedNode = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        long subscribeTime = System.currentTimeMillis();
         String queueOwner = (queue.getOwner() == null) ? null : queue.getOwner().toString();
         String queueBoundExchangeName = "";
         String queueBoundExchangeType = exchange.getType().toString();
@@ -238,7 +239,7 @@ public class AMQPUtils {
 
         AMQPLocalSubscription localSubscription = new AMQPLocalSubscription(queue,
                 subscription, subscriptionID, destination, isBoundToTopic, queue.isExclusive(), queue.isDurable(),
-                subscribedNode, queue.getName(), queueOwner, queueBoundExchangeName, queueBoundExchangeType, isqueueBoundExchangeAutoDeletable, subscription.isActive());
+                subscribedNode, subscribeTime, queue.getName(), queueOwner, queueBoundExchangeName, queueBoundExchangeType, isqueueBoundExchangeAutoDeletable, subscription.isActive());
 
         return localSubscription;
     }

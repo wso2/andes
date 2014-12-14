@@ -41,6 +41,8 @@ public class BasicSubscription implements AndesSubscription {
     protected boolean isDurable;
     // The name of the node in the cluster where the subscription is bound - MANDOTORY
     protected String subscribedNode;
+    //Time of subscription creation/disconnection/deletion - MANDATORY
+    protected long subscribeTime;
     // If the binding is non durable (topic) then the name would be prfix+destination+nodeID - INTERNALLY CONSTRUCTED
     protected String storageQueueName;
     //non durable topics this value will be null. In other cases ex queues and durable topics we need to have this - OPTIONAL
@@ -78,6 +80,8 @@ public class BasicSubscription implements AndesSubscription {
                 this.isDurable = Boolean.parseBoolean(tokens[1]);
             } else if (tokens[0].equals("subscribedNode")) {
                 this.subscribedNode = tokens[1];
+            } else if (tokens[0].equals("subscribedTime")) {
+                this.subscribeTime = Long.parseLong(tokens[1]);
             } else if (tokens[0].equals("targetQueue")) {
                 this.targetQueue = tokens[1];
             } else if (tokens[0].equals("targetQueueOwner")) {
@@ -108,7 +112,8 @@ public class BasicSubscription implements AndesSubscription {
      * @param isBoundToTopic                          is subscription for topic
      * @param isExclusive                             is this an exclusive subscription
      * @param isDurable                               is this an durable subscription
-     * @param subscribedNode                          node queue information where actual subscription lies
+     * @param subscribedNode                          node information where actual subscription lies
+     * @param subscribeTime                           Timestamp in milliseconds subscription is created
      * @param targetQueue                             to which queue subscription is bound
      * @param targetQueueOwner                        owner of the subscribed queue
      * @param targetQueueBoundExchange                name of one of exchanges to which queue of the subscriber is bound
@@ -118,7 +123,7 @@ public class BasicSubscription implements AndesSubscription {
      */
     public BasicSubscription(String subscriptionID, String destination,
                              boolean isBoundToTopic, boolean isExclusive, boolean isDurable,
-                             String subscribedNode, String targetQueue, String targetQueueOwner, String targetQueueBoundExchange,
+                             String subscribedNode, long subscribeTime, String targetQueue, String targetQueueOwner, String targetQueueBoundExchange,
                              String targetQueueBoundExchangeType, Short isTargetQueueBoundExchangeAutoDeletable, boolean hasExternalSubscriptions) {
 
         super();
@@ -133,6 +138,7 @@ public class BasicSubscription implements AndesSubscription {
         this.isExclusive = isExclusive;
         this.isDurable = isDurable;
         this.subscribedNode = subscribedNode;
+        this.subscribeTime = subscribeTime;
         this.targetQueue = targetQueue;
         this.targetQueueOwner = targetQueueOwner;
         this.targetQueueBoundExchange = targetQueueBoundExchange;
@@ -165,6 +171,10 @@ public class BasicSubscription implements AndesSubscription {
     @Override
     public String getSubscribedNode() {
         return subscribedNode;
+    }
+
+    public long getSubscribeTime() {
+        return subscribeTime;
     }
 
     public boolean isExclusive() {
@@ -215,6 +225,7 @@ public class BasicSubscription implements AndesSubscription {
         buf.append("[").append(destination)
                 .append("]ID=").append(subscriptionID)
                 .append("@").append(subscribedNode)
+                .append("/T=").append(subscribeTime)
                 .append("/D=").append(isDurable)
                 .append("/X=").append(isExclusive)
                 .append("/O=").append(targetQueueOwner)
@@ -239,6 +250,7 @@ public class BasicSubscription implements AndesSubscription {
                 .append(",targetQueueBoundExchangeType=").append(targetQueueBoundExchangeType)
                 .append(",isTargetQueueBoundExchangeAutoDeletable=").append(isTargetQueueBoundExchangeAutoDeletable)
                 .append(",subscribedNode=").append(subscribedNode)
+                .append(", subscribeTime=").append(subscribeTime)
                 .append(",hasExternalSubscriptions=").append(hasExternalSubscriptions);
         return buf.toString();
     }
