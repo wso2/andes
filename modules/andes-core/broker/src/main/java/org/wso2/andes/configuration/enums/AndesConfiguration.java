@@ -195,13 +195,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "/maxNumberOfReadButUndeliveredMessages", "1000", Integer.class),
 
     /**
-     * This is the Thread pool size which will be used by the queue delivery workers. Make this to a higher number if
-     * there are lots of unique queues to the system at a given time.
-     */
-    PERFORMANCE_TUNING_DELIVERY_PUBLISHER_POOL_SIZE("performanceTuning/delivery" +
-            "/publisherPoolSize", "50", Integer.class),
-
-    /**
      * This is the ring buffer size of the delivery disruptor. This value should be a power of 2 (E.g. 1024, 2048,
      * 4096). Use a small ring size if you want to reduce the memory usage.
      */
@@ -234,12 +227,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * write.
      */
     PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE("performanceTuning/inboundEvents/bufferSize", "65536", Integer.class),
-
-    /**
-     * Batch size of the state event handler. State events will be handled in batches when updating inbound messages.
-     */
-    PERFORMANCE_TUNING_STATE_HANDLER_BATCH_SIZE
-            ("performanceTuning/inboundEvents/stateHandlerBatchSize", "50", Integer.class),
 
     /**
      * Average batch size of the batch write operation for inbound messages. Batch write of a message will vary around
@@ -313,12 +300,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     PERFORMANCE_TUNING_MESSAGE_COUNTER_UPDATE_BATCH_SIZE
             ("performanceTuning/messageCounter/countUpdateBatchSize", "100", Integer.class),
-
-    /**
-     * The number of messages to be cached in-memory
-     */
-    PERFORMANCE_TUNING_STORE_OPERATIONS_MESSAGE_CONTENT_CACHE
-            ("performanceTuning/storeOperations/messageContentCache", "1000", Integer.class),
 
     /**
      * The number of messages to be handled in a single operation related to browser subscriptions.

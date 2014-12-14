@@ -157,17 +157,7 @@ public class ServerMethodDispatcherImpl implements MethodDispatcher
      */
     public boolean dispatchBasicAck(final BasicAckBody body, final int channelId) throws AMQException
     {
-        AndesExecuter.getInstance(andesInternalParallelThreadPoolSize).submit(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    _basicAckMethodHandler.methodReceived(_stateManager, body, channelId);
-                } catch (AMQException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-            }
-        }, null);
+        _basicAckMethodHandler.methodReceived(_stateManager, body, channelId);
         return true;
     }
 

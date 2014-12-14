@@ -39,18 +39,12 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
 
     private static Log log = LogFactory.getLog(StateEventHandler.class);
 
-    private final Integer BATCH_SIZE;
-    private final List<AndesMessage> messageList;
-
     /**
      * reference to MessagingEngine
      */
     private final MessagingEngine messagingEngine;
 
     StateEventHandler(MessagingEngine messagingEngine) throws AndesException {
-        BATCH_SIZE = AndesConfigurationManager.getInstance().readConfigurationValue(
-                AndesConfiguration.PERFORMANCE_TUNING_STATE_HANDLER_BATCH_SIZE);
-        messageList = new ArrayList<AndesMessage>(BATCH_SIZE);
         this.messagingEngine = messagingEngine;
     }
 
@@ -65,14 +59,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
         try {
             switch (event.getEventType()) {
                 case MESSAGE_EVENT:
-                    messageList.addAll(event.messageList);
-                    if (log.isTraceEnabled()) {
-                        StringBuilder messagesString = new StringBuilder();
-                        for (AndesMessage message : event.messageList) {
-                            messagesString.append(message.getMetadata().getMessageID()).append(" , ");
-                        }
-                        log.debug("Messages added to batch. Message ids " + messagesString);
-                    }
+                    updateSlotsAndQueueCounts(event.messageList);
                     break;
                 case CHANNEL_CLOSE_EVENT:
                     clientConnectionClosed((UUID) event.getData());
@@ -102,8 +89,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
                     closeLocalSubscription((LocalSubscription) event.getData());
                     break;
             }
-            // irrespective of the event update slots with new messages
-            batchAndUpdateOnMetaDataEvent(endOfBatch);
+
         } finally {
             // This is the final handler that visits the slot in ring buffer. Hence after processing is done clear the
             // slot so that in next iteration of the first event handler over the same slot won't find garbage from
@@ -113,19 +99,6 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
                     || InboundEvent.Type.ACKNOWLEDGEMENT_EVENT != event.getEventType()) {
                 event.clear();
             }
-        }
-    }
-
-    /**
-     * Batch Metadata related state change events and update Slots counter
-     *
-     * @param endOfBatch true if end of batch in disruptor and wise versa
-     */
-    private void batchAndUpdateOnMetaDataEvent(boolean endOfBatch) {
-
-        if (!messageList.isEmpty() && ((messageList.size() >= BATCH_SIZE) || endOfBatch)) {
-            updateSlotsAndQueueCounts(messageList);
-            messageList.clear();
         }
     }
 

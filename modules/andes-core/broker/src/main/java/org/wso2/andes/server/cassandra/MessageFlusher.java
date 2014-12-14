@@ -59,7 +59,6 @@ public class MessageFlusher {
     private static final int THREADPOOL_RECOVERY_ATTEMPTS = 2;
 
     private final int queueWorkerWaitInterval;
-    private static Integer PUBLISHER_POOL_SIZE;
 
     /**
      * Subscribed destination wise information
@@ -81,9 +80,6 @@ public class MessageFlusher {
     }
 
     public MessageFlusher(final int queueWorkerWaitInterval) throws AndesException {
-
-        PUBLISHER_POOL_SIZE = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
-                .PERFORMANCE_TUNING_DELIVERY_PUBLISHER_POOL_SIZE);
 
         this.maxNumberOfUnAckedMessages = AndesConfigurationManager.getInstance().readConfigurationValue
                 (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
