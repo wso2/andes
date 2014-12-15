@@ -58,7 +58,7 @@ public class Andes {
     /**
      * Initialise is package specific. We don't need outsiders initialising the API
      */
-    void initialise(SubscriptionStore subscriptionStore, MessagingEngine messagingEngine) throws AndesException {
+    void initialise(SubscriptionStore subscriptionStore, MessagingEngine messagingEngine) {
         inboundEventManager = InboundEventManagerFactory.createEventManager(subscriptionStore, messagingEngine);
         log.info("Andes API initialised.");
     }

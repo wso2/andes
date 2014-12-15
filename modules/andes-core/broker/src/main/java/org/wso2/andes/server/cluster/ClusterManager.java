@@ -19,7 +19,6 @@ package org.wso2.andes.server.cluster;
 
 
 import com.hazelcast.core.Member;
-import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -96,7 +95,7 @@ public class ClusterManager {
     /**
      * Handles changes needs to be done in current node when a node joins to the cluster
      */
-    public void memberAdded(Member node) throws AndesException {
+    public void memberAdded(Member node) {
         reAssignNodeSyncId();
         //update thrift coordinator server details
         updateThriftCoordinatorDetailsToMap();
@@ -183,17 +182,10 @@ public class ClusterManager {
     private void initStandaloneMode() throws AndesException, UnknownHostException {
 
         // Get Node ID configured by user in broker.xml (if not "default" we must use it as the ID)
-        try {
-            this.nodeId = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration.COORDINATION_NODE_ID);
+        this.nodeId = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_NODE_ID);
 
-            if (AndesConfiguration.COORDINATION_NODE_ID.get().getDefaultValue().equals(this.nodeId)) {
-                this.nodeId = CoordinationConstants.NODE_NAME_PREFIX + InetAddress.getLocalHost().toString();
-            }
-
-        } catch (AndesException e) {
-            // Since we cannot infer user's node ID, we will assign our default generated ID.
-            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration.COORDINATION_NODE_ID.toString(), e);
-            this.nodeId = AndesConfiguration .COORDINATION_NODE_ID.get().getDefaultValue();
+        if (AndesConfiguration.COORDINATION_NODE_ID.get().getDefaultValue().equals(this.nodeId)) {
+            this.nodeId = CoordinationConstants.NODE_NAME_PREFIX + InetAddress.getLocalHost().toString();
         }
 
         //update node information in durable store
@@ -207,8 +199,8 @@ public class ClusterManager {
 
         log.info("NodeID:" + this.nodeId);
 
-        andesContextStore.storeNodeDetails(nodeId, (String)AndesConfigurationManager.getInstance()
-                .readConfigurationValue(AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
+        andesContextStore.storeNodeDetails(nodeId, (String)AndesConfigurationManager.readValue
+                (AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
     }
 
     private void initClusterMode() throws Exception {
@@ -218,8 +210,8 @@ public class ClusterManager {
         log.info("NodeID:" + this.nodeId);
 
         //add node information to durable store
-        andesContextStore.storeNodeDetails(nodeId, (String)AndesConfigurationManager.getInstance()
-                .readConfigurationValue(AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
+        andesContextStore.storeNodeDetails(nodeId, (String)AndesConfigurationManager.readValue
+                (AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
 
         /**
          * If nodeList size is one, this is the first node joining to cluster. Here we check if there has been
@@ -271,14 +263,10 @@ public class ClusterManager {
     /**
      * set coordinator's thrift server IP and port in hazelcast map.
      */
-    public void updateThriftCoordinatorDetailsToMap() throws AndesException {
-        String thriftCoordinatorServerIP = AndesConfiguration.COORDINATION_THRIFT_SERVER_HOST.get
-                ().getDefaultValue();
-        int thriftCoordinatorServerPort = Integer.parseInt(AndesConfiguration
-                .COORDINATION_THRIFT_SERVER_PORT.get().getDefaultValue());
+    public void updateThriftCoordinatorDetailsToMap() {
 
-        thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerHost();
-        thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerPort();
+        String thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerHost();
+        int thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerPort();
 
 
         if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {

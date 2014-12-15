@@ -131,7 +131,8 @@ public class AndesKernelBoot {
     private static void initializeSlotMapForQueue(String queueName)
             throws AndesException {
         // Read slot window size from cluster configuration
-        Integer slotSize = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
+        Integer slotSize = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
         List<AndesMessageMetadata> messageList = messageStore
                 .getNextNMessageMetadataFromQueue(queueName, 0, slotSize);
         int numberOfMessages = messageList.size();
@@ -279,10 +280,9 @@ public class AndesKernelBoot {
     public static void startHouseKeepingThreads() throws AndesException {
         //reload exchanges/queues/bindings and subscriptions
         AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask();
-        Integer scheduledPeriod = AndesConfigurationManager.getInstance().readConfigurationValue
+        Integer scheduledPeriod = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL);
-        andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod,
-                                                       scheduledPeriod, TimeUnit.SECONDS);
+        andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod, scheduledPeriod, TimeUnit.SECONDS);
         ClusterResourceHolder.getInstance().setAndesRecoveryTask(andesRecoveryTask);
     }
 
@@ -412,7 +412,7 @@ public class AndesKernelBoot {
      * Start the thrift server
      * @throws AndesException
      */
-    private static void startThriftServer() throws AndesException, ConfigurationException {
+    private static void startThriftServer() throws AndesException {
         MBThriftServer.getInstance().start(AndesContext.getInstance().getThriftServerHost(),
                 AndesContext.getInstance().getThriftServerPort(), "MB-ThriftServer-main-thread");
 

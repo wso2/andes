@@ -315,8 +315,8 @@ public class OnflightMessageTracker {
 
     private OnflightMessageTracker() throws AndesException {
 
-        this.maximumRedeliveryTimes = AndesConfigurationManager.getInstance()
-                .readConfigurationValue(AndesConfiguration.TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS);
+        this.maximumRedeliveryTimes = AndesConfigurationManager.readValue
+                (AndesConfiguration.TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS);
 
         // We don't know the size of the map at startup. hence using an arbitrary value of 16, Need to test
         // Load factor set to default value 0.75
@@ -383,7 +383,7 @@ public class OnflightMessageTracker {
 
         } else if (trackingData.arrivalTime <= lastPurgedTimestampOfQueue) {
 
-            log.warn("Message was sent at " + trackingData.arrivalTime + " before last purge event at " +
+            log.warn("Message was sent at " + trackingData.arrivalTime + " before last purge event at "
                     + lastPurgedTimestampOfQueue + ". Will be skipped. id= " + messageId);
 
             trackingData.addMessageStatus(MessageStatus.PURGED);

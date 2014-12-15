@@ -140,15 +140,14 @@ public class MessagingEngine {
                            SubscriptionStore subscriptionStore) throws AndesException {
 
         configureMessageIDGenerator();
-        final AndesConfigurationManager config = AndesConfigurationManager.getInstance();
 
         // message count will be flushed to DB in these interval in seconds
-        Integer messageCountFlushInterval = config.readConfigurationValue(
-                AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_COUNTER_TASK_INTERVAL);
-        Integer messageCountFlushNumberGap = config.readConfigurationValue(
-                AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_COUNTER_UPDATE_BATCH_SIZE);
-        Integer schedulerPeriod = config.readConfigurationValue(
-                AndesConfiguration.PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TASK_INTERVAL);
+        Integer messageCountFlushInterval = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_COUNTER_TASK_INTERVAL);
+        Integer messageCountFlushNumberGap = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_COUNTER_UPDATE_BATCH_SIZE);
+        Integer schedulerPeriod = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TASK_INTERVAL);
 
         this.messageStore = messageStore;
         this.subscriptionStore = subscriptionStore;
@@ -165,11 +164,9 @@ public class MessagingEngine {
 
         //this task will periodically remove message contents from store
         messageContentRemoverTask = new MessageContentRemoverTask(messageStore);
-        asyncStoreTasksScheduler.scheduleWithFixedDelay(messageContentRemoverTask,
-                schedulerPeriod,
-                schedulerPeriod,
-                TimeUnit.SECONDS);
 
+        asyncStoreTasksScheduler.scheduleWithFixedDelay(messageContentRemoverTask,
+                schedulerPeriod, schedulerPeriod, TimeUnit.SECONDS);
 
         // This task will periodically flush message count value to the store
         messageCountFlusher = new MessageCountFlusher(contextStore, messageCountFlushNumberGap);
@@ -226,11 +223,13 @@ public class MessagingEngine {
     public void messageRejected(AndesMessageMetadata metadata) throws AndesException {
 
         OnflightMessageTracker.getInstance().handleFailure(metadata);
-        LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId(metadata.getChannelId(), metadata.getDestination(), metadata.isTopic());
+        LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId
+                (metadata.getChannelId(), metadata.getDestination(), metadata.isTopic());
         if (subToResend != null) {
             reQueueMessage(metadata, subToResend);
         } else {
-            log.warn("Cannot handle reject. Subscription not found for channel " + metadata.getChannelId() + "Dropping message id= " + metadata.getMessageID());
+            log.warn("Cannot handle reject. Subscription not found for channel " + metadata.getChannelId()
+                    + "Dropping message id= " + metadata.getMessageID());
         }
     }
 
@@ -562,10 +561,9 @@ public class MessagingEngine {
         return messageId;
     }
 
-    private void configureMessageIDGenerator() throws AndesException {
+    private void configureMessageIDGenerator() {
         // Configure message ID generator
-        String idGeneratorImpl = AndesConfigurationManager.getInstance().readConfigurationValue
-                (AndesConfiguration.PERSISTENCE_ID_GENERATOR);
+        String idGeneratorImpl = AndesConfigurationManager.readValue(AndesConfiguration.PERSISTENCE_ID_GENERATOR);
         if (idGeneratorImpl != null && !"".equals(idGeneratorImpl)) {
             try {
                 Class clz = Class.forName(idGeneratorImpl);
@@ -632,17 +630,16 @@ public class MessagingEngine {
     /**
      * Start Checking for Expired Messages (JMS Expiration)
      */
-    public void startMessageExpirationWorker() throws AndesException {
+    public void startMessageExpirationWorker() {
 
-        MessageExpirationWorker mew = ClusterResourceHolder.getInstance().getMessageExpirationWorker();
+        MessageExpirationWorker messageExpirationWorker = ClusterResourceHolder.getInstance().getMessageExpirationWorker();
 
-        if (mew == null) {
-            MessageExpirationWorker messageExpirationWorker = new MessageExpirationWorker();
-            ClusterResourceHolder.getInstance().setMessageExpirationWorker(messageExpirationWorker);
+        if (messageExpirationWorker == null) {
+            ClusterResourceHolder.getInstance().setMessageExpirationWorker(new MessageExpirationWorker());
 
         } else {
-            if (!mew.isWorking()) {
-                mew.startWorking();
+            if (!messageExpirationWorker.isWorking()) {
+                messageExpirationWorker.startWorking();
             }
         }
     }

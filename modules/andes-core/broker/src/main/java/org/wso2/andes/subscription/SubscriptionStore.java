@@ -584,8 +584,7 @@ public class SubscriptionStore {
      * @throws AndesException
      */
     public synchronized void createDisconnectOrRemoveLocalSubscription(LocalSubscription subscription, SubscriptionChange type) throws AndesException {
-        Boolean allowSharedSubscribers =  AndesConfigurationManager.getInstance().readConfigurationValue
-                (AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
+        Boolean allowSharedSubscribers =  AndesConfigurationManager.readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
         //We need to handle durable topic subscriptions
         boolean hasDurableSubscriptionAlreadyInPlace = false;
         if (subscription.isBoundToTopic() && subscription.isDurable()) {

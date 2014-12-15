@@ -180,8 +180,8 @@ public class SlotDeliveryWorker extends Thread {
                                     startMessageId = localLastProcessedIdMap.get(storageQueueName) + 1;
                                 }
 
-                                Integer slotWindowSize = AndesConfigurationManager.getInstance()
-                                        .readConfigurationValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
+                                Integer slotWindowSize = AndesConfigurationManager.readValue
+                                        (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
                                 List<AndesMessageMetadata> messagesRead =
 
                                         MessagingEngine.getInstance()

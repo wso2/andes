@@ -231,20 +231,10 @@ public class HazelcastAgent {
         String nodeId;
 
         // Get Node ID configured by user in broker.xml (if not "default" we must use it as the ID)
-        try {
-            nodeId = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration.COORDINATION_NODE_ID);
+        nodeId = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_NODE_ID);
 
-            // If the config value is "default" we must generate the ID
-            if (AndesConfiguration.COORDINATION_NODE_ID.get().getDefaultValue().equals(nodeId)) {
-                Member localMember = hazelcastInstance.getCluster().getLocalMember();
-                nodeId = CoordinationConstants.NODE_NAME_PREFIX + localMember.getSocketAddress();
-            }
-
-        } catch (AndesException e) {
-            // Since we cannot infer user's node ID, we will assign our default generated ID.
-            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration.COORDINATION_NODE_ID.toString(), e);
-
-            // Generate ID with default logic
+        // If the config value is "default" we must generate the ID
+        if (AndesConfiguration.COORDINATION_NODE_ID.get().getDefaultValue().equals(nodeId)) {
             Member localMember = hazelcastInstance.getCluster().getLocalMember();
             nodeId = CoordinationConstants.NODE_NAME_PREFIX + localMember.getSocketAddress();
         }

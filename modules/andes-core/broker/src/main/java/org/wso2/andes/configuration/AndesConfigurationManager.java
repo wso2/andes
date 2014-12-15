@@ -24,7 +24,6 @@ import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.poi.ss.formula.functions.T;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.util.ConfigurationProperty;
 import org.wso2.andes.kernel.AndesException;
@@ -34,6 +33,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.text.DateFormat;
+import java.text.MessageFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -48,10 +48,33 @@ public class AndesConfigurationManager {
 
     private static Log log = LogFactory.getLog(AndesConfigurationManager.class);
 
-    private static volatile AndesConfigurationManager instance;
+    /**
+     * Reserved Suffixes that activate different processing logic.
+     */
+    private static final String PORT_TYPE = "_PORT";
 
-    public static final String GENERIC_CONFIGURATION_PARSE_ERROR = "Error occurred when trying " +
-            "to parse configuration value : ";
+    /**
+     * Reserved Prefixes that activate different processing logic.
+     */
+    private static final String LIST_TYPE = "LIST_";
+
+    /**
+     * Common Error states
+     */
+    private static final String GENERIC_CONFIGURATION_PARSE_ERROR = "Error occurred when trying to parse " +
+            "configuration value {0}.";
+
+    private static final String NO_CHILD_FOR_INDEX_IN_PROPERTY = "There was no child at the given index {0} for the " +
+            "parent property {1}.";
+
+    private static final String NO_CHILD_FOR_KEY_IN_PROPERTY = "There was no child at the given key {0} for the " +
+            "parent property {1}.";
+
+    private static final String PROPERTY_NOT_A_LIST = "The input property {0} does not contain a list of child " +
+            "properties.";
+
+    private static final String PROPERTY_NOT_A_PORT = "The input property {0} is not defined as an integer value. " +
+            "Therefore it is not a port property.";
 
     /**
      * Main file path of configuration files into which all other andes-specific config files (if any)
@@ -60,61 +83,66 @@ public class AndesConfigurationManager {
     private static final String ROOT_CONFIG_FILE_PATH = System.getProperty(ServerConstants.CARBON_HOME) +
             "/repository/conf/";
 
+    /**
+     * File name of the main configuration file.
+     */
     private static final String ROOT_CONFIG_FILE_NAME = "broker.xml";
 
-    private final CompositeConfiguration compositeConfiguration;
+    /**
+     * Apache commons composite configuration is used to collect and maintain properties from multiple configuration
+     * sources.
+     */
+    private static CompositeConfiguration compositeConfiguration;
 
     /**
      * Decisive configurations coming from carbon.xml that affect the MB configs. e.g port Offset
      * These are injected as custom logic when reading the configurations.
      */
-    private int portOffset;
+    private static int carbonPortOffset;
 
-    private AndesConfigurationManager() throws AndesException, ConfigurationException, UnknownHostException {
-
-        compositeConfiguration = new CompositeConfiguration();
-
-        log.info("Main andes configuration located at : " + ROOT_CONFIG_FILE_PATH + ROOT_CONFIG_FILE_NAME);
-
-        XMLConfiguration rootConfiguration = new XMLConfiguration(ROOT_CONFIG_FILE_PATH + ROOT_CONFIG_FILE_NAME);
-        rootConfiguration.setExpressionEngine(new XPathExpressionEngine());
-
-        compositeConfiguration.addConfiguration(rootConfiguration);
-
-        // Load and combine other configurations linked to broker.xml
-        List<String> linkedConfigurations = compositeConfiguration.getList("links/link");
-
-        for (String linkedConfigurationPath : linkedConfigurations) {
-
-            log.info("Linked configuration file path : " + ROOT_CONFIG_FILE_PATH +
-                    linkedConfigurationPath);
-
-            XMLConfiguration linkedConfiguration = new XMLConfiguration(ROOT_CONFIG_FILE_PATH +
-                    linkedConfigurationPath);
-            linkedConfiguration.setExpressionEngine(new XPathExpressionEngine());
-            compositeConfiguration.addConfiguration(linkedConfiguration);
-        }
-
-        compositeConfiguration.setDelimiterParsingDisabled(true); // If we don't do this,
-        // we can't add a new configuration by code.
-
-        // derive certain special properties that are not simply specified in
-        // the configuration files.
-        addDerivedProperties();
-    }
-
-    /***
-     * initialize the configuration manager.
+    /**
+     * initialize the configuration manager. this MUST be called at application startup.
+     * (QpidServiceComponent bundle -> activate event)
+     *
      * @throws AndesException
      */
     public static void initialize(int portOffset) throws AndesException {
         try {
-            instance = new AndesConfigurationManager();
-            // set portOffset coming from carbon
-            instance.portOffset = portOffset;
+
+            compositeConfiguration = new CompositeConfiguration();
+
+            log.info("Main andes configuration located at : " + ROOT_CONFIG_FILE_PATH + ROOT_CONFIG_FILE_NAME);
+
+            XMLConfiguration rootConfiguration = new XMLConfiguration(ROOT_CONFIG_FILE_PATH + ROOT_CONFIG_FILE_NAME);
+            rootConfiguration.setExpressionEngine(new XPathExpressionEngine());
+
+            compositeConfiguration.addConfiguration(rootConfiguration);
+
+            // Load and combine other configurations linked to broker.xml
+            List<String> linkedConfigurations = compositeConfiguration.getList("links/link");
+
+            for (String linkedConfigurationPath : linkedConfigurations) {
+
+                log.info("Linked configuration file path : " + ROOT_CONFIG_FILE_PATH + linkedConfigurationPath);
+
+                XMLConfiguration linkedConfiguration = new XMLConfiguration(ROOT_CONFIG_FILE_PATH +
+                        linkedConfigurationPath);
+                linkedConfiguration.setExpressionEngine(new XPathExpressionEngine());
+                compositeConfiguration.addConfiguration(linkedConfiguration);
+            }
+
+            compositeConfiguration.setDelimiterParsingDisabled(true); // If we don't do this,
+            // we can't add a new configuration to the compositeConfiguration by code.
+
+            // derive certain special properties that are not simply specified in
+            // the configuration files.
+            addDerivedProperties();
+
+            // set carbonPortOffset coming from carbon
+            AndesConfigurationManager.carbonPortOffset = portOffset;
+
         } catch (ConfigurationException e) {
-            throw new AndesException("Error occurred when trying to construct configurations from " + "files" +
-                    ".", e);
+            throw new AndesException("Error occurred when trying to construct configurations from files.", e);
             // The error is not propagated upwards here, because every point in code that
             // accesses configurations will need to handle it. code duplication.)
             // Since we have default values to use in a failure,
@@ -122,14 +150,6 @@ public class AndesConfigurationManager {
         } catch (UnknownHostException e) {
             throw new AndesException("Error occurred when trying to derive the bind address for messaging.", e);
         }
-    }
-
-    /**
-     * The instance MUST be initialized with initialize() prior to calling this.
-     * @return AndesConfigurationManager instance
-     */
-    public static AndesConfigurationManager getInstance() {
-        return instance;
     }
 
     /**
@@ -143,11 +163,11 @@ public class AndesConfigurationManager {
      * @throws org.wso2.andes.kernel.AndesException
      *
      */
-    public <T> T readConfigurationValue(ConfigurationProperty configurationProperty) throws AndesException {
+    public static <T> T readValue(ConfigurationProperty configurationProperty) {
 
         // If the property requests a port value, we need to apply the carbon offset to it.
-        if (configurationProperty.get().getName().endsWith("_PORT")) {
-            return (T) readPortProperty(configurationProperty);
+        if (configurationProperty.get().getName().endsWith(PORT_TYPE)) {
+            return (T) readPortValue(configurationProperty);
         }
 
         String valueInFile = compositeConfiguration.getString(configurationProperty.get()
@@ -158,9 +178,10 @@ public class AndesConfigurationManager {
             // compiler doesn't know about it. We could add the data type as a parameter,
             // but that only complicates the method call.
             return (T) deriveValidConfigurationValue(configurationProperty.get().getKeyInFile(),
-                    configurationProperty.get().getDataType(),
-                    configurationProperty.get().getDefaultValue(), valueInFile);
+                    configurationProperty.get().getDataType(), configurationProperty.get().getDefaultValue(),
+                    valueInFile);
         } catch (ConfigurationException e) {
+
             log.error(e); // Since the descriptive message is wrapped in exception itself
 
             // Return the parsed default value. This path will be met if a user adds an invalid value to a property.
@@ -168,12 +189,14 @@ public class AndesConfigurationManager {
             // small mistake.
             try {
                 return (T) deriveValidConfigurationValue(configurationProperty.get().getKeyInFile(),
-                        configurationProperty.get().getDataType(), configurationProperty.get()
-                        .getDefaultValue(), null);
+                        configurationProperty.get().getDataType(), configurationProperty.get().getDefaultValue(), null);
             } catch (ConfigurationException e1) {
-                // It is highly unlikely that this will throw an exception. But if it does, it should be propagated.
-                throw new AndesException(GENERIC_CONFIGURATION_PARSE_ERROR +
-                        configurationProperty.toString(), e);
+                // It is highly unlikely that this will throw an exception (if defined default values are also invalid).
+                // But if it does, the method will return null.
+                // Exception is not propagated to avoid unnecessary clutter of config related exception handling.
+
+                log.error(e); // Since the descriptive message is wrapped in exception itself
+                return null;
             }
         }
     }
@@ -191,14 +214,10 @@ public class AndesConfigurationManager {
      * @param configurationProperty relevant enum value (e.g.- above scenario -> config
      *                              .enums.AndesConfiguration.TRANSPORTS_MQTT_PASSWORD)
      * @param index                 index of the child of whom you seek the property (e.g. above scenario -> 1)
-     * @throws org.wso2.andes.kernel.AndesException
-     *
      */
-    public <T> T readPropertyOfChildByIndex(AndesConfiguration configurationProperty, int index) throws
-            AndesException {
+    public static <T> T readValueOfChildByIndex(AndesConfiguration configurationProperty, int index) {
 
-        String constructedKey = configurationProperty.get().getKeyInFile().replace("{i}",
-                String.valueOf(index));
+        String constructedKey = configurationProperty.get().getKeyInFile().replace("{i}", String.valueOf(index));
 
         String valueInFile = compositeConfiguration.getString(constructedKey);
 
@@ -210,8 +229,9 @@ public class AndesConfigurationManager {
                     configurationProperty.get().getDataType(),
                     configurationProperty.get().getDefaultValue(), valueInFile);
         } catch (ConfigurationException e) {
-            throw new AndesException(GENERIC_CONFIGURATION_PARSE_ERROR + configurationProperty
-                    .toString(), e);
+            // This means that there is no child by the given index for the parent property.
+            log.error(MessageFormat.format(NO_CHILD_FOR_INDEX_IN_PROPERTY, index, configurationProperty), e);
+            return null;
         }
     }
 
@@ -229,8 +249,7 @@ public class AndesConfigurationManager {
      *                              .enums.AndesConfiguration.TRANSPORTS_MQTT_PASSWORD)
      * @param key                   key of the child of whom you seek the value (e.g. above scenario -> "testuser2")
      */
-    public <T> T readValueOfChildByKey(AndesConfiguration configurationProperty, String key) throws
-            AndesException {
+    public static <T> T readValueOfChildByKey(AndesConfiguration configurationProperty, String key) {
 
         String constructedKey = configurationProperty.get().getKeyInFile().replace("{key}",
                 key);
@@ -245,8 +264,9 @@ public class AndesConfigurationManager {
                     configurationProperty.get().getDataType(),
                     configurationProperty.get().getDefaultValue(), valueInFile);
         } catch (ConfigurationException e) {
-            throw new AndesException(GENERIC_CONFIGURATION_PARSE_ERROR + configurationProperty
-                    .toString(), e);
+            // This means that there is no child by the given key for the parent property.
+            log.error(MessageFormat.format(NO_CHILD_FOR_KEY_IN_PROPERTY, key, configurationProperty), e);
+            return null;
         }
     }
 
@@ -257,12 +277,12 @@ public class AndesConfigurationManager {
      *                              .LIST_TRANSPORTS_MQTT_USERNAMES)
      * @return String list of required property values
      */
-    public List<String> readPropertyList(AndesConfiguration configurationProperty) {
+    public static List<String> readValueList(AndesConfiguration configurationProperty) {
 
-        if (configurationProperty.toString().startsWith("LIST_")) {
+        if (configurationProperty.toString().startsWith(LIST_TYPE)) {
             return compositeConfiguration.getList(configurationProperty.get().getKeyInFile());
         } else {
-            log.error("Invalid Property to request a list : " + configurationProperty.get().getKeyInFile());
+            log.error(MessageFormat.format(PROPERTY_NOT_A_LIST, configurationProperty));
             return new ArrayList<String>();
         }
     }
@@ -278,6 +298,7 @@ public class AndesConfigurationManager {
      * @param readValue    Value read from the config file
      * @param <T>          Expected data type of the property
      * @return Value of config in the expected data type.
+     * @throws ConfigurationException
      */
     private static <T> T deriveValidConfigurationValue(String key, Class<T> dataType,
                                                        String defaultValue,
@@ -301,25 +322,29 @@ public class AndesConfigurationManager {
         }
 
         try {
+
             if (Boolean.class.equals(dataType)) {
                 return dataType.cast(Boolean.parseBoolean(validValue));
+
             } else if (Date.class.equals(dataType)) {
                 // Sample date : "Sep 28 20:29:30 JST 2000"
                 DateFormat df = new SimpleDateFormat("MMM dd kk:mm:ss z yyyy", Locale.ENGLISH);
                 return dataType.cast(df.parse(validValue));
+
             } else {
                 return dataType.getConstructor(String.class).newInstance(validValue);
             }
+
         } catch (NoSuchMethodException e) {
-            throw new ConfigurationException(GENERIC_CONFIGURATION_PARSE_ERROR + key, e);
+            throw new ConfigurationException(MessageFormat.format(GENERIC_CONFIGURATION_PARSE_ERROR, key), e);
         } catch (ParseException e) {
-            throw new ConfigurationException(GENERIC_CONFIGURATION_PARSE_ERROR + key, e);
+            throw new ConfigurationException(MessageFormat.format(GENERIC_CONFIGURATION_PARSE_ERROR, key), e);
         } catch (IllegalAccessException e) {
-            throw new ConfigurationException(GENERIC_CONFIGURATION_PARSE_ERROR + key, e);
+            throw new ConfigurationException(MessageFormat.format(GENERIC_CONFIGURATION_PARSE_ERROR, key), e);
         } catch (InvocationTargetException e) {
-            throw new ConfigurationException(GENERIC_CONFIGURATION_PARSE_ERROR + key, e);
+            throw new ConfigurationException(MessageFormat.format(GENERIC_CONFIGURATION_PARSE_ERROR, key), e);
         } catch (InstantiationException e) {
-            throw new ConfigurationException(GENERIC_CONFIGURATION_PARSE_ERROR + key, e);
+            throw new ConfigurationException(MessageFormat.format(GENERIC_CONFIGURATION_PARSE_ERROR, key), e);
         }
     }
 
@@ -327,10 +352,10 @@ public class AndesConfigurationManager {
      * This method is used to derive certain special properties that are not simply specified in
      * the configuration files.
      */
-    private void addDerivedProperties() throws AndesException, UnknownHostException {
+    private static void addDerivedProperties() throws AndesException, UnknownHostException {
 
         // For AndesConfiguration.TRANSPORTS_BIND_ADDRESS
-        if ("*".equals(this.readConfigurationValue(AndesConfiguration.TRANSPORTS_BIND_ADDRESS))) {
+        if ("*".equals(readValue(AndesConfiguration.TRANSPORTS_BIND_ADDRESS))) {
 
             InetAddress host = InetAddress.getLocalHost();
             compositeConfiguration.setProperty(AndesConfiguration.TRANSPORTS_BIND_ADDRESS.get().getKeyInFile(),
@@ -346,11 +371,12 @@ public class AndesConfigurationManager {
      *                              .TRANSPORTS_MQTT_PORT)
      * @return port with carbon port offset
      */
-    private Integer readPortProperty(ConfigurationProperty configurationProperty) {
+    private static Integer readPortValue(ConfigurationProperty configurationProperty) {
 
         if (!Integer.class.equals(configurationProperty.get().getDataType())) {
-            log.error("This property does not contain a port value : " + configurationProperty.toString());
-            return 0;
+            log.error(MessageFormat.format(AndesConfigurationManager.PROPERTY_NOT_A_PORT, configurationProperty));
+            return 0; // 0 can never be a valid port. therefore, returning 0 in the error path will keep code
+            // predictable.
         }
 
         try {
@@ -360,13 +386,13 @@ public class AndesConfigurationManager {
                     .getKeyInFile(), configurationProperty.get().getDataType(),
                     configurationProperty.get().getDefaultValue(), valueInFile);
 
-            return portFromConfiguration + portOffset;
+            return portFromConfiguration + carbonPortOffset;
 
         } catch (ConfigurationException e) {
-            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR + configurationProperty.toString(),e);
+            log.error(MessageFormat.format(GENERIC_CONFIGURATION_PARSE_ERROR, configurationProperty), e);
 
             //recover and return default port with offset value.
-            return Integer.parseInt(configurationProperty.get().getDefaultValue()) + portOffset;
+            return Integer.parseInt(configurationProperty.get().getDefaultValue()) + carbonPortOffset;
         }
     }
 
