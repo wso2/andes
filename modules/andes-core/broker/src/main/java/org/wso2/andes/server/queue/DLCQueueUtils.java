@@ -115,8 +115,10 @@ public class DLCQueueUtils {
             queueListener.handleLocalQueuesChanged(andesQueue, QueueListener.QueueEvent.ADDED);
 
             LocalSubscription mockSubscription = new AMQPLocalSubscription(queueRegistry.getQueue(new
-                    AMQShortString(dlcQueueName)), null, "0", dlcQueueName, false, false, false, null,
-                    dlcQueueName, owner, ExchangeDefaults.DIRECT_EXCHANGE_NAME.toString(), "DIRECT", null, false);
+                    AMQShortString(dlcQueueName)), null, "0", dlcQueueName, false, false, true, null,
+                    System.currentTimeMillis(), dlcQueueName, owner,
+                    ExchangeDefaults.DIRECT_EXCHANGE_NAME.toString(), "DIRECT", null, false);
+
             AndesContext.getInstance().getSubscriptionStore().createDisconnectOrRemoveClusterSubscription
                     (mockSubscription, SubscriptionListener.SubscriptionChange.ADDED);
 

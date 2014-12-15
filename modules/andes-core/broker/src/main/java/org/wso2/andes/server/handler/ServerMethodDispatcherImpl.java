@@ -33,11 +33,6 @@ public class ServerMethodDispatcherImpl implements MethodDispatcher
 {
     private final AMQStateManager _stateManager;
 
-    /**
-     * Configured thread pool size for AndesExecutor
-     */
-    private final Integer andesInternalParallelThreadPoolSize;
-
     private static interface DispatcherFactory
         {
             public MethodDispatcher createMethodDispatcher(AMQStateManager stateManager);
@@ -118,12 +113,7 @@ public class ServerMethodDispatcherImpl implements MethodDispatcher
 
     public ServerMethodDispatcherImpl(AMQStateManager stateManager)
     {
-        Integer andesInternalParallelThreadPoolSizeValue = AndesConfigurationManager.readValue
-            (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_WORKER_THREAD_COUNT);
-
         _stateManager = stateManager;
-
-        andesInternalParallelThreadPoolSize = andesInternalParallelThreadPoolSizeValue;
     }
 
 
