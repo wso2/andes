@@ -250,7 +250,7 @@ public class BasicSubscription implements AndesSubscription {
                 .append(",targetQueueBoundExchangeType=").append(targetQueueBoundExchangeType)
                 .append(",isTargetQueueBoundExchangeAutoDeletable=").append(isTargetQueueBoundExchangeAutoDeletable)
                 .append(",subscribedNode=").append(subscribedNode)
-                .append(", subscribeTime=").append(subscribeTime)
+                .append(",subscribedTime=").append(subscribeTime)
                 .append(",hasExternalSubscriptions=").append(hasExternalSubscriptions);
         return buf.toString();
     }

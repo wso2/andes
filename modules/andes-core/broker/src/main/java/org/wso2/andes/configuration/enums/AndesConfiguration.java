@@ -263,12 +263,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "/vHostSyncTaskInterval", "3600", Integer.class),
 
     /**
-     * Number of parallel threads that will handle acknowledgement of a message receipt from a consumer.
-     */
-    PERFORMANCE_TUNING_ACK_HANDLING_WORKER_THREAD_COUNT
-            ("performanceTuning/ackHandling/workerThreadCount", "50", Integer.class),
-
-    /**
      * Time interval after which the server will remove message content from the store in the background. If the
      * message rate is very high users can set this to a lower value.
      * Specified in seconds.
