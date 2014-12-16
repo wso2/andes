@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package org.wso2.andes.store.jdbc;
+package org.wso2.andes.store.rdbms;
 
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -28,7 +28,7 @@ import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.List;
 
-public class JDBCTestHelper {
+public class RDBMSTestHelper {
 
     protected static List<AndesMessageMetadata> getMetadataList(final String destQueueName, long firstMsgId, long lastMsgId) {
         return getMetadataList(destQueueName, firstMsgId, lastMsgId, 10000);
@@ -123,8 +123,8 @@ public class JDBCTestHelper {
         AndesQueue andesQueue = new AndesQueue(boundQueue, "owner1", true, false);
         AndesBinding andesBinding = new AndesBinding(exchange, andesQueue, routingKey);
         // setup database with queue information
-        String insert = "INSERT INTO " + JDBCConstants.QUEUE_INFO_TABLE + " (" +
-                JDBCConstants.QUEUE_NAME + "," + JDBCConstants.QUEUE_INFO + " ) " +
+        String insert = "INSERT INTO " + RDBMSConstants.QUEUE_INFO_TABLE + " (" +
+                RDBMSConstants.QUEUE_NAME + "," + RDBMSConstants.QUEUE_INFO + " ) " +
                 " VALUES (?,?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -139,9 +139,9 @@ public class JDBCTestHelper {
         String exchangeInfo = "exchangeName=" + exchange + ",type=none," +
                 "autoDelete=false";
 
-        insert = "INSERT INTO " + JDBCConstants.EXCHANGES_TABLE + " ( " +
-                JDBCConstants.EXCHANGE_NAME + "," +
-                JDBCConstants.EXCHANGE_DATA + ") " +
+        insert = "INSERT INTO " + RDBMSConstants.EXCHANGES_TABLE + " ( " +
+                RDBMSConstants.EXCHANGE_NAME + "," +
+                RDBMSConstants.EXCHANGE_DATA + ") " +
                 " VALUES (?, ?)";
 
         preparedStatement = connection.prepareStatement(insert);
@@ -152,10 +152,10 @@ public class JDBCTestHelper {
         preparedStatement.close();
 
         // setup database with binding information
-        insert = "INSERT INTO " + JDBCConstants.BINDINGS_TABLE + " (" +
-                JDBCConstants.BINDING_EXCHANGE_NAME + "," +
-                JDBCConstants.BINDING_QUEUE_NAME + "," +
-                JDBCConstants.BINDING_INFO + " ) " +
+        insert = "INSERT INTO " + RDBMSConstants.BINDINGS_TABLE + " (" +
+                RDBMSConstants.BINDING_EXCHANGE_NAME + "," +
+                RDBMSConstants.BINDING_QUEUE_NAME + "," +
+                RDBMSConstants.BINDING_INFO + " ) " +
                 " VALUES (?,?,?)";
 
         preparedStatement = connection.prepareStatement(insert);

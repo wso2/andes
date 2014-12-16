@@ -16,15 +16,15 @@
  * under the License.
  */
 
-package org.wso2.andes.store.jdbc.h2;
+package org.wso2.andes.store.rdbms.h2;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
-import org.wso2.andes.store.jdbc.JDBCAndesContextStoreImpl;
-import org.wso2.andes.store.jdbc.JDBCConnection;
+import org.wso2.andes.store.rdbms.RDBMSAndesContextStoreImpl;
+import org.wso2.andes.store.rdbms.RDBMSConnection;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -34,7 +34,7 @@ import java.sql.Statement;
  * This is H2 in memory mode specific AndesContextStore implementation Table creation at startup is
  * done in this implementation
  */
-public class H2MemAndesContextStoreImpl extends JDBCAndesContextStoreImpl {
+public class H2MemAndesContextStoreImpl extends RDBMSAndesContextStoreImpl {
 
     private static final Logger logger = Logger.getLogger(H2MemAndesContextStoreImpl.class);
 
@@ -121,7 +121,7 @@ public class H2MemAndesContextStoreImpl extends JDBCAndesContextStoreImpl {
             throw new AndesException("In memory mode is not supported in cluster setup");
         }
 
-        DurableStoreConnection durableStoreConnection = super.init(JDBCConnection
+        DurableStoreConnection durableStoreConnection = super.init(RDBMSConnection
                 .getInMemoryConnectionProperties());
 
         // Additionally create in memory database tables

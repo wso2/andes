@@ -16,13 +16,13 @@
  * under the License.
  */
 
-package org.wso2.andes.store.jdbc;
+package org.wso2.andes.store.rdbms;
 
 /**
  * JDBC storage related prepared statements, table names, column names and tasks are grouped
  * in this class.
  */
-public class JDBCConstants {
+public class RDBMSConstants {
 
     // jndi lookup
     protected static final String H2_MEM_JNDI_LOOKUP_NAME = "WSO2MBInMemoryStoreDB";
@@ -103,8 +103,8 @@ public class JDBCConstants {
                     " VALUES ( ?,?,? )";
 
     protected static final String PS_INSERT_QUEUE =
-            "INSERT INTO " + JDBCConstants.QUEUES_TABLE + " (" +
-                    JDBCConstants.QUEUE_NAME + ") " +
+            "INSERT INTO " + RDBMSConstants.QUEUES_TABLE + " (" +
+                    RDBMSConstants.QUEUE_NAME + ") " +
                     " VALUES (?)";
 
     protected static final String PS_ALIAS_FOR_COUNT = "count";
@@ -370,6 +370,6 @@ public class JDBCConstants {
     /**
      * Only public static constants are in this class. No need to instantiate.
      */
-    private JDBCConstants() {
+    private RDBMSConstants() {
     }
 }

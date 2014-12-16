@@ -16,15 +16,15 @@
  * under the License.
  */
 
-package org.wso2.andes.store.jdbc.h2;
+package org.wso2.andes.store.rdbms.h2;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
-import org.wso2.andes.store.jdbc.JDBCConnection;
-import org.wso2.andes.store.jdbc.JDBCMessageStoreImpl;
+import org.wso2.andes.store.rdbms.RDBMSConnection;
+import org.wso2.andes.store.rdbms.RDBMSMessageStoreImpl;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -34,7 +34,7 @@ import java.sql.Statement;
  * This is H2 in memory mode specific MessageStore implementation Table creation at startup is done
  * in this implementation
  */
-public class H2MemMessageStoreImpl extends JDBCMessageStoreImpl {
+public class H2MemMessageStoreImpl extends RDBMSMessageStoreImpl {
 
     private static final Logger logger = Logger.getLogger(H2MemMessageStoreImpl.class);
     /**
@@ -118,7 +118,7 @@ public class H2MemMessageStoreImpl extends JDBCMessageStoreImpl {
         }
 
         // use the initialisation logic of JDBC MessageStore
-        DurableStoreConnection durableStoreConnection = super.initializeMessageStore(JDBCConnection
+        DurableStoreConnection durableStoreConnection = super.initializeMessageStore(RDBMSConnection
                 .getInMemoryConnectionProperties());
 
         // Additionally create in memory database tables

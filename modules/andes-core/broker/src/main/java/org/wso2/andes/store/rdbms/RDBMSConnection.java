@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package org.wso2.andes.store.jdbc;
+package org.wso2.andes.store.rdbms;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
@@ -33,9 +33,9 @@ import java.sql.SQLException;
  * JDBC connection class. Connection is made using the jndi lookup name provided and connection
  * pooled data source is used to create new connections
  */
-public class JDBCConnection implements DurableStoreConnection {
+public class RDBMSConnection implements DurableStoreConnection {
 
-    private static final Logger logger = Logger.getLogger(JDBCConnection.class);
+    private static final Logger logger = Logger.getLogger(RDBMSConnection.class);
     private boolean isConnected;
     private DataSource datasource;
 
@@ -46,7 +46,7 @@ public class JDBCConnection implements DurableStoreConnection {
         isConnected = false;
         try {
             // try to get the lookup name. If error empty string will be returned
-            jndiLookupName = connectionProperties.getProperty(JDBCConstants.PROP_JNDI_LOOKUP_NAME);
+            jndiLookupName = connectionProperties.getProperty(RDBMSConstants.PROP_JNDI_LOOKUP_NAME);
             datasource = InitialContext.doLookup(jndiLookupName);
             connection = datasource.getConnection();
             isConnected = true; // if no errors
@@ -109,8 +109,8 @@ public class JDBCConnection implements DurableStoreConnection {
      */
     public static ConfigurationProperties getInMemoryConnectionProperties() {
         ConfigurationProperties connectionProperties = new ConfigurationProperties();
-        connectionProperties.addProperty(JDBCConstants.PROP_JNDI_LOOKUP_NAME,
-                                         JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME);
+        connectionProperties.addProperty(RDBMSConstants.PROP_JNDI_LOOKUP_NAME,
+                                         RDBMSConstants.H2_MEM_JNDI_LOOKUP_NAME);
         return connectionProperties;
     }
 }
