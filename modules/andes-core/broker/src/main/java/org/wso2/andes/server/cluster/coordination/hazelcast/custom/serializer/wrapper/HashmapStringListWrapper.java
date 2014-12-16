@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package org.wso2.custom.serializer.wrapper;
+package org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper;
 
 
 import java.io.Serializable;

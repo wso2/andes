@@ -427,8 +427,8 @@
         </dependency>
 
         <dependency>
-            <groupId>custom-serializer</groupId>
-            <artifactId>custom-serializer</artifactId>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
         </dependency>
 
     </dependencies>

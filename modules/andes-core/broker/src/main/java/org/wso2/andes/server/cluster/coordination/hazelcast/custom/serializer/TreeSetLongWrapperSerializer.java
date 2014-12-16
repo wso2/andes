@@ -16,43 +16,44 @@
  * under the License.
  */
 
-package org.wso2.custom.serializer;
+package org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.StreamSerializer;
-import org.wso2.custom.serializer.wrapper.HashmapStringListWrapper;
-import org.wso2.custom.serializer.wrapper.TreeSetLongWrapper;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetLongWrapper;
 
 import java.io.IOException;
 
-public class HashMapStringListWrapperSerializer implements
-        StreamSerializer<HashmapStringListWrapper> {
+/**
+ * This class implements the custom serialization methods for TreeSetLongWrapper objects.
+ */
+public class TreeSetLongWrapperSerializer implements StreamSerializer<TreeSetLongWrapper> {
 
 
     @Override
-    public void write(ObjectDataOutput objectDataOutput, HashmapStringListWrapper hashmapStringListWrapper) throws IOException {
-        //Convert the hashmapStringListWrapper object to a json string and save it in hazelcast map
+    public void write(ObjectDataOutput objectDataOutput, TreeSetLongWrapper treeSetLongWrapper)
+            throws IOException {
+        //Convert the TreeSetLongWrapper object to a json string and save it in hazelcast map
         com.google.gson.Gson gson = new GsonBuilder().create();
-        String jsonString = gson.toJson(hashmapStringListWrapper);
+        String jsonString = gson.toJson(treeSetLongWrapper);
         objectDataOutput.writeUTF(jsonString);
     }
 
     @Override
-    public HashmapStringListWrapper read(ObjectDataInput objectDataInput) throws IOException {
-        //Build HashmapStringListWrapper object using json string.
+    public TreeSetLongWrapper read(ObjectDataInput objectDataInput) throws IOException {
+        //Build TreeSetLongWrapper object using json string.
         String jsonString = objectDataInput.readUTF();
         Gson gson = new GsonBuilder().create();
-        HashmapStringListWrapper wrapper = gson.fromJson(jsonString,
-                HashmapStringListWrapper.class);
+        TreeSetLongWrapper wrapper = gson.fromJson(jsonString, TreeSetLongWrapper.class);
         return wrapper;
     }
 
     @Override
     public int getTypeId() {
-        return 3;
+        return 1;
     }
 
     @Override

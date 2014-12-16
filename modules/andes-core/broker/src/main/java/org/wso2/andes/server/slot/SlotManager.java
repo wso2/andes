@@ -25,9 +25,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.custom.serializer.wrapper.HashmapStringListWrapper;
-import org.wso2.custom.serializer.wrapper.TreeSetLongWrapper;
-import org.wso2.custom.serializer.wrapper.TreeSetStringWrapper;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.HashmapStringListWrapper;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetLongWrapper;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetStringWrapper;
+
 
 import java.lang.reflect.Type;
 import java.util.*;
@@ -43,7 +44,7 @@ public class SlotManager {
 
     /**
      * Slots which are previously owned and released by another node. Key is the queueName. Value
-     * is TreeSetStringWrapper objects. TreeSetStringWrapper a wrapper class for String TreeSet.
+     * is TreeSetStringWrapper objects. TreeSetStringWrapper is a wrapper class for String TreeSet.
      * String TreeSet inside TreeSetStringWrapper will return a json string which is used to
      * create the slot object.
      */

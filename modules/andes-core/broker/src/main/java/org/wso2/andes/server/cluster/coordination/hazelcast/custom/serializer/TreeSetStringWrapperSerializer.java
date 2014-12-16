@@ -16,15 +16,14 @@
  * under the License.
  */
 
-package org.wso2.custom.serializer;
+package org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.StreamSerializer;
-import org.wso2.custom.serializer.wrapper.TreeSetLongWrapper;
-import org.wso2.custom.serializer.wrapper.TreeSetStringWrapper;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetStringWrapper;
 
 import java.io.IOException;
 

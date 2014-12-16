@@ -27,10 +27,10 @@ import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.slot.Slot;
-import org.wso2.custom.serializer.TreeSetLongWrapperSerializer;
-import org.wso2.custom.serializer.wrapper.HashmapStringListWrapper;
-import org.wso2.custom.serializer.wrapper.TreeSetLongWrapper;
-import org.wso2.custom.serializer.wrapper.TreeSetStringWrapper;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.HashmapStringListWrapper;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetLongWrapper;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetStringWrapper;
+
 
 import java.util.*;
 

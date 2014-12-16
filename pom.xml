@@ -529,9 +529,9 @@
             </dependency>
 
             <dependency>
-                <groupId>custom-serializer</groupId>
-                <artifactId>custom-serializer</artifactId>
-                <version>1.0-SNAPSHOT</version>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>2.2.4</version>
             </dependency>
 
         </dependencies>
