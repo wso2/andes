@@ -100,10 +100,8 @@ public class SubscriptionStore {
             String subDestination = entry.getKey();
             if(AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(subDestination, destination)) {
                 List<AndesSubscription> subscriptionsOfDestination = entry.getValue();
-                if (subscriptionsOfDestination != null) {
-                    for (AndesSubscription subscription : subscriptionsOfDestination) {
-                        subscriptionList.add(subscription);
-                    }
+                if (null != subscriptionsOfDestination) {
+                    subscriptionList.addAll(subscriptionsOfDestination);
                 }
             }
         }
@@ -591,8 +589,7 @@ public class SubscriptionStore {
      * @throws AndesException
      */
     public synchronized void createDisconnectOrRemoveLocalSubscription(LocalSubscription subscription, SubscriptionChange type) throws AndesException {
-        Boolean allowSharedSubscribers =  AndesConfigurationManager.getInstance().readConfigurationValue
-                (AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
+        Boolean allowSharedSubscribers =  AndesConfigurationManager.readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
         //We need to handle durable topic subscriptions
         boolean hasDurableSubscriptionAlreadyInPlace = false;
         if (subscription.isBoundToTopic() && subscription.isDurable()) {

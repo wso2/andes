@@ -30,7 +30,6 @@ import org.wso2.andes.pool.ReadWriteRunnable;
 import org.wso2.andes.pool.ReferenceCountingExecutorService;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.LogActor;
@@ -407,14 +406,9 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
                     "Not Allowed !, Please use a Different Alias");
         }
 
-        Boolean sharedSubscribersAllowed;
-        try {
-            sharedSubscribersAllowed = AndesConfigurationManager.getInstance().readConfigurationValue
-                    (AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
-        } catch (AndesException e) {
-            _logger.error("Error while reading broker configuration" , e);
-            throw new RuntimeException(e);
-        }
+        Boolean sharedSubscribersAllowed = AndesConfigurationManager.readValue
+                (AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
+
         if (hasExclusiveSubscriber())
         {
             if(sharedSubscribersAllowed) {

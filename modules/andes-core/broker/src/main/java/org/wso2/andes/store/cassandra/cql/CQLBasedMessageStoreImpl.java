@@ -36,13 +36,8 @@ import org.wso2.andes.store.cassandra.CassandraConstants;
 import org.wso2.andes.store.cassandra.cql.dao.CQLQueryBuilder;
 import org.wso2.andes.store.cassandra.cql.dao.CassandraHelper;
 import org.wso2.andes.store.cassandra.cql.dao.GenericCQLDAO;
-import org.wso2.andes.tools.utils.DisruptorBasedExecutor.PendingJob;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * This is the implementation of MessageStore that deals with Cassandra no SQL DB.
@@ -106,24 +101,17 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
      *
      * @throws CassandraDataAccessException
      */
-    private void createColumnFamilies(CQLConnection connection)
-            throws CassandraDataAccessException {
+    private void createColumnFamilies(CQLConnection connection) throws CassandraDataAccessException {
         int gcGraceSeconds = connection.getGcGraceSeconds();
+
         CQLDataAccessHelper.createColumnFamily(CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY,
-                CassandraConstants.KEYSPACE, this.cluster,
-                CassandraConstants.LONG_TYPE, DataType.blob(),
-                gcGraceSeconds);
+                CassandraConstants.KEYSPACE, this.cluster, CassandraConstants.LONG_TYPE, DataType.blob(), gcGraceSeconds);
         CQLDataAccessHelper.createColumnFamily(CassandraConstants.META_DATA_COLUMN_FAMILY,
-                CassandraConstants.KEYSPACE, this.cluster,
-                CassandraConstants.LONG_TYPE, DataType.blob(),
-                gcGraceSeconds);
-        CQLDataAccessHelper
-                .createCounterColumnFamily(CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY,
-                        CassandraConstants.KEYSPACE, this.cluster,
-                        gcGraceSeconds);
-        CQLDataAccessHelper.createMessageExpiryColumnFamily(
-                CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY, CassandraConstants.KEYSPACE,
-                this.cluster, gcGraceSeconds);
+                CassandraConstants.KEYSPACE, this.cluster, CassandraConstants.LONG_TYPE, DataType.blob(), gcGraceSeconds);
+        CQLDataAccessHelper.createCounterColumnFamily(CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY,
+                CassandraConstants.KEYSPACE, this.cluster, gcGraceSeconds);
+        CQLDataAccessHelper.createMessageExpiryColumnFamily(CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY,
+                CassandraConstants.KEYSPACE, gcGraceSeconds);
     }
 
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException {
@@ -260,22 +248,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                 PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(latency);
             }
 
-           /*
-            Client waits for these message ID to be written, this signal those,
-            if there is a error
-            we will not signal and client who tries to close the connection will timeout.
-            We can do this better, but leaving this as is or now.
-            */
-            for (AndesMessageMetadata md : metadataList) {
-                Map<UUID, PendingJob> pendingJobMap = md.getPendingJobsTracker();
-                if (pendingJobMap != null) {
-                    PendingJob jobData = pendingJobMap.get(md.getChannelId());
-                    if (jobData != null) {
-                        jobData.semaphore.release();
-                    }
-                }
-            }
-        } catch (CassandraDataAccessException e) {
+         } catch (CassandraDataAccessException e) {
             log.error("Error writing incoming messages to Cassandra", e);
             throw new AndesException("Error writing incoming messages to Cassandra", e);
         }
@@ -525,8 +498,9 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             }
             return allMetadataList;
         } catch (CassandraDataAccessException e) {
-            log.error("Error while getting meta data for queue : " + queueName + " from msgId : " + firstMsgId + " to msgID : " + lastMsgID,e);
-            throw new AndesException("Error while getting meta data for queue : " + queueName + " from msgId : " + firstMsgId + " to msgID : " + lastMsgID,e);
+            String error = "Error while getting meta data for queue : " + queueName + " from msgId : " + firstMsgId + " to msgID : " + lastMsgID;
+            log.error(error,e);
+            throw new AndesException(error,e);
         }
 
 
@@ -586,9 +560,10 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
 
     /**
      * {@inheritDoc}
+     * @param messageIdList
      */
     @Override
-    public void deleteMessageParts(List<Long> messageIdList) throws AndesException {
+    public void deleteMessageParts(Collection<Long> messageIdList) throws AndesException {
         try {
             List<String> rows2Remove = new ArrayList<String>();
             for (long messageId : messageIdList) {
@@ -779,8 +754,9 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             GenericCQLDAO.batchExecuteWrite(CassandraConstants.KEYSPACE,
                     statements.toArray(new Statement[statements.size()]));
         } catch (CassandraDataAccessException e) {
-            log.error("Error while deleting messages", e);
-            throw new AndesException("Error while deleting messages",e);
+            String error = "Error while deleting messages";
+            log.error(error, e);
+            throw new AndesException(error,e);
         }
     }
 

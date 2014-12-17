@@ -195,13 +195,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "/maxNumberOfReadButUndeliveredMessages", "1000", Integer.class),
 
     /**
-     * This is the Thread pool size which will be used by the queue delivery workers. Make this to a higher number if
-     * there are lots of unique queues to the system at a given time.
-     */
-    PERFORMANCE_TUNING_DELIVERY_PUBLISHER_POOL_SIZE("performanceTuning/delivery" +
-            "/publisherPoolSize", "50", Integer.class),
-
-    /**
      * This is the ring buffer size of the delivery disruptor. This value should be a power of 2 (E.g. 1024, 2048,
      * 4096). Use a small ring size if you want to reduce the memory usage.
      */
@@ -225,7 +218,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Number of parallel writers used to write content to message store. Increasing this value will speedup
      * the message receiving mechanism. But the load on the data store will increase.
      */
-    PERFORMANCE_TUNING_PARALLEL_CONTENT_WRITERS("performanceTuning/inbound/parallelContentWriters", "1",
+    PERFORMANCE_TUNING_PARALLEL_MESSAGE_WRITERS("performanceTuning/inboundEvents/parallelMessageWriters", "1",
             Integer.class),
 
     /**
@@ -233,20 +226,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * For publishing at higher rates increasing the buffer size may give some advantage to keep messages in memory and
      * write.
      */
-    PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE("performanceTuning/inbound/bufferSize", "65536", Integer.class),
-
-    /**
-     * Batch size of the state event handler. State events will be handled in batches when updating inbound messages.
-     */
-    PERFORMANCE_TUNING_STATE_HANDLER_BATCH_SIZE
-            ("performanceTuning/inbound/stateHandlerBatchSize", "50", Integer.class),
+    PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE("performanceTuning/inboundEvents/bufferSize", "65536", Integer.class),
 
     /**
      * Average batch size of the batch write operation for inbound messages. Batch write of a message will vary around
      * this number
      */
     PERFORMANCE_TUNING_MESSAGE_WRITER_BATCH_SIZE
-            ("performanceTuning/inbound/messageWriterBatchSize", "70", Integer.class),
+            ("performanceTuning/inboundEvents/messageWriterBatchSize", "70", Integer.class),
 
     /**
      * Average batch size of the batch acknowledgement handling for message acknowledgements. Andes will be updated
@@ -254,6 +241,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE
             ("performanceTuning/ackHandling/ackHandlerBatchSize", "30", Integer.class),
+
+    /**
+     * Ack handler count for disruptor based event handling.
+     */
+    PERFORMANCE_TUNING_ACK_HANDLER_COUNT("performanceTuning/ackHandling/ackHandlerCount", "8",
+            Integer.class ),
 
     /**
      * Message delivery from server to the client will be paused temporarily if number of delivered but
@@ -270,23 +263,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "/vHostSyncTaskInterval", "3600", Integer.class),
 
     /**
-     * Number of parallel threads that will handle routing the messages received at the broker.
-     */
-    PERFORMANCE_TUNING_ROUTING_WORKER_THREAD_COUNT("performanceTuning/messageRouting/workerThreadCount",
-            "5", Integer.class),
-
-    /**
-     * Number of parallel threads that will handle acknowledgement of a message receipt from a consumer.
-     */
-    PERFORMANCE_TUNING_ACK_HANDLING_WORKER_THREAD_COUNT
-            ("performanceTuning/ackHandling/workerThreadCount", "50", Integer.class),
-
-    /**
-     * Ack handler count for disruptor based event handling.
-     */
-    PERFORMANCE_TUNING_ACK_HANDLER_COUNT("performanceTuning/ackHandling/handlerCount", "8",
-            Integer.class ),
-    /**
      * Time interval after which the server will remove message content from the store in the background. If the
      * message rate is very high users can set this to a lower value.
      * Specified in seconds.
@@ -294,14 +270,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TASK_INTERVAL
             ("performanceTuning/messageDeletion/contentRemovalTaskInterval", "600", Integer.class),
 
-    /**
-     * Time to wait before removing a message from the store in PubSub implementation.
-     * Specified in milliseconds.
-     */
-    PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TIME_DIFFERENCE
-            ("performanceTuning/messageDeletion/contentRemovalTimeDifference", "600000", Integer.class),
-
-    /**
+     /**
      * Since server startup, whenever this interval elapses, the expired messages will be cleared from the store.
      */
     PERFORMANCE_TUNING_MESSAGE_EXPIRATION_CHECK_INTERVAL
@@ -314,10 +283,17 @@ public enum AndesConfiguration implements ConfigurationProperty {
             ("performanceTuning/messageExpiration/messageBatchSize", "1000", Integer.class),
 
     /**
-     * The number of messages to be cached in-memory
+     * Message counter tasks delay between the termination of one execution and the commencement of the next in seconds
      */
-    PERFORMANCE_TUNING_STORE_OPERATIONS_MESSAGE_CONTENT_CACHE
-            ("performanceTuning/storeOperations/messageContentCache", "1000", Integer.class),
+    PERFORMANCE_TUNING_MESSAGE_COUNTER_TASK_INTERVAL
+            ("performanceTuning/messageCounter/counterTaskInterval", "15", Integer.class),
+
+    /**
+     * Message count is updated in batches. Once the count exceed the batch size message count update is given to
+     * message count update task.
+     */
+    PERFORMANCE_TUNING_MESSAGE_COUNTER_UPDATE_BATCH_SIZE
+            ("performanceTuning/messageCounter/countUpdateBatchSize", "100", Integer.class),
 
     /**
      * The number of messages to be handled in a single operation related to browser subscriptions.

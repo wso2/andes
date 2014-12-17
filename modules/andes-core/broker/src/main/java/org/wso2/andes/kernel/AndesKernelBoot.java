@@ -131,7 +131,8 @@ public class AndesKernelBoot {
     private static void initializeSlotMapForQueue(String queueName)
             throws AndesException {
         // Read slot window size from cluster configuration
-        Integer slotSize = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
+        Integer slotSize = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
         List<AndesMessageMetadata> messageList = messageStore
                 .getNextNMessageMetadataFromQueue(queueName, 0, slotSize);
         int numberOfMessages = messageList.size();
@@ -196,8 +197,7 @@ public class AndesKernelBoot {
         if (!(contextStoreInstance instanceof AndesContextStore)) {
             throw new ClassCastException(
                     "Message store class must implement " + AndesContextStore.class + ". Class "
-                    + contextStoreClass +
-                    " does not.");
+                    + contextStoreClass + " does not.");
         }
 
         AndesContextStore andesContextStore = (AndesContextStore) contextStoreInstance;
@@ -223,24 +223,21 @@ public class AndesKernelBoot {
         if (!(messageStoreInstance instanceof org.wso2.andes.kernel.MessageStore)) {
             throw new ClassCastException(
                     "Message store class must implement " + MessageStore.class + ". Class " +
-                    messageStoreClass +
-                    " does not.");
+                    messageStoreClass + " does not.");
         }
 
         MessageStore messageStore = (MessageStore) messageStoreInstance;
         messageStore.initializeMessageStore(
                 virtualHostsConfiguration.getMessageStoreProperties()
         );
-        MessagingEngine.getInstance().initialise(messageStore);
+        MessagingEngine messagingEngine = MessagingEngine.getInstance();
+        messagingEngine.initialise(messageStore, andesContextStore,subscriptionStore);
         AndesKernelBoot.messageStore = messageStore;
 
-        /**
-         * When message stores are initialised initialise the AndesAPI as well.
-         */
-        Andes.getInstance().initialise(subscriptionStore);
-        /**
-         * initialize amqp constructs syncing into Qpid
-         */
+        // When message stores are initialised initialise Andes as well.
+        Andes.getInstance().initialise(subscriptionStore, messagingEngine);
+
+        // initialize amqp constructs syncing into Qpid
         VirtualHostConfigSynchronizer _VirtualHostConfigSynchronizer = new
                 VirtualHostConfigSynchronizer(
                 virtualHost);
@@ -283,10 +280,9 @@ public class AndesKernelBoot {
     public static void startHouseKeepingThreads() throws AndesException {
         //reload exchanges/queues/bindings and subscriptions
         AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask();
-        Integer scheduledPeriod = AndesConfigurationManager.getInstance().readConfigurationValue
+        Integer scheduledPeriod = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL);
-        andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod,
-                                                       scheduledPeriod, TimeUnit.SECONDS);
+        andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod, scheduledPeriod, TimeUnit.SECONDS);
         ClusterResourceHolder.getInstance().setAndesRecoveryTask(andesRecoveryTask);
     }
 
@@ -416,7 +412,7 @@ public class AndesKernelBoot {
      * Start the thrift server
      * @throws AndesException
      */
-    private static void startThriftServer() throws AndesException, ConfigurationException {
+    private static void startThriftServer() throws AndesException {
         MBThriftServer.getInstance().start(AndesContext.getInstance().getThriftServerHost(),
                 AndesContext.getInstance().getThriftServerPort(), "MB-ThriftServer-main-thread");
 

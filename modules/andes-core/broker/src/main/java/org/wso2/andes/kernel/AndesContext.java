@@ -22,9 +22,7 @@ import org.apache.axis2.clustering.ClusteringAgent;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.subscription.SubscriptionStore;
-import org.wso2.carbon.base.api.ServerConfigurationService;
 
 import java.util.List;
 import java.util.Map;
@@ -152,55 +150,46 @@ public class AndesContext {
      *  get thrift server host ip
      * @return  thrift server host ip
      */
-    public String getThriftServerHost() throws AndesException {
-        return AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
-                .COORDINATION_THRIFT_SERVER_HOST);
+    public String getThriftServerHost() {
+        return AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_THRIFT_SERVER_HOST);
     }
 
     /**
      * get thrift server port
      * @return
      */
-    public Integer getThriftServerPort() throws AndesException {
-        return AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
-                .COORDINATION_THRIFT_SERVER_PORT);
+    public Integer getThriftServerPort() {
+        return AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_THRIFT_SERVER_PORT);
     }
 
-    /***
+    /**
      * Read configuration properties related to persistent stores and construct semantic object
      * for simple reference.
      */
-    public void constructStoreConfiguration() throws AndesException {
+    public void constructStoreConfiguration() {
 
-        try {
-            storeConfiguration = new StoreConfiguration();
+        storeConfiguration = new StoreConfiguration();
 
-            storeConfiguration.setMessageStoreClassName((String)AndesConfigurationManager.getInstance()
-                    .readConfigurationValue(AndesConfiguration.PERSISTENCE_MESSAGE_STORE_HANDLER));
+        storeConfiguration.setMessageStoreClassName((String) AndesConfigurationManager.readValue
+                (AndesConfiguration.PERSISTENCE_MESSAGE_STORE_HANDLER));
 
-            List<String> messageStoreProperties = AndesConfigurationManager.getInstance().readPropertyList(AndesConfiguration.LIST_PERSISTENCE_MESSAGE_STORE_PROPERTIES);
+        List<String> messageStoreProperties = AndesConfigurationManager.readValueList
+                (AndesConfiguration.LIST_PERSISTENCE_MESSAGE_STORE_PROPERTIES);
 
-            for (String messageStoreProperty : messageStoreProperties) {
-                storeConfiguration.addMessageStoreProperty(messageStoreProperty,(String)AndesConfigurationManager.getInstance().readValueOfChildByKey(AndesConfiguration.PERSISTENCE_MESSAGE_STORE_PROPERTY,messageStoreProperty));
-            }
+        for (String messageStoreProperty : messageStoreProperties) {
+            storeConfiguration.addMessageStoreProperty(messageStoreProperty, (String) AndesConfigurationManager
+                    .readValueOfChildByKey(AndesConfiguration.PERSISTENCE_MESSAGE_STORE_PROPERTY, messageStoreProperty));
+        }
 
-            storeConfiguration.setAndesContextStoreClassName((String)AndesConfigurationManager
-                    .getInstance().readConfigurationValue(AndesConfiguration
-                            .PERSISTENCE_CONTEXT_STORE_HANDLER));
+        storeConfiguration.setAndesContextStoreClassName((String) AndesConfigurationManager.readValue
+                (AndesConfiguration.PERSISTENCE_CONTEXT_STORE_HANDLER));
 
-            List<String> contextStoreProperties = AndesConfigurationManager.getInstance().readPropertyList(AndesConfiguration.LIST_PERSISTENCE_CONTEXT_STORE_PROPERTIES);
+        List<String> contextStoreProperties = AndesConfigurationManager.readValueList
+                (AndesConfiguration.LIST_PERSISTENCE_CONTEXT_STORE_PROPERTIES);
 
-            for (String contextStoreProperty : contextStoreProperties) {
-                storeConfiguration.addContextStoreProperty(contextStoreProperty, (String) AndesConfigurationManager
-                        .getInstance().readValueOfChildByKey(AndesConfiguration.PERSISTENCE_CONTEXT_STORE_PROPERTY,
-                                contextStoreProperty));
-            }
-
-        }catch (AndesException e) {
-            // The possible configuration related error is propagated as an AndesException since this method is triggered from the
-            // business-messaging component. (common.lang.ConfigurationException is not visible
-            // there.)
-            throw e; //Since this exception is already having meaningful info.
+        for (String contextStoreProperty : contextStoreProperties) {
+            storeConfiguration.addContextStoreProperty(contextStoreProperty, (String) AndesConfigurationManager
+                    .readValueOfChildByKey(AndesConfiguration.PERSISTENCE_CONTEXT_STORE_PROPERTY,contextStoreProperty));
         }
     }
 }

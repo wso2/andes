@@ -22,8 +22,6 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAMQPBridge;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.framing.*;
 import org.wso2.andes.framing.abstraction.ContentChunk;
@@ -34,7 +32,6 @@ import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMapImpl;
-import org.wso2.andes.server.cassandra.SequentialThreadPoolExecutor;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.flow.FlowCreditManager;
 import org.wso2.andes.server.flow.Pre0_10CreditManager;
@@ -66,7 +63,6 @@ import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
 import org.wso2.andes.server.virtualhost.AMQChannelMBean;
 import org.wso2.andes.server.virtualhost.VirtualHost;
-import org.wso2.andes.tools.utils.DisruptorBasedExecutor;
 
 import javax.management.JMException;
 import java.util.*;
@@ -149,8 +145,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     private final UUID _id;
     private long _createTime = System.currentTimeMillis();
 
-    private static SequentialThreadPoolExecutor messageRoutingExecutor = null;
-
     private AMQChannelMBean _managedObject;
 
     public AMQChannel(AMQProtocolSession session, int channelId, MessageStore messageStore)
@@ -169,19 +163,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
         // by default the session is non-transactional
         _transaction = new AutoCommitTransaction(_messageStore);
-
-        if(messageRoutingExecutor == null){
-            try {
-                messageRoutingExecutor = new SequentialThreadPoolExecutor(((Integer)
-                        AndesConfigurationManager
-                        .getInstance().readConfigurationValue(AndesConfiguration.PERFORMANCE_TUNING_ROUTING_WORKER_THREAD_COUNT)),
-                        "messageRoutingExecutor");
-            } catch (AndesException e) {
-                throw new AMQException(AndesConfigurationManager
-                        .GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration
-                        .PERFORMANCE_TUNING_ROUTING_WORKER_THREAD_COUNT.toString(),e);
-            }
-        }
 
         // message tracking related to this channel is initialised
         Andes.getInstance().clientConnectionCreated(_id);
@@ -600,9 +581,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         forgetMessages4Channel();
 
         QpidAMQPBridge.getInstance().channelIsClosing(this.getId());
-
-        //here we will wait for  all jobs from this channel to end
-        DisruptorBasedExecutor.wait4JobsfromThisChannel2End(this._channelId);
 
         if (_managedObject != null) {
             _managedObject.unregister();

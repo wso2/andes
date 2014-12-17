@@ -34,6 +34,7 @@ import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.store.cassandra.CassandraConstants;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -115,9 +116,10 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
 
     /**
      * {@inheritDoc}
+     * @param messageIdList
      */
     @Override
-    public void deleteMessageParts(List<Long> messageIdList) throws AndesException {
+    public void deleteMessageParts(Collection<Long> messageIdList) throws AndesException {
         try {
 
             Mutator<String> mutator = HFactory.createMutator(keyspace,
@@ -433,6 +435,13 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     public void deleteMessageMetadataFromQueue(String queueName, List<AndesRemovableMetadata>
             messagesToRemove) throws AndesException {
         try {
+            if (log.isTraceEnabled()) {
+                StringBuilder messageIDsString = new StringBuilder();
+                for (AndesRemovableMetadata metadata : messagesToRemove) {
+                    messageIDsString.append(metadata.getMessageID()).append(" , ");
+                }
+                log.trace(messagesToRemove.size() + " messages removed : " + messageIDsString);
+            }
             Mutator<String> mutator = HFactory.createMutator(keyspace,
                     CassandraConstants.stringSerializer);
 

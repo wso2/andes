@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -25,12 +25,10 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.storemanager.MessageStoreManagerFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cassandra.MessageFlusher;
@@ -43,9 +41,11 @@ import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.slot.SlotManager;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
+import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.util.AndesConstants;
 import org.wso2.andes.server.util.AndesUtils;
 import org.wso2.andes.store.MessageContentRemoverTask;
+import org.wso2.andes.store.MessageCountFlusher;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 /**
@@ -74,6 +74,11 @@ public class MessagingEngine {
     private MessageContentRemoverTask messageContentRemoverTask;
 
     /**
+     * Updates the message counts in batches if batch size exceeds or the scheduled time elapses
+     */
+    private MessageCountFlusher messageCountFlusher;
+
+    /**
      * Executor service thread pool to execute content remover task
      */
     private ScheduledExecutorService asyncStoreTasksScheduler;
@@ -84,22 +89,15 @@ public class MessagingEngine {
     private SubscriptionStore subscriptionStore;
 
     /**
-     * Map to keep message count difference not flushed to disk of each queue
+     * Reference to MessageStore. This holds the messages received by andes
      */
-    private Map<String, AtomicInteger> messageCountDifferenceMap;
-
-    /**
-     * message count will be flushed to DB when count difference reach this val
-     */
-    private int messageCountFlushNumberGap;
-
-    /**
-     * Manages how the message content is persisted. Eg in async mode or stored in memory etc
-     * Underlying implementation of this interface handles the logic
-     */
-    private MessageStoreManager messageStoreManager;
-
     private MessageStore messageStore;
+
+    /**
+     * Reference to AndesContextStore. This holds information that is not relevant to messages or subscriptions but
+     * relevant to Andes.
+     */
+    private AndesContextStore contextStore;
 
     /**
      * This listener is primarily added so that messaging engine and communicate a queue purge situation to the cluster.
@@ -133,61 +131,48 @@ public class MessagingEngine {
      * storing strategy will be set according to the configurations by calling this.
      *
      * @param messageStore MessageStore
+     * @param contextStore AndesContextStore
+     * @param subscriptionStore SubscriptionStore
      * @throws AndesException
      */
-    public void initialise(MessageStore messageStore) throws AndesException {
+    public void initialise(MessageStore messageStore,
+                           AndesContextStore contextStore,
+                           SubscriptionStore subscriptionStore) throws AndesException {
+
         configureMessageIDGenerator();
 
-        messageStoreManager = MessageStoreManagerFactory.createDirectMessageStoreManager(messageStore);
+        // message count will be flushed to DB in these interval in seconds
+        Integer messageCountFlushInterval = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_COUNTER_TASK_INTERVAL);
+        Integer messageCountFlushNumberGap = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_COUNTER_UPDATE_BATCH_SIZE);
+        Integer schedulerPeriod = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TASK_INTERVAL);
+
         this.messageStore = messageStore;
-        subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-        messageCountDifferenceMap = new HashMap<String, AtomicInteger>();
+        this.subscriptionStore = subscriptionStore;
+        this.contextStore = contextStore;
+
         //register listeners for queue changes
         queueListener = new ClusterCoordinationHandler(HazelcastAgent.getInstance());
 
+        // Only two scheduled tasks running (content removal task and message count update task).
+        // And each scheduled tasks run with fixed delay. Hence at a given time
+        // maximum needed threads would be 2.
         int threadPoolCount = 2;
         asyncStoreTasksScheduler = Executors.newScheduledThreadPool(threadPoolCount);
 
         //this task will periodically remove message contents from store
         messageContentRemoverTask = new MessageContentRemoverTask(messageStore);
-        Integer schedulerPeriod = AndesConfigurationManager.getInstance().readConfigurationValue
-                (AndesConfiguration.PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TASK_INTERVAL);
-        asyncStoreTasksScheduler.scheduleAtFixedRate(messageContentRemoverTask,
-                schedulerPeriod,
-                schedulerPeriod,
-                TimeUnit.SECONDS);
 
+        asyncStoreTasksScheduler.scheduleWithFixedDelay(messageContentRemoverTask,
+                schedulerPeriod, schedulerPeriod, TimeUnit.SECONDS);
 
-        // message count will be flushed to DB in these interval in seconds
-        int messageCountFlushInterval = 15;
-        messageCountFlushNumberGap = 100;
+        // This task will periodically flush message count value to the store
+        messageCountFlusher = new MessageCountFlusher(contextStore, messageCountFlushNumberGap);
 
-        //this task will periodically flush message count value to the store
-        Thread messageCountFlusher = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (Map.Entry<String, AtomicInteger> entry : messageCountDifferenceMap.entrySet()) {
-                    try {
-                        if (entry.getValue().get() > 0) {
-                            AndesContext.getInstance().getAndesContextStore()
-                                    .incrementMessageCountForQueue(entry.getKey(),
-                                            entry.getValue().get());
-                        } else if (entry.getValue().get() < 0) {
-                            AndesContext.getInstance().getAndesContextStore()
-                                    .incrementMessageCountForQueue(
-                                            entry.getKey(),
-                                            entry.getValue().get());
-                        }
-                        entry.getValue().set(0);
-                    } catch (AndesException e) {
-                        log.error("Error while updating message counts for queue " + entry.getKey());
-                    }
-                }
-            }
-        });
-
-        asyncStoreTasksScheduler.scheduleAtFixedRate(messageCountFlusher,
-                10,
+        asyncStoreTasksScheduler.scheduleWithFixedDelay(messageCountFlusher,
+                messageCountFlushInterval,
                 messageCountFlushInterval,
                 TimeUnit.SECONDS);
 
@@ -201,7 +186,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public AndesMessagePart getMessageContentChunk(long messageID, int offsetInMessage) throws AndesException {
-        return messageStoreManager.getMessagePart(messageID,offsetInMessage);
+        return messageStore.getContent(messageID, offsetInMessage);
     }
 
     public void messagesReceived(List<AndesMessage> messageList) throws AndesException{
@@ -226,7 +211,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public AndesMessageMetadata getMessageMetaData(long messageID) throws AndesException {
-        return messageStoreManager.getMetadataOfMessage(messageID);
+        return messageStore.getMetaData(messageID);
     }
 
     /**
@@ -238,11 +223,13 @@ public class MessagingEngine {
     public void messageRejected(AndesMessageMetadata metadata) throws AndesException {
 
         OnflightMessageTracker.getInstance().handleFailure(metadata);
-        LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId(metadata.getChannelId(), metadata.getDestination(), metadata.isTopic());
+        LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId
+                (metadata.getChannelId(), metadata.getDestination(), metadata.isTopic());
         if (subToResend != null) {
             reQueueMessage(metadata, subToResend);
         } else {
-            log.warn("Cannot handle reject. Subscription not found for channel " + metadata.getChannelId() + "Dropping message id= " + metadata.getMessageID());
+            log.warn("Cannot handle reject. Subscription not found for channel " + metadata.getChannelId()
+                    + "Dropping message id= " + metadata.getMessageID());
         }
     }
 
@@ -271,8 +258,9 @@ public class MessagingEngine {
         String deadLetterQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString
                 (destinationQueueName, AndesConstants.DEAD_LETTER_QUEUE_NAME);
 
-
-        messageStoreManager.moveMetaDataToQueue(messageId, destinationQueueName, deadLetterQueueName);
+        long start = System.currentTimeMillis();
+        messageStore.moveMetaDataToQueue(messageId, destinationQueueName, deadLetterQueueName);
+        PerformanceCounter.warnIfTookMoreTime("Move Metadata ", start, 10);
 
         //remove tracking of the message
         OnflightMessageTracker.getInstance()
@@ -337,9 +325,61 @@ public class MessagingEngine {
         // queues destination = storage queue. But for topics it is different
         String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         String storageQueueName = AndesUtils.getStorageQueueForDestination(destination, nodeID, isTopic);
-        int purgedNumOfMessages =  messageStoreManager.purgeQueueFromStore(storageQueueName);
+        int purgedNumOfMessages =  purgeQueueFromStore(storageQueueName);
         log.info("Purged messages of destination " + destination);
         return purgedNumOfMessages;
+    }
+
+    /***
+     * Clear all references to all message metadata / content addressed to a specific queue. Used when purging.
+     * @param storageQueueName name of storage queue
+     * @throws AndesException
+     */
+    public int purgeQueueFromStore(String storageQueueName) throws AndesException {
+
+        try {
+            // Retrieve message IDs addressed to the queue and keep track of message count for
+            // the queue in the store
+            List<Long> messageIDsAddressedToQueue = messageStore.getMessageIDsAddressedToQueue(storageQueueName);
+
+            Integer messageCountInStore = messageIDsAddressedToQueue.size();
+
+            // Clear all message expiry data.
+            // Data should be removed from expiry data tables before deleting data from meta data table since expiry
+            // data table holds a foreign key constraint to meta data table.
+            messageStore.deleteMessagesFromExpiryQueue(messageIDsAddressedToQueue);
+
+            //  Clear message metadata from queues
+            messageStore.deleteAllMessageMetadata(storageQueueName);
+
+            // Reset message count for the specific queue
+            messageStore.resetMessageCounterForQueue(storageQueueName);
+
+            // There is only 1 DLC queue per tenant. So we have to read and parse the message
+            // metadata and filter messages specific to a given queue.
+            // This is pretty exhaustive. If there are 1000 DLC messages and only 10 are relevant
+            // to the given queue, We still have to get all 1000
+            // into memory. Options are to delete dlc messages leisurely with another thread,
+            // or to break from original DLC pattern and maintain multiple DLC queues per each queue.
+            Integer messageCountFromDLC = messageStore.deleteAllMessageMetadataFromDLC(DLCQueueUtils
+                    .identifyTenantInformationAndGenerateDLCString(storageQueueName,
+                            AndesConstants.DEAD_LETTER_QUEUE_NAME), storageQueueName);
+
+            // Clear message content leisurely / asynchronously using retrieved message IDs
+            messageStore.deleteMessageParts(messageIDsAddressedToQueue);
+
+            // If any other places in the store keep track of messages in future,
+            // they should also be cleared here.
+
+            return messageCountInStore + messageCountFromDLC;
+
+        } catch (AndesException e) {
+            // This will be a store-specific error. We could make all 5 operations into one atomic transaction so
+            // that in case of an error data won't be obsolete, but we must do it in a proper generic manner (to
+            // allow any collection of store methods to be executed in a single transaction.). To be done as a
+            // separate task.
+            throw new AndesException("Error occurred when purging queue from store : " + storageQueueName, e);
+        }
     }
 
     /**
@@ -350,9 +390,10 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
-        List<Long> idsOfMessagesToRemove = new ArrayList<Long>();
-        Map<String, List<AndesRemovableMetadata>> storageQueueSeparatedRemoveMessages = new HashMap<String, List<AndesRemovableMetadata>>();
-        Map<String, Integer> destinationSeparatedMsgCounts = new HashMap<String, Integer>();
+        List<Long> idsOfMessagesToRemove = new ArrayList<Long>(messagesToRemove.size());
+        Map<String, List<AndesRemovableMetadata>> storageQueueSeparatedRemoveMessages
+                = new HashMap<String, List<AndesRemovableMetadata>>(messagesToRemove.size());
+        Map<String, Integer> destinationSeparatedMsgCounts = new HashMap<String, Integer>(messagesToRemove.size());
 
         for (AndesRemovableMetadata message : messagesToRemove) {
             idsOfMessagesToRemove.add(message.getMessageID());
@@ -382,13 +423,12 @@ public class MessagingEngine {
         }
 
         //remove metadata
-        for (String storageQueueName : storageQueueSeparatedRemoveMessages.keySet()) {
-            messageStore.deleteMessageMetadataFromQueue(storageQueueName,
-                    storageQueueSeparatedRemoveMessages.get(storageQueueName));
+        for (Map.Entry<String, List<AndesRemovableMetadata>> entry : storageQueueSeparatedRemoveMessages.entrySet()) {
+            messageStore.deleteMessageMetadataFromQueue(entry.getKey(), entry.getValue());
         }
         //decrement message counts
-        for(String destination: destinationSeparatedMsgCounts.keySet()) {
-            decrementQueueCount(destination, destinationSeparatedMsgCounts.get(destination));
+        for(Map.Entry<String, Integer> entry: destinationSeparatedMsgCounts.entrySet()) {
+            decrementQueueCount(entry.getKey(), entry.getValue());
         }
 
         if (!moveToDeadLetterChannel) {
@@ -417,70 +457,21 @@ public class MessagingEngine {
     }
 
     /**
-     * decrement queue count by 1. Flush if difference is in tab
-     * @param queueName
-     *         name of the queue to decrement count
-     * @param decrementBy
-     *         decrement count by this value
-     * @throws AndesException
+     * Decrement queue count. Flush to store in batches. Count update will take time to reflect
+     * @param queueName name of the queue to decrement count
+     * @param decrementBy decrement count by this value, This should be a positive value
      */
-    private void decrementQueueCount(String queueName, int decrementBy) throws AndesException {
-        AtomicInteger msgCount = messageCountDifferenceMap.get(queueName);
-        if (msgCount == null) {
-            msgCount = new AtomicInteger(0);
-            messageCountDifferenceMap.put(queueName, msgCount);
-        }
-
-        synchronized (this) {
-            int currentVal = msgCount.get();
-            int newVal = currentVal - decrementBy;
-            msgCount.set(newVal);
-        }
-
-        //we flush this value to store in 100 message tabs
-        if (msgCount.get() % messageCountFlushNumberGap == 0) {
-            if (msgCount.get() > 0) {
-                AndesContext.getInstance().getAndesContextStore()
-                        .incrementMessageCountForQueue(queueName, msgCount.get());
-            } else {
-                AndesContext.getInstance().getAndesContextStore().decrementMessageCountForQueue(
-                        queueName, msgCount.get());
-            }
-            msgCount.set(0);
-        }
-
+    public void decrementQueueCount(String queueName, int decrementBy) {
+        messageCountFlusher.decrementQueueCount(queueName, decrementBy);
     }
 
     /**
-     * increment message count of queue. Flush if difference is in tab
+     * Increment message count of queue. Flush to store in batches. Count update will take time to reflect
      * @param queueName name of the queue to increment count
      * @param incrementBy increment count by this value
-     * @throws AndesException
      */
-    private void incrementQueueCount(String queueName, int incrementBy) throws AndesException {
-        AtomicInteger msgCount = messageCountDifferenceMap.get(queueName);
-        if (msgCount == null) {
-            msgCount = new AtomicInteger(0);
-            messageCountDifferenceMap.put(queueName, msgCount);
-        }
-
-        synchronized (this) {
-            int currentVal = msgCount.get();
-            int newVal = currentVal + incrementBy;
-            msgCount.set(newVal);
-        }
-
-        //we flush this value to store in 100 message tabs
-        if (msgCount.get() % messageCountFlushNumberGap == 0) {
-            if (msgCount.get() > 0) {
-                AndesContext.getInstance().getAndesContextStore().incrementMessageCountForQueue(
-                        queueName, msgCount.get());
-            } else {
-                AndesContext.getInstance().getAndesContextStore().decrementMessageCountForQueue(
-                        queueName, msgCount.get());
-            }
-            msgCount.set(0);
-        }
+    public void incrementQueueCount(String queueName, int incrementBy) {
+        messageCountFlusher.incrementQueueCount(queueName, incrementBy);
     }
 
     /**
@@ -492,7 +483,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
-        return messageStoreManager.getMessagePart(messageId, offsetValue);
+        return messageStore.getContent(messageId, offsetValue);
     }
 
     /**
@@ -502,9 +493,8 @@ public class MessagingEngine {
      * @return message count of the queue
      * @throws AndesException
      */
-    public int getMessageCountOfQueue(String queueName) throws AndesException {
-        return (int) AndesContext.getInstance().getAndesContextStore().getMessageCountForQueue(
-                queueName);
+    public long getMessageCountOfQueue(String queueName) throws AndesException {
+        return contextStore.getMessageCountForQueue(queueName);
     }
 
     /**
@@ -517,7 +507,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getMetaDataList(final String queueName, long firstMsgId, long lastMsgID) throws AndesException {
-        return messageStoreManager.getMetaDataList(queueName, firstMsgId, lastMsgID);
+        return messageStore.getMetaDataList(queueName, firstMsgId, lastMsgID);
     }
 
     /**
@@ -531,7 +521,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId, int count) throws AndesException {
-        return messageStoreManager.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
+        return messageStore.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
     }
 
     /**
@@ -541,7 +531,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException {
-        return messageStoreManager.getExpiredMessages(limit);
+        return messageStore.getExpiredMessages(limit);
     }
 
     /**
@@ -554,7 +544,7 @@ public class MessagingEngine {
      */
     public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
             AndesException {
-        messageStoreManager.updateMetaDataInformation(currentQueueName, metadataList);
+        messageStore.updateMetaDataInformation(currentQueueName, metadataList);
     }
 
     /**
@@ -571,10 +561,9 @@ public class MessagingEngine {
         return messageId;
     }
 
-    private void configureMessageIDGenerator() throws AndesException {
+    private void configureMessageIDGenerator() {
         // Configure message ID generator
-        String idGeneratorImpl = AndesConfigurationManager.getInstance().readConfigurationValue
-                (AndesConfiguration.PERSISTENCE_ID_GENERATOR);
+        String idGeneratorImpl = AndesConfigurationManager.readValue(AndesConfiguration.PERSISTENCE_ID_GENERATOR);
         if (idGeneratorImpl != null && !"".equals(idGeneratorImpl)) {
             try {
                 Class clz = Class.forName(idGeneratorImpl);
@@ -641,17 +630,16 @@ public class MessagingEngine {
     /**
      * Start Checking for Expired Messages (JMS Expiration)
      */
-    public void startMessageExpirationWorker() throws AndesException {
+    public void startMessageExpirationWorker() {
 
-        MessageExpirationWorker mew = ClusterResourceHolder.getInstance().getMessageExpirationWorker();
+        MessageExpirationWorker messageExpirationWorker = ClusterResourceHolder.getInstance().getMessageExpirationWorker();
 
-        if (mew == null) {
-            MessageExpirationWorker messageExpirationWorker = new MessageExpirationWorker();
-            ClusterResourceHolder.getInstance().setMessageExpirationWorker(messageExpirationWorker);
+        if (messageExpirationWorker == null) {
+            ClusterResourceHolder.getInstance().setMessageExpirationWorker(new MessageExpirationWorker());
 
         } else {
-            if (!mew.isWorking()) {
-                mew.startWorking();
+            if (!messageExpirationWorker.isWorking()) {
+                messageExpirationWorker.startWorking();
             }
         }
     }

@@ -149,14 +149,13 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
      */
     private AndesMessage cloneAndesMessageMetadataAndContent(AndesMessage message) {
         long newMessageId = idGenerator.getNextId();
-        AndesMessageMetadata clonedMetadata = message.getMetadata().deepClone(newMessageId);
+        AndesMessageMetadata clonedMetadata = message.getMetadata().shallowCopy(newMessageId);
         AndesMessage clonedMessage = new AndesMessage(clonedMetadata);
 
         //Duplicate message content
         List<AndesMessagePart> messageParts = message.getContentChunkList();
         for (AndesMessagePart messagePart : messageParts) {
-            // TODO test without deep clone
-            clonedMessage.addMessagePart(messagePart.deepClone(newMessageId));
+            clonedMessage.addMessagePart(messagePart.shallowCopy(newMessageId));
         }
 
         return clonedMessage;

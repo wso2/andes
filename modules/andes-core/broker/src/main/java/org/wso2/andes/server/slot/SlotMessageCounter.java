@@ -53,28 +53,11 @@ public class SlotMessageCounter {
     private SlotMessageCounter() {
         scheduleSubmitSlotToCoordinatorTimer();
 
-        try {
-            slotWindowSize = AndesConfigurationManager.getInstance().readConfigurationValue
-                    (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
-        } catch (AndesException e) {
-            // This could only happen if the defined default value for PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE cannot be parsed.
-            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE.toString(),e);
-            //Set default value
-            slotWindowSize = Integer.valueOf(AndesConfiguration
-                    .PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE.get().getDefaultValue());
-        }
+        slotWindowSize = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
 
-        try {
-            timeOutForMessagesInQueue = AndesConfigurationManager.getInstance()
-                    .readConfigurationValue(AndesConfiguration
-                            .PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY);
-        } catch (AndesException e) {
-            // This could only happen if the defined default value for PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY cannot be parsed.
-            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY.toString(),e);
-            // Set default value
-            timeOutForMessagesInQueue = Long.valueOf(AndesConfiguration
-                    .PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY.get().getDefaultValue());
-        }
+        timeOutForMessagesInQueue = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY);
     }
 
     /**

@@ -62,11 +62,11 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
 
     public AMQPLocalSubscription(AMQQueue amqQueue, Subscription amqpSubscription, String subscriptionID, String destination,
                                  boolean isBoundToTopic, boolean isExclusive, boolean isDurable,
-                                 String subscribedNode, String targetQueue, String targetQueueOwner,
+                                 String subscribedNode, long subscribeTime, String targetQueue, String targetQueueOwner,
                                  String targetQueueBoundExchange, String targetQueueBoundExchangeType,
                                  Short isTargetQueueBoundExchangeAutoDeletable, boolean hasExternalSubscriptions) {
 
-        super(subscriptionID, destination, isBoundToTopic, isExclusive, isDurable, subscribedNode, targetQueue, targetQueueOwner,
+        super(subscriptionID, destination, isBoundToTopic, isExclusive, isDurable, subscribedNode, subscribeTime, targetQueue, targetQueueOwner,
                 targetQueueBoundExchange, targetQueueBoundExchangeType, isTargetQueueBoundExchangeAutoDeletable, hasExternalSubscriptions);
 
         this.amqQueue = amqQueue;
@@ -208,7 +208,7 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
         //todo:hasitha:verify passing null values
         String subscribedNode = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         return new AMQPLocalSubscription(amqQueue,
-                amqpSubscription, subscriptionID, targetQueue, false, isExclusive, true, subscribedNode, amqQueue.getName(),
+                amqpSubscription, subscriptionID, targetQueue, false, isExclusive, true, subscribedNode, System.currentTimeMillis(), amqQueue.getName(),
                 amqQueue.getOwner().toString(), AMQPUtils.DIRECT_EXCHANGE_NAME, DirectExchange.TYPE.toString(), Short.parseShort("0"), true);
     }
 

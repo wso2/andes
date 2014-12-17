@@ -35,19 +35,15 @@ import java.util.Map;
  */
 public class UserAuthenticator implements IAuthenticator {
 
-
     private Map<String, String> users = new HashMap<String, String>();
     
-    UserAuthenticator() throws AndesException {
+    UserAuthenticator() {
 
-        List<String> list = AndesConfigurationManager.getInstance().readPropertyList
-                (AndesConfiguration.LIST_TRANSPORTS_MQTT_USERNAMES);
+        List<String> list = AndesConfigurationManager.readValueList(AndesConfiguration.LIST_TRANSPORTS_MQTT_USERNAMES);
 
         for (int i =1; i<list.size(); i++) {
-            String userName = AndesConfigurationManager.getInstance().readPropertyOfChildByIndex
-                    (AndesConfiguration.TRANSPORTS_MQTT_USERNAME, i);
-            String password = AndesConfigurationManager.getInstance().readPropertyOfChildByIndex
-                    (AndesConfiguration.TRANSPORTS_MQTT_PASSWORD, i);
+            String userName = AndesConfigurationManager.readValueOfChildByIndex(AndesConfiguration.TRANSPORTS_MQTT_USERNAME, i);
+            String password = AndesConfigurationManager.readValueOfChildByIndex(AndesConfiguration.TRANSPORTS_MQTT_PASSWORD, i);
 
             users.put(userName, password);
         }

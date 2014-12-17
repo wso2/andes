@@ -53,13 +53,7 @@ public class MessageFlusher {
     //per destination
     private Integer maxNumberOfReadButUndeliveredMessages = 5000;
 
-
-    private static final int THREADPOOL_RECOVERY_INTERVAL = 2000;
-    private static final int SAFE_THREAD_COUNT = 1000;
-    private static final int THREADPOOL_RECOVERY_ATTEMPTS = 2;
-
-    private final int queueWorkerWaitInterval;
-    private static Integer PUBLISHER_POOL_SIZE;
+    private final int queueWorkerWaitInterval = 1000;
 
     /**
      * Subscribed destination wise information
@@ -70,27 +64,14 @@ public class MessageFlusher {
 
     private SubscriptionStore subscriptionStore;
 
-    private static MessageFlusher messageFlusher;
+    private static MessageFlusher messageFlusher = new MessageFlusher();
 
-    static {
-        try {
-            messageFlusher = new MessageFlusher(1000);
-        } catch (AndesException e) {
-            log.error("Error occurred during configuration access",e);
-        }
-    }
+    public MessageFlusher() {
 
-    public MessageFlusher(final int queueWorkerWaitInterval) throws AndesException {
-
-        PUBLISHER_POOL_SIZE = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
-                .PERFORMANCE_TUNING_DELIVERY_PUBLISHER_POOL_SIZE);
-
-        this.maxNumberOfUnAckedMessages = AndesConfigurationManager.getInstance().readConfigurationValue
+        this.maxNumberOfUnAckedMessages = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
 
-        this.queueWorkerWaitInterval = queueWorkerWaitInterval;
-
-        this.maxNumberOfReadButUndeliveredMessages = AndesConfigurationManager.getInstance().readConfigurationValue
+        this.maxNumberOfReadButUndeliveredMessages = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_MAX_READ_BUT_UNDELIVERED_MESSAGES);
 
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
@@ -242,7 +223,6 @@ public class MessageFlusher {
     public void sendMessageToFlusher(List<AndesMessageMetadata> messagesRead,
                                      Slot slot) {
 
-        int pendingJobsToSendToTransport;
         long failureCount = 0;
         try {
             for (AndesMessageMetadata message : messagesRead) {
@@ -326,15 +306,6 @@ public class MessageFlusher {
 
     }
 
-
-    //TODO check if this method is required in future
-    private void sleep4waitInterval(long sleepInterval) {
-        try {
-            Thread.sleep(sleepInterval);
-        } catch (InterruptedException ignored) {
-        }
-    }
-
     /**
      * does that destination has too many messages pending
      *
@@ -398,7 +369,11 @@ public class MessageFlusher {
                     Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
                     while (subscriptionIterator.hasNext()) {
                         LocalSubscription subscription = subscriptionIterator.next();
-                        if (subscription.isDurable()) {
+                        /**
+                         * Here we need to consider the arrival time of the message. Only topic
+                         * subscribers who appeared before publishing this message should receive it
+                         */
+                        if (subscription.isDurable() || (subscription.getSubscribeTime() > message.getArrivalTime())) {
                             subscriptionIterator.remove();
                         }
                     }

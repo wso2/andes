@@ -36,7 +36,7 @@ import java.util.concurrent.ThreadFactory;
 
 /**
  * Disruptor based inbound event handling class.
- * Inbound events are represent Within the buffer as InboundEvent objects. Four types of event processors goes through
+ * Inbound events are represent within the buffer as InboundEvent objects. Four types of event processors goes through
  * the ring buffer processing events.
  */
 public class DisruptorBasedInboundEventManager implements InboundEventManager {
@@ -44,18 +44,18 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
     private static Log log = LogFactory.getLog(DisruptorBasedInboundEventManager.class);
     private final RingBuffer<InboundEvent> ringBuffer;
 
-    public DisruptorBasedInboundEventManager(SubscriptionStore subscriptionStore) throws AndesException {
+    public DisruptorBasedInboundEventManager(SubscriptionStore subscriptionStore,
+                                             MessagingEngine messagingEngine) {
 
-        AndesConfigurationManager configurationManager = AndesConfigurationManager.getInstance();
-        Integer bufferSize = configurationManager.readConfigurationValue(
+        Integer bufferSize = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE);
-        Integer writeHandlerCount = configurationManager.readConfigurationValue(
-                AndesConfiguration.PERFORMANCE_TUNING_PARALLEL_CONTENT_WRITERS);
-        Integer ackHandlerCount = configurationManager.readConfigurationValue(
+        Integer writeHandlerCount = AndesConfigurationManager.readValue(
+                AndesConfiguration.PERFORMANCE_TUNING_PARALLEL_MESSAGE_WRITERS);
+        Integer ackHandlerCount = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLER_COUNT);
-        Integer writerBatchSize = configurationManager.readConfigurationValue(
+        Integer writerBatchSize = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_WRITER_BATCH_SIZE);
-        Integer ackHandlerBatchSize = configurationManager.readConfigurationValue(
+        Integer ackHandlerBatchSize = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE);
 
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
@@ -78,7 +78,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
             processors[turn] = new ConcurrentBatchProcessor(
                     disruptor.getRingBuffer(),
                     barrier,
-                    new messageWriter(),
+                    new MessageWriter(messagingEngine, writerBatchSize),
                     turn,
                     writeHandlerCount,
                     writerBatchSize,
@@ -102,7 +102,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
 
         // State event handler should run at last.
         // State event handler update the state of Andes after other handlers work is done.
-        disruptor.after(processors).handleEventsWith(new StateEventHandler());
+        disruptor.after(processors).handleEventsWith(new StateEventHandler(messagingEngine));
 
         disruptor.handleExceptionsWith(new IgnoreExceptionHandler());
         ringBuffer = disruptor.start();
@@ -131,7 +131,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
      * @inheritDoc
      */
     @Override
-    public void ackReceived(AndesAckData ackData) throws AndesException {
+    public void ackReceived(AndesAckData ackData) {
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEvent event = ringBuffer.get(sequence);
@@ -148,7 +148,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
     }
 
     @Override
-    public void messageRejected(AndesMessageMetadata metadata) throws AndesException {
+    public void messageRejected(AndesMessageMetadata metadata) {
 
     }
 

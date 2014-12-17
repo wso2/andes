@@ -58,8 +58,8 @@ public class Andes {
     /**
      * Initialise is package specific. We don't need outsiders initialising the API
      */
-    void initialise(SubscriptionStore subscriptionStore) throws AndesException {
-        inboundEventManager = InboundEventManagerFactory.createEventManager(subscriptionStore);
+    void initialise(SubscriptionStore subscriptionStore, MessagingEngine messagingEngine) {
+        inboundEventManager = InboundEventManagerFactory.createEventManager(subscriptionStore, messagingEngine);
         log.info("Andes API initialised.");
     }
 
@@ -278,7 +278,7 @@ public class Andes {
      * @return message count of the queue
      * @throws AndesException
      */
-    public int getMessageCountOfQueue(String queueName) throws AndesException {
+    public long getMessageCountOfQueue(String queueName) throws AndesException {
         return MessagingEngine.getInstance().getMessageCountOfQueue(queueName);
     }
 

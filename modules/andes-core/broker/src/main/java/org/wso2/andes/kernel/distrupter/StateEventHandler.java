@@ -39,13 +39,13 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
 
     private static Log log = LogFactory.getLog(StateEventHandler.class);
 
-    private final Integer BATCH_SIZE;
-    private final List<AndesMessage> messageList;
+    /**
+     * reference to MessagingEngine
+     */
+    private final MessagingEngine messagingEngine;
 
-    StateEventHandler() throws AndesException {
-        BATCH_SIZE = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration
-                .PERFORMANCE_TUNING_STATE_HANDLER_BATCH_SIZE);
-        messageList = new ArrayList<AndesMessage>(BATCH_SIZE);
+    StateEventHandler(MessagingEngine messagingEngine) {
+        this.messagingEngine = messagingEngine;
     }
 
     @Override
@@ -59,7 +59,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
         try {
             switch (event.getEventType()) {
                 case MESSAGE_EVENT:
-                    messageList.addAll(event.messageList);
+                    updateSlotsAndQueueCounts(event.messageList);
                     break;
                 case CHANNEL_CLOSE_EVENT:
                     clientConnectionClosed((UUID) event.getData());
@@ -89,9 +89,12 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
                     closeLocalSubscription((LocalSubscription) event.getData());
                     break;
             }
-            // irrespective of the event update slots with new messages
-            batchAndUpdateOnMetaDataEvent(endOfBatch);
+
         } finally {
+            // This is the final handler that visits the slot in ring buffer. Hence after processing is done clear the
+            // slot so that in next iteration of the first event handler over the same slot won't find garbage from
+            // previous iterations.
+            // We don't need to do this for acknowledgement event or ignore event since they are already cleared
             if (InboundEvent.Type.IGNORE_EVENT != event.getEventType()
                     || InboundEvent.Type.ACKNOWLEDGEMENT_EVENT != event.getEventType()) {
                 event.clear();
@@ -100,68 +103,34 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
     }
 
     /**
-     * Batch Metadata related state change events and update Slots counter
-     *
-     * @param endOfBatch true if end of batch in disruptor and wise versa
-     * @throws AndesException
-     */
-    private void batchAndUpdateOnMetaDataEvent(boolean endOfBatch) throws AndesException {
-
-        if (!messageList.isEmpty() && ((messageList.size() >= BATCH_SIZE) || endOfBatch)) {
-            updateSlotsAndQueueCounts(messageList);
-            if (log.isDebugEnabled()) {
-                StringBuilder messagesString = new StringBuilder();
-                for (AndesMessage message : messageList) {
-                    messagesString.append(message.getMetadata().getMessageID()).append(" , ");
-                }
-                log.debug("Added to Message List: " + messagesString);
-            }
-
-            messageList.clear();
-        }
-    }
-
-    /**
      * Update slot message counters and queue counters
      *
      * @param messageList AndesMessage List
-     * @throws AndesException
      */
-    public void updateSlotsAndQueueCounts(List<AndesMessage> messageList)
-            throws AndesException {
+    public void updateSlotsAndQueueCounts(List<AndesMessage> messageList) {
 
         // update last message ID in slot message counter. When the slot is filled the last message
         // ID of the slot will be submitted to the slot manager by SlotMessageCounter
         if (AndesContext.getInstance().isClusteringEnabled()) {
             SlotMessageCounter.getInstance().recordMetaDataCountInSlot(messageList);
         }
-        if (log.isDebugEnabled()) {
-            String msgs = "";
-            for (AndesMessage message : messageList) {
-                msgs = msgs + message.getMetadata().getMessageID() + " , ";
-            }
-            log.debug("Messages STATE UPDATED: " + msgs);
-        }
 
-        Map<String, Integer> destinationSeparatedMetadataCount = new HashMap<String, Integer>();
         for (AndesMessage message : messageList) {
-            //separate metadata queue-wise
-            Integer msgCount = destinationSeparatedMetadataCount.get(message.getMetadata().getDestination());
-            if (msgCount == null) {
-                msgCount = 0;
+            // For each message increment by 1. Underlying messaging engine will handle the increment destination
+            // wise.
+            messagingEngine.incrementQueueCount(message.getMetadata().getDestination(), 1);
+        }
+
+        //record the successfully written message count
+        PerformanceCounter.recordIncomingMessageWrittenToStore();
+
+        if (log.isTraceEnabled()) {
+            StringBuilder messageIds = new StringBuilder();
+            for (AndesMessage message : messageList) {
+                messageIds.append(message.getMetadata().getMessageID()).append(" , ");
             }
-            msgCount = msgCount + 1;
-            destinationSeparatedMetadataCount.put(message.getMetadata().getDestination(), msgCount);
-
-            //record the successfully written message count
-            PerformanceCounter.recordIncomingMessageWrittenToStore();
+            log.debug("Messages STATE UPDATED: " + messageIds);
         }
-        //increment message count for queues
-        for (Map.Entry<String, Integer> entry : destinationSeparatedMetadataCount.entrySet()) {
-            AndesContext.getInstance().getAndesContextStore().incrementMessageCountForQueue(entry.getKey(),
-                    entry.getValue());
-        }
-
     }
 
     /**
@@ -216,33 +185,28 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      * Start message delivery threads in Andes
      */
     public void startMessageDelivery() {
-        MessagingEngine.getInstance().startMessageDelivery();
+        messagingEngine.startMessageDelivery();
     }
 
     /**
      * Stop message delivery threads in Andes
      */
     public void stopMessageDelivery() {
-        MessagingEngine.getInstance().stopMessageDelivery();
+        messagingEngine.stopMessageDelivery();
     }
 
     /**
      * Handle event of start message expiration worker
      */
     public void startMessageExpirationWorker() {
-        try {
-            MessagingEngine.getInstance().startMessageExpirationWorker();
-        } catch (AndesException e) {
-            // TODO: throw a fatal error and stop the disruptor. Don't Ignore
-            log.error("Error occurred while initialising message expiration worker", e);
-        }
+        MessagingEngine.getInstance().startMessageExpirationWorker();
     }
 
     /**
      * Handle stopping message expiration worker
      */
     public void stopMessageExpirationWorker() {
-        MessagingEngine.getInstance().stopMessageExpirationWorker();
+        messagingEngine.stopMessageExpirationWorker();
     }
 
     /**
@@ -250,7 +214,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      */
     public void shutdownMessagingEngine() {
         try {
-            MessagingEngine.getInstance().close();
+            messagingEngine.close();
         } catch (InterruptedException e) {
             log.error("Interrupted while closing messaging engine. ", e);
         }

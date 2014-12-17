@@ -40,13 +40,13 @@ public class MessageExpirationWorker extends Thread {
     private final Integer messageBatchSize;
     private final Boolean saveExpiredToDLC;
 
-    public MessageExpirationWorker() throws AndesException {
+    public MessageExpirationWorker() {
 
-        workerWaitInterval = AndesConfigurationManager.getInstance().readConfigurationValue
+        workerWaitInterval = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_EXPIRATION_CHECK_INTERVAL);
-        messageBatchSize = AndesConfigurationManager.getInstance().readConfigurationValue
+        messageBatchSize = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_EXPIRATION_BATCH_SIZE);
-        saveExpiredToDLC = AndesConfigurationManager.getInstance().readConfigurationValue
+        saveExpiredToDLC = AndesConfigurationManager.readValue
                 (AndesConfiguration.TRANSPORTS_AMQP_SEND_EXPIRED_MESSAGES_TO_DLC);
 
         this.start();
@@ -95,7 +95,8 @@ public class MessageExpirationWorker extends Thread {
                         // support different data models (like RDBMC) in future, the above approach is followed.
                     }
 
-                } catch (Throwable e) {
+                } catch (AndesException e) {
+                    log.error("Error running Message Expiration Checker " + e.getMessage(), e);
                     // The wait time here is designed to increase per failure to avoid unnecessary attempts to wake up the thread.
                     // However, given that the most probable error here could be a timeout during the database call, it could recover in the next few attempts.
                     // Therefore, no need to keep on delaying the worker.
@@ -108,7 +109,7 @@ public class MessageExpirationWorker extends Thread {
                     } catch (InterruptedException ignore) {
                         //silently ignore
                     }
-                    log.error("Error running Message Expiration Checker" + e.getMessage(), e);
+
                 }
             } else {
                 sleepForWaitInterval(workerWaitInterval);

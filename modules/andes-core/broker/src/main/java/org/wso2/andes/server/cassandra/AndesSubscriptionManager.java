@@ -205,7 +205,7 @@ public class AndesSubscriptionManager {
          * Topic subscription representing durable topic is deleted when binding is deleted
          */
         if(subscription.isBoundToTopic() && subscription.isDurable()) {
-            Boolean allowSharedSubscribers =  AndesConfigurationManager.getInstance().readConfigurationValue
+            Boolean allowSharedSubscribers =  AndesConfigurationManager.readValue
                     (AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
             /**
              * If multiple subscriptions are allowed mark as disconnected if all local

@@ -22,7 +22,6 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.framing.*;
-import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.pool.AndesExecuter;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.state.AMQStateManager;
@@ -33,11 +32,6 @@ import java.util.Map;
 public class ServerMethodDispatcherImpl implements MethodDispatcher
 {
     private final AMQStateManager _stateManager;
-
-    /**
-     * Configured thread pool size for AndesExecutor
-     */
-    private final Integer andesInternalParallelThreadPoolSize;
 
     private static interface DispatcherFactory
         {
@@ -119,18 +113,7 @@ public class ServerMethodDispatcherImpl implements MethodDispatcher
 
     public ServerMethodDispatcherImpl(AMQStateManager stateManager)
     {
-        Integer andesInternalParallelThreadPoolSizeValue;
         _stateManager = stateManager;
-        try {
-            andesInternalParallelThreadPoolSizeValue = AndesConfigurationManager.getInstance()
-                    .readConfigurationValue(AndesConfiguration
-                            .PERFORMANCE_TUNING_ACK_HANDLING_WORKER_THREAD_COUNT);
-        } catch (AndesException e) {
-            // Throwing the exception here would lead to an long thread of obscure,
-            // qpid classes needing to handle the exception
-            andesInternalParallelThreadPoolSizeValue = 5;
-        }
-        andesInternalParallelThreadPoolSize = andesInternalParallelThreadPoolSizeValue;
     }
 
 
@@ -157,17 +140,7 @@ public class ServerMethodDispatcherImpl implements MethodDispatcher
      */
     public boolean dispatchBasicAck(final BasicAckBody body, final int channelId) throws AMQException
     {
-        AndesExecuter.getInstance(andesInternalParallelThreadPoolSize).submit(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    _basicAckMethodHandler.methodReceived(_stateManager, body, channelId);
-                } catch (AMQException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-            }
-        }, null);
+        _basicAckMethodHandler.methodReceived(_stateManager, body, channelId);
         return true;
     }
 

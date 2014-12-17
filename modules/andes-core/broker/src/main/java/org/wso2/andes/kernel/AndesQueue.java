@@ -47,7 +47,7 @@ public class AndesQueue {
         this.isExclusive = isExclusive;
         this.isDurable = isDurable;
         this.subscriptionCount = 1;
-        this.lastPurgedTimestamp = 0l;
+        this.lastPurgedTimestamp = 0L;
     }
 
     public Long getLastPurgedTimestamp() {
