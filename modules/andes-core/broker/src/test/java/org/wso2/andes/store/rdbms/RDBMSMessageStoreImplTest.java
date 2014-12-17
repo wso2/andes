@@ -130,7 +130,7 @@ public class RDBMSMessageStoreImplTest {
         // store
         messageStore.storeMessagePart(list);
 
-        String select = "SELECT * FROM " + RDBMSConstants.MESSAGES_TABLE;
+        String select = "SELECT * FROM " + RDBMSConstants.CONTENT_TABLE;
         Statement stmt = connection.createStatement();
         ResultSet resultSet = stmt.executeQuery(select);
 
@@ -167,7 +167,7 @@ public class RDBMSMessageStoreImplTest {
         // store
         messageStore.storeMessagePart(list);
 
-        String select = "SELECT * FROM " + RDBMSConstants.MESSAGES_TABLE;
+        String select = "SELECT * FROM " + RDBMSConstants.CONTENT_TABLE;
         Statement stmt = connection.createStatement();
         ResultSet resultSet = stmt.executeQuery(select);
 
@@ -194,7 +194,7 @@ public class RDBMSMessageStoreImplTest {
 
         // check for deletion
         String sqlStr = "SELECT * " +
-                " FROM " + RDBMSConstants.MESSAGES_TABLE +
+                " FROM " + RDBMSConstants.CONTENT_TABLE +
                 " WHERE " + RDBMSConstants.MESSAGE_ID + "=?";
         PreparedStatement preparedStatement = connection.prepareStatement(sqlStr);
         for (int i = firstMsgId; i < lastMsgId; i++) {

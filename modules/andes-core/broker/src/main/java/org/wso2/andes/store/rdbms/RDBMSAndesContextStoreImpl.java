@@ -347,7 +347,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             long count = 0;
             if (resultSet.next()) {
-                count = resultSet.getLong(RDBMSConstants.QUEUE_COUNT);
+                count = resultSet.getLong(RDBMSConstants.MESSAGE_COUNT);
             }
             return count;
         } catch (SQLException e) {
@@ -623,7 +623,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             // iterate through the result set and add to queue list
             while (resultSet.next()) {
                 AndesQueue andesQueue = new AndesQueue(
-                        resultSet.getString(RDBMSConstants.QUEUE_INFO)
+                        resultSet.getString(RDBMSConstants.QUEUE_DATA)
                 );
                 queueList.add(andesQueue);
             }

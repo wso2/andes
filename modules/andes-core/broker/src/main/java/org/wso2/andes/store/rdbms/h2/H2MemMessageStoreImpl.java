@@ -40,55 +40,42 @@ public class H2MemMessageStoreImpl extends RDBMSMessageStoreImpl {
     /**
      * Create messages table in H2 database
      */
-    protected static final String CREATE_MESSAGES_TABLE = "CREATE TABLE IF NOT EXISTS messages (" +
-            "message_id BIGINT, " +
-            "offset INT, " +
-            "content BLOB NOT NULL, " +
-            "PRIMARY KEY (message_id,offset)" +
+    protected static final String CREATE_CONTENT_TABLE = "CREATE TABLE IF NOT EXISTS MB_CONTENT (" +
+            "MESSAGE_ID BIGINT, " +
+            "CONTENT_OFFSET INT, " +
+            "MESSAGE_CONTENT BLOB NOT NULL, " +
+            "PRIMARY KEY (MESSAGE_ID,CONTENT_OFFSET)" +
             ");";
 
     /**
      * Create queues table in H2 database
      */
-    protected static final String CREATE_QUEUES_TABLE = "CREATE TABLE IF NOT EXISTS queues (" +
-            "queue_id INT AUTO_INCREMENT, " +
-            "name VARCHAR NOT NULL, " +
-            "UNIQUE (name)," +
-            "PRIMARY KEY (queue_id)" +
+    protected static final String CREATE_QUEUES_TABLE = "CREATE TABLE IF NOT EXISTS MB_QUEUE_MAPPING (" +
+            "QUEUE_ID INT AUTO_INCREMENT, " +
+            "QUEUE_NAME VARCHAR NOT NULL, " +
+            "UNIQUE (QUEUE_NAME)," +
+            "PRIMARY KEY (QUEUE_ID)" +
             ");";
 
     /**
      * Create metadata table in H2 database
      */
-    protected static final String CREATE_METADATA_TABLE = "CREATE TABLE IF NOT EXISTS metadata (" +
-            "message_id BIGINT, " +
-            "queue_id INT, " +
-            "data BINARY, " +
-            "PRIMARY KEY (message_id, queue_id), " +
-            "FOREIGN KEY (queue_id) " +
-            "REFERENCES queues (queue_id) " +
+    protected static final String CREATE_METADATA_TABLE = "CREATE TABLE IF NOT EXISTS MB_METADATA (" +
+            "MESSAGE_ID BIGINT, " +
+            "QUEUE_ID INT, " +
+            "MESSAGE_METADATA BINARY, " +
+            "PRIMARY KEY (MESSAGE_ID, QUEUE_ID), " +
+            "FOREIGN KEY (QUEUE_ID) REFERENCES MB_QUEUE_MAPPING (QUEUE_ID) " +
             ");";
 
     /**
      * Creates expiration data table in H2 database
      */
-    protected static final String CREATE_EXPIRATION_DATA_TABLE = "CREATE TABLE IF NOT EXISTS expiration_data (" +
-            "message_id BIGINT UNIQUE," +
-            "expiration_time BIGINT, " +
-            "destination VARCHAR NOT NULL, " +
-            "FOREIGN KEY (message_id) " +
-            "REFERENCES metadata " +
-            "(message_id)" +
-            ");";
-
-    /**
-     * Creates reference counts table in H2 database
-     */
-    protected static final String CREATE_REF_COUNT_TABLE = "CREATE TABLE IF NOT EXISTS " +
-            "reference_counts ( " +
-            "message_id BIGINT, " +
-            "reference_count INT, " +
-            "PRIMARY KEY (message_id)" +
+    protected static final String CREATE_EXPIRATION_DATA_TABLE = "CREATE TABLE IF NOT EXISTS MB_EXPIRATION_DATA (" +
+            "MESSAGE_ID BIGINT UNIQUE," +
+            "EXPIRATION_TIME BIGINT, " +
+            "MESSAGE_DESTINATION VARCHAR NOT NULL, " +
+            "FOREIGN KEY (MESSAGE_ID) REFERENCES MB_METADATA (MESSAGE_ID)" +
             ");";
 
     /**
@@ -135,11 +122,10 @@ public class H2MemMessageStoreImpl extends RDBMSMessageStoreImpl {
      */
     public void createTables() throws AndesException {
         String[] queries = {
-                CREATE_MESSAGES_TABLE,
+                CREATE_CONTENT_TABLE,
                 CREATE_QUEUES_TABLE,
                 CREATE_METADATA_TABLE,
-                CREATE_EXPIRATION_DATA_TABLE,
-                CREATE_REF_COUNT_TABLE
+                CREATE_EXPIRATION_DATA_TABLE
         };
 
         Connection connection = null;

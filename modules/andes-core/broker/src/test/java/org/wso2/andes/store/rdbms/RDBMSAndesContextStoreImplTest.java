@@ -119,7 +119,7 @@ public class RDBMSAndesContextStoreImplTest {
 
         Assert.assertTrue("Entry should exist on DB for queue counter", resultSet.first());
         Assert.assertEquals(queueName, resultSet.getString(RDBMSConstants.QUEUE_NAME));
-        Assert.assertEquals(count, resultSet.getInt(RDBMSConstants.QUEUE_COUNT));
+        Assert.assertEquals(count, resultSet.getInt(RDBMSConstants.MESSAGE_COUNT));
     }
 
     /**
@@ -143,7 +143,7 @@ public class RDBMSAndesContextStoreImplTest {
 
         Assert.assertTrue("Entry should exist on DB for queue counter", resultSet.first());
         Assert.assertEquals(queueName, resultSet.getString(RDBMSConstants.QUEUE_NAME));
-        Assert.assertEquals(count, resultSet.getInt(RDBMSConstants.QUEUE_COUNT));
+        Assert.assertEquals(count, resultSet.getInt(RDBMSConstants.MESSAGE_COUNT));
         Assert.assertFalse("Only one entry should exist on table", resultSet.next());
     }
 
@@ -161,7 +161,7 @@ public class RDBMSAndesContextStoreImplTest {
         // add counter for queue and update the data base for test
         String insert = "INSERT INTO " + RDBMSConstants.QUEUE_COUNTER_TABLE + " (" +
                 RDBMSConstants.QUEUE_NAME + "," +
-                RDBMSConstants.QUEUE_COUNT + ") " +
+                RDBMSConstants.MESSAGE_COUNT + ") " +
                 " VALUES ( ?,?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -189,7 +189,7 @@ public class RDBMSAndesContextStoreImplTest {
         // add counter for queue and update the data base for test
         String insert = "INSERT INTO " + RDBMSConstants.QUEUE_COUNTER_TABLE + " (" +
                 RDBMSConstants.QUEUE_NAME + "," +
-                RDBMSConstants.QUEUE_COUNT + ") " +
+                RDBMSConstants.MESSAGE_COUNT + ") " +
                 " VALUES ( ?,?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -223,7 +223,7 @@ public class RDBMSAndesContextStoreImplTest {
         // test for queueName2 existence
         Assert.assertTrue("Entry should exist in DB for not deleted counter", resultSet.first());
         Assert.assertEquals(queueName2, resultSet.getString(RDBMSConstants.QUEUE_NAME));
-        Assert.assertEquals(count, resultSet.getLong(RDBMSConstants.QUEUE_COUNT));
+        Assert.assertEquals(count, resultSet.getLong(RDBMSConstants.MESSAGE_COUNT));
 
     }
 
@@ -239,7 +239,7 @@ public class RDBMSAndesContextStoreImplTest {
         // add counter for queue and update the data base for test
         String insert = "INSERT INTO " + RDBMSConstants.QUEUE_COUNTER_TABLE + " (" +
                 RDBMSConstants.QUEUE_NAME + "," +
-                RDBMSConstants.QUEUE_COUNT + ") " +
+                RDBMSConstants.MESSAGE_COUNT + ") " +
                 " VALUES ( ?,?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -258,7 +258,7 @@ public class RDBMSAndesContextStoreImplTest {
         ResultSet resultSet = preparedStatement.executeQuery();
 
         resultSet.first();
-        Assert.assertEquals(startValue + incrementBy, resultSet.getLong(RDBMSConstants.QUEUE_COUNT));
+        Assert.assertEquals(startValue + incrementBy, resultSet.getLong(RDBMSConstants.MESSAGE_COUNT));
     }
 
     /**
@@ -273,7 +273,7 @@ public class RDBMSAndesContextStoreImplTest {
         // add counter for queue and update the data base for test
         String insert = "INSERT INTO " + RDBMSConstants.QUEUE_COUNTER_TABLE + " (" +
                 RDBMSConstants.QUEUE_NAME + "," +
-                RDBMSConstants.QUEUE_COUNT + ") " +
+                RDBMSConstants.MESSAGE_COUNT + ") " +
                 " VALUES ( ?,?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -292,7 +292,7 @@ public class RDBMSAndesContextStoreImplTest {
         ResultSet resultSet = preparedStatement.executeQuery();
 
         resultSet.first();
-        Assert.assertEquals(startValue - decrementBy, resultSet.getLong(RDBMSConstants.QUEUE_COUNT));
+        Assert.assertEquals(startValue - decrementBy, resultSet.getLong(RDBMSConstants.MESSAGE_COUNT));
     }
 
     /**
@@ -680,7 +680,7 @@ public class RDBMSAndesContextStoreImplTest {
         ResultSet resultSet = preparedStatement.executeQuery();
 
         Assert.assertEquals(true, resultSet.next());
-        Assert.assertEquals(queueInfo1, resultSet.getString(RDBMSConstants.QUEUE_INFO));
+        Assert.assertEquals(queueInfo1, resultSet.getString(RDBMSConstants.QUEUE_DATA));
 
         preparedStatement.close();
         preparedStatement = connection.prepareStatement(select);
@@ -688,7 +688,7 @@ public class RDBMSAndesContextStoreImplTest {
         resultSet = preparedStatement.executeQuery();
 
         Assert.assertEquals(true, resultSet.next());
-        Assert.assertEquals(queueInfo2, resultSet.getString(RDBMSConstants.QUEUE_INFO));
+        Assert.assertEquals(queueInfo2, resultSet.getString(RDBMSConstants.QUEUE_DATA));
     }
 
     /**
@@ -705,7 +705,7 @@ public class RDBMSAndesContextStoreImplTest {
 
         // insert
         String insert = "INSERT INTO " + RDBMSConstants.QUEUE_INFO_TABLE + " (" +
-                RDBMSConstants.QUEUE_NAME + "," + RDBMSConstants.QUEUE_INFO + " ) " +
+                RDBMSConstants.QUEUE_NAME + "," + RDBMSConstants.QUEUE_DATA + " ) " +
                 " VALUES (?,?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -749,7 +749,7 @@ public class RDBMSAndesContextStoreImplTest {
 
         // insert
         String insert = "INSERT INTO " + RDBMSConstants.QUEUE_INFO_TABLE + " (" +
-                RDBMSConstants.QUEUE_NAME + "," + RDBMSConstants.QUEUE_INFO + " ) " +
+                RDBMSConstants.QUEUE_NAME + "," + RDBMSConstants.QUEUE_DATA + " ) " +
                 " VALUES (?,?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -775,7 +775,7 @@ public class RDBMSAndesContextStoreImplTest {
         // queue2 entry should remain in db
         Assert.assertEquals(true, resultSet.next());
         Assert.assertEquals(andesQueue2.queueName, resultSet.getString(RDBMSConstants.QUEUE_NAME));
-        Assert.assertEquals(andesQueue2.encodeAsString(), resultSet.getString(RDBMSConstants.QUEUE_INFO));
+        Assert.assertEquals(andesQueue2.encodeAsString(), resultSet.getString(RDBMSConstants.QUEUE_DATA));
 
         // there should be only one entry remaining in db
         Assert.assertEquals(false, resultSet.next());
@@ -797,7 +797,7 @@ public class RDBMSAndesContextStoreImplTest {
 
         // setup database with queue information
         String insert = "INSERT INTO " + RDBMSConstants.QUEUE_INFO_TABLE + " (" +
-                RDBMSConstants.QUEUE_NAME + "," + RDBMSConstants.QUEUE_INFO + " ) " +
+                RDBMSConstants.QUEUE_NAME + "," + RDBMSConstants.QUEUE_DATA + " ) " +
                 " VALUES (?,?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -949,7 +949,7 @@ public class RDBMSAndesContextStoreImplTest {
 
                 "CREATE TABLE IF NOT EXISTS " + RDBMSConstants.QUEUE_COUNTER_TABLE + " (" +
                         RDBMSConstants.QUEUE_NAME + " VARCHAR NOT NULL," +
-                        RDBMSConstants.QUEUE_COUNT + " BIGINT, " +
+                        RDBMSConstants.MESSAGE_COUNT + " BIGINT, " +
                         " PRIMARY KEY (" + RDBMSConstants.QUEUE_NAME + ") " +
                         ");"
 

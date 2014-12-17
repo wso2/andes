@@ -124,7 +124,7 @@ public class RDBMSTestHelper {
         AndesBinding andesBinding = new AndesBinding(exchange, andesQueue, routingKey);
         // setup database with queue information
         String insert = "INSERT INTO " + RDBMSConstants.QUEUE_INFO_TABLE + " (" +
-                RDBMSConstants.QUEUE_NAME + "," + RDBMSConstants.QUEUE_INFO + " ) " +
+                RDBMSConstants.QUEUE_NAME + "," + RDBMSConstants.QUEUE_DATA + " ) " +
                 " VALUES (?,?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
