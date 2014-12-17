@@ -376,9 +376,10 @@ public class SlotManager {
                 TreeSet<String> unAssignedSlotSet = new TreeSet<String>();
                 if (treeSetStringWrapper!=null) {
                     unAssignedSlotSet= treeSetStringWrapper.getStringTreeSet();
+                } else{
+                    treeSetStringWrapper = new TreeSetStringWrapper();
                 }
                 if (unAssignedSlotSet == null) {
-                    treeSetStringWrapper = new TreeSetStringWrapper();
                     unAssignedSlotSet = new TreeSet<String>();
                 }
                 for (String slotToBeReAssignedString : assignedSlotList) {
