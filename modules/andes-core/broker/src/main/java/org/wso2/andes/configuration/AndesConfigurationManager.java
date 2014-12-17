@@ -142,13 +142,15 @@ public class AndesConfigurationManager {
             AndesConfigurationManager.carbonPortOffset = portOffset;
 
         } catch (ConfigurationException e) {
-            throw new AndesException("Error occurred when trying to construct configurations from files.", e);
-            // The error is not propagated upwards here, because every point in code that
-            // accesses configurations will need to handle it. code duplication.)
-            // Since we have default values to use in a failure,
-            // logging the error here is sufficient.
+            String error = "Error occurred when trying to construct configurations from file at path : " +
+                    ROOT_CONFIG_FILE_PATH + ROOT_CONFIG_FILE_NAME;
+            log.error(error, e);
+            throw new AndesException(error, e);
+
         } catch (UnknownHostException e) {
-            throw new AndesException("Error occurred when trying to derive the bind address for messaging.", e);
+            String error = "Error occurred when trying to derive the bind address for messaging from configurations.";
+            log.error(error, e);
+            throw new AndesException(error, e);
         }
     }
 
