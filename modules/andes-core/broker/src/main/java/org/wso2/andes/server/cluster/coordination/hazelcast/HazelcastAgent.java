@@ -27,6 +27,10 @@ import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.slot.Slot;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.HashmapStringListWrapper;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetLongWrapper;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetStringWrapper;
+
 
 import java.util.*;
 
@@ -80,12 +84,12 @@ public class HazelcastAgent {
     /**
      * distributed Map to store message ID list against queue name
      */
-    private IMap<String, TreeSet<Long>> slotIdMap;
+    private IMap<String, TreeSetLongWrapper> slotIdMap;
 
     /**
      * to keep track of assigned slots up to now. Key of the map contains nodeID+"_"+queueName
      */
-    private IMap<String, HashMap<String, List<Slot>>> slotAssignmentMap;
+    private IMap<String, HashmapStringListWrapper> slotAssignmentMap;
 
     /**
      *distributed Map to store last assigned ID against queue name
@@ -96,7 +100,7 @@ public class HazelcastAgent {
      * Distributed Map to keep track of non-empty slots which are unassigned from
      * other nodes
      */
-    private IMap<String, TreeSet<Slot>> unAssignedSlotMap;
+    private IMap<String, TreeSetStringWrapper> unAssignedSlotMap;
 
     /**
      * This map is used to store thrift server host and thrift server port
@@ -368,11 +372,11 @@ public class HazelcastAgent {
         }
     }
 
-    public IMap<String, TreeSet<Slot>> getUnAssignedSlotMap() {
+    public IMap<String, TreeSetStringWrapper> getUnAssignedSlotMap() {
         return unAssignedSlotMap;
     }
 
-    public IMap<String, TreeSet<Long>> getSlotIdMap() {
+    public IMap<String, TreeSetLongWrapper> getSlotIdMap() {
         return slotIdMap;
     }
 
@@ -380,7 +384,7 @@ public class HazelcastAgent {
         return lastAssignedIDMap;
     }
 
-    public IMap<String, HashMap<String, List<Slot>>> getSlotAssignmentMap() {
+    public IMap<String, HashmapStringListWrapper> getSlotAssignmentMap() {
         return slotAssignmentMap;
     }
 
