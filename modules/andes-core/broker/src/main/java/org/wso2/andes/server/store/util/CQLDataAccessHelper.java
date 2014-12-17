@@ -937,7 +937,7 @@ public class CQLDataAccessHelper {
                                            boolean execute)
             throws CassandraDataAccessException {
 
-        if (StringUtils.isBlank(columnFamily) || StringUtils.isBlank(row) || (null != value)) {
+        if (StringUtils.isBlank(columnFamily) || StringUtils.isBlank(row) || (null == value)) {
             throw new CassandraDataAccessException("Can't add data with queueType = " + columnFamily + " and row=" +
                     row + " key  = " + key + " value = " + value);
         }
