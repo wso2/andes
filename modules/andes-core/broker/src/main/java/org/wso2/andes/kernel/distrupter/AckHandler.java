@@ -47,14 +47,19 @@ public class AckHandler implements BatchEventHandler {
         if(log.isDebugEnabled()){
             log.debug(eventList.size() + " acknowledgements received from disruptor.");
         }
-        ackReceived(eventList);
+
+        try {
+            ackReceived(eventList);
+        } catch (AndesException e) {
+            // Log the AndesException since there is no point in passing the exception to Disruptor
+            log.error("Error occurred while processing acknowledgements ", e);
+        }
     }
 
     /**
      * Updates the state of Andes and deletes relevant messages. (For topics message deletion will happen only when
      * all the clients acknowledges)
      * @param eventList inboundEvent list
-     * @throws AndesException
      */
     public void ackReceived(final List<InboundEvent> eventList) throws AndesException {
         List<AndesRemovableMetadata> removableMetadata = new ArrayList<AndesRemovableMetadata>();
@@ -74,9 +79,12 @@ public class AckHandler implements BatchEventHandler {
 
             OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(ack.getChannelID());
             //record ack received
-
             PerformanceCounter.recordMessageRemovedAfterAck();
+            event.clear();
         }
+
+        MessagingEngine.getInstance().deleteMessages(removableMetadata, false);
+
         if (log.isTraceEnabled()) {
             StringBuilder messageIDsString = new StringBuilder();
             for (AndesRemovableMetadata metadata : removableMetadata) {
@@ -84,9 +92,5 @@ public class AckHandler implements BatchEventHandler {
             }
             log.trace(eventList.size() + " message ok to remove : " + messageIDsString);
         }
-        // Depending on the async or direct deletion strategy used in MessagingEngine messages will be deleted
-        MessagingEngine.getInstance().deleteMessages(removableMetadata, false);
     }
-
-
 }
