@@ -24,7 +24,6 @@ import org.wso2.andes.configuration.qpid.ConfigStore;
 import org.wso2.andes.configuration.qpid.ConfiguredObject;
 import org.wso2.andes.configuration.qpid.QueueConfigType;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.LogSubject;
