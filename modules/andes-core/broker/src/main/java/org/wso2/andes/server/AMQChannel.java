@@ -268,15 +268,21 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         return _channelId;
     }
 
-    public void setPublishFrame(MessagePublishInfo info, final Exchange e) throws AMQSecurityException
-    {
+    /**
+     * Set frame to publish messages.
+     *
+     * @param info     Publishing information of the message.
+     * @param exchange The exchange message is publishing
+     * @throws AMQSecurityException
+     */
+    public void setPublishFrame(MessagePublishInfo info, final Exchange exchange) throws AMQSecurityException {
         if (!getVirtualHost().getSecurityManager().authorisePublish(info.isImmediate(),
-                                                                    info.getRoutingKey().asString(), e.getName()) ||
-            DLCQueueUtils.isDeadLetterQueue(info.getRoutingKey().asString())) {
-            throw new AMQSecurityException("Permission denied: " + e.getName());
+                info.getRoutingKey().asString(), exchange.getName()) ||
+                DLCQueueUtils.isDeadLetterQueue(info.getRoutingKey().asString())) {
+            throw new AMQSecurityException("Permission denied: " + exchange.getName());
         }
         _currentMessage = new IncomingMessage(info);
-        _currentMessage.setExchange(e);
+        _currentMessage.setExchange(exchange);
     }
 
     public void publishContentHeader(ContentHeaderBody contentHeaderBody)
