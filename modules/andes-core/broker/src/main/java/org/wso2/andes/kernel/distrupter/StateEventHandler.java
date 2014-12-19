@@ -94,11 +94,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
             // This is the final handler that visits the slot in ring buffer. Hence after processing is done clear the
             // slot so that in next iteration of the first event handler over the same slot won't find garbage from
             // previous iterations.
-            // We don't need to do this for acknowledgement event or ignore event since they are already cleared
-            if (InboundEvent.Type.IGNORE_EVENT != event.getEventType()
-                    || InboundEvent.Type.ACKNOWLEDGEMENT_EVENT != event.getEventType()) {
-                event.clear();
-            }
+            event.clear();
         }
     }
 
