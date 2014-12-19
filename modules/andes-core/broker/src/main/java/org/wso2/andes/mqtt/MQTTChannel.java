@@ -38,6 +38,21 @@ public class MQTTChannel {
     private static Log log = LogFactory.getLog(MQTTChannel.class);
     private static final String MQTT_TOPIC_DESTINATION = "destination";
     private static final String MQTT_QUEUE_IDENTIFIER = "targetQueue";
+    private AndesChannel andesChannel;
+
+    public MQTTChannel() {
+        andesChannel = Andes.createChannel(new FlowControlListener() {
+            @Override
+            public void block() {
+                // Need to implement
+            }
+
+            @Override
+            public void unblock() {
+                // Need to implement
+            }
+        });
+    }
 
     /**
      * The acked messages will be informed to the kernal
@@ -79,7 +94,7 @@ public class MQTTChannel {
 
             AndesMessage andesMessage = new AndesMessage(messageHeader);
             andesMessage.addMessagePart(messagePart);
-            Andes.getInstance().messageReceived(andesMessage);
+            Andes.getInstance().messageReceived(andesMessage, andesChannel);
             if(log.isDebugEnabled()) {
                 log.debug(" Message added with message id " + mqttLocalMessageID);
             }

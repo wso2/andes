@@ -67,6 +67,8 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
         // NO NEED TO CHECK FOR LIST SIZE
         AndesMessage message = event.messageList.get(0);
 
+        AndesChannel andesChannel = event.getChannel();
+
         // Messages are processed in the order they arrive at ring buffer By this processor.
         // By setting message ID through message pre processor we assure, even in a multi publisher scenario, there is
         // no message id ordering issue at node level.
@@ -117,6 +119,7 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
                         // add the topic wise cloned message to the events list. Message writers will pick that and
                         // write it.
                         event.messageList.add(clonedMessage);
+                        andesChannel.recordAdditionToBuffer(clonedMessage.getContentChunkList().size());
                         isMessageRouted = true;
                         alreadyStoredQueueNames.add(subscription.getStorageQueueName());
                     }
@@ -136,6 +139,7 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
                         messageRoutingKey + ", Message ID " + message.getMetadata().getMessageID());
             }
         } else {
+            andesChannel.recordAdditionToBuffer(message.getContentChunkList().size());
             AndesMessageMetadata messageMetadata = message.getMetadata();
             messageMetadata.setStorageQueueName(messageMetadata.getDestination());
         }
