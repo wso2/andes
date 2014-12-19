@@ -183,8 +183,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
         for (Long messageId : andesMessageIdList) {
             try {
-                List<AndesMessageMetadata> messageMetadataListForOne = MessagingEngine.getInstance().getMetaDataList
-                        (deadLetterQueueName, messageId, messageId);
+                List<AndesMessageMetadata> messageMetadataListForOne =
+                        MessagingEngine.getInstance().getMetaDataList(deadLetterQueueName, messageId, messageId);
                 if (messageMetadataListForOne != null && messageMetadataListForOne.size() > 0) {
                     metadataList.add(messageMetadataListForOne.get(0));
                 }

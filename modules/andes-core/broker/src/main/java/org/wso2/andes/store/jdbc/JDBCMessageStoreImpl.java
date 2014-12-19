@@ -316,8 +316,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             connection.commit();
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_UPDATING_META_DATA_QUEUE + targetQueueName);
-            throw new AndesException(
-                    "Error occurred while updating message metadata to destination queue "
+            throw new AndesException("Error occurred while updating message metadata to destination queue "
                             + targetQueueName, e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_UPDATING_META_DATA_QUEUE + targetQueueName);

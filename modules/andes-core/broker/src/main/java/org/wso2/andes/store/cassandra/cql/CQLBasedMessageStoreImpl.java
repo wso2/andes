@@ -362,9 +362,9 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         List<AndesMessageMetadata> messageMetadataList = getMetaDataList(currentQueueName,
                 messageId, messageId);
 
-        if (messageMetadataList == null || messageMetadataList.size() == 0) {
+        if (messageMetadataList.size() == 0) {
             throw new AndesException(
-                    "Message MetaData not found to move the message to Dead Letter Channel");
+                    "Message MetaData not found to move the message to " + targetQueueName);
         }
         ArrayList<AndesRemovableMetadata> removableMetaDataList = new
                 ArrayList<AndesRemovableMetadata>();
@@ -412,8 +412,7 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
                                 start));
             }
 
-            // Step 2 - Delete the old meta data when inserting new meta is complete to avoid
-            // losing messages
+            // Step 2 - Delete the old meta data when inserting new meta is complete to avoid losing messages
             List<Statement> statements = new ArrayList<Statement>();
             for (AndesMessageMetadata metadata : metadataList) {
 
@@ -425,13 +424,10 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
             }
 
             GenericCQLDAO.batchExecuteWrite(CassandraConstants.KEYSPACE,
-                    statements.toArray(new Statement[statements.size
-                            ()]));
+                    statements.toArray(new Statement[statements.size()]));
 
         } catch (CassandraDataAccessException e) {
-            String errorString = "Error updating message meta data";
-            log.error(errorString, e);
-            throw new AndesException(errorString, e);
+            throw new AndesException("Error updating message meta data", e);
         }
     }
 
