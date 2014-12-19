@@ -161,8 +161,10 @@ public class SlotDeliveryWorker extends Thread {
                                                       currentSlot.getEndMessageId() + " is " +
                                                       messagesRead.size() + " queue= " + storageQueueName);
                                         }
-                                        MessageFlusher.getInstance().sendMessageToFlusher(
+                                        MessageFlusher.getInstance().sendMessageToBuffer(
                                                 messagesRead, currentSlot);
+                                        MessageFlusher.getInstance().sendMessagesInBuffer(
+                                                currentSlot.getDestinationOfMessagesInSlot());
                                     } else {
                                         currentSlot.setSlotInActive();
                                         MBThriftClient.deleteSlot(storageQueueName, currentSlot, nodeId);
@@ -242,8 +244,9 @@ public class SlotDeliveryWorker extends Thread {
 
                                     log.debug("sending read messages to flusher << " + currentSlot
                                             .toString() + " >>");
-                                    messageFlusher.sendMessageToFlusher
+                                    messageFlusher.sendMessageToBuffer
                                             (messagesRead, currentSlot);
+                                    messageFlusher.sendMessagesInBuffer(currentSlot.getDestinationOfMessagesInSlot());
                                 }
                             }
                         } else {
@@ -380,8 +383,7 @@ public class SlotDeliveryWorker extends Thread {
                             "Resending missing " + messagesReturnedFromCassandra.size() + " messages " +
                                     "for slot: " + slot.toString());
                 }
-                MessageFlusher.getInstance().sendMessageToFlusher(
-                        messagesReturnedFromCassandra, slot);
+                MessageFlusher.getInstance().sendMessagesInBuffer(slot.getDestinationOfMessagesInSlot());
             }
         // All metadata has been removed and therefore return the slot
         } else {
