@@ -62,8 +62,8 @@ public class AndesChannel {
     public AndesChannel(FlowControlListener listener) {
         this.listener = listener;
 
-        this.flowControlLowLimit = AndesConfigurationManager.readValue(AndesConfiguration.FLOW_CONTROL_BUFFER_BASED_LOW_LIMIT);
-        this.flowControlHighLimit = AndesConfigurationManager.readValue(AndesConfiguration.FLOW_CONTROL_BUFFER_BASED_HIGH_LIMIT);
+        this.flowControlLowLimit = ((Integer) AndesConfigurationManager.readValue(AndesConfiguration.FLOW_CONTROL_BUFFER_BASED_LOW_LIMIT));
+        this.flowControlHighLimit = ((Integer) AndesConfigurationManager.readValue(AndesConfiguration.FLOW_CONTROL_BUFFER_BASED_HIGH_LIMIT));
         this.messagesOnBuffer = new AtomicInteger();
         flowControlEnabled = false;
     }
