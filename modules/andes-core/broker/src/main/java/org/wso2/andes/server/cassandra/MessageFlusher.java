@@ -160,6 +160,8 @@ public class MessageFlusher {
                                                          Collection<LocalSubscription>
                                                                  subscriptions4Queue)
             throws AndesException {
+        LocalSubscription localSubscription = null;
+        boolean isValidLocalSubscription = false;
         if (subscriptions4Queue == null || subscriptions4Queue.size() == 0) {
             subscriptionCursar4QueueMap.remove(destination);
             return null;
@@ -167,9 +169,16 @@ public class MessageFlusher {
 
         MessageDeliveryInfo messageDeliveryInfo = getMessageDeliveryInfo(destination);
         Iterator<LocalSubscription> it = messageDeliveryInfo.iterator;
-        if (it.hasNext()) {
-            return it.next();
-        } else {
+        while (it.hasNext()) {
+            localSubscription = it.next();
+            if (subscriptions4Queue.contains(localSubscription)) {
+                isValidLocalSubscription = true;
+                break;
+            }
+        }
+        if(isValidLocalSubscription){
+             return localSubscription;
+        }else {
             it = subscriptions4Queue.iterator();
             messageDeliveryInfo.iterator = it;
             if (it.hasNext()) {
