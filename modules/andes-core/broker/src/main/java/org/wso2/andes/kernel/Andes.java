@@ -67,9 +67,10 @@ public class Andes {
      * When a message is received from a transport it should be converted to an AndesMessage and handed over to Andes
      * for delivery through this method.
      * @param message AndesMessage
+     * @param andesChannel
      */
-    public void messageReceived(AndesMessage message) {
-        inboundEventManager.messageReceived(message);
+    public void messageReceived(AndesMessage message, AndesChannel andesChannel) {
+        inboundEventManager.messageReceived(message, andesChannel);
     }
 
     /**
@@ -329,6 +330,10 @@ public class Andes {
      */
     public long generateNewMessageId() {
         return MessagingEngine.getInstance().generateNewMessageId();
+    }
+
+    public static AndesChannel createChannel(FlowControlListener listener) {
+        return new AndesChannel(listener);
     }
 
 }

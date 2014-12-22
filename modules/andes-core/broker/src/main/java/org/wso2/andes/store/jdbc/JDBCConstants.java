@@ -102,6 +102,11 @@ public class JDBCConstants {
                     DESTINATION_QUEUE + ")" +
                     " VALUES ( ?,?,? )";
 
+    protected static final String PS_INSERT_QUEUE =
+            "INSERT INTO " + JDBCConstants.QUEUES_TABLE + " (" +
+                    JDBCConstants.QUEUE_NAME + ") " +
+                    " VALUES (?)";
+
     protected static final String PS_ALIAS_FOR_COUNT = "count";
 
     protected static final String PS_SELECT_QUEUE_MESSAGE_COUNT =

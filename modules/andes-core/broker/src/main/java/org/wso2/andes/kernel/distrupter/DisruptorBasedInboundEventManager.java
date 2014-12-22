@@ -19,13 +19,25 @@
 package org.wso2.andes.kernel.distrupter;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.lmax.disruptor.*;
+import com.lmax.disruptor.BlockingWaitStrategy;
+import com.lmax.disruptor.IgnoreExceptionHandler;
+import com.lmax.disruptor.MultiThreadedClaimStrategy;
+import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.dsl.Disruptor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesRemovableMetadata;
+import org.wso2.andes.kernel.InboundEventManager;
+import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.List;
@@ -112,13 +124,14 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
      * @inheritDoc
      */
     @Override
-    public void messageReceived(AndesMessage message) {
+    public void messageReceived(AndesMessage message, AndesChannel andesChannel) {
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEvent event = ringBuffer.get(sequence);
 
         event.setEventType(InboundEvent.Type.MESSAGE_EVENT);
         event.messageList.add(message);
+        event.setChannel(andesChannel);
         // make the event available to EventProcessors
         ringBuffer.publish(sequence);
 

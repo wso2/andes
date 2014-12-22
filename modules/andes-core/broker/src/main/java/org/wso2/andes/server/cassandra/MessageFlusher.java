@@ -160,6 +160,8 @@ public class MessageFlusher {
                                                          Collection<LocalSubscription>
                                                                  subscriptions4Queue)
             throws AndesException {
+        LocalSubscription localSubscription = null;
+        boolean isValidLocalSubscription = false;
         if (subscriptions4Queue == null || subscriptions4Queue.size() == 0) {
             subscriptionCursar4QueueMap.remove(destination);
             return null;
@@ -167,9 +169,16 @@ public class MessageFlusher {
 
         MessageDeliveryInfo messageDeliveryInfo = getMessageDeliveryInfo(destination);
         Iterator<LocalSubscription> it = messageDeliveryInfo.iterator;
-        if (it.hasNext()) {
-            return it.next();
-        } else {
+        while (it.hasNext()) {
+            localSubscription = it.next();
+            if (subscriptions4Queue.contains(localSubscription)) {
+                isValidLocalSubscription = true;
+                break;
+            }
+        }
+        if(isValidLocalSubscription){
+             return localSubscription;
+        }else {
             it = subscriptions4Queue.iterator();
             messageDeliveryInfo.iterator = it;
             if (it.hasNext()) {
@@ -220,10 +229,10 @@ public class MessageFlusher {
      * @param slot
      *         these messages are belonged to
      */
-    public void sendMessageToFlusher(List<AndesMessageMetadata> messagesRead,
-                                     Slot slot) {
+    public void sendMessageToBuffer(List<AndesMessageMetadata> messagesRead,
+                                    Slot slot) {
 
-        long failureCount = 0;
+
         try {
             for (AndesMessageMetadata message : messagesRead) {
 
@@ -251,27 +260,7 @@ public class MessageFlusher {
                     //todo: this message is previously buffered. Should be removed from slot
                 }
             }
-            /**
-             * Now messages are read to the memory. Send the read messages to subscriptions
-             */
-            if (log.isDebugEnabled()) {
-                log.debug("Sending messages in buffer destination= " + slot.getDestinationOfMessagesInSlot());
-            }
-            sendMessagesInBuffer(slot.getDestinationOfMessagesInSlot());
-            failureCount = 0;
         } catch (Throwable e) {
-            /**
-             * When there is a error, we will wait to avoid looping.
-             */
-            long waitTime = queueWorkerWaitInterval;
-            failureCount++;
-            long faultWaitTime = Math.max(waitTime * 5, failureCount * waitTime);
-            try {
-                Thread.sleep(faultWaitTime);
-            } catch (InterruptedException e1) {
-                //silently ignore
-            }
-
             log.fatal("Error running Cassandra Message Flusher" + e.getMessage(), e);
         }
     }
@@ -280,7 +269,13 @@ public class MessageFlusher {
      * Read messages from the buffer and send messages to subscribers
      */
     public void sendMessagesInBuffer(String subDestination) throws AndesException {
-
+        /**
+         * Now messages are read to the memory. Send the read messages to subscriptions
+         */
+        if (log.isDebugEnabled()) {
+            log.debug("Sending messages in buffer destination= " + subDestination);
+        }
+        long failureCount = 0;
         MessageDeliveryInfo messageDeliveryInfo = subscriptionCursar4QueueMap.get(subDestination);
         if (log.isDebugEnabled()) {
             for (String dest : subscriptionCursar4QueueMap.keySet()) {
@@ -298,6 +293,17 @@ public class MessageFlusher {
             sendMessagesToSubscriptions(messageDeliveryInfo.destination,
                     messageDeliveryInfo.readButUndeliveredMessages);
         } catch (Exception e) {
+            /**
+             * When there is a error, we will wait to avoid looping.
+             */
+            long waitTime = queueWorkerWaitInterval;
+            failureCount++;
+            long faultWaitTime = Math.max(waitTime * 5, failureCount * waitTime);
+            try {
+                Thread.sleep(faultWaitTime);
+            } catch (InterruptedException e1) {
+                //silently ignore
+            }
             log.error("Error occurred while sending messages to subscribers from buffer", e);
             throw new AndesException("Error occurred while sending messages to subscribers " +
                                      "from message buffer" + e);

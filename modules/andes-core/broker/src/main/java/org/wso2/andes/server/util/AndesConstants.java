@@ -26,7 +26,9 @@ public class AndesConstants {
     public static final String MESSAGE_EXPIRATION_PROPERTY = "Message Expiration";
     public static final String MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX = "mid";
 
-    // The default Dead Letter Channel queue name suffix
+    /**
+     * The default Dead Letter Channel queue name suffix
+     */
     public static final String DEAD_LETTER_QUEUE_NAME = "DeadLetterChannel";
 
 }

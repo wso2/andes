@@ -316,8 +316,7 @@ public class JDBCMessageStoreImpl implements MessageStore {
             connection.commit();
         } catch (SQLException e) {
             rollback(connection, JDBCConstants.TASK_UPDATING_META_DATA_QUEUE + targetQueueName);
-            throw new AndesException(
-                    "Error occurred while updating message metadata to destination queue "
+            throw new AndesException("Error occurred while updating message metadata to destination queue "
                             + targetQueueName, e);
         } finally {
             close(preparedStatement, JDBCConstants.TASK_UPDATING_META_DATA_QUEUE + targetQueueName);
@@ -719,19 +718,22 @@ public class JDBCMessageStoreImpl implements MessageStore {
             return id;
         }
 
-        // not in map. query from DB (some other node might have created it)
+        // If not in cached map. query from DB (some other node might have created it)
+        // If queue is not available create a queue in DB
         int queueID = getQueueID(destinationQueueName);
 
         if (queueID != -1) {
             queueMap.put(destinationQueueName, queueID);
-            return queueID;
         }
-
-        // if queue is not available create a queue in DB
-        return createNewQueue(destinationQueueName);
+        return queueID;
     }
 
-    // get queue id through a DB query
+    /**
+     * Retrieved the queue ID from DB. If the ID is not present create a new queue and get the id.
+     * @param destinationQueueName queue name
+     * @return queue id
+     * @throws SQLException
+     */
     private int getQueueID(final String destinationQueueName) throws SQLException {
 
         int queueID = -1;
@@ -740,13 +742,29 @@ public class JDBCMessageStoreImpl implements MessageStore {
         ResultSet resultSet = null;
         try {
             connection = getConnection();
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_QUEUE_ID,
-                    Statement.RETURN_GENERATED_KEYS);
+            preparedStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_QUEUE_ID);
             preparedStatement.setString(1, destinationQueueName);
             resultSet = preparedStatement.executeQuery();
+
+            // ResultSet.first() is not supported by MS SQL hence using next()
             if (resultSet.next()) {
                 queueID = resultSet.getInt(JDBCConstants.QUEUE_ID);
             }
+            resultSet.close();
+
+            // If queue is not present create a new queue entry
+            if(queueID == -1) {
+                createNewQueue(connection, destinationQueueName);
+            }
+
+            // Get the resultant ID.
+            // NOTE: In different DB implementations getting the auto generated queue id differs in subtle ways
+            // Hence doing a simple select again after adding the entry to DB
+            resultSet = preparedStatement.executeQuery();
+            if(resultSet.next()) {
+                queueID = resultSet.getInt(JDBCConstants.QUEUE_ID);
+            }
+
         } catch (SQLException e) {
             log.error("Error occurred while retrieving destination queue id " +
                     "for destination queue " + destinationQueueName, e);
@@ -760,53 +778,40 @@ public class JDBCMessageStoreImpl implements MessageStore {
         return queueID;
     }
 
-    // creates a new queue entry in DB
-    private int createNewQueue(final String destinationQueueName) throws SQLException {
-        String sqlString = "INSERT INTO " + JDBCConstants.QUEUES_TABLE + " (" + JDBCConstants
-                .QUEUE_NAME + ")" +
-                " VALUES (?)";
-        Connection connection = null;
+    /**
+     * Using the provided connection create a new queue with queue id in database
+     * @param connection Connection
+     * @param destinationQueueName queue name
+     * @throws SQLException
+     */
+    private void createNewQueue(final Connection connection, final String destinationQueueName) throws SQLException {
+
         PreparedStatement preparedStatement = null;
-        ResultSet results = null;
-        int queueID = -1;
 
         try {
-            connection = getConnection();
-
-            /* This has been changed to a transaction since in H2 Database this call asynchronously
-            returns if transactions are not used, leading to inconsistent DB. this is done to avoid
-            that. */
+            boolean isAutoCommit = connection.getAutoCommit();
+            // This has been changed to a transaction since in H2 Database this call asynchronously
+            // returns if transactions are not used, leading to inconsistent DB. this is done to avoid
+            // that.
             connection.setAutoCommit(false);
 
-            preparedStatement = connection
-                    .prepareStatement(sqlString, Statement.RETURN_GENERATED_KEYS);
+            preparedStatement = connection.prepareStatement(JDBCConstants.PS_INSERT_QUEUE);
             preparedStatement.setString(1, destinationQueueName);
             preparedStatement.executeUpdate();
 
             connection.commit();
-
-            results = preparedStatement.getGeneratedKeys();
-            if (results.next()) {
-                queueID = results.getInt(1);
-            }
             preparedStatement.close();
-            if (queueID == -1) {
-                log.warn("Creating queue with queue name " + destinationQueueName + " failed.");
-            } else {
-                queueMap.put(destinationQueueName, queueID);
-            }
+
+            // set the auto commit value back to its previous value
+            connection.setAutoCommit(isAutoCommit);
         } catch (SQLException e) {
-            log.error(
-                    "Error occurred while inserting destination queue [" + destinationQueueName +
+            log.error("Error occurred while inserting destination queue [" + destinationQueueName +
                             "] to database ");
             throw e;
         } finally {
             String task = JDBCConstants.TASK_CREATING_QUEUE + destinationQueueName;
-            close(results, task);
             close(preparedStatement, task);
-            close(connection, task);
         }
-        return queueID;
     }
 
     /**

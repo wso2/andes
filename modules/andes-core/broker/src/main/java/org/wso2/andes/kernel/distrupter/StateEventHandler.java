@@ -23,14 +23,22 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
 import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.slot.SlotMessageCounter;
 import org.wso2.andes.server.stats.PerformanceCounter;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * State changes related to Andes for inbound events are handled through this handler
@@ -60,6 +68,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
             switch (event.getEventType()) {
                 case MESSAGE_EVENT:
                     updateSlotsAndQueueCounts(event.messageList);
+                    event.getChannel().recordRemovalFromBuffer(getProcessedAmount(event.messageList));
                     break;
                 case CHANNEL_CLOSE_EVENT:
                     clientConnectionClosed((UUID) event.getData());
@@ -94,12 +103,16 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
             // This is the final handler that visits the slot in ring buffer. Hence after processing is done clear the
             // slot so that in next iteration of the first event handler over the same slot won't find garbage from
             // previous iterations.
-            // We don't need to do this for acknowledgement event or ignore event since they are already cleared
-            if (InboundEvent.Type.IGNORE_EVENT != event.getEventType()
-                    || InboundEvent.Type.ACKNOWLEDGEMENT_EVENT != event.getEventType()) {
-                event.clear();
-            }
+            event.clear();
         }
+    }
+
+    private int getProcessedAmount(List<AndesMessage> messages) {
+        int count = 0;
+        for (AndesMessage message : messages) {
+            count = count + message.getContentChunkList().size();
+        }
+        return count;
     }
 
     /**

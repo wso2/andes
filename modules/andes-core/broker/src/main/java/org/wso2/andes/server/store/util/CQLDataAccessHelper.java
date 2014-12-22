@@ -792,46 +792,40 @@ public class CQLDataAccessHelper {
                     " and message part name =" + rowName);
         }
 
-        try {
-            AndesMessagePart messagePart = new AndesMessagePart();
-            CQLQueryBuilder.CqlSelect cqlSelect = new CQLQueryBuilder.CqlSelect(columnFamilyName, 1,
-                                                                                true);
-            cqlSelect.addColumn(MSG_VALUE);
-            cqlSelect.addColumn(MSG_KEY);
-            cqlSelect.addCondition(MSG_ROW_ID, rowName, WHERE_OPERATORS.EQ);
-            cqlSelect.addCondition(MSG_KEY, offset, WHERE_OPERATORS.EQ);
+        AndesMessagePart messagePart = new AndesMessagePart();
+        CQLQueryBuilder.CqlSelect cqlSelect = new CQLQueryBuilder.CqlSelect(columnFamilyName, 1,
+                true);
+        cqlSelect.addColumn(MSG_VALUE);
+        cqlSelect.addColumn(MSG_KEY);
+        cqlSelect.addCondition(MSG_ROW_ID, rowName, WHERE_OPERATORS.EQ);
+        cqlSelect.addCondition(MSG_KEY, offset, WHERE_OPERATORS.EQ);
 
-            Select select = CQLQueryBuilder.buildSelect(cqlSelect);
-            if (log.isDebugEnabled()) {
-                log.debug(" getMessageContent : " + select.toString());
-            }
-
-            ResultSet result = GenericCQLDAO.executeRead(keyspace, select.getQueryString());
-            List<Row> rows = result.all();
-            Iterator<Row> iterator = rows.iterator();
-
-            if (iterator.hasNext()) {
-                Row row = iterator.next();
-                byte[] value = CQLQueryBuilder.convertToByteArray(row, MSG_VALUE);
-
-                if (value != null && value.length > 0) {
-                    messagePart.setData(value);
-                    messagePart.setMessageID(messageId);
-                    messagePart.setDataLength(value.length);
-                    messagePart.setOffSet(offset);
-                } else {
-                    throw new CassandraDataAccessException(
-                            "Message part with offset " + offset + " for the message " +
-                            messageId + " was not found.");
-                }
-            }
-
-
-            return messagePart;
-        } catch (Exception e) {
-            throw new CassandraDataAccessException(
-                    "Error while getting data from " + columnFamilyName, e);
+        Select select = CQLQueryBuilder.buildSelect(cqlSelect);
+        if (log.isDebugEnabled()) {
+            log.debug(" getMessageContent : " + select.toString());
         }
+
+        ResultSet result = GenericCQLDAO.executeRead(keyspace, select.getQueryString());
+        List<Row> rows = result.all();
+        Iterator<Row> iterator = rows.iterator();
+
+        if (iterator.hasNext()) {
+            Row row = iterator.next();
+            byte[] value = CQLQueryBuilder.convertToByteArray(row, MSG_VALUE);
+
+            if (value != null && value.length > 0) {
+                messagePart.setData(value);
+                messagePart.setMessageID(messageId);
+                messagePart.setDataLength(value.length);
+                messagePart.setOffSet(offset);
+            } else {
+                throw new CassandraDataAccessException("Message part with offset " + offset + " for the message " +
+                                messageId + " was not found.");
+            }
+        }
+
+
+        return messagePart;
     }
 
     /**

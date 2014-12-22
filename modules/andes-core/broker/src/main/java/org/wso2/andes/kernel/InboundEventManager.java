@@ -31,8 +31,9 @@ public interface InboundEventManager {
      * When a message is received from a transport it is handed over to MessagingEngine through the implementation of
      * inbound event manager. (e.g: through a disruptor ring buffer) Eventually the message will be stored
      * @param message AndesMessage
+     * @param andesChannel
      */
-    public void messageReceived(AndesMessage message);
+    public void messageReceived(AndesMessage message, AndesChannel andesChannel);
 
     /**
      * Acknowledgement received from clients for sent messages will be handled through this method
