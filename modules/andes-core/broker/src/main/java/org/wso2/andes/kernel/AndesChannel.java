@@ -23,7 +23,11 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * AndesChannel keep track of the states of the local channels
@@ -34,6 +38,7 @@ public class AndesChannel {
      */
     private static Log log = LogFactory.getLog(AndesChannel.class);
 
+    private static AtomicLong idGenerator = new AtomicLong(0);
     /**
      * Lister used to communicate with the local channels
      */
@@ -48,24 +53,58 @@ public class AndesChannel {
      * This is the limit used to enforce the flow control on the channel
      */
     private final int flowControlHighLimit;
-
+    private final FlowControlManager flowControlManager;
+    private final long id;
+    private final ScheduledExecutorService executor;
+    private Runnable flowControlTimeoutTask = new FlowControlTimeoutTask();
     /**
      * Number of messages waiting in the buffer
      */
     private AtomicInteger messagesOnBuffer;
-
     /**
      * Indicate if the flow control is enabled for this channel
      */
     private boolean flowControlEnabled;
+    private boolean globalFlowControlEnabled;
+    private ScheduledFuture<?> scheduledFlowControlTimeoutFuture;
 
-    public AndesChannel(FlowControlListener listener) {
+    public AndesChannel(FlowControlManager flowControlManager, FlowControlListener listener,
+                        boolean flowControlEnabled) {
+        this.flowControlManager = flowControlManager;
         this.listener = listener;
+        this.executor = flowControlManager.getScheduledExecutor();
+        globalFlowControlEnabled = flowControlEnabled;
 
         this.flowControlLowLimit = ((Integer) AndesConfigurationManager.readValue(AndesConfiguration.FLOW_CONTROL_BUFFER_BASED_LOW_LIMIT));
         this.flowControlHighLimit = ((Integer) AndesConfigurationManager.readValue(AndesConfiguration.FLOW_CONTROL_BUFFER_BASED_HIGH_LIMIT));
+        
+        this.id = idGenerator.incrementAndGet();
         this.messagesOnBuffer = new AtomicInteger();
-        flowControlEnabled = false;
+        this.flowControlEnabled = false;
+
+        log.info("Channel created with ID: " + id);
+    }
+
+    public void notifyGlobalFlowControlActivation() {
+        globalFlowControlEnabled = true;
+    }
+
+    public void notifyGlobalFlowControlDeactivation() {
+        globalFlowControlEnabled = false;
+
+        if (flowControlEnabled) {
+            unblockLocalChannel();
+        }
+    }
+
+    private synchronized void unblockLocalChannel() {
+        if (flowControlEnabled) {
+            scheduledFlowControlTimeoutFuture.cancel(false);
+            flowControlEnabled = false;
+            listener.unblock();
+
+            log.info("Flow control disabled for channel " + id + ".");
+        }
     }
 
     /**
@@ -75,13 +114,22 @@ public class AndesChannel {
      *         Number of items added to buffer
      */
     public void recordAdditionToBuffer(int size) {
+        flowControlManager.notifyAddition(size);
+
         int count = messagesOnBuffer.addAndGet(size);
 
-        if (!flowControlEnabled && count >= flowControlHighLimit) {
+        if (!flowControlEnabled && (globalFlowControlEnabled || count >= flowControlHighLimit)) {
+            blockLocalChannel();
+        }
+    }
+
+    private synchronized void blockLocalChannel() {
+        if (!flowControlEnabled) {
             flowControlEnabled = true;
             listener.block();
 
-            log.info("Flow control enabled for channel.");
+            scheduledFlowControlTimeoutFuture = executor.schedule(flowControlTimeoutTask, 1, TimeUnit.MINUTES);
+            log.info("Flow control enabled for channel " + id + ".");
         }
     }
 
@@ -92,13 +140,22 @@ public class AndesChannel {
      *         Number of items removed from buffer
      */
     public void recordRemovalFromBuffer(int size) {
+        flowControlManager.notifyRemoval(size);
+
         int count = messagesOnBuffer.addAndGet(-size);
 
-        if (flowControlEnabled && count <= flowControlLowLimit) {
-            flowControlEnabled = false;
-            listener.unblock();
+        if (flowControlEnabled && !globalFlowControlEnabled && count <= flowControlLowLimit) {
+            unblockLocalChannel();
+        }
+    }
 
-            log.info("Flow control disabled for channel.");
+    private class FlowControlTimeoutTask implements Runnable {
+
+        @Override
+        public void run() {
+            if (flowControlEnabled && !globalFlowControlEnabled && messagesOnBuffer.get() <= flowControlLowLimit) {
+                unblockLocalChannel();
+            }
         }
     }
 }

@@ -313,6 +313,18 @@ public enum AndesConfiguration implements ConfigurationProperty {
     FLOW_CONTROL_BUFFER_BASED_HIGH_LIMIT("flowControl/bufferBased" +
                                          "/highLimit", "1000", Integer.class),
 
+    /**
+     *
+     */
+    FLOW_CONTROL_GLOBAL_LOW_LIMIT("flowControl/global" +
+                                        "/lowLimit", "1000", Integer.class),
+
+    /**
+     *
+     */
+    FLOW_CONTROL_GLOBAL_HIGH_LIMIT("flowControl/global" +
+                                         "/highLimit", "10000", Integer.class),
+
      /**
      * The time interval at which the server should check for memory consumption and apply flow control to recover.
      */

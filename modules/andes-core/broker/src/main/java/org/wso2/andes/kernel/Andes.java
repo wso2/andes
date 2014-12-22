@@ -35,6 +35,11 @@ public class Andes {
     private static Andes instance = new Andes();
 
     /**
+     * Use to manage channel according to flow control rules
+     */
+    private final FlowControlManager flowControlManager;
+
+    /**
      * Event manager handling incoming events.
      * Eg: open channel, publish message, process acknowledgments
      */
@@ -53,6 +58,7 @@ public class Andes {
      * Singleton class. Hence private constructor.
      */
     private Andes() {
+        flowControlManager = new FlowControlManager();
     }
 
     /**
@@ -332,9 +338,12 @@ public class Andes {
         return MessagingEngine.getInstance().generateNewMessageId();
     }
 
-    public static AndesChannel createChannel(FlowControlListener listener) {
-        return new AndesChannel(listener);
+    public AndesChannel createChannel(FlowControlListener listener) {
+        return flowControlManager.createChannel(listener);
     }
 
+    public void removeChannel(AndesChannel channel) {
+        flowControlManager.removeChannel(channel);
+    }
 }
 
