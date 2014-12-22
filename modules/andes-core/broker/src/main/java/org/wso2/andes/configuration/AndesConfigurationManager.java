@@ -163,7 +163,6 @@ public class AndesConfigurationManager {
      * @param <T>                   Expected data type of the property
      * @return Value of config in the expected data type.
      * @throws org.wso2.andes.kernel.AndesException
-     *
      */
     public static <T> T readValue(ConfigurationProperty configurationProperty) {
 
