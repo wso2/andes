@@ -59,6 +59,16 @@ public class FlowControlManager {
     private final ScheduledExecutorService executor;
 
     /**
+     * Configured flow control high limit for local channel
+     */
+    private final int channelHighLimit;
+
+    /**
+     * Configured flow control low limit for local channel
+     */
+    private final int channelLowLimit;
+
+    /**
      * Track total number of unprocessed messages
      */
     private AtomicInteger messagesOnGlobalBuffer;
@@ -80,10 +90,19 @@ public class FlowControlManager {
 
 
     public FlowControlManager() {
+        // Read configured limits
         globalLowLimit = (Integer) AndesConfigurationManager
                 .readValue(AndesConfiguration.FLOW_CONTROL_GLOBAL_LOW_LIMIT);
         globalHighLimit = (Integer) AndesConfigurationManager
                 .readValue(AndesConfiguration.FLOW_CONTROL_GLOBAL_HIGH_LIMIT);
+        channelLowLimit = ((Integer) AndesConfigurationManager
+                .readValue(AndesConfiguration.FLOW_CONTROL_BUFFER_BASED_LOW_LIMIT));
+        channelHighLimit = ((Integer) AndesConfigurationManager
+                .readValue(AndesConfiguration.FLOW_CONTROL_BUFFER_BASED_HIGH_LIMIT));
+
+        if (globalHighLimit <= globalLowLimit || channelHighLimit <= channelLowLimit) {
+            throw new RuntimeException("Flow Control limits are not configured correctly.");
+        }
 
         messagesOnGlobalBuffer = new AtomicInteger(0);
         globalFlowControlEnabled = false;
@@ -106,6 +125,24 @@ public class FlowControlManager {
         AndesChannel channel = new AndesChannel(this, listener, globalFlowControlEnabled);
         channels.add(channel);
         return channel;
+    }
+
+    /**
+     * Get the flow control high limit for local channel
+     *
+     * @return Flow control high limit
+     */
+    public int getChannelHighLimit() {
+        return channelHighLimit;
+    }
+
+    /**
+     * Get the flow control low limit for local channel
+     *
+     * @return Flow control low limit
+     */
+    public int getChannelLowLimit() {
+        return channelLowLimit;
     }
 
     /**

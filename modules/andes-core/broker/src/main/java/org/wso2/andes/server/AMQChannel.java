@@ -200,12 +200,16 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {
             @Override
             public void block() {
-                blockChannel();
+                if (!isSubscriptionChannel()) {
+                    blockChannel();
+                }
             }
 
             @Override
             public void unblock() {
-                unblockChannel();
+                if (!isSubscriptionChannel()) {
+                    unblockChannel();
+                }
             }
         });
 

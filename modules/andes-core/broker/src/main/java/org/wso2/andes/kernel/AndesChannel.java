@@ -20,8 +20,6 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -99,18 +97,16 @@ public class AndesChannel {
     private ScheduledFuture<?> scheduledFlowControlTimeoutFuture;
 
     public AndesChannel(FlowControlManager flowControlManager, FlowControlListener listener,
-                        boolean flowControlEnabled) {
+                        boolean globalFlowControlEnabled) {
         this.flowControlManager = flowControlManager;
         this.listener = listener;
         // Used the same executor used by the flow control manager
         this.executor = flowControlManager.getScheduledExecutor();
-        globalFlowControlEnabled = flowControlEnabled;
+        this.globalFlowControlEnabled = globalFlowControlEnabled;
 
-        // Read configuration limits
-        this.flowControlLowLimit = ((Integer) AndesConfigurationManager
-                .readValue(AndesConfiguration.FLOW_CONTROL_BUFFER_BASED_LOW_LIMIT));
-        this.flowControlHighLimit = ((Integer) AndesConfigurationManager
-                .readValue(AndesConfiguration.FLOW_CONTROL_BUFFER_BASED_HIGH_LIMIT));
+        // Read limits
+        this.flowControlLowLimit = flowControlManager.getChannelLowLimit();
+        this.flowControlHighLimit = flowControlManager.getChannelHighLimit();
 
         this.id = idGenerator.incrementAndGet();
         this.messagesOnBuffer = new AtomicInteger(0);
@@ -131,10 +127,7 @@ public class AndesChannel {
      */
     public void notifyGlobalFlowControlDeactivation() {
         globalFlowControlEnabled = false;
-
-        if (flowControlEnabled) {
-            unblockLocalChannel();
-        }
+        unblockLocalChannel();
     }
 
     /**
@@ -196,9 +189,9 @@ public class AndesChannel {
     }
 
     /**
-     * This timeout task avoid flow control being enforced forever. This can happen if the recordAdditionToBuffer get a context
-     * switch after evaluating the existing condition and during that time all the messages get processed from the
-     * StateEventHandler.
+     * This timeout task avoid flow control being enforced forever. This can happen if the recordAdditionToBuffer get a
+     * context switch after evaluating the existing condition and during that time all the messages get processed from
+     * the StateEventHandler.
      */
     private class FlowControlTimeoutTask implements Runnable {
         @Override

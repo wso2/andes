@@ -119,6 +119,7 @@ public class MinaNetworkHandler extends IoHandlerAdapter
            ioSession.setAttachment(engine);
         }
 
+        // We limit the size of receiving buffer to 1 MB
         ReadThrottleFilterBuilder readFilter = new ReadThrottleFilterBuilder();
         readFilter.setMaximumConnectionBufferSize(1024*1024);
         readFilter.attach(chain);
