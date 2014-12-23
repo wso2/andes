@@ -197,15 +197,19 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
         // message tracking related to this channel is initialised
         Andes.getInstance().clientConnectionCreated(_id);
-        andesChannel = Andes.createChannel(new FlowControlListener() {
+        andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {
             @Override
             public void block() {
-                blockChannel();
+                if (!isSubscriptionChannel()) {
+                    blockChannel();
+                }
             }
 
             @Override
             public void unblock() {
-                unblockChannel();
+                if (!isSubscriptionChannel()) {
+                    unblockChannel();
+                }
             }
         });
 
@@ -630,6 +634,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         forgetMessages4Channel();
 
         QpidAMQPBridge.getInstance().channelIsClosing(this.getId());
+        Andes.getInstance().removeChannel(andesChannel);
 
         if (_managedObject != null) {
             _managedObject.unregister();
