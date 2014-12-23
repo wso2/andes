@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package org.wso2.andes.store.jdbc;
+package org.wso2.andes.store.rdbms;
 
 import junit.framework.Assert;
 import org.h2.jdbcx.JdbcDataSource;
@@ -36,10 +36,10 @@ import java.util.Map;
  * Unit test class for JDBCAndesContextStoreImpl
  * Basic functionality of implemented methods are tested in this test class
  */
-public class JDBCAndesContextStoreImplTest {
+public class RDBMSAndesContextStoreImplTest {
 
     private static Connection connection;
-    private JDBCAndesContextStoreImpl contextStore;
+    private RDBMSAndesContextStoreImpl contextStore;
 
     @BeforeClass
     public static void BeforeClass() throws Exception {
@@ -54,7 +54,7 @@ public class JDBCAndesContextStoreImplTest {
             ic.createSubcontext("jdbc");
             JdbcDataSource ds = new JdbcDataSource();
             ds.setURL(jdbcUrl);
-            ic.bind(JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME, ds);
+            ic.bind(RDBMSConstants.H2_MEM_JNDI_LOOKUP_NAME, ds);
 
             Class.forName("org.h2.Driver");
             connection = DriverManager.getConnection(jdbcUrl);
@@ -63,11 +63,11 @@ public class JDBCAndesContextStoreImplTest {
     @Before
     public void setup() throws Exception {
         createTables();
-        contextStore = new JDBCAndesContextStoreImpl();
+        contextStore = new RDBMSAndesContextStoreImpl();
 
         // start in memory mode
         ConfigurationProperties configurationProperties = new ConfigurationProperties();
-        configurationProperties.addProperty(JDBCConstants.PROP_JNDI_LOOKUP_NAME, JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME);
+        configurationProperties.addProperty(RDBMSConstants.PROP_JNDI_LOOKUP_NAME, RDBMSConstants.H2_MEM_JNDI_LOOKUP_NAME);
         contextStore.init(configurationProperties);
     }
 
@@ -88,14 +88,14 @@ public class JDBCAndesContextStoreImplTest {
         String subEncodedAsStr = "data";
         contextStore.storeDurableSubscription(destIdentifier, subId, subEncodedAsStr);
 
-        String select = "SELECT * FROM " + JDBCConstants.DURABLE_SUB_TABLE;
+        String select = "SELECT * FROM " + RDBMSConstants.DURABLE_SUB_TABLE;
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery(select);
 
         Assert.assertEquals(true, resultSet.first());
-        Assert.assertEquals(subId, resultSet.getString(JDBCConstants.DURABLE_SUB_ID));
-        Assert.assertEquals(destIdentifier, resultSet.getString(JDBCConstants.DESTINATION_IDENTIFIER));
-        Assert.assertEquals(subEncodedAsStr, resultSet.getString(JDBCConstants.DURABLE_SUB_DATA));
+        Assert.assertEquals(subId, resultSet.getString(RDBMSConstants.DURABLE_SUB_ID));
+        Assert.assertEquals(destIdentifier, resultSet.getString(RDBMSConstants.DESTINATION_IDENTIFIER));
+        Assert.assertEquals(subEncodedAsStr, resultSet.getString(RDBMSConstants.DURABLE_SUB_DATA));
 
     }
 
@@ -111,15 +111,15 @@ public class JDBCAndesContextStoreImplTest {
         int count = 0;
         contextStore.addMessageCounterForQueue(queueName);
 
-        String select = "SELECT *  FROM " + JDBCConstants.QUEUE_COUNTER_TABLE + " WHERE " +
-                JDBCConstants.QUEUE_NAME + "=?";
+        String select = "SELECT *  FROM " + RDBMSConstants.QUEUE_COUNTER_TABLE + " WHERE " +
+                RDBMSConstants.QUEUE_NAME + "=?";
         PreparedStatement preparedStatement = connection.prepareStatement(select);
         preparedStatement.setString(1, queueName);
         ResultSet resultSet = preparedStatement.executeQuery();
 
         Assert.assertTrue("Entry should exist on DB for queue counter", resultSet.first());
-        Assert.assertEquals(queueName, resultSet.getString(JDBCConstants.QUEUE_NAME));
-        Assert.assertEquals(count, resultSet.getInt(JDBCConstants.QUEUE_COUNT));
+        Assert.assertEquals(queueName, resultSet.getString(RDBMSConstants.QUEUE_NAME));
+        Assert.assertEquals(count, resultSet.getInt(RDBMSConstants.MESSAGE_COUNT));
     }
 
     /**
@@ -135,15 +135,15 @@ public class JDBCAndesContextStoreImplTest {
         contextStore.addMessageCounterForQueue(queueName);
         contextStore.addMessageCounterForQueue(queueName);
 
-        String select = "SELECT *  FROM " + JDBCConstants.QUEUE_COUNTER_TABLE + " WHERE " +
-                JDBCConstants.QUEUE_NAME + "=?";
+        String select = "SELECT *  FROM " + RDBMSConstants.QUEUE_COUNTER_TABLE + " WHERE " +
+                RDBMSConstants.QUEUE_NAME + "=?";
         PreparedStatement preparedStatement = connection.prepareStatement(select);
         preparedStatement.setString(1, queueName);
         ResultSet resultSet = preparedStatement.executeQuery();
 
         Assert.assertTrue("Entry should exist on DB for queue counter", resultSet.first());
-        Assert.assertEquals(queueName, resultSet.getString(JDBCConstants.QUEUE_NAME));
-        Assert.assertEquals(count, resultSet.getInt(JDBCConstants.QUEUE_COUNT));
+        Assert.assertEquals(queueName, resultSet.getString(RDBMSConstants.QUEUE_NAME));
+        Assert.assertEquals(count, resultSet.getInt(RDBMSConstants.MESSAGE_COUNT));
         Assert.assertFalse("Only one entry should exist on table", resultSet.next());
     }
 
@@ -159,9 +159,9 @@ public class JDBCAndesContextStoreImplTest {
         int count = 20;
 
         // add counter for queue and update the data base for test
-        String insert = "INSERT INTO " + JDBCConstants.QUEUE_COUNTER_TABLE + " (" +
-                JDBCConstants.QUEUE_NAME + "," +
-                JDBCConstants.QUEUE_COUNT + ") " +
+        String insert = "INSERT INTO " + RDBMSConstants.QUEUE_COUNTER_TABLE + " (" +
+                RDBMSConstants.QUEUE_NAME + "," +
+                RDBMSConstants.MESSAGE_COUNT + ") " +
                 " VALUES ( ?,?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -187,9 +187,9 @@ public class JDBCAndesContextStoreImplTest {
         int count = 20;
 
         // add counter for queue and update the data base for test
-        String insert = "INSERT INTO " + JDBCConstants.QUEUE_COUNTER_TABLE + " (" +
-                JDBCConstants.QUEUE_NAME + "," +
-                JDBCConstants.QUEUE_COUNT + ") " +
+        String insert = "INSERT INTO " + RDBMSConstants.QUEUE_COUNTER_TABLE + " (" +
+                RDBMSConstants.QUEUE_NAME + "," +
+                RDBMSConstants.MESSAGE_COUNT + ") " +
                 " VALUES ( ?,?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -207,8 +207,8 @@ public class JDBCAndesContextStoreImplTest {
         contextStore.removeMessageCounterForQueue(queueName1);
 
         // test for database state
-        String select = "SELECT *  FROM " + JDBCConstants.QUEUE_COUNTER_TABLE + " WHERE " +
-                JDBCConstants.QUEUE_NAME + "=?";
+        String select = "SELECT *  FROM " + RDBMSConstants.QUEUE_COUNTER_TABLE + " WHERE " +
+                RDBMSConstants.QUEUE_NAME + "=?";
         preparedStatement = connection.prepareStatement(select);
         preparedStatement.setString(1, queueName1); // try to retrieve queueName1
         ResultSet resultSet = preparedStatement.executeQuery();
@@ -222,8 +222,8 @@ public class JDBCAndesContextStoreImplTest {
 
         // test for queueName2 existence
         Assert.assertTrue("Entry should exist in DB for not deleted counter", resultSet.first());
-        Assert.assertEquals(queueName2, resultSet.getString(JDBCConstants.QUEUE_NAME));
-        Assert.assertEquals(count, resultSet.getLong(JDBCConstants.QUEUE_COUNT));
+        Assert.assertEquals(queueName2, resultSet.getString(RDBMSConstants.QUEUE_NAME));
+        Assert.assertEquals(count, resultSet.getLong(RDBMSConstants.MESSAGE_COUNT));
 
     }
 
@@ -237,9 +237,9 @@ public class JDBCAndesContextStoreImplTest {
         long incrementBy = 20;
 
         // add counter for queue and update the data base for test
-        String insert = "INSERT INTO " + JDBCConstants.QUEUE_COUNTER_TABLE + " (" +
-                JDBCConstants.QUEUE_NAME + "," +
-                JDBCConstants.QUEUE_COUNT + ") " +
+        String insert = "INSERT INTO " + RDBMSConstants.QUEUE_COUNTER_TABLE + " (" +
+                RDBMSConstants.QUEUE_NAME + "," +
+                RDBMSConstants.MESSAGE_COUNT + ") " +
                 " VALUES ( ?,?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -251,14 +251,14 @@ public class JDBCAndesContextStoreImplTest {
         contextStore.incrementMessageCountForQueue(queueName, incrementBy);
 
         // test for database state
-        String select = "SELECT *  FROM " + JDBCConstants.QUEUE_COUNTER_TABLE + " WHERE " +
-                JDBCConstants.QUEUE_NAME + "=?";
+        String select = "SELECT *  FROM " + RDBMSConstants.QUEUE_COUNTER_TABLE + " WHERE " +
+                RDBMSConstants.QUEUE_NAME + "=?";
         preparedStatement = connection.prepareStatement(select);
         preparedStatement.setString(1, queueName); // try to retrieve queueName1
         ResultSet resultSet = preparedStatement.executeQuery();
 
         resultSet.first();
-        Assert.assertEquals(startValue + incrementBy, resultSet.getLong(JDBCConstants.QUEUE_COUNT));
+        Assert.assertEquals(startValue + incrementBy, resultSet.getLong(RDBMSConstants.MESSAGE_COUNT));
     }
 
     /**
@@ -271,9 +271,9 @@ public class JDBCAndesContextStoreImplTest {
         long decrementBy = 20;
 
         // add counter for queue and update the data base for test
-        String insert = "INSERT INTO " + JDBCConstants.QUEUE_COUNTER_TABLE + " (" +
-                JDBCConstants.QUEUE_NAME + "," +
-                JDBCConstants.QUEUE_COUNT + ") " +
+        String insert = "INSERT INTO " + RDBMSConstants.QUEUE_COUNTER_TABLE + " (" +
+                RDBMSConstants.QUEUE_NAME + "," +
+                RDBMSConstants.MESSAGE_COUNT + ") " +
                 " VALUES ( ?,?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -285,14 +285,14 @@ public class JDBCAndesContextStoreImplTest {
         contextStore.decrementMessageCountForQueue(queueName, decrementBy);
 
         // test for database state
-        String select = "SELECT *  FROM " + JDBCConstants.QUEUE_COUNTER_TABLE + " WHERE " +
-                JDBCConstants.QUEUE_NAME + "=?";
+        String select = "SELECT *  FROM " + RDBMSConstants.QUEUE_COUNTER_TABLE + " WHERE " +
+                RDBMSConstants.QUEUE_NAME + "=?";
         preparedStatement = connection.prepareStatement(select);
         preparedStatement.setString(1, queueName); // try to retrieve queueName1
         ResultSet resultSet = preparedStatement.executeQuery();
 
         resultSet.first();
-        Assert.assertEquals(startValue - decrementBy, resultSet.getLong(JDBCConstants.QUEUE_COUNT));
+        Assert.assertEquals(startValue - decrementBy, resultSet.getLong(RDBMSConstants.MESSAGE_COUNT));
     }
 
     /**
@@ -302,10 +302,10 @@ public class JDBCAndesContextStoreImplTest {
      */
     @Test
     public void testGetAllDurableSubscriptions() throws Exception {
-        String insert = "INSERT INTO " + JDBCConstants.DURABLE_SUB_TABLE + " (" +
-                JDBCConstants.DESTINATION_IDENTIFIER + ", " +
-                JDBCConstants.DURABLE_SUB_ID + ", " +
-                JDBCConstants.DURABLE_SUB_DATA + ") " +
+        String insert = "INSERT INTO " + RDBMSConstants.DURABLE_SUB_TABLE + " (" +
+                RDBMSConstants.DESTINATION_IDENTIFIER + ", " +
+                RDBMSConstants.DURABLE_SUB_ID + ", " +
+                RDBMSConstants.DURABLE_SUB_DATA + ") " +
                 " VALUES ( ?,?,? )";
 
         // populate data
@@ -352,10 +352,10 @@ public class JDBCAndesContextStoreImplTest {
      */
     @Test
     public void testGetAllSubscribersWithSameDestinationForALL() throws Exception {
-        String insert = "INSERT INTO " + JDBCConstants.DURABLE_SUB_TABLE + " (" +
-                JDBCConstants.DESTINATION_IDENTIFIER + ", " +
-                JDBCConstants.DURABLE_SUB_ID + ", " +
-                JDBCConstants.DURABLE_SUB_DATA + ") " +
+        String insert = "INSERT INTO " + RDBMSConstants.DURABLE_SUB_TABLE + " (" +
+                RDBMSConstants.DESTINATION_IDENTIFIER + ", " +
+                RDBMSConstants.DURABLE_SUB_ID + ", " +
+                RDBMSConstants.DURABLE_SUB_DATA + ") " +
                 " VALUES ( ?,?,? )";
 
         // populate data
@@ -396,10 +396,10 @@ public class JDBCAndesContextStoreImplTest {
      */
     @Test
     public void testRemoveDurableSubscription() throws Exception {
-        String insert = "INSERT INTO " + JDBCConstants.DURABLE_SUB_TABLE + " (" +
-                JDBCConstants.DESTINATION_IDENTIFIER + ", " +
-                JDBCConstants.DURABLE_SUB_ID + ", " +
-                JDBCConstants.DURABLE_SUB_DATA + ") " +
+        String insert = "INSERT INTO " + RDBMSConstants.DURABLE_SUB_TABLE + " (" +
+                RDBMSConstants.DESTINATION_IDENTIFIER + ", " +
+                RDBMSConstants.DURABLE_SUB_ID + ", " +
+                RDBMSConstants.DURABLE_SUB_DATA + ") " +
                 " VALUES ( ?,?,? )";
 
         // populate data
@@ -417,9 +417,9 @@ public class JDBCAndesContextStoreImplTest {
         // delete
         contextStore.removeDurableSubscription(destinationIdOne, subscriptionIdOne);
 
-        String select = "SELECT * FROM " + JDBCConstants.DURABLE_SUB_TABLE +
-                " WHERE " + JDBCConstants.DESTINATION_IDENTIFIER + "=? " +
-                " AND " + JDBCConstants.DURABLE_SUB_ID + "=?";
+        String select = "SELECT * FROM " + RDBMSConstants.DURABLE_SUB_TABLE +
+                " WHERE " + RDBMSConstants.DESTINATION_IDENTIFIER + "=? " +
+                " AND " + RDBMSConstants.DURABLE_SUB_ID + "=?";
 
         preparedStatement = connection.prepareStatement(select);
         preparedStatement.setString(1, destinationIdOne);
@@ -443,8 +443,8 @@ public class JDBCAndesContextStoreImplTest {
         contextStore.storeNodeDetails(nodeId, data);
 
         // retrieve to test
-        String select = "SELECT * FROM " + JDBCConstants.NODE_INFO_TABLE +
-                " WHERE " + JDBCConstants.NODE_ID + "=?";
+        String select = "SELECT * FROM " + RDBMSConstants.NODE_INFO_TABLE +
+                " WHERE " + RDBMSConstants.NODE_ID + "=?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(select);
         preparedStatement.setString(1, nodeId);
@@ -452,8 +452,8 @@ public class JDBCAndesContextStoreImplTest {
 
         // test
         Assert.assertEquals(true, resultSet.first());
-        Assert.assertEquals(nodeId, resultSet.getString(JDBCConstants.NODE_ID));
-        Assert.assertEquals(data, resultSet.getString(JDBCConstants.NODE_INFO));
+        Assert.assertEquals(nodeId, resultSet.getString(RDBMSConstants.NODE_ID));
+        Assert.assertEquals(data, resultSet.getString(RDBMSConstants.NODE_INFO));
     }
 
     /**
@@ -463,9 +463,9 @@ public class JDBCAndesContextStoreImplTest {
      */
     @Test
     public void testGetAllNodeDetails() throws Exception {
-        String insert = "INSERT INTO " + JDBCConstants.NODE_INFO_TABLE + "( " +
-                JDBCConstants.NODE_ID + "," +
-                JDBCConstants.NODE_INFO + ") " +
+        String insert = "INSERT INTO " + RDBMSConstants.NODE_INFO_TABLE + "( " +
+                RDBMSConstants.NODE_ID + "," +
+                RDBMSConstants.NODE_INFO + ") " +
                 " VALUES (?,?) ";
 
         int nodeCount = 2;
@@ -499,9 +499,9 @@ public class JDBCAndesContextStoreImplTest {
      */
     @Test
     public void testRemoveNodeData() throws Exception {
-        String insert = "INSERT INTO " + JDBCConstants.NODE_INFO_TABLE + "( " +
-                JDBCConstants.NODE_ID + "," +
-                JDBCConstants.NODE_INFO + ") " +
+        String insert = "INSERT INTO " + RDBMSConstants.NODE_INFO_TABLE + "( " +
+                RDBMSConstants.NODE_ID + "," +
+                RDBMSConstants.NODE_INFO + ") " +
                 " VALUES (?,?) ";
 
         String nodeIdOne = "node1";
@@ -526,8 +526,8 @@ public class JDBCAndesContextStoreImplTest {
         contextStore.removeNodeData(nodeIdOne);
 
         // query DB and try to retrieve deleted node information
-        String select = "SELECT * FROM " + JDBCConstants.NODE_INFO_TABLE +
-                " WHERE " + JDBCConstants.NODE_ID + "=?";
+        String select = "SELECT * FROM " + RDBMSConstants.NODE_INFO_TABLE +
+                " WHERE " + RDBMSConstants.NODE_ID + "=?";
 
         preparedStatement = connection.prepareStatement(select);
         preparedStatement.setString(1, nodeIdOne);
@@ -553,8 +553,8 @@ public class JDBCAndesContextStoreImplTest {
         contextStore.storeExchangeInformation(exchange2, exchangeInfo2);
 
         // query from db
-        String select = "SELECT * FROM " + JDBCConstants.EXCHANGES_TABLE +
-                " WHERE " + JDBCConstants.EXCHANGE_NAME + "=?";
+        String select = "SELECT * FROM " + RDBMSConstants.EXCHANGES_TABLE +
+                " WHERE " + RDBMSConstants.EXCHANGE_NAME + "=?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(select);
         preparedStatement.setString(1, exchange1);
@@ -562,7 +562,7 @@ public class JDBCAndesContextStoreImplTest {
 
         // test for exchange 1 data
         Assert.assertEquals(true, resultSet.first());
-        Assert.assertEquals(exchangeInfo1, resultSet.getString(JDBCConstants.EXCHANGE_DATA));
+        Assert.assertEquals(exchangeInfo1, resultSet.getString(RDBMSConstants.EXCHANGE_DATA));
         preparedStatement.close();
 
         preparedStatement = connection.prepareStatement(select);
@@ -571,7 +571,7 @@ public class JDBCAndesContextStoreImplTest {
 
         // test for exchange 2 data
         Assert.assertEquals(true, resultSet.first());
-        Assert.assertEquals(exchangeInfo2, resultSet.getString(JDBCConstants.EXCHANGE_DATA));
+        Assert.assertEquals(exchangeInfo2, resultSet.getString(RDBMSConstants.EXCHANGE_DATA));
     }
 
     /**
@@ -590,9 +590,9 @@ public class JDBCAndesContextStoreImplTest {
         int exchangeCount = 2;
 
         // setup database with exchange information
-        String insert = "INSERT INTO " + JDBCConstants.EXCHANGES_TABLE + " ( " +
-                JDBCConstants.EXCHANGE_NAME + "," +
-                JDBCConstants.EXCHANGE_DATA + ") " +
+        String insert = "INSERT INTO " + RDBMSConstants.EXCHANGES_TABLE + " ( " +
+                RDBMSConstants.EXCHANGE_NAME + "," +
+                RDBMSConstants.EXCHANGE_DATA + ") " +
                 " VALUES (?, ?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -625,9 +625,9 @@ public class JDBCAndesContextStoreImplTest {
                 "autoDelete=false";
 
         // setup database with exchange information
-        String insert = "INSERT INTO " + JDBCConstants.EXCHANGES_TABLE + " ( " +
-                JDBCConstants.EXCHANGE_NAME + "," +
-                JDBCConstants.EXCHANGE_DATA + ") " +
+        String insert = "INSERT INTO " + RDBMSConstants.EXCHANGES_TABLE + " ( " +
+                RDBMSConstants.EXCHANGE_NAME + "," +
+                RDBMSConstants.EXCHANGE_DATA + ") " +
                 " VALUES (?, ?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -645,13 +645,13 @@ public class JDBCAndesContextStoreImplTest {
         contextStore.deleteExchangeInformation(exchange1);
 
         // test for database state
-        String select = "SELECT *  FROM " + JDBCConstants.EXCHANGES_TABLE;
+        String select = "SELECT *  FROM " + RDBMSConstants.EXCHANGES_TABLE;
 
         preparedStatement = connection.prepareStatement(select);
         ResultSet resultSet = preparedStatement.executeQuery();
 
         Assert.assertEquals(true, resultSet.first()); //  one entry should be there
-        Assert.assertEquals(exchange2, resultSet.getString(JDBCConstants.EXCHANGE_NAME));
+        Assert.assertEquals(exchange2, resultSet.getString(RDBMSConstants.EXCHANGE_NAME));
         Assert.assertEquals(false, resultSet.next());
     }
 
@@ -672,15 +672,15 @@ public class JDBCAndesContextStoreImplTest {
         contextStore.storeQueueInformation(queueName2, queueInfo2);
 
         // retrieve directly from db and test
-        String select = "SELECT * FROM " + JDBCConstants.QUEUE_INFO_TABLE +
-                " WHERE " + JDBCConstants.QUEUE_NAME + "=?";
+        String select = "SELECT * FROM " + RDBMSConstants.QUEUE_INFO_TABLE +
+                " WHERE " + RDBMSConstants.QUEUE_NAME + "=?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(select);
         preparedStatement.setString(1, queueName1);
         ResultSet resultSet = preparedStatement.executeQuery();
 
         Assert.assertEquals(true, resultSet.next());
-        Assert.assertEquals(queueInfo1, resultSet.getString(JDBCConstants.QUEUE_INFO));
+        Assert.assertEquals(queueInfo1, resultSet.getString(RDBMSConstants.QUEUE_DATA));
 
         preparedStatement.close();
         preparedStatement = connection.prepareStatement(select);
@@ -688,7 +688,7 @@ public class JDBCAndesContextStoreImplTest {
         resultSet = preparedStatement.executeQuery();
 
         Assert.assertEquals(true, resultSet.next());
-        Assert.assertEquals(queueInfo2, resultSet.getString(JDBCConstants.QUEUE_INFO));
+        Assert.assertEquals(queueInfo2, resultSet.getString(RDBMSConstants.QUEUE_DATA));
     }
 
     /**
@@ -704,8 +704,8 @@ public class JDBCAndesContextStoreImplTest {
         int queueCount = 2;
 
         // insert
-        String insert = "INSERT INTO " + JDBCConstants.QUEUE_INFO_TABLE + " (" +
-                JDBCConstants.QUEUE_NAME + "," + JDBCConstants.QUEUE_INFO + " ) " +
+        String insert = "INSERT INTO " + RDBMSConstants.QUEUE_INFO_TABLE + " (" +
+                RDBMSConstants.QUEUE_NAME + "," + RDBMSConstants.QUEUE_DATA + " ) " +
                 " VALUES (?,?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -748,8 +748,8 @@ public class JDBCAndesContextStoreImplTest {
         AndesQueue andesQueue2 = new AndesQueue("queue2", "owner2", true, false);
 
         // insert
-        String insert = "INSERT INTO " + JDBCConstants.QUEUE_INFO_TABLE + " (" +
-                JDBCConstants.QUEUE_NAME + "," + JDBCConstants.QUEUE_INFO + " ) " +
+        String insert = "INSERT INTO " + RDBMSConstants.QUEUE_INFO_TABLE + " (" +
+                RDBMSConstants.QUEUE_NAME + "," + RDBMSConstants.QUEUE_DATA + " ) " +
                 " VALUES (?,?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -766,7 +766,7 @@ public class JDBCAndesContextStoreImplTest {
         contextStore.deleteQueueInformation(andesQueue1.queueName);
 
         // retrieve directly from db and test
-        String select = "SELECT * FROM " + JDBCConstants.QUEUE_INFO_TABLE;
+        String select = "SELECT * FROM " + RDBMSConstants.QUEUE_INFO_TABLE;
 
         preparedStatement.close();
         preparedStatement = connection.prepareStatement(select);
@@ -774,8 +774,8 @@ public class JDBCAndesContextStoreImplTest {
 
         // queue2 entry should remain in db
         Assert.assertEquals(true, resultSet.next());
-        Assert.assertEquals(andesQueue2.queueName, resultSet.getString(JDBCConstants.QUEUE_NAME));
-        Assert.assertEquals(andesQueue2.encodeAsString(), resultSet.getString(JDBCConstants.QUEUE_INFO));
+        Assert.assertEquals(andesQueue2.queueName, resultSet.getString(RDBMSConstants.QUEUE_NAME));
+        Assert.assertEquals(andesQueue2.encodeAsString(), resultSet.getString(RDBMSConstants.QUEUE_DATA));
 
         // there should be only one entry remaining in db
         Assert.assertEquals(false, resultSet.next());
@@ -796,8 +796,8 @@ public class JDBCAndesContextStoreImplTest {
         AndesQueue andesQueue1 = new AndesQueue(boundQueue1, "owner1", true, false);
 
         // setup database with queue information
-        String insert = "INSERT INTO " + JDBCConstants.QUEUE_INFO_TABLE + " (" +
-                JDBCConstants.QUEUE_NAME + "," + JDBCConstants.QUEUE_INFO + " ) " +
+        String insert = "INSERT INTO " + RDBMSConstants.QUEUE_INFO_TABLE + " (" +
+                RDBMSConstants.QUEUE_NAME + "," + RDBMSConstants.QUEUE_DATA + " ) " +
                 " VALUES (?,?)";
 
         PreparedStatement preparedStatement = connection.prepareStatement(insert);
@@ -810,9 +810,9 @@ public class JDBCAndesContextStoreImplTest {
         String exchangeInfo1 = "exchangeName=" + exchange1 + ",type=none," +
                 "autoDelete=false";
 
-        insert = "INSERT INTO " + JDBCConstants.EXCHANGES_TABLE + " ( " +
-                JDBCConstants.EXCHANGE_NAME + "," +
-                JDBCConstants.EXCHANGE_DATA + ") " +
+        insert = "INSERT INTO " + RDBMSConstants.EXCHANGES_TABLE + " ( " +
+                RDBMSConstants.EXCHANGE_NAME + "," +
+                RDBMSConstants.EXCHANGE_DATA + ") " +
                 " VALUES (?, ?)";
 
         preparedStatement = connection.prepareStatement(insert);
@@ -825,9 +825,9 @@ public class JDBCAndesContextStoreImplTest {
         contextStore.storeBindingInformation(exchange1, boundQueue1, routingKey1);
 
         // check if stored binding is in db
-        String select = "SELECT *  FROM " + JDBCConstants.BINDINGS_TABLE +
-                " WHERE " + JDBCConstants.BINDING_QUEUE_NAME + "=? AND " +
-                JDBCConstants.BINDING_EXCHANGE_NAME + "=?";
+        String select = "SELECT *  FROM " + RDBMSConstants.BINDINGS_TABLE +
+                " WHERE " + RDBMSConstants.BINDING_QUEUE_NAME + "=? AND " +
+                RDBMSConstants.BINDING_EXCHANGE_NAME + "=?";
 
         preparedStatement = connection.prepareStatement(select);
         preparedStatement.setString(1, boundQueue1);
@@ -835,7 +835,7 @@ public class JDBCAndesContextStoreImplTest {
         ResultSet resultSet = preparedStatement.executeQuery();
 
         Assert.assertEquals(true, resultSet.next());
-        Assert.assertEquals(routingKey1, resultSet.getString(JDBCConstants.BINDING_INFO));
+        Assert.assertEquals(routingKey1, resultSet.getString(RDBMSConstants.BINDING_INFO));
 
     }
 
@@ -856,8 +856,8 @@ public class JDBCAndesContextStoreImplTest {
         String qOwner2 = "queueOwner2";
 
         // setup binding information in db
-        JDBCTestHelper.storeBindingInfo(connection, exchange1, boundQueue1, routingKey1, qOwner1);
-        JDBCTestHelper.storeBindingInfo(connection, exchange2, boundQueue2, routingKey2, qOwner2);
+        RDBMSTestHelper.storeBindingInfo(connection, exchange1, boundQueue1, routingKey1, qOwner1);
+        RDBMSTestHelper.storeBindingInfo(connection, exchange2, boundQueue2, routingKey2, qOwner2);
 
         // get binding data through context store method
         List<AndesBinding> bindingList = contextStore.getBindingsStoredForExchange(exchange1);
@@ -890,20 +890,20 @@ public class JDBCAndesContextStoreImplTest {
         String qOwner2 = "queueOwner2";
 
         // setup binding information in db
-        JDBCTestHelper.storeBindingInfo(connection, exchange1, boundQueue1, routingKey1, qOwner1);
-        JDBCTestHelper.storeBindingInfo(connection, exchange2, boundQueue2, routingKey2, qOwner2);
+        RDBMSTestHelper.storeBindingInfo(connection, exchange1, boundQueue1, routingKey1, qOwner1);
+        RDBMSTestHelper.storeBindingInfo(connection, exchange2, boundQueue2, routingKey2, qOwner2);
 
         // delete entry
         contextStore.deleteBindingInformation(exchange1, boundQueue1);
 
         // test
-        String select = "SELECT * FROM " + JDBCConstants.BINDINGS_TABLE;
+        String select = "SELECT * FROM " + RDBMSConstants.BINDINGS_TABLE;
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery(select);
 
         resultSet.next();
-        Assert.assertEquals(exchange2, resultSet.getString(JDBCConstants.BINDING_EXCHANGE_NAME));
-        Assert.assertEquals(boundQueue2, resultSet.getString(JDBCConstants.BINDING_QUEUE_NAME));
+        Assert.assertEquals(exchange2, resultSet.getString(RDBMSConstants.BINDING_EXCHANGE_NAME));
+        Assert.assertEquals(boundQueue2, resultSet.getString(RDBMSConstants.BINDING_QUEUE_NAME));
         Assert.assertEquals(false, resultSet.next());
 
     }
@@ -947,10 +947,10 @@ public class JDBCAndesContextStoreImplTest {
                         "FOREIGN KEY (queue_name) REFERENCES queue_info (name)" +
                         ");",
 
-                "CREATE TABLE IF NOT EXISTS " + JDBCConstants.QUEUE_COUNTER_TABLE + " (" +
-                        JDBCConstants.QUEUE_NAME + " VARCHAR NOT NULL," +
-                        JDBCConstants.QUEUE_COUNT + " BIGINT, " +
-                        " PRIMARY KEY (" + JDBCConstants.QUEUE_NAME + ") " +
+                "CREATE TABLE IF NOT EXISTS " + RDBMSConstants.QUEUE_COUNTER_TABLE + " (" +
+                        RDBMSConstants.QUEUE_NAME + " VARCHAR NOT NULL," +
+                        RDBMSConstants.MESSAGE_COUNT + " BIGINT, " +
+                        " PRIMARY KEY (" + RDBMSConstants.QUEUE_NAME + ") " +
                         ");"
 
         };
@@ -973,7 +973,7 @@ public class JDBCAndesContextStoreImplTest {
                 "DROP TABLE exchanges",
                 "DROP TABLE queue_info",
                 "DROP TABLE bindings",
-                "DROP TABLE " + JDBCConstants.QUEUE_COUNTER_TABLE
+                "DROP TABLE " + RDBMSConstants.QUEUE_COUNTER_TABLE
         };
         Statement stmt = connection.createStatement();
         for (String q : queries) {

@@ -42,12 +42,12 @@ public class AndesChannel {
     /**
      * This is the limit used to release flow control on the channel
      */
-    private final int flowControlLowLimit;
+    private final Integer flowControlLowLimit;
 
     /**
      * This is the limit used to enforce the flow control on the channel
      */
-    private final int flowControlHighLimit;
+    private final Integer flowControlHighLimit;
 
     /**
      * Number of messages waiting in the buffer

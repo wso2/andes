@@ -19,7 +19,7 @@
 //package org.wso2.andes.store.cassandra;
 //import org.h2.jdbcx.JdbcDataSource;
 //import org.junit.BeforeClass;
-//import org.wso2.andes.store.jdbc.JDBCConstants;
+//import JDBCConstants;
 //
 //import javax.naming.Context;
 //import javax.naming.InitialContext;

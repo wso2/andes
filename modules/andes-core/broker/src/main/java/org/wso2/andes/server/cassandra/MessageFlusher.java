@@ -306,7 +306,7 @@ public class MessageFlusher {
             }
             log.error("Error occurred while sending messages to subscribers from buffer", e);
             throw new AndesException("Error occurred while sending messages to subscribers " +
-                                     "from message buffer" + e);
+                                     "from message buffer", e);
         }
 
 

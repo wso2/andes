@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package org.wso2.andes.store.jdbc;
+package org.wso2.andes.store.rdbms;
 
 import junit.framework.Assert;
 import org.h2.jdbcx.JdbcDataSource;
@@ -35,7 +35,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class JDBCMessageStoreImplTest {
+public class RDBMSMessageStoreImplTest {
 
     private MessageStore messageStore;
     private static Connection connection;
@@ -53,7 +53,7 @@ public class JDBCMessageStoreImplTest {
             ic.createSubcontext("jdbc");
             JdbcDataSource ds = new JdbcDataSource();
             ds.setURL("jdbc:h2:mem:msg_store;DB_CLOSE_ON_EXIT=FALSE");
-            ic.bind(JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME, ds);
+            ic.bind(RDBMSConstants.H2_MEM_JNDI_LOOKUP_NAME, ds);
 
             Class.forName("org.h2.Driver");
             connection = DriverManager.getConnection("jdbc:h2:mem:msg_store;DB_CLOSE_ON_EXIT=FALSE");
@@ -64,10 +64,10 @@ public class JDBCMessageStoreImplTest {
     @Before
     public void setUp() throws Exception {
         createTables();
-        messageStore = new JDBCMessageStoreImpl();
+        messageStore = new RDBMSMessageStoreImpl();
         ConfigurationProperties connectionProperties = new ConfigurationProperties();
-        connectionProperties.addProperty(JDBCConstants.PROP_JNDI_LOOKUP_NAME,
-                                            JDBCConstants.H2_MEM_JNDI_LOOKUP_NAME);
+        connectionProperties.addProperty(RDBMSConstants.PROP_JNDI_LOOKUP_NAME,
+                                            RDBMSConstants.H2_MEM_JNDI_LOOKUP_NAME);
         messageStore.initializeMessageStore(connectionProperties);
     }
 
@@ -98,7 +98,7 @@ public class JDBCMessageStoreImplTest {
     public void testStoreRetrieveMessagePart() throws Exception {
 
         // store messages
-        List<AndesMessagePart> list = JDBCTestHelper.getMessagePartList(0, 10);
+        List<AndesMessagePart> list = RDBMSTestHelper.getMessagePartList(0, 10);
         messageStore.storeMessagePart(list);
 
         // retrieve
@@ -130,15 +130,15 @@ public class JDBCMessageStoreImplTest {
         // store
         messageStore.storeMessagePart(list);
 
-        String select = "SELECT * FROM " + JDBCConstants.MESSAGES_TABLE;
+        String select = "SELECT * FROM " + RDBMSConstants.CONTENT_TABLE;
         Statement stmt = connection.createStatement();
         ResultSet resultSet = stmt.executeQuery(select);
 
         // test
         Assert.assertEquals(true, resultSet.first());
-        Assert.assertEquals(msgid, resultSet.getLong(JDBCConstants.MESSAGE_ID));
-        Assert.assertEquals(true, Arrays.equals(content, resultSet.getBytes(JDBCConstants.MESSAGE_CONTENT)));
-        Assert.assertEquals(offset, resultSet.getInt(JDBCConstants.MSG_OFFSET));
+        Assert.assertEquals(msgid, resultSet.getLong(RDBMSConstants.MESSAGE_ID));
+        Assert.assertEquals(true, Arrays.equals(content, resultSet.getBytes(RDBMSConstants.MESSAGE_CONTENT)));
+        Assert.assertEquals(offset, resultSet.getInt(RDBMSConstants.MSG_OFFSET));
 
     }
 
@@ -167,7 +167,7 @@ public class JDBCMessageStoreImplTest {
         // store
         messageStore.storeMessagePart(list);
 
-        String select = "SELECT * FROM " + JDBCConstants.MESSAGES_TABLE;
+        String select = "SELECT * FROM " + RDBMSConstants.CONTENT_TABLE;
         Statement stmt = connection.createStatement();
         ResultSet resultSet = stmt.executeQuery(select);
 
@@ -181,7 +181,7 @@ public class JDBCMessageStoreImplTest {
         int firstMsgId = 10;
         int lastMsgId = 20;
         // store messages
-        List<AndesMessagePart> list = JDBCTestHelper.getMessagePartList(firstMsgId, lastMsgId);
+        List<AndesMessagePart> list = RDBMSTestHelper.getMessagePartList(firstMsgId, lastMsgId);
         messageStore.storeMessagePart(list);
 
         List<Long> longList = new ArrayList<Long>(lastMsgId - firstMsgId);
@@ -194,8 +194,8 @@ public class JDBCMessageStoreImplTest {
 
         // check for deletion
         String sqlStr = "SELECT * " +
-                " FROM " + JDBCConstants.MESSAGES_TABLE +
-                " WHERE " + JDBCConstants.MESSAGE_ID + "=?";
+                " FROM " + RDBMSConstants.CONTENT_TABLE +
+                " WHERE " + RDBMSConstants.MESSAGE_ID + "=?";
         PreparedStatement preparedStatement = connection.prepareStatement(sqlStr);
         for (int i = firstMsgId; i < lastMsgId; i++) {
             preparedStatement.setLong(1, i);
@@ -217,29 +217,29 @@ public class JDBCMessageStoreImplTest {
         String destQueueName = "queue_";
         int firstMsgId = 1;
         int lastMsgId = firstMsgId + 10;
-        List<AndesMessageMetadata> lst = JDBCTestHelper.getMetadataList(destQueueName, firstMsgId, lastMsgId);
+        List<AndesMessageMetadata> lst = RDBMSTestHelper.getMetadataList(destQueueName, firstMsgId, lastMsgId);
 
         // add metadata
         messageStore.addMetaData(lst);
 
         // TEST
-        String sqlStr = "SELECT * FROM " + JDBCConstants.METADATA_TABLE;
+        String sqlStr = "SELECT * FROM " + RDBMSConstants.METADATA_TABLE;
 
         PreparedStatement preparedStatement = connection.prepareStatement(sqlStr);
         ResultSet resultSet = preparedStatement.executeQuery();
 
         for (AndesMessageMetadata md : lst) {
             Assert.assertEquals(true, resultSet.next());
-            Assert.assertEquals(md.getMessageID(), resultSet.getLong(JDBCConstants.MESSAGE_ID));
-            Assert.assertEquals(true, Arrays.equals(md.getMetadata(), resultSet.getBytes(JDBCConstants.METADATA)));
+            Assert.assertEquals(md.getMessageID(), resultSet.getLong(RDBMSConstants.MESSAGE_ID));
+            Assert.assertEquals(true, Arrays.equals(md.getMetadata(), resultSet.getBytes(RDBMSConstants.METADATA)));
         }
 
-        sqlStr = "SELECT * FROM " + JDBCConstants.EXPIRATION_TABLE;
+        sqlStr = "SELECT * FROM " + RDBMSConstants.EXPIRATION_TABLE;
         preparedStatement = connection.prepareStatement(sqlStr);
         resultSet = preparedStatement.executeQuery();
         int count = 0;
         while (resultSet.next()) {
-            Assert.assertEquals(true, resultSet.getLong(JDBCConstants.EXPIRATION_TIME) > 0);
+            Assert.assertEquals(true, resultSet.getLong(RDBMSConstants.EXPIRATION_TIME) > 0);
             count++;
         }
         Assert.assertEquals(5, count);
@@ -248,22 +248,22 @@ public class JDBCMessageStoreImplTest {
     @Test
     public void testAddMetaData() throws Exception {
         int msgId = 2; // JDBCTestHelper returns positive expiry values for even number message ids
-        AndesMessageMetadata md = JDBCTestHelper.getMetadata(msgId, "myQueue");
+        AndesMessageMetadata md = RDBMSTestHelper.getMetadata(msgId, "myQueue");
 //        AndesMessageMetadata md2 = JDBCTestHelper.getMetadata(msgId, "myQueue2"); // to test ref count
         messageStore.addMetaData(md);
 //        messageStore.addMetaData(md2);
 
         // Test Metadata
-        String sql = "SELECT * FROM " + JDBCConstants.METADATA_TABLE +
-                " WHERE " + JDBCConstants.MESSAGE_ID + "=?";
+        String sql = "SELECT * FROM " + RDBMSConstants.METADATA_TABLE +
+                " WHERE " + RDBMSConstants.MESSAGE_ID + "=?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(sql);
         preparedStatement.setLong(1, msgId);
         ResultSet resultSet = preparedStatement.executeQuery();
 
         Assert.assertEquals(true, resultSet.first());
-        Assert.assertEquals(true, Arrays.equals(md.getMetadata(), resultSet.getBytes(JDBCConstants.METADATA)));
-        Assert.assertEquals(msgId, resultSet.getLong(JDBCConstants.MESSAGE_ID));
+        Assert.assertEquals(true, Arrays.equals(md.getMetadata(), resultSet.getBytes(RDBMSConstants.METADATA)));
+        Assert.assertEquals(msgId, resultSet.getLong(RDBMSConstants.MESSAGE_ID));
 
 //        Assert.assertEquals(true, resultSet.next());
 //        Assert.assertEquals(true, Arrays.equals(md2.getMetadata(), resultSet.getBytes(JDBCConstants.METADATA)));
@@ -272,15 +272,15 @@ public class JDBCMessageStoreImplTest {
         // todo check refcount
 
         // test expiry
-        sql = " SELECT * FROM " + JDBCConstants.EXPIRATION_TABLE +
-                " WHERE " + JDBCConstants.MESSAGE_ID + "=?";
+        sql = " SELECT * FROM " + RDBMSConstants.EXPIRATION_TABLE +
+                " WHERE " + RDBMSConstants.MESSAGE_ID + "=?";
 
         preparedStatement = connection.prepareStatement(sql);
         preparedStatement.setLong(1, msgId);
         resultSet = preparedStatement.executeQuery();
 
         Assert.assertEquals(true, resultSet.first());
-        Assert.assertEquals(msgId, resultSet.getLong(JDBCConstants.MESSAGE_ID));
+        Assert.assertEquals(msgId, resultSet.getLong(RDBMSConstants.MESSAGE_ID));
     }
 
     @Test
@@ -299,20 +299,20 @@ public class JDBCMessageStoreImplTest {
         messageStore.addMetaDataToQueue(specificQueue, md);
 
         // TEST
-        String sql = "SELECT * FROM " + JDBCConstants.METADATA_TABLE +
-                " JOIN " + JDBCConstants.QUEUES_TABLE +
-                " WHERE " + JDBCConstants.METADATA_TABLE + "." + JDBCConstants.QUEUE_ID + "=" +
-                JDBCConstants.QUEUES_TABLE + "." + JDBCConstants.QUEUE_ID +
-                " AND " + JDBCConstants.MESSAGE_ID + "=? ";
+        String sql = "SELECT * FROM " + RDBMSConstants.METADATA_TABLE +
+                " JOIN " + RDBMSConstants.QUEUES_TABLE +
+                " WHERE " + RDBMSConstants.METADATA_TABLE + "." + RDBMSConstants.QUEUE_ID + "=" +
+                RDBMSConstants.QUEUES_TABLE + "." + RDBMSConstants.QUEUE_ID +
+                " AND " + RDBMSConstants.MESSAGE_ID + "=? ";
 
         PreparedStatement preparedStatement = connection.prepareStatement(sql);
         preparedStatement.setLong(1, msgId);
         ResultSet resultSet = preparedStatement.executeQuery();
 
         Assert.assertEquals(true, resultSet.first());
-        Assert.assertEquals(true, Arrays.equals(content, resultSet.getBytes(JDBCConstants.METADATA)));
-        Assert.assertEquals(msgId, resultSet.getLong(JDBCConstants.MESSAGE_ID));
-        Assert.assertEquals(specificQueue, resultSet.getString(JDBCConstants.QUEUE_NAME));
+        Assert.assertEquals(true, Arrays.equals(content, resultSet.getBytes(RDBMSConstants.METADATA)));
+        Assert.assertEquals(msgId, resultSet.getLong(RDBMSConstants.MESSAGE_ID));
+        Assert.assertEquals(specificQueue, resultSet.getString(RDBMSConstants.QUEUE_NAME));
     }
 
     @Test
@@ -323,31 +323,31 @@ public class JDBCMessageStoreImplTest {
         int lastMsgId = firstMsgId + 10;
 
         // add metadata
-        List<AndesMessageMetadata> lst = JDBCTestHelper.getMetadataList(destQueueName, firstMsgId, lastMsgId);
+        List<AndesMessageMetadata> lst = RDBMSTestHelper.getMetadataList(destQueueName, firstMsgId, lastMsgId);
         messageStore.addMetadataToQueue(specificQueue, lst);
 
         // TEST
-        String sql = "SELECT * FROM " + JDBCConstants.METADATA_TABLE +
-                " JOIN " + JDBCConstants.QUEUES_TABLE +
-                " WHERE " + JDBCConstants.METADATA_TABLE + "." + JDBCConstants.QUEUE_ID + "=" +
-                JDBCConstants.QUEUES_TABLE + "." + JDBCConstants.QUEUE_ID;
+        String sql = "SELECT * FROM " + RDBMSConstants.METADATA_TABLE +
+                " JOIN " + RDBMSConstants.QUEUES_TABLE +
+                " WHERE " + RDBMSConstants.METADATA_TABLE + "." + RDBMSConstants.QUEUE_ID + "=" +
+                RDBMSConstants.QUEUES_TABLE + "." + RDBMSConstants.QUEUE_ID;
 
         PreparedStatement preparedStatement = connection.prepareStatement(sql);
         ResultSet resultSet = preparedStatement.executeQuery();
 
         for (AndesMessageMetadata md : lst) {
             Assert.assertEquals(true, resultSet.next());
-            Assert.assertEquals(md.getMessageID(), resultSet.getLong(JDBCConstants.MESSAGE_ID));
-            Assert.assertEquals(true, Arrays.equals(md.getMetadata(), resultSet.getBytes(JDBCConstants.METADATA)));
-            Assert.assertEquals(specificQueue, resultSet.getString(JDBCConstants.QUEUE_NAME));
+            Assert.assertEquals(md.getMessageID(), resultSet.getLong(RDBMSConstants.MESSAGE_ID));
+            Assert.assertEquals(true, Arrays.equals(md.getMetadata(), resultSet.getBytes(RDBMSConstants.METADATA)));
+            Assert.assertEquals(specificQueue, resultSet.getString(RDBMSConstants.QUEUE_NAME));
         }
 
-        sql = "SELECT * FROM " + JDBCConstants.EXPIRATION_TABLE;
+        sql = "SELECT * FROM " + RDBMSConstants.EXPIRATION_TABLE;
         preparedStatement = connection.prepareStatement(sql);
         resultSet = preparedStatement.executeQuery();
         int count = 0;
         while (resultSet.next()) {
-            Assert.assertEquals(true, resultSet.getLong(JDBCConstants.EXPIRATION_TIME) > 0);
+            Assert.assertEquals(true, resultSet.getLong(RDBMSConstants.EXPIRATION_TIME) > 0);
             count++;
         }
         Assert.assertEquals(5, count);
@@ -359,7 +359,7 @@ public class JDBCMessageStoreImplTest {
         int firstMsgId = 1;
         int lastMsgId = firstMsgId + 10;
         String destQueueName = "queue";
-        List<AndesMessageMetadata> lst = JDBCTestHelper.getMetadataList(destQueueName, firstMsgId, lastMsgId);
+        List<AndesMessageMetadata> lst = RDBMSTestHelper.getMetadataList(destQueueName, firstMsgId, lastMsgId);
         messageStore.addMetaData(lst);
 
         //TEST
@@ -376,8 +376,8 @@ public class JDBCMessageStoreImplTest {
 
         String destQueue_1 = "queue_1";
         String destQueue_2 = "queue_2";
-        messageStore.addMetaData(JDBCTestHelper.getMetadataList(destQueue_1, 0, 5));
-        messageStore.addMetaData(JDBCTestHelper.getMetadataList(destQueue_2, 5, 10));
+        messageStore.addMetaData(RDBMSTestHelper.getMetadataList(destQueue_1, 0, 5));
+        messageStore.addMetaData(RDBMSTestHelper.getMetadataList(destQueue_2, 5, 10));
 
         // Retrieve
         List<AndesMessageMetadata> list = messageStore.getMetaDataList(destQueue_1, 0, 5);
@@ -402,8 +402,8 @@ public class JDBCMessageStoreImplTest {
         String destQueue_2 = "queue_2";
 
         // only the even number msg ids will be given expiration values by this method
-        List<AndesMessageMetadata> mdList1 = JDBCTestHelper.getMetadataList(destQueue_1, 0, 5, 1);
-        List<AndesMessageMetadata> mdList2 = JDBCTestHelper.getMetadataList(destQueue_2, 5, 10, 1);
+        List<AndesMessageMetadata> mdList1 = RDBMSTestHelper.getMetadataList(destQueue_1, 0, 5, 1);
+        List<AndesMessageMetadata> mdList2 = RDBMSTestHelper.getMetadataList(destQueue_2, 5, 10, 1);
 
         messageStore.addMetaData(mdList1);
         messageStore.addMetaData(mdList2);
@@ -443,7 +443,7 @@ public class JDBCMessageStoreImplTest {
     public void testGetNextNMessageMetadataFromQueue() throws Exception {
 
         String destQueues[] = {"queue_1", "queue_2"};
-        messageStore.addMetaData(JDBCTestHelper.getMetadataForMultipleQueues(destQueues, 2, 0, 10));
+        messageStore.addMetaData(RDBMSTestHelper.getMetadataForMultipleQueues(destQueues, 2, 0, 10));
 
         // Retrieve
         List<AndesMessageMetadata> mdList =

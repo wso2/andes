@@ -128,7 +128,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * The class that is used to access an external RDBMS database to operate on messages.
      */
     PERSISTENCE_MESSAGE_STORE_HANDLER("persistence/messageStore/@class",
-            "org.wso2.andes.store.jdbc.JDBCMessageStoreImpl", String.class),
+            "JDBCMessageStoreImpl", String.class),
 
     /**
      * List of properties that can define how the server will access the store.
@@ -147,7 +147,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * The class that is used to access an external RDBMS database to operate on server context. e.g. subscriptions
      */
     PERSISTENCE_CONTEXT_STORE_HANDLER("persistence/contextStore/@class",
-            "org.wso2.andes.store.jdbc.JDBCAndesContextStoreImpl", String.class),
+            "JDBCAndesContextStoreImpl", String.class),
 
     /**
      * List of properties that can define how the server will access the store.

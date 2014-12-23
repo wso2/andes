@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package org.wso2.andes.store.jdbc;
+package org.wso2.andes.store.rdbms;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
@@ -36,9 +36,9 @@ import java.util.Map;
  * ANSI SQL based Andes Context Store implementation. This is used to persist information of
  * current durable subscription, exchanges, queues and bindings
  */
-public class JDBCAndesContextStoreImpl implements AndesContextStore {
+public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
-    private static final Logger logger = Logger.getLogger(JDBCAndesContextStoreImpl.class);
+    private static final Logger logger = Logger.getLogger(RDBMSAndesContextStoreImpl.class);
 
     /**
      * Connection pooled sql data source object. Used to create connections in method scope
@@ -52,12 +52,12 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
     public DurableStoreConnection init(ConfigurationProperties connectionProperties) throws
             AndesException {
 
-        JDBCConnection jdbcConnection = new JDBCConnection();
-        jdbcConnection.initialize(connectionProperties);
+        RDBMSConnection RDBMSConnection = new RDBMSConnection();
+        RDBMSConnection.initialize(connectionProperties);
 
-        datasource = jdbcConnection.getDataSource();
+        datasource = RDBMSConnection.getDataSource();
         logger.info("Andes Context Store initialised");
-        return jdbcConnection;
+        return RDBMSConnection;
     }
 
     /**
@@ -72,13 +72,13 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         try {
 
             connection = getConnection();
-            preparedStatement = connection.prepareStatement(JDBCConstants
+            preparedStatement = connection.prepareStatement(RDBMSConstants
                     .PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS);
             resultSet = preparedStatement.executeQuery();
 
             // create Subscriber Map
             while (resultSet.next()) {
-                String destinationId = resultSet.getString(JDBCConstants.DESTINATION_IDENTIFIER);
+                String destinationId = resultSet.getString(RDBMSConstants.DESTINATION_IDENTIFIER);
                 List<String> subscriberList = subscriberMap.get(destinationId);
 
                 // if no entry in map create list and put into map
@@ -87,17 +87,17 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
                     subscriberMap.put(destinationId, subscriberList);
                 }
                 // add subscriber data to list
-                subscriberList.add(resultSet.getString(JDBCConstants.DURABLE_SUB_DATA));
+                subscriberList.add(resultSet.getString(RDBMSConstants.DURABLE_SUB_DATA));
             }
             return subscriberMap;
 
         } catch (SQLException e) {
-            throw new AndesException("Error occurred while " + JDBCConstants
+            throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION, e);
         } finally {
-            close(resultSet, JDBCConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
-            close(preparedStatement, JDBCConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
-            close(connection, JDBCConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
+            close(resultSet, RDBMSConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
         }
     }
 
@@ -116,7 +116,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             connection.setAutoCommit(false);
 
             preparedStatement = connection.prepareStatement(
-                    JDBCConstants.PS_INSERT_DURABLE_SUBSCRIPTION);
+                    RDBMSConstants.PS_INSERT_DURABLE_SUBSCRIPTION);
 
             preparedStatement.setString(1, destinationIdentifier);
             preparedStatement.setString(2, subscriptionID);
@@ -126,12 +126,12 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             connection.commit();
 
         } catch (SQLException e) {
-            rollback(connection, JDBCConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
+            rollback(connection, RDBMSConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
             throw new AndesException("Error occurred while storing durable subscription. sub id: "
                     + subscriptionID + " destination identifier: " + destinationIdentifier, e);
         } finally {
-            close(preparedStatement, JDBCConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
-            close(connection, JDBCConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
+            close(preparedStatement, RDBMSConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
+            close(connection, RDBMSConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
         }
     }
 
@@ -143,14 +143,14 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        String task = JDBCConstants.TASK_REMOVING_DURABLE_SUBSCRIPTION + "destination: " +
+        String task = RDBMSConstants.TASK_REMOVING_DURABLE_SUBSCRIPTION + "destination: " +
                 destinationIdentifier + " sub id: " + subscriptionID;
         try {
 
             connection = getConnection();
             connection.setAutoCommit(false);
 
-            preparedStatement = connection.prepareStatement(JDBCConstants
+            preparedStatement = connection.prepareStatement(RDBMSConstants
                     .PS_DELETE_DURABLE_SUBSCRIPTION);
 
             preparedStatement.setString(1, destinationIdentifier);
@@ -178,13 +178,13 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         PreparedStatement preparedStatement = null;
 
         // task in progress that's logged on an exception
-        String task = JDBCConstants.TASK_STORING_NODE_INFORMATION + "node id: " + nodeID;
+        String task = RDBMSConstants.TASK_STORING_NODE_INFORMATION + "node id: " + nodeID;
         try {
             // done as a transaction
             connection = getConnection();
             connection.setAutoCommit(false);
 
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_INSERT_NODE_INFO);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_NODE_INFO);
             preparedStatement.setString(1, nodeID);
             preparedStatement.setString(2, data);
             preparedStatement.executeUpdate();
@@ -212,24 +212,24 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         try {
 
             connection = getConnection();
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_ALL_NODE_INFO);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_ALL_NODE_INFO);
             resultSet = preparedStatement.executeQuery();
 
             while (resultSet.next()) {
                 nodeInfoMap.put(
-                        resultSet.getString(JDBCConstants.NODE_ID),
-                        resultSet.getString(JDBCConstants.NODE_INFO)
+                        resultSet.getString(RDBMSConstants.NODE_ID),
+                        resultSet.getString(RDBMSConstants.NODE_INFO)
                 );
             }
 
             return nodeInfoMap;
         } catch (SQLException e) {
-            throw new AndesException("Error occurred while " + JDBCConstants
+            throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_RETRIEVING_ALL_NODE_DETAILS, e);
         } finally {
-            close(resultSet, JDBCConstants.TASK_RETRIEVING_ALL_NODE_DETAILS);
-            close(preparedStatement, JDBCConstants.TASK_RETRIEVING_ALL_NODE_DETAILS);
-            close(connection, JDBCConstants.TASK_RETRIEVING_ALL_NODE_DETAILS);
+            close(resultSet, RDBMSConstants.TASK_RETRIEVING_ALL_NODE_DETAILS);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_ALL_NODE_DETAILS);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_ALL_NODE_DETAILS);
         }
     }
 
@@ -240,13 +240,13 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
     public void removeNodeData(String nodeID) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        String task = JDBCConstants.TASK_REMOVING_NODE_INFORMATION + " node id: " + nodeID;
+        String task = RDBMSConstants.TASK_REMOVING_NODE_INFORMATION + " node id: " + nodeID;
         try {
 
             connection = getConnection();
             connection.setAutoCommit(false);
 
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_DELETE_NODE_INFO);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_NODE_INFO);
             preparedStatement.setString(1, nodeID);
             preparedStatement.executeUpdate();
 
@@ -276,7 +276,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
                 // if queue counter does not exist
                 connection.setAutoCommit(false);
 
-                preparedStatement = connection.prepareStatement(JDBCConstants
+                preparedStatement = connection.prepareStatement(RDBMSConstants
                         .PS_INSERT_QUEUE_COUNTER);
 
                 preparedStatement.setString(1, destinationQueueName);
@@ -290,12 +290,12 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             }
 
         } catch (SQLException e) {
-            rollback(connection, JDBCConstants.TASK_ADDING_QUEUE_COUNTER);
-            throw new AndesException("Error occurred while " + JDBCConstants
+            rollback(connection, RDBMSConstants.TASK_ADDING_QUEUE_COUNTER);
+            throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_ADDING_QUEUE_COUNTER, e);
         } finally {
-            close(preparedStatement, JDBCConstants.TASK_ADDING_QUEUE_COUNTER);
-            close(connection, JDBCConstants.TASK_ADDING_QUEUE_COUNTER);
+            close(preparedStatement, RDBMSConstants.TASK_ADDING_QUEUE_COUNTER);
+            close(connection, RDBMSConstants.TASK_ADDING_QUEUE_COUNTER);
         }
     }
 
@@ -314,17 +314,17 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         ResultSet resultSet = null;
         try {
             // check if queue already exist
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_QUEUE_COUNT);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_QUEUE_COUNT);
             preparedStatement.setString(1, queueName);
             resultSet = preparedStatement.executeQuery();
 
             return resultSet.next();
         } catch (SQLException e) {
-            throw new AndesException("Error occurred while " + JDBCConstants
+            throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_ADDING_QUEUE_COUNTER, e);
         } finally {
-            close(resultSet, JDBCConstants.TASK_CHECK_QUEUE_COUNTER_EXIST);
-            close(preparedStatement, JDBCConstants.TASK_CHECK_QUEUE_COUNTER_EXIST);
+            close(resultSet, RDBMSConstants.TASK_CHECK_QUEUE_COUNTER_EXIST);
+            close(preparedStatement, RDBMSConstants.TASK_CHECK_QUEUE_COUNTER_EXIST);
         }
     }
 
@@ -340,23 +340,23 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
 
         try {
             connection = getConnection();
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_QUEUE_COUNT);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_QUEUE_COUNT);
             preparedStatement.setString(1, destinationQueueName);
 
             resultSet = preparedStatement.executeQuery();
 
             long count = 0;
             if (resultSet.next()) {
-                count = resultSet.getLong(JDBCConstants.QUEUE_COUNT);
+                count = resultSet.getLong(RDBMSConstants.MESSAGE_COUNT);
             }
             return count;
         } catch (SQLException e) {
-            throw new AndesException("Error occurred while " + JDBCConstants
+            throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_RETRIEVING_QUEUE_COUNT, e);
         } finally {
-            close(resultSet, JDBCConstants.TASK_RETRIEVING_QUEUE_COUNT);
-            close(preparedStatement, JDBCConstants.TASK_RETRIEVING_QUEUE_COUNT);
-            close(connection, JDBCConstants.TASK_RETRIEVING_QUEUE_COUNT);
+            close(resultSet, RDBMSConstants.TASK_RETRIEVING_QUEUE_COUNT);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_QUEUE_COUNT);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_COUNT);
         }
     }
 
@@ -372,19 +372,19 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
             connection.setAutoCommit(false);
 
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_DELETE_QUEUE_COUNTER);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_QUEUE_COUNTER);
             preparedStatement.setString(1, destinationQueueName);
             preparedStatement.executeUpdate();
 
             connection.commit();
 
         } catch (SQLException e) {
-            rollback(connection, JDBCConstants.TASK_DELETING_QUEUE_COUNTER);
-            throw new AndesException("Error occurred while " + JDBCConstants
+            rollback(connection, RDBMSConstants.TASK_DELETING_QUEUE_COUNTER);
+            throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_DELETING_QUEUE_COUNTER + " queue: " + destinationQueueName, e);
         } finally {
-            close(preparedStatement, JDBCConstants.TASK_DELETING_QUEUE_COUNTER);
-            close(connection, JDBCConstants.TASK_DELETING_QUEUE_COUNTER);
+            close(preparedStatement, RDBMSConstants.TASK_DELETING_QUEUE_COUNTER);
+            close(connection, RDBMSConstants.TASK_DELETING_QUEUE_COUNTER);
         }
     }
 
@@ -401,19 +401,19 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
             connection.setAutoCommit(false);
 
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_INCREMENT_QUEUE_COUNT);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INCREMENT_QUEUE_COUNT);
             preparedStatement.setLong(1, incrementBy);
             preparedStatement.setString(2, destinationQueueName);
             preparedStatement.executeUpdate();
 
             connection.commit();
         } catch (SQLException e) {
-            rollback(connection, JDBCConstants.TASK_INCREMENTING_QUEUE_COUNT);
-            throw new AndesException("Error occurred while " + JDBCConstants
+            rollback(connection, RDBMSConstants.TASK_INCREMENTING_QUEUE_COUNT);
+            throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_INCREMENTING_QUEUE_COUNT + " queue name: " + destinationQueueName, e);
         } finally {
-            close(preparedStatement, JDBCConstants.TASK_INCREMENTING_QUEUE_COUNT);
-            close(connection, JDBCConstants.TASK_INCREMENTING_QUEUE_COUNT);
+            close(preparedStatement, RDBMSConstants.TASK_INCREMENTING_QUEUE_COUNT);
+            close(connection, RDBMSConstants.TASK_INCREMENTING_QUEUE_COUNT);
         }
     }
 
@@ -431,19 +431,19 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
             connection.setAutoCommit(false);
 
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_DECREMENT_QUEUE_COUNT);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DECREMENT_QUEUE_COUNT);
             preparedStatement.setLong(1, decrementBy);
             preparedStatement.setString(2, destinationQueueName);
             preparedStatement.executeUpdate();
 
             connection.commit();
         } catch (SQLException e) {
-            rollback(connection, JDBCConstants.TASK_DECREMENTING_QUEUE_COUNT);
-            throw new AndesException("Error occurred while " + JDBCConstants
+            rollback(connection, RDBMSConstants.TASK_DECREMENTING_QUEUE_COUNT);
+            throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_DECREMENTING_QUEUE_COUNT + " queue name: " + destinationQueueName, e);
         } finally {
-            close(preparedStatement, JDBCConstants.TASK_DECREMENTING_QUEUE_COUNT);
-            close(connection, JDBCConstants.TASK_DECREMENTING_QUEUE_COUNT);
+            close(preparedStatement, RDBMSConstants.TASK_DECREMENTING_QUEUE_COUNT);
+            close(connection, RDBMSConstants.TASK_DECREMENTING_QUEUE_COUNT);
         }
     }
 
@@ -470,7 +470,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
                 connection.setAutoCommit(false);
 
                 preparedStatement = connection
-                        .prepareStatement(JDBCConstants.PS_STORE_EXCHANGE_INFO);
+                        .prepareStatement(RDBMSConstants.PS_STORE_EXCHANGE_INFO);
                 preparedStatement.setString(1, exchangeName);
                 preparedStatement.setString(2, exchangeInfo);
                 preparedStatement.executeUpdate();
@@ -478,12 +478,12 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
                 connection.commit();
             }
         } catch (SQLException e) {
-            rollback(connection, JDBCConstants.TASK_STORING_EXCHANGE_INFORMATION);
-            throw new AndesException("Error occurred while " + JDBCConstants
+            rollback(connection, RDBMSConstants.TASK_STORING_EXCHANGE_INFORMATION);
+            throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_STORING_EXCHANGE_INFORMATION + " exchange: " + exchangeName, e);
         } finally {
-            close(preparedStatement, JDBCConstants.TASK_STORING_EXCHANGE_INFORMATION);
-            close(connection, JDBCConstants.TASK_STORING_EXCHANGE_INFORMATION);
+            close(preparedStatement, RDBMSConstants.TASK_STORING_EXCHANGE_INFORMATION);
+            close(connection, RDBMSConstants.TASK_STORING_EXCHANGE_INFORMATION);
         }
     }
 
@@ -500,7 +500,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
         try {
-            preparedStatement = connection.prepareStatement(JDBCConstants
+            preparedStatement = connection.prepareStatement(RDBMSConstants
                     .PS_SELECT_EXCHANGE);
 
             preparedStatement.setString(1, exchangeName);
@@ -510,8 +510,8 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             throw new AndesException("Error occurred retrieving exchange information for" +
                     " exchange: " + exchangeName, e);
         } finally {
-            close(resultSet, JDBCConstants.TASK_IS_EXCHANGE_EXIST);
-            close(preparedStatement, JDBCConstants.TASK_IS_EXCHANGE_EXIST);
+            close(resultSet, RDBMSConstants.TASK_IS_EXCHANGE_EXIST);
+            close(preparedStatement, RDBMSConstants.TASK_IS_EXCHANGE_EXIST);
         }
     }
 
@@ -528,24 +528,24 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
 
             connection = getConnection();
             preparedStatement = connection
-                    .prepareStatement(JDBCConstants.PS_SELECT_ALL_EXCHANGE_INFO);
+                    .prepareStatement(RDBMSConstants.PS_SELECT_ALL_EXCHANGE_INFO);
             resultSet = preparedStatement.executeQuery();
 
             // traverse the result set and add it to exchange list and return the list
             while (resultSet.next()) {
                 AndesExchange andesExchange = new AndesExchange(
-                        resultSet.getString(JDBCConstants.EXCHANGE_DATA)
+                        resultSet.getString(RDBMSConstants.EXCHANGE_DATA)
                 );
                 exchangeList.add(andesExchange);
             }
             return exchangeList;
         } catch (SQLException e) {
-            throw new AndesException("Error occurred while " + JDBCConstants
+            throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_RETRIEVING_ALL_EXCHANGE_INFO, e);
         } finally {
-            close(resultSet, JDBCConstants.TASK_RETRIEVING_ALL_EXCHANGE_INFO);
-            close(preparedStatement, JDBCConstants.TASK_RETRIEVING_ALL_EXCHANGE_INFO);
-            close(connection, JDBCConstants.TASK_RETRIEVING_ALL_EXCHANGE_INFO);
+            close(resultSet, RDBMSConstants.TASK_RETRIEVING_ALL_EXCHANGE_INFO);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_ALL_EXCHANGE_INFO);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_ALL_EXCHANGE_INFO);
         }
     }
 
@@ -561,19 +561,19 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
             connection.setAutoCommit(false);
 
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_DELETE_EXCHANGE);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_EXCHANGE);
             preparedStatement.setString(1, exchangeName);
             preparedStatement.executeUpdate();
 
             connection.commit();
 
         } catch (SQLException e) {
-            String errMsg = JDBCConstants.TASK_DELETING_EXCHANGE + " exchange: " + exchangeName;
+            String errMsg = RDBMSConstants.TASK_DELETING_EXCHANGE + " exchange: " + exchangeName;
             rollback(connection, errMsg);
             throw new AndesException("Error occurred while " + errMsg, e);
         } finally {
-            close(preparedStatement, JDBCConstants.TASK_DELETING_EXCHANGE);
-            close(connection, JDBCConstants.TASK_DELETING_EXCHANGE);
+            close(preparedStatement, RDBMSConstants.TASK_DELETING_EXCHANGE);
+            close(connection, RDBMSConstants.TASK_DELETING_EXCHANGE);
         }
 
     }
@@ -590,19 +590,19 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
             connection.setAutoCommit(false);
 
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_INSERT_QUEUE_INFO);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_QUEUE_INFO);
             preparedStatement.setString(1, queueName);
             preparedStatement.setString(2, queueInfo);
             preparedStatement.executeUpdate();
 
             connection.commit();
         } catch (SQLException e) {
-            String errMsg = JDBCConstants.TASK_STORING_QUEUE_INFO + " queue name:" + queueName;
+            String errMsg = RDBMSConstants.TASK_STORING_QUEUE_INFO + " queue name:" + queueName;
             rollback(connection, errMsg);
             throw new AndesException("Error occurred while " + errMsg, e);
         } finally {
-            close(preparedStatement, JDBCConstants.TASK_STORING_QUEUE_INFO);
-            close(connection, JDBCConstants.TASK_STORING_QUEUE_INFO);
+            close(preparedStatement, RDBMSConstants.TASK_STORING_QUEUE_INFO);
+            close(connection, RDBMSConstants.TASK_STORING_QUEUE_INFO);
         }
     }
 
@@ -616,14 +616,14 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
         ResultSet resultSet = null;
         try {
             connection = getConnection();
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_SELECT_ALL_QUEUE_INFO);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_ALL_QUEUE_INFO);
             resultSet = preparedStatement.executeQuery();
 
             List<AndesQueue> queueList = new ArrayList<AndesQueue>();
             // iterate through the result set and add to queue list
             while (resultSet.next()) {
                 AndesQueue andesQueue = new AndesQueue(
-                        resultSet.getString(JDBCConstants.QUEUE_INFO)
+                        resultSet.getString(RDBMSConstants.QUEUE_DATA)
                 );
                 queueList.add(andesQueue);
             }
@@ -631,11 +631,11 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             return queueList;
         } catch (SQLException e) {
             throw new AndesException(
-                    "Error occurred while " + JDBCConstants.TASK_RETRIEVING_ALL_QUEUE_INFO, e);
+                    "Error occurred while " + RDBMSConstants.TASK_RETRIEVING_ALL_QUEUE_INFO, e);
         } finally {
-            close(resultSet, JDBCConstants.TASK_RETRIEVING_ALL_QUEUE_INFO);
-            close(preparedStatement, JDBCConstants.TASK_RETRIEVING_ALL_QUEUE_INFO);
-            close(connection, JDBCConstants.TASK_RETRIEVING_ALL_QUEUE_INFO);
+            close(resultSet, RDBMSConstants.TASK_RETRIEVING_ALL_QUEUE_INFO);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_ALL_QUEUE_INFO);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_ALL_QUEUE_INFO);
         }
     }
 
@@ -652,19 +652,19 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
             connection.setAutoCommit(false);
 
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_DELETE_QUEUE_INFO);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_QUEUE_INFO);
             preparedStatement.setString(1, queueName);
             preparedStatement.executeUpdate();
 
             connection.commit();
 
         } catch (SQLException e) {
-            String errMsg = JDBCConstants.TASK_DELETING_QUEUE_INFO + "queue name: " + queueName;
+            String errMsg = RDBMSConstants.TASK_DELETING_QUEUE_INFO + "queue name: " + queueName;
             rollback(connection, errMsg);
             throw new AndesException("Error occurred while " + errMsg, e);
         } finally {
-            close(preparedStatement, JDBCConstants.TASK_DELETING_QUEUE_INFO);
-            close(connection, JDBCConstants.TASK_DELETING_QUEUE_INFO);
+            close(preparedStatement, RDBMSConstants.TASK_DELETING_QUEUE_INFO);
+            close(connection, RDBMSConstants.TASK_DELETING_QUEUE_INFO);
         }
     }
 
@@ -682,7 +682,7 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
             connection.setAutoCommit(false);
 
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_INSERT_BINDING);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_BINDING);
             preparedStatement.setString(1, exchange);
             preparedStatement.setString(2, boundQueueName);
             preparedStatement.setString(3, bindingInfo);
@@ -691,13 +691,13 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             connection.commit();
 
         } catch (SQLException e) {
-            String errMsg = JDBCConstants.TASK_STORING_BINDING + " exchange: " + exchange +
+            String errMsg = RDBMSConstants.TASK_STORING_BINDING + " exchange: " + exchange +
                     " queue: " + boundQueueName + " routing key: " + bindingInfo;
             rollback(connection, errMsg);
             throw new AndesException("Error occurred while " + errMsg, e);
         } finally {
-            close(preparedStatement, JDBCConstants.TASK_STORING_BINDING);
-            close(connection, JDBCConstants.TASK_STORING_BINDING);
+            close(preparedStatement, RDBMSConstants.TASK_STORING_BINDING);
+            close(connection, RDBMSConstants.TASK_STORING_BINDING);
         }
     }
 
@@ -715,14 +715,14 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             List<AndesBinding> bindingList = new ArrayList<AndesBinding>();
             connection = getConnection();
 
-            preparedStatement = connection.prepareStatement(JDBCConstants
+            preparedStatement = connection.prepareStatement(RDBMSConstants
                     .PS_SELECT_BINDINGS_FOR_EXCHANGE);
             preparedStatement.setString(1, exchangeName);
             resultSet = preparedStatement.executeQuery();
 
             while (resultSet.next()) {
                 AndesBinding andesBinding = new AndesBinding(
-                        resultSet.getString(JDBCConstants.BINDING_INFO)
+                        resultSet.getString(RDBMSConstants.BINDING_INFO)
                 );
                 bindingList.add(andesBinding);
             }
@@ -730,11 +730,11 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             return bindingList;
         } catch (SQLException e) {
             throw new AndesException(
-                    "Error occurred while " + JDBCConstants.TASK_RETRIEVING_BINDING_INFO, e);
+                    "Error occurred while " + RDBMSConstants.TASK_RETRIEVING_BINDING_INFO, e);
         } finally {
-            close(resultSet, JDBCConstants.TASK_RETRIEVING_BINDING_INFO);
-            close(preparedStatement, JDBCConstants.TASK_RETRIEVING_BINDING_INFO);
-            close(connection, JDBCConstants.TASK_RETRIEVING_BINDING_INFO);
+            close(resultSet, RDBMSConstants.TASK_RETRIEVING_BINDING_INFO);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_BINDING_INFO);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_BINDING_INFO);
         }
     }
 
@@ -751,20 +751,20 @@ public class JDBCAndesContextStoreImpl implements AndesContextStore {
             connection = getConnection();
             connection.setAutoCommit(false);
 
-            preparedStatement = connection.prepareStatement(JDBCConstants.PS_DELETE_BINDING);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_BINDING);
             preparedStatement.setString(1, exchangeName);
             preparedStatement.setString(2, boundQueueName);
             preparedStatement.executeUpdate();
 
             connection.commit();
         } catch (SQLException e) {
-            String errMsg = JDBCConstants.TASK_DELETING_BINDING + " exchange: " + exchangeName +
+            String errMsg = RDBMSConstants.TASK_DELETING_BINDING + " exchange: " + exchangeName +
                     " bound queue: " + boundQueueName;
             rollback(connection, errMsg);
             throw new AndesException("Error occurred while " + errMsg, e);
         } finally {
-            close(preparedStatement, JDBCConstants.TASK_DELETING_BINDING);
-            close(connection, JDBCConstants.TASK_DELETING_BINDING);
+            close(preparedStatement, RDBMSConstants.TASK_DELETING_BINDING);
+            close(connection, RDBMSConstants.TASK_DELETING_BINDING);
         }
     }
 
