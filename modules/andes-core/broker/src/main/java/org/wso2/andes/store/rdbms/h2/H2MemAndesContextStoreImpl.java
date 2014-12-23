@@ -16,15 +16,15 @@
  * under the License.
  */
 
-package org.wso2.andes.store.jdbc.h2;
+package org.wso2.andes.store.rdbms.h2;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
-import org.wso2.andes.store.jdbc.JDBCAndesContextStoreImpl;
-import org.wso2.andes.store.jdbc.JDBCConnection;
+import org.wso2.andes.store.rdbms.RDBMSAndesContextStoreImpl;
+import org.wso2.andes.store.rdbms.RDBMSConnection;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -34,7 +34,7 @@ import java.sql.Statement;
  * This is H2 in memory mode specific AndesContextStore implementation Table creation at startup is
  * done in this implementation
  */
-public class H2MemAndesContextStoreImpl extends JDBCAndesContextStoreImpl {
+public class H2MemAndesContextStoreImpl extends RDBMSAndesContextStoreImpl {
 
     private static final Logger logger = Logger.getLogger(H2MemAndesContextStoreImpl.class);
 
@@ -42,58 +42,58 @@ public class H2MemAndesContextStoreImpl extends JDBCAndesContextStoreImpl {
      * Creates durable subscriptions table in H2 database
      */
     protected static final String CREATE_DURABLE_SUBSCRIPTION_TABLE =
-            "CREATE TABLE IF NOT EXISTS durable_subscriptions (" +
-                    "sub_id VARCHAR NOT NULL," +
-                    "destination_identifier VARCHAR NOT NULL," +
-                    "data VARCHAR NOT NULL" +
+            "CREATE TABLE IF NOT EXISTS MB_DURABLE_SUBSCRIPTION (" +
+                    "SUBSCRIPTION_ID VARCHAR NOT NULL," +
+                    "DESTINATION_IDENTIFIER VARCHAR NOT NULL," +
+                    "SUBSCRIPTION_DATA VARCHAR NOT NULL" +
                     ");";
 
     /**
      * Creates node info table in H2 database
      */
-    protected static final String CREATE_NODE_INFO_TABLE = "CREATE TABLE IF NOT EXISTS node_info (" +
-            "node_id VARCHAR NOT NULL," +
-            "data VARCHAR NOT NULL," +
-            "PRIMARY KEY(node_id)" +
+    protected static final String CREATE_NODE_INFO_TABLE = "CREATE TABLE IF NOT EXISTS MB_NODE (" +
+            "NODE_ID VARCHAR NOT NULL," +
+            "NODE_DATA VARCHAR NOT NULL," +
+            "PRIMARY KEY(NODE_ID)" +
             ");";
 
     /**
      * Creates exchanges table in H2 database
      */
-    protected static final String CREATE_EXCHANGES_TABLE = "CREATE TABLE IF NOT EXISTS exchanges (" +
-            "name VARCHAR NOT NULL," +
-            "data VARCHAR NOT NULL," +
-            "PRIMARY KEY(name)" +
+    protected static final String CREATE_EXCHANGES_TABLE = "CREATE TABLE IF NOT EXISTS MB_EXCHANGE (" +
+            "EXCHANGE_NAME VARCHAR NOT NULL," +
+            "EXCHANGE_DATA VARCHAR NOT NULL," +
+            "PRIMARY KEY(EXCHANGE_NAME)" +
             ");";
 
     /**
      * Create queue_info table in H2 database
      */
-    protected static final String CREATE_QUEUE_INFO_TABLE = "CREATE TABLE IF NOT EXISTS queue_info (" +
-            "name VARCHAR NOT NULL," +
-            "data VARCHAR NOT NULL," +
-            "PRIMARY KEY(name)" +
+    protected static final String CREATE_QUEUE_INFO_TABLE = "CREATE TABLE IF NOT EXISTS MB_QUEUE (" +
+            "QUEUE_NAME VARCHAR NOT NULL," +
+            "QUEUE_DATA VARCHAR NOT NULL," +
+            "PRIMARY KEY(QUEUE_NAME)" +
             ");";
     /**
      * Creates bindings table in H2 database
      */
     protected static final String CREATE_BINDINGS_TABLE =
-            "CREATE TABLE IF NOT EXISTS bindings (" +
-                    "exchange_name VARCHAR NOT NULL," +
-                    "queue_name VARCHAR NOT NULL," +
-                    "binding_info VARCHAR NOT NULL," +
-                    "FOREIGN KEY (exchange_name) REFERENCES exchanges (name)," +
-                    "FOREIGN KEY (queue_name) REFERENCES queue_info (name)" +
+            "CREATE TABLE IF NOT EXISTS MB_BINDING (" +
+                    "EXCHANGE_NAME VARCHAR NOT NULL," +
+                    "QUEUE_NAME VARCHAR NOT NULL," +
+                    "BINDING_DETAILS VARCHAR NOT NULL," +
+                    "FOREIGN KEY (EXCHANGE_NAME) REFERENCES MB_EXCHANGE (EXCHANGE_NAME)," +
+                    "FOREIGN KEY (QUEUE_NAME) REFERENCES MB_QUEUE (QUEUE_NAME)" +
                     ");";
 
     /**
      * Creates queue counter table in H2 database
      */
     protected static final String CREATE_QUEUE_COUNTER_TABLE =
-            "CREATE TABLE IF NOT EXISTS queue_counter ( " +
-                    "name VARCHAR NOT NULL," +
-                    "count BIGINT, " +
-                    "PRIMARY KEY (name) " +
+            "CREATE TABLE IF NOT EXISTS MB_QUEUE_COUNTER ( " +
+                    "QUEUE_NAME VARCHAR NOT NULL," +
+                    "MESSAGE_COUNT BIGINT, " +
+                    "PRIMARY KEY (QUEUE_NAME) " +
                     ");";
 
     /**
@@ -121,7 +121,7 @@ public class H2MemAndesContextStoreImpl extends JDBCAndesContextStoreImpl {
             throw new AndesException("In memory mode is not supported in cluster setup");
         }
 
-        DurableStoreConnection durableStoreConnection = super.init(JDBCConnection
+        DurableStoreConnection durableStoreConnection = super.init(RDBMSConnection
                 .getInMemoryConnectionProperties());
 
         // Additionally create in memory database tables

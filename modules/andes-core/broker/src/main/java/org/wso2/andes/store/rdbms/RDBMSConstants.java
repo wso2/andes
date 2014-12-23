@@ -16,13 +16,13 @@
  * under the License.
  */
 
-package org.wso2.andes.store.jdbc;
+package org.wso2.andes.store.rdbms;
 
 /**
  * JDBC storage related prepared statements, table names, column names and tasks are grouped
  * in this class.
  */
-public class JDBCConstants {
+public class RDBMSConstants {
 
     // jndi lookup
     protected static final String H2_MEM_JNDI_LOOKUP_NAME = "WSO2MBInMemoryStoreDB";
@@ -32,46 +32,46 @@ public class JDBCConstants {
     protected static final String PROP_MAX_QUEUE_CACHE_SIZE = "maxQueueCacheSize";
 
     // Message Store tables
-    protected static final String MESSAGES_TABLE = "messages";
-    protected static final String METADATA_TABLE = "metadata";
-    protected static final String QUEUES_TABLE = "queues";
-    protected static final String EXPIRATION_TABLE = "expiration_data";
+    protected static final String CONTENT_TABLE = "MB_CONTENT";
+    protected static final String METADATA_TABLE = "MB_METADATA";
+    protected static final String QUEUES_TABLE = "MB_QUEUE_MAPPING";
+    protected static final String EXPIRATION_TABLE = "MB_EXPIRATION_DATA";
 
     // Message Store table columns
-    protected static final String MESSAGE_ID = "message_id";
-    protected static final String QUEUE_ID = "queue_id";
-    protected static final String QUEUE_NAME = "name";
-    protected static final String METADATA = "data";
-    protected static final String MSG_OFFSET = "offset";
-    protected static final String MESSAGE_CONTENT = "content";
-    protected static final String EXPIRATION_TIME = "expiration_time";
-    protected static final String DESTINATION_QUEUE = "destination";
+    protected static final String MESSAGE_ID = "MESSAGE_ID";
+    protected static final String QUEUE_ID = "QUEUE_ID";
+    protected static final String QUEUE_NAME = "QUEUE_NAME";
+    protected static final String METADATA = "MESSAGE_METADATA";
+    protected static final String MSG_OFFSET = "CONTENT_OFFSET";
+    protected static final String MESSAGE_CONTENT = "MESSAGE_CONTENT";
+    protected static final String EXPIRATION_TIME = "EXPIRATION_TIME";
+    protected static final String DESTINATION_QUEUE = "MESSAGE_DESTINATION";
 
     // Andes Context Store tables
-    protected static final String DURABLE_SUB_TABLE = "durable_subscriptions";
-    protected static final String NODE_INFO_TABLE = "node_info";
-    protected static final String EXCHANGES_TABLE = "exchanges";
-    protected static final String BINDINGS_TABLE = "bindings";
-    protected static final String QUEUE_INFO_TABLE = "queue_info";
-    protected static final String QUEUE_COUNTER_TABLE = "queue_counter";
+    protected static final String DURABLE_SUB_TABLE = "MB_DURABLE_SUBSCRIPTION";
+    protected static final String NODE_INFO_TABLE = "MB_NODE";
+    protected static final String EXCHANGES_TABLE = "MB_EXCHANGE";
+    protected static final String BINDINGS_TABLE = "MB_BINDING";
+    protected static final String QUEUE_INFO_TABLE = "MB_QUEUE";
+    protected static final String QUEUE_COUNTER_TABLE = "MB_QUEUE_COUNTER";
 
     // Andes Context Store table columns
-    protected static final String DURABLE_SUB_ID = "sub_id";
-    protected static final String DESTINATION_IDENTIFIER = "destination_identifier";
-    protected static final String DURABLE_SUB_DATA = "data";
-    protected static final String NODE_ID = "node_id";
-    protected static final String NODE_INFO = "data";
-    protected static final String EXCHANGE_NAME = "name";
-    protected static final String EXCHANGE_DATA = "data";
-    protected static final String BINDING_INFO = "binding_info";
-    protected static final String BINDING_QUEUE_NAME = "queue_name";
-    protected static final String BINDING_EXCHANGE_NAME = "exchange_name";
-    protected static final String QUEUE_INFO = "data";
-    protected static final String QUEUE_COUNT = "count";
+    protected static final String DURABLE_SUB_ID = "SUBSCRIPTION_ID";
+    protected static final String DESTINATION_IDENTIFIER = "DESTINATION_IDENTIFIER";
+    protected static final String DURABLE_SUB_DATA = "SUBSCRIPTION_DATA";
+    protected static final String NODE_ID = "NODE_ID";
+    protected static final String NODE_INFO = "NODE_DATA";
+    protected static final String EXCHANGE_NAME = "EXCHANGE_NAME";
+    protected static final String EXCHANGE_DATA = "EXCHANGE_DATA";
+    protected static final String BINDING_INFO = "BINDING_DETAILS";
+    protected static final String BINDING_QUEUE_NAME = "QUEUE_NAME";
+    protected static final String BINDING_EXCHANGE_NAME = "EXCHANGE_NAME";
+    protected static final String QUEUE_DATA = "QUEUE_DATA";
+    protected static final String MESSAGE_COUNT = "MESSAGE_COUNT";
 
     // prepared statements for Message Store
     protected static final String PS_INSERT_MESSAGE_PART =
-            "INSERT INTO " + MESSAGES_TABLE + "(" +
+            "INSERT INTO " + CONTENT_TABLE + "(" +
                     MESSAGE_ID + "," +
                     MSG_OFFSET + "," +
                     MESSAGE_CONTENT + ") " +
@@ -79,12 +79,12 @@ public class JDBCConstants {
 
     protected static final String PS_DELETE_MESSAGE_PARTS =
             "DELETE " +
-                    " FROM " + MESSAGES_TABLE +
+                    " FROM " + CONTENT_TABLE +
                     " WHERE " + MESSAGE_ID + "=?";
 
     protected static final String PS_RETRIEVE_MESSAGE_PART =
             "SELECT " + MESSAGE_CONTENT +
-                    " FROM " + MESSAGES_TABLE +
+                    " FROM " + CONTENT_TABLE +
                     " WHERE " + MESSAGE_ID + "=?" +
                     " AND " + MSG_OFFSET + "=?";
 
@@ -103,8 +103,8 @@ public class JDBCConstants {
                     " VALUES ( ?,?,? )";
 
     protected static final String PS_INSERT_QUEUE =
-            "INSERT INTO " + JDBCConstants.QUEUES_TABLE + " (" +
-                    JDBCConstants.QUEUE_NAME + ") " +
+            "INSERT INTO " + RDBMSConstants.QUEUES_TABLE + " (" +
+                    RDBMSConstants.QUEUE_NAME + ") " +
                     " VALUES (?)";
 
     protected static final String PS_ALIAS_FOR_COUNT = "count";
@@ -223,11 +223,11 @@ public class JDBCConstants {
 
     protected static final String PS_INSERT_QUEUE_INFO =
             "INSERT INTO " + QUEUE_INFO_TABLE + " (" +
-                    QUEUE_NAME + "," + QUEUE_INFO + ") " +
+                    QUEUE_NAME + "," + QUEUE_DATA + ") " +
                     " VALUES (?,?)";
 
     protected static final String PS_SELECT_ALL_QUEUE_INFO =
-            "SELECT " + QUEUE_INFO +
+            "SELECT " + QUEUE_DATA +
                     " FROM " + QUEUE_INFO_TABLE;
 
     protected static final String PS_DELETE_QUEUE_INFO =
@@ -267,14 +267,14 @@ public class JDBCConstants {
      */
     protected static final String PS_INSERT_QUEUE_COUNTER =
             "INSERT INTO " + QUEUE_COUNTER_TABLE + " (" +
-                    QUEUE_NAME + "," + QUEUE_COUNT + " ) " +
+                    QUEUE_NAME + "," + MESSAGE_COUNT + " ) " +
                     " VALUES ( ?,? )";
 
     /**
      * Prepared Statement to select count for a queue prepared statement
      */
     protected static final String PS_SELECT_QUEUE_COUNT =
-            "SELECT " + QUEUE_COUNT +
+            "SELECT " + MESSAGE_COUNT +
                     " FROM " + QUEUE_COUNTER_TABLE +
                     " WHERE " + QUEUE_NAME + "=?";
 
@@ -290,7 +290,7 @@ public class JDBCConstants {
      */
     protected static final String PS_INCREMENT_QUEUE_COUNT =
             "UPDATE " + QUEUE_COUNTER_TABLE +
-                    " SET " + QUEUE_COUNT + "=" + QUEUE_COUNT + "+? " +
+                    " SET " + MESSAGE_COUNT + "=" + MESSAGE_COUNT + "+? " +
                     " WHERE " + QUEUE_NAME + "=?";
 
     /**
@@ -298,12 +298,12 @@ public class JDBCConstants {
      */
     protected static final String PS_DECREMENT_QUEUE_COUNT =
             "UPDATE " + QUEUE_COUNTER_TABLE +
-                    " SET " + QUEUE_COUNT + "=" + QUEUE_COUNT + "-? " +
+                    " SET " + MESSAGE_COUNT + "=" + MESSAGE_COUNT + "-? " +
                     " WHERE " + QUEUE_NAME + "=?";
 
     protected static final String PS_RESET_QUEUE_COUNT =
             "UPDATE " + QUEUE_COUNTER_TABLE +
-                    " SET " + QUEUE_COUNT + "= 0" +
+                    " SET " + MESSAGE_COUNT + "= 0" +
                     " WHERE " + QUEUE_NAME + "=?";
 
     // Message Store related jdbc tasks executed
@@ -370,6 +370,6 @@ public class JDBCConstants {
     /**
      * Only public static constants are in this class. No need to instantiate.
      */
-    private JDBCConstants() {
+    private RDBMSConstants() {
     }
 }
