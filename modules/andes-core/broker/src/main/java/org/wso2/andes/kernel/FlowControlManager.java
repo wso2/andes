@@ -33,29 +33,60 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class FlowControlManager {
-
     /**
      * Class logger
      */
     private static Log log = LogFactory.getLog(AndesChannel.class);
 
+    /**
+     * Global high limit that trigger flow control globally
+     */
     private final int globalLowLimit;
+
+    /**
+     * Global low limit that disables trigger flow control disable
+     */
     private final int globalHighLimit;
+
+    /**
+     * List of active channels
+     */
     private final ArrayList<AndesChannel> channels;
+
+    /**
+     * Executor used for flow control timeout tasks
+     */
     private final ScheduledExecutorService executor;
-    private AtomicInteger messagesOnBuffer;
-    private boolean flowControlEnabled;
+
+    /**
+     * Track total number of unprocessed messages
+     */
+    private AtomicInteger messagesOnGlobalBuffer;
+
+    /**
+     * Indicate if the flow control is enabled globally
+     */
+    private boolean globalFlowControlEnabled;
+
+    /**
+     * Global flow control time out task
+     */
     private Runnable flowControlTimeoutTask = new FlowControlTimeoutTask();
+
+    /**
+     * Used to close the flow control timeout task if not required
+     */
     private ScheduledFuture<?> scheduledFlowControlTimeoutFuture;
 
 
     public FlowControlManager() {
-        globalLowLimit = AndesConfigurationManager
+        globalLowLimit = (Integer) AndesConfigurationManager
                 .readValue(AndesConfiguration.FLOW_CONTROL_GLOBAL_LOW_LIMIT);
-        globalHighLimit = AndesConfigurationManager
+        globalHighLimit = (Integer) AndesConfigurationManager
                 .readValue(AndesConfiguration.FLOW_CONTROL_GLOBAL_HIGH_LIMIT);
-        messagesOnBuffer = new AtomicInteger(0);
-        flowControlEnabled = false;
+
+        messagesOnGlobalBuffer = new AtomicInteger(0);
+        globalFlowControlEnabled = false;
         channels = new ArrayList<AndesChannel>();
 
         // Initialize executor service for state validity checking
@@ -64,12 +95,24 @@ public class FlowControlManager {
         executor = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
     }
 
+    /**
+     * Create a new Andes channel for a new local channel.
+     *
+     * @param listener
+     *         Local flow control listener
+     * @return AndesChannel
+     */
     public synchronized AndesChannel createChannel(FlowControlListener listener) {
-        AndesChannel channel = new AndesChannel(this, listener, flowControlEnabled);
+        AndesChannel channel = new AndesChannel(this, listener, globalFlowControlEnabled);
         channels.add(channel);
         return channel;
     }
 
+    /**
+     * Get the scheduled executor used for flow controlling tasks
+     *
+     * @return Scheduled executor
+     */
     public ScheduledExecutorService getScheduledExecutor() {
         return executor;
     }
@@ -81,16 +124,19 @@ public class FlowControlManager {
      *         Number of items added to buffer
      */
     public void notifyAddition(int size) {
-        int count = messagesOnBuffer.addAndGet(size);
+        int count = messagesOnGlobalBuffer.addAndGet(size);
 
-        if (!flowControlEnabled && count >= globalHighLimit) {
+        if (!globalFlowControlEnabled && count >= globalHighLimit) {
             blockListeners();
         }
     }
 
+    /**
+     * Notify all the channel to enable flow control
+     */
     private synchronized void blockListeners() {
-        if (!flowControlEnabled) {
-            flowControlEnabled = true;
+        if (!globalFlowControlEnabled) {
+            globalFlowControlEnabled = true;
 
             for (AndesChannel channel : channels) {
                 channel.notifyGlobalFlowControlActivation();
@@ -108,17 +154,20 @@ public class FlowControlManager {
      *         Number of items removed from buffer
      */
     public void notifyRemoval(int size) {
-        int count = messagesOnBuffer.addAndGet(-size);
+        int count = messagesOnGlobalBuffer.addAndGet(-size);
 
-        if (flowControlEnabled && count <= globalLowLimit) {
+        if (globalFlowControlEnabled && count <= globalLowLimit) {
             unblockListeners();
         }
     }
 
+    /**
+     * Notify all the channels to disable flow control
+     */
     private synchronized void unblockListeners() {
-        if (flowControlEnabled) {
+        if (globalFlowControlEnabled) {
             scheduledFlowControlTimeoutFuture.cancel(false);
-            flowControlEnabled = false;
+            globalFlowControlEnabled = false;
 
             for (AndesChannel channel : channels) {
                 channel.notifyGlobalFlowControlDeactivation();
@@ -128,14 +177,25 @@ public class FlowControlManager {
         }
     }
 
+    /**
+     * Remove channel from tracking
+     *
+     * @param channel
+     *         Andes channel
+     */
     public synchronized void removeChannel(AndesChannel channel) {
         channels.remove(channel);
     }
 
+    /**
+     * This timeout task avoid flow control being enforced forever. This can happen if the recordAdditionToBuffer get a
+     * context switch after evaluating the existing condition and during that time all the messages present in global
+     * buffer get processed from the StateEventHandler.
+     */
     private class FlowControlTimeoutTask implements Runnable {
         @Override
         public void run() {
-            if (flowControlEnabled && messagesOnBuffer.get() <= globalLowLimit) {
+            if (globalFlowControlEnabled && messagesOnGlobalBuffer.get() <= globalLowLimit) {
                 unblockListeners();
             }
         }

@@ -338,10 +338,23 @@ public class Andes {
         return MessagingEngine.getInstance().generateNewMessageId();
     }
 
+    /**
+     * Create a new Andes channel for a new local channel.
+     *
+     * @param listener
+     *         Local flow control listener
+     * @return AndesChannel
+     */
     public AndesChannel createChannel(FlowControlListener listener) {
         return flowControlManager.createChannel(listener);
     }
 
+    /**
+     * Remove Andes channel from tracking
+     *
+     * @param channel
+     *         Andes channel
+     */
     public void removeChannel(AndesChannel channel) {
         flowControlManager.removeChannel(channel);
     }
