@@ -421,6 +421,9 @@ public class MessagingEngine {
                 AndesMessageMetadata metadata = messageStore.getMetaData(message.getMessageID());
                 messageStore.addMetaDataToQueue(AndesConstants.DEAD_LETTER_QUEUE_NAME, metadata);
             }
+
+            //remove message tracking data
+            OnflightMessageTracker.getInstance().removeTrackingDataOfMessage(message.getMessageID());
         }
 
         //remove metadata
