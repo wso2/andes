@@ -168,11 +168,6 @@ public class SlotDeliveryWorker extends Thread {
                                     } else {
                                         currentSlot.setSlotInActive();
                                         MBThriftClient.deleteSlot(storageQueueName, currentSlot, nodeId);
-                                        //Release all message trackings for messages of slot
-//                                        OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(currentSlot);
-                                        /*If there are messages to be sent in the message
-                                        buffer in MessageFlusher send them */
-//                                        sendFromMessageBuffer(destinationOfMessagesInQueue);
                                     }
                                 }
                             //Standalone mode
@@ -371,7 +366,6 @@ public class SlotDeliveryWorker extends Thread {
 
                     if (isClusteringEnabled) {
                         MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
-//                        OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
                     }
                 } catch (ConnectionException e) {
                     throw new AndesException(
@@ -392,7 +386,6 @@ public class SlotDeliveryWorker extends Thread {
 
                 if (isClusteringEnabled) {
                     MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
-//                    OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
                 }
             } catch (ConnectionException e) {
                 throw new AndesException(
