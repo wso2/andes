@@ -24,7 +24,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessageStore;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 
 /**
  * This class is used as a task to delete message content at scheduled period
@@ -41,7 +41,7 @@ public class MessageContentRemoverTask implements Runnable {
     /**
      * To be deleted content
      */
-    private final Map<Long, Long> messageToDeleteMap;
+    private final BlockingDeque<Long> messageIdToDeleteQueue;
 
     /**
      * Setup the content deletion task with the reference to MessageStore and
@@ -50,20 +50,22 @@ public class MessageContentRemoverTask implements Runnable {
      */
     public MessageContentRemoverTask(MessageStore messageStore) {
         this.messageStore = messageStore;
-        messageToDeleteMap = new ConcurrentHashMap<Long, Long>();
+        messageIdToDeleteQueue = new LinkedBlockingDeque<Long>();
     }
 
     public void run() {
         try {
-            if (!messageToDeleteMap.isEmpty()) {
+            if (!messageIdToDeleteQueue.isEmpty()) {
 
                 try {
-                    messageStore.deleteMessageParts(messageToDeleteMap.values());
+                    int queueCount = messageIdToDeleteQueue.size();
+                    List<Long> idList = new ArrayList<Long>(queueCount);
+                    messageIdToDeleteQueue.drainTo(idList);
                     // Remove from the deletion task map
+                    messageStore.deleteMessageParts(idList);
                     if (log.isDebugEnabled()) {
-                        log.debug("Message content removed of " + messageToDeleteMap.size() + " messages.");
+                        log.debug("Message content removed of " + idList.size() + " messages.");
                     }
-                    messageToDeleteMap.clear();
                 } catch (AndesException e) {
                     log.error("Error while deleting message contents", e);
                 }
@@ -78,6 +80,6 @@ public class MessageContentRemoverTask implements Runnable {
      * @param messageId message id of the content
      */
     public void put(Long messageId) {
-        messageToDeleteMap.put(messageId, messageId);
+        messageIdToDeleteQueue.add(messageId);
     }
 }
