@@ -41,15 +41,15 @@ public class MQTTChannel {
     private AndesChannel andesChannel;
 
     public MQTTChannel() {
-        andesChannel = Andes.createChannel(new FlowControlListener() {
+        andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {
             @Override
             public void block() {
-                // Need to implement
+                // TODO: Need to implement
             }
 
             @Override
             public void unblock() {
-                // Need to implement
+                // TODO: Need to implement
             }
         });
     }
@@ -94,6 +94,7 @@ public class MQTTChannel {
 
             AndesMessage andesMessage = new AndesMessage(messageHeader);
             andesMessage.addMessagePart(messagePart);
+            // TODO: Need to handle Flow control in MQTT properly
             Andes.getInstance().messageReceived(andesMessage, andesChannel);
             if(log.isDebugEnabled()) {
                 log.debug(" Message added with message id " + mqttLocalMessageID);

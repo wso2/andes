@@ -80,68 +80,72 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
         }
 
         if (message.getMetadata().isTopic()) {
-            String messageRoutingKey = message.getMetadata().getDestination();
-            //get all topic subscriptions in the cluster matching to routing key
-            //including hierarchical topic case
-            List<AndesSubscription> subscriptionList;
-            try {
-
-                // TODO: This call is O(n2). In critical path. Need to improve
-                subscriptionList = subscriptionStore.getClusterSubscribersForDestination(messageRoutingKey, true);
-
-                // current message is removed from list and updated cloned messages added later
-                event.messageList.clear();
-                boolean isMessageRouted = false;
-                Set<String> alreadyStoredQueueNames = new HashSet<String>();
-                for (AndesSubscription subscription : subscriptionList) {
-                    if (!alreadyStoredQueueNames.contains(subscription.getStorageQueueName())) {
-                        AndesMessage clonedMessage = cloneAndesMessageMetadataAndContent(message);
-
-                        //Message should be written to storage queue name. This is
-                        //determined by destination of the message. So should be
-                        //updated (but internal metadata will have topic name as usual)
-                        clonedMessage.getMetadata().setStorageQueueName(subscription.getStorageQueueName());
-
-                        if (subscription.isDurable()) {
-                            /**
-                             * For durable topic subscriptions we must update the routing key
-                             * in metadata as well so that they become independent messages
-                             * baring subscription bound queue name as the destination
-                             */
-                            clonedMessage.getMetadata().updateMetadata(subscription.getTargetQueue(),
-                                    AMQPUtils.DIRECT_EXCHANGE_NAME);
-                        }
-                        if (log.isDebugEnabled()) {
-                            log.debug("Storing metadata queue " + subscription.getStorageQueueName() + " messageID "
-                                    + clonedMessage.getMetadata().getMessageID() + " isTopic");
-                        }
-
-                        // add the topic wise cloned message to the events list. Message writers will pick that and
-                        // write it.
-                        event.messageList.add(clonedMessage);
-                        andesChannel.recordAdditionToBuffer(clonedMessage.getContentChunkList().size());
-                        isMessageRouted = true;
-                        alreadyStoredQueueNames.add(subscription.getStorageQueueName());
-                    }
-                }
-
-                // If there is no matching subscriber at the moment there is no point of storing the message
-                if (!isMessageRouted) {
-                    log.info("Message routing key: " + message.getMetadata().getDestination() + " No routes in " +
-                            "cluster. Ignoring Message id " + message.getMetadata().getMessageID());
-
-                    // Only one message in list. Clear it and set to ignore the message by message writers
-                    event.setEventType(InboundEvent.Type.IGNORE_EVENT);
-                    event.messageList.clear();
-                }
-            } catch (AndesException e) {
-                log.error("Error occurred while processing routing information fot topic message. Routing Key " +
-                        messageRoutingKey + ", Message ID " + message.getMetadata().getMessageID());
-            }
+            handleTopicRoutine(event, message, andesChannel);
         } else {
             andesChannel.recordAdditionToBuffer(message.getContentChunkList().size());
             AndesMessageMetadata messageMetadata = message.getMetadata();
             messageMetadata.setStorageQueueName(messageMetadata.getDestination());
+        }
+    }
+
+    private void handleTopicRoutine(InboundEvent event, AndesMessage message, AndesChannel andesChannel) {
+        String messageRoutingKey = message.getMetadata().getDestination();
+        //get all topic subscriptions in the cluster matching to routing key
+        //including hierarchical topic case
+        List<AndesSubscription> subscriptionList;
+        try {
+
+            // TODO: This call is O(n2). In critical path. Need to improve
+            subscriptionList = subscriptionStore.getClusterSubscribersForDestination(messageRoutingKey, true);
+
+            // current message is removed from list and updated cloned messages added later
+            event.messageList.clear();
+            boolean isMessageRouted = false;
+            Set<String> alreadyStoredQueueNames = new HashSet<String>();
+            for (AndesSubscription subscription : subscriptionList) {
+                if (!alreadyStoredQueueNames.contains(subscription.getStorageQueueName())) {
+                    AndesMessage clonedMessage = cloneAndesMessageMetadataAndContent(message);
+
+                    //Message should be written to storage queue name. This is
+                    //determined by destination of the message. So should be
+                    //updated (but internal metadata will have topic name as usual)
+                    clonedMessage.getMetadata().setStorageQueueName(subscription.getStorageQueueName());
+
+                    if (subscription.isDurable()) {
+                        /**
+                         * For durable topic subscriptions we must update the routing key
+                         * in metadata as well so that they become independent messages
+                         * baring subscription bound queue name as the destination
+                         */
+                        clonedMessage.getMetadata().updateMetadata(subscription.getTargetQueue(),
+                                AMQPUtils.DIRECT_EXCHANGE_NAME);
+                    }
+                    if (log.isDebugEnabled()) {
+                        log.debug("Storing metadata queue " + subscription.getStorageQueueName() + " messageID "
+                                + clonedMessage.getMetadata().getMessageID() + " isTopic");
+                    }
+
+                    // add the topic wise cloned message to the events list. Message writers will pick that and
+                    // write it.
+                    event.messageList.add(clonedMessage);
+                    andesChannel.recordAdditionToBuffer(clonedMessage.getContentChunkList().size());
+                    isMessageRouted = true;
+                    alreadyStoredQueueNames.add(subscription.getStorageQueueName());
+                }
+            }
+
+            // If there is no matching subscriber at the moment there is no point of storing the message
+            if (!isMessageRouted) {
+                log.info("Message routing key: " + message.getMetadata().getDestination() + " No routes in " +
+                        "cluster. Ignoring Message id " + message.getMetadata().getMessageID());
+
+                // Only one message in list. Clear it and set to ignore the message by message writers
+                event.setEventType(InboundEvent.Type.IGNORE_EVENT);
+                event.messageList.clear();
+            }
+        } catch (AndesException e) {
+            log.error("Error occurred while processing routing information fot topic message. Routing Key " +
+                    messageRoutingKey + ", Message ID " + message.getMetadata().getMessageID());
         }
     }
 

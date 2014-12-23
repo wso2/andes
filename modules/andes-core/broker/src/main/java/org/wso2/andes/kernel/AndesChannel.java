@@ -20,10 +20,12 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * AndesChannel keep track of the states of the local channels
@@ -33,6 +35,11 @@ public class AndesChannel {
      * Class logger
      */
     private static Log log = LogFactory.getLog(AndesChannel.class);
+
+    /**
+     * Used to generate unique IDs for channels
+     */
+    private static AtomicLong idGenerator = new AtomicLong(0);
 
     /**
      * Lister used to communicate with the local channels
@@ -50,6 +57,26 @@ public class AndesChannel {
     private final Integer flowControlHighLimit;
 
     /**
+     * Flow control manager used to handle gobal flow control events
+     */
+    private final FlowControlManager flowControlManager;
+
+    /**
+     * Channel of the current channel
+     */
+    private final long id;
+
+    /**
+     * Scheduled executor service used to create flow control timeout events
+     */
+    private final ScheduledExecutorService executor;
+
+    /**
+     * Flow control timeout task for current channel
+     */
+    private Runnable flowControlTimeoutTask = new FlowControlTimeoutTask();
+
+    /**
      * Number of messages waiting in the buffer
      */
     private AtomicInteger messagesOnBuffer;
@@ -59,13 +86,61 @@ public class AndesChannel {
      */
     private boolean flowControlEnabled;
 
-    public AndesChannel(FlowControlListener listener) {
-        this.listener = listener;
+    /**
+     * Track global flow control status
+     */
+    private boolean globalFlowControlEnabled;
 
-        this.flowControlLowLimit = ((Integer) AndesConfigurationManager.readValue(AndesConfiguration.FLOW_CONTROL_BUFFER_BASED_LOW_LIMIT));
-        this.flowControlHighLimit = ((Integer) AndesConfigurationManager.readValue(AndesConfiguration.FLOW_CONTROL_BUFFER_BASED_HIGH_LIMIT));
-        this.messagesOnBuffer = new AtomicInteger();
-        flowControlEnabled = false;
+    /**
+     * Used to close the flow control timeout task if not required
+     */
+    private ScheduledFuture<?> scheduledFlowControlTimeoutFuture;
+
+    public AndesChannel(FlowControlManager flowControlManager, FlowControlListener listener,
+                        boolean globalFlowControlEnabled) {
+        this.flowControlManager = flowControlManager;
+        this.listener = listener;
+        // Used the same executor used by the flow control manager
+        this.executor = flowControlManager.getScheduledExecutor();
+        this.globalFlowControlEnabled = globalFlowControlEnabled;
+
+        // Read limits
+        this.flowControlLowLimit = flowControlManager.getChannelLowLimit();
+        this.flowControlHighLimit = flowControlManager.getChannelHighLimit();
+
+        this.id = idGenerator.incrementAndGet();
+        this.messagesOnBuffer = new AtomicInteger(0);
+        this.flowControlEnabled = false;
+
+        log.info("Channel created with ID: " + id);
+    }
+
+    /**
+     * This method is called by the flow control manager when flow control is enforced globally
+     */
+    public void notifyGlobalFlowControlActivation() {
+        globalFlowControlEnabled = true;
+    }
+
+    /**
+     * This method is called by the flow control manager when flow control is not enforced globaly
+     */
+    public void notifyGlobalFlowControlDeactivation() {
+        globalFlowControlEnabled = false;
+        unblockLocalChannel();
+    }
+
+    /**
+     * Notify local channel to unblock channel
+     */
+    private synchronized void unblockLocalChannel() {
+        if (flowControlEnabled) {
+            scheduledFlowControlTimeoutFuture.cancel(false);
+            flowControlEnabled = false;
+            listener.unblock();
+
+            log.info("Flow control disabled for channel " + id + ".");
+        }
     }
 
     /**
@@ -75,13 +150,25 @@ public class AndesChannel {
      *         Number of items added to buffer
      */
     public void recordAdditionToBuffer(int size) {
+        flowControlManager.notifyAddition(size);
+
         int count = messagesOnBuffer.addAndGet(size);
 
-        if (!flowControlEnabled && count >= flowControlHighLimit) {
+        if (!flowControlEnabled && (globalFlowControlEnabled || count >= flowControlHighLimit)) {
+            blockLocalChannel();
+        }
+    }
+
+    /**
+     * Notify local channel to block channel temporary
+     */
+    private synchronized void blockLocalChannel() {
+        if (!flowControlEnabled) {
             flowControlEnabled = true;
             listener.block();
+            scheduledFlowControlTimeoutFuture = executor.schedule(flowControlTimeoutTask, 1, TimeUnit.MINUTES);
 
-            log.info("Flow control enabled for channel.");
+            log.info("Flow control enabled for channel " + id + ".");
         }
     }
 
@@ -92,13 +179,26 @@ public class AndesChannel {
      *         Number of items removed from buffer
      */
     public void recordRemovalFromBuffer(int size) {
+        flowControlManager.notifyRemoval(size);
+
         int count = messagesOnBuffer.addAndGet(-size);
 
-        if (flowControlEnabled && count <= flowControlLowLimit) {
-            flowControlEnabled = false;
-            listener.unblock();
+        if (flowControlEnabled && !globalFlowControlEnabled && count <= flowControlLowLimit) {
+            unblockLocalChannel();
+        }
+    }
 
-            log.info("Flow control disabled for channel.");
+    /**
+     * This timeout task avoid flow control being enforced forever. This can happen if the recordAdditionToBuffer get a
+     * context switch after evaluating the existing condition and during that time all the messages get processed from
+     * the StateEventHandler.
+     */
+    private class FlowControlTimeoutTask implements Runnable {
+        @Override
+        public void run() {
+            if (flowControlEnabled && !globalFlowControlEnabled && messagesOnBuffer.get() <= flowControlLowLimit) {
+                unblockLocalChannel();
+            }
         }
     }
 }
