@@ -31,7 +31,6 @@ import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.filter.FilterManager;
 import org.wso2.andes.server.filter.FilterManagerFactory;
 import org.wso2.andes.server.flow.FlowCreditManager;
@@ -258,26 +257,16 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                 recordMessageDelivery(entry, deliveryTag);
 
                 long messageID = entry.getMessage().getMessageNumber();
-                OnflightMessageTracker messageTracker = OnflightMessageTracker.getInstance();
-
-                boolean isRedelivered = messageTracker.checkAndRegisterSent(messageID, getChannel().getId());
-
-                //set redelivery header
-                if (isRedelivered) {
-                    entry.setRedelivered();
-                }
-
-                if (messageTracker.evaluateDeliveryRules(messageID, getChannel().getId())) {
 
                     //no point of trying to deliver if channel is closed ReQueue the message to
                     // be resent
                     // when channel is available
-                    if (getChannel().isClosing()) {
+/*                    if (getChannel().isClosing()) {
                         AndesMessageMetadata message = AMQPUtils.convertAMQMessageToAndesMetadata(
                                 (AMQMessage) entry.getMessage(), getChannel().getId());
                         MessagingEngine.getInstance().messageRejected(message);
                         return;
-                    }
+                    }*/
 
                     if (log.isDebugEnabled()) {
                         log.debug("sent message : " + messageID + " JMSMessageId " +
@@ -288,22 +277,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                     }
 
                     sendToClient(entry, deliveryTag);
-                } else {
-                    /**
-                     * message tracker rejected this message from sending. Hence moving
-                     * to dead letter channel
-                     */
-                    long messageId = entry.getMessage().getMessageNumber();
-                    String destinationQueue = ((AMQMessage) entry.getMessage())
-                            .getMessageMetaData()
-                            .getMessagePublishInfo()
-                            .getRoutingKey().toString();
 
-                    //move message to DLC
-                    //todo: hasitha - for topics this should not happen
-                    MessagingEngine.getInstance().moveMessageToDeadLetterChannel(messageId,
-                            destinationQueue);
-                }
 
             } catch (Exception e) {
 

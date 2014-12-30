@@ -24,7 +24,6 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.MessageExpirationWorker;
 import org.wso2.andes.server.cassandra.MessageFlusher;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
@@ -221,9 +220,9 @@ public class MessagingEngine {
      * @param metadata message that is rejected. It must bare id of channel reject came from
      * @throws AndesException
      */
-    public void messageRejected(AndesMessageMetadata metadata) throws AndesException {
+    public void messageRejected(DeliverableAndesMessageMetadata metadata, AndesChannel rejectedChannel) throws AndesException {
 
-        OnflightMessageTracker.getInstance().handleFailure(metadata);
+        metadata.recordRejectionByChannel(rejectedChannel.getChannelID());
         LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId
                 (metadata.getChannelId(), metadata.getDestination(), metadata.isTopic());
         if (subToResend != null) {
@@ -241,7 +240,7 @@ public class MessagingEngine {
      * @param subscription    subscription to send
      * @throws AndesException
      */
-    public void reQueueMessage(AndesMessageMetadata messageMetadata, LocalSubscription subscription)
+    public void reQueueMessage(DeliverableAndesMessageMetadata messageMetadata, LocalSubscription subscription)
             throws AndesException {
         MessageFlusher.getInstance().scheduleMessageForSubscription(subscription, messageMetadata);
     }
@@ -263,9 +262,7 @@ public class MessagingEngine {
         messageStore.moveMetaDataToQueue(messageId, destinationQueueName, deadLetterQueueName);
         PerformanceCounter.warnIfTookMoreTime("Move Metadata ", start, 10);
 
-        //remove tracking of the message
-        OnflightMessageTracker.getInstance()
-                .stampMessageAsDLCAndRemoveFromTacking(messageId);
+        //TODO: delete message reference from all channels
     }
 
     /**

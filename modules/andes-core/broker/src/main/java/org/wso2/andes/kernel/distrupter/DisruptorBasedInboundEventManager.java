@@ -244,7 +244,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
      * @inheritDoc
      */
     @Override
-    public void clientConnectionClosed(UUID channelID) {
+    public void clientConnectionClosed(long channelID) {
         publishToRingBuffer(InboundEvent.Type.CHANNEL_CLOSE_EVENT, channelID, "Channel close event published to disruptor.");
     }
 
@@ -252,7 +252,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
      * @inheritDoc
      */
     @Override
-    public void clientConnectionCreated(UUID channelID) {
+    public void clientConnectionCreated(long channelID) {
         publishToRingBuffer(InboundEvent.Type.CHANNEL_OPEN_EVENT, channelID, "Channel open event published to disruptor.");
     }
 

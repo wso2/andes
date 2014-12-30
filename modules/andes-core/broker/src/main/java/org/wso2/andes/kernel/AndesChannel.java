@@ -20,7 +20,11 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -96,6 +100,28 @@ public class AndesChannel {
      */
     private ScheduledFuture<?> scheduledFlowControlTimeoutFuture;
 
+    /**
+     * Messages delivered through this channel
+     */
+    private ConcurrentHashMap<Long, DeliverableAndesMessageMetadata> messagesSentToChannel;
+
+    /**
+     * Track number of sent but not acknowledged messages
+     */
+    private AtomicLong numberOfSentButNotAckedMessages;
+
+    /**
+     * Is this channel suspended for messages. This is for subscriber
+     * side flow control
+     */
+    private boolean channelSuspended;
+
+    /**
+     * Maximum number of delivered but not acked number of messages allowed
+     * through this channel before suspending
+     */
+    private Integer maxNumberOfDeliveredButUnAckedMessages = 5000;
+
     public AndesChannel(FlowControlManager flowControlManager, FlowControlListener listener,
                         boolean globalFlowControlEnabled) {
         this.flowControlManager = flowControlManager;
@@ -111,6 +137,12 @@ public class AndesChannel {
         this.id = idGenerator.incrementAndGet();
         this.messagesOnBuffer = new AtomicInteger(0);
         this.flowControlEnabled = false;
+
+        this.messagesSentToChannel = new ConcurrentHashMap<Long, DeliverableAndesMessageMetadata>();
+        this.numberOfSentButNotAckedMessages = new AtomicLong(0);
+        this.maxNumberOfDeliveredButUnAckedMessages = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
+        this.channelSuspended = false;
 
         log.info("Channel created with ID: " + id);
     }
@@ -199,6 +231,70 @@ public class AndesChannel {
             if (flowControlEnabled && !globalFlowControlEnabled && messagesOnBuffer.get() <= flowControlLowLimit) {
                 unblockLocalChannel();
             }
+        }
+    }
+
+
+    /**
+     * This is called when message is tried to be sent through the channel.
+     * It will record and keep a reference of the message sent
+     * @param message message to be sent
+     */
+    public void registerMessageDelivery(DeliverableAndesMessageMetadata message) {
+        messagesSentToChannel.put(message.getMessageID(), message);
+        incrementNotAckedMessageCount();
+    }
+
+    public void unRegisterMessageDelivery(DeliverableAndesMessageMetadata message) {
+        messagesSentToChannel.remove(message.getMessageID());
+    }
+
+    public DeliverableAndesMessageMetadata acknowledgeMessage(long messageID) {
+        decrementNotAckedMessageCount();
+        return messagesSentToChannel.remove(messageID);
+    }
+
+
+    public DeliverableAndesMessageMetadata rejectMessage(long messageID, boolean reQueue) {
+        DeliverableAndesMessageMetadata rejectedMessage = messagesSentToChannel.get(messageID);
+        rejectedMessage.setChannelId(id);
+        if(!reQueue) {
+            messagesSentToChannel.remove(messageID);
+        }
+        decrementNotAckedMessageCount();
+        return rejectedMessage;
+    }
+
+    public void incrementNotAckedMessageCount() {
+        numberOfSentButNotAckedMessages.incrementAndGet();
+        if (numberOfSentButNotAckedMessages.get() > maxNumberOfDeliveredButUnAckedMessages) {
+            channelSuspended = true;
+            log.info("Subscriber is Suspended as It Has Failed To Ack " +
+                     maxNumberOfDeliveredButUnAckedMessages + " Messages");
+        }
+    }
+
+    public void decrementNotAckedMessageCount() {
+        numberOfSentButNotAckedMessages.decrementAndGet();
+        if(channelSuspended && numberOfSentButNotAckedMessages.get() < (maxNumberOfDeliveredButUnAckedMessages * 60 /100 ) ) {
+            channelSuspended = false;
+            log.info("Subscriber is Responding. Releasing Suspension " +
+                     maxNumberOfDeliveredButUnAckedMessages + " Messages");
+        }
+    }
+
+    public boolean isChannelSuspended() {
+        return channelSuspended;
+    }
+
+    //should call when send to DLC
+    public void removeMessageFromChannel(long messageID) {
+        messagesSentToChannel.remove(messageID);
+    }
+
+    public void close() {
+        for(Map.Entry<Long, DeliverableAndesMessageMetadata> msgEntry : messagesSentToChannel.entrySet()) {
+            msgEntry.getValue().recordChannelClose(id);
         }
     }
 }

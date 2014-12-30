@@ -27,6 +27,7 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.DeliverableAndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
 
 import java.util.concurrent.Executor;
@@ -91,7 +92,7 @@ public class DisruptorBasedFlusher {
      * @param metadata
      *         Message metadata
      */
-    public void submit(LocalSubscription subscription, AndesMessageMetadata metadata) {
+    public void submit(LocalSubscription subscription, DeliverableAndesMessageMetadata metadata) {
         long nextSequence = ringBuffer.next();
 
         // Initialize event data holder
@@ -100,6 +101,7 @@ public class DisruptorBasedFlusher {
         data.setMetadata(metadata);
 
         ringBuffer.publish(nextSequence);
+        metadata.recordScheduleToDeliver();
     }
 
     /**

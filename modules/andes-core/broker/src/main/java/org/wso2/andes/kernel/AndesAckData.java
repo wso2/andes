@@ -18,71 +18,45 @@
 
 package org.wso2.andes.kernel;
 
-import java.util.UUID;
-
 /**
  * Wrapper class of message acknowledgment data publish to disruptor
  */
 public class AndesAckData {
 
-    private long messageID;
-    private String destination;
-    private String msgStorageDestination;
-    private boolean isTopic;
-    private UUID channelID;
+    private DeliverableAndesMessageMetadata messageReference;
+    private AndesChannel ackedChannel;
 
-    public AndesAckData(){}
-
-    public AndesAckData(UUID channelID, long messageID, String destination, String msgStorageDestination, boolean isTopic) {
-        this.channelID = channelID;
-        this.messageID = messageID;
-        this.destination = destination;
-        this.msgStorageDestination = msgStorageDestination;
-        this.isTopic = isTopic;
+    public AndesAckData(AndesChannel ackedChannel, DeliverableAndesMessageMetadata messageReference) {
+        this.ackedChannel = ackedChannel;
+        this.messageReference = messageReference;
     }
 
-    public AndesRemovableMetadata convertToRemovableMetaData() {
-        return new AndesRemovableMetadata(this.messageID, this.msgStorageDestination, this.destination);
+    public DeliverableAndesMessageMetadata getMessageReference() {
+        return  messageReference;
+    }
+
+    public AndesChannel getAckedChannel() {
+        return ackedChannel;
     }
 
     public long getMessageID() {
-        return messageID;
-    }
-
-    public void setMessageID(long messageID) {
-        this.messageID = messageID;
+        return messageReference.getMessageID();
     }
 
     public String getDestination() {
-        return destination;
-    }
-
-    public void setDestination(String destination) {
-        this.destination = destination;
+        return messageReference.getDestination();
     }
 
     public String getMsgStorageDestination() {
-        return msgStorageDestination;
-    }
-
-    public void setMsgStorageDestination(String msgStorageDestination) {
-        this.msgStorageDestination = msgStorageDestination;
+        return messageReference.getStorageQueueName();
     }
 
     public boolean isTopic() {
-        return isTopic;
+        return messageReference.isTopic;
     }
 
-    public void setTopic(boolean isTopic) {
-        this.isTopic = isTopic;
-    }
-
-    public UUID getChannelID() {
-        return channelID;
-    }
-
-    public void setChannelID(UUID channelID) {
-        this.channelID = channelID;
+    public long getChannelID() {
+        return ackedChannel.getChannelID();
     }
 
 }

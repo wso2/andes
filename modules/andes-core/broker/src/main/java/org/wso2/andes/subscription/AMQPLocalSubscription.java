@@ -23,14 +23,17 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.DeliverableAndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
+import org.wso2.andes.server.cassandra.MessageFlusher;
 import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
@@ -60,6 +63,8 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
     //AMQP transport channel subscriber is dealing with
     AMQChannel channel = null;
 
+    private Integer maximumRedeliveryTimes = 1;
+
     public AMQPLocalSubscription(AMQQueue amqQueue, Subscription amqpSubscription, String subscriptionID, String destination,
                                  boolean isBoundToTopic, boolean isExclusive, boolean isDurable,
                                  String subscribedNode, long subscribeTime, String targetQueue, String targetQueueOwner,
@@ -75,6 +80,9 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
         if (amqpSubscription != null && amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
             channel = ((SubscriptionImpl.AckSubscription) amqpSubscription).getChannel();
         }
+
+        this.maximumRedeliveryTimes = AndesConfigurationManager.readValue
+                        (AndesConfiguration.TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS);
     }
 
     public boolean isActive() {
@@ -82,18 +90,34 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
     }
 
     @Override
-    public UUID getChannelID() {
-        return channel.getId();
+    public long getChannelID() {
+        return channel.getAndesChannel().getChannelID();
+    }
+
+    @Override
+    public AndesChannel getAndesChannel() {
+        return channel.getAndesChannel();
+    }
+
+    @Override
+    public boolean isSuspended() {
+        return channel.getAndesChannel().isChannelSuspended();
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata, AndesContent content)
+    public boolean sendMessageToSubscriber(DeliverableAndesMessageMetadata messageMetadata, AndesContent content)
             throws AndesException {
-        AMQMessage message = AMQPUtils.getAMQMessageForDelivery(messageMetadata, content);
-        sendAMQMessageToSubscriber(message, messageMetadata.getRedelivered());
+        boolean isToSend = evaluateDeliveryRules(messageMetadata);
+        if(isToSend) {
+            AMQMessage message = AMQPUtils.getAMQMessageForDelivery(messageMetadata, content);
+            long IDOfChannel = channel.getAndesChannel().getChannelID();
+            boolean isRedeliveryToChannel = messageMetadata.isRedeliveredToChannel(IDOfChannel);
+            sendAMQMessageToSubscriber(message, isRedeliveryToChannel);
+        }
+        return isToSend;
     }
 
     /**
@@ -106,6 +130,7 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
     private void sendAMQMessageToSubscriber(AMQMessage message, boolean isRedelivery) throws AndesException {
         QueueEntry messageToSend = AMQPUtils.convertAMQMessageToQueueEntry(message, amqQueue);
         if (isRedelivery) {
+            //set redelivery header
             messageToSend.setRedelivered();
         }
         sendQueueEntryToSubscriber(messageToSend);
@@ -151,10 +176,6 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
         try {
             AMQProtocolSession session = channel.getProtocolSession();
             ((AMQMessage) queueEntry.getMessage()).setClientIdentifier(session);
-            
-            // TODO: We might have to carefully implement this in every new subscription type we implement
-            // shall we move this up to LocalSubscription level?
-            OnflightMessageTracker.getInstance().incrementNonAckedMessageCount(channel.getId());
 
             if (amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
                 //this check is needed to detect if subscription has suddenly closed
@@ -176,6 +197,46 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
         } catch (AndesException e) {
             throw new AndesException("Error occurred while delivering message with ID : " + msgHeaderStringID, e);
         }
+    }
+
+    private boolean evaluateDeliveryRules(DeliverableAndesMessageMetadata messageToDeliver)
+            throws AndesException {
+        boolean isOKToDeliver = true;
+        long messageId = messageToDeliver.getMessageID();
+        String messageDestination = messageToDeliver.getDestination();
+        //check if number of redelivery tries has breached.
+        int numOfDeliveriesOfCurrentMsg = messageToDeliver.getNumOfDeliveires4Channel(getChannelID());
+
+        // Get last purged timestamp of the destination queue.
+        long lastPurgedTimestampOfQueue = MessageFlusher.getInstance().getMessageDeliveryInfo(
+                messageDestination).getLastPurgedTimestamp();
+
+        if (numOfDeliveriesOfCurrentMsg > maximumRedeliveryTimes) {
+
+            log.warn("Number of Maximum Redelivery Tries Has Breached. Routing Message to DLC : id= " + messageId);
+            isOKToDeliver = false;
+
+            //check if destination entry has expired. Any expired message will not be delivered
+        } else if (messageToDeliver.isExpired()) {
+
+            log.warn("Message is expired. Routing Message to DLC : id= " + messageId);
+            isOKToDeliver = false;
+
+        } else if (messageToDeliver.getArrivalTime() <= lastPurgedTimestampOfQueue) {
+
+            log.warn("Message was sent at " + messageToDeliver.getArrivalTime() + " before last purge event at "
+                     + lastPurgedTimestampOfQueue + ". Will be skipped. id= " + messageId);
+            messageToDeliver.setMessageStatus(DeliverableAndesMessageMetadata.MessageStatus.PURGED);
+            isOKToDeliver = false;
+        }
+        if (isOKToDeliver) {
+            messageToDeliver.setMessageStatus(
+                    DeliverableAndesMessageMetadata.MessageStatus.DELIVERY_OK);
+        } else {
+            messageToDeliver.setMessageStatus(
+                    DeliverableAndesMessageMetadata.MessageStatus.DELIVERY_REJECT);
+        }
+        return isOKToDeliver;
     }
 
     /**
@@ -203,14 +264,6 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
         return isMatching;
     }
 
-
-    public LocalSubscription createQueueToListentoTopic() {
-        //todo:hasitha:verify passing null values
-        String subscribedNode = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
-        return new AMQPLocalSubscription(amqQueue,
-                amqpSubscription, subscriptionID, targetQueue, false, isExclusive, true, subscribedNode, System.currentTimeMillis(), amqQueue.getName(),
-                amqQueue.getOwner().toString(), AMQPUtils.DIRECT_EXCHANGE_NAME, DirectExchange.TYPE.toString(), Short.parseShort("0"), true);
-    }
 
     public boolean equals(Object o) {
         if (o instanceof AMQPLocalSubscription) {

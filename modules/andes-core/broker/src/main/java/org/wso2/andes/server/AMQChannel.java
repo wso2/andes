@@ -196,7 +196,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         _transaction = new AutoCommitTransaction(_messageStore);
 
         // message tracking related to this channel is initialised
-        Andes.getInstance().clientConnectionCreated(_id);
         andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {
             @Override
             public void block() {
@@ -212,6 +211,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                 }
             }
         });
+        Andes.getInstance().clientConnectionCreated(andesChannel.getChannelID());
 
         try {
             _managedObject = new AMQChannelMBean(this);
@@ -420,7 +420,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                      * happen here
                      */
 
-                    QpidAMQPBridge.getInstance().messageReceived(incomingMessage, this.getId(), andesChannel);
+                    QpidAMQPBridge.getInstance().messageReceived(incomingMessage, andesChannel);
 
                 } catch (Throwable e) {
                     _logger.error("Error processing completed messages, we will close this session", e);
@@ -633,7 +633,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
         forgetMessages4Channel();
 
-        QpidAMQPBridge.getInstance().channelIsClosing(this.getId());
+        QpidAMQPBridge.getInstance().channelIsClosing(this.andesChannel.getChannelID());
         Andes.getInstance().removeChannel(andesChannel);
 
         if (_managedObject != null) {
@@ -940,9 +940,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                                                                .equals(AMQPUtils
                                                                                .TOPIC_EXCHANGE_NAME);
             QpidAMQPBridge.getInstance()
-                          .ackReceived(this.getId(), entry.getMessage().getMessageNumber(),
-                                       entry.getMessage().getRoutingKey(),
-                                       isTopic);
+                          .ackReceived(andesChannel, entry.getMessage().getMessageNumber());
         }
 
         updateTransactionalActivity();
@@ -1640,6 +1638,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             _logger.debug("MessageID generated:" + mid);
         }
         return new StoredAMQPMessage(mid, metaData);
+    }
+
+    public AndesChannel getAndesChannel() {
+        return andesChannel;
     }
 
 }

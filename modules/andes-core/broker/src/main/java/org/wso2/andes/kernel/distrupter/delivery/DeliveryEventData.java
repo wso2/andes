@@ -23,6 +23,7 @@ import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.DeliverableAndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
 
 import java.util.HashMap;
@@ -40,7 +41,7 @@ public class DeliveryEventData {
     /**
      * Metadata of the message
      */
-    private AndesMessageMetadata metadata;
+    private DeliverableAndesMessageMetadata metadata;
 
     /**
      * Used to store message content in memory
@@ -152,7 +153,7 @@ public class DeliveryEventData {
      *
      * @return Metadata
      */
-    public AndesMessageMetadata getMetadata() {
+    public DeliverableAndesMessageMetadata getMetadata() {
         return metadata;
     }
 
@@ -162,7 +163,7 @@ public class DeliveryEventData {
      * @param metadata
      *         Metadata
      */
-    public void setMetadata(AndesMessageMetadata metadata) {
+    public void setMetadata(DeliverableAndesMessageMetadata metadata) {
         this.metadata = metadata;
     }
 

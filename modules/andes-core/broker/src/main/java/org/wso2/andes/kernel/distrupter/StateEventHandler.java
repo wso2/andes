@@ -28,10 +28,8 @@ import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.slot.SlotMessageCounter;
 import org.wso2.andes.server.stats.PerformanceCounter;
-
 import java.util.List;
 import java.util.UUID;
 
@@ -147,7 +145,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      * @param channelID channel ID of the opened channel
      */
     public void clientConnectionOpened(UUID channelID) {
-        OnflightMessageTracker.getInstance().addNewChannelForTracking(channelID);
+
     }
 
     /**
@@ -156,7 +154,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      * @param channelID channel ID of the closing connection
      */
     public void clientConnectionClosed(UUID channelID) {
-        OnflightMessageTracker.getInstance().releaseAllMessagesOfChannelFromTracking(channelID);
+
     }
 
     /**

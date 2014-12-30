@@ -172,7 +172,7 @@ public class AMQPUtils {
      * @return andes message metadata
      * @throws AndesException
      */
-    public static AndesMessageMetadata convertAMQMessageToAndesMetadata(AMQMessage amqMessage, UUID channelID) throws AndesException {
+    public static AndesMessageMetadata convertAMQMessageToAndesMetadata(AMQMessage amqMessage, long channelID) throws AndesException {
         MessageMetaData amqMetadata = amqMessage.getMessageMetaData();
         String queue = amqMetadata.getMessagePublishInfo().getRoutingKey().toString();
 
@@ -338,15 +338,12 @@ public class AMQPUtils {
 
     /**
      * create andes ack data message
-     * @param channelID id of the connection message was received
-     * @param messageID id of the message
-     * @param destination  destination subscription who sent this ack is bound
-     * @param storageDestination store destination of subscriber from which ack came from
-     * @param isTopic is ack comes from a topic subscriber
+     * @param ackedChannel the channel ack came from
+     * @param messageReference message object correlated with acknowledge
      * @return Andes Ack Data
      */
-    public static AndesAckData generateAndesAckMessage(UUID channelID, long messageID, String destination, String storageDestination, boolean isTopic) {
-        return new AndesAckData(channelID, messageID,destination,storageDestination,isTopic);
+    public static AndesAckData generateAndesAckMessage(AndesChannel ackedChannel, DeliverableAndesMessageMetadata messageReference) {
+        return new AndesAckData(ackedChannel, messageReference);
     }
 
     /**

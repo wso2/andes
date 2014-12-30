@@ -142,7 +142,7 @@ public interface InboundEventManager {
      *
      * @param channelID id of the closed connection
      */
-    public void clientConnectionClosed(UUID channelID);
+    public void clientConnectionClosed(long channelID);
 
     /**
      * Notify client connection is opened. This is for message tracking purposes on Andes side
@@ -150,7 +150,7 @@ public interface InboundEventManager {
      *
      * @param channelID channelID of the client connection
      */
-    public void clientConnectionCreated(UUID channelID);
+    public void clientConnectionCreated(long channelID);
 
     /**
      * Notify Andes to close an existing local subscription.

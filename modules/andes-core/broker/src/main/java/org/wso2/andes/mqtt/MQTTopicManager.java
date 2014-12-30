@@ -20,7 +20,10 @@ package org.wso2.andes.mqtt;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
+import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.DeliverableAndesMessageMetadata;
+import org.wso2.andes.kernel.MessagingEngine;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -48,7 +51,7 @@ public class MQTTopicManager {
     private Map<String, String> subscriberTopicCorrelate = new HashMap<String, String>();
     //Will maintain the relation between the publisher client identifiers vs the id generated cluster wide
     //Key of the map would be the mqtt specific client id and the value would be the cluser uuid
-    private Map<String, UUID> publisherTopicCorrelate = new HashMap<String, UUID>();
+    private Map<String, Long> publisherTopicCorrelate = new HashMap<String, Long>();
     //The channel reference which will be used to interact with the Andes Kernal
     private MQTTChannel mqttChannel = new MQTTChannel();
 
@@ -105,10 +108,10 @@ public class MQTTopicManager {
                     + ", for topic :" + topic + ", with retain :" + retain);
         }
 
-        UUID publisherClusterID = publisherTopicCorrelate.get(publisherID);
+        Long publisherClusterID = publisherTopicCorrelate.get(publisherID);
         if (null == publisherClusterID) {
             //We need to generate a uuid
-            publisherClusterID = UUID.randomUUID();
+            publisherClusterID = MessagingEngine.getInstance().generateNewMessageId();
             publisherTopicCorrelate.put(publisherID, publisherClusterID);
         }
         //Will add the topic message to the cluster for distribution
@@ -139,7 +142,7 @@ public class MQTTopicManager {
         MQTTopic topic = topics.get(topicName);
         String subscriptionID = null;
         //Will generate a uniqe identier for the subscription
-        final UUID subscriptionChannelID = UUID.randomUUID();
+        final long subscriptionChannelID = MessagingEngine.getInstance().generateNewMessageId();
         //If the topic has not being created before
         if (null == topic) {
             //First the topic should be registered in the cluster
@@ -192,7 +195,7 @@ public class MQTTopicManager {
                 //Will remove the subscription entitiy
                 MQTTSubscriber subscriber = mqttTopic.removeSubscriber(mqttClientChannelID);
                 String subscriberChannelID = subscriber.getSubscriberChannelID();
-                UUID subscriberChannel = subscriber.getSubscriptionChannel();
+                long subscriberChannel = subscriber.getSubscriptionChannel();
                 boolean isCleanSession = subscriber.isCleanSession();
                 //The corresponding subscription created cluster wide will be topic name and the local channel id
                 //Will remove the subscriber clusterwide
@@ -220,7 +223,7 @@ public class MQTTopicManager {
 
         } else {
             //If the connection is publisher based
-            UUID publisherID = publisherTopicCorrelate.remove(mqttClientChannelID);
+            Long publisherID = publisherTopicCorrelate.remove(mqttClientChannelID);
             if (null == publisherID) {
                 log.warn("Connection with id " + mqttClientChannelID + " lost, the connection info cannot be found.");
             }
@@ -289,20 +292,18 @@ public class MQTTopicManager {
         //Will indicate that the ack was recived
         long clusterID = mqttSubscriber.ackReceived(messageID);
         //First we need to get the subscription information
-        messageAck(topicName, clusterID, mqttSubscriber.getStorageIdentifier(), mqttSubscriber.getSubscriptionChannel());
+        //messageAck(topicName, clusterID, mqttSubscriber.getStorageIdentifier(), mqttSubscriber.getSubscriptionChannel());
     }
 
     /**
      * This will be called when simulating the ack for the server for QOS 0 messages
      *
-     * @param topic        the name of the topic the ack will be simulated for
-     * @param messageID    the id of the message the ack will be simulated for
-     * @param storageName  the storage name representation
-     * @param subChannelID the id of the subscription channel
+     * @param ackChannel       the channel ack is received
+     * @param messageAcked   the message for which the ack is received
      * @throws MQTTException occurs if the ack was faled to process by the kernal
      */
-    public void implicitAck(String topic, long messageID, String storageName, UUID subChannelID) throws MQTTException {
-        messageAck(topic, messageID, storageName, subChannelID);
+    public void implicitAck(AndesChannel ackChannel, DeliverableAndesMessageMetadata messageAcked) throws MQTTException {
+        messageAck(ackChannel, messageAcked);
     }
 
     /**
@@ -316,7 +317,7 @@ public class MQTTopicManager {
      * @return topic subscription id which will represent the topic in the cluster
      */
     private String registerTopicSubscriptionInCluster(String topicName, String mqttClientID, boolean isCleanSession,
-                                                      int qos, UUID subscriptionChannelID)
+                                                      int qos, long subscriptionChannelID)
             throws MQTTException {
         //Will generate a unique id for the client
         //Per topic only one subscription will be created across the cluster
@@ -336,14 +337,13 @@ public class MQTTopicManager {
     /**
      * When acknowledments arrive for the delivered messages this method will be called
      *
-     * @param topic       the name of the topic the ack was recived
-     * @param messageID   the id of the message the ack was recived
-     * @param storageName the name of the representation of the topic in the store
+     * @param ackChannel       the channel ack is received
+     * @param messageAcked   the message for which the ack is received
      * @throws MQTTException at an event where the ack was not properly processed
      */
-    private void messageAck(String topic, long messageID, String storageName, UUID subChannelID) throws MQTTException {
+    private void messageAck(AndesChannel ackChannel, DeliverableAndesMessageMetadata messageAcked) throws MQTTException {
         try {
-            mqttChannel.messageAck(messageID, topic, storageName, subChannelID);
+            mqttChannel.messageAck(ackChannel, messageAcked);
         } catch (AndesException ex) {
             final String message = "Error occurred while cleaning up the acked message";
             log.error(message, ex);

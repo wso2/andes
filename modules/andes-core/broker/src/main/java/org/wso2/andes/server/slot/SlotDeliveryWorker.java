@@ -24,7 +24,6 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.cassandra.MessageFlusher;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.slot.thrift.MBThriftClient;
 import org.wso2.andes.subscription.SubscriptionStore;
@@ -352,12 +351,6 @@ public class SlotDeliveryWorker extends Thread {
         if (!messagesReturnedFromCassandra.isEmpty()) {
             // Check messages returned from cassandra has already been buffered. If so removed each buffered from list
             Iterator<AndesMessageMetadata> iterator = messagesReturnedFromCassandra.iterator();
-            while (iterator.hasNext()) {
-                if (OnflightMessageTracker.getInstance().checkIfMessageIsAlreadyBuffered(slot,
-                        iterator.next().getMessageID())) {
-                    iterator.remove();
-                }
-            }
             // Return the slot if all messages remaining in slot are already sent.
             // Otherwise the slot will not be removed and send remaining messages to flusher
             if (messagesReturnedFromCassandra.isEmpty()) {

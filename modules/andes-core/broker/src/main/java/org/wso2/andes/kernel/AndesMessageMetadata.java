@@ -34,33 +34,34 @@ import java.util.UUID;
 
 public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
+    private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
 
     /**
      * Unique identifier of the message
      */
-    long messageID;
+    protected long messageID;
     /**
      * AMQ metadata of the message
      */
-    byte[] metadata;
+    protected byte[] metadata;
     /**
      * The timestamp at which the message is set to expire.
      */
-    long expirationTime;
+    protected long expirationTime;
     /**
      * true if the message is addressed to a topic exchange.
      */
-    boolean isTopic;
+    protected boolean isTopic;
     /**
      * The timestamp at which the message arrived at the first gates of the broker.
      */
-    long arrivalTime;
+    protected long arrivalTime;
 
     /**
      * through which connection this message came into broker
      * or rejected to the broker
      */
-    UUID channelId;
+    protected long channelId;
 
     /**
      * Destination (routing key) of message
@@ -82,7 +83,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      * True if the message has been delivered more than once.
      */
     private boolean reDelivered;
-    private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
 
     /**
      * Added for MQTT usage
@@ -182,11 +182,11 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         isPersistent = persistent;
     }
 
-    public UUID getChannelId() {
+    public long getChannelId() {
         return channelId;
     }
 
-    public void setChannelId(UUID channelId) {
+    public void setChannelId(long channelId) {
         this.channelId = channelId;
     }
 

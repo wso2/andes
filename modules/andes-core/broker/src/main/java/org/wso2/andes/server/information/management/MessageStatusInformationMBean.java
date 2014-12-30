@@ -4,7 +4,6 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.management.common.mbeans.MessageStatusInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanConstructor;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.management.AMQManagedObject;
 
 import javax.management.JMException;
@@ -38,9 +37,9 @@ public class MessageStatusInformationMBean extends AMQManagedObject
             fileToWriteMessageStatus.getParentFile().mkdirs();
             fileToWriteMessageStatus.createNewFile();
 
-            OnflightMessageTracker.getInstance().dumpMessageStatusToFile(fileToWriteMessageStatus);
-        } catch (AndesException e) {
-            throw new RuntimeException("Internal error while dumping message status", e);
+            //OnflightMessageTracker.getInstance().dumpMessageStatusToFile(fileToWriteMessageStatus);
+        //}catch (AndesException e) {
+         //   throw new RuntimeException("Internal error while dumping message status", e);
         } catch (IOException e) {
             throw new RuntimeException("Cannot create a file to dump message status", e);
         }

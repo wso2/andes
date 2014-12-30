@@ -93,7 +93,7 @@ public class Andes {
      *
      * @param channelID id of the closed connection
      */
-    public void clientConnectionClosed(UUID channelID) {
+    public void clientConnectionClosed(long channelID) {
         inboundEventManager.clientConnectionClosed(channelID);
     }
 
@@ -102,7 +102,7 @@ public class Andes {
      *
      * @param channelID channelID of the client connection
      */
-    public void clientConnectionCreated(UUID channelID) {
+    public void clientConnectionCreated(long channelID) {
         inboundEventManager.clientConnectionCreated(channelID);
     }
 
@@ -216,8 +216,8 @@ public class Andes {
      * @param metadata message that is rejected. It must bare id of channel reject came from
      * @throws AndesException
      */
-    public void messageRejected(AndesMessageMetadata metadata) throws AndesException {
-        MessagingEngine.getInstance().messageRejected(metadata);
+    public void messageRejected(DeliverableAndesMessageMetadata metadata, AndesChannel rejectedChannel) throws AndesException {
+        MessagingEngine.getInstance().messageRejected(metadata, rejectedChannel);
     }
 
     /**
@@ -240,7 +240,7 @@ public class Andes {
      * @param subscription    subscription to send
      * @throws AndesException
      */
-    public void reQueueMessage(AndesMessageMetadata messageMetadata, LocalSubscription subscription) throws AndesException {
+    public void reQueueMessage(DeliverableAndesMessageMetadata messageMetadata, LocalSubscription subscription) throws AndesException {
         MessagingEngine.getInstance().reQueueMessage(messageMetadata, subscription);
     }
 

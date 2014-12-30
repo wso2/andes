@@ -69,7 +69,7 @@ public class MQTTopic {
      * @throws MQTTException if the subscriber with the same channel id exist
      */
     public void addSubscriber(String mqttClientChannelID, int qos, boolean isCleanSession,
-                              String clusterSpecificID, UUID subscripionChannel)
+                              String clusterSpecificID, long subscripionChannel)
     throws MQTTException {
         MQTTSubscriber subscriber = subscribers.get(mqttClientChannelID);
         //Will create a new subscriber if the susbscriber do not exist

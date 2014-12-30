@@ -23,10 +23,10 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
+import org.wso2.andes.kernel.DeliverableAndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.cassandra.MessageFlusher;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,32 +67,53 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
      * @throws Exception
      */
     @Override
-    public void onEvent(DeliveryEventData deliveryEventData, long sequence, boolean endOfBatch) throws Exception {
+    public void onEvent(DeliveryEventData deliveryEventData, long sequence, boolean endOfBatch)
+            throws Exception {
         LocalSubscription subscription = deliveryEventData.getLocalSubscription();
-        
+
         // Taking the absolute value since hashCode can be a negative value
-        long channelModulus = Math.abs(subscription.getChannelID().hashCode() % numberOfConsumers);
+        long channelModulus = Math.abs(subscription.getChannelID() % numberOfConsumers);
 
         // Filter tasks assigned to this handler
         if (channelModulus == ordinal) {
-            AndesMessageMetadata message = deliveryEventData.getMetadata();
-
+            DeliverableAndesMessageMetadata message = deliveryEventData.getMetadata();
+            long channelIDOfSubscription = subscription.getAndesChannel().getChannelID();
             try {
-                //decrement number of schedule deliveries before send to subscriber to avoid parallel status update issues
-                OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message.getMessageID());
+
+                if(message.isDeliverableToChannel(channelIDOfSubscription)) {
+                    log.warn("This is not a new message. It has been sent to this subscriber earlier. Expecting Acknowledge." +
+                             "Rejecting delivery of message. Msg id = " + message.getMessageID() + " channel id= " + channelIDOfSubscription);
+                    return;
+                }
+
+                //decrement number of schedule deliveries before send to subscriber to avoid
+                // parallel status update issues
+                message.recordDelivery(channelIDOfSubscription);
                 if (deliveryEventData.isErrorOccurred()) {
+                    message.rollBackDeliveryRecord(channelIDOfSubscription, true);
                     handleSendError(message);
                     return;
                 }
                 if (subscription.isActive()) {
-                    subscription.sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
+                    boolean deliverySuccess = subscription
+                            .sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
+                    if(deliverySuccess) {
+                        //we keep reference of delivered message only if it is success
+                      subscription.getAndesChannel().registerMessageDelivery(message);
+                        message.setMessageStatus(DeliverableAndesMessageMetadata.MessageStatus.SENT);
+                    } else {
+                        //Move to dead letter channel
+                        handleSendError(message);
+                        message.rollBackDeliveryRecord(channelIDOfSubscription, true);
+                    }
                 } else {
-                    MessageFlusher.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
+                    message.rollBackDeliveryRecord(channelIDOfSubscription, false);
+                    MessageFlusher.getInstance()
+                                  .reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
                 }
             } catch (Throwable e) {
                 log.error("Error while delivering message. Moving to Dead Letter Queue.", e);
-                //increment above schedule count because exception occurred while send message to subscriber
-                OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
+                message.rollBackDeliveryRecord(channelIDOfSubscription, true);
                 handleSendError(message);
             } finally {
                 deliveryEventData.clearData();
@@ -106,7 +127,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
      * @param message
      *         Meta data for the message
      */
-    private void handleSendError(AndesMessageMetadata message) {
+    private void handleSendError(DeliverableAndesMessageMetadata message) {
         // If message is a queue message we move the message to the Dead Letter Channel
         // since topics doesn't have a Dead Letter Channel
         if (!message.isTopic()) {
@@ -117,6 +138,10 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
             messageToMoveToDLC.add(removableMessage);
             try {
                 MessagingEngine.getInstance().deleteMessages(messageToMoveToDLC, true);
+                //TODO: move this to a single method in Messaging engine
+                //TODO: should remove this message from all channels
+                message.setMessageStatus(DeliverableAndesMessageMetadata.MessageStatus.DLC_MESSAGE);
+
             } catch (AndesException dlcException) {
                 // If an exception occur in this level, it means that there is a message store level error.
                 // There's a possibility that we might lose this message

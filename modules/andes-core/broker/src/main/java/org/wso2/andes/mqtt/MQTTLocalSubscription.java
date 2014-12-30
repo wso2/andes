@@ -20,12 +20,13 @@ package org.wso2.andes.mqtt;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.DeliverableAndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.subscription.BasicSubscription;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
@@ -47,7 +48,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
     //Will store the MQTT channel id
     private String mqttSubscriptionID;
     //Will set unique uuid as the channel of the subscription this will be used to track the delivery of messages
-    private UUID channelID;
+    private long channelID;
 
     //The QOS level the subscription is bound to
     private int subscriberQOS;
@@ -76,7 +77,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
      *
      * @param channelID the unique identifyer of a channel speciifc to a subscription
      */
-    public void setChannelID(UUID channelID) {
+    public void setChannelID(long channelID) {
         this.channelID = channelID;
     }
 
@@ -173,40 +174,44 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
      * {@inheritDoc}
      */
     @Override
-    public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata, AndesContent content) throws AndesException {
-        //Should get the message from the list
-        ByteBuffer message = MQTTUtils.getContentFromMetaInformation(content);
-        //Will publish the message to the respective queue
-        if (mqqtServerChannel != null) {
-            try {
-                OnflightMessageTracker.getInstance().incrementNonAckedMessageCount(channelID);
-                OnflightMessageTracker.getInstance().addMessageToSendingTracker(getChannelID(),
-                        messageMetadata.getMessageID());
-                try {
-                    mqqtServerChannel.distributeMessageToSubscriber(
-                            this.getStorageQueueName(), message, messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
-                            messageMetadata.isPersistent(), getMqttSubscriptionID(), getSubscriberQOS());
-                } catch (MQTTException ex) {
-                    //We need to decrement the tracker count
-                    OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(channelID);
-                    final String error = "Error occured while sending the message to subscriber ";
-                    log.error(error, ex);
-                    throw new AndesException(error, ex);
-                }
+    public boolean sendMessageToSubscriber(DeliverableAndesMessageMetadata messageMetadata, AndesContent content) throws AndesException {
 
-                //We will indicate the ack to the kernal at this stage
-                //For MQTT QOS 0 we do not get ack from subscriber, hence will be implicitely creating an ack
-                if (0 == getSubscriberQOS()) {
-                    mqqtServerChannel.implicitAck(getSubscribedDestination(), messageMetadata.getMessageID(),
-                            this.getStorageQueueName(), getChannelID());
+        boolean isToSend = evaluateDeliveryRules();
+        if(isToSend) {
+            //Should get the message from the list
+            ByteBuffer message = MQTTUtils.getContentFromMetaInformation(content);
+            //Will publish the message to the respective queue
+            if (mqqtServerChannel != null) {
+                try {
+                    try {
+                        mqqtServerChannel.distributeMessageToSubscriber(
+                                this.getStorageQueueName(), message, messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
+                                messageMetadata.isPersistent(), getMqttSubscriptionID(), getSubscriberQOS());
+                    } catch (MQTTException ex) {
+                        final String error = "Error occured while sending the message to subscriber ";
+                        log.error(error, ex);
+                        throw new AndesException(error, ex);
+                    }
+
+                    //We will indicate the ack to the kernal at this stage
+                    //For MQTT QOS 0 we do not get ack from subscriber, hence will be implicitely creating an ack
+                    if (0 == getSubscriberQOS()) {
+                        mqqtServerChannel.implicitAck(getAndesChannel(), messageMetadata);
+                    }
+                } catch (MQTTException e) {
+                    final String error = "Error occured while delivering message to the subscriber for message :" +
+                                         messageMetadata.getMessageID();
+                    log.error(error, e);
+                    throw new AndesException(error, e);
                 }
-            } catch (MQTTException e) {
-                final String error = "Error occured while delivering message to the subscriber for message :" +
-                        messageMetadata.getMessageID();
-                log.error(error, e);
-                throw new AndesException(error, e);
             }
         }
+        return isToSend;
+    }
+
+    private boolean evaluateDeliveryRules() {
+        //TODO: implement
+        return true;
     }
 
     @Override
@@ -215,14 +220,18 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
     }
 
     @Override
-    public UUID getChannelID() {
-        return channelID != null ? channelID : null;
+    public long getChannelID() {
+        return channelID != 0 ? channelID : 0;
     }
 
     @Override
-    public LocalSubscription createQueueToListentoTopic() {
-        //mqqtServerChannel.
-        throw new NotImplementedException();
+    public AndesChannel getAndesChannel() {
+        return null;
+    }
+
+    @Override
+    public boolean isSuspended() {
+        return false;
     }
 
     public boolean equals(Object o) {

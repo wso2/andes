@@ -19,12 +19,14 @@
 package org.wso2.andes.kernel.distrupter;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
+import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.stats.PerformanceCounter;
 
 /**
@@ -63,27 +65,37 @@ public class AckHandler implements BatchEventHandler {
      */
     public void ackReceived(final List<InboundEvent> eventList) throws AndesException {
         List<AndesRemovableMetadata> removableMetadata = new ArrayList<AndesRemovableMetadata>();
+        Map<String, Slot> slotsOfMessages = new HashMap<String, Slot>(5);
         for (InboundEvent event : eventList) {
 
             AndesAckData ack = event.ackData;
+            ack.getMessageReference().recordAcknowledge(ack.getChannelID());
+            Slot slotOfAckedMessage = ack.getMessageReference().getSlot();
+            if(null == slotsOfMessages.get(slotOfAckedMessage.getId())) {
+                slotsOfMessages.put(slotOfAckedMessage.getId(), slotOfAckedMessage);
+            }
             // For topics message is shared. If all acknowledgements are received only we should remove message
-            boolean deleteMessage = OnflightMessageTracker.getInstance()
-                    .handleAckReceived(ack.getChannelID(), ack.getMessageID());
+            boolean deleteMessage = ack.getMessageReference().isOKToRemoveMessage();
             if (deleteMessage) {
                 if (log.isDebugEnabled()) {
                     log.debug("Ok to delete message id " + ack.getMessageID());
                 }
                 removableMetadata.add(new AndesRemovableMetadata(ack.getMessageID(), ack.getDestination(),
                         ack.getMsgStorageDestination()));
+                slotOfAckedMessage.decrementPendingMessageCountBySlot();
             }
 
-            OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(ack.getChannelID());
             //record ack received
             PerformanceCounter.recordMessageRemovedAfterAck();
             event.clear();
         }
 
         MessagingEngine.getInstance().deleteMessages(removableMetadata, false);
+
+        //try to release slot after actually deleting metadata
+        for(Map.Entry<String, Slot> slotEntry : slotsOfMessages.entrySet()) {
+            slotEntry.getValue().checkForSlotCompletionAndResend();
+        }
 
         if (log.isTraceEnabled()) {
             StringBuilder messageIDsString = new StringBuilder();

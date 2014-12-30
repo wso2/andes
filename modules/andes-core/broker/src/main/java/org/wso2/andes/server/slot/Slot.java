@@ -18,13 +18,19 @@
 
 package org.wso2.andes.server.slot;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesException;
+
 import java.io.Serializable;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This class stores all the data related to a slot
  */
 public class Slot implements Serializable, Comparable<Slot> {
 
+    private static Log log = LogFactory.getLog(Slot.class);
     /**
      * Number of messages in the slot
      */
@@ -55,6 +61,12 @@ public class Slot implements Serializable, Comparable<Slot> {
      * Keep actual destination of messages in slot
      */
     private String destinationOfMessagesInSlot;
+
+    /**
+     * Track message count buffered to be delivered by slot
+     * but not acked by all
+     */
+    private AtomicInteger pendingMessageCountBySlot;
 
 
     public Slot() {
@@ -99,6 +111,29 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     public boolean isSlotActive() {
         return isSlotActive;
+    }
+
+    public void incrementPendingMessageCountBySlot() {
+        pendingMessageCountBySlot.incrementAndGet();
+    }
+
+    public void decrementPendingMessageCountBySlot() throws AndesException {
+        pendingMessageCountBySlot.decrementAndGet();
+    }
+
+    public void checkForSlotCompletionAndResend() throws AndesException {
+        if(pendingMessageCountBySlot.get() == 0) {
+            resendMessagesIfExist();
+        }
+    }
+
+
+    private void resendMessagesIfExist() throws AndesException {
+        SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance().getSlotWorker(getStorageQueueName());
+        if (log.isDebugEnabled()) {
+            log.debug("Slot has no pending messages. Now re-checking slot for messages");
+        }
+        slotWorker.checkForSlotCompletionAndResend(this);
     }
 
     public String getDestinationOfMessagesInSlot() {

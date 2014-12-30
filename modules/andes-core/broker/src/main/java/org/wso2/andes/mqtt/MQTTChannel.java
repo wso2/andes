@@ -57,15 +57,13 @@ public class MQTTChannel {
     /**
      * The acked messages will be informed to the kernal
      *
-     * @param messageID   the identifier of the message
-     * @param topicName   the name of the topic the message was published
-     * @param storageName the storage name representation of the topic
+     * @param ackChannel       the channel ack is received
+     * @param messageAcked   the message for which the ack is received
      * @throws AndesException if the ack was not processed properly
      */
-    public void messageAck(long messageID, String topicName, String storageName, UUID subChannelID)
+    public void messageAck(AndesChannel ackChannel, DeliverableAndesMessageMetadata messageAcked)
             throws AndesException {
-        AndesAckData andesAckData = new AndesAckData(subChannelID, messageID,
-                topicName, storageName, true);
+        AndesAckData andesAckData = new AndesAckData(ackChannel, messageAcked);
         Andes.getInstance().ackReceived(andesAckData);
     }
 
@@ -81,7 +79,7 @@ public class MQTTChannel {
      * @throws MQTTException occurs if there was an errro while adding the message content
      */
     public void addMessage(ByteBuffer message, String topic, int qosLevel,
-                           int mqttLocalMessageID, boolean retain, UUID publisherID) throws MQTTException {
+                           int mqttLocalMessageID, boolean retain, long publisherID) throws MQTTException {
         if (message.hasArray()) {
             //Will get the bytes of the message
             byte[] messageData = message.array();
@@ -124,7 +122,7 @@ public class MQTTChannel {
      */
     private MQTTLocalSubscription createSubscription(MQTTopicManager channel, String topic, String clientID,
                                                      String mqttClientID, boolean isCleanSesion, int qos,
-                                                     UUID subscriptionChannelID, String queueIdentifier,
+                                                     long subscriptionChannelID, String queueIdentifier,
                                                      boolean isTopicBound, boolean isActive) throws MQTTException {
         //Will create a new local subscription object
         final String isBoundToTopic = "isBoundToTopic";
@@ -167,7 +165,7 @@ public class MQTTChannel {
      * @throws MQTTException
      */
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
-                              boolean isCleanSesion, int qos, UUID subscriptionChannelID) throws MQTTException {
+                              boolean isCleanSesion, int qos, long subscriptionChannelID) throws MQTTException {
 
         String queue_identifier = topic + mqttClientID;
         if (isCleanSesion) {
@@ -224,7 +222,7 @@ public class MQTTChannel {
      * @param isCleanSession        Durability of the subscription
      */
     public void removeSubscriber(MQTTopicManager channel, String subscribedTopic, String subscriptionChannelID,
-                                 UUID subscriberChannel, boolean isCleanSession, String mqttClientID)
+                                 long subscriberChannel, boolean isCleanSession, String mqttClientID)
             throws MQTTException {
         try {
 

@@ -75,11 +75,10 @@ public class QpidAMQPBridge {
      * This should happen after all content chunks are received
      *
      * @param incomingMessage message coming in
-     * @param channelID       id of the channel
-     * @param andesChannel
+     * @param andesChannel andes channel via which message arrived
      * @throws AMQException
      */
-    public void messageReceived(IncomingMessage incomingMessage, UUID channelID, AndesChannel andesChannel) throws AMQException {
+    public void messageReceived(IncomingMessage incomingMessage, AndesChannel andesChannel) throws AMQException {
         try {
             if (log.isDebugEnabled()) {
                 log.debug("Message id " + incomingMessage.getMessageNumber() + " received");
@@ -87,7 +86,7 @@ public class QpidAMQPBridge {
             AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
             message.getMessageMetaData().setArrivalTime(incomingMessage.getArrivalTime());
 
-            AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message, channelID);
+            AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message, andesChannel.getChannelID());
             String queue = message.getRoutingKey();
 
             if (queue == null) {
@@ -192,11 +191,11 @@ public class QpidAMQPBridge {
         return contentLenWritten;
     }
 
-    public void ackReceived(UUID channelID, long messageID, String routingKey, boolean isTopic)
+    public void ackReceived(AndesChannel ackedChannel, long messageID)
             throws AMQException {
         try {
-            if (log.isDebugEnabled()) {
-                log.debug("ack received for message id= " + messageID + " channelId= " + channelID);
+/*            if (log.isDebugEnabled()) {
+                log.debug("ack received for message id= " + messageID + " channelId= " + ackedChannel.getChannelID());
             }
             AndesSubscription ackSentSubscription = AndesContext.getInstance().
                     getSubscriptionStore().getLocalSubscriptionForChannelId(channelID, routingKey, isTopic);
@@ -208,10 +207,10 @@ public class QpidAMQPBridge {
             }
             //This can be different from routing key in hierarchical topic case
             String subscriptionBoundDestination = ackSentSubscription.getSubscribedDestination();
-            String storageQueueNameOfSubscription = ackSentSubscription.getStorageQueueName();
+            String storageQueueNameOfSubscription = ackSentSubscription.getStorageQueueName();*/
+            DeliverableAndesMessageMetadata ackedMessage = ackedChannel.acknowledgeMessage(messageID);
             AndesAckData andesAckData = AMQPUtils
-                    .generateAndesAckMessage(channelID, messageID, subscriptionBoundDestination,
-                            storageQueueNameOfSubscription, isTopic);
+                    .generateAndesAckMessage(ackedChannel, ackedMessage);
             Andes.getInstance().ackReceived(andesAckData);
         } catch (AndesException e) {
             log.error("Exception occurred while handling ack", e);
@@ -219,11 +218,11 @@ public class QpidAMQPBridge {
         }
     }
 
-    public void rejectMessage(AMQMessage message, AMQChannel channel) throws AMQException {
+    public void rejectMessage(AndesChannel rejectChannel, long IDOfMsgRejected, boolean reQueue) throws AMQException {
         try {
-            AndesMessageMetadata rejectedMessage = AMQPUtils.convertAMQMessageToAndesMetadata(message, channel.getId());
+            DeliverableAndesMessageMetadata rejectedMessage = rejectChannel.rejectMessage(IDOfMsgRejected,reQueue);
             log.debug("AMQP BRIDGE: rejected message id= " + rejectedMessage.getMessageID() + " channel = " + rejectedMessage.getChannelId());
-            MessagingEngine.getInstance().messageRejected(rejectedMessage);
+            MessagingEngine.getInstance().messageRejected(rejectedMessage, rejectChannel);
         } catch (AndesException e) {
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while handling rejected message", e);
         }
@@ -460,7 +459,7 @@ public class QpidAMQPBridge {
      *
      * @param channelID id of the closed channel
      */
-    public void channelIsClosing(UUID channelID) {
+    public void channelIsClosing(long channelID) {
         Andes.getInstance().clientConnectionClosed(channelID);
     }
 }

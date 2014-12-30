@@ -189,7 +189,7 @@ public class SubscriptionStore {
      * @return subscription object. Null if no match
      * @throws AndesException
      */
-    public LocalSubscription getLocalSubscriptionForChannelId(UUID channelID,
+    public LocalSubscription getLocalSubscriptionForChannelId(long channelID,
                                                               String messageDestination, boolean isTopic)
 
             throws AndesException {
@@ -197,7 +197,7 @@ public class SubscriptionStore {
                 getAllActiveSubscriptions4MsgDestination(
                         messageDestination, isTopic);
         for (LocalSubscription sub : activeLocalSubscriptions) {
-            if (sub.getChannelID().equals(channelID)) {
+            if (sub.getChannelID() == channelID) {
                 return sub;
             }
         }

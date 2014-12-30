@@ -39,7 +39,7 @@ public class MQTTSubscriber {
     //Specifies the storage identifier of the subscription
     private String storageIdentifier;
     //Specifies the subscription channel
-    private UUID subscriptionChannel;
+    private long subscriptionChannel;
     //The map maintains the relation between the cluster ids to the local ids, MQTT ids will be the type int
     //Each subscription object will maintain the ids of the messages that were sent out for delivery
     //Upon recieving of an ack the message element will be removed
@@ -88,7 +88,7 @@ public class MQTTSubscriber {
      *
      * @return the uuid of the channel
      */
-    public UUID getSubscriptionChannel() {
+    public long getSubscriptionChannel() {
         return subscriptionChannel;
     }
 
@@ -101,7 +101,7 @@ public class MQTTSubscriber {
      *
      * @param subscriptionChannel the id of the subscription
      */
-    public void setSubscriptionChannel(UUID subscriptionChannel) {
+    public void setSubscriptionChannel(long subscriptionChannel) {
         this.subscriptionChannel = subscriptionChannel;
     }
 

@@ -106,7 +106,7 @@ public class MQTTUtils {
      * @return the meta information complient with the kernal
      */
     public static AndesMessageMetadata convertToAndesHeader(long messageID, String topic, int qosLevel,
-                                                            int messageContentLength, boolean retain, UUID publisherID) {
+                                                            int messageContentLength, boolean retain, long publisherID) {
         AndesMessageMetadata messageHeader = new AndesMessageMetadata();
         messageHeader.setMessageID(messageID);
         messageHeader.setTopic(true);
