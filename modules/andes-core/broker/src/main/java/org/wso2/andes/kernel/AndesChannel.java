@@ -148,6 +148,14 @@ public class AndesChannel {
     }
 
     /**
+     * Get unique id of the channel
+     * @return channel identifier
+     */
+    public long getChannelID() {
+        return id;
+    }
+
+    /**
      * This method is called by the flow control manager when flow control is enforced globally
      */
     public void notifyGlobalFlowControlActivation() {
