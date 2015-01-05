@@ -583,6 +583,20 @@ public class OnflightMessageTracker {
     }
 
     /**
+     * Metadata removed once ack received. At the same time we remove tracking data of message.
+     *
+     * @param messageId ID of a message
+     */
+    public void removeTrackingDataOfMessage(Long messageId) {
+        if (checkIfReadyToRemoveFromTracking(messageId)) {
+            if (log.isDebugEnabled()) {
+                log.debug("removing tracking object from memory id= " + messageId);
+            }
+            msgId2MsgData.remove(messageId);
+        }
+    }
+
+    /**
      * Remove tracking object from memory for a message if this returns true
      *
      * @param messageID id of the message to evaluate
