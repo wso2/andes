@@ -22,8 +22,6 @@ import com.google.gson.*;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.StreamSerializer;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetLongWrapper;
 
 import java.io.IOException;
@@ -32,9 +30,8 @@ import java.util.TreeSet;
 /**
  * This class implements the custom serialization methods for TreeSetLongWrapper objects.
  */
+@SuppressWarnings("unused")
 public class TreeSetLongWrapperSerializer implements StreamSerializer<TreeSetLongWrapper> {
-
-    private static Log log = LogFactory.getLog(TreeSetSlotWrapperSerializer.class);
 
 
     @Override
@@ -65,11 +62,11 @@ public class TreeSetLongWrapperSerializer implements StreamSerializer<TreeSetLon
 
     @Override
     public int getTypeId() {
-        return 1;
+        return 19900128;
     }
 
     @Override
     public void destroy() {
-
+      //nothing to do here
     }
 }

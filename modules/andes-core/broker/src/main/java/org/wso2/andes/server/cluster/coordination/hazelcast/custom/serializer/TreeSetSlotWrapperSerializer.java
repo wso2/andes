@@ -22,8 +22,6 @@ import com.google.gson.*;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.StreamSerializer;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetSlotWrapper;
 import org.wso2.andes.server.slot.Slot;
 
@@ -33,16 +31,17 @@ import java.util.TreeSet;
 /**
  * This class implements the custom serialization methods for TreeSetSlotWrapper objects.
  */
+@SuppressWarnings("unused")
 public class TreeSetSlotWrapperSerializer implements StreamSerializer<TreeSetSlotWrapper> {
 
     @Override
     public void write(ObjectDataOutput objectDataOutput, TreeSetSlotWrapper treeSetStringWrapper) throws IOException {
         //Convert the treeSetStringWrapper object to a json string and save it in hazelcast map
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("{}");
+        stringBuilder.append("{");
         TreeSet<Slot> treeSet = treeSetStringWrapper.getSlotTreeSet();
         if (treeSet != null) {
-            stringBuilder.insert(1, "\"slotTreeSet\":[]");
+            stringBuilder.append("\"slotTreeSet\":[");
             for (Slot slot : treeSet) {
                 String isActiveString;
                 if (slot.isSlotActive()) {
@@ -50,16 +49,18 @@ public class TreeSetSlotWrapperSerializer implements StreamSerializer<TreeSetSlo
                 } else {
                     isActiveString = "false";
                 }
-                stringBuilder.insert(stringBuilder.length() - 2, "{\"messageCount\":" + slot
-                        .getMessageCount() + ",\"startMessageId\":" + slot.getStartMessageId() + "," +
-                        "\"endMessageId\":" + slot.getEndMessageId() + "," +
-                        "\"storageQueueName\":\"" + slot.getStorageQueueName() + "\"," +
-                        "\"isSlotActive\":" + isActiveString + "},");
+                stringBuilder.append("{\"messageCount\":").append(slot
+                        .getMessageCount()).append(",\"startMessageId\":").append(slot.getStartMessageId()).
+                        append(",").append("\"endMessageId\":").append(slot.getEndMessageId()).append(",").
+                        append("\"storageQueueName\":\"").append(slot.getStorageQueueName()).append("\",").
+                        append("\"isSlotActive\":").append(isActiveString).append("},");
             }
             if (treeSet.size() != 0) {
-                stringBuilder.deleteCharAt(stringBuilder.length() - 3);
+                stringBuilder.deleteCharAt(stringBuilder.length() - 1);
             }
+            stringBuilder.append("]");
         }
+        stringBuilder.append("}");
         objectDataOutput.writeUTF(stringBuilder.toString());
     }
 
@@ -90,11 +91,11 @@ public class TreeSetSlotWrapperSerializer implements StreamSerializer<TreeSetSlo
 
     @Override
     public int getTypeId() {
-        return 2;
+        return 19900129;
     }
 
     @Override
     public void destroy() {
-
+        //nothing to do here
     }
 }

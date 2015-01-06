@@ -22,16 +22,14 @@ import com.google.gson.*;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.StreamSerializer;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.HashmapStringListWrapper;
 import org.wso2.andes.server.slot.Slot;
 
 
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.util.*;
 
+@SuppressWarnings("unused")
 public class HashMapStringListWrapperSerializer implements
         StreamSerializer<HashmapStringListWrapper> {
 
@@ -40,14 +38,14 @@ public class HashMapStringListWrapperSerializer implements
     public void write(ObjectDataOutput objectDataOutput, HashmapStringListWrapper hashmapStringListWrapper) throws IOException {
         //Convert the hashmapStringListWrapper object to a json string and save it in hazelcast map
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("{}");
+        stringBuilder.append("{");
         HashMap<String, List<Slot>> hashmap = hashmapStringListWrapper.getStringListHashMap();
         if (hashmap != null) {
-            stringBuilder.insert(1, "\"stringListHashMap\":{}");
+            stringBuilder.append("\"stringListHashMap\":{");
             Set<Map.Entry<String, List<Slot>>> entrySet = hashmap.entrySet();
-            for (Map.Entry entry : entrySet) {
-                stringBuilder.insert(stringBuilder.length() - 2, "\"" + entry.getKey() + "\":[],");
-                List<Slot> slots = (List<Slot>) entry.getValue();
+            for (Map.Entry<String, List<Slot>> entry : entrySet) {
+                stringBuilder.append("\"").append(entry.getKey()).append("\":[");
+                List<Slot> slots = entry.getValue();
                 if (slots != null) {
                     for (Slot slot : slots) {
                         String isActiveString;
@@ -56,23 +54,24 @@ public class HashMapStringListWrapperSerializer implements
                         } else {
                             isActiveString = "false";
                         }
-                        stringBuilder.insert(stringBuilder.length() - 4,
-                                "{\"messageCount\":" + slot.getMessageCount() + "," +
-                                        "\"startMessageId\":" + slot.getStartMessageId() + "," +
-                                        "\"endMessageId\":" + slot.getEndMessageId()
-                                        + ",\"storageQueueName\":\"" + slot.getStorageQueueName()
-                                        + "\",\"isSlotActive\":" + isActiveString + "},");
+                        stringBuilder.append("{\"messageCount\":").append(slot.getMessageCount()).
+                                append(",").append("\"startMessageId\":").append(slot.getStartMessageId()).
+                                append(",").append("\"endMessageId\":").append(slot.getEndMessageId()).
+                                append(",\"storageQueueName\":\"").append(slot.getStorageQueueName()).
+                                append("\",\"isSlotActive\":").append(isActiveString).append("},");
                     }
                     if (slots.size() != 0) {
-                        stringBuilder.deleteCharAt(stringBuilder.length() - 5);
+                        stringBuilder.deleteCharAt(stringBuilder.length() - 1);
                     }
                 }
+                stringBuilder.append("],");
             }
             if (hashmap.keySet().size() != 0) {
-                stringBuilder.deleteCharAt(stringBuilder.length() - 3);
+                stringBuilder.deleteCharAt(stringBuilder.length() - 1);
             }
-
+            stringBuilder.append("}");
         }
+        stringBuilder.append("}");
 
         objectDataOutput.writeUTF(stringBuilder.toString());
     }
@@ -82,13 +81,11 @@ public class HashMapStringListWrapperSerializer implements
         //Build HashmapStringListWrapper object using json string.
         String jsonString = objectDataInput.readUTF();
         HashmapStringListWrapper wrapper = new HashmapStringListWrapper();
-        HashMap<String, List<Slot>> hashMap = new HashMap();
+        HashMap<String, List<Slot>> hashMap = new HashMap<String, List<Slot>>();
         JsonObject jsonObject = new JsonParser().parse(jsonString).getAsJsonObject()
                 .getAsJsonObject("stringListHashMap");
         Set<Map.Entry<String, JsonElement>> set = jsonObject.entrySet();
-        Iterator<Map.Entry<String, JsonElement>> iterator = set.iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<String, JsonElement> entry = iterator.next();
+        for (Map.Entry<String, JsonElement> entry : set) {
             String key = entry.getKey();
             JsonElement value = entry.getValue();
             List<Slot> arrayList = new ArrayList<Slot>();
@@ -113,11 +110,11 @@ public class HashMapStringListWrapperSerializer implements
 
     @Override
     public int getTypeId() {
-        return 3;
+        return 19900130;
     }
 
     @Override
     public void destroy() {
-
+        //nothing to do here
     }
 }
