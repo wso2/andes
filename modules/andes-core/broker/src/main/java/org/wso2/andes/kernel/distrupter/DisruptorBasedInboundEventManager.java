@@ -41,7 +41,6 @@ import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -150,7 +149,10 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
         InboundEvent event = ringBuffer.get(sequence);
 
         event.setEventType(InboundEvent.Type.ACKNOWLEDGEMENT_EVENT);
-        event.ackData = ackData;
+        event.setAckData(ackData);
+        if(null == event.getAckData()) {
+            log.info("Setting null and publish");
+        }
         // make the event available to EventProcessors
         ringBuffer.publish(sequence);
 

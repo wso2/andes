@@ -19,6 +19,8 @@
 package org.wso2.andes.kernel.distrupter;
 
 import com.lmax.disruptor.EventFactory;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesMessage;
@@ -32,6 +34,8 @@ import java.util.List;
  */
 public class InboundEvent {
 
+    private static Log log = LogFactory.getLog(InboundEvent.class);
+
     private AndesChannel channel;
 
     public AndesChannel getChannel() {
@@ -40,6 +44,20 @@ public class InboundEvent {
 
     public void setChannel(AndesChannel channel) {
         this.channel = channel;
+    }
+
+    /**
+     * Acknowledgments received to disruptor
+     */
+    public AndesAckData getAckData() {
+        return ackData;
+    }
+
+    public void setAckData(AndesAckData ackData) {
+        if(null == ackData) {
+           log.error("Setting null to ackData");
+        }
+        this.ackData = ackData;
     }
 
     /**
@@ -100,10 +118,7 @@ public class InboundEvent {
      */
     public List<AndesMessage> messageList;
 
-    /**
-     * Acknowledgments received to disruptor
-     */
-    public AndesAckData ackData;
+    private AndesAckData ackData;
 
     public InboundEvent() {
         messageList = new ArrayList<AndesMessage>();
@@ -129,7 +144,10 @@ public class InboundEvent {
 
     public void clear() {
         messageList.clear();
-        ackData = null;
+        if(eventType == Type.ACKNOWLEDGEMENT_EVENT && null != ackData ) {
+            log.error("Ack cleared. msg id " + ackData.getMessageID());
+        }
+        setAckData(null);
         data = null;
         eventType = Type.IGNORE_EVENT;
     }

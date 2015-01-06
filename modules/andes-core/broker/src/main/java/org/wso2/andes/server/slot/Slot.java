@@ -66,7 +66,7 @@ public class Slot implements Serializable, Comparable<Slot> {
      * Track message count buffered to be delivered by slot
      * but not acked by all
      */
-    private AtomicInteger pendingMessageCountBySlot;
+    private AtomicInteger pendingMessageCountBySlot = new AtomicInteger(0);
 
 
     public Slot() {

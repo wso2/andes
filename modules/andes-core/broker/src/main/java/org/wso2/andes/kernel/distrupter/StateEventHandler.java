@@ -64,10 +64,10 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
                     event.getChannel().recordRemovalFromBuffer(getProcessedAmount(event.messageList));
                     break;
                 case CHANNEL_CLOSE_EVENT:
-                    clientConnectionClosed((UUID) event.getData());
+                    clientConnectionClosed((Long) event.getData());
                     break;
                 case CHANNEL_OPEN_EVENT:
-                    clientConnectionOpened((UUID) event.getData());
+                    clientConnectionOpened((Long) event.getData());
                     break;
                 case STOP_MESSAGE_DELIVERY_EVENT:
                     stopMessageDelivery();
@@ -96,7 +96,9 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
             // This is the final handler that visits the slot in ring buffer. Hence after processing is done clear the
             // slot so that in next iteration of the first event handler over the same slot won't find garbage from
             // previous iterations.
-            event.clear();
+/*            if(!event.getEventType().equals(InboundEvent.Type.ACKNOWLEDGEMENT_EVENT)) {
+                event.clear();
+            }*/
         }
     }
 
@@ -144,7 +146,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      *
      * @param channelID channel ID of the opened channel
      */
-    public void clientConnectionOpened(UUID channelID) {
+    public void clientConnectionOpened(long channelID) {
 
     }
 
@@ -153,7 +155,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      *
      * @param channelID channel ID of the closing connection
      */
-    public void clientConnectionClosed(UUID channelID) {
+    public void clientConnectionClosed(long channelID) {
 
     }
 

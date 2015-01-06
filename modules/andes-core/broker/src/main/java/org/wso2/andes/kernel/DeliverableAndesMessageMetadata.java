@@ -43,6 +43,10 @@ public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
 
     public DeliverableAndesMessageMetadata(AndesMessageMetadata andesMessageMetadata) {
 
+        this.alreadyPassedStatus = new ArrayList<MessageStatus>(8);
+        this.channelDeliveryInfo = new ConcurrentHashMap<Long, MessageDeliveryInfo>();
+        this.numberOfScheduledDeliveries = new AtomicInteger(0);
+
         this.messageID = andesMessageMetadata.messageID;
         this.metadata = andesMessageMetadata.metadata;
         this.expirationTime = andesMessageMetadata.expirationTime;
@@ -61,10 +65,6 @@ public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
         this.setQosLevel(andesMessageMetadata.getQosLevel());
         this.setSlot(andesMessageMetadata.getSlot());
         setMessageStatus(MessageStatus.READ);
-        this.alreadyPassedStatus = new ArrayList<MessageStatus>(8);
-        this.channelDeliveryInfo = new ConcurrentHashMap<Long, MessageDeliveryInfo>();
-        this.numberOfScheduledDeliveries = new AtomicInteger(0);
-
     }
 
     public DeliverableAndesMessageMetadata() {

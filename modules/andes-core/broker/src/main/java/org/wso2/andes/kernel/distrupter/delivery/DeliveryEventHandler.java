@@ -80,7 +80,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
             long channelIDOfSubscription = subscription.getAndesChannel().getChannelID();
             try {
 
-                if(message.isDeliverableToChannel(channelIDOfSubscription)) {
+                if(!message.isDeliverableToChannel(channelIDOfSubscription)) {
                     log.warn("This is not a new message. It has been sent to this subscriber earlier. Expecting Acknowledge." +
                              "Rejecting delivery of message. Msg id = " + message.getMessageID() + " channel id= " + channelIDOfSubscription);
                     return;
