@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2005-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -18,23 +18,25 @@
 
 package org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper;
 
+import org.wso2.andes.server.slot.Slot;
+
 import java.io.Serializable;
 import java.util.TreeSet;
 
 /**
- * This class is a wrapper class to a String TreeSet.It encapsulates a Treeset in order to
- * customize the serialization of a long treeset in hazelcast. This class is used because general
+ * This class is a wrapper class to a TreeSet<Slot>.It encapsulates a Treeset in order to
+ * customize the serialization of a Slot treeset in hazelcast. This class is used because general
  * TreeSet class should not affect with the custom serialization.
  */
-public class TreeSetStringWrapper implements Serializable {
+public class TreeSetSlotWrapper implements Serializable {
 
-    private TreeSet<String> stringTreeSet = new TreeSet<String>();
+    private TreeSet<Slot> slotTreeSet = new TreeSet<Slot>();
 
-    public TreeSet<String> getStringTreeSet() {
-        return stringTreeSet;
+    public TreeSet<Slot> getSlotTreeSet() {
+        return slotTreeSet;
     }
 
-    public void setStringTreeSet(TreeSet<String> stringTreeSet) {
-        this.stringTreeSet = stringTreeSet;
+    public void setSlotTreeSet(TreeSet<Slot> stringTreeSet) {
+        this.slotTreeSet = stringTreeSet;
     }
 }

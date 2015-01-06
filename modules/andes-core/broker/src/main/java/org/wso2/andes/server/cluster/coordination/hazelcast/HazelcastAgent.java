@@ -26,10 +26,9 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
-import org.wso2.andes.server.slot.Slot;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetSlotWrapper;
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.HashmapStringListWrapper;
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetLongWrapper;
-import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetStringWrapper;
 
 
 import java.util.*;
@@ -100,7 +99,7 @@ public class HazelcastAgent {
      * Distributed Map to keep track of non-empty slots which are unassigned from
      * other nodes
      */
-    private IMap<String, TreeSetStringWrapper> unAssignedSlotMap;
+    private IMap<String, TreeSetSlotWrapper> unAssignedSlotMap;
 
     /**
      * This map is used to store thrift server host and thrift server port
@@ -372,7 +371,7 @@ public class HazelcastAgent {
         }
     }
 
-    public IMap<String, TreeSetStringWrapper> getUnAssignedSlotMap() {
+    public IMap<String, TreeSetSlotWrapper> getUnAssignedSlotMap() {
         return unAssignedSlotMap;
     }
 
