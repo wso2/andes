@@ -18,36 +18,48 @@
 
 package org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.google.gson.*;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.StreamSerializer;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetLongWrapper;
 
 import java.io.IOException;
+import java.util.TreeSet;
 
 /**
  * This class implements the custom serialization methods for TreeSetLongWrapper objects.
  */
 public class TreeSetLongWrapperSerializer implements StreamSerializer<TreeSetLongWrapper> {
 
+    private static Log log = LogFactory.getLog(TreeSetSlotWrapperSerializer.class);
+
 
     @Override
     public void write(ObjectDataOutput objectDataOutput, TreeSetLongWrapper treeSetLongWrapper)
             throws IOException {
         //Convert the TreeSetLongWrapper object to a json string and save it in hazelcast map
-        com.google.gson.Gson gson = new GsonBuilder().create();
-        String jsonString = gson.toJson(treeSetLongWrapper);
-        objectDataOutput.writeUTF(jsonString);
+        JsonArray jsonArray = new JsonArray();
+        for (long elem : treeSetLongWrapper.getLongTreeSet()) {
+            JsonPrimitive jsonPrimitive = new JsonPrimitive(elem);
+            jsonArray.add(jsonPrimitive);
+        }
+        objectDataOutput.writeUTF(jsonArray.toString());
     }
 
     @Override
     public TreeSetLongWrapper read(ObjectDataInput objectDataInput) throws IOException {
         //Build TreeSetLongWrapper object using json string.
         String jsonString = objectDataInput.readUTF();
-        Gson gson = new GsonBuilder().create();
-        TreeSetLongWrapper wrapper = gson.fromJson(jsonString, TreeSetLongWrapper.class);
+        JsonArray jsonArray = new JsonParser().parse(jsonString).getAsJsonArray();
+        TreeSet<Long> treeSet = new TreeSet<Long>();
+        for (JsonElement jsonElement : jsonArray) {
+            treeSet.add(Long.valueOf(jsonElement.toString()));
+        }
+        TreeSetLongWrapper wrapper = new TreeSetLongWrapper();
+        wrapper.setLongTreeSet(treeSet);
         return wrapper;
     }
 
