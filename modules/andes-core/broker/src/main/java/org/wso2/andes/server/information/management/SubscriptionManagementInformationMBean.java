@@ -141,7 +141,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
             return subscriptionIdentifier + "|" + subscription.getTargetQueue() + "|" + subscription
                     .getTargetQueueBoundExchangeName() +
                     "|" + subscription.getTargetQueue() + "|" + subscription.isDurable() + "|" +
-                    subscription.isBoundToTopic() +
+                    subscription.hasExternalSubscriptions() +
                     "|" + pendingMessageCount + "|" + subscription.getSubscribedNode();
         } else {
             throw new AndesException("Invalid format in Subscriber Node ID : " + subscription
