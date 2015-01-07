@@ -19,28 +19,30 @@
 package org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper;
 
 
+import org.wso2.andes.server.slot.Slot;
+
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 
 /**
- * This class is a wrapper class to a HashMap with String and String List.It encapsulates a
+ * This class is a wrapper class to a HashMap with String and Slot List.It encapsulates a
  * hashmap in order to
  * customize
- * the serialization of a HashMap<String,List<String>> in hazelcast. This class is used because
+ * the serialization of a HashMap<String,List<Slot>> in hazelcast. This class is used because
  * general HashMap<T,V>
  * class should not affect with the custom serialization.
  */
 public class HashmapStringListWrapper implements Serializable {
 
-    private HashMap<String, List<String>>  stringListHashMap;
+    private HashMap<String, List<Slot>>  stringListHashMap;
 
 
-    public HashMap<String, List<String>> getStringListHashMap() {
+    public HashMap<String, List<Slot>> getStringListHashMap() {
         return stringListHashMap;
     }
 
-    public void setStringListHashMap(HashMap<String, List<String>> stringListHashMap) {
+    public void setStringListHashMap(HashMap<String, List<Slot>> stringListHashMap) {
         this.stringListHashMap = stringListHashMap;
     }
 }
