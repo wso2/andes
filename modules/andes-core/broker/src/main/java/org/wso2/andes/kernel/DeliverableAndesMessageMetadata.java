@@ -2,15 +2,19 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.stats.PerformanceCounter;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * This class is the template for metadata object which is delivered
+ * to subscribers. A reference is created when a message is read from
+ * store and its reference goes on until it is successfully delivered,
+ * moved to DLC, expired etc.
+ */
 public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
 
     private static Log log = LogFactory.getLog(DeliverableAndesMessageMetadata.class);
@@ -40,7 +44,10 @@ public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
     private AtomicInteger numberOfScheduledDeliveries;
 
 
-
+    /**
+     * Generate DeliverableAndesMessageMetadata instance from a AndesMessageMetadata
+     * @param andesMessageMetadata  AndesMessageMetadata object to make deliverable
+     */
     public DeliverableAndesMessageMetadata(AndesMessageMetadata andesMessageMetadata) {
 
         this.alreadyPassedStatus = new ArrayList<MessageStatus>(8);
@@ -75,9 +82,20 @@ public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
         this.numberOfScheduledDeliveries = new AtomicInteger(0);
     }
 
+    /**
+     * This class is for keeping Channel-wise delivery
+     * information of a message
+     */
     private class MessageDeliveryInfo {
 
+        /**
+         * Number of times message is delivered to channel
+         */
         private AtomicInteger numberOfDeliveriesToChannel;
+
+        /**
+         * Delivery status for channel
+         */
         private ChannelStatus channelStatus;
 
         MessageDeliveryInfo() {
@@ -85,22 +103,40 @@ public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
             this.channelStatus = null;
         }
 
+        /**
+         * Increment number of deliveries for channel
+         */
         private void incrementNumberOfDeliveries() {
               numberOfDeliveriesToChannel.incrementAndGet();
         }
 
+        /**
+         * decrement number of deliveries for channel
+         */
         private void decrementNumberOfDeliveries() {
             numberOfDeliveriesToChannel.decrementAndGet();
         }
 
+        /**
+         * Get how many times this message is delivered for channel
+         * @return  described figure
+         */
         private int getNumberOfDeliveries() {
             return numberOfDeliveriesToChannel.get();
         }
 
+        /**
+         * Set delivery status for channel
+         * @param status status to set
+         */
         private void setChannelStatus(ChannelStatus status) {
             this.channelStatus = status;
         }
 
+        /**
+         * Get delivery status for channel
+         * @return described figure
+         */
         private ChannelStatus getChannelStatus() {
             return channelStatus;
         }
@@ -246,19 +282,35 @@ public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
 
     }
 
+    /**
+     * Set status of the message in its lifecycle
+     * @param status status to set
+     */
     public void setMessageStatus(MessageStatus status) {
         this.currentMessageStatus = status;
         this.alreadyPassedStatus.add(status);
     }
 
+    /**
+     * Get current status of the message
+     * @return described figure
+     */
     public MessageStatus getCurrentMessageStatus() {
         return currentMessageStatus;
     }
 
+    /**
+     * Record that this message is scheduled by Andes to be delivered
+     * This figure is useful to decide if message is eligible to delete
+     */
     public void recordScheduleToDeliver() {
         numberOfScheduledDeliveries.incrementAndGet();
     }
 
+    /**
+     * Record that this message is delivered to given channel
+     * @param channelID id of the channel message is delivered
+     */
     public void recordDelivery(long channelID) {
         setMessageStatus(MessageStatus.SENT);
         MessageDeliveryInfo messageDeliveryInfo = channelDeliveryInfo.get(channelID);
@@ -272,6 +324,11 @@ public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
         numberOfScheduledDeliveries.decrementAndGet();
     }
 
+    /**
+     * Roll-back recording that is message is delivered to the given channel
+     * @param channelID  id of the channel delivery failed or rejected
+     * @param isChannelInactive is delivery failed due to channel close
+     */
     public void rollBackDeliveryRecord(long channelID, boolean isChannelInactive) {
         setMessageStatus(MessageStatus.SEND_ERROR);
         MessageDeliveryInfo messageDeliveryInfo = channelDeliveryInfo.get(channelID);
@@ -283,6 +340,11 @@ public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
         }
     }
 
+    /**
+     * Record an acknowledgement reached for delivery of this message for given channel
+     * @param channelID id of the channel ack reached. Ack comes from delivered
+     *                  channel itself
+     */
     public void recordAcknowledge(long channelID) {
         setMessageStatus(MessageStatus.ACKED);
         this.channelDeliveryInfo.remove(channelID);
@@ -303,17 +365,29 @@ public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
         }
     }
 
+    /**
+     * Record this message is rejected by subscriber at given channel
+     * @param channelID id of the channel reject is received
+     */
     public void recordRejectionByChannel(long channelID) {
         channelDeliveryInfo.get(channelID).setChannelStatus(ChannelStatus.REJECTED);
         setMessageStatus(MessageStatus.REJECTED);
     }
 
+    /**
+     * Record a channel close. Record that this message is delivered to that closed
+     * channel is removed.
+     * @param channelID id of the channel
+     */
     public void recordChannelClose(long channelID) {
         channelDeliveryInfo.remove(channelID);
-        //TODO : try to delete message
+        tryToDeleteMessageFromStore();
     }
 
-
+    /**
+     * Check if this message is acknowledged by all channel it is sent to
+     * @return  result of above check
+     */
     public boolean isAcknowledgedByAllChannels() {
         boolean isAckedByAllChannels = false;
         if(this.channelDeliveryInfo.isEmpty()) {
@@ -322,10 +396,18 @@ public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
         return isAckedByAllChannels;
     }
 
+    /**
+     * Update timestamp of the message read from store
+     * @param timestamp updated timestamp to set
+     */
     public void updateTimeStamp(long timestamp) {
         this.timestamp = timestamp;
     }
 
+    /**
+     * Check if message is expired
+     * @return result of above check
+     */
     public boolean isExpired() {
         if (expirationTime != 0L) {
             long now = System.currentTimeMillis();
@@ -335,6 +417,11 @@ public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
         }
     }
 
+    /**
+     * Get status of the message passed through since it is
+     * read from store
+     * @return mentioned figure as a string
+     */
     public String getStatusHistoryAsString() {
         String history = "";
         for (MessageStatus status : alreadyPassedStatus) {
@@ -343,6 +430,10 @@ public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
         return history;
     }
 
+    /**
+     * Get latest state of the message
+     * @return latest MessageStatus
+     */
     public MessageStatus getLatestState() {
         MessageStatus latest = null;
         if (alreadyPassedStatus.size() > 0) {
@@ -351,11 +442,23 @@ public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
         return latest;
     }
 
+    /**
+     * Check if message is already sent to a given channel previously
+     * @param channelID id of the channel
+     * @return result of above check
+     */
     public boolean isRedeliveredToChannel(long channelID) {
         Integer numOfDeliveries = channelDeliveryInfo.get(channelID).getNumberOfDeliveries();
         return numOfDeliveries > 1;
     }
 
+    /**
+     * Check if this message is deliverable to the given channel. This is to
+     * prevent already delivered messages being sent again due to an sudden
+     * inconsistency
+     * @param channelID id of the channel
+     * @return  result of above check
+     */
     public boolean isDeliverableToChannel(long channelID) {
         //Allowed scenarios
         // 1. if message is rejected
@@ -370,14 +473,28 @@ public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
         return isDeliverableToChannel;
     }
 
+    /**
+     * Get how many times message is delivered to the given channel
+     * @param channelID id of the channel
+     * @return  result of above figure
+     */
     public int getNumOfDeliveires4Channel(long channelID) {
         return channelDeliveryInfo.get(channelID).getNumberOfDeliveries();
     }
 
+    /**
+     * Check if message is ready to be removed from store
+     * @return result of mentioned check
+     */
     public boolean isOKToRemoveMessage() {
         return MessageStatus.isOKToRemove(alreadyPassedStatus);
     }
 
+    /**
+     * This might called when a topic subscriber suddenly closed. Evaluate and
+     * trigger delete from store if possible
+     * @return  is OK to delete
+     */
     public boolean tryToDeleteMessageFromStore() {
         boolean isOKToRemoveMessage = isOKToRemoveMessage();
         if(isOKToRemoveMessage) {

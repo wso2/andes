@@ -36,6 +36,7 @@ import org.wso2.andes.store.cassandra.CassandraConstants;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This is the implementation of MessageStore that deals with Cassandra no SQL DB.
@@ -359,11 +360,13 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     public AndesMessageMetadata getMetaData(long messageId) throws AndesException {
         try {
 
-            byte[] value = HectorDataAccessHelper
+            Map<String,byte[]> messageInfo = HectorDataAccessHelper
                     .getMessageMetaDataOfMessage(CassandraConstants.META_DATA_COLUMN_FAMILY,
                             keyspace, messageId);
-            return new AndesMessageMetadata(messageId, value, true);
-
+            Map.Entry<String, byte[]> msgEntry = messageInfo.entrySet().iterator().next();
+            AndesMessageMetadata metadata = new AndesMessageMetadata(messageId, msgEntry.getValue(), true);
+            metadata.setStorageQueueName(msgEntry.getKey());
+            return metadata;
         } catch (Exception e) {
             throw new AndesException("Error while getting meta data for messageID " + messageId,
                     e);

@@ -512,14 +512,14 @@ public class MessagingEngine {
      * Get message metadata from queue starting from given id up a given
      * message count
      *
-     * @param queueName  name of the queue
+     * @param storageQueueName  name of the queue
      * @param firstMsgId id of the starting id
      * @param count      maximum num of messages to return
      * @return List of message metadata
      * @throws AndesException
      */
-    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId, int count) throws AndesException {
-        return messageStore.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String storageQueueName, long firstMsgId, int count) throws AndesException {
+        return messageStore.getNextNMessageMetadataFromQueue(storageQueueName, firstMsgId, count);
     }
 
     /**

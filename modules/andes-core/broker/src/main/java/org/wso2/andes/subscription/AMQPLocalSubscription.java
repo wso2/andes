@@ -31,10 +31,8 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.server.AMQChannel;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.cassandra.MessageFlusher;
-import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -42,7 +40,6 @@ import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
 
-import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 

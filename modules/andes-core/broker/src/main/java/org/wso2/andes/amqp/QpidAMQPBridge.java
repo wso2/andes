@@ -27,7 +27,6 @@ import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.framing.abstraction.ContentChunk;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.protocol.AMQConstant;
-import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.cassandra.QueueBrowserDeliveryWorker;
 import org.wso2.andes.server.exchange.Exchange;
@@ -191,24 +190,23 @@ public class QpidAMQPBridge {
         return contentLenWritten;
     }
 
+    /**
+     * Handle ACK receive in kernel
+     * @param ackedChannel channel through which ack reached
+     * @param messageID  id of acknowledged message
+     * @throws AMQException
+     */
     public void ackReceived(AndesChannel ackedChannel, long messageID)
             throws AMQException {
         try {
-/*            if (log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug("ack received for message id= " + messageID + " channelId= " + ackedChannel.getChannelID());
             }
-            AndesSubscription ackSentSubscription = AndesContext.getInstance().
-                    getSubscriptionStore().getLocalSubscriptionForChannelId(channelID, routingKey, isTopic);
-            if (ackSentSubscription == null) {
-                //TODO : if an ack came here after subscription is closed, should we discard message?
-                log.error("Cannot handle Ack. Subscription is null for channel= " + channelID + "Message Destination= "
-                        + routingKey);
-                return;
-            }
-            //This can be different from routing key in hierarchical topic case
-            String subscriptionBoundDestination = ackSentSubscription.getSubscribedDestination();
-            String storageQueueNameOfSubscription = ackSentSubscription.getStorageQueueName();*/
             DeliverableAndesMessageMetadata ackedMessage = ackedChannel.acknowledgeMessage(messageID);
+            if(null == ackedMessage) {
+                log.warn("Could not find message that was acked from Andes Channel " +
+                         "with message id = " + messageID + ". This can make the broker inconsistent");
+            }
             AndesAckData andesAckData = AMQPUtils
                     .generateAndesAckMessage(ackedChannel, ackedMessage);
             Andes.getInstance().ackReceived(andesAckData);
@@ -218,6 +216,13 @@ public class QpidAMQPBridge {
         }
     }
 
+    /**
+     * Handle message rejection in kernel
+     * @param rejectChannel channel through which message is rejected
+     * @param IDOfMsgRejected id of the rejected message
+     * @param reQueue whether to re-queue the message
+     * @throws AMQException
+     */
     public void rejectMessage(AndesChannel rejectChannel, long IDOfMsgRejected, boolean reQueue) throws AMQException {
         try {
             DeliverableAndesMessageMetadata rejectedMessage = rejectChannel.rejectMessage(IDOfMsgRejected,reQueue);

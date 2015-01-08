@@ -80,41 +80,52 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
             long channelIDOfSubscription = subscription.getAndesChannel().getChannelID();
             try {
 
-                if(!message.isDeliverableToChannel(channelIDOfSubscription)) {
-                    log.warn("This is not a new message. It has been sent to this subscriber earlier. Expecting Acknowledge." +
-                             "Rejecting delivery of message. Msg id = " + message.getMessageID() + " channel id= " + channelIDOfSubscription);
+                if (!message.isDeliverableToChannel(channelIDOfSubscription)) {
+                    log.warn(
+                            "This is not a new message. It has been sent to this subscriber " +
+                            "earlier. Expecting Acknowledge." +
+                            "Rejecting delivery of message. Msg id = " + message
+                                    .getMessageID() + " channel id= " + channelIDOfSubscription);
                     return;
                 }
 
                 //decrement number of schedule deliveries before send to subscriber to avoid
-                // parallel status update issues
+                // parallel status update issues. Also we save the reference before sending due to same reason
                 message.recordDelivery(channelIDOfSubscription);
+                subscription.getAndesChannel().registerMessageDelivery(message);
+
+                //if an error occurred rollback delivery record and send message to DLC
                 if (deliveryEventData.isErrorOccurred()) {
-                    message.rollBackDeliveryRecord(channelIDOfSubscription, true);
                     handleSendError(message);
+                    message.rollBackDeliveryRecord(channelIDOfSubscription, true);
+                    subscription.getAndesChannel().unRegisterMessageDelivery(message);
                     return;
                 }
+
+                //perform actual send if subscriber is active now
                 if (subscription.isActive()) {
                     boolean deliverySuccess = subscription
                             .sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
-                    if(deliverySuccess) {
-                        //we keep reference of delivered message only if it is success
-                      subscription.getAndesChannel().registerMessageDelivery(message);
-                        message.setMessageStatus(DeliverableAndesMessageMetadata.MessageStatus.SENT);
+                    if (deliverySuccess) {
+                        //we have already performed what needs to be done when successful before actual sending
                     } else {
                         //Move to dead letter channel
                         handleSendError(message);
                         message.rollBackDeliveryRecord(channelIDOfSubscription, true);
+                        subscription.getAndesChannel().unRegisterMessageDelivery(message);
                     }
                 } else {
                     message.rollBackDeliveryRecord(channelIDOfSubscription, false);
+                    subscription.getAndesChannel().unRegisterMessageDelivery(message);
+                    //requeue message again as subscriber is gone
                     MessageFlusher.getInstance()
                                   .reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
                 }
             } catch (Throwable e) {
                 log.error("Error while delivering message. Moving to Dead Letter Queue.", e);
-                message.rollBackDeliveryRecord(channelIDOfSubscription, true);
                 handleSendError(message);
+                message.rollBackDeliveryRecord(channelIDOfSubscription, true);
+                subscription.getAndesChannel().unRegisterMessageDelivery(message);
             } finally {
                 deliveryEventData.clearData();
             }
@@ -130,6 +141,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
     private void handleSendError(DeliverableAndesMessageMetadata message) {
         // If message is a queue message we move the message to the Dead Letter Channel
         // since topics doesn't have a Dead Letter Channel
+        log.warn("Moving to Dead Letter Queue.");
         if (!message.isTopic()) {
             AndesRemovableMetadata removableMessage = new AndesRemovableMetadata(message.getMessageID(),
                                                                                  message.getDestination(),

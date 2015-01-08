@@ -359,20 +359,21 @@ public class HectorDataAccessHelper {
      * @param columnFamilyName name of the column family
      * @param keyspace         Cassandra Keyspace
      * @param messageId        ID of the message
-     * @return the metadata stored in Cassandra as a byte array
+     * @return a map with the metadata stored in Cassandra. <StorageQueue, message as a byte array>
      * @throws CassandraDataAccessException
      */
-    public static byte[] getMessageMetaDataOfMessage(String columnFamilyName, Keyspace keyspace,
+    public static Map<String,byte[]> getMessageMetaDataOfMessage(String columnFamilyName, Keyspace keyspace,
                                                      long messageId) throws
             CassandraDataAccessException {
-        byte[] value = null;
+        byte[] messageAsBytes;
+        String storageQueueName;
+        Map<String,byte[]> messageInfo = new HashMap<String, byte[]>(1);
         if (keyspace == null) {
             throw new CassandraDataAccessException("Can't access Data , no keyspace provided ");
         }
 
         if (columnFamilyName == null) {
-            throw new CassandraDataAccessException("Can't access data with queueType = " +
-                    columnFamilyName);
+            throw new CassandraDataAccessException("Can't access data, no columnFamily name provided");
         }
 
         try {
@@ -387,17 +388,19 @@ public class HectorDataAccessHelper {
             QueryResult<OrderedRows<String, Long, byte[]>> result = sliceQuery.execute();
 
             if (result == null || result.get().getList().size() == 0) {
-                value = null;
+                messageAsBytes = null;
             } else {
                 Row<String, Long, byte[]> rowSlice = result.get().peekLast();
                 ColumnSlice<Long, byte[]> columnSlice = rowSlice.getColumnSlice();
                 for (Object column : columnSlice.getColumns()) {
                     if (column instanceof HColumn) {
-                        value = ((HColumn<Long, byte[]>) column).getValue();
+                        storageQueueName = rowSlice.getKey();
+                        messageAsBytes = ((HColumn<Long, byte[]>) column).getValue();
+                        messageInfo.put(storageQueueName,messageAsBytes);
                     }
                 }
             }
-            return value;
+            return messageInfo;
         } catch (Exception e) {
             if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
                 throw new CassandraDataAccessException("Error while getting data from " +
@@ -455,9 +458,8 @@ public class HectorDataAccessHelper {
                     AndesMessageMetadata metadata = new AndesMessageMetadata(((HColumn<Long,
                             byte[]>) column).getName(), ((HColumn<Long,
                             byte[]>) column).getValue(), parse);
-                    if (!MessageExpirationWorker.isExpired(metadata.getExpirationTime())) {
-                        metadataList.add(metadata);
-                    }
+                    metadata.setStorageQueueName(rowName);
+                    metadataList.add(metadata);
                 }
             }
 

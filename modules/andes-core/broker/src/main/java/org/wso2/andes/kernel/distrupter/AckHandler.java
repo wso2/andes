@@ -55,7 +55,11 @@ public class AckHandler implements BatchEventHandler {
         } catch (AndesException e) {
             // Log the AndesException since there is no point in passing the exception to Disruptor
             log.error("Error occurred while processing acknowledgements ", e);
-        }
+        }/* finally {
+            for (InboundEvent inboundEvent : eventList) {
+                inboundEvent.clear();
+            }
+        }*/
     }
 
     /**
@@ -69,39 +73,32 @@ public class AckHandler implements BatchEventHandler {
         for (InboundEvent event : eventList) {
 
             AndesAckData ack = event.getAckData();
+            DeliverableAndesMessageMetadata messageRef = ack.getMessageReference();
             if(null == ack) {
-                log.info("Ack is null");
-            } else {
-                log.info("Ack handled. Msg Id " + ack.getMessageID());
-                if(null == ack.getMessageReference()) {
-                    log.info("Message ref is null");
-                }
+                log.info("ack is null");
             }
-            ack.getMessageReference().recordAcknowledge(ack.getChannelID());
+            if(null == messageRef) {
+                log.info("message ref is null");
+            }
+            messageRef.recordAcknowledge(ack.getChannelID());
             Slot slotOfAckedMessage = ack.getMessageReference().getSlot();
             if(null == slotsOfMessages.get(slotOfAckedMessage.getId())) {
                 slotsOfMessages.put(slotOfAckedMessage.getId(), slotOfAckedMessage);
             }
-//            // For topics message is shared. If all acknowledgements are received only we should remove message
-
-/*            try {
-                Thread.sleep(20);
-            } catch (InterruptedException e) {
-                //ignore
-            }*/
-            boolean deleteMessage = ack.getMessageReference().isOKToRemoveMessage();
+            // For topics message is shared. If all acknowledgements are received only we should remove message
+           boolean deleteMessage = ack.getMessageReference().isOKToRemoveMessage();
             if (deleteMessage) {
                 if (log.isDebugEnabled()) {
                     log.debug("Ok to delete message id " + ack.getMessageID());
                 }
-//                removableMetadata.add(new AndesRemovableMetadata(ack.getMessageID(), ack.getDestination(),
-//                        ack.getMsgStorageDestination()));
-//                slotOfAckedMessage.decrementPendingMessageCountBySlot();
+                removableMetadata.add(
+                        new AndesRemovableMetadata(ack.getMessageID(), ack.getDestination(),
+                                                   ack.getMsgStorageDestination()));
+                slotOfAckedMessage.decrementPendingMessageCountBySlot();
             }
-//
-//            //record ack received
-//            PerformanceCounter.recordMessageRemovedAfterAck();
-            event.clear();
+
+            //record ack received
+            PerformanceCounter.recordMessageRemovedAfterAck();
         }
 
         MessagingEngine.getInstance().deleteMessages(removableMetadata, false);

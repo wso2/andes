@@ -54,9 +54,6 @@ public class InboundEvent {
     }
 
     public void setAckData(AndesAckData ackData) {
-        if(null == ackData) {
-           log.error("Setting null to ackData");
-        }
         this.ackData = ackData;
     }
 
@@ -144,9 +141,6 @@ public class InboundEvent {
 
     public void clear() {
         messageList.clear();
-        if(eventType == Type.ACKNOWLEDGEMENT_EVENT && null != ackData ) {
-            log.error("Ack cleared. msg id " + ackData.getMessageID());
-        }
         setAckData(null);
         data = null;
         eventType = Type.IGNORE_EVENT;

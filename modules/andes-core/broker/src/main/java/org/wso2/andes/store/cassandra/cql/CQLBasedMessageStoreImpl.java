@@ -443,10 +443,12 @@ public class CQLBasedMessageStoreImpl implements org.wso2.andes.kernel.MessageSt
         AndesMessageMetadata metadata;
         try {
 
-            byte[] value = CQLDataAccessHelper
+            Map<String,byte[]> messageInfo = CQLDataAccessHelper
                     .getMessageMetaDataFromQueue(CassandraConstants.META_DATA_COLUMN_FAMILY,
                             CassandraConstants.KEYSPACE, messageId);
-            metadata = new AndesMessageMetadata(messageId, value, true);
+            Map.Entry<String, byte[]> msgEntry = messageInfo.entrySet().iterator().next();
+            metadata = new AndesMessageMetadata(messageId, msgEntry.getValue(), true);
+            metadata.setStorageQueueName(msgEntry.getKey());
 
         } catch (CassandraDataAccessException e) {
             log.error("Error in getting meta data of provided message id", e);

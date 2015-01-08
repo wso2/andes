@@ -570,17 +570,18 @@ public class CQLDataAccessHelper {
     }
 
 
-    public static byte[] getMessageMetaDataFromQueue(String columnFamilyName, String keyspace,
+    public static Map<String,byte[]> getMessageMetaDataFromQueue(String columnFamilyName, String keyspace,
                                                      long messageId)
             throws CassandraDataAccessException {
-        byte[] value = null;
+        byte[] messageAsBytes;
+        String storageQueueName;
+        Map<String,byte[]> mapWithMessage = new HashMap<String, byte[]>(1);
         if (keyspace == null) {
             throw new CassandraDataAccessException("Can't access Data , no keyspace provided ");
         }
 
         if (columnFamilyName == null) {
-            throw new CassandraDataAccessException(
-                    "Can't access data with queueType = " + columnFamilyName);
+            throw new CassandraDataAccessException("Can't access data , no columnFamilyName provided");
         }
 
         try {
@@ -600,10 +601,11 @@ public class CQLDataAccessHelper {
             Iterator<Row> iter = rows.iterator();
             if (iter.hasNext()) {
                 Row row = iter.next();
-                value = CQLQueryBuilder.convertToByteArray(row, MSG_VALUE);
+                messageAsBytes = CQLQueryBuilder.convertToByteArray(row, MSG_VALUE);
+                storageQueueName = row.toString();
+                mapWithMessage.put(storageQueueName,messageAsBytes);
             }
-            //TODO: should we set storage queue name as well?
-            return value;
+            return mapWithMessage;
         } catch (Exception e) {
             throw new CassandraDataAccessException(
                     "Error while getting data from " + columnFamilyName, e);

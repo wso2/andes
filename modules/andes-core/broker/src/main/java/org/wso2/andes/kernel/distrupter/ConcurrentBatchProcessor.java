@@ -138,9 +138,6 @@ public class ConcurrentBatchProcessor implements EventProcessor {
                             eventList.add(event);
                         }
 
-                        if(eventType == InboundEvent.Type.ACKNOWLEDGEMENT_EVENT) {
-                            log.info("Ack msg id added " + event.getAckData().getMessageID());
-                        }
                         if (log.isDebugEnabled()) {
                             log.debug("[ " + nextSequence + " ] Current turn " + currentTurn + ", turn " + turn
                                     + ", groupCount " + groupCount + ", EventType " + eventType);

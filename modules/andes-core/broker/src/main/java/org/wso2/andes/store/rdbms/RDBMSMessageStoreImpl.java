@@ -454,6 +454,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             if (results.next()) {
                 byte[] b = results.getBytes(RDBMSConstants.METADATA);
                 md = new AndesMessageMetadata(messageId, b, true);
+                //todo: need to set storage queue nme
             }
         } catch (SQLException e) {
             throw new AndesException("error occurred while retrieving message " +
@@ -493,6 +494,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                         resultSet.getBytes(RDBMSConstants.METADATA),
                         true
                 );
+                md.setStorageQueueName(queueName);
                 metadataList.add(md);
             }
             if (log.isDebugEnabled()) {
@@ -544,6 +546,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                         results.getBytes(RDBMSConstants.METADATA),
                         true
                 );
+                md.setStorageQueueName(storageQueueName);
                 mdList.add(md);
                 resultCount++;
             }
@@ -589,8 +592,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             }
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
-            throw new AndesException("error occurred while deleting message metadata from queue ",
-                    e);
+            throw new AndesException("error occurred while deleting message metadata from queue ",e);
         } finally {
             String task = RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName;
             close(preparedStatement, task);

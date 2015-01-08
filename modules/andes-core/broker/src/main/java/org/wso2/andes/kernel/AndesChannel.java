@@ -122,6 +122,12 @@ public class AndesChannel {
      */
     private Integer maxNumberOfDeliveredButUnAckedMessages = 5000;
 
+    /**
+     * Channel suspension is released when delivered
+     * but not acked number of messages dropped down to this limit
+     */
+    private int channelSubscriptionReleaseThreshold;
+
     public AndesChannel(FlowControlManager flowControlManager, FlowControlListener listener,
                         boolean globalFlowControlEnabled) {
         this.flowControlManager = flowControlManager;
@@ -142,6 +148,7 @@ public class AndesChannel {
         this.numberOfSentButNotAckedMessages = new AtomicLong(0);
         this.maxNumberOfDeliveredButUnAckedMessages = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
+        this.channelSubscriptionReleaseThreshold = maxNumberOfDeliveredButUnAckedMessages * (60 / 100);
         this.channelSuspended = false;
 
         log.info("Channel created with ID: " + id);
@@ -253,16 +260,34 @@ public class AndesChannel {
         incrementNotAckedMessageCount();
     }
 
+    /**
+     * Remove message reference saved in channel that it is sent through.
+     * This is called when a delivery is roll-backed
+     * @param message message to be removed
+     */
     public void unRegisterMessageDelivery(DeliverableAndesMessageMetadata message) {
         messagesSentToChannel.remove(message.getMessageID());
     }
 
+    /**
+     * Acknowledgement received for message from channel. This will
+     * remove metadata reference from channel and return it
+     * @param messageID id of acknowledged message
+     * @return metadata reference of acked message.
+     */
     public DeliverableAndesMessageMetadata acknowledgeMessage(long messageID) {
         decrementNotAckedMessageCount();
         return messagesSentToChannel.remove(messageID);
     }
 
 
+    /**
+     * Reject for the message reached via the channel. If client did not ask to requeue
+     * metadata reference will be removed
+     * @param messageID id of the rejected message
+     * @param reQueue if to re-queue message for the client
+     * @return metadata reference
+     */
     public DeliverableAndesMessageMetadata rejectMessage(long messageID, boolean reQueue) {
         DeliverableAndesMessageMetadata rejectedMessage = messagesSentToChannel.get(messageID);
         rejectedMessage.setChannelId(id);
@@ -273,33 +298,53 @@ public class AndesChannel {
         return rejectedMessage;
     }
 
+    /**
+     * Increment delivered but not acked message count for this channel
+     */
     public void incrementNotAckedMessageCount() {
         numberOfSentButNotAckedMessages.incrementAndGet();
-        if (numberOfSentButNotAckedMessages.get() > maxNumberOfDeliveredButUnAckedMessages) {
+        if (!channelSuspended && numberOfSentButNotAckedMessages.get() > maxNumberOfDeliveredButUnAckedMessages) {
             channelSuspended = true;
             log.info("Subscriber is Suspended as It Has Failed To Ack " +
                      maxNumberOfDeliveredButUnAckedMessages + " Messages");
         }
     }
 
+    /**
+     * Decrement delivered but not acked message count for this channel
+     */
     public void decrementNotAckedMessageCount() {
         numberOfSentButNotAckedMessages.decrementAndGet();
-        if(channelSuspended && numberOfSentButNotAckedMessages.get() < (maxNumberOfDeliveredButUnAckedMessages * 60 /100 ) ) {
+        if(channelSuspended && numberOfSentButNotAckedMessages.get() < channelSubscriptionReleaseThreshold ) {
             channelSuspended = false;
-            log.info("Subscriber is Responding. Releasing Suspension " +
+            log.info("Subscriber is Responding. Releasing Suspension At" +
                      maxNumberOfDeliveredButUnAckedMessages + " Messages");
         }
     }
 
+    /**
+     * Channel is suspended with respect to a subscriber. If the number of sent
+     * but not acked message count breached a configured limit channel is suspended
+     * until some messages are acknowledged
+     * @return  is this channel suspended
+     */
     public boolean isChannelSuspended() {
         return channelSuspended;
     }
 
     //should call when send to DLC
+
+    /**
+     * Specifically remove reference of message sent by this channel
+     * @param messageID id of the message
+     */
     public void removeMessageFromChannel(long messageID) {
         messagesSentToChannel.remove(messageID);
     }
 
+    /**
+     * Channel close
+     */
     public void close() {
         for(Map.Entry<Long, DeliverableAndesMessageMetadata> msgEntry : messagesSentToChannel.entrySet()) {
             msgEntry.getValue().recordChannelClose(id);
