@@ -148,7 +148,12 @@ public class AndesChannel {
         this.numberOfSentButNotAckedMessages = new AtomicLong(0);
         this.maxNumberOfDeliveredButUnAckedMessages = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
-        this.channelSubscriptionReleaseThreshold = maxNumberOfDeliveredButUnAckedMessages * (60 / 100);
+        /**
+         * Suspension will be released not acked message count
+         * dropped to 60% of messages of maximum allowed
+         */
+        this.channelSubscriptionReleaseThreshold = (maxNumberOfDeliveredButUnAckedMessages * 60 ) / 100;
+
         this.channelSuspended = false;
 
         log.info("Channel created with ID: " + id);
@@ -186,7 +191,7 @@ public class AndesChannel {
             flowControlEnabled = false;
             listener.unblock();
 
-            log.info("Flow control disabled for channel " + id + ".");
+            log.info("Publisher Flow Control Disabled for Channel " + id + ".");
         }
     }
 
@@ -215,7 +220,7 @@ public class AndesChannel {
             listener.block();
             scheduledFlowControlTimeoutFuture = executor.schedule(flowControlTimeoutTask, 1, TimeUnit.MINUTES);
 
-            log.info("Flow control enabled for channel " + id + ".");
+            log.info("Publisher Flow Control Enabled for Channel " + id + ".");
         }
     }
 
@@ -317,12 +322,8 @@ public class AndesChannel {
         numberOfSentButNotAckedMessages.decrementAndGet();
         if(channelSuspended && numberOfSentButNotAckedMessages.get() < channelSubscriptionReleaseThreshold ) {
             channelSuspended = false;
-            log.info("Subscriber with Channel Id " + id + " is Responding. Releasing Suspension At" +
+            log.info("Subscriber with Channel Id " + id + " is Responding. Releasing Suspension At " +
                      channelSubscriptionReleaseThreshold + " Messages");
-        } else {
-            log.info("Subscriber with Channel Id " + id + " is Still Suspended. " +
-                     "Pending Ack Count= " + numberOfSentButNotAckedMessages +" Will Release Suspension At" +
-                     channelSubscriptionReleaseThreshold);
         }
     }
 

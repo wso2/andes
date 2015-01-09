@@ -39,24 +39,12 @@ public class AndesRemovableMetadata {
         return messageID;
     }
 
-    public void setMessageID(long messageID) {
-        this.messageID = messageID;
-    }
-
     public String getStorageDestination() {
         return storageDestination;
     }
 
-    public void setStorageDestination(String storageDestination) {
-        this.storageDestination = storageDestination;
-    }
-
     public String getMessageDestination() {
         return messageDestination;
-    }
-
-    public void setMessageDestination(String messageDestination) {
-        this.messageDestination = messageDestination;
     }
 
     public boolean isForTopic() {
