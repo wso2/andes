@@ -305,7 +305,7 @@ public class AndesChannel {
         numberOfSentButNotAckedMessages.incrementAndGet();
         if (!channelSuspended && numberOfSentButNotAckedMessages.get() > maxNumberOfDeliveredButUnAckedMessages) {
             channelSuspended = true;
-            log.info("Subscriber is Suspended as It Has Failed To Ack " +
+            log.info("Subscriber with Channel Id " + id + " is Suspended as It Has Failed To Ack " +
                      maxNumberOfDeliveredButUnAckedMessages + " Messages");
         }
     }
@@ -317,8 +317,12 @@ public class AndesChannel {
         numberOfSentButNotAckedMessages.decrementAndGet();
         if(channelSuspended && numberOfSentButNotAckedMessages.get() < channelSubscriptionReleaseThreshold ) {
             channelSuspended = false;
-            log.info("Subscriber is Responding. Releasing Suspension At" +
-                     maxNumberOfDeliveredButUnAckedMessages + " Messages");
+            log.info("Subscriber with Channel Id " + id + " is Responding. Releasing Suspension At" +
+                     channelSubscriptionReleaseThreshold + " Messages");
+        } else {
+            log.info("Subscriber with Channel Id " + id + " is Still Suspended. " +
+                     "Pending Ack Count= " + numberOfSentButNotAckedMessages +" Will Release Suspension At" +
+                     channelSubscriptionReleaseThreshold);
         }
     }
 
