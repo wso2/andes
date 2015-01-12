@@ -31,7 +31,6 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.server.store.util.HectorDataAccessHelper;
 import org.wso2.andes.store.cassandra.CassandraConstants;
-import org.wso2.andes.store.cassandra.cql.dao.GenericCQLDAO;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -100,13 +99,7 @@ public class HectorConnection implements DurableStoreConnection {
 		        writeConsistencyLevel = CassandraConstants.DEFAULT_WRITE_CONSISTENCY;
 	        }
 
-	        //Setting consistency levels
-	        GenericCQLDAO.setWriteConsistencyLevel(writeConsistencyLevel);
-	        GenericCQLDAO.setReadConsistencyLevel(readConsistencyLevel);
-
-
-            String gcGraceSeconds = connectionProperties.getProperty(CassandraConstants
-                    .PROP_GC_GRACE_SECONDS);
+            String gcGraceSeconds = connectionProperties.getProperty(CassandraConstants.PROP_GC_GRACE_SECONDS);
 
             if (gcGraceSeconds.isEmpty()) {
                 gcGraceSeconds = CassandraConstants.DEFAULT_GC_GRACE_SECONDS;
@@ -218,7 +211,7 @@ public class HectorConnection implements DurableStoreConnection {
                                 ConfigurableConsistencyLevel consistencyLevel) throws AndesException {
         try{
             this.keyspace = HectorDataAccessHelper.createKeySpace(cluster,
-                    CassandraConstants.KEYSPACE,
+                    CassandraConstants.DEFAULT_KEYSPACE,
                     replicationFactor, strategyClass,consistencyLevel);
         }catch(UnavailableException e){
             throw new AndesException("Not enough nodes for replication" + e);

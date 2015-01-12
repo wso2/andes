@@ -530,7 +530,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             AndesException {
         try {
             keyspace = hectorConnection.getKeySpace();
-            createColumnFamilies(hectorConnection, hectorConnection.getCluster());
+            createColumnFamilies(hectorConnection, hectorConnection.getCluster(), keyspace.getKeyspaceName());
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while initializing cassandra message store", e);
         }
@@ -541,23 +541,25 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      *
      * @throws CassandraDataAccessException
      */
-    private void createColumnFamilies(HectorConnection connection, Cluster cluster) throws
-            CassandraDataAccessException {
+    private void createColumnFamilies(HectorConnection connection,
+                                      Cluster cluster,
+                                      String keyspace) throws CassandraDataAccessException {
+
         int gcGraceSeconds = connection.getGcGraceSeconds();
         HectorDataAccessHelper.createColumnFamily(CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY,
-                CassandraConstants.KEYSPACE, cluster,
+                keyspace, cluster,
                 CassandraConstants.INTEGER_TYPE,
                 gcGraceSeconds);
         HectorDataAccessHelper.createColumnFamily(CassandraConstants.META_DATA_COLUMN_FAMILY,
-                CassandraConstants.KEYSPACE, cluster,
+                keyspace, cluster,
                 CassandraConstants.LONG_TYPE,
                 gcGraceSeconds);
         HectorDataAccessHelper
                 .createCounterColumnFamily(CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY,
-                        CassandraConstants.KEYSPACE, cluster,
+                        keyspace, cluster,
                         gcGraceSeconds);
         HectorDataAccessHelper.createMessageExpiryColumnFamily(
-                CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY, CassandraConstants.KEYSPACE,
+                CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY, keyspace,
                 cluster, CassandraConstants.UTF8_TYPE, gcGraceSeconds);
     }
 }

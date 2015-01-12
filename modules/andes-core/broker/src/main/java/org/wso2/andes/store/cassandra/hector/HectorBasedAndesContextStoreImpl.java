@@ -26,6 +26,7 @@ import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.store.util.CassandraDataAccessException;
 import org.wso2.andes.server.store.util.HectorDataAccessHelper;
+import org.wso2.andes.store.cassandra.CassandraConfig;
 import org.wso2.andes.store.cassandra.CassandraConstants;
 
 import java.util.ArrayList;
@@ -57,6 +58,10 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
         this.hectorConnection = connection;
     }
 
+    public HectorBasedAndesContextStoreImpl() {
+        CassandraConfig config = new CassandraConfig();
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -75,15 +80,15 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
             Cluster cluster = hectorConnection.getCluster();
 
             //Create needed column families
-            HectorDataAccessHelper.createColumnFamily(SUBSCRIPTIONS_COLUMN_FAMILY, KEYSPACE,
+            HectorDataAccessHelper.createColumnFamily(SUBSCRIPTIONS_COLUMN_FAMILY, DEFAULT_KEYSPACE,
                     cluster, CassandraConstants.UTF8_TYPE, gcGraceSeconds);
-            HectorDataAccessHelper.createColumnFamily(EXCHANGE_COLUMN_FAMILY, KEYSPACE, cluster,
+            HectorDataAccessHelper.createColumnFamily(EXCHANGE_COLUMN_FAMILY, DEFAULT_KEYSPACE, cluster,
                     CassandraConstants.UTF8_TYPE, gcGraceSeconds);
-            HectorDataAccessHelper.createColumnFamily(QUEUE_COLUMN_FAMILY, KEYSPACE, cluster,
+            HectorDataAccessHelper.createColumnFamily(QUEUE_COLUMN_FAMILY, DEFAULT_KEYSPACE, cluster,
                     CassandraConstants.UTF8_TYPE, gcGraceSeconds);
-            HectorDataAccessHelper.createColumnFamily(BINDING_COLUMN_FAMILY, KEYSPACE, cluster,
+            HectorDataAccessHelper.createColumnFamily(BINDING_COLUMN_FAMILY, DEFAULT_KEYSPACE, cluster,
                     CassandraConstants.UTF8_TYPE, gcGraceSeconds);
-            HectorDataAccessHelper.createColumnFamily(NODE_DETAIL_COLUMN_FAMILY, KEYSPACE, cluster,
+            HectorDataAccessHelper.createColumnFamily(NODE_DETAIL_COLUMN_FAMILY, DEFAULT_KEYSPACE, cluster,
                     CassandraConstants.UTF8_TYPE, gcGraceSeconds);
 
             return hectorConnection;

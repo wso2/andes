@@ -45,16 +45,6 @@
             <artifactId>bnd</artifactId>
         </dependency>
 
-        <!--<dependency>-->
-            <!--<groupId>org.apache.cassandra</groupId>-->
-            <!--<artifactId>cassandra-all</artifactId>-->
-        <!--</dependency>-->
-
-        <!--<dependency>-->
-            <!--<groupId>org.apache.cassandra</groupId>-->
-            <!--<artifactId>cassandra-javautils</artifactId>-->
-        <!--</dependency>-->
-
         <dependency>
             <groupId>commons-logging</groupId>
             <artifactId>commons-logging</artifactId>
@@ -76,11 +66,6 @@
             <artifactId>commons-cli</artifactId>
         </dependency>
 
-        <!--<dependency>-->
-            <!--<groupId>org.apache.directory.studio</groupId>-->
-            <!--<artifactId>org.apache.commons.codec</artifactId>-->
-        <!--</dependency>-->
-
         <dependency>
             <groupId>commons-collections</groupId>
             <artifactId>commons-collections</artifactId>
@@ -100,16 +85,6 @@
             <groupId>commons-digester</groupId>
             <artifactId>commons-digester</artifactId>
         </dependency>
-
-        <!--<dependency>-->
-            <!--<groupId>org.apache.directory.studio</groupId>-->
-            <!--<artifactId>org.apache.commons.lang</artifactId>-->
-        <!--</dependency>-->
-
-        <!--<dependency>-->
-            <!--<groupId>org.apache.directory.studio</groupId>-->
-            <!--<artifactId>org.apache.commons.logging</artifactId>-->
-        <!--</dependency>-->
 
         <dependency>
             <groupId>commons-logging</groupId>
