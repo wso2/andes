@@ -21,6 +21,8 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.AndesException;
@@ -28,7 +30,6 @@ import org.wso2.andes.pool.ReadWriteRunnable;
 import org.wso2.andes.pool.ReferenceCountingExecutorService;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.LogActor;
@@ -404,10 +405,17 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
             throw new AMQSecurityException("Subscription to " + AndesConstants.DEAD_LETTER_QUEUE_NAME + " Queue is " +
                     "Not Allowed !, Please use a Different Alias");
         }
-        
+
+        Boolean sharedSubscribersAllowed = AndesConfigurationManager.readValue
+                (AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
+
         if (hasExclusiveSubscriber())
         {
-            if(!(this.checkIfBoundToTopicExchange() && this.isDurable())) {
+            if(sharedSubscribersAllowed) {
+                if(!(this.checkIfBoundToTopicExchange() && this.isDurable())) {
+                    throw new ExistingExclusiveSubscription();
+                }
+            } else {
                 throw new ExistingExclusiveSubscription();
             }
         }
@@ -416,7 +424,11 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
         {
             if (getConsumerCount() != 0)
             {
-                if(!(this.checkIfBoundToTopicExchange() && this.isDurable())) {
+                if(sharedSubscribersAllowed) {
+                    if(!(this.checkIfBoundToTopicExchange() && this.isDurable())) {
+                        throw new ExistingSubscriptionPreventsExclusive();
+                    }
+                }  else {
                     throw new ExistingSubscriptionPreventsExclusive();
                 }
             }

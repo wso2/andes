@@ -17,29 +17,39 @@
  */
 package org.wso2.andes.server;
 
-import org.apache.commons.configuration.ConfigurationException;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAMQPBridge;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.configuration.qpid.*;
-import org.wso2.andes.framing.*;
+import org.wso2.andes.configuration.qpid.ConfigStore;
+import org.wso2.andes.configuration.qpid.ConfiguredObject;
+import org.wso2.andes.configuration.qpid.ConnectionConfig;
+import org.wso2.andes.configuration.qpid.SessionConfig;
+import org.wso2.andes.configuration.qpid.SessionConfigType;
+import org.wso2.andes.framing.AMQMethodBody;
+import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.framing.BasicContentHeaderProperties;
+import org.wso2.andes.framing.ContentBody;
+import org.wso2.andes.framing.ContentHeaderBody;
+import org.wso2.andes.framing.FieldTable;
+import org.wso2.andes.framing.MethodRegistry;
 import org.wso2.andes.framing.abstraction.ContentChunk;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
+import org.wso2.andes.kernel.Andes;
+import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.server.queue.*;
+import org.wso2.andes.kernel.FlowControlListener;
+import org.wso2.andes.server.queue.AMQQueue;
+import org.wso2.andes.server.queue.BaseQueue;
+import org.wso2.andes.server.queue.DLCQueueUtils;
+import org.wso2.andes.server.queue.IncomingMessage;
+import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMapImpl;
-import org.wso2.andes.server.cassandra.SequentialThreadPoolExecutor;
-import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.flow.FlowCreditManager;
 import org.wso2.andes.server.flow.Pre0_10CreditManager;
@@ -71,10 +81,17 @@ import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
 import org.wso2.andes.server.virtualhost.AMQChannelMBean;
 import org.wso2.andes.server.virtualhost.VirtualHost;
-import org.wso2.andes.tools.utils.DisruptorBasedExecutor;
 
 import javax.management.JMException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -95,6 +112,11 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
 
     private final Pre0_10CreditManager _creditManager = new Pre0_10CreditManager(0l,0l);
+
+    /**
+     * Andes channel related to this local channel
+     */
+    private final AndesChannel andesChannel;
 
     /**
      * The delivery tag is unique per channel. This is pre-incremented before putting into the deliver frame so that
@@ -154,8 +176,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     private final UUID _id;
     private long _createTime = System.currentTimeMillis();
 
-    private static SequentialThreadPoolExecutor messageRoutingExecutor = null;
-
     private AMQChannelMBean _managedObject;
 
     public AMQChannel(AMQProtocolSession session, int channelId, MessageStore messageStore)
@@ -175,21 +195,24 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         // by default the session is non-transactional
         _transaction = new AutoCommitTransaction(_messageStore);
 
-        if(messageRoutingExecutor == null){
-            try {
-                messageRoutingExecutor = new SequentialThreadPoolExecutor(((Integer)
-                        AndesConfigurationManager
-                        .getInstance().readConfigurationValue(AndesConfiguration.PERFORMANCE_TUNING_ROUTING_WORKER_THREAD_COUNT)),
-                        "messageRoutingExecutor");
-            } catch (AndesException e) {
-                throw new AMQException(AndesConfigurationManager
-                        .GENERIC_CONFIGURATION_PARSE_ERROR + AndesConfiguration
-                        .PERFORMANCE_TUNING_ROUTING_WORKER_THREAD_COUNT.toString(),e);
-            }
-        }
-
         // message tracking related to this channel is initialised
-        MessagingEngine.getInstance().clientConnectionCreated(_id);
+        Andes.getInstance().clientConnectionCreated(_id);
+        andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {
+            @Override
+            public void block() {
+                if (!isSubscriptionChannel()) {
+                    blockChannel();
+                }
+            }
+
+            @Override
+            public void unblock() {
+                if (!isSubscriptionChannel()) {
+                    unblockChannel();
+                }
+            }
+        });
+
         try {
             _managedObject = new AMQChannelMBean(this);
             _managedObject.register();
@@ -268,15 +291,21 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         return _channelId;
     }
 
-    public void setPublishFrame(MessagePublishInfo info, final Exchange e) throws AMQSecurityException
-    {
+    /**
+     * Set frame to publish messages.
+     *
+     * @param info     Publishing information of the message.
+     * @param exchange The exchange message is publishing
+     * @throws AMQSecurityException
+     */
+    public void setPublishFrame(MessagePublishInfo info, final Exchange exchange) throws AMQSecurityException {
         if (!getVirtualHost().getSecurityManager().authorisePublish(info.isImmediate(),
-                                                                    info.getRoutingKey().asString(), e.getName()) ||
-            DLCQueueUtils.isDeadLetterQueue(info.getRoutingKey().asString())) {
-            throw new AMQSecurityException("Permission denied: " + e.getName());
+                info.getRoutingKey().asString(), exchange.getName()) ||
+                DLCQueueUtils.isDeadLetterQueue(info.getRoutingKey().asString())) {
+            throw new AMQSecurityException("Permission denied: " + exchange.getName());
         }
         _currentMessage = new IncomingMessage(info);
-        _currentMessage.setExchange(e);
+        _currentMessage.setExchange(exchange);
     }
 
     public void publishContentHeader(ContentHeaderBody contentHeaderBody)
@@ -300,7 +329,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
             MessageMetaData mmd = _currentMessage.headersReceived();
             //TODO find a proper way to get the IP of the client
-            mmd.set_clientIP(_session.toString().substring(0,_session.toString().indexOf(":")));
+            mmd.set_clientIP(_session.toString().substring(0,_session.toString().indexOf(':')));
 
             final StoredMessage<MessageMetaData> handle = this.addAMQPMessage(mmd);
             if( handle instanceof StoredAMQPMessage){
@@ -309,7 +338,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             _currentMessage.setStoredMessage(handle);
 
             routeCurrentMessage();
-
 
             _transaction.addPostTransactionAction(new ServerTransaction.Action()
             {
@@ -392,12 +420,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                      * happen here
                      */
 
-                    QpidAMQPBridge.getInstance().messageMetaDataReceived(incomingMessage, this.getId());
-
-                    AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
-                    AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message, this.getId());
-                    metadata.setExpirationTime(incomingMessage.getExpiration());
-                    metadata.setArrivalTime(incomingMessage.getArrivalTime());
+                    QpidAMQPBridge.getInstance().messageReceived(incomingMessage, this.getId(), andesChannel);
 
                 } catch (Throwable e) {
                     _logger.error("Error processing completed messages, we will close this session", e);
@@ -611,9 +634,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         forgetMessages4Channel();
 
         QpidAMQPBridge.getInstance().channelIsClosing(this.getId());
-
-        //here we will wait for  all jobs from this channel to end
-        DisruptorBasedExecutor.wait4JobsfromThisChannel2End(this._channelId);
+        Andes.getInstance().removeChannel(andesChannel);
 
         if (_managedObject != null) {
             _managedObject.unregister();
@@ -1614,7 +1635,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     }
 
     public <T extends StorableMessageMetaData> StoredMessage<T> addAMQPMessage(T metaData){
-        long mid = MessagingEngine.getInstance().generateNewMessageId();
+        long mid = 0; // Message IDs will be given By Andes
         if (_logger.isDebugEnabled()) {
             _logger.debug("MessageID generated:" + mid);
         }

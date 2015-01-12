@@ -61,11 +61,11 @@ public class AndesMessagePart {
      * @param messageId message id
      * @return returns AndesMessagePart
      */
-    public  AndesMessagePart deepClone(long messageId){
+    public  AndesMessagePart shallowCopy(long messageId){
         AndesMessagePart clone = new AndesMessagePart();
         clone.messageID = messageId;
         clone.offSet = offSet;
-        clone.data = data.clone();
+        clone.data = data;
         clone.dataLength = dataLength;
         return clone;
     }

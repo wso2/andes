@@ -20,10 +20,7 @@ package org.wso2.andes.mqtt;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.*;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
@@ -43,7 +40,7 @@ public class MQTTUtils {
     private static final String QOSLEVEL = "QOSLevel";
     //This will be required to be at the initial byte stream the meta data will have since when the message is proccessed
     //back from andes since the message relevency is checked ex :- whether its amqp, mqtt etc
-    private static final String MQTT_META_INFO = "\u0002MQTT Protocol v3.1";
+    public static final String MQTT_META_INFO = "\u0002MQTT Protocol v3.1";
 
     /**
      * The pulished messages will be taken in as a byte stream, the mesage will be transformed into AndesMessagePart as
@@ -70,7 +67,7 @@ public class MQTTUtils {
     public static long generateMessageID() {
         //Message ids will not be directly generated from the kernal since in future if there's a MQTT specific
         //id generation mechanism
-        return MessagingEngine.getInstance().generateNewMessageId();
+        return Andes.getInstance().generateNewMessageId();
     }
 
     /**
@@ -105,16 +102,17 @@ public class MQTTUtils {
      * @param qosLevel             the level of qos the message was published
      * @param messageContentLength the content length of the message
      * @param retain               should this message retain
+     * @param publisherID          the uuid which will uniquely identify the publisher
      * @return the meta information complient with the kernal
      */
     public static AndesMessageMetadata convertToAndesHeader(long messageID, String topic, int qosLevel,
-                                                            int messageContentLength, boolean retain) {
+                                                            int messageContentLength, boolean retain, UUID publisherID) {
         AndesMessageMetadata messageHeader = new AndesMessageMetadata();
         messageHeader.setMessageID(messageID);
         messageHeader.setTopic(true);
         messageHeader.setDestination(topic);
         messageHeader.setPersistent(true);
-        messageHeader.setChannelId(UUID.randomUUID());
+        messageHeader.setChannelId(publisherID);
         messageHeader.setMessageContentLength(messageContentLength);
         messageHeader.setStorageQueueName(topic);
         if (log.isDebugEnabled()) {
@@ -132,18 +130,17 @@ public class MQTTUtils {
      * Will extract out the message content from the meta data object provided, this will be called when a published
      * message is distributed among the subscribers
      *
-     * @param metadata the meta object which holds information about the message
+     * @param content Content object which has access to the message content
      * @return the byte stream of the message
      */
-    public static ByteBuffer getContentFromMetaInformation(AndesMessageMetadata metadata) throws AndesException {
-        //Need to get the value dynamically
-        ByteBuffer message = ByteBuffer.allocate(metadata.getMessageContentLength());
+    public static ByteBuffer getContentFromMetaInformation(AndesContent content)
+            throws AndesException {
+        ByteBuffer message = ByteBuffer.allocate(content.getContentLength());
         try {
             //offset value will always be set to 0 since mqtt doesn't support chunking the messsages, always the message
             //will be in the first chunk but in AMQP there will be chunks
             final int mqttOffset = 0;
-            AndesMessagePart messagePart = MessagingEngine.getInstance().getContent(metadata.getMessageID(), mqttOffset);
-            message.put(messagePart.getData());
+            content.putContent(mqttOffset, message);
         } catch (AndesException e) {
             final String errorMessage = "Error in getting content for message";
             log.error(errorMessage, e);

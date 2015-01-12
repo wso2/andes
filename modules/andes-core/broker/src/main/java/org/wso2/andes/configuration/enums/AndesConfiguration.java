@@ -84,6 +84,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "10", Integer.class),
 
     /**
+     * For durable topics there can be only one topic subscriber cluster-wide per a particular
+     * client id. Enabling this configuration, multiple subscribers can use same client id and
+     * share the messages
+     */
+    ALLOW_SHARED_SHARED_SUBSCRIBERS("transports/amqp/allowSharedTopicSubscriptions",
+             "false", Boolean.class),
+
+    /**
      * Enable this to support lightweight messaging with the MQTT protocol.
      */
     TRANSPORTS_MQTT_ENABLED("transports/mqtt/@enabled", "true", Boolean.class),
@@ -120,7 +128,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * The class that is used to access an external RDBMS database to operate on messages.
      */
     PERSISTENCE_MESSAGE_STORE_HANDLER("persistence/messageStore/@class",
-            "org.wso2.andes.store.jdbc.JDBCMessageStoreImpl", String.class),
+            "JDBCMessageStoreImpl", String.class),
 
     /**
      * List of properties that can define how the server will access the store.
@@ -139,7 +147,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * The class that is used to access an external RDBMS database to operate on server context. e.g. subscriptions
      */
     PERSISTENCE_CONTEXT_STORE_HANDLER("persistence/contextStore/@class",
-            "org.wso2.andes.store.jdbc.JDBCAndesContextStoreImpl", String.class),
+            "JDBCAndesContextStoreImpl", String.class),
 
     /**
      * List of properties that can define how the server will access the store.
@@ -187,11 +195,58 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "/maxNumberOfReadButUndeliveredMessages", "1000", Integer.class),
 
     /**
-     * This is the Thread pool size which will be used by the queue delivery workers. Make this to a higher number if
-     * there are lots of unique queues to the system at a given time.
+     * This is the ring buffer size of the delivery disruptor. This value should be a power of 2 (E.g. 1024, 2048,
+     * 4096). Use a small ring size if you want to reduce the memory usage.
      */
-    PERFORMANCE_TUNING_DELIVERY_PUBLISHER_POOL_SIZE("performanceTuning/delivery" +
-            "/publisherPoolSize", "50", Integer.class),
+    PERFORMANCE_TUNING_DELIVERY_RING_BUFFER_SIZE("performanceTuning/delivery/ringBufferSize", "4096", Integer.class),
+
+    /**
+     * Number of parallel readers used to read content from message store. Increasing this value will speedup
+     * the message sending mechanism. But the load on the data store will increase.
+     */
+    PERFORMANCE_TUNING_DELIVERY_PARALLEL_CONTENT_READERS("performanceTuning/delivery/parallelContentReaders", "5",
+                                                         Integer.class),
+
+    /**
+     * Number of parallel delivery handlers used to send messages to subscribers. Increasing this value will speedup
+     * the message sending mechanism. But the system load will increase.
+     */
+    PERFORMANCE_TUNING_DELIVERY_PARALLEL_DELIVERY_HANDLERS("performanceTuning/delivery/parallelDeliveryHandlers", "5",
+                                                         Integer.class),
+
+    /**
+     * Number of parallel writers used to write content to message store. Increasing this value will speedup
+     * the message receiving mechanism. But the load on the data store will increase.
+     */
+    PERFORMANCE_TUNING_PARALLEL_MESSAGE_WRITERS("performanceTuning/inboundEvents/parallelMessageWriters", "1",
+            Integer.class),
+
+    /**
+     * Size of the Disruptor ring buffer for inbound event handling. Buffer size should be a value of power of two
+     * For publishing at higher rates increasing the buffer size may give some advantage to keep messages in memory and
+     * write.
+     */
+    PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE("performanceTuning/inboundEvents/bufferSize", "65536", Integer.class),
+
+    /**
+     * Average batch size of the batch write operation for inbound messages. Batch write of a message will vary around
+     * this number
+     */
+    PERFORMANCE_TUNING_MESSAGE_WRITER_BATCH_SIZE
+            ("performanceTuning/inboundEvents/messageWriterBatchSize", "70", Integer.class),
+
+    /**
+     * Average batch size of the batch acknowledgement handling for message acknowledgements. Andes will be updated
+     * of acknowledgements batched around this number.
+     */
+    PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE
+            ("performanceTuning/ackHandling/ackHandlerBatchSize", "30", Integer.class),
+
+    /**
+     * Ack handler count for disruptor based event handling.
+     */
+    PERFORMANCE_TUNING_ACK_HANDLER_COUNT("performanceTuning/ackHandling/ackHandlerCount", "8",
+            Integer.class ),
 
     /**
      * Message delivery from server to the client will be paused temporarily if number of delivered but
@@ -208,18 +263,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "/vHostSyncTaskInterval", "3600", Integer.class),
 
     /**
-     * Number of parallel threads that will handle routing the messages received at the broker.
-     */
-    PERFORMANCE_TUNING_ROUTING_WORKER_THREAD_COUNT("performanceTuning/messageRouting/workerThreadCount",
-            "5", Integer.class),
-
-    /**
-     * Number of parallel threads that will handle acknowledgement of a message receipt from a consumer.
-     */
-    PERFORMANCE_TUNING_ACK_HANDLING_WORKER_THREAD_COUNT
-            ("performanceTuning/ackHandling/workerThreadCount", "5", Integer.class),
-
-    /**
      * Time interval after which the server will remove message content from the store in the background. If the
      * message rate is very high users can set this to a lower value.
      * Specified in seconds.
@@ -227,15 +270,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TASK_INTERVAL
             ("performanceTuning/messageDeletion/contentRemovalTaskInterval", "600", Integer.class),
 
-    /**
-     * Time to wait before removing a message from the store in PubSub implementation.
-     * Specified in milliseconds.
-     */
-    PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TIME_DIFFERENCE
-            ("performanceTuning/messageDeletion/contentRemovalTimeDifference", "600000",
-                    Integer.class),
-
-    /**
+     /**
      * Since server startup, whenever this interval elapses, the expired messages will be cleared from the store.
      */
     PERFORMANCE_TUNING_MESSAGE_EXPIRATION_CHECK_INTERVAL
@@ -248,10 +283,17 @@ public enum AndesConfiguration implements ConfigurationProperty {
             ("performanceTuning/messageExpiration/messageBatchSize", "1000", Integer.class),
 
     /**
-     * The number of messages to be cached in-memory
+     * Message counter tasks delay between the termination of one execution and the commencement of the next in seconds
      */
-    PERFORMANCE_TUNING_STORE_OPERATIONS_MESSAGE_CONTENT_CACHE
-            ("performanceTuning/storeOperations/messageContentCache", "1000", Integer.class),
+    PERFORMANCE_TUNING_MESSAGE_COUNTER_TASK_INTERVAL
+            ("performanceTuning/messageCounter/counterTaskInterval", "15", Integer.class),
+
+    /**
+     * Message count is updated in batches. Once the count exceed the batch size message count update is given to
+     * message count update task.
+     */
+    PERFORMANCE_TUNING_MESSAGE_COUNTER_UPDATE_BATCH_SIZE
+            ("performanceTuning/messageCounter/countUpdateBatchSize", "100", Integer.class),
 
     /**
      * The number of messages to be handled in a single operation related to browser subscriptions.
@@ -260,6 +302,32 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "/messageBatchSizeForBrowserSubscriptions", "200", Integer.class),
 
     /**
+     * This is the per publisher buffer size low limit which disable the flow control for a channel if the flow-control
+     * was enabled previously.
+     */
+    FLOW_CONTROL_BUFFER_BASED_LOW_LIMIT("flowControl/bufferBased" +
+                                        "/lowLimit", "100", Integer.class),
+
+    /**
+     * This is the per publisher buffer size high limit which enable the flow control for a channel.
+     */
+    FLOW_CONTROL_BUFFER_BASED_HIGH_LIMIT("flowControl/bufferBased" +
+                                         "/highLimit", "1000", Integer.class),
+
+    /**
+     * This is the global buffer low limit that disable the flow control globally if the flow-control
+     * was enabled previously.
+     */
+    FLOW_CONTROL_GLOBAL_LOW_LIMIT("flowControl/global" +
+                                        "/lowLimit", "800", Integer.class),
+
+    /**
+     *  This is the global buffer high limit which enable the flow control globally.
+     */
+    FLOW_CONTROL_GLOBAL_HIGH_LIMIT("flowControl/global" +
+                                         "/highLimit", "8000", Integer.class),
+
+     /**
      * The time interval at which the server should check for memory consumption and apply flow control to recover.
      */
     FLOW_CONTROL_MEMORY_BASED_MEMORY_CHECK_INTERVAL("flowControl/memoryBased" +

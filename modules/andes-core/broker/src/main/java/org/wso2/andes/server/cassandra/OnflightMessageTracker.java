@@ -1,6 +1,6 @@
 /*
  *
- *   Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *   Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  *   WSO2 Inc. licenses this file to you under the Apache License,
  *   Version 2.0 (the "License"); you may not use this file except
@@ -73,39 +73,32 @@ public class OnflightMessageTracker {
     /**
      * In memory map keeping sent message statistics by message id
      */
-    private ConcurrentHashMap<Long, MsgData> msgId2MsgData = new ConcurrentHashMap<Long, MsgData>();
+    private final ConcurrentHashMap<Long, MsgData> msgId2MsgData;
 
     /**
      * Map to track messages being buffered to be sent <slot reference, messageID, MsgData
      * reference>
      */
-    private ConcurrentHashMap<Slot, ConcurrentHashMap<Long, MsgData>> messageBufferingTracker
+    private final ConcurrentHashMap<Slot, ConcurrentHashMap<Long, MsgData>> messageBufferingTracker
             = new ConcurrentHashMap<Slot, ConcurrentHashMap<Long, MsgData>>();
 
     /**
      * Map to track messages being sent <channel id, message id, MsgData reference>
      */
-    private ConcurrentHashMap<UUID, ConcurrentHashMap<Long, MsgData>> messageSendingTracker
+    private final ConcurrentHashMap<UUID, ConcurrentHashMap<Long, MsgData>> messageSendingTracker
             = new ConcurrentHashMap<UUID, ConcurrentHashMap<Long, MsgData>>();
 
     /**
      * Map to keep track of message counts pending to read
      */
-    private ConcurrentHashMap<Slot, AtomicInteger> pendingMessagesBySlot = new
+    private final ConcurrentHashMap<Slot, AtomicInteger> pendingMessagesBySlot = new
             ConcurrentHashMap<Slot, AtomicInteger>();
 
     /**
      * Count sent but not acknowledged message count for all the channels
      * key: channelID, value: per channel non acknowledged message count
      */
-    private ConcurrentMap<UUID, AtomicInteger> unAckedMsgCountMap = new ConcurrentHashMap<UUID, AtomicInteger>();
-
-    private OnflightMessageTracker() throws AndesException {
-
-        this.maximumRedeliveryTimes = AndesConfigurationManager.getInstance()
-                .readConfigurationValue(AndesConfiguration.TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS);
-
-    }
+    private final ConcurrentMap<UUID, AtomicInteger> unAckedMsgCountMap = new ConcurrentHashMap<UUID, AtomicInteger>();
 
     /**
      * Message status to keep track in which state message is
@@ -319,6 +312,20 @@ public class OnflightMessageTracker {
         }
     }
 
+
+    private OnflightMessageTracker() throws AndesException {
+
+        this.maximumRedeliveryTimes = AndesConfigurationManager.readValue
+                (AndesConfiguration.TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS);
+
+        // We don't know the size of the map at startup. hence using an arbitrary value of 16, Need to test
+        // Load factor set to default value 0.75
+        // Concurrency level set to 6. Currently SlotDeliveryWorker, AckHandler AckSubscription, DeliveryEventHandler,
+        // MessageFlusher access this. To be on the safe side set to 6.
+        msgId2MsgData = new ConcurrentHashMap<Long, MsgData>(16, 0.75f, 6);
+
+    }
+
     /**
      * Message has failed to process by client. Re-buffer the message
      *
@@ -376,7 +383,7 @@ public class OnflightMessageTracker {
 
         } else if (trackingData.arrivalTime <= lastPurgedTimestampOfQueue) {
 
-            log.warn("Message was sent at " + trackingData.arrivalTime + " before last purge event at " +
+            log.warn("Message was sent at " + trackingData.arrivalTime + " before last purge event at "
                     + lastPurgedTimestampOfQueue + ". Will be skipped. id= " + messageId);
 
             trackingData.addMessageStatus(MessageStatus.PURGED);
@@ -522,7 +529,7 @@ public class OnflightMessageTracker {
                     andesMessageMetadata.getExpirationTime(),
                     MessageStatus.BUFFERED, andesMessageMetadata.getArrivalTime());
             msgId2MsgData.put(messageID, trackingData);
-            messagesOfSlot.put(messageID, msgId2MsgData.get(messageID));
+            messagesOfSlot.put(messageID, trackingData);
             isOKToBuffer = true;
         } else {
             if (log.isDebugEnabled()) {
@@ -572,6 +579,20 @@ public class OnflightMessageTracker {
                     msgId2MsgData.remove(messageIdOfSlot);
                 }
             }
+        }
+    }
+
+    /**
+     * Metadata removed once ack received. At the same time we remove tracking data of message.
+     *
+     * @param messageId ID of a message
+     */
+    public void removeTrackingDataOfMessage(Long messageId) {
+        if (checkIfReadyToRemoveFromTracking(messageId)) {
+            if (log.isDebugEnabled()) {
+                log.debug("removing tracking object from memory id= " + messageId);
+            }
+            msgId2MsgData.remove(messageId);
         }
     }
 
@@ -740,7 +761,7 @@ public class OnflightMessageTracker {
         // NOTE channelID should be in map. ChannelID added to map at channel creation
         int msgCount = unAckedMsgCountMap.get(chanelID).decrementAndGet();
         if (log.isDebugEnabled()) {
-            log.debug("message sent channel= " + this + " pending Count" + msgCount);
+            log.debug("Decrement non acked message count. Channel " + chanelID + " pending Count " + msgCount);
         }
     }
 
@@ -755,7 +776,7 @@ public class OnflightMessageTracker {
         // NOTE channelID should be in map. ChannelID added to map at channel creation
         int intCount = unAckedMsgCountMap.get(channelID).incrementAndGet();
         if (log.isDebugEnabled()) {
-            log.debug("ack received channel= " + this + " pending Count" + intCount);
+            log.debug("Increment non acked message count. Channel " + channelID + " pending Count " + intCount);
         }
     }
 

@@ -118,9 +118,9 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             // state of qpid is updated. This method also validates the request owner and throws
             // an exception if permission is denied.
 
-            int purgedMessageCount = MessagingEngine.getInstance().purgeMessages(queueName,
-                    ownerName,
-                    false);
+            int purgedMessageCount = Andes.getInstance().purgeMessages(queueName,
+                                                                                 ownerName,
+                                                                                 false);
             log.info("Total message count purged for queue (from store) : " + queueName + " : " +
                     purgedMessageCount + ". All in memory messages received before the purge call" +
                     " are abandoned from delivery phase. ");
@@ -183,8 +183,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
         for (Long messageId : andesMessageIdList) {
             try {
-                List<AndesMessageMetadata> messageMetadataListForOne = MessagingEngine.getInstance().getMetaDataList
-                        (deadLetterQueueName, messageId, messageId);
+                List<AndesMessageMetadata> messageMetadataListForOne =
+                        MessagingEngine.getInstance().getMetaDataList(deadLetterQueueName, messageId, messageId);
                 if (messageMetadataListForOne != null && messageMetadataListForOne.size() > 0) {
                     metadataList.add(messageMetadataListForOne.get(0));
                 }
@@ -314,7 +314,6 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     /***
      * {@inheritDoc}
-     * @return
      */
     public int getSubscriptionCount( String queueName){
         try {

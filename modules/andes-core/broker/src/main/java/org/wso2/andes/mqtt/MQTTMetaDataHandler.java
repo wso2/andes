@@ -30,13 +30,12 @@ public class MQTTMetaDataHandler implements MetaDataHandler {
     public byte[] constructMetadata(String routingKey, ByteBuffer buf, StorableMessageMetaData originalMeataData,
                                     String exchange) {
 
-        //TODO we need to return only the reference to the byte buffer creating an array for it is nuts
         //For MQTT we just need to take a copy
-        byte[] oldBytes = buf.array();
-        byte[] underlying = new byte[oldBytes.length];
-        //Will clone and make a copy of the bytes
-        System.arraycopy(oldBytes, 0, underlying, 0, oldBytes.length);
-        return underlying;
+        MQTTMessageMetaData metaInformation = (MQTTMessageMetaData) originalMeataData;
+        //Will re-encode the bytes
+        return MQTTUtils.encodeMetaInfo(MQTTUtils.MQTT_META_INFO, metaInformation.getMessageID(), false,
+                metaInformation.getQosLevel(), routingKey, metaInformation.isPersistent(),
+                metaInformation.getContentSize());
 
     }
 }

@@ -48,11 +48,8 @@ public class AndesMembershipListener implements MembershipListener {
         Member member = membershipEvent.getMember();
         log.info("Handling cluster gossip: New member joined to the cluster. Member Socket Address:"
                  + member.getSocketAddress() + " UUID:" + member.getUuid());
-        try {
-            ClusterResourceHolder.getInstance().getClusterManager().memberAdded(member);
-        } catch (AndesException e) {
-            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR,e);
-        }
+
+        ClusterResourceHolder.getInstance().getClusterManager().memberAdded(member);
     }
 
     /**

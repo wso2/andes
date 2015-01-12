@@ -103,7 +103,7 @@ public class QueueUnbindHandler implements StateAwareMethodListener<QueueUnbindB
         }
         else
         {
-            virtualHost.getBindingFactory().removeBinding(String.valueOf(routingKey), queue, exch, FieldTable.convertToMap(body.getArguments()));
+            virtualHost.getBindingFactory().removeBinding(String.valueOf(routingKey), queue, exch, FieldTable.convertToMap(body.getArguments()), true);
         }
 
         

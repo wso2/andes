@@ -22,7 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.QpidAMQPBridge;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.slot.Slot;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.store.StoredMessage;
@@ -75,7 +75,7 @@ public class StoredAMQPMessage implements StoredMessage {
      * write content to the message store
      */
     public void addContent(int offsetInMessage, ByteBuffer src) {
-        addContentInPersistentMode(offsetInMessage, src);
+        // NOTE: We do nothing in this. Messages are stored when all message metadata and content received
     }
 
     @Override
@@ -83,16 +83,16 @@ public class StoredAMQPMessage implements StoredMessage {
 
     }
 
-    /**
-     * write the message content to cassandra (we submit this task to AndesExecutor pool)
-     *
-     * @param offsetInMessage Int message content offset
-     * @param src             ByteBuffer message content
-     */
-    private void addContentInPersistentMode(final int offsetInMessage, ByteBuffer src) {
-
-        QpidAMQPBridge.getInstance().messageContentChunkReceived(_messageId,offsetInMessage,src);
-    }
+//    /**
+//     * write the message content to cassandra (we submit this task to AndesExecutor pool)
+//     *
+//     * @param offsetInMessage Int message content offset
+//     * @param src             ByteBuffer message content
+//     */
+//    private void addContentInPersistentMode(final int offsetInMessage, ByteBuffer src) {
+//
+//        QpidAMQPBridge.getInstance().messageContentChunkReceived(_messageId,offsetInMessage,src);
+//    }
 
     @Override
     /**

@@ -94,12 +94,12 @@ public class AndesKernelBoot {
     public static void recoverDistributedSlotMap() throws AndesException {
         // Slot recreation is required in the clustering mode
         if (AndesContext.getInstance().isClusteringEnabled()) {
-            log.info("Restoring slot mapping in the cluster.");
             HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
 
             try {
                 hazelcastAgent.acquireInitializationLock();
                 if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
+                    log.info("Restoring slot mapping in the cluster.");
 
                     List<AndesQueue> queueList = contextStore.getAllQueuesStored();
 
@@ -131,7 +131,8 @@ public class AndesKernelBoot {
     private static void initializeSlotMapForQueue(String queueName)
             throws AndesException {
         // Read slot window size from cluster configuration
-        Integer slotSize = AndesConfigurationManager.getInstance().readConfigurationValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
+        Integer slotSize = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
         List<AndesMessageMetadata> messageList = messageStore
                 .getNextNMessageMetadataFromQueue(queueName, 0, slotSize);
         int numberOfMessages = messageList.size();
@@ -139,10 +140,16 @@ public class AndesKernelBoot {
 
         while (numberOfMessages > 0) {
             lastMessageID = messageList.get(messageList.size() - 1).getMessageID();
+
+            if (log.isDebugEnabled()) {
+                log.debug("Created a slot with " + messageList.size() + " messages for queue (" + queueName + ")");
+            }
             SlotManager.getInstance().updateMessageID(queueName, lastMessageID);
 
+            // We need to increment lastMessageID since the getNextNMessageMetadataFromQueue returns message list
+            // including the given starting ID.
             messageList = messageStore
-                    .getNextNMessageMetadataFromQueue(queueName, lastMessageID, slotSize);
+                    .getNextNMessageMetadataFromQueue(queueName, lastMessageID + 1, slotSize);
             numberOfMessages = messageList.size();
         }
     }
@@ -171,7 +178,7 @@ public class AndesKernelBoot {
         stopAndesComponents();
         //close stores
         AndesContext.getInstance().getAndesContextStore().close();
-        MessagingEngine.getInstance().close();
+        Andes.getInstance().shutDown();
     }
 
     /**
@@ -190,8 +197,7 @@ public class AndesKernelBoot {
         if (!(contextStoreInstance instanceof AndesContextStore)) {
             throw new ClassCastException(
                     "Message store class must implement " + AndesContextStore.class + ". Class "
-                    + contextStoreClass +
-                    " does not.");
+                    + contextStoreClass + " does not.");
         }
 
         AndesContextStore andesContextStore = (AndesContextStore) contextStoreInstance;
@@ -217,20 +223,21 @@ public class AndesKernelBoot {
         if (!(messageStoreInstance instanceof org.wso2.andes.kernel.MessageStore)) {
             throw new ClassCastException(
                     "Message store class must implement " + MessageStore.class + ". Class " +
-                    messageStoreClass +
-                    " does not.");
+                    messageStoreClass + " does not.");
         }
 
         MessageStore messageStore = (MessageStore) messageStoreInstance;
         messageStore.initializeMessageStore(
                 virtualHostsConfiguration.getMessageStoreProperties()
         );
-        MessagingEngine.getInstance().initialise(messageStore);
+        MessagingEngine messagingEngine = MessagingEngine.getInstance();
+        messagingEngine.initialise(messageStore, andesContextStore,subscriptionStore);
         AndesKernelBoot.messageStore = messageStore;
 
-        /**
-         * initialize amqp constructs syncing into Qpid
-         */
+        // When message stores are initialised initialise Andes as well.
+        Andes.getInstance().initialise(subscriptionStore, messagingEngine);
+
+        // initialize amqp constructs syncing into Qpid
         VirtualHostConfigSynchronizer _VirtualHostConfigSynchronizer = new
                 VirtualHostConfigSynchronizer(
                 virtualHost);
@@ -268,15 +275,14 @@ public class AndesKernelBoot {
     /**
      * start andes house keeping threads for the broker
      *
-     * @throws Exception
+     * @throws AndesException
      */
     public static void startHouseKeepingThreads() throws AndesException {
         //reload exchanges/queues/bindings and subscriptions
         AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask();
-        Integer scheduledPeriod = AndesConfigurationManager.getInstance().readConfigurationValue
+        Integer scheduledPeriod = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL);
-        andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod,
-                                                       scheduledPeriod, TimeUnit.SECONDS);
+        andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod, scheduledPeriod, TimeUnit.SECONDS);
         ClusterResourceHolder.getInstance().setAndesRecoveryTask(andesRecoveryTask);
     }
 
@@ -340,8 +346,7 @@ public class AndesKernelBoot {
         /**
          * initialize subscription managing
          */
-        AndesSubscriptionManager subscriptionManager =
-                new AndesSubscriptionManager();
+        AndesSubscriptionManager subscriptionManager = new AndesSubscriptionManager();
         ClusterResourceHolder.getInstance().setSubscriptionManager(subscriptionManager);
         subscriptionManager.init();
 
@@ -387,8 +392,8 @@ public class AndesKernelBoot {
      * @throws Exception
      */
     public static void startMessaging() throws Exception {
-        MessagingEngine.getInstance().startMessageDelivery();
-        MessagingEngine.getInstance().startMessageExpirationWorker();
+        Andes.getInstance().startMessageDelivery();
+        Andes.getInstance().startMessageExpirationWorker();
     }
 
     /**
@@ -397,9 +402,9 @@ public class AndesKernelBoot {
      * @throws Exception
      */
     private static void stopMessaging() throws Exception {
-        MessagingEngine.getInstance().stopMessageExpirationWorker();
+        Andes.getInstance().stopMessageExpirationWorker();
         //this will un-assign all slots currently owned
-        MessagingEngine.getInstance().stopMessageDelivery();
+        Andes.getInstance().stopMessageDelivery();
     }
 
 
@@ -407,7 +412,7 @@ public class AndesKernelBoot {
      * Start the thrift server
      * @throws AndesException
      */
-    private static void startThriftServer() throws AndesException, ConfigurationException {
+    private static void startThriftServer() throws AndesException {
         MBThriftServer.getInstance().start(AndesContext.getInstance().getThriftServerHost(),
                 AndesContext.getInstance().getThriftServerPort(), "MB-ThriftServer-main-thread");
 

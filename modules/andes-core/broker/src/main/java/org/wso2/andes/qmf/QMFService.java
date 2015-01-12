@@ -22,7 +22,6 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.common.Closeable;
 import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.qmf.schema.BrokerSchema;
-import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.server.registry.IApplicationRegistry;
 
 import java.util.Collection;
@@ -33,8 +32,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public class QMFService implements ConfigStore.ConfigEventListener, Closeable
-{
+public class QMFService implements ConfigStore.ConfigEventListener, Closeable {
 
     private IApplicationRegistry _applicationRegistry;
     private ConfigStore _configStore;
@@ -43,8 +41,7 @@ public class QMFService implements ConfigStore.ConfigEventListener, Closeable
     private final Map<String, QMFPackage> _supportedSchemas = new HashMap<String, QMFPackage>();
     private static final Map<String, ConfigObjectType> _qmfClassMapping = new HashMap<String, ConfigObjectType>();
 
-    static
-    {
+    static {
         _qmfClassMapping.put("system", SystemConfigType.getInstance());
         _qmfClassMapping.put("broker", BrokerConfigType.getInstance());
         _qmfClassMapping.put("vhost", VirtualHostConfigType.getInstance());
@@ -60,52 +57,48 @@ public class QMFService implements ConfigStore.ConfigEventListener, Closeable
 
     private final Map<ConfigObjectType, ConfigObjectAdapter> _adapterMap =
             new HashMap<ConfigObjectType, ConfigObjectAdapter>();
-    private final Map<ConfigObjectType,QMFClass> _classMap =
-            new HashMap<ConfigObjectType,QMFClass>();
+    private final Map<ConfigObjectType, QMFClass> _classMap =
+            new HashMap<ConfigObjectType, QMFClass>();
 
 
-    private final ConcurrentHashMap<QMFClass,ConcurrentHashMap<ConfiguredObject, QMFObject>> _managedObjects =
-            new ConcurrentHashMap<QMFClass,ConcurrentHashMap<ConfiguredObject, QMFObject>>();
+    private final ConcurrentHashMap<QMFClass, ConcurrentHashMap<ConfiguredObject, QMFObject>> _managedObjects =
+            new ConcurrentHashMap<QMFClass, ConcurrentHashMap<ConfiguredObject, QMFObject>>();
 
-    private final ConcurrentHashMap<QMFClass,ConcurrentHashMap<UUID, QMFObject>> _managedObjectsById =
-            new ConcurrentHashMap<QMFClass,ConcurrentHashMap<UUID, QMFObject>>();
+    private final ConcurrentHashMap<QMFClass, ConcurrentHashMap<UUID, QMFObject>> _managedObjectsById =
+            new ConcurrentHashMap<QMFClass, ConcurrentHashMap<UUID, QMFObject>>();
 
     private static final BrokerSchema PACKAGE = BrokerSchema.getPackage();
 
-    public static interface Listener
-    {
+    public static interface Listener {
         public void objectCreated(QMFObject obj);
+
         public void objectDeleted(QMFObject obj);
     }
 
     private final CopyOnWriteArrayList<Listener> _listeners = new CopyOnWriteArrayList<Listener>();
 
-    abstract class ConfigObjectAdapter<Q extends QMFObject<S,D>, S extends QMFObjectClass<Q,D>, D extends QMFObject.Delegate, T extends ConfigObjectType<T,C>, C extends ConfiguredObject<T,C>>
-    {
+    abstract class ConfigObjectAdapter<Q extends QMFObject<S, D>, S extends QMFObjectClass<Q, D>,
+            D extends QMFObject.Delegate, T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> {
         private final T _type;
         private final S _qmfClass;
 
 
-        protected ConfigObjectAdapter(final T type, final S qmfClass)
-        {
+        protected ConfigObjectAdapter(final T type, final S qmfClass) {
             _type = type;
             _qmfClass = qmfClass;
-            _adapterMap.put(type,this);
-            _classMap.put(type,qmfClass);
+            _adapterMap.put(type, this);
+            _classMap.put(type, qmfClass);
         }
 
-        public T getType()
-        {
+        public T getType() {
             return _type;
         }
 
-        public S getQMFClass()
-        {
+        public S getQMFClass() {
             return _qmfClass;
         }
 
-        protected final Q newInstance(D delegate)
-        {
+        protected final Q newInstance(D delegate) {
             return _qmfClass.newInstance(delegate);
         }
 
@@ -113,256 +106,229 @@ public class QMFService implements ConfigStore.ConfigEventListener, Closeable
     }
 
     private ConfigObjectAdapter<BrokerSchema.SystemObject,
-                                       BrokerSchema.SystemClass,
-                                       BrokerSchema.SystemDelegate,
-                                       SystemConfigType,
-                                       SystemConfig> _systemObjectAdapter =
-            new   ConfigObjectAdapter<BrokerSchema.SystemObject,
-                                      BrokerSchema.SystemClass,
-                                      BrokerSchema.SystemDelegate,
+            BrokerSchema.SystemClass,
+            BrokerSchema.SystemDelegate,
+            SystemConfigType,
+            SystemConfig> _systemObjectAdapter =
+            new ConfigObjectAdapter<BrokerSchema.SystemObject,
+                    BrokerSchema.SystemClass,
+                    BrokerSchema.SystemDelegate,
                     SystemConfigType,
-                                      SystemConfig>(SystemConfigType.getInstance(),
-                                                    PACKAGE.getQMFClassInstance(BrokerSchema.SystemClass.class))
-            {
+                    SystemConfig>(SystemConfigType.getInstance(),
+                    PACKAGE.getQMFClassInstance(BrokerSchema.SystemClass.class)) {
 
 
                 public BrokerSchema.SystemObject createQMFObject(
-                        final SystemConfig configObject)
-                {
+                        final SystemConfig configObject) {
                     return newInstance(new SystemDelegate(configObject));
                 }
             };
 
     private ConfigObjectAdapter<BrokerSchema.BrokerObject,
-                                       BrokerSchema.BrokerClass,
-                                       BrokerSchema.BrokerDelegate,
-                                       BrokerConfigType,
-                                       BrokerConfig> _brokerObjectAdapter =
+            BrokerSchema.BrokerClass,
+            BrokerSchema.BrokerDelegate,
+            BrokerConfigType,
+            BrokerConfig> _brokerObjectAdapter =
             new ConfigObjectAdapter<BrokerSchema.BrokerObject,
-                                       BrokerSchema.BrokerClass,
-                                       BrokerSchema.BrokerDelegate,
-                                       BrokerConfigType,
-                                       BrokerConfig>(BrokerConfigType.getInstance(),
-                                                     PACKAGE.getQMFClassInstance(BrokerSchema.BrokerClass.class))
-            {
+                    BrokerSchema.BrokerClass,
+                    BrokerSchema.BrokerDelegate,
+                    BrokerConfigType,
+                    BrokerConfig>(BrokerConfigType.getInstance(),
+                    PACKAGE.getQMFClassInstance(BrokerSchema.BrokerClass.class)) {
 
                 public BrokerSchema.BrokerObject createQMFObject(
-                        final BrokerConfig configObject)
-                {
+                        final BrokerConfig configObject) {
                     return newInstance(new BrokerDelegate(configObject));
                 }
             };
 
     private ConfigObjectAdapter<BrokerSchema.VhostObject,
-                                       BrokerSchema.VhostClass,
-                                       BrokerSchema.VhostDelegate,
-                                       VirtualHostConfigType,
-                                       VirtualHostConfig> _vhostObjectAdapter =
-            new   ConfigObjectAdapter<BrokerSchema.VhostObject,
-                                      BrokerSchema.VhostClass,
-                                      BrokerSchema.VhostDelegate,
-                                      VirtualHostConfigType,
-                                      VirtualHostConfig>(VirtualHostConfigType.getInstance(),
-                                                         PACKAGE.getQMFClassInstance(BrokerSchema.VhostClass.class))
-            {
+            BrokerSchema.VhostClass,
+            BrokerSchema.VhostDelegate,
+            VirtualHostConfigType,
+            VirtualHostConfig> _vhostObjectAdapter =
+            new ConfigObjectAdapter<BrokerSchema.VhostObject,
+                    BrokerSchema.VhostClass,
+                    BrokerSchema.VhostDelegate,
+                    VirtualHostConfigType,
+                    VirtualHostConfig>(VirtualHostConfigType.getInstance(),
+                    PACKAGE.getQMFClassInstance(BrokerSchema.VhostClass.class)) {
 
                 public BrokerSchema.VhostObject createQMFObject(
-                        final VirtualHostConfig configObject)
-                {
+                        final VirtualHostConfig configObject) {
                     return newInstance(new VhostDelegate(configObject));
                 }
             };
 
 
     private ConfigObjectAdapter<BrokerSchema.ExchangeObject,
-                                       BrokerSchema.ExchangeClass,
-                                       BrokerSchema.ExchangeDelegate,
-                                       ExchangeConfigType,
-                                       ExchangeConfig> _exchangeObjectAdapter =
-            new   ConfigObjectAdapter<BrokerSchema.ExchangeObject,
-                                      BrokerSchema.ExchangeClass,
-                                      BrokerSchema.ExchangeDelegate,
-                                      ExchangeConfigType,
+            BrokerSchema.ExchangeClass,
+            BrokerSchema.ExchangeDelegate,
+            ExchangeConfigType,
+            ExchangeConfig> _exchangeObjectAdapter =
+            new ConfigObjectAdapter<BrokerSchema.ExchangeObject,
+                    BrokerSchema.ExchangeClass,
+                    BrokerSchema.ExchangeDelegate,
+                    ExchangeConfigType,
                     ExchangeConfig>(ExchangeConfigType.getInstance(),
-                                                      PACKAGE.getQMFClassInstance(BrokerSchema.ExchangeClass.class))
-            {
+                    PACKAGE.getQMFClassInstance(BrokerSchema.ExchangeClass.class)) {
 
                 public BrokerSchema.ExchangeObject createQMFObject(
-                        final ExchangeConfig configObject)
-                {
+                        final ExchangeConfig configObject) {
                     return newInstance(new ExchangeDelegate(configObject));
                 }
             };
 
 
     private ConfigObjectAdapter<BrokerSchema.QueueObject,
-                                       BrokerSchema.QueueClass,
-                                       BrokerSchema.QueueDelegate,
-                                       QueueConfigType,
-                                       QueueConfig> _queueObjectAdapter =
-            new   ConfigObjectAdapter<BrokerSchema.QueueObject,
-                                      BrokerSchema.QueueClass,
-                                      BrokerSchema.QueueDelegate,
-                                      QueueConfigType,
-                                      QueueConfig>(QueueConfigType.getInstance(),
-                                                   PACKAGE.getQMFClassInstance(BrokerSchema.QueueClass.class))
-            {
+            BrokerSchema.QueueClass,
+            BrokerSchema.QueueDelegate,
+            QueueConfigType,
+            QueueConfig> _queueObjectAdapter =
+            new ConfigObjectAdapter<BrokerSchema.QueueObject,
+                    BrokerSchema.QueueClass,
+                    BrokerSchema.QueueDelegate,
+                    QueueConfigType,
+                    QueueConfig>(QueueConfigType.getInstance(),
+                    PACKAGE.getQMFClassInstance(BrokerSchema.QueueClass.class)) {
 
                 public BrokerSchema.QueueObject createQMFObject(
-                        final QueueConfig configObject)
-                {
+                        final QueueConfig configObject) {
                     return newInstance(new QueueDelegate(configObject));
                 }
             };
 
 
     private ConfigObjectAdapter<BrokerSchema.BindingObject,
-                                       BrokerSchema.BindingClass,
-                                       BrokerSchema.BindingDelegate,
-                                       BindingConfigType,
-                                       BindingConfig> _bindingObjectAdapter =
-            new   ConfigObjectAdapter<BrokerSchema.BindingObject,
-                                      BrokerSchema.BindingClass,
-                                      BrokerSchema.BindingDelegate,
-                                      BindingConfigType,
-                                      BindingConfig>(BindingConfigType.getInstance(),
-                                                     PACKAGE.getQMFClassInstance(BrokerSchema.BindingClass.class))
-            {
+            BrokerSchema.BindingClass,
+            BrokerSchema.BindingDelegate,
+            BindingConfigType,
+            BindingConfig> _bindingObjectAdapter =
+            new ConfigObjectAdapter<BrokerSchema.BindingObject,
+                    BrokerSchema.BindingClass,
+                    BrokerSchema.BindingDelegate,
+                    BindingConfigType,
+                    BindingConfig>(BindingConfigType.getInstance(),
+                    PACKAGE.getQMFClassInstance(BrokerSchema.BindingClass.class)) {
 
                 public BrokerSchema.BindingObject createQMFObject(
-                        final BindingConfig configObject)
-                {
+                        final BindingConfig configObject) {
                     return newInstance(new BindingDelegate(configObject));
                 }
             };
 
 
     private ConfigObjectAdapter<BrokerSchema.ConnectionObject,
-                                       BrokerSchema.ConnectionClass,
-                                       BrokerSchema.ConnectionDelegate,
-                                       ConnectionConfigType,
-                                       ConnectionConfig> _connectionObjectAdapter =
-            new   ConfigObjectAdapter<BrokerSchema.ConnectionObject,
-                                      BrokerSchema.ConnectionClass,
-                                      BrokerSchema.ConnectionDelegate,
-                                      ConnectionConfigType,
-                                      ConnectionConfig>(ConnectionConfigType.getInstance(),
-                                                        PACKAGE.getQMFClassInstance(BrokerSchema.ConnectionClass.class))
-            {
+            BrokerSchema.ConnectionClass,
+            BrokerSchema.ConnectionDelegate,
+            ConnectionConfigType,
+            ConnectionConfig> _connectionObjectAdapter =
+            new ConfigObjectAdapter<BrokerSchema.ConnectionObject,
+                    BrokerSchema.ConnectionClass,
+                    BrokerSchema.ConnectionDelegate,
+                    ConnectionConfigType,
+                    ConnectionConfig>(ConnectionConfigType.getInstance(),
+                    PACKAGE.getQMFClassInstance(BrokerSchema.ConnectionClass.class)) {
 
                 public BrokerSchema.ConnectionObject createQMFObject(
-                        final ConnectionConfig configObject)
-                {
+                        final ConnectionConfig configObject) {
                     return newInstance(new ConnectionDelegate(configObject));
                 }
             };
 
 
     private ConfigObjectAdapter<BrokerSchema.SessionObject,
-                                       BrokerSchema.SessionClass,
-                                       BrokerSchema.SessionDelegate,
-                                       SessionConfigType,
-                                       SessionConfig> _sessionObjectAdapter =
-            new   ConfigObjectAdapter<BrokerSchema.SessionObject,
-                                      BrokerSchema.SessionClass,
-                                      BrokerSchema.SessionDelegate,
-                                      SessionConfigType,
-                                      SessionConfig>(SessionConfigType.getInstance(),
-                                                     PACKAGE.getQMFClassInstance(BrokerSchema.SessionClass.class))
-            {
+            BrokerSchema.SessionClass,
+            BrokerSchema.SessionDelegate,
+            SessionConfigType,
+            SessionConfig> _sessionObjectAdapter =
+            new ConfigObjectAdapter<BrokerSchema.SessionObject,
+                    BrokerSchema.SessionClass,
+                    BrokerSchema.SessionDelegate,
+                    SessionConfigType,
+                    SessionConfig>(SessionConfigType.getInstance(),
+                    PACKAGE.getQMFClassInstance(BrokerSchema.SessionClass.class)) {
 
                 public BrokerSchema.SessionObject createQMFObject(
-                        final SessionConfig configObject)
-                {
+                        final SessionConfig configObject) {
                     return newInstance(new SessionDelegate(configObject));
                 }
             };
 
     private ConfigObjectAdapter<BrokerSchema.SubscriptionObject,
-                                       BrokerSchema.SubscriptionClass,
-                                       BrokerSchema.SubscriptionDelegate,
-                                       SubscriptionConfigType,
-                                       SubscriptionConfig> _subscriptionObjectAdapter =
+            BrokerSchema.SubscriptionClass,
+            BrokerSchema.SubscriptionDelegate,
+            SubscriptionConfigType,
+            SubscriptionConfig> _subscriptionObjectAdapter =
             new ConfigObjectAdapter<BrokerSchema.SubscriptionObject,
-                                       BrokerSchema.SubscriptionClass,
-                                       BrokerSchema.SubscriptionDelegate,
-                                       SubscriptionConfigType,
-                                       SubscriptionConfig>(SubscriptionConfigType.getInstance(),
-                                                           PACKAGE.getQMFClassInstance(BrokerSchema.SubscriptionClass.class))
-            {
+                    BrokerSchema.SubscriptionClass,
+                    BrokerSchema.SubscriptionDelegate,
+                    SubscriptionConfigType,
+                    SubscriptionConfig>(SubscriptionConfigType.getInstance(),
+                    PACKAGE.getQMFClassInstance(BrokerSchema.SubscriptionClass.class)) {
 
                 public BrokerSchema.SubscriptionObject createQMFObject(
-                        final SubscriptionConfig configObject)
-                {
+                        final SubscriptionConfig configObject) {
                     return newInstance(new SubscriptionDelegate(configObject));
                 }
             };
 
 
     private ConfigObjectAdapter<BrokerSchema.LinkObject,
-                                       BrokerSchema.LinkClass,
-                                       BrokerSchema.LinkDelegate,
-                                       LinkConfigType,
-                                       LinkConfig> _linkObjectAdapter =
+            BrokerSchema.LinkClass,
+            BrokerSchema.LinkDelegate,
+            LinkConfigType,
+            LinkConfig> _linkObjectAdapter =
             new ConfigObjectAdapter<BrokerSchema.LinkObject,
-                                       BrokerSchema.LinkClass,
-                                       BrokerSchema.LinkDelegate,
-                                       LinkConfigType,
-                                       LinkConfig>(LinkConfigType.getInstance(),
-                                                           PACKAGE.getQMFClassInstance(BrokerSchema.LinkClass.class))
-            {
+                    BrokerSchema.LinkClass,
+                    BrokerSchema.LinkDelegate,
+                    LinkConfigType,
+                    LinkConfig>(LinkConfigType.getInstance(),
+                    PACKAGE.getQMFClassInstance(BrokerSchema.LinkClass.class)) {
 
                 public BrokerSchema.LinkObject createQMFObject(
-                        final LinkConfig configObject)
-                {
+                        final LinkConfig configObject) {
                     return newInstance(new LinkDelegate(configObject));
                 }
             };
 
 
     private ConfigObjectAdapter<BrokerSchema.BridgeObject,
-                                       BrokerSchema.BridgeClass,
-                                       BrokerSchema.BridgeDelegate,
-                                       BridgeConfigType,
-                                       BridgeConfig> _bridgeObjectAdapter =
+            BrokerSchema.BridgeClass,
+            BrokerSchema.BridgeDelegate,
+            BridgeConfigType,
+            BridgeConfig> _bridgeObjectAdapter =
             new ConfigObjectAdapter<BrokerSchema.BridgeObject,
-                                       BrokerSchema.BridgeClass,
-                                       BrokerSchema.BridgeDelegate,
-                                       BridgeConfigType,
-                                       BridgeConfig>(BridgeConfigType.getInstance(),
-                                                           PACKAGE.getQMFClassInstance(BrokerSchema.BridgeClass.class))
-            {
+                    BrokerSchema.BridgeClass,
+                    BrokerSchema.BridgeDelegate,
+                    BridgeConfigType,
+                    BridgeConfig>(BridgeConfigType.getInstance(),
+                    PACKAGE.getQMFClassInstance(BrokerSchema.BridgeClass.class)) {
 
                 public BrokerSchema.BridgeObject createQMFObject(
-                        final BridgeConfig configObject)
-                {
+                        final BridgeConfig configObject) {
                     return newInstance(new BridgeDelegate(configObject));
                 }
             };
 
 
-
-    public QMFService(ConfigStore configStore, IApplicationRegistry applicationRegistry)
-    {
+    public QMFService(ConfigStore configStore, IApplicationRegistry applicationRegistry) {
         _configStore = configStore;
         _applicationRegistry = applicationRegistry;
         registerSchema(PACKAGE);
 
-        for(ConfigObjectType v : _qmfClassMapping.values())
-        {
+        for (ConfigObjectType v : _qmfClassMapping.values()) {
             configStore.addConfigEventListener(v, this);
         }
         init();
     }
 
-    public void close()
-    {
-        for(ConfigObjectType v : _qmfClassMapping.values())
-        {
+    public void close() {
+        for (ConfigObjectType v : _qmfClassMapping.values()) {
             _configStore.removeConfigEventListener(v, this);
         }
         _listeners.clear();
-        
+
         _managedObjects.clear();
         _managedObjectsById.clear();
         _classMap.clear();
@@ -370,28 +336,23 @@ public class QMFService implements ConfigStore.ConfigEventListener, Closeable
         _supportedSchemas.clear();
     }
 
-    
-    public void registerSchema(QMFPackage qmfPackage)
-    {
+
+    public void registerSchema(QMFPackage qmfPackage) {
         _supportedSchemas.put(qmfPackage.getName(), qmfPackage);
     }
 
 
-    public Collection<QMFPackage> getSupportedSchemas()
-    {
+    public Collection<QMFPackage> getSupportedSchemas() {
         return _supportedSchemas.values();
     }
 
-    public QMFPackage getPackage(String aPackage)
-    {
+    public QMFPackage getPackage(String aPackage) {
         return _supportedSchemas.get(aPackage);
     }
 
-    public void onEvent(final ConfiguredObject object, final ConfigStore.Event evt)
-    {
+    public void onEvent(final ConfiguredObject object, final ConfigStore.Event evt) {
 
-        switch (evt)
-        {
+        switch (evt) {
             case CREATED:
                 manageObject(object);
                 break;
@@ -402,145 +363,113 @@ public class QMFService implements ConfigStore.ConfigEventListener, Closeable
         }
     }
 
-    public QMFObject getObjectById(QMFClass qmfclass, UUID id)
-    {
+    public QMFObject getObjectById(QMFClass qmfclass, UUID id) {
         ConcurrentHashMap<UUID, QMFObject> map = _managedObjectsById.get(qmfclass);
-        if(map != null)
-        {
+        if (map != null) {
             return map.get(id);
-        }
-        else
-        {
+        } else {
             return null;
         }
     }
 
-    private void unmanageObject(final ConfiguredObject object)
-    {
+    private void unmanageObject(final ConfiguredObject object) {
         final QMFClass qmfClass = _classMap.get(object.getConfigType());
-        
-        if(qmfClass == null)
-        {
+
+        if (qmfClass == null) {
             return;
         }
 
         ConcurrentHashMap<ConfiguredObject, QMFObject> classObjects = _managedObjects.get(qmfClass);
-        if(classObjects != null)
-        {
+        if (classObjects != null) {
             QMFObject qmfObject = classObjects.remove(object);
-            if(qmfObject != null)
-            {
+            if (qmfObject != null) {
                 _managedObjectsById.get(qmfClass).remove(object.getId());
                 objectRemoved(qmfObject);
             }
         }
     }
 
-    private void manageObject(final ConfiguredObject object)
-    {
+    private void manageObject(final ConfiguredObject object) {
         ConfigObjectAdapter adapter = _adapterMap.get(object.getConfigType());
         QMFObject qmfObject = adapter.createQMFObject(object);
         final QMFClass qmfClass = qmfObject.getQMFClass();
         ConcurrentHashMap<ConfiguredObject, QMFObject> classObjects = _managedObjects.get(qmfClass);
 
-        if(classObjects == null)
-        {
+        if (classObjects == null) {
             classObjects = new ConcurrentHashMap<ConfiguredObject, QMFObject>();
-            if(_managedObjects.putIfAbsent(qmfClass, classObjects) != null)
-            {
+            if (_managedObjects.putIfAbsent(qmfClass, classObjects) != null) {
                 classObjects = _managedObjects.get(qmfClass);
             }
         }
 
         ConcurrentHashMap<UUID, QMFObject> classObjectsById = _managedObjectsById.get(qmfClass);
-        if(classObjectsById == null)
-        {
+        if (classObjectsById == null) {
             classObjectsById = new ConcurrentHashMap<UUID, QMFObject>();
-            if(_managedObjectsById.putIfAbsent(qmfClass, classObjectsById) != null)
-            {
+            if (_managedObjectsById.putIfAbsent(qmfClass, classObjectsById) != null) {
                 classObjectsById = _managedObjectsById.get(qmfClass);
             }
         }
 
-        classObjectsById.put(object.getId(),qmfObject);
+        classObjectsById.put(object.getId(), qmfObject);
 
-        if(classObjects.putIfAbsent(object, qmfObject) == null)
-        {
+        if (classObjects.putIfAbsent(object, qmfObject) == null) {
             objectAdded(qmfObject);
         }
     }
 
-    private void objectRemoved(final QMFObject qmfObject)
-    {
+    private void objectRemoved(final QMFObject qmfObject) {
         qmfObject.setDeleteTime();
-        for(Listener l : _listeners)
-        {
+        for (Listener l : _listeners) {
             l.objectDeleted(qmfObject);
         }
     }
 
-    private void objectAdded(final QMFObject qmfObject)
-    {
-        for(Listener l : _listeners)
-        {
+    private void objectAdded(final QMFObject qmfObject) {
+        for (Listener l : _listeners) {
             l.objectCreated(qmfObject);
         }
     }
 
-    public void addListener(Listener l)
-    {
+    public void addListener(Listener l) {
         _listeners.add(l);
     }
 
-    public void removeListener(Listener l)
-    {
+    public void removeListener(Listener l) {
         _listeners.remove(l);
     }
 
 
-    private void init()
-    {
-        for(QMFClass qmfClass : PACKAGE.getClasses())
-        {
+    private void init() {
+        for (QMFClass qmfClass : PACKAGE.getClasses()) {
             ConfigObjectType configType = getConfigType(qmfClass);
-            if(configType != null)
-            {
+            if (configType != null) {
                 Collection<ConfiguredObject> objects = _configStore.getConfiguredObjects(configType);
-                for(ConfiguredObject object : objects)
-                {
+                for (ConfiguredObject object : objects) {
                     manageObject(object);
                 }
             }
         }
     }
 
-    public Collection<QMFObject> getObjects(QMFClass qmfClass)
-    {
+    public Collection<QMFObject> getObjects(QMFClass qmfClass) {
         ConcurrentHashMap<ConfiguredObject, QMFObject> classObjects = _managedObjects.get(qmfClass);
-        if(classObjects != null)
-        {
+        if (classObjects != null) {
             return classObjects.values();
-        }
-        else
-        {
+        } else {
             return Collections.EMPTY_SET;
         }
     }
 
-    private QMFObject adapt(final ConfiguredObject object)
-    {
-        if(object == null)
-        {
+    private QMFObject adapt(final ConfiguredObject object) {
+        if (object == null) {
             return null;
         }
 
         QMFClass qmfClass = _classMap.get(object.getConfigType());
         ConcurrentHashMap<ConfiguredObject, QMFObject> classObjects = _managedObjects.get(qmfClass);
-        if(classObjects != null)
-        {
+        if (classObjects != null) {
             QMFObject qmfObject = classObjects.get(object);
-            if(qmfObject != null)
-            {
+            if (qmfObject != null) {
                 return qmfObject;
             }
         }
@@ -548,1102 +477,908 @@ public class QMFService implements ConfigStore.ConfigEventListener, Closeable
         return _adapterMap.get(object.getConfigType()).createQMFObject(object);
     }
 
-    private ConfigObjectType getConfigType(final QMFClass qmfClass)
-    {
+    private ConfigObjectType getConfigType(final QMFClass qmfClass) {
         return _qmfClassMapping.get(qmfClass.getName());
     }
 
-    private static class SystemDelegate implements BrokerSchema.SystemDelegate
-    {
+    private static class SystemDelegate implements BrokerSchema.SystemDelegate {
         private final SystemConfig _obj;
 
-        public SystemDelegate(final SystemConfig obj)
-        {
+        public SystemDelegate(final SystemConfig obj) {
             _obj = obj;
         }
 
-        public UUID getSystemId()
-        {
+        public UUID getSystemId() {
             return _obj.getId();
         }
 
-        public String getOsName()
-        {
+        public String getOsName() {
             return _obj.getOperatingSystemName();
         }
 
-        public String getNodeName()
-        {
+        public String getNodeName() {
             return _obj.getNodeName();
         }
 
-        public String getRelease()
-        {
+        public String getRelease() {
             return _obj.getOSRelease();
         }
 
-        public String getVersion()
-        {
+        public String getVersion() {
             return _obj.getOSVersion();
         }
 
-        public String getMachine()
-        {
+        public String getMachine() {
             return _obj.getOSArchitecture();
         }
 
-        public UUID getId()
-        {
+        public UUID getId() {
             return _obj.getId();
         }
 
-        public long getCreateTime()
-        {
+        public long getCreateTime() {
             return _obj.getCreateTime();
         }
     }
 
-    private class BrokerDelegate implements BrokerSchema.BrokerDelegate
-    {
+    private class BrokerDelegate implements BrokerSchema.BrokerDelegate {
         private final BrokerConfig _obj;
 
-        public BrokerDelegate(final BrokerConfig obj)
-        {
+        public BrokerDelegate(final BrokerConfig obj) {
             _obj = obj;
         }
 
-        public BrokerSchema.SystemObject getSystemRef()
-        {
+        public BrokerSchema.SystemObject getSystemRef() {
             return (BrokerSchema.SystemObject) adapt(_obj.getSystem());
         }
 
-        public String getName()
-        {
+        public String getName() {
             return "amqp-broker";
         }
 
-        public Integer getPort()
-        {
+        public Integer getPort() {
             return _obj.getPort();
         }
 
-        public Integer getWorkerThreads()
-        {
+        public Integer getWorkerThreads() {
             return _obj.getWorkerThreads();
         }
 
-        public Integer getMaxConns()
-        {
+        public Integer getMaxConns() {
             return _obj.getMaxConnections();
         }
 
-        public Integer getConnBacklog()
-        {
+        public Integer getConnBacklog() {
             return _obj.getConnectionBacklogLimit();
         }
 
-        public Long getStagingThreshold()
-        {
+        public Long getStagingThreshold() {
             return _obj.getStagingThreshold();
         }
 
-        public Integer getMgmtPubInterval()
-        {
+        public Integer getMgmtPubInterval() {
             return _obj.getManagementPublishInterval();
         }
 
-        public String getVersion()
-        {
+        public String getVersion() {
             return _obj.getVersion();
         }
 
-        public String getDataDir()
-        {
+        public String getDataDir() {
             return _obj.getDataDirectory();
         }
 
-        public Long getUptime()
-        {
+        public Long getUptime() {
             return (System.currentTimeMillis() - _obj.getCreateTime()) * 1000000L;
         }
 
-        public BrokerSchema.BrokerClass.EchoMethodResponseCommand echo(final BrokerSchema.BrokerClass.EchoMethodResponseCommandFactory factory,
+        public BrokerSchema.BrokerClass.EchoMethodResponseCommand echo(final BrokerSchema.BrokerClass
+                .EchoMethodResponseCommandFactory factory,
                                                                        final Long sequence,
-                                                                       final String body)
-        {
+                                                                       final String body) {
             return factory.createResponseCommand(sequence, body);
         }
 
-        public BrokerSchema.BrokerClass.ConnectMethodResponseCommand connect(final BrokerSchema.BrokerClass.ConnectMethodResponseCommandFactory factory,
+        public BrokerSchema.BrokerClass.ConnectMethodResponseCommand connect(final BrokerSchema.BrokerClass
+                .ConnectMethodResponseCommandFactory factory,
                                                                              final String host,
                                                                              final Long port,
                                                                              final Boolean durable,
                                                                              final String authMechanism,
                                                                              final String username,
                                                                              final String password,
-                                                                             final String transport)
-        {
+                                                                             final String transport) {
             _obj.createBrokerConnection(transport, host, port.intValue(), durable, authMechanism, username, password);
 
             return factory.createResponseCommand();
         }
 
-        public BrokerSchema.BrokerClass.QueueMoveMessagesMethodResponseCommand queueMoveMessages(final BrokerSchema.BrokerClass.QueueMoveMessagesMethodResponseCommandFactory factory,
+        public BrokerSchema.BrokerClass.QueueMoveMessagesMethodResponseCommand queueMoveMessages(final BrokerSchema
+                .BrokerClass.QueueMoveMessagesMethodResponseCommandFactory factory,
                                                                                                  final String srcQueue,
                                                                                                  final String destQueue,
-                                                                                                 final Long qty)
-        {
+                                                                                                 final Long qty) {
             // TODO
             return factory.createResponseCommand(CompletionCode.NOT_IMPLEMENTED);
         }
 
-        public BrokerSchema.BrokerClass.GetLogLevelMethodResponseCommand getLogLevel(final BrokerSchema.BrokerClass.GetLogLevelMethodResponseCommandFactory factory)
-        {
+        public BrokerSchema.BrokerClass.GetLogLevelMethodResponseCommand getLogLevel(final BrokerSchema.BrokerClass
+                .GetLogLevelMethodResponseCommandFactory factory) {
             // TODO: The Java broker has numerous loggers, so we can't really implement this method properly.
             return factory.createResponseCommand(CompletionCode.NOT_IMPLEMENTED);
         }
 
-        public BrokerSchema.BrokerClass.SetLogLevelMethodResponseCommand setLogLevel(final BrokerSchema.BrokerClass.SetLogLevelMethodResponseCommandFactory factory, String level)
-        {
+        public BrokerSchema.BrokerClass.SetLogLevelMethodResponseCommand setLogLevel(final BrokerSchema.BrokerClass
+                .SetLogLevelMethodResponseCommandFactory factory, String level) {
             // TODO: The Java broker has numerous loggers, so we can't really implement this method properly.
             return factory.createResponseCommand(CompletionCode.NOT_IMPLEMENTED);
         }
 
-        public BrokerSchema.BrokerClass.CreateMethodResponseCommand create(final BrokerSchema.BrokerClass.CreateMethodResponseCommandFactory factory,
+        public BrokerSchema.BrokerClass.CreateMethodResponseCommand create(final BrokerSchema.BrokerClass
+                .CreateMethodResponseCommandFactory factory,
                                                                            final String type,
                                                                            final String name,
                                                                            final Map properties,
-                                                                           final java.lang.Boolean lenient)
-        {
+                                                                           final java.lang.Boolean lenient) {
             //TODO:
             return factory.createResponseCommand(CompletionCode.NOT_IMPLEMENTED);
         }
 
-        public BrokerSchema.BrokerClass.DeleteMethodResponseCommand delete(final BrokerSchema.BrokerClass.DeleteMethodResponseCommandFactory factory,
+        public BrokerSchema.BrokerClass.DeleteMethodResponseCommand delete(final BrokerSchema.BrokerClass
+                .DeleteMethodResponseCommandFactory factory,
                                                                            final String type,
                                                                            final String name,
-                                                                           final Map options)
-        {
+                                                                           final Map options) {
             //TODO:
             return factory.createResponseCommand(CompletionCode.NOT_IMPLEMENTED);
         }
 
-        public UUID getId()
-        {
+        public UUID getId() {
             return _obj.getId();
         }
 
-        public long getCreateTime()
-        {
+        public long getCreateTime() {
             return _obj.getCreateTime();
         }
     }
 
-    private class VhostDelegate implements BrokerSchema.VhostDelegate
-    {
+    private class VhostDelegate implements BrokerSchema.VhostDelegate {
         private final VirtualHostConfig _obj;
 
-        public VhostDelegate(final VirtualHostConfig obj)
-        {
+        public VhostDelegate(final VirtualHostConfig obj) {
             _obj = obj;
         }
 
-        public BrokerSchema.BrokerObject getBrokerRef()
-        {
+        public BrokerSchema.BrokerObject getBrokerRef() {
             return (BrokerSchema.BrokerObject) adapt(_obj.getBroker());
         }
 
-        public String getName()
-        {
+        public String getName() {
             return _obj.getName();
         }
 
-        public String getFederationTag()
-        {
+        public String getFederationTag() {
             return _obj.getFederationTag();
         }
 
-        public UUID getId()
-        {
+        public UUID getId() {
             return _obj.getId();
         }
 
-        public long getCreateTime()
-        {
+        public long getCreateTime() {
             return _obj.getCreateTime();
         }
     }
 
-    private class ExchangeDelegate implements BrokerSchema.ExchangeDelegate
-    {
+    private class ExchangeDelegate implements BrokerSchema.ExchangeDelegate {
         private final ExchangeConfig _obj;
 
-        public ExchangeDelegate(final ExchangeConfig obj)
-        {
+        public ExchangeDelegate(final ExchangeConfig obj) {
             _obj = obj;
         }
 
-        public BrokerSchema.VhostObject getVhostRef()
-        {
+        public BrokerSchema.VhostObject getVhostRef() {
             return (BrokerSchema.VhostObject) adapt(_obj.getVirtualHost());
         }
 
-        public String getName()
-        {
+        public String getName() {
             return _obj.getName();
         }
 
-        public String getType()
-        {
+        public String getType() {
             return _obj.getType().getName().toString();
         }
 
-        public Boolean getDurable()
-        {
+        public Boolean getDurable() {
             return _obj.isDurable();
         }
 
-        public Boolean getAutoDelete()
-        {
+        public Boolean getAutoDelete() {
             return _obj.isAutoDelete();
         }
 
-        public BrokerSchema.ExchangeObject getAltExchange()
-        {
-            if(_obj.getAlternateExchange() != null)
-            {
+        public BrokerSchema.ExchangeObject getAltExchange() {
+            if (_obj.getAlternateExchange() != null) {
                 return (BrokerSchema.ExchangeObject) adapt(_obj.getAlternateExchange());
-            }
-            else
-            {
+            } else {
                 return null;
             }
         }
 
-        public Map getArguments()
-        {
+        public Map getArguments() {
             return _obj.getArguments();
         }
 
-        public Long getProducerCount()
-        {
+        public Long getProducerCount() {
             // TODO
             return 0l;
         }
 
-        public Long getProducerCountHigh()
-        {
+        public Long getProducerCountHigh() {
             // TODO
             return 0l;
         }
 
-        public Long getProducerCountLow()
-        {
+        public Long getProducerCountLow() {
             // TODO
             return 0l;
         }
 
-        public Long getBindingCount()
-        {
+        public Long getBindingCount() {
             return _obj.getBindingCount();
         }
 
-        public Long getBindingCountHigh()
-        {
+        public Long getBindingCountHigh() {
             return _obj.getBindingCountHigh();
         }
 
-        public Long getBindingCountLow()
-        {
+        public Long getBindingCountLow() {
             // TODO
             return 0l;
         }
 
-        public Long getMsgReceives()
-        {
+        public Long getMsgReceives() {
             return _obj.getMsgReceives();
         }
 
-        public Long getMsgDrops()
-        {
+        public Long getMsgDrops() {
             return getMsgReceives() - getMsgRoutes();
         }
 
-        public Long getMsgRoutes()
-        {
+        public Long getMsgRoutes() {
             return _obj.getMsgRoutes();
         }
 
-        public Long getByteReceives()
-        {
+        public Long getByteReceives() {
             return _obj.getByteReceives();
         }
 
-        public Long getByteDrops()
-        {
+        public Long getByteDrops() {
             return getByteReceives() - getByteRoutes();
         }
 
-        public Long getByteRoutes()
-        {
+        public Long getByteRoutes() {
             return _obj.getByteRoutes();
         }
 
-        public UUID getId()
-        {
+        public UUID getId() {
             return _obj.getId();
         }
 
-        public long getCreateTime()
-        {
+        public long getCreateTime() {
             return _obj.getCreateTime();
         }
     }
 
-    private class QueueDelegate implements BrokerSchema.QueueDelegate
-    {
+    private class QueueDelegate implements BrokerSchema.QueueDelegate {
         private final QueueConfig _obj;
 
-        public QueueDelegate(final QueueConfig obj)
-        {
+        public QueueDelegate(final QueueConfig obj) {
             _obj = obj;
         }
 
-        public BrokerSchema.VhostObject getVhostRef()
-        {
-            return (BrokerSchema.VhostObject)  adapt(_obj.getVirtualHost());
+        public BrokerSchema.VhostObject getVhostRef() {
+            return (BrokerSchema.VhostObject) adapt(_obj.getVirtualHost());
         }
 
-        public String getName()
-        {
+        public String getName() {
             return _obj.getName();
         }
 
-        public Boolean getDurable()
-        {
+        public Boolean getDurable() {
             return _obj.isDurable();
         }
 
-        public Boolean getAutoDelete()
-        {
+        public Boolean getAutoDelete() {
             return _obj.isAutoDelete();
         }
 
-        public Boolean getExclusive()
-        {
+        public Boolean getExclusive() {
             return _obj.isExclusive();
         }
 
-        public BrokerSchema.ExchangeObject getAltExchange()
-        {
-            if(_obj.getAlternateExchange() != null)
-            {
+        public BrokerSchema.ExchangeObject getAltExchange() {
+            if (_obj.getAlternateExchange() != null) {
                 return (BrokerSchema.ExchangeObject) adapt(_obj.getAlternateExchange());
-            }
-            else
-            {
+            } else {
                 return null;
             }
         }
 
-        public Long getMsgTotalEnqueues()
-        {
+        public Long getMsgTotalEnqueues() {
             return _obj.getReceivedMessageCount();
         }
 
-        public Long getMsgTotalDequeues()
-        {
+        public Long getMsgTotalDequeues() {
             return _obj.getMessageDequeueCount();
         }
 
-        public Long getMsgTxnEnqueues()
-        {
+        public Long getMsgTxnEnqueues() {
             return _obj.getMsgTxnEnqueues();
         }
 
-        public Long getMsgTxnDequeues()
-        {
+        public Long getMsgTxnDequeues() {
             return _obj.getMsgTxnDequeues();
         }
 
-        public Long getMsgPersistEnqueues()
-        {
+        public Long getMsgPersistEnqueues() {
             return _obj.getPersistentMsgEnqueues();
         }
 
-        public Long getMsgPersistDequeues()
-        {
+        public Long getMsgPersistDequeues() {
             return _obj.getPersistentMsgDequeues();
         }
 
-        public Long getMsgDepth()
-        {
+        public Long getMsgDepth() {
             return (long) _obj.getMessageCount();
         }
 
-        public Long getByteDepth()
-        {
+        public Long getByteDepth() {
             return _obj.getQueueDepth();
         }
 
-        public Long getByteTotalEnqueues()
-        {
+        public Long getByteTotalEnqueues() {
             return _obj.getTotalEnqueueSize();
         }
 
-        public Long getByteTotalDequeues()
-        {
+        public Long getByteTotalDequeues() {
             return _obj.getTotalDequeueSize();
         }
 
-        public Long getByteTxnEnqueues()
-        {
+        public Long getByteTxnEnqueues() {
             return _obj.getByteTxnEnqueues();
         }
 
-        public Long getByteTxnDequeues()
-        {
+        public Long getByteTxnDequeues() {
             return _obj.getByteTxnDequeues();
         }
 
-        public Long getBytePersistEnqueues()
-        {
+        public Long getBytePersistEnqueues() {
             return _obj.getPersistentByteEnqueues();
         }
 
-        public Long getBytePersistDequeues()
-        {
+        public Long getBytePersistDequeues() {
             return _obj.getPersistentByteDequeues();
         }
 
-        public Long getConsumerCount()
-        {
+        public Long getConsumerCount() {
             return (long) _obj.getConsumerCount();
         }
 
-        public Long getConsumerCountHigh()
-        {
+        public Long getConsumerCountHigh() {
             return (long) _obj.getConsumerCountHigh();
         }
 
-        public Long getConsumerCountLow()
-        {
+        public Long getConsumerCountLow() {
             // TODO
             return 0l;
         }
 
-        public Long getBindingCount()
-        {
+        public Long getBindingCount() {
             return (long) _obj.getBindingCount();
         }
 
-        public Long getBindingCountHigh()
-        {
+        public Long getBindingCountHigh() {
             return (long) _obj.getBindingCountHigh();
         }
 
-        public Long getBindingCountLow()
-        {
+        public Long getBindingCountLow() {
             // TODO
             return 0l;
         }
 
-        public Long getUnackedMessages()
-        {
+        public Long getUnackedMessages() {
             return _obj.getUnackedMessageCount();
         }
 
-        public Long getUnackedMessagesHigh()
-        {
+        public Long getUnackedMessagesHigh() {
             return _obj.getUnackedMessageCountHigh();
         }
 
-        public Long getUnackedMessagesLow()
-        {
+        public Long getUnackedMessagesLow() {
             // TODO
             return 0l;
         }
 
-        public Long getMessageLatencySamples()
-        {
+        public Long getMessageLatencySamples() {
             // TODO
             return 0l;
         }
 
-        public Long getMessageLatencyMin()
-        {
+        public Long getMessageLatencyMin() {
             // TODO
             return 0l;
         }
 
-        public Long getMessageLatencyMax()
-        {
+        public Long getMessageLatencyMax() {
             // TODO
             return 0l;
         }
 
-        public Long getMessageLatencyAverage()
-        {
+        public Long getMessageLatencyAverage() {
             // TODO
             return 0l;
         }
 
-        public Boolean getFlowStopped()
-        {
+        public Boolean getFlowStopped() {
             return Boolean.FALSE;
         }
 
-        public Long getFlowStoppedCount()
-        {
+        public Long getFlowStoppedCount() {
             return 0L;
         }
 
-        public BrokerSchema.QueueClass.PurgeMethodResponseCommand purge(final BrokerSchema.QueueClass.PurgeMethodResponseCommandFactory factory,
-                                                                        final Long request)
-        {
-            try
-            {
+        public BrokerSchema.QueueClass.PurgeMethodResponseCommand purge(final BrokerSchema.QueueClass
+                .PurgeMethodResponseCommandFactory factory,
+                                                                        final Long request) {
+            try {
                 _obj.purge(request);
-            } catch (AMQException e)
-            {
+            } catch (AMQException e) {
                 // TODO
                 throw new RuntimeException();
             }
             return factory.createResponseCommand();
         }
 
-        public BrokerSchema.QueueClass.RerouteMethodResponseCommand reroute(final BrokerSchema.QueueClass.RerouteMethodResponseCommandFactory factory, 
-                                                                            final Long request, 
-                                                                            final Boolean useAltExchange, 
-                                                                            final String exchange)
-        {
+        public BrokerSchema.QueueClass.RerouteMethodResponseCommand reroute(final BrokerSchema.QueueClass
+                .RerouteMethodResponseCommandFactory factory,
+                                                                            final Long request,
+                                                                            final Boolean useAltExchange,
+                                                                            final String exchange) {
             //TODO
             return factory.createResponseCommand(CompletionCode.NOT_IMPLEMENTED);
         }
 
 
-        public Map getArguments()
-        {
+        public Map getArguments() {
             return _obj.getArguments();
         }
 
-        public UUID getId()
-        {
+        public UUID getId() {
             return _obj.getId();
         }
 
-        public long getCreateTime()
-        {
+        public long getCreateTime() {
             return _obj.getCreateTime();
         }
     }
 
-    private class BindingDelegate implements BrokerSchema.BindingDelegate
-    {
+    private class BindingDelegate implements BrokerSchema.BindingDelegate {
         private final BindingConfig _obj;
 
-        public BindingDelegate(final BindingConfig obj)
-        {
+        public BindingDelegate(final BindingConfig obj) {
             _obj = obj;
         }
 
-        public BrokerSchema.ExchangeObject getExchangeRef()
-        {
+        public BrokerSchema.ExchangeObject getExchangeRef() {
             return (BrokerSchema.ExchangeObject) adapt(_obj.getExchange());
         }
 
-        public BrokerSchema.QueueObject getQueueRef()
-        {
+        public BrokerSchema.QueueObject getQueueRef() {
             return (BrokerSchema.QueueObject) adapt(_obj.getQueue());
         }
 
-        public String getBindingKey()
-        {
+        public String getBindingKey() {
             return _obj.getBindingKey();
         }
 
-        public Map getArguments()
-        {
+        public Map getArguments() {
             return _obj.getArguments();
         }
 
-        public String getOrigin()
-        {
+        public String getOrigin() {
             return _obj.getOrigin();
         }
 
-        public Long getMsgMatched()
-        {
+        public Long getMsgMatched() {
             // TODO
             return _obj.getMatches();
         }
 
-        public UUID getId()
-        {
+        public UUID getId() {
             return _obj.getId();
         }
 
-        public long getCreateTime()
-        {
+        public long getCreateTime() {
             return _obj.getCreateTime();
         }
     }
 
-    private class ConnectionDelegate implements BrokerSchema.ConnectionDelegate
-    {
+    private class ConnectionDelegate implements BrokerSchema.ConnectionDelegate {
         private final ConnectionConfig _obj;
 
-        public ConnectionDelegate(final ConnectionConfig obj)
-        {
+        public ConnectionDelegate(final ConnectionConfig obj) {
             _obj = obj;
         }
 
-        public BrokerSchema.VhostObject getVhostRef()
-        {
-            return (BrokerSchema.VhostObject)  adapt(_obj.getVirtualHost());
+        public BrokerSchema.VhostObject getVhostRef() {
+            return (BrokerSchema.VhostObject) adapt(_obj.getVirtualHost());
         }
 
-        public String getAddress()
-        {
+        public String getAddress() {
             return _obj.getAddress();
         }
 
-        public Boolean getIncoming()
-        {
+        public Boolean getIncoming() {
             return _obj.isIncoming();
         }
 
-        public Boolean getSystemConnection()
-        {
+        public Boolean getSystemConnection() {
             return _obj.isSystemConnection();
         }
 
-        public Boolean getFederationLink()
-        {
+        public Boolean getFederationLink() {
             return _obj.isFederationLink();
         }
 
-        public String getAuthIdentity()
-        {
+        public String getAuthIdentity() {
             return _obj.getAuthId();
         }
 
-        public String getRemoteProcessName()
-        {
+        public String getRemoteProcessName() {
             return _obj.getRemoteProcessName();
         }
 
-        public Long getRemotePid()
-        {
+        public Long getRemotePid() {
             Integer remotePID = _obj.getRemotePID();
             return remotePID == null ? null : (long) remotePID;
         }
 
-        public Long getRemoteParentPid()
-        {
+        public Long getRemoteParentPid() {
             Integer remotePPID = _obj.getRemoteParentPID();
             return remotePPID == null ? null : (long) remotePPID;
 
         }
 
-        public Boolean getClosing()
-        {
+        public Boolean getClosing() {
             return false;
         }
 
-        public Long getFramesFromClient()
-        {
+        public Long getFramesFromClient() {
             // TODO
             return 0l;
         }
 
-        public Long getFramesToClient()
-        {
+        public Long getFramesToClient() {
             // TODO
             return 0l;
         }
 
-        public Long getBytesFromClient()
-        {
+        public Long getBytesFromClient() {
             // TODO
             return 0l;
         }
 
-        public Long getBytesToClient()
-        {
+        public Long getBytesToClient() {
             // TODO
             return 0l;
         }
 
-        public Long getMsgsFromClient()
-        {
+        public Long getMsgsFromClient() {
             // TODO
             return 0l;
         }
 
-        public Long getMsgsToClient()
-        {
+        public Long getMsgsToClient() {
             // TODO
             return 0l;
         }
 
-        public BrokerSchema.ConnectionClass.CloseMethodResponseCommand close(final BrokerSchema.ConnectionClass.CloseMethodResponseCommandFactory factory)
-        {
+        public BrokerSchema.ConnectionClass.CloseMethodResponseCommand close(final BrokerSchema.ConnectionClass
+                .CloseMethodResponseCommandFactory factory) {
             _obj.mgmtClose();
-            
+
             return factory.createResponseCommand();
         }
 
-        public UUID getId()
-        {
+        public UUID getId() {
             return _obj.getId();
         }
 
-        public long getCreateTime()
-        {
+        public long getCreateTime() {
             return _obj.getCreateTime();
         }
 
-        public Boolean getShadow()
-        {
+        public Boolean getShadow() {
             return _obj.isShadow();
         }
-        
-        public Boolean getUserProxyAuth()
-        {
+
+        public Boolean getUserProxyAuth() {
             // TODO
             return false;
         }
     }
 
-    private class SessionDelegate implements BrokerSchema.SessionDelegate
-    {
+    private class SessionDelegate implements BrokerSchema.SessionDelegate {
         private final SessionConfig _obj;
 
-        public SessionDelegate(final SessionConfig obj)
-        {
+        public SessionDelegate(final SessionConfig obj) {
             _obj = obj;
         }
 
-        public BrokerSchema.VhostObject getVhostRef()
-        {
+        public BrokerSchema.VhostObject getVhostRef() {
             return (BrokerSchema.VhostObject) adapt(_obj.getVirtualHost());
         }
 
-        public String getName()
-        {
+        public String getName() {
             return _obj.getSessionName();
         }
 
-        public Integer getChannelId()
-        {
+        public Integer getChannelId() {
             return _obj.getChannel();
         }
 
-        public BrokerSchema.ConnectionObject getConnectionRef()
-        {
+        public BrokerSchema.ConnectionObject getConnectionRef() {
             return (BrokerSchema.ConnectionObject) adapt(_obj.getConnectionConfig());
         }
 
-        public Long getDetachedLifespan()
-        {
+        public Long getDetachedLifespan() {
             return _obj.getDetachedLifespan();
         }
 
-        public Boolean getAttached()
-        {
+        public Boolean getAttached() {
             return _obj.isAttached();
         }
 
-        public Long getExpireTime()
-        {
+        public Long getExpireTime() {
             return _obj.getExpiryTime();
         }
 
-        public Long getMaxClientRate()
-        {
+        public Long getMaxClientRate() {
             return _obj.getMaxClientRate();
         }
 
-        public Long getFramesOutstanding()
-        {
+        public Long getFramesOutstanding() {
             // TODO
             return 0l;
         }
 
-        public Long getTxnStarts()
-        {
+        public Long getTxnStarts() {
             return _obj.getTxnStarts();
         }
 
-        public Long getTxnCommits()
-        {
+        public Long getTxnCommits() {
             return _obj.getTxnCommits();
         }
 
-        public Long getTxnRejects()
-        {
+        public Long getTxnRejects() {
             return _obj.getTxnRejects();
         }
 
-        public Long getTxnCount()
-        {
+        public Long getTxnCount() {
             return _obj.getTxnCount();
         }
 
-        public Long getClientCredit()
-        {
+        public Long getClientCredit() {
             // TODO
             return 0l;
         }
 
-        public BrokerSchema.SessionClass.SolicitAckMethodResponseCommand solicitAck(final BrokerSchema.SessionClass.SolicitAckMethodResponseCommandFactory factory)
-        {
+        public BrokerSchema.SessionClass.SolicitAckMethodResponseCommand solicitAck(final BrokerSchema.SessionClass
+                .SolicitAckMethodResponseCommandFactory factory) {
             //TODO
             return factory.createResponseCommand(CompletionCode.NOT_IMPLEMENTED);
         }
 
-        public BrokerSchema.SessionClass.DetachMethodResponseCommand detach(final BrokerSchema.SessionClass.DetachMethodResponseCommandFactory factory)
-        {
+        public BrokerSchema.SessionClass.DetachMethodResponseCommand detach(final BrokerSchema.SessionClass
+                .DetachMethodResponseCommandFactory factory) {
             //TODO
             return factory.createResponseCommand(CompletionCode.NOT_IMPLEMENTED);
         }
 
-        public BrokerSchema.SessionClass.ResetLifespanMethodResponseCommand resetLifespan(final BrokerSchema.SessionClass.ResetLifespanMethodResponseCommandFactory factory)
-        {
+        public BrokerSchema.SessionClass.ResetLifespanMethodResponseCommand resetLifespan(final BrokerSchema
+                .SessionClass.ResetLifespanMethodResponseCommandFactory factory) {
             //TODO
             return factory.createResponseCommand(CompletionCode.NOT_IMPLEMENTED);
         }
 
-        public BrokerSchema.SessionClass.CloseMethodResponseCommand close(final BrokerSchema.SessionClass.CloseMethodResponseCommandFactory factory)
-        {
-            try
-            {
+        public BrokerSchema.SessionClass.CloseMethodResponseCommand close(final BrokerSchema.SessionClass
+                .CloseMethodResponseCommandFactory factory) {
+            try {
                 _obj.mgmtClose();
-            }
-            catch (AMQException e)
-            {
+            } catch (AMQException e) {
                 return factory.createResponseCommand(CompletionCode.EXCEPTION, e.getMessage());
             }
 
             return factory.createResponseCommand();
         }
 
-        public UUID getId()
-        {
+        public UUID getId() {
             return _obj.getId();
         }
 
-        public long getCreateTime()
-        {
+        public long getCreateTime() {
             return _obj.getCreateTime();
         }
     }
 
-    private class SubscriptionDelegate implements BrokerSchema.SubscriptionDelegate
-    {
+    private class SubscriptionDelegate implements BrokerSchema.SubscriptionDelegate {
         private final SubscriptionConfig _obj;
 
-        private SubscriptionDelegate(final SubscriptionConfig obj)
-        {
+        private SubscriptionDelegate(final SubscriptionConfig obj) {
             _obj = obj;
         }
 
 
-        public BrokerSchema.SessionObject getSessionRef()
-        {
+        public BrokerSchema.SessionObject getSessionRef() {
             return (BrokerSchema.SessionObject) adapt(_obj.getSessionConfig());
         }
 
-        public BrokerSchema.QueueObject getQueueRef()
-        {
+        public BrokerSchema.QueueObject getQueueRef() {
             return (BrokerSchema.QueueObject) adapt(_obj.getQueue());
         }
 
-        public String getName()
-        {
+        public String getName() {
             return _obj.getName();
         }
 
-        public Boolean getBrowsing()
-        {
+        public Boolean getBrowsing() {
             return _obj.isBrowsing();
         }
 
-        public Boolean getAcknowledged()
-        {
+        public Boolean getAcknowledged() {
             return _obj.isExplicitAcknowledge();
         }
 
-        public Boolean getExclusive()
-        {
+        public Boolean getExclusive() {
             return _obj.isExclusive();
         }
 
-        public String getCreditMode()
-        {
+        public String getCreditMode() {
             return _obj.getCreditMode();
         }
 
-        public Map getArguments()
-        {
+        public Map getArguments() {
             return _obj.getArguments();
         }
 
-        public Long getDelivered()
-        {
+        public Long getDelivered() {
             return _obj.getDelivered();
         }
 
-        public UUID getId()
-        {
+        public UUID getId() {
             return _obj.getId();
         }
 
-        public long getCreateTime()
-        {
+        public long getCreateTime() {
             return _obj.getCreateTime();
         }
     }
 
-        private class BridgeDelegate implements BrokerSchema.BridgeDelegate
-        {
-            private final BridgeConfig _obj;
+    private class BridgeDelegate implements BrokerSchema.BridgeDelegate {
+        private final BridgeConfig _obj;
 
-            private BridgeDelegate(final BridgeConfig obj)
-            {
-                _obj = obj;
-            }
-
-            public BrokerSchema.LinkObject getLinkRef()
-            {
-                return (BrokerSchema.LinkObject) adapt(_obj.getLink());
-            }
-
-            public Integer getChannelId()
-            {
-                return _obj.getChannelId();
-            }
-
-            public Boolean getDurable()
-            {
-                return _obj.isDurable();
-            }
-
-            public String getSrc()
-            {
-                return _obj.getSource();
-            }
-
-            public String getDest()
-            {
-                return _obj.getDestination();
-            }
-
-            public String getKey()
-            {
-                return _obj.getKey();
-            }
-
-            public Boolean getSrcIsQueue()
-            {
-                return _obj.isQueueBridge();
-            }
-
-            public Boolean getSrcIsLocal()
-            {
-                return _obj.isLocalSource();
-            }
-
-            public String getTag()
-            {
-                return _obj.getTag();
-            }
-
-            public String getExcludes()
-            {
-                return _obj.getExcludes();
-            }
-
-            public Boolean getDynamic()
-            {
-                return _obj.isDynamic();
-            }
-
-            public Integer getSync()
-            {
-                return _obj.getAckBatching();
-            }
-
-            public BrokerSchema.BridgeClass.CloseMethodResponseCommand close(final BrokerSchema.BridgeClass.CloseMethodResponseCommandFactory factory)
-            {
-                return null;
-            }
-
-            public UUID getId()
-            {
-                return _obj.getId();
-            }
-
-            public long getCreateTime()
-            {
-                return _obj.getCreateTime();
-            }
-        }
-
-    private class LinkDelegate implements BrokerSchema.LinkDelegate
-    {
-        private final LinkConfig _obj;
-
-        private LinkDelegate(final LinkConfig obj)
-        {
+        private BridgeDelegate(final BridgeConfig obj) {
             _obj = obj;
         }
 
-        public BrokerSchema.VhostObject getVhostRef()
-        {
-            return (BrokerSchema.VhostObject) adapt(_obj.getVirtualHost());
+        public BrokerSchema.LinkObject getLinkRef() {
+            return (BrokerSchema.LinkObject) adapt(_obj.getLink());
         }
 
-        public String getHost()
-        {
-            return _obj.getHost();
+        public Integer getChannelId() {
+            return _obj.getChannelId();
         }
 
-        public Integer getPort()
-        {
-            return _obj.getPort();
-        }
-
-        public String getTransport()
-        {
-            return _obj.getTransport();
-        }
-
-        public Boolean getDurable()
-        {
+        public Boolean getDurable() {
             return _obj.isDurable();
         }
 
-        public String getState()
-        {
+        public String getSrc() {
+            return _obj.getSource();
+        }
+
+        public String getDest() {
+            return _obj.getDestination();
+        }
+
+        public String getKey() {
+            return _obj.getKey();
+        }
+
+        public Boolean getSrcIsQueue() {
+            return _obj.isQueueBridge();
+        }
+
+        public Boolean getSrcIsLocal() {
+            return _obj.isLocalSource();
+        }
+
+        public String getTag() {
+            return _obj.getTag();
+        }
+
+        public String getExcludes() {
+            return _obj.getExcludes();
+        }
+
+        public Boolean getDynamic() {
+            return _obj.isDynamic();
+        }
+
+        public Integer getSync() {
+            return _obj.getAckBatching();
+        }
+
+        public BrokerSchema.BridgeClass.CloseMethodResponseCommand close(final BrokerSchema.BridgeClass
+                .CloseMethodResponseCommandFactory factory) {
+            return null;
+        }
+
+        public UUID getId() {
+            return _obj.getId();
+        }
+
+        public long getCreateTime() {
+            return _obj.getCreateTime();
+        }
+    }
+
+    private class LinkDelegate implements BrokerSchema.LinkDelegate {
+        private final LinkConfig _obj;
+
+        private LinkDelegate(final LinkConfig obj) {
+            _obj = obj;
+        }
+
+        public BrokerSchema.VhostObject getVhostRef() {
+            return (BrokerSchema.VhostObject) adapt(_obj.getVirtualHost());
+        }
+
+        public String getHost() {
+            return _obj.getHost();
+        }
+
+        public Integer getPort() {
+            return _obj.getPort();
+        }
+
+        public String getTransport() {
+            return _obj.getTransport();
+        }
+
+        public Boolean getDurable() {
+            return _obj.isDurable();
+        }
+
+        public String getState() {
             // TODO
             return "";
         }
 
-        public String getLastError()
-        {
+        public String getLastError() {
             // TODO
             return "";
         }
 
-        public BrokerSchema.LinkClass.CloseMethodResponseCommand close(final BrokerSchema.LinkClass.CloseMethodResponseCommandFactory factory)
-        {
+        public BrokerSchema.LinkClass.CloseMethodResponseCommand close(final BrokerSchema.LinkClass
+                .CloseMethodResponseCommandFactory factory) {
             _obj.close();
             return factory.createResponseCommand();
         }
 
-        public BrokerSchema.LinkClass.BridgeMethodResponseCommand bridge(final BrokerSchema.LinkClass.BridgeMethodResponseCommandFactory factory,
+        public BrokerSchema.LinkClass.BridgeMethodResponseCommand bridge(final BrokerSchema.LinkClass
+                .BridgeMethodResponseCommandFactory factory,
                                                                          final Boolean durable,
                                                                          final String src,
                                                                          final String dest,
@@ -1653,19 +1388,16 @@ public class QMFService implements ConfigStore.ConfigEventListener, Closeable
                                                                          final Boolean srcIsQueue,
                                                                          final Boolean srcIsLocal,
                                                                          final Boolean dynamic,
-                                                                         final Integer sync)
-        {
+                                                                         final Integer sync) {
             _obj.createBridge(durable, dynamic, srcIsQueue, srcIsLocal, src, dest, key, tag, excludes);
             return factory.createResponseCommand();
         }
 
-        public UUID getId()
-        {
+        public UUID getId() {
             return _obj.getId();
         }
 
-        public long getCreateTime()
-        {
+        public long getCreateTime() {
             return _obj.getCreateTime();
         }
     }

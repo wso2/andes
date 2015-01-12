@@ -18,6 +18,7 @@
 package org.wso2.andes.server.store.util;
 
 
+import me.prettyprint.cassandra.model.ConfigurableConsistencyLevel;
 import me.prettyprint.cassandra.model.thrift.ThriftCounterColumnQuery;
 import me.prettyprint.cassandra.serializers.*;
 import me.prettyprint.cassandra.service.ThriftCfDef;
@@ -49,6 +50,7 @@ import java.util.*;
  */
 public class HectorDataAccessHelper {
 
+    public static final int STANDARD_PAGE_SIZE = 1000;
     /**
      * Serializes used for Cassandra data operations
      */
@@ -75,7 +77,7 @@ public class HectorDataAccessHelper {
      * @return Keyspace
      */
     public static Keyspace createKeySpace(Cluster cluster, String keySpaceName, int replicationFactor,
-                                          String strategyClass) {
+                                          String strategyClass, ConfigurableConsistencyLevel policy) {
         //Define the keySpaceName
         ThriftKsDef thriftKsDef = new ThriftKsDef(keySpaceName);
         thriftKsDef.setReplicationFactor(replicationFactor);
@@ -91,7 +93,7 @@ public class HectorDataAccessHelper {
         }
 
         Keyspace keyspace = HFactory.createKeyspace(keySpaceName, cluster);
-        CassandraConsistencyLevelPolicy policy = new CassandraConsistencyLevelPolicy();
+        // Setting consistency policy
         keyspace.setConsistencyLevelPolicy(policy);
         return keyspace;
     }

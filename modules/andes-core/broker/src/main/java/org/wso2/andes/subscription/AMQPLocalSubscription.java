@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -23,10 +23,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
-import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
@@ -62,11 +62,11 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
 
     public AMQPLocalSubscription(AMQQueue amqQueue, Subscription amqpSubscription, String subscriptionID, String destination,
                                  boolean isBoundToTopic, boolean isExclusive, boolean isDurable,
-                                 String subscribedNode, String targetQueue, String targetQueueOwner,
+                                 String subscribedNode, long subscribeTime, String targetQueue, String targetQueueOwner,
                                  String targetQueueBoundExchange, String targetQueueBoundExchangeType,
                                  Short isTargetQueueBoundExchangeAutoDeletable, boolean hasExternalSubscriptions) {
 
-        super(subscriptionID, destination, isBoundToTopic, isExclusive, isDurable, subscribedNode, targetQueue, targetQueueOwner,
+        super(subscriptionID, destination, isBoundToTopic, isExclusive, isDurable, subscribedNode, subscribeTime, targetQueue, targetQueueOwner,
                 targetQueueBoundExchange, targetQueueBoundExchangeType, isTargetQueueBoundExchangeAutoDeletable, hasExternalSubscriptions);
 
         this.amqQueue = amqQueue;
@@ -86,12 +86,15 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
         return channel.getId();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata) throws AndesException {
-        AMQMessage message = AMQPUtils.getAMQMessageFromAndesMetaData(messageMetadata);
+    public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata, AndesContent content)
+            throws AndesException {
+        AMQMessage message = AMQPUtils.getAMQMessageForDelivery(messageMetadata, content);
         sendAMQMessageToSubscriber(message, messageMetadata.getRedelivered());
     }
-
 
     /**
      * send message to the internal subscription
@@ -114,7 +117,7 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
      * @param message message to send
      * @throws AndesException
      */
-    private void sendQueueEntryToSubscriber(QueueEntry message) throws AndesException {
+    public void sendQueueEntryToSubscriber(QueueEntry message) throws AndesException {
         if (message.getQueue().checkIfBoundToTopicExchange()) {
             //topic messages should be sent to all matching subscriptions
             String routingKey = message.getMessage().getRoutingKey();
@@ -148,7 +151,11 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
         try {
             AMQProtocolSession session = channel.getProtocolSession();
             ((AMQMessage) queueEntry.getMessage()).setClientIdentifier(session);
-            OnflightMessageTracker.getInstance().incrementNonAckedMessageCount(getChannelID());
+            
+            // TODO: We might have to carefully implement this in every new subscription type we implement
+            // shall we move this up to LocalSubscription level?
+            OnflightMessageTracker.getInstance().incrementNonAckedMessageCount(channel.getId());
+
             if (amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
                 //this check is needed to detect if subscription has suddenly closed
                 if (log.isDebugEnabled()) {
@@ -201,7 +208,7 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
         //todo:hasitha:verify passing null values
         String subscribedNode = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         return new AMQPLocalSubscription(amqQueue,
-                amqpSubscription, subscriptionID, targetQueue, false, isExclusive, true, subscribedNode, amqQueue.getName(),
+                amqpSubscription, subscriptionID, targetQueue, false, isExclusive, true, subscribedNode, System.currentTimeMillis(), amqQueue.getName(),
                 amqQueue.getOwner().toString(), AMQPUtils.DIRECT_EXCHANGE_NAME, DirectExchange.TYPE.toString(), Short.parseShort("0"), true);
     }
 

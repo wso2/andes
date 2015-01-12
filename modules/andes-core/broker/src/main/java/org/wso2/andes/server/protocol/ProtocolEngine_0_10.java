@@ -17,13 +17,16 @@
  */
 package org.wso2.andes.server.protocol;
 
-import org.wso2.andes.configuration.qpid.*;
+import org.wso2.andes.configuration.qpid.ConfigStore;
+import org.wso2.andes.configuration.qpid.ConfiguredObject;
+import org.wso2.andes.configuration.qpid.ConnectionConfig;
+import org.wso2.andes.configuration.qpid.ConnectionConfigType;
+import org.wso2.andes.configuration.qpid.VirtualHostConfig;
 import org.wso2.andes.protocol.ProtocolEngine;
 import org.wso2.andes.transport.network.InputHandler;
 import org.wso2.andes.transport.network.Assembler;
 import org.wso2.andes.transport.network.Disassembler;
 import org.wso2.andes.transport.network.NetworkConnection;
-import org.wso2.andes.configuration.qpid.*;
 import org.wso2.andes.server.transport.ServerConnection;
 import org.wso2.andes.server.logging.messages.ConnectionMessages;
 import org.wso2.andes.server.registry.IApplicationRegistry;

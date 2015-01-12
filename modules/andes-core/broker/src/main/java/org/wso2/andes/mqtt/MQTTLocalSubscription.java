@@ -20,6 +20,7 @@ package org.wso2.andes.mqtt;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
@@ -105,7 +106,7 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
     public MQTTLocalSubscription(String mqttTopicSubscription) {
         super(mqttTopicSubscription);
         //setTargetBoundExchange();
-        setIsTopic();
+        setIsTopic(true);
         setNodeInfo();
         setIsActive(true);
     }
@@ -148,8 +149,8 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
      * In MQTT all the messages will be exchanged through topics
      * So will overide the is bound to always have the value true
      */
-    public void setIsTopic() {
-        this.isBoundToTopic = true;
+    public void setIsTopic(boolean isTopic) {
+        this.isBoundToTopic = isTopic;
     }
 
     /**
@@ -168,10 +169,13 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
         this.hasExternalSubscriptions = isActive;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata) throws AndesException {
+    public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata, AndesContent content) throws AndesException {
         //Should get the message from the list
-        ByteBuffer message = MQTTUtils.getContentFromMetaInformation(messageMetadata);
+        ByteBuffer message = MQTTUtils.getContentFromMetaInformation(content);
         //Will publish the message to the respective queue
         if (mqqtServerChannel != null) {
             try {
@@ -180,8 +184,8 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
                         messageMetadata.getMessageID());
                 try {
                     mqqtServerChannel.distributeMessageToSubscriber(
-                        this.getStorageQueueName(), message, messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
-                        messageMetadata.isPersistent(), getMqttSubscriptionID(), getSubscriberQOS());
+                            this.getStorageQueueName(), message, messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
+                            messageMetadata.isPersistent(), getMqttSubscriptionID(), getSubscriberQOS());
                 } catch (MQTTException ex) {
                     //We need to decrement the tracker count
                     OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(channelID);

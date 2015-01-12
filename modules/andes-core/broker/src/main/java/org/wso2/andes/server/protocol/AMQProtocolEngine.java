@@ -232,10 +232,8 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
             try
             {
                 final ArrayList<AMQDataBlock> dataBlocks = _codecFactory.getDecoder().decodeBuffer(msg);
-                Job.fireAsynchEvent(_poolReference.getPool(), _readJob, new Runnable()
-                {
-                    public void run()
-                    {
+                Job.fireAsynchEvent(_poolReference.getPool(), _readJob, new Runnable() {
+                    public void run() {
                         // Decode buffer
 
                         for (AMQDataBlock dataBlock : dataBlocks)
@@ -452,7 +450,7 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
             _logger.error("Unexpected exception while processing frame.  Closing connection.", e);
 
             e.printStackTrace();
-//            closeProtocolSession();
+            closeProtocolSession();
         }
     }
 

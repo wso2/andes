@@ -127,7 +127,7 @@ public class Broker
         configFile = getConfigFile(options.getConfigFile(),
                                 BrokerOptions.DEFAULT_ANDES_CONFIG_FILE, qpidHome, true);
 
-        CurrentActor.get().message(BrokerMessages.CONFIG(configFile.getAbsolutePath()));
+        log.info("Starting Qpid using configuration : " + configFile.getAbsolutePath());
 
         /*File logConfigFile = getConfigFile(options.getLogConfigFile(),
                                     BrokerOptions.DEFAULT_LOG_CONFIG_FILE, qpidHome, false);
@@ -139,14 +139,14 @@ public class Broker
         updateManagementPort(serverConfig, options.getJmxPort());
 
          /* Registering the memory threshold ratio configured in the qpid-config.xml */
-        Double memoryThresholdRatio = AndesConfigurationManager.getInstance()
-                .readConfigurationValue(AndesConfiguration.FLOW_CONTROL_MEMORY_BASED_GLOBAL_MEMORY_THRESHOLD_RATIO);
+        Double memoryThresholdRatio = AndesConfigurationManager.readValue
+                (AndesConfiguration.FLOW_CONTROL_MEMORY_BASED_GLOBAL_MEMORY_THRESHOLD_RATIO);
         this.registerFlowControlMemoryThreshold(memoryThresholdRatio);
 
         /* Registering the memory monitor */
-        Double recoveryThresholdRatio = AndesConfigurationManager.getInstance()
-                .readConfigurationValue(AndesConfiguration.FLOW_CONTROL_MEMORY_BASED_GLOBAL_MEMORY_RECOVERY_THRESHOLD_RATIO);
-        Long memoryCheckInterval = AndesConfigurationManager.getInstance().readConfigurationValue
+        Double recoveryThresholdRatio = AndesConfigurationManager.readValue
+                (AndesConfiguration.FLOW_CONTROL_MEMORY_BASED_GLOBAL_MEMORY_RECOVERY_THRESHOLD_RATIO);
+        Long memoryCheckInterval = AndesConfigurationManager.readValue
                 (AndesConfiguration.FLOW_CONTROL_MEMORY_BASED_MEMORY_CHECK_INTERVAL);
         this.registerMemoryMonitor(recoveryThresholdRatio, memoryCheckInterval);
 

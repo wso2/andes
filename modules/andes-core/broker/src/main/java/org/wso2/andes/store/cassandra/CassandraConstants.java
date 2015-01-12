@@ -143,4 +143,15 @@ public class CassandraConstants {
      */
     public final static String DEFAULT_STRATEGY_CLASS = "org.apache.cassandra.locator" +
             ".SimpleStrategy";
+
+    /**
+     * Default read consistency for Cassandra.
+     */
+    public final static String DEFAULT_READ_CONSISTENCY = "ONE";
+
+    /**
+     * Default write consistency for Cassandra.
+     */
+    public final static String DEFAULT_WRITE_CONSISTENCY = "ONE";
+
 }

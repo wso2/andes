@@ -104,11 +104,13 @@ public final class AndesMQTTBridge {
      * @param message            the content of the message
      * @param retain             should this message be persisted
      * @param mqttLocalMessageID the message uniq identifier
+     * @param publisherID        the id of the publisher provided by mqtt protocol
      */
     public static void onMessagePublished(String topic, int qosLevel, ByteBuffer message, boolean retain,
-                                          int mqttLocalMessageID) {
+                                          int mqttLocalMessageID, String publisherID) {
         try {
-            MQTTopicManager.getInstance().addTopicMessage(topic, qosLevel, message, retain, mqttLocalMessageID);
+            MQTTopicManager.getInstance().addTopicMessage(topic, qosLevel, message, retain, mqttLocalMessageID,
+                    publisherID);
         } catch (MQTTException e) {
             //Will capture the message here and will not throw it further to mqtt protocol
             final String error = "Error occured while adding the message content for message id : "

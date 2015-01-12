@@ -64,6 +64,13 @@ public interface AndesSubscription {
 	public String getTargetQueue();
 
     /**
+     * Get the time this subscription has created
+     * on the broker.
+     * @return time stamp in milli seconds
+     */
+    public long getSubscribeTime();
+
+    /**
      * @return name of the queue in message store messages addressed to
      * this subscription is stored
      */

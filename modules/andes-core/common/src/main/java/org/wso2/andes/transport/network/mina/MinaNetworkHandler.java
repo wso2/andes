@@ -21,7 +21,13 @@
 
 package org.wso2.andes.transport.network.mina;
 
-import org.apache.mina.common.*;
+import org.apache.mina.common.ByteBuffer;
+import org.apache.mina.common.IdleStatus;
+import org.apache.mina.common.IoFilterChain;
+import org.apache.mina.common.IoHandlerAdapter;
+import org.apache.mina.common.IoSession;
+import org.apache.mina.common.SimpleByteBufferAllocator;
+import org.apache.mina.filter.ReadThrottleFilterBuilder;
 import org.apache.mina.filter.SSLFilter;
 import org.apache.mina.util.SessionUtil;
 import org.slf4j.Logger;
@@ -112,6 +118,11 @@ public class MinaNetworkHandler extends IoHandlerAdapter
            ProtocolEngine engine = _factory.newProtocolEngine(netConn);
            ioSession.setAttachment(engine);
         }
+
+        // We limit the size of receiving buffer to 1 MB
+        ReadThrottleFilterBuilder readFilter = new ReadThrottleFilterBuilder();
+        readFilter.setMaximumConnectionBufferSize(1024*1024);
+        readFilter.attach(chain);
     }
 
     public void sessionClosed(IoSession ioSession) throws Exception

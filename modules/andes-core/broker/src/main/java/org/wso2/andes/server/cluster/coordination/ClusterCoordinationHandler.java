@@ -43,6 +43,8 @@ public class ClusterCoordinationHandler implements QueueListener, ExchangeListen
                 break;
             case DELETED:
                 //delete queue
+                ClusterResourceHolder.getInstance().getSubscriptionManager().deleteAllLocalSubscriptionsOfBoundQueue(
+                        andesQueue.queueName);
                 ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().clusterQueueRemoved(andesQueue);
                 break;
             case PURGED:

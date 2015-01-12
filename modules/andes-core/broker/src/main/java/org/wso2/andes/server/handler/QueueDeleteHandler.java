@@ -26,6 +26,7 @@ import org.wso2.andes.framing.QueueDeleteBody;
 import org.wso2.andes.framing.QueueDeleteOkBody;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.protocol.AMQSessionModel;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -111,20 +112,32 @@ public class QueueDeleteHandler implements StateAwareMethodListener<QueueDeleteB
                     throw body.getConnectionException(AMQConstant.NOT_ALLOWED,
                                                       "Queue " + queue.getNameShortString() + " is exclusive, but not created on this Connection.");
                 }
-                
-                int purged = queue.delete();
 
-                if (queue.isDurable())
+                boolean isQueueDeletable = ClusterResourceHolder.getInstance().
+                        getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queue.getName());
+
+                if(isQueueDeletable)
                 {
-                    store.removeQueue(queue);
+                    int purged = queue.delete();
 
-                    //tell Andes Kernel to remove queue
-                    QpidAMQPBridge.getInstance().deleteQueue(queue);
+                    if (queue.isDurable())
+                    {
+                        store.removeQueue(queue);
+
+                        //tell Andes Kernel to remove queue
+                        QpidAMQPBridge.getInstance().deleteQueue(queue);
+
+                    }
+
+                    MethodRegistry methodRegistry = protocolConnection.getMethodRegistry();
+                    QueueDeleteOkBody responseBody = methodRegistry.createQueueDeleteOkBody(purged);
+                    protocolConnection.writeFrame(responseBody.generateFrame(channelId));
                 }
-
-                MethodRegistry methodRegistry = protocolConnection.getMethodRegistry();
-                QueueDeleteOkBody responseBody = methodRegistry.createQueueDeleteOkBody(purged);
-                protocolConnection.writeFrame(responseBody.generateFrame(channelId));
+                else
+                {
+                    _logger.warn("Cannot Delete Queue" + queue.getName() + " It Has Registered Subscriptions.");
+                    throw new AMQException("Cannot Delete Queue" + queue.getName() + " It Has Registered Subscriptions.");
+                }
             }
         }
     }

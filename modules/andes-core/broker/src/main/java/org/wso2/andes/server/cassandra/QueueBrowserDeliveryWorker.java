@@ -17,14 +17,12 @@
  */
 package org.wso2.andes.server.cassandra;
 
-import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -67,14 +65,13 @@ public class QueueBrowserDeliveryWorker {
     private static Log log = LogFactory.getLog(QueueBrowserDeliveryWorker.class);
 
     public QueueBrowserDeliveryWorker(Subscription subscription, AMQQueue queue,
-                                      AMQProtocolSession session) throws
-            AndesException {
+                                      AMQProtocolSession session) {
         this.subscription = subscription;
         this.queue = queue;
         this.session = session;
         this.id = "" + subscription.getSubscriptionID();
         this.messageCount = defaultMessageCount;
-        this.messageBatchSize = AndesConfigurationManager.getInstance().readConfigurationValue
+        this.messageBatchSize = AndesConfigurationManager.readValue
                 (AndesConfiguration.MANAGEMENT_CONSOLE_MESSAGE_BATCH_SIZE_FOR_BROWSER_SUBSCRIPTIONS);
 
     }

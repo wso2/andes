@@ -31,7 +31,6 @@ import org.wso2.andes.server.message.EnqueableMessage;
 import org.wso2.andes.server.message.MessageContentSource;
 import org.wso2.andes.server.message.MessageMetaData;
 import org.wso2.andes.AMQException;
-import org.apache.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,11 +38,7 @@ import java.nio.ByteBuffer;
 
 public class IncomingMessage implements Filterable, InboundMessage, EnqueableMessage, MessageContentSource
 {
-
-    /** Used for debugging purposes. */
-    private static final Logger _logger = Logger.getLogger(IncomingMessage.class);
-
-    private static final boolean SYNCHED_CLOCKS =
+    private static final boolean SYNCED_CLOCKS =
             ApplicationRegistry.getInstance().getConfiguration().getSynchedClocks();
 
     private final MessagePublishInfo _messagePublishInfo;
@@ -99,7 +94,7 @@ public class IncomingMessage implements Filterable, InboundMessage, EnqueableMes
             long timestamp =
                     ((BasicContentHeaderProperties) _contentHeaderBody.getProperties()).getTimestamp();
 
-            if (SYNCHED_CLOCKS)
+            if (SYNCED_CLOCKS)
             {
                 _expiration = expiration;
             }
@@ -140,20 +135,16 @@ public class IncomingMessage implements Filterable, InboundMessage, EnqueableMes
     }
 
     /**
-     * We add content to the store here
-     * @param contentChunk
-     * @return
+     * Add content to message cache
+     * @param contentChunk content chunk to ba added to message
+     * @return Chunk count
      * @throws AMQException
      */
     public int addContentBodyFrame(final ContentChunk contentChunk)
             throws AMQException
     {
-        _storedMessageHandle.addContent((int)_bodyLengthReceived, contentChunk.getData().buf());
         _bodyLengthReceived += contentChunk.getSize();
         _contentChunks.add(contentChunk);
-
-
-
         return _receivedChunkCount++;
     }
 

@@ -29,6 +29,11 @@ import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * This class holds utility methods for Andes. Commonly
+ * accessible methods for the whole broker are piled
+ * here
+ */
 public class AndesUtils {
 
     private static Log log = LogFactory.getLog(AndesUtils.class);

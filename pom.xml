@@ -489,7 +489,7 @@
             <dependency>
                 <groupId>org.wso2.carbon</groupId>
                 <artifactId>org.wso2.carbon.core</artifactId>
-                <version>4.3.0-SNAPSHOT</version>
+                <version>${carbon.kernel.version}</version>
             </dependency>
 
             <!--Thrift Dependency-->
@@ -526,6 +526,12 @@
                 <artifactId>mysql-connector-java</artifactId>
                 <version>5.1.31</version>
                 <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>2.2.4</version>
             </dependency>
 
         </dependencies>
@@ -598,6 +604,7 @@
     <properties>
         <andes.version>3.0.0-SNAPSHOT</andes.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <carbon.kernel.version>4.3.0</carbon.kernel.version>
     </properties>
 
     <mailingLists>

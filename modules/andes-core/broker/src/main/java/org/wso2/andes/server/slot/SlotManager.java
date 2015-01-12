@@ -19,11 +19,14 @@
 package org.wso2.andes.server.slot;
 
 import com.hazelcast.core.IMap;
-import com.kenai.jaffl.annotations.Synchronized;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.HashmapStringListWrapper;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetLongWrapper;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetSlotWrapper;
+
 
 import java.util.*;
 
@@ -37,14 +40,16 @@ public class SlotManager {
     private static SlotManager slotManager = new SlotManager();
 
     /**
-     * Slots which are previously owned and released by another node. Key is the queueName.
+     * Slots which are previously owned and released by another node. Key is the queueName. Value
+     * is TreeSetSlotWrapper objects. TreeSetSlotWrapper is a wrapper class for TreeSet<Slot>.
      */
-    private IMap<String, TreeSet<Slot>> unAssignedSlotMap;
+    private IMap<String, TreeSetSlotWrapper> unAssignedSlotMap;
 
     /**
-     * To keep list of message IDs against queues
+     * To keep TreeSetLongWrapper objects against queues. TreeSetLongWrapper is a wrapper class
+     * for a Long TreeSet. Long TreeSet inside TreeSetLongWrapper is the list of message IDs.
      */
-    private IMap<String, TreeSet<Long>> slotIDMap;
+    private IMap<String, TreeSetLongWrapper> slotIDMap;
 
     /**
      * To keep track of last assigned message ID against queue.
@@ -52,11 +57,12 @@ public class SlotManager {
     private IMap<String, Long> queueToLastAssignedIDMap;
 
     /**
-     * To keep track of assigned slots up to now. Key of the map contains nodeID. key of the
-     * hashmap
-     * is queue name
+     * To keep track of assigned slots up to now. Key of the map contains nodeID. Value is
+     * HashmapStringListWrapper object. HashmapStringListWrapper is a wrapper class for
+     * HashMap<String,List<Slot>>. Key in that hash map is queue name. value is List of Slot
+     * objects.
      */
-    private IMap<String, HashMap<String, List<Slot>>> slotAssignmentMap;
+    private IMap<String, HashmapStringListWrapper> slotAssignmentMap;
 
     private static Log log = LogFactory.getLog(SlotManager.class);
 
@@ -95,30 +101,37 @@ public class SlotManager {
          *First look in the unassigned slots pool for free slots. These slots are previously own by
          * other nodes
          */
-        String lockKey = (queueName + SlotManager.class).intern();
-        synchronized (lockKey) {
-            TreeSet<Slot> slotsFromUnassignedSlotMap = unAssignedSlotMap.get(queueName);
-            if (slotsFromUnassignedSlotMap != null && !slotsFromUnassignedSlotMap.isEmpty()) {
-                slotToBeAssigned = slotsFromUnassignedSlotMap.pollFirst();
-                //update hazelcast map
-                unAssignedSlotMap.set(queueName,slotsFromUnassignedSlotMap);
-                if(log.isDebugEnabled()) {
-                    if(null != slotToBeAssigned) {
-                        log.debug("Slot Manager - giving a slot from unAssignedSlotMap. Slot= " + slotToBeAssigned.toString());
+        String lockKey = queueName + SlotManager.class;
+        synchronized (lockKey.intern()) {
+            TreeSetSlotWrapper treeSetSlotWrapper = unAssignedSlotMap.get(queueName);
+            if(treeSetSlotWrapper != null){
+                TreeSet<Slot> slotsFromUnassignedSlotMap = treeSetSlotWrapper.getSlotTreeSet();
+                if (slotsFromUnassignedSlotMap != null && !slotsFromUnassignedSlotMap.isEmpty()) {
+                    slotToBeAssigned = slotsFromUnassignedSlotMap.pollFirst();
+                    //update hazelcast map
+                    treeSetSlotWrapper.setSlotTreeSet(slotsFromUnassignedSlotMap);
+                    unAssignedSlotMap.set(queueName, treeSetSlotWrapper);
+                    if (log.isDebugEnabled()) {
+                        log.debug("Slot Manager - giving a slot from unAssignedSlotMap. Slot= " + slotToBeAssigned);
+                    }
+                }else {
+                    slotToBeAssigned = getFreshSlot(queueName);
+                    if (log.isDebugEnabled()) {
+                        log.debug("Slot Manager - giving a slot from fresh pool. Slot= " + slotToBeAssigned);
                     }
                 }
-            } else {
+            }else {
                 slotToBeAssigned = getFreshSlot(queueName);
-                if(log.isDebugEnabled()) {
-                    if(null != slotToBeAssigned) {
-                        log.debug("Slot Manager - giving a slot from fresh pool. Slot= " + slotToBeAssigned.toString());
-                    }
+                if (log.isDebugEnabled()) {
+                    log.debug("Slot Manager - giving a slot from fresh pool. Slot= " + slotToBeAssigned);
                 }
             }
             if (null != slotToBeAssigned) {
                 updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
             } else {
-                log.debug("Slot Manager - returns empty slot for the queue: " + queueName);
+                if (log.isDebugEnabled()) {
+                    log.debug("Slot Manager - returns empty slot for the queue: " + queueName);
+                }
             }
             return slotToBeAssigned;
         }
@@ -127,29 +140,35 @@ public class SlotManager {
 
     /**
      * Get a new slot from slotIDMap
+     *
      * @param queueName name of the queue
      * @return slot object
      */
     private Slot getFreshSlot(String queueName) {
         Slot slotToBeAssigned = null;
-        TreeSet<Long> messageIDSet = slotIDMap.get(queueName);
-        if (messageIDSet != null && !messageIDSet.isEmpty()) {
-            slotToBeAssigned = new Slot();
-            Long lastAssignedId = queueToLastAssignedIDMap.get(queueName);
-            if (lastAssignedId != null) {
-                slotToBeAssigned.setStartMessageId(lastAssignedId + 1);
-            } else {
-                slotToBeAssigned.setStartMessageId(0L);
+        TreeSetLongWrapper wrapper = slotIDMap.get(queueName);
+        TreeSet<Long> messageIDSet;
+        if (wrapper != null) {
+            messageIDSet = wrapper.getLongTreeSet();
+            if (messageIDSet != null && !messageIDSet.isEmpty()) {
+                slotToBeAssigned = new Slot();
+                Long lastAssignedId = queueToLastAssignedIDMap.get(queueName);
+                if (lastAssignedId != null) {
+                    slotToBeAssigned.setStartMessageId(lastAssignedId + 1);
+                } else {
+                    slotToBeAssigned.setStartMessageId(0L);
+                }
+                slotToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
+                slotToBeAssigned.setStorageQueueName(queueName);
+                wrapper.setLongTreeSet(messageIDSet);
+                slotIDMap.set(queueName, wrapper);
+                if (log.isDebugEnabled()) {
+                    log.debug(slotToBeAssigned.getEndMessageId() + " removed to slotIdMap. Current " +
+                            "values in " +
+                            "map " + messageIDSet);
+                }
+                queueToLastAssignedIDMap.set(queueName, slotToBeAssigned.getEndMessageId());
             }
-            slotToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
-            slotToBeAssigned.setStorageQueueName(queueName);
-            slotIDMap.set(queueName, messageIDSet);
-            if (log.isDebugEnabled()) {
-                log.debug(slotToBeAssigned.getEndMessageId() + " removed to slotIdMap. Current " +
-                        "values in " +
-                        "map " + messageIDSet);
-            }
-            queueToLastAssignedIDMap.set(queueName, slotToBeAssigned.getEndMessageId());
         }
         return slotToBeAssigned;
 
@@ -164,22 +183,27 @@ public class SlotManager {
      */
     private void updateSlotAssignmentMap(String queueName, Slot allocatedSlot, String nodeId) {
         ArrayList<Slot> currentSlotList;
-        HashMap<String, List<Slot>> queueToSlotMap = slotAssignmentMap.get(nodeId);
-        if (queueToSlotMap == null) {
+        HashMap<String, List<Slot>> queueToSlotMap;
+        HashmapStringListWrapper wrapper = slotAssignmentMap.get(nodeId);
+        if (wrapper == null) {
+            wrapper = new HashmapStringListWrapper();
             queueToSlotMap = new HashMap<String, List<Slot>>();
-            slotAssignmentMap.putIfAbsent(nodeId, queueToSlotMap);
+            wrapper.setStringListHashMap(queueToSlotMap);
+            slotAssignmentMap.putIfAbsent(nodeId, wrapper);
         }
         //Lock is used because this method will be called by multiple nodes at the same time
-        String lockKey = (nodeId + SlotManager.class).intern();
-        synchronized (lockKey) {
-            queueToSlotMap = slotAssignmentMap.get(nodeId);
+        String lockKey = nodeId + SlotManager.class;
+        synchronized (lockKey.intern()) {
+            wrapper = slotAssignmentMap.get(nodeId);
+            queueToSlotMap = wrapper.getStringListHashMap();
             currentSlotList = (ArrayList<Slot>) queueToSlotMap.get(queueName);
             if (currentSlotList == null) {
                 currentSlotList = new ArrayList<Slot>();
             }
             currentSlotList.add(allocatedSlot);
             queueToSlotMap.put(queueName, currentSlotList);
-            slotAssignmentMap.set(nodeId, queueToSlotMap);
+            wrapper.setStringListHashMap(queueToSlotMap);
+            slotAssignmentMap.set(nodeId, wrapper);
         }
 
     }
@@ -188,27 +212,29 @@ public class SlotManager {
     /**
      * Record Slot's last message ID related to a particular queue
      *
-     * @param queueName name of the queue which this message ID belongs to
-     * @param lastMessageIdInTheSlot
+     * @param queueName              name of the queue which this message ID belongs to
+     * @param lastMessageIdInTheSlot  last message ID of the slot
      */
     public void updateMessageID(String queueName, Long lastMessageIdInTheSlot) {
-        boolean isMessageIdRangeOutdated = false;
-        String lockKey = (queueName + SlotManager.class).intern();
 
-        TreeSet<Long> messageIdSet = slotIDMap.get(queueName);
-        if (messageIdSet == null) {
-            messageIdSet = new TreeSet<Long>();
-            slotIDMap.putIfAbsent(queueName, messageIdSet);
-            messageIdSet = slotIDMap.get(queueName);
+        boolean isMessageIdRangeOutdated = false;
+        TreeSet<Long> messageIdSet = new TreeSet<Long>();
+        TreeSetLongWrapper wrapper= slotIDMap.get(queueName);
+        if (wrapper == null) {
+            wrapper = new TreeSetLongWrapper();
+            wrapper.setLongTreeSet(messageIdSet);
+            slotIDMap.putIfAbsent(queueName, wrapper);
+            messageIdSet = slotIDMap.get(queueName).getLongTreeSet();
         }
-        synchronized (lockKey) {
+        String lockKey = queueName + SlotManager.class;
+        synchronized (lockKey.intern()) {
             /**
              *Insert the messageID only if last processed ID of this queue is less than this
              * messageID
              */
             Long lastAssignedMessageId = queueToLastAssignedIDMap.get(queueName);
             if (lastAssignedMessageId != null) {
-                if (lastMessageIdInTheSlot < lastAssignedMessageId) {
+                if (lastMessageIdInTheSlot <= lastAssignedMessageId) {
                     isMessageIdRangeOutdated = true;
                 }
             }
@@ -218,9 +244,10 @@ public class SlotManager {
              */
             if (!isMessageIdRangeOutdated) {
                 messageIdSet.add(lastMessageIdInTheSlot);
-                slotIDMap.set(queueName, messageIdSet);
+                wrapper.setLongTreeSet(messageIdSet);
+                slotIDMap.set(queueName, wrapper);
                 if (log.isDebugEnabled()) {
-                    log.debug(lastMessageIdInTheSlot + " added to slotIdMap. CUrrent values in " +
+                    log.debug(lastMessageIdInTheSlot + " added to slotIdMap. Current values in " +
                             "map " + messageIdSet);
                 }
             }
@@ -235,24 +262,34 @@ public class SlotManager {
      */
     public void reAssignSlotsWhenMemberLeaves(String nodeId) {
         //Remove the entry from slot assignment map
-        HashMap<String, List<Slot>> queueToSlotMap = slotAssignmentMap.remove(nodeId);
-        if (queueToSlotMap != null) {
+        HashmapStringListWrapper wrapper = slotAssignmentMap.remove(nodeId);
+        HashMap<String, List<Slot>> queueToSlotMap = null;
+        if (wrapper!=null) {
+            queueToSlotMap = wrapper.getStringListHashMap();
+        }
+        if (queueToSlotMap!= null) {
             for (Map.Entry<String, List<Slot>> entry : queueToSlotMap.entrySet()) {
                 List<Slot> slotsToBeReAssigned = entry.getValue();
                 TreeSet<Slot> freeSlotTreeSet = new TreeSet<Slot>();
+                TreeSetSlotWrapper treeSetStringWrapper = new TreeSetSlotWrapper();
                 for (Slot slotToBeReAssigned : slotsToBeReAssigned) {
+
                     //Re-assign only if the slot is not empty
                     if (!SlotUtils.checkSlotEmptyFromMessageStore(slotToBeReAssigned)) {
+                        treeSetStringWrapper.setSlotTreeSet(freeSlotTreeSet);
                         unAssignedSlotMap.putIfAbsent(slotToBeReAssigned.getStorageQueueName(),
-                                freeSlotTreeSet);
+                                treeSetStringWrapper);
                         //Lock key is queuName + SlotManager Class
-                        String lockKey = (entry.getKey() + SlotManager.class).intern();
-                        synchronized (lockKey) {
-                            freeSlotTreeSet = unAssignedSlotMap
+                        String lockKey = entry.getKey() + SlotManager.class;
+                        synchronized (lockKey.intern()) {
+                            treeSetStringWrapper = unAssignedSlotMap
                                     .get(slotToBeReAssigned.getStorageQueueName());
+                            freeSlotTreeSet = treeSetStringWrapper.getSlotTreeSet();
+                            //String jsonSlotString = gson.toJson(slotsToBeReAssigned);
                             freeSlotTreeSet.add(slotToBeReAssigned);
+                            treeSetStringWrapper.setSlotTreeSet(freeSlotTreeSet);
                             unAssignedSlotMap
-                                    .set(slotToBeReAssigned.getStorageQueueName(), freeSlotTreeSet);
+                                    .set(slotToBeReAssigned.getStorageQueueName(), treeSetStringWrapper);
                             if (log.isDebugEnabled()) {
                                 log.debug("Reassigned slot " + slotToBeReAssigned
                                         .getStartMessageId() + " - " +
@@ -273,16 +310,22 @@ public class SlotManager {
      * @param emptySlot reference of the slot to be deleted
      */
     public void deleteSlot(String queueName, Slot emptySlot, String nodeId) {
-        String lockKey = (nodeId + SlotManager.class).intern();
-        synchronized (lockKey) {
-            HashMap<String, List<Slot>> queueToSlotMap = slotAssignmentMap.get(nodeId);
+        String lockKey = nodeId + SlotManager.class;
+        synchronized (lockKey.intern()) {
+            HashMap<String, List<Slot>> queueToSlotMap = null;
+            HashmapStringListWrapper wrapper = slotAssignmentMap.get(nodeId);
+            if(wrapper!=null){
+              queueToSlotMap = wrapper.getStringListHashMap();
+            }
             if (queueToSlotMap != null) {
-                queueToSlotMap = slotAssignmentMap.get(nodeId);
-                ArrayList<Slot> currentSlotList = (ArrayList<Slot>) queueToSlotMap.get(queueName);
+                ArrayList<Slot> currentSlotList = (ArrayList<Slot>) queueToSlotMap.get
+                        (queueName);
                 if (currentSlotList != null) {
+                   // com.google.gson.Gson gson = new GsonBuilder().create();
                     currentSlotList.remove(emptySlot);
                     queueToSlotMap.put(queueName, currentSlotList);
-                    slotAssignmentMap.set(nodeId, queueToSlotMap);
+                    wrapper.setStringListHashMap(queueToSlotMap);
+                    slotAssignmentMap.set(nodeId, wrapper);
                 }
                 if (log.isDebugEnabled()) {
                     log.debug("Unassigned slot " + emptySlot.getStartMessageId() + " - " +
@@ -296,23 +339,35 @@ public class SlotManager {
     /**
      * Re-assign the slot when there are no local subscribers in the node
      *
-     * @param nodeId node ID of the node without subscribers
-     * @param queueName  name of the queue whose slots to be reassigned
+     * @param nodeId    node ID of the node without subscribers
+     * @param queueName name of the queue whose slots to be reassigned
      */
     public void reAssignSlotWhenNoSubscribers(String nodeId, String queueName) {
         ArrayList<Slot> assignedSlotList = null;
-        String lockKeyForNodeId = (nodeId + SlotManager.class).intern();
-        synchronized (lockKeyForNodeId) {
-            HashMap<String, List<Slot>> queueToSlotMap = slotAssignmentMap.get(nodeId);
+        String lockKeyForNodeId = nodeId + SlotManager.class;
+        synchronized (lockKeyForNodeId.intern()) {
+            HashmapStringListWrapper wrapper = slotAssignmentMap.get(nodeId);
+            HashMap<String, List<Slot>> queueToSlotMap = null;
+            if(wrapper!=null){
+               queueToSlotMap = wrapper.getStringListHashMap();
+            }
             if (queueToSlotMap != null) {
                 assignedSlotList = (ArrayList<Slot>) queueToSlotMap.remove(queueName);
-                slotAssignmentMap.set(nodeId, queueToSlotMap);
+                wrapper.setStringListHashMap(queueToSlotMap);
+                slotAssignmentMap.set(nodeId, wrapper);
             }
         }
-        if (assignedSlotList != null) {
-            String lockKeyForQueueName = (queueName + SlotManager.class).intern();
-            synchronized (lockKeyForQueueName) {
-                TreeSet<Slot> unAssignedSlotSet = unAssignedSlotMap.get(queueName);
+        if (assignedSlotList != null && !assignedSlotList.isEmpty()) {
+            String lockKeyForQueueName = queueName + SlotManager.class;
+            synchronized (lockKeyForQueueName.intern()) {
+                TreeSetSlotWrapper treeSetStringWrapper = unAssignedSlotMap.get(queueName);
+
+                TreeSet<Slot> unAssignedSlotSet = new TreeSet<Slot>();
+                if (treeSetStringWrapper!=null) {
+                    unAssignedSlotSet= treeSetStringWrapper.getSlotTreeSet();
+                } else{
+                    treeSetStringWrapper = new TreeSetSlotWrapper();
+                }
                 if (unAssignedSlotSet == null) {
                     unAssignedSlotSet = new TreeSet<Slot>();
                 }
@@ -322,7 +377,8 @@ public class SlotManager {
                         unAssignedSlotSet.add(slotToBeReAssigned);
                     }
                 }
-                unAssignedSlotMap.set(queueName, unAssignedSlotSet);
+                treeSetStringWrapper.setSlotTreeSet(unAssignedSlotSet);
+                unAssignedSlotMap.set(queueName, treeSetStringWrapper);
             }
         }
     }
@@ -339,6 +395,7 @@ public class SlotManager {
 
     /**
      * Delete all slot associations with a given queue. This is required to handle a queue purge event.
+     *
      * @param queueName name of destination queue
      */
     public void clearAllActiveSlotRelationsToQueue(String queueName) {
@@ -359,15 +416,20 @@ public class SlotManager {
             List<String> nodeIDs = HazelcastAgent.getInstance().getMembersNodeIDs();
 
             for (String nodeID : nodeIDs) {
-               String lockKey = (nodeID + SlotManager.class).intern();
+                String lockKey = nodeID + SlotManager.class;
 
-               synchronized (lockKey) {
-                   HashMap<String, List<Slot>> queueToSlotMap = slotAssignmentMap.get(nodeId);
-                   if (queueToSlotMap != null) {
-                       queueToSlotMap.remove(queueName);
-                       slotAssignmentMap.set(nodeId, queueToSlotMap);
-                   }
-               }
+                synchronized (lockKey.intern()) {
+                    HashmapStringListWrapper wrapper = slotAssignmentMap.get(nodeId);
+                    HashMap<String, List<Slot>> queueToSlotMap = null;
+                    if(wrapper != null){
+                       queueToSlotMap = wrapper.getStringListHashMap();
+                    }
+                    if (queueToSlotMap != null) {
+                        queueToSlotMap.remove(queueName);
+                        wrapper.setStringListHashMap(queueToSlotMap);
+                        slotAssignmentMap.set(nodeId, wrapper);
+                    }
+                }
             }
         }
 

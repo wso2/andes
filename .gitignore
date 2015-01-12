@@ -27,3 +27,5 @@ modules/andes-core/lib/
 /modules/andes-core/build/
 
 /modules/gentools/src/velocity.log*
+
+.attach_pid*

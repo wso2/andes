@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -145,6 +145,14 @@ public class SlotDeliveryWorker extends Thread {
                                     List<AndesMessageMetadata> messagesRead =
                                             MessagingEngine.getInstance().getMetaDataList(
                                                     storageQueueName, firstMsgId, lastMsgId);
+
+                                    if(log.isDebugEnabled()) {
+                                        StringBuilder messageIDString = new StringBuilder();
+                                        for (AndesMessageMetadata metadata: messagesRead ) {
+                                            messageIDString.append(metadata.getMessageID()).append(" , ");
+                                        }
+                                        log.debug("Messages Read: " + messageIDString);
+                                    }
                                     if (messagesRead != null &&
                                         !messagesRead.isEmpty()) {
                                         if (log.isDebugEnabled()) {
@@ -153,16 +161,13 @@ public class SlotDeliveryWorker extends Thread {
                                                       currentSlot.getEndMessageId() + " is " +
                                                       messagesRead.size() + " queue= " + storageQueueName);
                                         }
-                                        MessageFlusher.getInstance().sendMessageToFlusher(
+                                        MessageFlusher.getInstance().sendMessageToBuffer(
                                                 messagesRead, currentSlot);
+                                        MessageFlusher.getInstance().sendMessagesInBuffer(
+                                                currentSlot.getDestinationOfMessagesInSlot());
                                     } else {
                                         currentSlot.setSlotInActive();
                                         MBThriftClient.deleteSlot(storageQueueName, currentSlot, nodeId);
-                                        //Release all message trackings for messages of slot
-                                        OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(currentSlot);
-                                        /*If there are messages to be sent in the message
-                                        buffer in MessageFlusher send them */
-                                        sendFromMessageBuffer(destinationOfMessagesInQueue);
                                     }
                                 }
                             //Standalone mode
@@ -172,14 +177,22 @@ public class SlotDeliveryWorker extends Thread {
                                     startMessageId = localLastProcessedIdMap.get(storageQueueName) + 1;
                                 }
 
-                                Integer slotWindowSize = AndesConfigurationManager.getInstance()
-                                        .readConfigurationValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
+                                Integer slotWindowSize = AndesConfigurationManager.readValue
+                                        (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
                                 List<AndesMessageMetadata> messagesRead =
 
                                         MessagingEngine.getInstance()
                                                        .getNextNMessageMetadataFromQueue
                                                                (storageQueueName, startMessageId,
                                                                 slotWindowSize);
+                                if(log.isDebugEnabled()) {
+                                    StringBuilder messageIDString = new StringBuilder();
+                                    for (AndesMessageMetadata metadata: messagesRead ) {
+                                        messageIDString.append(metadata.getMessageID()).append(" , ");
+                                    }
+                                    log.debug("Messages Read: " + messageIDString);
+                                }
+
                                 if (messagesRead == null ||
                                     messagesRead.isEmpty()) {
                                     log.debug("No messages are read. StorageQ= " + storageQueueName);
@@ -226,8 +239,9 @@ public class SlotDeliveryWorker extends Thread {
 
                                     log.debug("sending read messages to flusher << " + currentSlot
                                             .toString() + " >>");
-                                    messageFlusher.sendMessageToFlusher
+                                    messageFlusher.sendMessageToBuffer
                                             (messagesRead, currentSlot);
+                                    messageFlusher.sendMessagesInBuffer(currentSlot.getDestinationOfMessagesInSlot());
                                 }
                             }
                         } else {
@@ -235,7 +249,7 @@ public class SlotDeliveryWorker extends Thread {
                                             buffer in MessageFlusher send them */
                             if (log.isDebugEnabled()) {
                                 log.debug(
-                                        "The queue" + storageQueueName + " has no room. Thus sending " +
+                                        "The queue " + storageQueueName + " has no room. Thus sending " +
                                         "from buffer.");
                             }
                             sendFromMessageBuffer(destinationOfMessagesInQueue);
@@ -258,7 +272,11 @@ public class SlotDeliveryWorker extends Thread {
                 } catch (ConnectionException e) {
                     log.error("Error occurred while connecting to the thrift coordinator " +
                               e.getMessage(), e);
-                    setRunning(false);
+                    //setRunning(false);
+                    //Any exception should be caught here. Otherwise SDW thread will stop
+                    //and MB node will become useless
+                } catch (Exception e) {
+                    log.error("Error while running Slot Delivery Worker. ", e);
                 }
             }
         }
@@ -319,64 +337,59 @@ public class SlotDeliveryWorker extends Thread {
 
     /**
      * Check whether the slot is empty and if not resend the remaining messages. If the slot is
-     * empty delete the slot from slot manager
+     * empty delete the slot from slot manager and clear all tracking data in OnflightMessageTracker
      *
      * @param slot
      *         to be checked for emptiness
      * @throws AndesException
      */
     public void checkForSlotCompletionAndResend(Slot slot) throws AndesException {
-        if (SlotUtils.checkSlotEmptyFromMessageStore(slot)) {
-            slot.setSlotInActive();
-            try {
-                if (isClusteringEnabled) {
-                    MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
-                    //Release all message trackings for messages of slot
-                    OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
+        // Once again get all metadata of given slot to check all sent messages' metadata has been removed
+        List<AndesMessageMetadata> messagesReturnedFromCassandra = MessagingEngine.getInstance().getMetaDataList(
+                slot.getStorageQueueName(), slot.getStartMessageId(),
+                slot.getEndMessageId());
+        // All metadata has not been removed
+        if (!messagesReturnedFromCassandra.isEmpty()) {
+            // Check messages returned from cassandra has already been buffered. If so removed each buffered from list
+            Iterator<AndesMessageMetadata> iterator = messagesReturnedFromCassandra.iterator();
+            while (iterator.hasNext()) {
+                if (OnflightMessageTracker.getInstance().checkIfMessageIsAlreadyBuffered(slot,
+                        iterator.next().getMessageID())) {
+                    iterator.remove();
                 }
-            } catch (ConnectionException e) {
-                throw new AndesException("Error deleting slot while checking for slot completion.", e);
             }
+            // Return the slot if all messages remaining in slot are already sent.
+            // Otherwise the slot will not be removed and send remaining messages to flusher
+            if (messagesReturnedFromCassandra.isEmpty()) {
+                try {
+                    slot.setSlotInActive();
 
-        } else {
-            /*
-            Acks for all sent messages from this slot has been received,
-            however slot is not empty. This happens when we write messages to message store out of
-            order. Therefore we resend those messages.
-             */
-            List<AndesMessageMetadata> messagesRead =
-                    MessagingEngine.getInstance().getMetaDataList(
-                            slot.getStorageQueueName(), slot.getStartMessageId(), slot.getEndMessageId());
-            if (messagesRead != null && !messagesRead.isEmpty()) {
+                    if (isClusteringEnabled) {
+                        MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
+                    }
+                } catch (ConnectionException e) {
+                    throw new AndesException(
+                            "Error deleting slot while checking for slot completion.", e);
+                }
+            } else {
                 if (log.isDebugEnabled()) {
                     log.debug(
-                            "Resending missing " + messagesRead.size() + " messages " +
-                            "for slot: " + slot.toString());
+                            "Resending missing " + messagesReturnedFromCassandra.size() + " messages " +
+                                    "for slot: " + slot.toString());
                 }
-                Iterator<AndesMessageMetadata> iterator = messagesRead.iterator();
-                while(iterator.hasNext()) {
-                    if(OnflightMessageTracker.getInstance().checkIfMessageIsAlreadyBuffered(slot,iterator.next().getMessageID())) {
-                        iterator.remove();
-                    }
-                }
-                // Return the slot if all messages remaining in slot are already sent. Otherwise
-                // the slot will not be
-                // removed.
-                if (!iterator.hasNext()) {
-                    try {
-                        slot.setSlotInActive();
+                MessageFlusher.getInstance().sendMessagesInBuffer(slot.getDestinationOfMessagesInSlot());
+            }
+        // All metadata has been removed and therefore return the slot
+        } else {
+            try {
+                slot.setSlotInActive();
 
-                        if (isClusteringEnabled) {
-                            MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
-                        }
-                    } catch (ConnectionException e) {
-                        throw new AndesException(
-                                "Error deleting slot while checking for slot completion.", e);
-                    }
-                } else {
-                    MessageFlusher.getInstance().sendMessageToFlusher(
-                            messagesRead, slot);
+                if (isClusteringEnabled) {
+                    MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
                 }
+            } catch (ConnectionException e) {
+                throw new AndesException(
+                        "Error deleting slot while checking for slot completion.", e);
             }
         }
     }

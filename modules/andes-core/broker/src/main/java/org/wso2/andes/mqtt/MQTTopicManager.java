@@ -45,7 +45,12 @@ public class MQTTopicManager {
     //Will correlate between topic and subscribers
     //The map will be used when subscriber disconnection is called where the corresponding topic needs to be identified
     //The key of the map will be the client id and the value will be the topic
-    private Map<String, String> clientTopicCorrelate = new HashMap<String, String>();
+    private Map<String, String> subscriberTopicCorrelate = new HashMap<String, String>();
+    //Will maintain the relation between the publisher client identifiers vs the id generated cluster wide
+    //Key of the map would be the mqtt specific client id and the value would be the cluser uuid
+    private Map<String, UUID> publisherTopicCorrelate = new HashMap<String, UUID>();
+    //The channel reference which will be used to interact with the Andes Kernal
+    private MQTTChannel mqttChannel = new MQTTChannel();
 
 
     /**
@@ -89,23 +94,33 @@ public class MQTTopicManager {
      * @param message            the message content
      * @param retain             whether the message should retain
      * @param mqttLocalMessageID the channel in which the message was published
+     * @param publisherID        identify of the publisher which is unique across the cluser
      * @throws MQTTException at a time where the message content doen't get registered
      */
     public void addTopicMessage(String topic, int qosLevel, ByteBuffer message, boolean retain,
-                                int mqttLocalMessageID) throws MQTTException {
+                                int mqttLocalMessageID, String publisherID) throws MQTTException {
 
-        //Will generate a unique id for the message which will be unique across the cluster
-        long clusterSpecificMessageID = MQTTUtils.generateMessageID();
         if (log.isDebugEnabled()) {
-            log.debug("Incoming message recived with id : " + mqttLocalMessageID + ", QOS level : " + qosLevel
+            log.debug("Incoming message received with id : " + mqttLocalMessageID + ", QOS level : " + qosLevel
                     + ", for topic :" + topic + ", with retain :" + retain);
-            log.debug("Generated message cluster specific message id " + clusterSpecificMessageID +
-                    " for mqtt local message id " + mqttLocalMessageID);
         }
 
+        UUID publisherClusterID = publisherTopicCorrelate.get(publisherID);
+        if (null == publisherClusterID) {
+            //We need to generate a uuid
+            publisherClusterID = UUID.randomUUID();
+            publisherTopicCorrelate.put(publisherID, publisherClusterID);
+        }
         //Will add the topic message to the cluster for distribution
-        MQTTChannel.getInstance().addMessage(message, clusterSpecificMessageID, topic, qosLevel,
-                mqttLocalMessageID, retain);
+        try {
+            mqttChannel.addMessage(message, topic, qosLevel, mqttLocalMessageID, retain, publisherClusterID);
+        } catch (MQTTException e) {
+            //Will need to rollback the state
+            publisherTopicCorrelate.remove(publisherID);
+            final String error = "Error occured while publishing the message";
+            log.error(error, e);
+            throw e;
+        }
 
     }
 
@@ -146,10 +161,11 @@ public class MQTTopicManager {
                     qos, subscriptionChannelID);
             topic.addSubscriber(mqttClientChannelID, qos, isCleanSession, subscriptionID, subscriptionChannelID);
             //Finally will register the the topic subscription for the topic
-            clientTopicCorrelate.put(mqttClientChannelID, topicName);
+            subscriberTopicCorrelate.put(mqttClientChannelID, topicName);
         } catch (MQTTException ex) {
             //In case if an error occurs we need to rollback the subscription created cluster wide
-            MQTTChannel.getInstance().removeSubscriber(this, topicName, subscriptionID, subscriptionChannelID);
+            mqttChannel.removeSubscriber(this, topicName, subscriptionID, subscriptionChannelID,
+                    isCleanSession, mqttClientChannelID);
             final String message = "Error while adding the subscriber to the cluser";
             log.error(message, ex);
             throw ex;
@@ -166,7 +182,7 @@ public class MQTTopicManager {
         //First the topic name will be taken from the subscriber channel
         //TODO what if the node crashes at this point the state will be lost before disconnection
         //TODO check if there're pending messages that are awaiting for acks
-        String topic = clientTopicCorrelate.get(mqttClientChannelID);
+        String topic = subscriberTopicCorrelate.get(mqttClientChannelID);
         //If the topic has correlators
         if (null != topic) {
             //Will get the corresponding topic
@@ -177,11 +193,13 @@ public class MQTTopicManager {
                 MQTTSubscriber subscriber = mqttTopic.removeSubscriber(mqttClientChannelID);
                 String subscriberChannelID = subscriber.getSubscriberChannelID();
                 UUID subscriberChannel = subscriber.getSubscriptionChannel();
+                boolean isCleanSession = subscriber.isCleanSession();
                 //The corresponding subscription created cluster wide will be topic name and the local channel id
                 //Will remove the subscriber clusterwide
                 try {
                     //Will indicate the disconnection of the topic
-                    MQTTChannel.getInstance().removeSubscriber(this, topic, subscriberChannelID, subscriberChannel);
+                    mqttChannel.removeSubscriber(this, topic, subscriberChannelID, subscriberChannel,
+                            isCleanSession, mqttClientChannelID);
                     if (log.isDebugEnabled()) {
                         final String message = "Subscription with cluster id " + subscriberChannelID + " disconnected " +
                                 "from topic " + topic;
@@ -201,7 +219,11 @@ public class MQTTopicManager {
             }
 
         } else {
-            log.warn("Connection with id " + mqttClientChannelID + " lost, publisher connection not closed properly");
+            //If the connection is publisher based
+            UUID publisherID = publisherTopicCorrelate.remove(mqttClientChannelID);
+            if (null == publisherID) {
+                log.warn("Connection with id " + mqttClientChannelID + " lost, the connection info cannot be found.");
+            }
         }
     }
 
@@ -223,7 +245,7 @@ public class MQTTopicManager {
         //unsigned short
         int mqttLocalMessageID = 1;
         //Should get the topic name from the channel id
-        String topic = clientTopicCorrelate.get(channelID);
+        String topic = subscriberTopicCorrelate.get(channelID);
         //We need to keep track of the message if the QOS level is > 0
         if (subscriberQOS > 0) {
             //We need to add the message information to maintain state, inorder to identify the messages
@@ -237,7 +259,6 @@ public class MQTTopicManager {
                 mqttLocalMessageID = mqttSubscriber.markSend(messageID);
                 //Will add the information that will be neccassary to process once the acks arrive
                 mqttSubscriber.setStorageIdentifier(storageName);
-                //mqttSubscriber.setSubscriptionChannel(subChannelID);
                 //Subscriber state will not be handled for the case of QoS 0, hence if the subscription has disconnected it
                 // will be handled from the protocol engine
                 AndesMQTTBridge.getBridgeInstance().distributeMessageToSubscriptions(topic, publishedQOS, message,
@@ -260,7 +281,7 @@ public class MQTTopicManager {
      */
     public void onMessageAck(String mqttChannelID, int messageID) throws MQTTException {
         //Will retrive the topic
-        String topicName = clientTopicCorrelate.get(mqttChannelID);
+        String topicName = subscriberTopicCorrelate.get(mqttChannelID);
         //Will retrive the topic object out of the list
         MQTTopic mqttTopic = topics.get(topicName);
         //Will get the subscription object out of the topic
@@ -288,13 +309,13 @@ public class MQTTopicManager {
      * Will interact with the kernal and will create a cluster wide indication of the topic
      *
      * @param topicName             the name of the topic which should be registered in the cluster
-     * @param mqttChannel           the subscriber id which is local to the node
+     * @param mqttClientID          the subscriber id which is local to the node
      * @param isCleanSession        should the subscription be identified as durable
      * @param qos                   the subscriber level qos
      * @param subscriptionChannelID the unique identifer of the subscription channel
      * @return topic subscription id which will represent the topic in the cluster
      */
-    private String registerTopicSubscriptionInCluster(String topicName, String mqttChannel, boolean isCleanSession,
+    private String registerTopicSubscriptionInCluster(String topicName, String mqttClientID, boolean isCleanSession,
                                                       int qos, UUID subscriptionChannelID)
             throws MQTTException {
         //Will generate a unique id for the client
@@ -306,7 +327,7 @@ public class MQTTopicManager {
         }
 
         //Will register the topic cluster wide
-        MQTTChannel.getInstance().addSubscriber(this, topicName, topicSpecificClientID, mqttChannel, isCleanSession,
+        mqttChannel.addSubscriber(this, topicName, topicSpecificClientID, mqttClientID, isCleanSession,
                 qos, subscriptionChannelID);
 
         return topicSpecificClientID;
@@ -322,7 +343,7 @@ public class MQTTopicManager {
      */
     private void messageAck(String topic, long messageID, String storageName, UUID subChannelID) throws MQTTException {
         try {
-            MQTTChannel.getInstance().messageAck(messageID, topic, storageName, subChannelID);
+            mqttChannel.messageAck(messageID, topic, storageName, subChannelID);
         } catch (AndesException ex) {
             final String message = "Error occurred while cleaning up the acked message";
             log.error(message, ex);

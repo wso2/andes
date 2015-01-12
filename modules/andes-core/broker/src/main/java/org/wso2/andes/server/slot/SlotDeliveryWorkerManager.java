@@ -50,28 +50,19 @@ public class SlotDeliveryWorkerManager {
             ("SlotDeliveryWorkerExecutor-%d").build();
 
 
-    /*
-    number of slot delivery worker threads running inn one MB node
+    /**
+    Number of slot delivery worker threads running in one MB node
      */
     private Integer numberOfThreads;
 
     /**
      * SlotDeliveryWorker instance
      */
-    private static SlotDeliveryWorkerManager slotDeliveryWorkerManagerManager;
-
-    static {
-        try {
-            slotDeliveryWorkerManagerManager = new SlotDeliveryWorkerManager();
-        } catch (AndesException e) {
-            log.error(AndesConfigurationManager.GENERIC_CONFIGURATION_PARSE_ERROR +
-                    AndesConfiguration.PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT.toString(),e);
-        }
-    }
+    private static SlotDeliveryWorkerManager slotDeliveryWorkerManagerManager = new SlotDeliveryWorkerManager();
 
 
-    private SlotDeliveryWorkerManager() throws AndesException {
-        numberOfThreads = AndesConfigurationManager.getInstance().readConfigurationValue
+    private SlotDeliveryWorkerManager() {
+        numberOfThreads = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_WORKER_THREAD_COUNT);
         this.slotDeliveryWorkerExecutor = Executors.newFixedThreadPool(numberOfThreads, namedThreadFactory);
     }

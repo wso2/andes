@@ -32,7 +32,7 @@ public class OrphanedMessageHandler implements SubscriptionListener {
     AndesSubscriptionManager subscriptionManager = ClusterResourceHolder.getInstance().getSubscriptionManager();
 
     /**
-     * handle subscription changes in cluster. This will perform
+     * Handle subscription changes in cluster. This will perform
      * what needs to be done to the messages addressed to the subscriber
      * @param subscription subscription changed
      * @param changeType type of change happened
@@ -44,7 +44,7 @@ public class OrphanedMessageHandler implements SubscriptionListener {
     }
 
     /**
-     * handle local subscription changes. This will perform
+     * Handle local subscription changes. This will perform
      * what needs to be done to the messages addressed to the subscriber
      * @param localSubscription subscription changed
      * @param changeType type of change happened
