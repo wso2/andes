@@ -140,7 +140,7 @@ public class ClusterManager {
     /**
      * Get whether clustering is enabled
      *
-     * @return
+     * @return true/false on whether clustering is enabled
      */
     public boolean isClusteringEnabled() {
         return AndesContext.getInstance().isClusteringEnabled();
@@ -149,7 +149,7 @@ public class ClusterManager {
     /**
      * Get the node ID of the current node
      *
-     * @return
+     * @return current node's ID
      */
     public String getMyNodeID() {
         return nodeId;
@@ -293,13 +293,10 @@ public class ClusterManager {
      * @return Address of the coordinator node
      */
     public String getCoordinatorNodeAddress() {
-        if (hazelcastAgent != null && hazelcastAgent.getInstance() != null && hazelcastAgent.getThriftServerDetailsMap() != null &&
+        if (AndesContext.getInstance().isClusteringEnabled() && HazelcastAgent.getInstance() != null && hazelcastAgent.getThriftServerDetailsMap() != null &&
             hazelcastAgent.getThriftServerDetailsMap().containsKey(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP) &&
             hazelcastAgent.getThriftServerDetailsMap().containsKey(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT)) {
-            if (AndesContext.getInstance().isClusteringEnabled()) {
-                return new StringBuilder(hazelcastAgent.getThriftServerDetailsMap().get(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP)).
-                        append(":").append(hazelcastAgent.getThriftServerDetailsMap().get(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT)).toString();
-            }
+            return hazelcastAgent.getThriftServerDetailsMap().get(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP) + ":" + hazelcastAgent.getThriftServerDetailsMap().get(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT);
         }
         return StringUtils.EMPTY;
     }
@@ -311,10 +308,10 @@ public class ClusterManager {
      */
     public List<String> getAllClusterNodeAddresses() {
         List<String> addresses = new ArrayList<String>();
-        if (AndesContext.getInstance().isClusteringEnabled() && hazelcastAgent != null && hazelcastAgent.getInstance() != null) {
-            for (Member member : hazelcastAgent.getInstance().getAllClusterMembers()) {
+        if (AndesContext.getInstance().isClusteringEnabled() && HazelcastAgent.getInstance() != null) {
+            for (Member member : HazelcastAgent.getInstance().getAllClusterMembers()) {
                 InetSocketAddress socket = member.getSocketAddress();
-                addresses.add(new StringBuilder(socket.getAddress().getHostAddress()).append(":").append(Integer.toString(socket.getPort())).toString());
+                addresses.add(socket.getAddress().getHostAddress() + ":" + Integer.toString(socket.getPort()));
             }
         }
         return addresses;

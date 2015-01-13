@@ -72,7 +72,7 @@ public interface ClusterManagementInformation {
     /**
      * Gets the coordinator node's address
      *
-     * @return
+     * @return Address of the coordinator node
      */
     @MBeanAttribute(name = "getCoordinatorNodeAddress", description = "Gets the coordinator nodes address")
     String getCoordinatorNodeAddress();
@@ -80,7 +80,7 @@ public interface ClusterManagementInformation {
     /**
      * Gets all the address of the nodes in a cluster
      *
-     * @return
+     * @return A list of address of the nodes in a cluster
      */
     @MBeanAttribute(name = "getAllClusterNodeAddresses", description = "Gets the addresses of the members in a cluster")
     List<String> getAllClusterNodeAddresses();
