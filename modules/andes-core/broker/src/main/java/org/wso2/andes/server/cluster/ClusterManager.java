@@ -97,7 +97,7 @@ public class ClusterManager {
     /**
      * Handles changes needs to be done in current node when a node joins to the cluster
      */
-    public void memberAdded(Member node) {
+    public void memberAdded() {
         reAssignNodeSyncId();
         //update thrift coordinator server details
         updateThriftCoordinatorDetailsToMap();
@@ -241,7 +241,7 @@ public class ClusterManager {
                 clearAllPersistedStatesOfDisappearedNode(storedNodeId);
             }
         }
-        memberAdded(hazelcastAgent.getLocalMember());
+        memberAdded();
         log.info("Handling cluster gossip: Node " + nodeId + "  Joined the Cluster");
     }
 
