@@ -33,4 +33,13 @@ public final class SlotCoordinationConstants {
      */
     public static String THRIFT_COORDINATOR_SERVER_PORT = "thriftCoordinatorServerPort";
 
+    /**
+     * Port of the coordinator server in a cluster
+     */
+    public static String CLUSTER_COORDINATOR_SERVER_IP = "clusterCoordinatorServerIP";
+
+    /**
+     * IP of the coordinator server in a cluster
+     */
+    public static String CLUSTER_COORDINATOR_SERVER_PORT = "clusterCoordinatorServerPort";
 }
