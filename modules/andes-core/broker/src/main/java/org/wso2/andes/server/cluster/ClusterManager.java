@@ -170,6 +170,11 @@ public class ClusterManager {
 
     }
 
+    /**
+     * Gets the unique ID for the local node
+     *
+     * @return unique ID
+     */
     public int getUniqueIdForLocalNode() {
         if (AndesContext.getInstance().isClusteringEnabled()) {
             return hazelcastAgent.getUniqueIdForNode();
@@ -206,6 +211,11 @@ public class ClusterManager {
                 (AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
     }
 
+    /**
+     * Initializes cluster mode
+     *
+     * @throws Exception
+     */
     private void initClusterMode() throws Exception {
 
         this.hazelcastAgent = HazelcastAgent.getInstance();
@@ -242,6 +252,12 @@ public class ClusterManager {
         this.nodeSyncSyncId = hazelcastAgent.getIndexOfLocalNode();
     }
 
+    /**
+     *  Clears all persisted states of a disappeared node
+     *
+     * @param nodeID node ID
+     * @throws AndesException
+     */
     private void clearAllPersistedStatesOfDisappearedNode(String nodeID) throws AndesException {
 
         log.info("Clearing the Persisted State of Node with ID " + nodeID);
@@ -279,7 +295,7 @@ public class ClusterManager {
             hazelcastAgent.getThriftServerDetailsMap().put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT,
                                                            Integer.toString(thriftCoordinatorServerPort));
 
-            // adding coordinator node ip and port
+            // adding cluster coordinator node ip and port
             hazelcastAgent.getThriftServerDetailsMap().put(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP,
                                                            hazelcastAgent.getLocalMember().getSocketAddress().getAddress().getHostAddress());
             hazelcastAgent.getThriftServerDetailsMap().put(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT,
