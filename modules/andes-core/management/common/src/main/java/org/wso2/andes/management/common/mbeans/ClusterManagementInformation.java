@@ -12,59 +12,105 @@ import java.util.*;
  */
 public interface ClusterManagementInformation {
 
+    /**
+     * MBean typ name
+     */
     static final String TYPE = "ClusterManagementInformation";
 
-    //Individual attribute name constants
-    String ATTR_NODE_ID = "nodeId";
-    String ATTR_ADDRESS = "Address";
-    String ATTR_PORT = "Port";
-
-    //All attribute names constant
-    static final List<String> CLUSTER_ATTRIBUTES
-            = Collections.unmodifiableList(
-            new ArrayList<String>(
-                    new HashSet<String>(
-                            Arrays.asList(
-                                    ATTR_NODE_ID,
-                                    ATTR_ADDRESS,
-                                    ATTR_PORT))));
-
+    /**
+     * Checks if clustering is enabled
+     *
+     * @return whether clustering is enabled
+     */
     @MBeanAttribute(name = "isClusteringEnabled", description = "is in clustering mode")
     boolean isClusteringEnabled();
 
+    /**
+     * Gets node ID assigned for the node
+     *
+     * @return node ID
+     */
     @MBeanAttribute(name = "getMyNodeID", description = "Node Id assigned for the node")
     String getMyNodeID();
 
+    /**
+     * Gets message Count in a queue
+     *
+     * @param queueName queue name
+     * @return message count
+     */
     @MBeanAttribute(name = "getMessageCount", description = "Message Count in the queue")
     int getMessageCount(
             @MBeanOperationParameter(name = "queueName", description = "Name of the queue which message count is required") String queueName);
 
+    /**
+     * List of topics where subscribers are available
+     *
+     * @return list of topic names
+     */
     @MBeanAttribute(name = "getTopics", description = "Topics where subscribers are available")
     List<String> getTopics();
 
+    /**
+     * Gets subscribers for a given topic
+     *
+     * @param topic topic name
+     * @return subscriber names
+     */
     @MBeanAttribute(name = "getSubscriberCount", description = "Subscribers for a given topic")
     List<String> getSubscribers(
             @MBeanOperationParameter(name = "Topic", description = "Topic name") String topic);
 
+    /**
+     * Gets number of subscribers for a given topic
+     *
+     * @param topic topic name
+     * @return subscriber count
+     */
     @MBeanAttribute(name = "getSubscriberCount", description = "Number of subscribers for a given topic")
     int getSubscriberCount(
             @MBeanOperationParameter(name = "Topic", description = "Topic name") String topic);
 
-    @MBeanAttribute(name = "getIPAddressForNode", description = "get IP address for given node")
+    /**
+     * Gets IP address for given node
+     *
+     * @param nodeId node ID
+     * @return IP address
+     */
+    @MBeanAttribute(name = "getIPAddressForNode", description = "Get IP address for given node")
     String getIPAddressForNode(
             @MBeanOperationParameter(name = "nodeID", description = "Node ID") String nodeId);
 
-    @MBeanAttribute(name = "getDestinationQueuesOfCluster", description = "get destination queues in cluster")
+    /**
+     * Gets destination queues in cluster
+     *
+     * @return list of destination queues in a cluster
+     */
+    @MBeanAttribute(name = "getDestinationQueuesOfCluster", description = "Get destination queues in cluster")
     List<String> getDestinationQueuesOfCluster();
 
+    /**
+     * Gets message count of node addressed to given destination queue
+     *
+     * @param nodeId nodeID
+     * @param destinationQueue destination queue name
+     * @return message count
+     */
     @Deprecated
-    @MBeanAttribute(name = "getNodeQueueMessageCount", description = "get message count of node addressed to given destination queue")
+    @MBeanAttribute(name = "getNodeQueueMessageCount", description = "Get message count of node addressed to given destination queue")
     int getNodeQueueMessageCount(
             @MBeanOperationParameter(name = "nodeId", description = "node id") String nodeId,
             @MBeanOperationParameter(name = "destinationQueue", description = "destination queue name") String destinationQueue);
 
+    /**
+     * Gets subscriber count of node subscribed to given destination queue
+     *
+     * @param nodeId node ID
+     * @param destinationQueue  destination queue name
+     * @return subscriber count
+     */
     @Deprecated
-    @MBeanAttribute(name = "getNodeQueueSubscriberCount", description = "get subscriber count of node subscribed to given destination queue")
+    @MBeanAttribute(name = "getNodeQueueSubscriberCount", description = "Get subscriber count of node subscribed to given destination queue")
     int getNodeQueueSubscriberCount(
             @MBeanOperationParameter(name = "nodeId", description = "node id") String nodeId,
             @MBeanOperationParameter(name = "destinationQueue", description = "destination queue name") String destinationQueue);

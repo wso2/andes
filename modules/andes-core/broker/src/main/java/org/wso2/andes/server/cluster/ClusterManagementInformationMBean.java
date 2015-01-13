@@ -52,39 +52,22 @@ public class ClusterManagementInformationMBean extends AMQManagedObject
         this.clusterManager = clusterManager;
     }
 
-    /**
-     * Get the class type.
-     *
-     * @return class type as a String
-     */
+    @Override
     public String getObjectInstanceName() {
         return ClusterManagementInformation.TYPE;
     }
 
-    /**
-     * Check whether clustering is enabled
-     *
-     * @return true if clustering is enabled
-     */
+    @Override
     public boolean isClusteringEnabled() {
         return AndesContext.getInstance().isClusteringEnabled();
     }
 
-    /**
-     * Get the node ID of the local node
-     *
-     * @return the node ID of the local node
-     */
+    @Override
     public String getMyNodeID() {
         return clusterManager.getMyNodeID();
     }
 
-    /**
-     * Get the message count of a given queue
-     *
-     * @param queueName name of the queue
-     * @return message count
-     */
+    @Override
     public int getMessageCount(
             @MBeanOperationParameter(name = "queueName", description = "Name of the queue which message count is required") String queueName) {
         try {
@@ -95,12 +78,30 @@ public class ClusterManagementInformationMBean extends AMQManagedObject
         }
     }
 
-    /**
-     * Get the IP of a given node
-     *
-     * @param nodeId ID of the node
-     * @return the IP of the node as a string
-     */
+    @Override
+    public List<String> getTopics() {
+        List<String> topics;
+        try {
+            topics = AndesContext.getInstance().getSubscriptionStore().getTopics();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return topics;
+    }
+
+    @Override
+    public List<String> getSubscribers(
+            @MBeanOperationParameter(name = "Topic", description = "Topic name") String topic) {
+        throw new UnsupportedOperationException("Check what this should return (subscription IDs?)");
+    }
+
+    @Override
+    public int getSubscriberCount(
+            @MBeanOperationParameter(name = "Topic", description = "Topic name") String topic) {
+        throw new UnsupportedOperationException("Check what this should return (subscription IDs?)");
+    }
+
+    @Override
     public String getIPAddressForNode(
             @MBeanOperationParameter(name = "nodeID", description = "Node ID") String nodeId) {
         try {
@@ -110,11 +111,7 @@ public class ClusterManagementInformationMBean extends AMQManagedObject
         }
     }
 
-    /**
-     * Get a list of queues in cluster
-     *
-     * @return list of queue names
-     */
+    @Override
     public List<String> getDestinationQueuesOfCluster() {
         List<String> queueList = new ArrayList<String>();
         try {
@@ -153,30 +150,5 @@ public class ClusterManagementInformationMBean extends AMQManagedObject
     @Override
     public List<String> getAllClusterNodeAddresses() {
         return this.clusterManager.getAllClusterNodeAddresses();
-    }
-
-    /**
-     * Get all topics
-     *
-     * @return list of topics
-     */
-    public List<String> getTopics() {
-        List<String> topics;
-        try {
-            topics = AndesContext.getInstance().getSubscriptionStore().getTopics();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        return topics;
-    }
-
-    public List<String> getSubscribers(String topic) {
-        throw new UnsupportedOperationException("Check what this should return (subscription IDs?)");
-    }
-
-    public int getSubscriberCount(
-            @MBeanOperationParameter(name = "Topic", description = "Topic name") String topic) {
-        throw new UnsupportedOperationException("Check what this should return (subscription IDs?)");
-
     }
 }
