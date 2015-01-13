@@ -23,6 +23,7 @@ import me.prettyprint.cassandra.model.thrift.ThriftCounterColumnQuery;
 import me.prettyprint.cassandra.serializers.*;
 import me.prettyprint.cassandra.service.ThriftCfDef;
 import me.prettyprint.cassandra.service.ThriftKsDef;
+import me.prettyprint.cassandra.service.template.ColumnFamilyTemplate;
 import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.beans.*;
@@ -38,7 +39,6 @@ import org.apache.commons.lang.StringUtils;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.MessageExpirationWorker;
-
 import java.nio.ByteBuffer;
 import java.util.*;
 
@@ -512,6 +512,47 @@ public class HectorDataAccessHelper {
                         columnFamilyName + " since cassandra connection is down");
             } else {
                 throw new CassandraDataAccessException("Error while getting data from : " +
+                        columnFamilyName, e);
+            }
+        }
+    }
+
+    public static List<Long> getNumericColumnKeysOfRow(Keyspace keyspace, String columnFamilyName, String rowKey, int count, Long lastProcessedID) throws CassandraDataAccessException {
+
+        if (keyspace == null) {
+            throw new CassandraDataAccessException("Can't access Data , no keyspace provided ");
+        }
+
+        if (StringUtils.isBlank(columnFamilyName) || StringUtils.isBlank(rowKey)) {
+            throw new CassandraDataAccessException("Can't access data with queueType = " + columnFamilyName + " and row key =" + rowKey);
+        }
+
+        List<Long> messageIDs = new ArrayList<Long>();
+
+        try {
+            SliceQuery<String, Long, byte[]> sliceQuery =
+                    HFactory.createSliceQuery(keyspace, stringSerializer, longSerializer,
+                            bytesArraySerializer);
+            sliceQuery.setKey(rowKey);
+            sliceQuery.setRange(lastProcessedID, null, false, count);
+
+            sliceQuery.setColumnFamily(columnFamilyName);
+            QueryResult<ColumnSlice<Long, byte[]>> result = sliceQuery.execute();
+            ColumnSlice<Long, byte[]> columnSlice = result.get();
+
+            for (Object column : columnSlice.getColumns()) {
+                if (column instanceof HColumn) {
+                    messageIDs.add(((HColumn<Long, byte[]>) column).getName());
+                }
+            }
+
+            return messageIDs;
+        } catch (Exception e) {
+            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+                throw new CassandraDataAccessException("Error while getting data from " +
+                        columnFamilyName + " since cassandra connection is down");
+            } else {
+                throw new CassandraDataAccessException("Error while getting data from " +
                         columnFamilyName, e);
             }
         }
