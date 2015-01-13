@@ -169,7 +169,7 @@
                             org.apache.commons.lang.*;version="2.3",
                             org.apache.commons.logging.*,
                             com.datastax.cassandra.*;version="1.0.8.wso2v1",
-                            com.google.common.util.concurrent;version="[16.0.1,16.1.0)",
+                            com.google.common.util.concurrent;version="[14.0,15)",
                             org.wso2.carbon.andes.authentication.andes,
                             *;resolution:=optional
                         </Import-Package>

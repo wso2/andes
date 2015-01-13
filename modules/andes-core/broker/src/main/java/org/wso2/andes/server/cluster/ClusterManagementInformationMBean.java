@@ -32,7 +32,8 @@ import java.util.List;
 /**
  * <code>ClusterManagementInformationMBean</code> The the JMS MBean that expose cluster management information
  */
-public class ClusterManagementInformationMBean extends AMQManagedObject implements ClusterManagementInformation {
+public class ClusterManagementInformationMBean extends AMQManagedObject
+        implements ClusterManagementInformation {
 
     /**
      * ClusterManager instance to get the information to expose
@@ -84,7 +85,8 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
      * @param queueName name of the queue
      * @return message count
      */
-    public int getMessageCount(@MBeanOperationParameter(name = "queueName", description = "Name of the queue which message count is required") String queueName) {
+    public int getMessageCount(
+            @MBeanOperationParameter(name = "queueName", description = "Name of the queue which message count is required") String queueName) {
         try {
             Long count = MessagingEngine.getInstance().getMessageCountOfQueue(queueName);
             return count.intValue();
@@ -99,7 +101,8 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
      * @param nodeId ID of the node
      * @return the IP of the node as a string
      */
-    public String getIPAddressForNode(@MBeanOperationParameter(name = "nodeID", description = "Node ID") String nodeId) {
+    public String getIPAddressForNode(
+            @MBeanOperationParameter(name = "nodeID", description = "Node ID") String nodeId) {
         try {
             return clusterManager.getNodeAddress(nodeId);
         } catch (AndesException e) {
@@ -125,13 +128,14 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
     }
 
     //TODO: this is not relevant now
-    @Override @Deprecated
+    @Override
+    @Deprecated
     public int getNodeQueueMessageCount(@MBeanOperationParameter(name = "nodeId",
-                                                                 description = "node id") String
-                                                    nodeId,
+            description = "node id") String
+                                                nodeId,
                                         @MBeanOperationParameter(name = "destinationQueue",
-                                                                 description = "destination queue" +
-                                                                                      " name") String destinationQueue) {
+                                                description = "destination queue" +
+                                                              " name") String destinationQueue) {
         return 0;
     }
 
@@ -139,6 +143,16 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
     public int getNodeQueueSubscriberCount(String nodeId, String destinationQueue) {
         //TODO:Should be implemented.
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public String getCoordinatorNodeAddress() {
+        return this.clusterManager.getCoordinatorNodeAddress();
+    }
+
+    @Override
+    public List<String> getAllClusterNodeAddresses() {
+        return this.clusterManager.getAllClusterNodeAddresses();
     }
 
     /**
@@ -160,7 +174,8 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
         throw new UnsupportedOperationException("Check what this should return (subscription IDs?)");
     }
 
-    public int getSubscriberCount(@MBeanOperationParameter(name = "Topic", description = "Topic name") String topic) {
+    public int getSubscriberCount(
+            @MBeanOperationParameter(name = "Topic", description = "Topic name") String topic) {
         throw new UnsupportedOperationException("Check what this should return (subscription IDs?)");
 
     }
