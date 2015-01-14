@@ -154,10 +154,8 @@ public class ConcurrentBatchProcessor implements EventProcessor {
                                     + eventType);
                         }
                         eventList.clear();
-
                     }
                     nextSequence++;
-
                 }
 
                 sequence.set(nextSequence - 1L);
@@ -169,6 +167,10 @@ public class ConcurrentBatchProcessor implements EventProcessor {
                 log.error("Exception occurred while processing batch for type " + eventType, ex);
                 exceptionHandler.handleEventException(ex, nextSequence, event);
                 sequence.set(nextSequence);
+
+                // Dropping events with errors from batch processor. Relevant event handler should take care of
+                // the events. If not cleared next iteration would contain the previous iterations event list
+                eventList.clear();
                 nextSequence++;
             }
         }
