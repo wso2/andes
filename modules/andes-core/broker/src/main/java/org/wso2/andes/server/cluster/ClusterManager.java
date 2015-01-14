@@ -18,6 +18,7 @@
 package org.wso2.andes.server.cluster;
 
 
+import com.hazelcast.core.IMap;
 import com.hazelcast.core.Member;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -101,6 +102,7 @@ public class ClusterManager {
         reAssignNodeSyncId();
         //update thrift coordinator server details
         updateThriftCoordinatorDetailsToMap();
+        updateCoordinatorNodeDetailMap();
     }
 
     /**
@@ -140,7 +142,7 @@ public class ClusterManager {
     /**
      * Get whether clustering is enabled
      *
-     * @return true/false on whether clustering is enabled
+     * @return true if clustering is enabled, false otherwise.
      */
     public boolean isClusteringEnabled() {
         return AndesContext.getInstance().isClusteringEnabled();
@@ -253,7 +255,7 @@ public class ClusterManager {
     }
 
     /**
-     *  Clears all persisted states of a disappeared node
+     * Clears all persisted states of a disappeared node
      *
      * @param nodeID node ID
      * @throws AndesException
@@ -294,13 +296,18 @@ public class ClusterManager {
             hazelcastAgent.getThriftServerDetailsMap().put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP, thriftCoordinatorServerIP);
             hazelcastAgent.getThriftServerDetailsMap().put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT,
                                                            Integer.toString(thriftCoordinatorServerPort));
-
-            // adding cluster coordinator node ip and port
-            hazelcastAgent.getThriftServerDetailsMap().put(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP,
-                                                           hazelcastAgent.getLocalMember().getSocketAddress().getAddress().getHostAddress());
-            hazelcastAgent.getThriftServerDetailsMap().put(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT,
-                                                           Integer.toString(hazelcastAgent.getLocalMember().getSocketAddress().getPort()));
         }
+    }
+
+    /**
+     * set coordinator node's host address and pro to hazelcast map
+     */
+    public void updateCoordinatorNodeDetailMap(){
+        // adding cluster coordinator node ip and port
+        hazelcastAgent.getCoordinatorNodeDetailsMap().put(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP,
+                                                      hazelcastAgent.getLocalMember().getSocketAddress().getAddress().getHostAddress());
+        hazelcastAgent.getCoordinatorNodeDetailsMap().put(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT,
+                                                      Integer.toString(hazelcastAgent.getLocalMember().getSocketAddress().getPort()));
     }
 
     /**
@@ -309,10 +316,15 @@ public class ClusterManager {
      * @return Address of the coordinator node
      */
     public String getCoordinatorNodeAddress() {
-        if (AndesContext.getInstance().isClusteringEnabled() && HazelcastAgent.getInstance() != null && hazelcastAgent.getThriftServerDetailsMap() != null &&
-            hazelcastAgent.getThriftServerDetailsMap().containsKey(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP) &&
-            hazelcastAgent.getThriftServerDetailsMap().containsKey(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT)) {
-            return hazelcastAgent.getThriftServerDetailsMap().get(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP) + ":" + hazelcastAgent.getThriftServerDetailsMap().get(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT);
+        if (AndesContext.getInstance().isClusteringEnabled()) {
+            IMap<String, String> coordinatorNodeDetailsMap = hazelcastAgent.getCoordinatorNodeDetailsMap();
+            if (null != coordinatorNodeDetailsMap) {
+                String ipAddress = coordinatorNodeDetailsMap.get(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP);
+                String port = coordinatorNodeDetailsMap.get(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT);
+                if (null != ipAddress && null != port) {
+                    return ipAddress + ":" + port;
+                }
+            }
         }
         return StringUtils.EMPTY;
     }
@@ -324,10 +336,10 @@ public class ClusterManager {
      */
     public List<String> getAllClusterNodeAddresses() {
         List<String> addresses = new ArrayList<String>();
-        if (AndesContext.getInstance().isClusteringEnabled() && HazelcastAgent.getInstance() != null) {
+        if (AndesContext.getInstance().isClusteringEnabled()) {
             for (Member member : HazelcastAgent.getInstance().getAllClusterMembers()) {
                 InetSocketAddress socket = member.getSocketAddress();
-                addresses.add(socket.getAddress().getHostAddress() + ":" + Integer.toString(socket.getPort()));
+                addresses.add(socket.getAddress().getHostAddress() + ":" + socket.getPort());
             }
         }
         return addresses;

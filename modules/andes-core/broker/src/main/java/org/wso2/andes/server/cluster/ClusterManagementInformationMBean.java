@@ -17,20 +17,17 @@
  */
 package org.wso2.andes.server.cluster;
 
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.management.common.mbeans.ClusterManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanConstructor;
-import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
 import org.wso2.andes.server.management.AMQManagedObject;
 
 import javax.management.JMException;
-
-import java.util.ArrayList;
 import java.util.List;
-
 
 /**
  * <code>ClusterManagementInformationMBean</code> The the JMS MBean that expose cluster management information
+ * Exposes the Cluster Management related information using MBeans
  */
 public class ClusterManagementInformationMBean extends AMQManagedObject
         implements ClusterManagementInformation {
@@ -52,101 +49,41 @@ public class ClusterManagementInformationMBean extends AMQManagedObject
         this.clusterManager = clusterManager;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getObjectInstanceName() {
         return ClusterManagementInformation.TYPE;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isClusteringEnabled() {
         return AndesContext.getInstance().isClusteringEnabled();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getMyNodeID() {
         return clusterManager.getMyNodeID();
     }
 
-    @Override
-    public int getMessageCount(
-            @MBeanOperationParameter(name = "queueName", description = "Name of the queue which message count is required") String queueName) {
-        try {
-            Long count = MessagingEngine.getInstance().getMessageCountOfQueue(queueName);
-            return count.intValue();
-        } catch (AndesException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public List<String> getTopics() {
-        List<String> topics;
-        try {
-            topics = AndesContext.getInstance().getSubscriptionStore().getTopics();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        return topics;
-    }
-
-    @Override
-    public List<String> getSubscribers(
-            @MBeanOperationParameter(name = "Topic", description = "Topic name") String topic) {
-        throw new UnsupportedOperationException("Check what this should return (subscription IDs?)");
-    }
-
-    @Override
-    public int getSubscriberCount(
-            @MBeanOperationParameter(name = "Topic", description = "Topic name") String topic) {
-        throw new UnsupportedOperationException("Check what this should return (subscription IDs?)");
-    }
-
-    @Override
-    public String getIPAddressForNode(
-            @MBeanOperationParameter(name = "nodeID", description = "Node ID") String nodeId) {
-        try {
-            return clusterManager.getNodeAddress(nodeId);
-        } catch (AndesException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public List<String> getDestinationQueuesOfCluster() {
-        List<String> queueList = new ArrayList<String>();
-        try {
-            for (AndesQueue queue : AndesContext.getInstance().getAMQPConstructStore().getQueues()) {
-                queueList.add(queue.queueName);
-            }
-        } catch (AndesException e) {
-            throw new RuntimeException(e);
-        }
-        return queueList;
-    }
-
-    //TODO: this is not relevant now
-    @Override
-    @Deprecated
-    public int getNodeQueueMessageCount(@MBeanOperationParameter(name = "nodeId",
-            description = "node id") String
-                                                nodeId,
-                                        @MBeanOperationParameter(name = "destinationQueue",
-                                                description = "destination queue" +
-                                                              " name") String destinationQueue) {
-        return 0;
-    }
-
-    //TODO: rename method to return queueSubscriberCountPerNode
-    public int getNodeQueueSubscriberCount(String nodeId, String destinationQueue) {
-        //TODO:Should be implemented.
-        throw new UnsupportedOperationException();
-    }
-
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getCoordinatorNodeAddress() {
         return this.clusterManager.getCoordinatorNodeAddress();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<String> getAllClusterNodeAddresses() {
         return this.clusterManager.getAllClusterNodeAddresses();
