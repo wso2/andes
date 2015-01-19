@@ -208,10 +208,6 @@ public class Main {
     }
 
     protected void startMQTTBroker(final BrokerOptions options) throws Exception {
-        //Setting the system path manually
-        //todo need to link this qpid-config
-        //todo need to discuss
-        System.setProperty("moquette.path", "./repository/conf/advanced/");
         Server server = new Server();
         server.startServer(options.getMQTTPort());
     }
