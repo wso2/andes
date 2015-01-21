@@ -31,10 +31,9 @@ import org.wso2.andes.server.message.MessageMetaData;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.queue.SimpleQueueEntryList;
-import org.wso2.andes.server.slot.Slot;
+import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
-import org.wso2.andes.server.store.util.DisruptorCachedMessage;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
@@ -132,7 +131,7 @@ public class AMQPUtils {
 
         //create message with meta data. This has access to message content
         StorableMessageMetaData metaData = convertAndesMetadataToAMQMetadata(metadata);
-        DisruptorCachedMessage<MessageMetaData> message = new DisruptorCachedMessage<MessageMetaData>(
+        QpidStoredMessage<MessageMetaData> message = new QpidStoredMessage<MessageMetaData>(
                 new StoredAMQPMessage(messageId, metaData), content);
         message.setSlot(slot);
         return new AMQMessage(message);

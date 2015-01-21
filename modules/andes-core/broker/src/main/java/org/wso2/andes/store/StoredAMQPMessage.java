@@ -23,7 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.server.slot.Slot;
+import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.server.store.TransactionLog;

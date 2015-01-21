@@ -21,7 +21,7 @@
 package org.wso2.andes.server.queue;
 
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.server.slot.Slot;
+import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.server.store.MessageStore;
 import org.wso2.andes.server.store.TransactionLog;
 import org.wso2.andes.server.store.StoredMessage;

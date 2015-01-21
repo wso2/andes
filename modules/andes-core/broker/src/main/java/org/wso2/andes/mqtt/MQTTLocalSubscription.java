@@ -25,7 +25,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
+import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.subscription.BasicSubscription;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 

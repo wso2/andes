@@ -23,7 +23,7 @@ import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.StreamSerializer;
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetSlotWrapper;
-import org.wso2.andes.server.slot.Slot;
+import org.wso2.andes.kernel.slot.Slot;
 
 import java.io.IOException;
 import java.util.TreeSet;

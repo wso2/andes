@@ -29,8 +29,8 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.server.slot.SlotCoordinationConstants;
-import org.wso2.andes.server.slot.SlotManager;
+import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
+import org.wso2.andes.kernel.slot.SlotManager;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;

@@ -30,7 +30,7 @@ import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
+import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.protocol.AMQProtocolSession;

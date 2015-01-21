@@ -49,7 +49,7 @@ import org.wso2.andes.server.subscription.SubscriptionList;
 import org.wso2.andes.server.txn.AutoCommitTransaction;
 import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
-import org.wso2.andes.server.util.AndesConstants;
+import org.wso2.andes.kernel.AndesConstants;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 
 import javax.management.JMException;

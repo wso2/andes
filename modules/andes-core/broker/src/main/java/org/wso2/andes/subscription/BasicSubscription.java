@@ -20,7 +20,7 @@ package org.wso2.andes.subscription;
 
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.wso2.andes.kernel.AndesSubscription;
-import org.wso2.andes.server.util.AndesUtils;
+import org.wso2.andes.kernel.AndesUtils;
 
 import java.util.UUID;
 

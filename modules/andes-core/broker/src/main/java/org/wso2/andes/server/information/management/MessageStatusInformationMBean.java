@@ -4,7 +4,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.management.common.mbeans.MessageStatusInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanConstructor;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
+import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.server.management.AMQManagedObject;
 
 import javax.management.JMException;
