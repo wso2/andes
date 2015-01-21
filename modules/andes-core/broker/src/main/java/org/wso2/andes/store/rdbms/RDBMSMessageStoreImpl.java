@@ -21,7 +21,6 @@ package org.wso2.andes.store.rdbms;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 
 import javax.sql.DataSource;
 import java.sql.*;
@@ -38,6 +37,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RDBMSMessageStoreImpl implements MessageStore {
 
     private static final Logger log = Logger.getLogger(RDBMSMessageStoreImpl.class);
+
+    /**
+     * Fetch size of a metadata for deleting metadata of a certain queue from DLC
+     */
+    private static final Integer STANDARD_PAGE_SIZE = 1000;
+
     /**
      * Cache queue name to queue_id mapping to avoid extra sql queries
      */
@@ -940,48 +945,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
     /**
      * {@inheritDoc}
-     *
-     * @param storageQueueName name of the queue being purged
-     * @throws AndesException
-     */
-    @Override
-    public void resetMessageCounterForQueue(String storageQueueName) throws AndesException {
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-
-        try {
-            int queueID = getCachedQueueID(storageQueueName);
-
-            connection = getConnection();
-            connection.setAutoCommit(false);
-
-            // RESET the queue counter to 0
-            preparedStatement = connection
-                    .prepareStatement(RDBMSConstants.PS_RESET_QUEUE_COUNT);
-
-            preparedStatement.setString(1, storageQueueName);
-
-            preparedStatement.execute();
-            connection.commit();
-
-            if (log.isDebugEnabled()) {
-                log.debug("Reset message counter for queue " + storageQueueName +
-                        " with queue ID " + queueID);
-            }
-        } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_RESETTING_MESSAGE_COUNTER + storageQueueName);
-            throw new AndesException("error occurred while resetting message count for queue :" +
-                    storageQueueName,e);
-        } finally {
-            String task = RDBMSConstants.TASK_RESETTING_MESSAGE_COUNTER + storageQueueName;
-            close(preparedStatement, task);
-            close(connection, task);
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
      */
     @Override
     public List<Long> getMessageIDsAddressedToQueue(String storageQueueName) throws AndesException {
@@ -1041,7 +1004,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             Long lastProcessedID = 0l;
 
-            Integer pageSize = CQLDataAccessHelper.STANDARD_PAGE_SIZE;
+            Integer pageSize = STANDARD_PAGE_SIZE;
 
             int queueID = getCachedQueueID(DLCQueueName);
 

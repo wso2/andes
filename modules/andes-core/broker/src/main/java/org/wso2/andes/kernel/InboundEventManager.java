@@ -163,6 +163,6 @@ public interface InboundEventManager {
      * any messages from this local subscription.
      * @param localSubscription LocalSubscription
      */
-    public void openLocalSubscription(LocalSubscription localSubscription);
+    public void openLocalSubscription(LocalSubscription localSubscription) throws SubscriptionAlreadyExistingException;
 
 }

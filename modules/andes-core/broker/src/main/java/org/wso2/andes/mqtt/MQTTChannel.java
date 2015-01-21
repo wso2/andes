@@ -180,7 +180,7 @@ public class MQTTChannel {
                 if (log.isDebugEnabled()) {
                     log.debug("Subscription registered to the " + topic + " with channel id " + clientID);
                 }
-            } catch (AndesException e) {
+            } catch (SubscriptionAlreadyExistingException e) {
                 final String message = "Error ocured while creating the topic subscription in the kernal";
                 log.error(message, e);
                 throw new MQTTException(message, e);
@@ -202,7 +202,7 @@ public class MQTTChannel {
                 if (log.isDebugEnabled()) {
                     log.debug("Subscription registered to the " + topic + " with channel id " + clientID);
                 }
-            } catch (AndesException e) {
+            } catch (SubscriptionAlreadyExistingException e) {
                 final String message = "Error ocured while creating the topic subscription in the kernal";
                 log.error(message, e);
                 throw new MQTTException(message, e);

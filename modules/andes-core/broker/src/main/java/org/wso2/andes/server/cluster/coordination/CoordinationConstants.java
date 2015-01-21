@@ -87,6 +87,13 @@ public final class CoordinationConstants {
      */
     public static String SLOT_ASSIGNMENT_MAP_NAME = "slotAssignmentMap";
 
+    /**
+     * Name of the distributed map to store thrift server details
+     */
     public static String THRIFT_SERVER_DETAILS_MAP_NAME = "thriftServerDetailsMap";
 
+    /**
+     * Name of the distributed map to store coordinator node's host address and port
+     */
+    public static String COORDINATOR_NODE_DETAILS_MAP_NAME = "coordinatorNodeDetailsMap";
 }

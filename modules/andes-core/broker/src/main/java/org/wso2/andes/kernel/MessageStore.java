@@ -205,13 +205,6 @@ public interface MessageStore {
      */
     public void deleteAllMessageMetadata(String storageQueueName) throws AndesException;
 
-    /**
-     * Store level method to reset the message counter of a given queue to 0.
-     * @param storageQueueName name of the queue being purged
-     * @throws AndesException
-     */
-    public void resetMessageCounterForQueue(String storageQueueName) throws AndesException;
-
     /***
      * Store level method to remove all DLC records of all messages addressed to a specific queue.
      *

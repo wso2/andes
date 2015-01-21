@@ -28,7 +28,7 @@ import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParamet
 import org.wso2.andes.server.management.AMQManagedObject;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueRegistry;
-import org.wso2.andes.server.util.AndesUtils;
+import org.wso2.andes.kernel.AndesUtils;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostImpl;
 

@@ -18,8 +18,8 @@
 package org.wso2.andes.server;
 
 import org.wso2.andes.kernel.AndesRecoveryTask;
-import org.wso2.andes.server.cassandra.AndesSubscriptionManager;
-import org.wso2.andes.server.cassandra.MessageExpirationWorker;
+import org.wso2.andes.kernel.AndesSubscriptionManager;
+import org.wso2.andes.kernel.MessageExpirationWorker;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.store.QpidDeprecatedMessageStore;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;

@@ -106,11 +106,11 @@ public class HazelcastAgent {
      * map's key is port or host name.
      */
     private IMap<String,String> thriftServerDetailsMap;
+
     /**
      * Unique ID generated to represent the node.
      * This ID is used when generating message IDs.
      */
-
     private int uniqueIdOfLocalMember;
 
     /**
@@ -123,6 +123,11 @@ public class HazelcastAgent {
      * since am atomic boolean is not available in the current Hazelcast implementation.
      */
     private IAtomicLong initializationDoneIndicator;
+
+    /**
+     * This map is used to store coordinator node's host address and port.
+     */
+    private IMap<String,String> coordinatorNodeDetailsMap;
 
     /**
      * Private constructor.
@@ -210,6 +215,11 @@ public class HazelcastAgent {
          * Initialize hazelcast map fot thrift server details
          */
         thriftServerDetailsMap = hazelcastInstance.getMap(CoordinationConstants.THRIFT_SERVER_DETAILS_MAP_NAME);
+
+        /**
+         * Initialize hazelcast map for coordinator node details
+         */
+        coordinatorNodeDetailsMap = hazelcastInstance.getMap(CoordinationConstants.COORDINATOR_NODE_DETAILS_MAP_NAME);
 
         /**
          * Initialize distributed lock and boolean related to slot map initialization
@@ -393,6 +403,14 @@ public class HazelcastAgent {
      */
     public IMap<String, String> getThriftServerDetailsMap() {
         return thriftServerDetailsMap;
+    }
+
+    /**
+     * This method returns a map containing thrift server port and hostname
+     * @return coordinatorNodeDetailsMap
+     */
+    public IMap<String, String> getCoordinatorNodeDetailsMap() {
+        return coordinatorNodeDetailsMap;
     }
 
     /**

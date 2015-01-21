@@ -22,22 +22,15 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cassandra.MessageExpirationWorker;
-import org.wso2.andes.server.cassandra.MessageFlusher;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.queue.DLCQueueUtils;
-import org.wso2.andes.server.slot.SlotDeliveryWorkerManager;
-import org.wso2.andes.server.slot.SlotManager;
-import org.wso2.andes.server.slot.thrift.MBThriftClient;
+import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
+import org.wso2.andes.kernel.slot.SlotManager;
+import org.wso2.andes.thrift.MBThriftClient;
 import org.wso2.andes.server.stats.PerformanceCounter;
-import org.wso2.andes.server.util.AndesConstants;
-import org.wso2.andes.server.util.AndesUtils;
-import org.wso2.andes.store.MessageContentRemoverTask;
-import org.wso2.andes.store.MessageCountFlusher;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.ArrayList;
@@ -47,7 +40,6 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This class will handle all message related functions of WSO2 Message Broker
@@ -354,7 +346,7 @@ public class MessagingEngine {
             messageStore.deleteAllMessageMetadata(storageQueueName);
 
             // Reset message count for the specific queue
-            messageStore.resetMessageCounterForQueue(storageQueueName);
+            contextStore.resetMessageCounterForQueue(storageQueueName);
 
             // There is only 1 DLC queue per tenant. So we have to read and parse the message
             // metadata and filter messages specific to a given queue.

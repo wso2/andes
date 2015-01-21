@@ -19,9 +19,10 @@ public class Server {
 
     public static final int DEFAULT_MQTT_PORT = 1833;
     private static final Logger log = LoggerFactory.getLogger(Server.class);
-    
-    public static final String STORAGE_FILE_PATH = System.getProperty("user.home") + 
-            File.separator + "moquette_store.hawtdb";
+    //Adding the MB directory file path on which the temp db will be stored
+    private static final String DB_STORE_PATH = "/repository/database";
+    public static final String STORAGE_FILE_PATH = System.getProperty("carbon.home") +DB_STORE_PATH+
+            File.separator + "mqtt_store.hawtdb";
 
     private ServerAcceptor m_acceptor;
     SimpleMessaging messaging;

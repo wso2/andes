@@ -18,15 +18,12 @@
 package org.wso2.andes.server.handler;
 
 import org.wso2.andes.AMQException;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.BasicRejectBody;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
-import org.wso2.andes.server.cassandra.OnflightMessageTracker;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
