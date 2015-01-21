@@ -258,6 +258,9 @@ public class QpidAMQPBridge {
         } catch (AndesException e) {
             log.error("Error while adding the subscription", e);
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while registering subscription", e);
+        } catch (SubscriptionAlreadyExistingException e) {
+            log.error("Error occurred while adding an already existing subscription", e);
+            throw new AMQQueue.ExistingExclusiveSubscription();
         }
     }
 
@@ -403,7 +406,7 @@ public class QpidAMQPBridge {
      * @param subscription subscription
      * @throws AndesException
      */
-    private void addLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) throws AndesException {
+    private void addLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) throws AndesException, SubscriptionAlreadyExistingException {
 
         List<Binding> bindingList = queue.getBindings();
         if (bindingList != null && !bindingList.isEmpty()) {

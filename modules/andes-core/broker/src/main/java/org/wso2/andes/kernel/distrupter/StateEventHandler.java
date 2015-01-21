@@ -87,7 +87,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
                     shutdownMessagingEngine();
                     break;
                 case OPEN_SUBSCRIPTION_EVENT:
-                    openLocalSubscription((LocalSubscription) event.getData());
+                    openLocalSubscription((LocalSubscription) event.getData(), event);
                     break;
                 case CLOSE_SUBSCRIPTION_EVENT:
                     closeLocalSubscription((LocalSubscription) event.getData());
@@ -98,6 +98,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
             // This is the final handler that visits the slot in ring buffer. Hence after processing is done clear the
             // slot so that in next iteration of the first event handler over the same slot won't find garbage from
             // previous iterations.
+
             event.clear();
         }
     }
@@ -164,11 +165,13 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      *
      * @param localSubscription LocalSubscription
      */
-    public void openLocalSubscription(LocalSubscription localSubscription) {
+    public void openLocalSubscription(LocalSubscription localSubscription, InboundEvent event) {
         AndesSubscriptionManager subscriptionManager = ClusterResourceHolder.getInstance().getSubscriptionManager();
         try {
             subscriptionManager.addSubscription(localSubscription);
+            event.getFuture().set("success");
         } catch (AndesException e) {
+            event.getFuture().setException(e);
             log.error("Error occurred while opening local subscription. Subscription id "
                     + localSubscription.getSubscriptionID(), e);
         }
