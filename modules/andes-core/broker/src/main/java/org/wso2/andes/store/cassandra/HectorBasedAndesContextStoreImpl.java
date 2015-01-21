@@ -213,6 +213,18 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
         return messageCount;
     }
 
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void resetMessageCounterForQueue(String storageQueueName) throws AndesException {
+        // NOTE: Cassandra counters can't be reset. Deleting the counter and adding it again is not
+        // supported by Cassandra
+        long count = getMessageCountForQueue(storageQueueName);
+        decrementMessageCountForQueue(storageQueueName, count);
+    }
+
     /**
      * {@inheritDoc}
      */

@@ -286,6 +286,17 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
+    public void resetMessageCounterForQueue(String storageQueueName) throws AndesException {
+        // NOTE: Cassandra counters can't be reset. Deleting the counter and adding it again is not
+        // supported by Cassandra
+        long count = getMessageCountForQueue(storageQueueName);
+        decrementMessageCountForQueue(storageQueueName, count);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void removeMessageCounterForQueue(String destinationQueueName) throws AndesException {
 
         Statement statement = QueryBuilder.delete().from(config.getKeyspace(), QUEUE_COUNTER_TABLE).

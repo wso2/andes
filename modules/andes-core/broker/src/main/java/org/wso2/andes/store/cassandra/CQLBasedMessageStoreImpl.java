@@ -541,15 +541,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void resetMessageCounterForQueue(String storageQueueName) throws AndesException {
-        // TODO: THIS METHOD IS IN WRONG PLACE
-        // This method should go to ANDES CONTEXT STORE
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public int deleteAllMessageMetadataFromDLC(String storageQueueName,
                                                String DLCQueueName) throws AndesException {
 

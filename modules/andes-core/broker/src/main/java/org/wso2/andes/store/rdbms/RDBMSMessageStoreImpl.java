@@ -945,48 +945,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
     /**
      * {@inheritDoc}
-     *
-     * @param storageQueueName name of the queue being purged
-     * @throws AndesException
-     */
-    @Override
-    public void resetMessageCounterForQueue(String storageQueueName) throws AndesException {
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-
-        try {
-            int queueID = getCachedQueueID(storageQueueName);
-
-            connection = getConnection();
-            connection.setAutoCommit(false);
-
-            // RESET the queue counter to 0
-            preparedStatement = connection
-                    .prepareStatement(RDBMSConstants.PS_RESET_QUEUE_COUNT);
-
-            preparedStatement.setString(1, storageQueueName);
-
-            preparedStatement.execute();
-            connection.commit();
-
-            if (log.isDebugEnabled()) {
-                log.debug("Reset message counter for queue " + storageQueueName +
-                        " with queue ID " + queueID);
-            }
-        } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_RESETTING_MESSAGE_COUNTER + storageQueueName);
-            throw new AndesException("error occurred while resetting message count for queue :" +
-                    storageQueueName,e);
-        } finally {
-            String task = RDBMSConstants.TASK_RESETTING_MESSAGE_COUNTER + storageQueueName;
-            close(preparedStatement, task);
-            close(connection, task);
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
      */
     @Override
     public List<Long> getMessageIDsAddressedToQueue(String storageQueueName) throws AndesException {

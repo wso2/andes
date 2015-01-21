@@ -101,6 +101,12 @@ public interface AndesContextStore {
      */
     public long getMessageCountForQueue(String destinationQueueName) throws AndesException;
 
+    /**
+     * Store level method to reset the message counter of a given queue to 0.
+     * @param storageQueueName name of the queue being purged
+     * @throws AndesException
+     */
+    public void resetMessageCounterForQueue(String storageQueueName) throws AndesException;
 
     /**
      * Remove Message counting entry
