@@ -19,7 +19,7 @@
 package org.wso2.andes.server.store;
 
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.server.slot.Slot;
+import org.wso2.andes.kernel.slot.Slot;
 
 import java.nio.ByteBuffer;
 

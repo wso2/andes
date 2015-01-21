@@ -18,7 +18,7 @@
 
 package org.wso2.andes.kernel;
 
-import org.wso2.andes.kernel.distrupter.DisruptorBasedInboundEventManager;
+import org.wso2.andes.kernel.distruptor.DisruptorBasedInboundEventManager;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 public class InboundEventManagerFactory {

@@ -29,7 +29,7 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.server.cassandra.QueueBrowserDeliveryWorker;
+import org.wso2.andes.kernel.QueueBrowserDeliveryWorker;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.exchange.ExchangeType;
 import org.wso2.andes.server.exchange.TopicExchange;

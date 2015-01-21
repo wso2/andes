@@ -17,8 +17,6 @@
  */
 package org.wso2.andes.server;
 
-import org.wso2.andes.server.util.AndesUtils;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;

@@ -19,7 +19,7 @@
 package org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper;
 
 
-import org.wso2.andes.server.slot.Slot;
+import org.wso2.andes.kernel.slot.Slot;
 
 import java.io.Serializable;
 import java.util.HashMap;

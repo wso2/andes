@@ -25,7 +25,7 @@ import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.mqtt.MQTTMessageMetaData;
 import org.wso2.andes.mqtt.MQTTMetaDataHandler;
 import org.wso2.andes.server.message.MessageMetaData;
-import org.wso2.andes.server.slot.Slot;
+import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 

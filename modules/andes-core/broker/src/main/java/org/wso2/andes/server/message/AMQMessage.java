@@ -22,7 +22,7 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.ContentHeaderBody;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
 import org.wso2.andes.server.AMQChannel;
-import org.wso2.andes.server.slot.Slot;
+import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.server.store.StoredMessage;
 import org.wso2.andes.configuration.qpid.SessionConfig;
 import org.wso2.andes.server.queue.AMQQueue;
