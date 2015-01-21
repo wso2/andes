@@ -113,10 +113,10 @@ public class DLCQueueUtils {
             QueueListener queueListener = new ClusterCoordinationHandler(HazelcastAgent
                     .getInstance());
             queueListener.handleLocalQueuesChanged(andesQueue, QueueListener.QueueEvent.ADDED);
-
+            String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
             LocalSubscription mockSubscription =
                     new AMQPLocalSubscription(queueRegistry.getQueue(new AMQShortString(dlcQueueName)),
-                            null, "0", dlcQueueName, false, false, true, null,
+                            null, "0", dlcQueueName, false, false, true, nodeID,
                             System.currentTimeMillis(), dlcQueueName, owner,
                             ExchangeDefaults.DIRECT_EXCHANGE_NAME.toString(), "DIRECT", null, false);
 
