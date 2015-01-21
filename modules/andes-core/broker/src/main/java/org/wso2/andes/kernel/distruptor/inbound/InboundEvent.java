@@ -116,6 +116,11 @@ public class InboundEvent {
     public List<AndesMessage> messageList;
 
     /**
+     * For storing retained messages for topic
+     */
+    public AndesMessage retainMessage;
+
+    /**
      * Acknowledgments received to disruptor
      */
     public AndesAckData ackData;
@@ -146,6 +151,7 @@ public class InboundEvent {
         messageList.clear();
         ackData = null;
         data = null;
+        retainMessage = null;
         eventType = Type.IGNORE_EVENT;
     }
     /**

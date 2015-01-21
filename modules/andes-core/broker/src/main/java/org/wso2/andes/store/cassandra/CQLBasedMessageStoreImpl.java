@@ -31,6 +31,7 @@ import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
@@ -41,6 +42,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.gte;
@@ -376,6 +378,41 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         }
         deleteMessageMetadataFromQueue(currentQueueName, removableMetadataList);
 
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException {
+        // TODO: implement this method
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<String> getAllRetainedTopics() throws AndesException {
+        // TODO: implement this method
+        return  null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public AndesMessageMetadata getRetainedMetaData(String destination) throws AndesException {
+        // TODO: implement this method
+        return  null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<Integer, AndesMessagePart> getRetainedContentParts(long messageID) throws AndesException {
+        // TODO: implement this method
+        return  null;
     }
 
     /**

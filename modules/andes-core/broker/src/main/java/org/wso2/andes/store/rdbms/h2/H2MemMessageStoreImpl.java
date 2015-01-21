@@ -48,6 +48,27 @@ public class H2MemMessageStoreImpl extends RDBMSMessageStoreImpl {
             ");";
 
     /**
+     * Create retain message content table in H2 database
+     */
+    protected static final String CREATE_RETAIN_CONTENT_TABLE = "CREATE TABLE IF NOT EXISTS MB_RETAINED_CONTENT (" +
+                                                         "MESSAGE_ID BIGINT, " +
+                                                         "CONTENT_OFFSET INT, " +
+                                                         "MESSAGE_CONTENT BLOB NOT NULL, " +
+                                                         "PRIMARY KEY (MESSAGE_ID,CONTENT_OFFSET)" +
+                                                         ");";
+
+    /**
+     * Create retained metadata table in H2 database
+     */
+    protected static final String CREATE_RETAIN_METADATA_TABLE = "CREATE TABLE IF NOT EXISTS MB_RETAINED_METADATA (" +
+                                                          "TOPIC_ID INT, " +
+                                                          "TOPIC_NAME VARCHAR NOT NULL, " +
+                                                          "MESSAGE_ID BIGINT, " +
+                                                          "MESSAGE_METADATA BINARY, " +
+                                                          "PRIMARY KEY (TOPIC_ID), " +
+                                                          ");";
+
+    /**
      * Create queues table in H2 database
      */
     protected static final String CREATE_QUEUES_TABLE = "CREATE TABLE IF NOT EXISTS MB_QUEUE_MAPPING (" +
@@ -125,7 +146,9 @@ public class H2MemMessageStoreImpl extends RDBMSMessageStoreImpl {
                 CREATE_CONTENT_TABLE,
                 CREATE_QUEUES_TABLE,
                 CREATE_METADATA_TABLE,
-                CREATE_EXPIRATION_DATA_TABLE
+                CREATE_EXPIRATION_DATA_TABLE,
+                CREATE_RETAIN_METADATA_TABLE,
+                CREATE_RETAIN_CONTENT_TABLE
         };
 
         Connection connection = null;

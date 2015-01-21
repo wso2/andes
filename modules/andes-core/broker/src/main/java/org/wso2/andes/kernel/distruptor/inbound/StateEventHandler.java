@@ -21,9 +21,11 @@ package org.wso2.andes.kernel.distruptor.inbound;
 import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -167,6 +169,24 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      */
     public void openLocalSubscription(LocalSubscription localSubscription, InboundEvent event) {
         AndesSubscriptionManager subscriptionManager = ClusterResourceHolder.getInstance().getSubscriptionManager();
+
+        // Send retained message if available
+        try {
+            if (!localSubscription.isDurable() && localSubscription.isBoundToTopic()) {
+                List<AndesMessageMetadata> metadataList = messagingEngine.getRetainedMessageForTopic(
+                        localSubscription.getSubscribedDestination());
+
+                for (AndesMessageMetadata metadata : metadataList) {
+                    AndesContent content = messagingEngine.getRetainedMessageContent(metadata);
+
+                    OnflightMessageTracker.getInstance().recordRetainedMessage(metadata.getMessageID());
+                    localSubscription.sendMessageToSubscriber(metadata, content);
+                }
+            }
+        } catch (AndesException e) {
+            log.error("Error occurred while sending retained messages to new subscription.", e);
+        }
+
         try {
             subscriptionManager.addSubscription(localSubscription);
             event.getFuture().set("success");

@@ -19,6 +19,7 @@
 package org.wso2.andes.kernel;
 
 import org.apache.log4j.Logger;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -117,6 +118,45 @@ public class MessagingEngine {
      */
     public static MessagingEngine getInstance() {
         return messagingEngine;
+    }
+
+    /**
+     * Return matching retained message metadata for the given subscription topic name. An empty list is returned if no
+     * match is found.
+     *
+     * @param subscriptionTopicName
+     *         Destination string provided by the subscriber
+     * @return AndesMessageMetadata
+     * @throws AndesException
+     */
+    public List<AndesMessageMetadata> getRetainedMessageForTopic(String subscriptionTopicName) throws AndesException {
+        List<AndesMessageMetadata> retainMessageList = new ArrayList<AndesMessageMetadata>();
+        List<String> topicList = messageStore.getAllRetainedTopics();
+
+        for (String topicName : topicList) {
+            if (TopicParserUtil.isMatching(topicName, subscriptionTopicName)) {
+                retainMessageList.add(messageStore.getRetainedMetaData(topicName));
+            }
+        }
+
+        return retainMessageList;
+    }
+
+    /**
+     * Return message content for the given retained message metadata.
+     *
+     * @param metadata
+     *         Message metadata
+     * @return AndesContent
+     * @throws AndesException
+     */
+    public AndesContent getRetainedMessageContent(AndesMessageMetadata metadata) throws AndesException {
+        long messageID = metadata.getMessageID();
+        int contentSize = AMQPUtils.convertAndesMetadataToAMQMetadata(metadata).getContentSize();
+
+        Map<Integer, AndesMessagePart> retainedContentParts = messageStore.getRetainedContentParts(messageID);
+
+        return new RetainedContent(retainedContentParts, contentSize, messageID);
     }
 
     /**
@@ -438,6 +478,16 @@ public class MessagingEngine {
             incrementQueueCount(AndesConstants.DEAD_LETTER_QUEUE_NAME, messagesToRemove.size());
         }
 
+    }
+
+    /**
+     * Store retained messages in the message store
+     *
+     * @param retainList
+     *         Retained message list
+     */
+    public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException {
+         messageStore.storeRetainedMessages(retainList);
     }
 
     /**

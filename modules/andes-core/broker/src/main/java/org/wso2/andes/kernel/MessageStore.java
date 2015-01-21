@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -11,7 +11,7 @@
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
+ * KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations
  * under the License.
  */
@@ -22,12 +22,42 @@ import org.wso2.andes.configuration.util.ConfigurationProperties;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Message meta data and content storing related data base types specific logic is abstracted out
  * using this interface.
  */
 public interface MessageStore {
+
+    /**
+     * Return all topic names with retained messages in the DB
+     *
+     * @return Topic list with retained messages
+     * @throws AndesException
+     */
+    public List<String> getAllRetainedTopics() throws AndesException;
+
+    /**
+     * Get all content parts for the given message ID. The message ID should belong to a existing retained message.
+     *
+     * @param messageID
+     *         Message ID of the message
+     * @return List of content parts
+     * @throws AndesException
+     */
+    public Map<Integer, AndesMessagePart> getRetainedContentParts(long messageID) throws AndesException;
+
+    /**
+     * Return retained message metadata for the given destination. Null is returned if no retained message is available
+     * for a destination.
+     *
+     * @param destination
+     *         Destination/Topic name
+     * @return AndesMessageMetadata
+     * @throws AndesException
+     */
+    public AndesMessageMetadata getRetainedMetaData(String destination) throws AndesException;
 
     /**
      * Initialise the MessageStore and returns the DurableStoreConnection used by store
@@ -111,6 +141,14 @@ public interface MessageStore {
      */
     public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName) throws
             AndesException;
+
+    /**
+     * Store retained message list in the message store
+     *
+     * @param retainList
+     *         Retained messages
+     */
+    public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException;
 
     /**
      * Update the meta data for the given message with the given information in the AndesMetaData. Update destination
