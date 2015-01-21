@@ -40,7 +40,7 @@ public class CassandraConstants {
      * GC grace seconds for Cassandra. ( Specifies the time to wait before garbage collecting
      * tombstones in Cassandra )
      */
-    public static final String PROP_GC_GRACE_SECONDS = "GCGraceSeconds";
+    public static final String PROP_GC_GRACE_SECONDS = "gcGraceSeconds";
 
     /**
      * Read Consistency level. From How many replicas to be read before satisfying the read request
@@ -53,14 +53,19 @@ public class CassandraConstants {
     public static final String PROP_WRITE_CONSISTENCY = "writeConsistencyLevel";
 
     /**
+     * Key space is similar to the database name in RDBMS
+     */
+    public static final String PROP_KEYSPACE = "keyspace";
+
+    /**
      * Replication placement strategy (algorithm) to be used is defined in this class
      */
     public static final String PROP_STRATEGY_CLASS = "strategyClass";
 
     /**
-     * Keysapce to be used by MB
+     * Default keysapce used by MB
      */
-    public final static String KEYSPACE = "QpidKeySpace";
+    public final static String DEFAULT_KEYSPACE = "QpidKeySpace";
 
     /**
      * Long data type for Cassandra
@@ -73,30 +78,11 @@ public class CassandraConstants {
     public final static String INTEGER_TYPE = "IntegerType";
 
     /**
-     * String data type for Cassandra
-     */
-    public final static String STRING_TYPE = "StringType";
-
-    /**
      * UTF8 data type for Cassandra
      */
     public final static String UTF8_TYPE = "UTF8Type";
 
-    /**
-     * Username property to access Cassandra DB through Hector client.
-     */
-    public static final String PROP_USERNAME = "username";
-
-    /**
-     * Password property to access Cassandra DB through Hector client.
-     */
-    public static final String PROP_PASSWORD = "password";
-
     public static StringSerializer stringSerializer = StringSerializer.get();
-    public static LongSerializer longSerializer = LongSerializer.get();
-    public static BytesArraySerializer bytesArraySerializer = BytesArraySerializer.get();
-    public static IntegerSerializer integerSerializer = IntegerSerializer.get();
-    public static ByteBufferSerializer byteBufferSerializer = ByteBufferSerializer.get();
 
     //column family to keep track of loaded exchanges
     public final static String EXCHANGE_COLUMN_FAMILY = "ExchangeColumnFamily";

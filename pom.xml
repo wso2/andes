@@ -48,30 +48,6 @@
             </dependency>
 
             <dependency>
-                <groupId>org.apache.cassandra</groupId>
-                <artifactId>cassandra-all</artifactId>
-                <version>0.8.1</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.apache.thrift</groupId>
-                        <artifactId>libthrift</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-
-            <dependency>
-                <groupId>org.apache.cassandra</groupId>
-                <artifactId>cassandra-javautils</artifactId>
-                <version>0.7.0</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.apache.thrift</groupId>
-                        <artifactId>libthrift</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-
-            <dependency>
                 <groupId>com.ibm.icu</groupId>
                 <artifactId>icu4j</artifactId>
                 <version>3.8</version>
@@ -87,12 +63,6 @@
                 <groupId>commons-cli</groupId>
                 <artifactId>commons-cli</artifactId>
                 <version>1.0</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.apache.directory.studio</groupId>
-                <artifactId>org.apache.commons.codec</artifactId>
-                <version>1.3</version>
             </dependency>
 
             <dependency>
@@ -120,16 +90,23 @@
             </dependency>
 
             <dependency>
-                <groupId>org.apache.directory.studio</groupId>
-                <artifactId>org.apache.commons.lang</artifactId>
+                <groupId>commons-codec</groupId>
+                <artifactId>commons-codec</artifactId>
+                <version>1.3</version>
+            </dependency>
+
+            <dependency>
+                <groupId>commons-lang</groupId>
+                <artifactId>commons-lang</artifactId>
                 <version>2.6</version>
             </dependency>
 
             <dependency>
-                <groupId>org.apache.directory.studio</groupId>
-                <artifactId>org.apache.commons.logging</artifactId>
+                <groupId>commons-logging</groupId>
+                <artifactId>commons-logging</artifactId>
                 <version>1.1.1</version>
             </dependency>
+
 
             <dependency>
                 <groupId>commons-logging</groupId>
@@ -174,27 +151,30 @@
             </dependency>
 
             <dependency>
-                <groupId>javacc</groupId>
+                <groupId>net.java.dev.javacc</groupId>
                 <artifactId>javacc</artifactId>
                 <version>3.2</version>
             </dependency>
 
             <dependency>
-                <groupId>org.mortbay.jetty</groupId>
+                <groupId>jetty</groupId>
                 <artifactId>org.mortbay.jetty</artifactId>
                 <version>5.1.12</version>
+                <scope>test</scope>
             </dependency>
 
             <dependency>
                 <groupId>org.mortbay.jetty</groupId>
                 <artifactId>jetty-servlet-tester</artifactId>
                 <version>6.1.15</version>
+                <scope>test</scope>
             </dependency>
 
             <dependency>
                 <groupId>org.mortbay.jetty</groupId>
                 <artifactId>jetty-util</artifactId>
                 <version>6.1.15</version>
+                <scope>test</scope>
             </dependency>
 
             <dependency>
@@ -246,9 +226,9 @@
             </dependency>
 
             <dependency>
-                <groupId>com.datastax.cassandra.wso2</groupId>
-                <artifactId>cql-driver</artifactId>
-                <version>1.0.8.wso2v1</version>
+                <groupId>com.datastax.cassandra</groupId>
+                <artifactId>cassandra-driver-core</artifactId>
+                <version>2.1.3</version>
                 <exclusions>
                     <exclusion>
                         <groupId>org.apache.thrift</groupId>

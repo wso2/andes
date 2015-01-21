@@ -21,7 +21,6 @@ package org.wso2.andes.store.rdbms;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.server.store.util.CQLDataAccessHelper;
 
 import javax.sql.DataSource;
 import java.sql.*;
@@ -38,6 +37,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RDBMSMessageStoreImpl implements MessageStore {
 
     private static final Logger log = Logger.getLogger(RDBMSMessageStoreImpl.class);
+
+    /**
+     * Fetch size of a metadata for deleting metadata of a certain queue from DLC
+     */
+    private static final Integer STANDARD_PAGE_SIZE = 1000;
+
     /**
      * Cache queue name to queue_id mapping to avoid extra sql queries
      */
@@ -1041,7 +1046,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             Long lastProcessedID = 0l;
 
-            Integer pageSize = CQLDataAccessHelper.STANDARD_PAGE_SIZE;
+            Integer pageSize = STANDARD_PAGE_SIZE;
 
             int queueID = getCachedQueueID(DLCQueueName);
 
