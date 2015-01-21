@@ -116,7 +116,7 @@ public class Andes {
      * @param localSubscription LocalSubscription
      * @throws AndesException
      */
-    public void openLocalSubscription(LocalSubscription localSubscription) throws AndesException {
+    public void openLocalSubscription(LocalSubscription localSubscription) throws SubscriptionAlreadyExistingException {
         inboundEventManager.openLocalSubscription(localSubscription);
     }
 

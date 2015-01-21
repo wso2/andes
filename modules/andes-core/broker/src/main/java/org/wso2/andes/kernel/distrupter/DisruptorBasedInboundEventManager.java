@@ -18,30 +18,20 @@
 
 package org.wso2.andes.kernel.distrupter;
 
+import com.google.common.util.concurrent.SettableFuture;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.IgnoreExceptionHandler;
-import com.lmax.disruptor.MultiThreadedClaimStrategy;
-import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.SequenceBarrier;
+import com.lmax.disruptor.*;
 import com.lmax.disruptor.dsl.Disruptor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.AndesAckData;
-import org.wso2.andes.kernel.AndesChannel;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessage;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesRemovableMetadata;
-import org.wso2.andes.kernel.InboundEventManager;
-import org.wso2.andes.kernel.LocalSubscription;
-import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -269,22 +259,39 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
      * @inheritDoc
      */
     @Override
-    public void openLocalSubscription(LocalSubscription localSubscription) {
-        publishToRingBuffer(InboundEvent.Type.OPEN_SUBSCRIPTION_EVENT, localSubscription,
+    public void openLocalSubscription(LocalSubscription localSubscription) throws SubscriptionAlreadyExistingException {
+        InboundEvent event = publishToRingBuffer(InboundEvent.Type.OPEN_SUBSCRIPTION_EVENT,
+                localSubscription,
                 "Open new subscription event published to disruptor.");
+       SettableFuture<String> future =  event.getFuture();
+        try {
+            String result = future.get();
+        } catch (InterruptedException ignored) {
+            //Silently ignore
+        } catch (ExecutionException e) {
+            throw new SubscriptionAlreadyExistingException("Subscription already added.");
+
+        }
+
+
     }
 
     /**
      * Publish the event to ring buffer
-     * @param eventType Event type (e.g: MESSAGE_EVENT, ACKNOWLEDGEMENT_EVENT
-     * @param data data related to the event
+     *
+     * @param eventType        Event type (e.g: MESSAGE_EVENT, ACKNOWLEDGEMENT_EVENT
+     * @param data             data related to the event
      * @param eventDescription brief description of event
      */
-    private void publishToRingBuffer(InboundEvent.Type eventType, Object data, String eventDescription) {
+    private InboundEvent publishToRingBuffer(InboundEvent.Type eventType, Object data,
+                                  String eventDescription) {
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEvent event = ringBuffer.get(sequence);
-
+        //A future is created and set to InboundEvent. When exception is occurred at the
+        // disruptor that exception will be set to this future.
+        SettableFuture<String> future = SettableFuture.create();
+        event.setFuture(future);
         event.setEventType(eventType);
         event.setData(data);
         // make the event available to EventProcessors
@@ -293,5 +300,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
         if (log.isDebugEnabled()) {
             log.debug("[ sequence: " + sequence + " ] " + eventDescription);
         }
+
+        return event;
     }
 }

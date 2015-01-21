@@ -18,6 +18,7 @@
 
 package org.wso2.andes.kernel.distrupter;
 
+import com.google.common.util.concurrent.SettableFuture;
 import com.lmax.disruptor.EventFactory;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
@@ -34,12 +35,26 @@ public class InboundEvent {
 
     private AndesChannel channel;
 
+    /**
+     * This future is used to catch exceptions occurring at the disruptor. When exception is
+     * occurred at the disruptor that exception will be set to the future.
+     */
+    private SettableFuture<String> future;
+
     public AndesChannel getChannel() {
         return channel;
     }
 
     public void setChannel(AndesChannel channel) {
         this.channel = channel;
+    }
+
+    public SettableFuture<String> getFuture() {
+        return future;
+    }
+
+    public void setFuture(SettableFuture<String> future) {
+        this.future = future;
     }
 
     /**
