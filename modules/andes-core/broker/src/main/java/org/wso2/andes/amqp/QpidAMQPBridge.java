@@ -29,10 +29,8 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.kernel.QueueBrowserDeliveryWorker;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.exchange.ExchangeType;
-import org.wso2.andes.server.exchange.TopicExchange;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.IncomingMessage;
@@ -416,25 +414,6 @@ public class QpidAMQPBridge {
             List<LocalSubscription> alreadyAddedSubscriptions = new ArrayList<LocalSubscription>();
             HashMap<ExchangeType,Binding> durableTopicBindingsHashMap = new HashMap<ExchangeType,
                     Binding>();
-            /**
-             * For durable topics, topic creation should happens first before queue creation,
-             * because if an exception occurred at topic creation queue creation should not
-             * happen at all. Therefore adding topic binding on the top of binding list.
-             */
-            if (queue.isDurable()) {
-                List<Binding> bindingListForDurableTopics = new ArrayList<Binding>();
-                for (Binding b : bindingList) {
-                    durableTopicBindingsHashMap.put(b.getExchange().getType(), b);
-                }
-                Binding topicBinding =  durableTopicBindingsHashMap.remove(TopicExchange.TYPE);
-                if (topicBinding != null) {
-                    bindingListForDurableTopics.add(topicBinding);
-                }
-                for (Map.Entry<ExchangeType, Binding> entry : durableTopicBindingsHashMap.entrySet()) {
-                    bindingListForDurableTopics.add(entry.getValue());
-                }
-                bindingList = bindingListForDurableTopics;
-            }
 
             /**
              * Iterate unique bindings of the queue and add subscription entries.
