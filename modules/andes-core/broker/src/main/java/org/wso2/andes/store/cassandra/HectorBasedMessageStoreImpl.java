@@ -18,6 +18,7 @@
 
 package org.wso2.andes.store.cassandra;
 
+import me.prettyprint.cassandra.serializers.StringSerializer;
 import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.factory.HFactory;
@@ -455,6 +456,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException {
+
         //todo: implement
         return null;
     }
@@ -464,6 +466,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException {
+
         //todo:implement
     }
 
@@ -472,27 +475,123 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public void addMessageToExpiryQueue(Long messageId, Long expirationTime,
-                                        boolean isMessageForTopic, String destination)
-            throws AndesException {
+                                        boolean isMessageForTopic, String destination) throws AndesException {
+
         //TODO implement
     }
 
     @Override
     public void deleteAllMessageMetadata(String storageQueueName) throws AndesException {
-        //TODO implement. If we decide to use hector instead of cql ,
-        // these methods must be implemented.
+
+        Mutator<String> mutator = HFactory.createMutator(keyspace, StringSerializer.get());
+
+        mutator.addDeletion(storageQueueName,CassandraConstants.META_DATA_COLUMN_FAMILY);
+
+        mutator.execute();
     }
 
     @Override
+    /**
+     * {@inheritDoc}
+     */
     public int deleteAllMessageMetadataFromDLC(String storageQueueName, String DLCQueueName) throws AndesException {
-        return 0;  //TODO implement. If we decide to use hector instead of cql ,
-        // these methods must be implemented.
+
+        int messageCountInDLC = 0;
+
+        try {
+
+            Long lastProcessedID = 0l;
+            // In case paginated data fetching is slow for some reason,
+            // this can be set to Integer.MAX..
+            // This is set to paginate so that a big data read wont cause continuous timeouts.
+            Integer pageSize = HectorDataAccessHelper.STANDARD_PAGE_SIZE;
+
+            Boolean allRecordsRetrieved = false;
+
+            Mutator<String> mutator = HFactory.createMutator(keyspace,StringSerializer.get());
+
+            while (!allRecordsRetrieved) {
+
+                List<AndesMessageMetadata> metadataList = HectorDataAccessHelper
+                        .getMessagesFromQueue(DLCQueueName,
+                                CassandraConstants.META_DATA_COLUMN_FAMILY,
+                                keyspace, lastProcessedID,
+                                Long.MAX_VALUE, pageSize, true);
+
+                if (metadataList.size() == 0) {
+                    allRecordsRetrieved = true; // this means that there are no more messages
+                    // to be retrieved for this queue
+                } else {
+                    for (AndesMessageMetadata amm : metadataList) {
+                        if (amm.getDestination().equals(storageQueueName)) {
+                            mutator.addDeletion(DLCQueueName, CassandraConstants.META_DATA_COLUMN_FAMILY, amm.getMessageID());
+                        }
+                    }
+
+                    lastProcessedID = metadataList.get(metadataList.size() - 1).getMessageID();
+
+                    if (metadataList.size() < pageSize) {
+                        // again means there are no more metadata to be retrieved
+                        allRecordsRetrieved = true;
+                    }
+                }
+
+            }
+
+            messageCountInDLC = mutator.getPendingMutationCount();
+
+            // Execute Batch Delete
+            mutator.execute();
+
+        } catch (CassandraDataAccessException e) {
+            throw new AndesException("Error while getting messages in DLC for queue : " + storageQueueName, e);
+        }
+
+        return messageCountInDLC;
     }
 
+    /**
+     * {@inheritDoc}
+     * @param storageQueueName name of the storage queue.
+     * @return List<Long> message ID list that is contained within given storage queues.
+     * @throws AndesException
+     */
     @Override
     public List<Long> getMessageIDsAddressedToQueue(String storageQueueName) throws AndesException {
-        return null;  //TODO implement. If we decide to use hector instead of cql ,
-        // these methods must be implemented.
+
+        List<Long> messageIDs = new ArrayList<Long>();
+
+        Long lastProcessedID = null;
+        // In case paginated data fetching is slow, this can be set to Integer.MAX.
+        // This is set to paginate so that a big data read wont cause continuous timeouts.
+        Integer pageSize = HectorDataAccessHelper.STANDARD_PAGE_SIZE;
+
+        Boolean allRecordsRetrieved = false;
+
+        while (!allRecordsRetrieved) {
+            try {
+                List<Long> currentPage = HectorDataAccessHelper.getNumericColumnKeysOfRow
+                        (keyspace, CassandraConstants.META_DATA_COLUMN_FAMILY, storageQueueName, pageSize, lastProcessedID);
+
+                if (currentPage.size() == 0) {
+                    // this means that there are no more messages to be retrieved for this queue
+                    allRecordsRetrieved = true;
+                } else {
+                    messageIDs.addAll(currentPage);
+                    lastProcessedID = currentPage.get(currentPage.size() - 1);
+
+                    if (currentPage.size() < pageSize) {
+                        // again means there are no more message IDs to be retrieved
+                        allRecordsRetrieved = true;
+                    }
+                }
+
+            } catch (CassandraDataAccessException e) {
+                throw new AndesException("Error while getting message IDs for queue : " + storageQueueName, e);
+            }
+        }
+
+        return messageIDs;
     }
 
     /**
