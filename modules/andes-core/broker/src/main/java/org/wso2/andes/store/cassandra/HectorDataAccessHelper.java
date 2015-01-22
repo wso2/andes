@@ -23,7 +23,6 @@ import me.prettyprint.cassandra.model.thrift.ThriftCounterColumnQuery;
 import me.prettyprint.cassandra.serializers.*;
 import me.prettyprint.cassandra.service.ThriftCfDef;
 import me.prettyprint.cassandra.service.ThriftKsDef;
-import me.prettyprint.cassandra.service.template.ColumnFamilyTemplate;
 import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.beans.*;
@@ -517,6 +516,16 @@ public class HectorDataAccessHelper {
         }
     }
 
+    /**
+     * Method used to retrieve <long> list of a column keys from a given row. (in our case, message ID)
+     * @param keyspace keyspace reference
+     * @param columnFamilyName name of the column family
+     * @param rowKey row key of which the column keys are required
+     * @param count number of column keys to fetch
+     * @param lastProcessedID last processed column key ID, so that this request can continue from that point.
+     * @return List<Long>
+     * @throws CassandraDataAccessException
+     */
     public static List<Long> getNumericColumnKeysOfRow(Keyspace keyspace, String columnFamilyName, String rowKey, int count, Long lastProcessedID) throws CassandraDataAccessException {
 
         if (keyspace == null) {
