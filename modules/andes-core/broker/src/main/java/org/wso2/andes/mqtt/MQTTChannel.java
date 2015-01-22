@@ -169,6 +169,9 @@ public class MQTTChannel {
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
                               boolean isCleanSesion, int qos, UUID subscriptionChannelID) throws MQTTException {
 
+        //First, notify on the client connection
+        Andes.getInstance().clientConnectionCreated(subscriptionChannelID);
+
         String queue_identifier = topic + mqttClientID;
         if (isCleanSesion) {
             MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
@@ -209,9 +212,6 @@ public class MQTTChannel {
             }
 
         }
-
-        //Finally will notify on the client connection
-        Andes.getInstance().clientConnectionCreated(subscriptionChannelID);
     }
 
     /**
