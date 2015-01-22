@@ -28,7 +28,6 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.stats.PerformanceCounter;
-import org.wso2.andes.kernel.AndesConstants;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -167,7 +166,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             for (AndesMessageMetadata metadata : metadataList) {
                 HectorDataAccessHelper.addMessageToQueue(
                         CassandraConstants.META_DATA_COLUMN_FAMILY,
-                        metadata.getDestination(),
+                        metadata.getStorageQueueName(),
                         metadata.getMessageID(),
                         metadata.getMetadata(), mutator, false);
             }
@@ -200,7 +199,6 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public void addMetaData(AndesMessageMetadata metadata) throws AndesException {
-        String destination = metadata.getDestination();
         try {
             Mutator<String> mutator = HFactory.createMutator(keyspace,
                     CassandraConstants.stringSerializer);
@@ -208,7 +206,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             HectorDataAccessHelper.addMessageToQueue(
                     CassandraConstants
                             .META_DATA_COLUMN_FAMILY,
-                    destination,
+                    metadata.getStorageQueueName(),
                     metadata.getMessageID(),
                     metadata.getMetadata(), mutator, true);
 
@@ -223,13 +221,6 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     @Override
     public void addMetaDataToQueue(String queueName, AndesMessageMetadata metadata)
             throws AndesException {
-        String destination;
-
-        if (queueName == null) {
-            destination = metadata.getDestination();
-        } else {
-            destination = queueName;
-        }
 
         try {
             Mutator<String> mutator = HFactory.createMutator(keyspace,
@@ -237,7 +228,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
 
             HectorDataAccessHelper.addMessageToQueue(CassandraConstants
                     .META_DATA_COLUMN_FAMILY,
-                    destination,
+                    queueName,
                     metadata.getMessageID(),
                     metadata.getMetadata(), mutator, true);
 
@@ -310,7 +301,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             for (AndesMessageMetadata metadata : metadataList) {
                 HectorDataAccessHelper.addMessageToQueue(CassandraConstants
                         .META_DATA_COLUMN_FAMILY,
-                        metadata.getDestination(),
+                        metadata.getStorageQueueName(),
                         metadata.getMessageID(),
                         metadata.getMetadata(),
                         insertMutator, false);
@@ -456,9 +447,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException {
-
         //todo: implement
-        return null;
+        return new ArrayList<AndesRemovableMetadata>();
     }
 
     /**
@@ -466,7 +456,6 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException {
-
         //todo:implement
     }
 
