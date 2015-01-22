@@ -492,24 +492,24 @@ public class SubscriptionBitMap {
         for (int i = 0; i < bitMapClustered.size() && i < destinations.length; i++) {
             Map<String, SubscriptionBitArray> map = bitMapClustered.get(i);
 
-            SubscriptionBitArray b = map.get(destinations[i]);
+            SubscriptionBitArray subscriptionBitArray = map.get(destinations[i]);
             SubscriptionBitArray b1 = map.get("other");
-            BitSet array1;
-            BitSet array2;
+            BitSet bitSetOfSubscriptionBitArray;
+            BitSet bitSetOfSubscriptionBitArrayOfOther;
 
             if (null != map.get(destinations[i]))
-                array1 = (BitSet) b.getBits().clone();
+                bitSetOfSubscriptionBitArray = (BitSet) subscriptionBitArray.getBits().clone();
             else
-                array1 = (BitSet) b1.getBits().clone();
+                bitSetOfSubscriptionBitArray = (BitSet) b1.getBits().clone();
 
-            array2 = map.get("*").getBits();
-            array1.or(array2);
-            array1.or(map.get("#").getBits());
+            bitSetOfSubscriptionBitArrayOfOther = map.get("*").getBits();
+            bitSetOfSubscriptionBitArray.or(bitSetOfSubscriptionBitArrayOfOther);
+            bitSetOfSubscriptionBitArray.or(map.get("#").getBits());
 
             if (i != 0)
-                results.and(array1);
+                results.and(bitSetOfSubscriptionBitArray);
             else
-                results = array1;
+                results = bitSetOfSubscriptionBitArray;
 
         }
 
