@@ -592,7 +592,7 @@ public class SubscriptionStore {
         Boolean allowSharedSubscribers =  AndesConfigurationManager.readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
         //We need to handle durable topic subscriptions
         boolean hasDurableSubscriptionAlreadyInPlace = false;
-        if (subscription.isBoundToTopic() && subscription.isDurable()) {
+        if (subscription.isDurable()) {
             /**
              * Check if an active durable topic subscription already in place. If so we should not accept the subscription
              */
