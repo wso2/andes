@@ -176,7 +176,7 @@ public class MQTTChannel {
         if (isCleanSesion) {
             MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
                     true, qos, subscriptionChannelID, topic, true, true);
-            //Shold indicate the record in the cluster
+            //Should indicate the record in the cluster
             try {
                 Andes.getInstance().openLocalSubscription(mqttTopicSubscriber);
                 //First will register the subscription as a queue
@@ -195,7 +195,7 @@ public class MQTTChannel {
             MQTTLocalSubscription mqttQueueSubscriber = createSubscription(channel, queue_identifier, clientID,
                     mqttClientID, false, qos, subscriptionChannelID, queue_identifier, false, true);
 
-            //Shold indicate the record in the cluster
+            //Should indicate the record in the cluster
             try {
                 //Will record the subscription as a topic
                 Andes.getInstance().openLocalSubscription(mqttTopicSubscriber);

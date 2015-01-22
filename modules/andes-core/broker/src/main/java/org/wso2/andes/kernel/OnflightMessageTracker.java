@@ -630,7 +630,7 @@ public class OnflightMessageTracker {
      */
     public void addNewChannelForTracking(UUID channelID) {
         //We would check if the method returns and object,
-        // if it does it means there was a prviouse key linked with the object
+        // if it does it means there was a previous key linked with the object
         if (null != messageSendingTracker.putIfAbsent(channelID, new ConcurrentHashMap<Long, MsgData>())) {
             log.warn("Trying to initialise tracking for channel " + channelID + " which is already initialised.");
         }
