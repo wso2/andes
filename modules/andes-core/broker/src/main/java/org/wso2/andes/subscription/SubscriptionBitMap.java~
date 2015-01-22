@@ -246,16 +246,16 @@ public class SubscriptionBitMap {
     public void addClusteredSubscription(String destination,
                                          AndesSubscription andes) {
         if(clusteredSubscriptionMapping.get(destination) == null) {
-            int number;
+            int columnIndexOfTheSubscriptionInBitMap;
             if(deletedClusters.size() > 0) {
-                number = deletedClusters.remove(0);
+                columnIndexOfTheSubscriptionInBitMap = deletedClusters.remove(0);
             }
             else {
-                number = clusteredSubscriptionCount;
+                columnIndexOfTheSubscriptionInBitMap = clusteredSubscriptionCount;
                 clusteredSubscriptionCount++;
             }
-            clusteredSubscriptionMapping.put(destination, number);
-            clusteredSubscriptions.put(number,new HashMap<String, AndesSubscription>());
+            clusteredSubscriptionMapping.put(destination, columnIndexOfTheSubscriptionInBitMap);
+            clusteredSubscriptions.put(columnIndexOfTheSubscriptionInBitMap,new HashMap<String, AndesSubscription>());
 
 
             String[] destinations = destination.split("\\.");
@@ -274,7 +274,7 @@ public class SubscriptionBitMap {
                     for (int deleted : deletedClusters) {
                         b1.clearBit(deleted);
                     }
-                    b1.clearBit(number);
+                    b1.clearBit(columnIndexOfTheSubscriptionInBitMap);
                     map.put(null, b1);
 
                     SubscriptionBitArray b = new SubscriptionBitArray(clusteredSubscriptionCount);
@@ -290,7 +290,7 @@ public class SubscriptionBitMap {
                 if (array == null)
                     array = new SubscriptionBitArray(clusteredSubscriptionCount);
 
-                array.setBit(number);
+                array.setBit(columnIndexOfTheSubscriptionInBitMap);
                 temp.put(destinations[i], array);
                 bitMapClustered.remove(i);
                 bitMapClustered.add(i, temp);
@@ -298,18 +298,18 @@ public class SubscriptionBitMap {
             for (int i = destinations.length; i < bitMapClustered.size(); i++) {
                 Map<String, SubscriptionBitArray> map = bitMapClustered.get(i);
                 if (destinations[destinations.length - 1].equals("#"))
-                    map.get("#").setBit(number);
-                map.get(null).setBit(number);
+                    map.get("#").setBit(columnIndexOfTheSubscriptionInBitMap);
+                map.get(null).setBit(columnIndexOfTheSubscriptionInBitMap);
             }
             if (destinations[destinations.length - 1].equals("#")) {
-                hasSpecialCharactersClustered.put(number, number);
+                hasSpecialCharactersClustered.put(columnIndexOfTheSubscriptionInBitMap, columnIndexOfTheSubscriptionInBitMap);
             }
         }
-        int number  = clusteredSubscriptionMapping.get(destination);
+        int columnIndexOfTheSubscriptionInBitMap  = clusteredSubscriptionMapping.get(destination);
 
-        Map<String, AndesSubscription> temp= clusteredSubscriptions.get(number);
+        Map<String, AndesSubscription> temp= clusteredSubscriptions.get(columnIndexOfTheSubscriptionInBitMap);
         temp.put(andes.getSubscriptionID(), andes);
-        clusteredSubscriptions.put(number, temp);
+        clusteredSubscriptions.put(columnIndexOfTheSubscriptionInBitMap, temp);
 
     }
 
