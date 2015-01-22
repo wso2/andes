@@ -845,7 +845,6 @@ public class SubscriptionStore {
                     if (currentSubscription.equals(subscription)) {
                         subscriptionToRemove = currentSubscription;
                         subscriptionBitMap.removeLocalSubscription(subscriptionToRemove.getSubscriptionID());
-                        iterator.remove();
                         break;
                     }
                 }

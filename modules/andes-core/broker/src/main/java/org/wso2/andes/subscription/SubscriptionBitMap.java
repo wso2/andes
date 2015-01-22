@@ -172,7 +172,7 @@ public class SubscriptionBitMap {
                  * 2 constituentsAdd a new table for the constituent part 3
                  */
                 if (bitMapLocal.size() <= i) {
-                    HashMap<String, SubscriptionBitArray> map = new HashMap<String, SubscriptionBitArray>();
+                    Map<String, SubscriptionBitArray> map = Collections.synchronizedMap(new HashMap<String, SubscriptionBitArray>());
                     map.put("other", new SubscriptionBitArray(localSubscriptionCount));
                     map.put("*", new SubscriptionBitArray(localSubscriptionCount));
                     SubscriptionBitArray b1 = new SubscriptionBitArray(localSubscriptionCount);
@@ -264,7 +264,7 @@ public class SubscriptionBitMap {
 
             for (int i = 0; i < destinations.length; i++) {
                 if (bitMapClustered.size() <= i) {
-                    HashMap<String, SubscriptionBitArray> map = new HashMap<String, SubscriptionBitArray>();
+                    Map<String, SubscriptionBitArray> map = Collections.synchronizedMap(new HashMap<String, SubscriptionBitArray>());
                     map.put("other", new SubscriptionBitArray(clusteredSubscriptionCount));
                     map.put("*", new SubscriptionBitArray(clusteredSubscriptionCount));
                     SubscriptionBitArray b1 = new SubscriptionBitArray(clusteredSubscriptionCount);
