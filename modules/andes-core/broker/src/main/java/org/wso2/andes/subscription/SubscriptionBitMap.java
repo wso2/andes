@@ -126,7 +126,7 @@ public class SubscriptionBitMap {
      * @param local LocalSubscription to be added
      */
     public void addLocalSubscription(String destination, LocalSubscription local) {
-        int number;
+        int columnIndexOfTheSubscriptionInBitMap;
 
         /**
          * If there is no any previous subscriptions with the specified routing key
@@ -137,13 +137,13 @@ public class SubscriptionBitMap {
              * from there
              */
             if(deletedLocals.size() > 0) {
-                number = deletedLocals.remove(0);
+                columnIndexOfTheSubscriptionInBitMap = deletedLocals.remove(0);
             }
             else {
                 /**
                  * else get the index from the localSubscriptionCount variable
                  */
-                number = localSubscriptionCount;
+                columnIndexOfTheSubscriptionInBitMap = localSubscriptionCount;
                 localSubscriptionCount++;
             }
 
@@ -151,11 +151,11 @@ public class SubscriptionBitMap {
              * Put the routing key and index
              * Mapping from the routing key to index
              */
-            localSubscriptionMapping.put(destination, number);
+            localSubscriptionMapping.put(destination, columnIndexOfTheSubscriptionInBitMap);
             /**
              * create the entry at the index position
              */
-            localSubscriptions.put(number,new HashMap<String, LocalSubscription>());
+            localSubscriptions.put(columnIndexOfTheSubscriptionInBitMap,new HashMap<String, LocalSubscription>());
 
             /**
              * Divide the routing key into constituent parts
@@ -180,7 +180,7 @@ public class SubscriptionBitMap {
                     b1.changeBitArray(bit);
 
                     for (int deleted : deletedLocals) b1.clearBit(deleted);
-                    b1.clearBit(number);
+                    b1.clearBit(columnIndexOfTheSubscriptionInBitMap);
                     map.put(null, b1);
                     SubscriptionBitArray b = new SubscriptionBitArray(localSubscriptionCount);
                     for (Integer j : hasSpecialCharactersLocal.keySet()) {
@@ -199,7 +199,7 @@ public class SubscriptionBitMap {
                 if (array == null)
                     array = new SubscriptionBitArray(localSubscriptionCount);
 
-                array.setBit(number);
+                array.setBit(columnIndexOfTheSubscriptionInBitMap);
 
                 temp.put(destinations[i], array);
                 bitMapLocal.remove(i);
@@ -214,25 +214,25 @@ public class SubscriptionBitMap {
             for (int i = destinations.length; i < bitMapLocal.size(); i++) {
                 Map<String, SubscriptionBitArray> map = bitMapLocal.get(i);
                 if (destinations[destinations.length - 1].equals("#"))
-                    map.get("#").setBit(number);
-                map.get(null).setBit(number);
+                    map.get("#").setBit(columnIndexOfTheSubscriptionInBitMap);
+                map.get(null).setBit(columnIndexOfTheSubscriptionInBitMap);
             }
             /**
              * Add the index to the arraylist which keeps track of the subscriptions which has "#" value
              */
             if (destinations[destinations.length - 1].equals("#")) {
-                hasSpecialCharactersLocal.put(number, number);
+                hasSpecialCharactersLocal.put(columnIndexOfTheSubscriptionInBitMap, columnIndexOfTheSubscriptionInBitMap);
             }
         }
 
         /**
          * Put the local subscription into the arraylist
          */
-        number  = localSubscriptionMapping.get(destination);
+        columnIndexOfTheSubscriptionInBitMap  = localSubscriptionMapping.get(destination);
 
-        Map<String, LocalSubscription> temp= localSubscriptions.get(number);
+        Map<String, LocalSubscription> temp= localSubscriptions.get(columnIndexOfTheSubscriptionInBitMap);
         temp.put(local.getSubscriptionID(), local);
-        localSubscriptions.put(number, temp);
+        localSubscriptions.put(columnIndexOfTheSubscriptionInBitMap, temp);
     }
 
     /**
@@ -246,16 +246,16 @@ public class SubscriptionBitMap {
     public void addClusteredSubscription(String destination,
                                          AndesSubscription andes) {
         if(clusteredSubscriptionMapping.get(destination) == null) {
-            int number;
+            int columnIndexOfTheSubscriptionInBitMap;
             if(deletedClusters.size() > 0) {
-                number = deletedClusters.remove(0);
+                columnIndexOfTheSubscriptionInBitMap = deletedClusters.remove(0);
             }
             else {
-                number = clusteredSubscriptionCount;
+                columnIndexOfTheSubscriptionInBitMap = clusteredSubscriptionCount;
                 clusteredSubscriptionCount++;
             }
-            clusteredSubscriptionMapping.put(destination, number);
-            clusteredSubscriptions.put(number,new HashMap<String, AndesSubscription>());
+            clusteredSubscriptionMapping.put(destination, columnIndexOfTheSubscriptionInBitMap);
+            clusteredSubscriptions.put(columnIndexOfTheSubscriptionInBitMap,new HashMap<String, AndesSubscription>());
 
 
             String[] destinations = destination.split("\\.");
@@ -274,7 +274,7 @@ public class SubscriptionBitMap {
                     for (int deleted : deletedClusters) {
                         b1.clearBit(deleted);
                     }
-                    b1.clearBit(number);
+                    b1.clearBit(columnIndexOfTheSubscriptionInBitMap);
                     map.put(null, b1);
 
                     SubscriptionBitArray b = new SubscriptionBitArray(clusteredSubscriptionCount);
@@ -290,7 +290,7 @@ public class SubscriptionBitMap {
                 if (array == null)
                     array = new SubscriptionBitArray(clusteredSubscriptionCount);
 
-                array.setBit(number);
+                array.setBit(columnIndexOfTheSubscriptionInBitMap);
                 temp.put(destinations[i], array);
                 bitMapClustered.remove(i);
                 bitMapClustered.add(i, temp);
@@ -298,18 +298,18 @@ public class SubscriptionBitMap {
             for (int i = destinations.length; i < bitMapClustered.size(); i++) {
                 Map<String, SubscriptionBitArray> map = bitMapClustered.get(i);
                 if (destinations[destinations.length - 1].equals("#"))
-                    map.get("#").setBit(number);
-                map.get(null).setBit(number);
+                    map.get("#").setBit(columnIndexOfTheSubscriptionInBitMap);
+                map.get(null).setBit(columnIndexOfTheSubscriptionInBitMap);
             }
             if (destinations[destinations.length - 1].equals("#")) {
-                hasSpecialCharactersClustered.put(number, number);
+                hasSpecialCharactersClustered.put(columnIndexOfTheSubscriptionInBitMap, columnIndexOfTheSubscriptionInBitMap);
             }
         }
-        int number  = clusteredSubscriptionMapping.get(destination);
+        int columnIndexOfTheSubscriptionInBitMap  = clusteredSubscriptionMapping.get(destination);
 
-        Map<String, AndesSubscription> temp= clusteredSubscriptions.get(number);
+        Map<String, AndesSubscription> temp= clusteredSubscriptions.get(columnIndexOfTheSubscriptionInBitMap);
         temp.put(andes.getSubscriptionID(), andes);
-        clusteredSubscriptions.put(number, temp);
+        clusteredSubscriptions.put(columnIndexOfTheSubscriptionInBitMap, temp);
 
     }
 
