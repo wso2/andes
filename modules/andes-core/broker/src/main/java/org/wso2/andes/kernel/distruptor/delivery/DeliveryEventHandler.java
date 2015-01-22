@@ -80,12 +80,14 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
             try {
                 //decrement number of schedule deliveries before send to subscriber to avoid parallel status update issues
                 OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message.getMessageID());
+
                 if (deliveryEventData.isErrorOccurred()) {
                     handleSendError(message);
                     return;
                 }
+
                 if (subscription.isActive()) {
-                    subscription.sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
+                    sendToLocalSubscription(deliveryEventData, subscription, message);
                 } else {
                     MessageFlusher.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
                 }
@@ -97,6 +99,30 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
             } finally {
                 deliveryEventData.clearData();
             }
+        }
+    }
+
+    /**
+     * Send message to local subscription and update tracker.
+     *
+     * @param deliveryEventData
+     *         Current delivery event data
+     * @param subscription
+     *         Local subscription
+     * @param message
+     *         Message to send
+     * @throws AndesException
+     */
+    private void sendToLocalSubscription(DeliveryEventData deliveryEventData,
+                                         LocalSubscription subscription,
+                                         AndesMessageMetadata message) throws AndesException {
+        OnflightMessageTracker.getInstance().incrementNonAckedMessageCount(subscription.getChannelID());
+
+        try {
+            subscription.sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
+        } catch (AndesException e) {
+            OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(subscription.getChannelID());
+            throw e;
         }
     }
 
