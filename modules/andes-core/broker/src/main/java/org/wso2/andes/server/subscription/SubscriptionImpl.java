@@ -267,43 +267,23 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                     entry.setRedelivered();
                 }
 
-                if (messageTracker.evaluateDeliveryRules(messageID, getChannel().getId())) {
-
-                    //no point of trying to deliver if channel is closed ReQueue the message to
-                    // be resent
-                    // when channel is available
-                    if (getChannel().isClosing()) {
-                        AndesMessageMetadata message = AMQPUtils.convertAMQMessageToAndesMetadata(
-                                (AMQMessage) entry.getMessage(), getChannel().getId());
-                        MessagingEngine.getInstance().messageRejected(message);
-                        return;
-                    }
-
-                    if (log.isDebugEnabled()) {
-                        log.debug("sent message : " + messageID + " JMSMessageId " +
-                                ": " + entry.getMessageHeader().getMessageId() + " channel=" +
-                                getChannel()
-                                .getChannelId());
-
-                    }
-
-                    sendToClient(entry, deliveryTag);
-                } else {
-                    /**
-                     * message tracker rejected this message from sending. Hence moving
-                     * to dead letter channel
-                     */
-                    long messageId = entry.getMessage().getMessageNumber();
-                    String destinationQueue = ((AMQMessage) entry.getMessage())
-                            .getMessageMetaData()
-                            .getMessagePublishInfo()
-                            .getRoutingKey().toString();
-
-                    //move message to DLC
-                    //todo: hasitha - for topics this should not happen
-                    MessagingEngine.getInstance().moveMessageToDeadLetterChannel(messageId,
-                            destinationQueue);
+                //no point of trying to deliver if channel is closed ReQueue the message to
+                // be resent
+                // when channel is available
+                if (getChannel().isClosing()) {
+                    AndesMessageMetadata message = AMQPUtils
+                            .convertAMQMessageToAndesMetadata((AMQMessage) entry.getMessage(), getChannel().getId());
+                    MessagingEngine.getInstance().messageRejected(message);
+                    return;
                 }
+
+                if (log.isDebugEnabled()) {
+                    log.debug("sent message : " + messageID + " JMSMessageId " + ": " +
+                              entry.getMessageHeader().getMessageId() + " channel=" + getChannel().getChannelId());
+
+                }
+
+                sendToClient(entry, deliveryTag);
 
             } catch (Exception e) {
 
@@ -527,8 +507,11 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
 
         if (_noLocal)
         {
+         /* This noLocal case is handled in the upper layer (AMQPLocalSubscription)
+            Commented below code for future references
+         */
 
-            AMQMessage message = (AMQMessage) entry.getMessage();
+   /*         AMQMessage message = (AMQMessage) entry.getMessage();
 
             //todo - client id should be recorded so we don't have to handle
             // the case where this is null.
@@ -541,7 +524,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
             {
                 return false;
             }
-
+*/
 
         }
 
@@ -851,5 +834,10 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
     public long getCreateTime()
     {
         return _createTime;
+    }
+
+    @Override
+    public boolean isNoLocal() {
+        return _noLocal;
     }
 }

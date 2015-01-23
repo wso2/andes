@@ -335,7 +335,7 @@ public class Andes {
      * @return id generated
      */
     public long generateNewMessageId() {
-        return MessagingEngine.getInstance().generateNewMessageId();
+        return MessagingEngine.getInstance().generateUniqueId();
     }
 
     /**

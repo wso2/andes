@@ -815,6 +815,10 @@ public class Subscription_0_10 implements Subscription, FlowCreditManager.FlowCr
         return _session;
     }
 
+    @Override
+    public boolean isNoLocal() {
+        return _noLocal;
+    }
 
     public SessionConfig getSessionConfig()
     {
