@@ -722,7 +722,7 @@ public class SubscriptionStore {
         Boolean allowSharedSubscribers =  AndesConfigurationManager.readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
         //We need to handle durable topic subscriptions
         boolean hasDurableSubscriptionAlreadyInPlace = false;
-        if (subscription.isBoundToTopic() && subscription.isDurable()) {
+        if (subscription.isDurable()) {
             Collection<Map<String, AndesSubscription>> clusterTopicSubscriptionMap = subscriptionBitMap.getClusteredSubscriptions();
 
             Iterator<Map<String,AndesSubscription>> iterator = clusterTopicSubscriptionMap.iterator();
