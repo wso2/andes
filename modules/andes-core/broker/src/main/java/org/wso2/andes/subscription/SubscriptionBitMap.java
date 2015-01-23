@@ -26,7 +26,6 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * This class represents the bitmap mapping from scenario (routing key) to subscription
  *
- * @author WSO2
  *
  */
 public class SubscriptionBitMap {
@@ -175,14 +174,14 @@ public class SubscriptionBitMap {
                     Map<String, SubscriptionBitArray> map = Collections.synchronizedMap(new HashMap<String, SubscriptionBitArray>());
                     map.put("other", new SubscriptionBitArray(localSubscriptionCount));
                     map.put("*", new SubscriptionBitArray(localSubscriptionCount));
-                    SubscriptionBitArray b1 = new SubscriptionBitArray(localSubscriptionCount);
-                    BitSet bit = b1.getBits();
+                    SubscriptionBitArray subscriptionBitArray = new SubscriptionBitArray(localSubscriptionCount);
+                    BitSet bit = subscriptionBitArray.getBits();
                     bit.set(0, localSubscriptionCount);
-                    b1.changeBitArray(bit);
+                    subscriptionBitArray.changeBitArray(bit);
 
-                    for (int deleted : deletedLocals) b1.clearBit(deleted);
-                    b1.clearBit(columnIndexOfTheSubscriptionInBitMap);
-                    map.put(null, b1);
+                    for (int deleted : deletedLocals) subscriptionBitArray.clearBit(deleted);
+                    subscriptionBitArray.clearBit(columnIndexOfTheSubscriptionInBitMap);
+                    map.put(null, subscriptionBitArray);
                     SubscriptionBitArray b = new SubscriptionBitArray(localSubscriptionCount);
                     for (Integer j : hasSpecialCharactersLocal.keySet()) {
                         b.setBit(j);

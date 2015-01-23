@@ -25,7 +25,6 @@ import java.util.BitSet;
  * Represents the bit array which contain details of the mapping of criteria to
  * subscription
  *
- * @author WSO2
  *
  */
 public class SubscriptionBitArray {
