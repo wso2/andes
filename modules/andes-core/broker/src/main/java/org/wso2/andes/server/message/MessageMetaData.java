@@ -45,6 +45,11 @@ public class MessageMetaData implements StorableMessageMetaData
     private String _clientIP = "";
 
     private long _arrivalTime;
+
+    /**
+     * Unique publisher's session id to validate whether subscriber and publisher has the same session
+     */
+    private long publisherSessionID;
     private static final byte MANDATORY_FLAG = 1;
     private static final byte IMMEDIATE_FLAG = 2;
     public static final MessageMetaDataType.Factory<MessageMetaData> FACTORY = new MetaDataFactory();
@@ -60,6 +65,36 @@ public class MessageMetaData implements StorableMessageMetaData
         _messagePublishInfo = publishBody;
         _contentChunkCount = contentChunkCount;
         _arrivalTime = arrivalTime;
+    }
+
+    /**
+     * This constructor is used to set session id into message meta data
+     *
+     * @param publishBody       Message publish information
+     * @param contentHeaderBody Message content header body
+     * @param sessionID         publisher's SessionId
+     * @param contentChunkCount content chunk count
+     */
+    public MessageMetaData(MessagePublishInfo publishBody, ContentHeaderBody contentHeaderBody, long sessionID,
+                           int contentChunkCount) {
+        this(publishBody, contentHeaderBody, sessionID, contentChunkCount, System.currentTimeMillis());
+    }
+
+    public MessageMetaData(MessagePublishInfo publishBody, ContentHeaderBody contentHeaderBody, long sessionID,
+                           int contentChunkCount, long arrivalTime) {
+        _contentHeaderBody = contentHeaderBody;
+        _messagePublishInfo = publishBody;
+        _contentChunkCount = contentChunkCount;
+        _arrivalTime = arrivalTime;
+        publisherSessionID = sessionID;
+    }
+
+    public long getPublisherSessionID() {
+        return publisherSessionID;
+    }
+
+    public void setPublisherSessionID(long publisherSessionID) {
+        this.publisherSessionID = publisherSessionID;
     }
 
     public int getContentChunkCount()
@@ -114,6 +149,7 @@ public class MessageMetaData implements StorableMessageMetaData
         size += EncodingUtils.encodedShortStringLength(_messagePublishInfo.getExchange());
         size += EncodingUtils.encodedShortStringLength(_messagePublishInfo.getRoutingKey());
         size += 1; // flags for immediate/mandatory
+        size += EncodingUtils.encodedLongLength(); // for sessionID
         size += EncodingUtils.encodedLongLength();
 
         return size;
@@ -138,7 +174,8 @@ public class MessageMetaData implements StorableMessageMetaData
             flags |= IMMEDIATE_FLAG;
         }
         EncodingUtils.writeByte(minaSrc, flags);
-        EncodingUtils.writeLong(minaSrc,_arrivalTime);
+        EncodingUtils.writeLong(minaSrc, publisherSessionID);
+        EncodingUtils.writeLong(minaSrc, _arrivalTime);
         src.position(minaSrc.position());
         src.flip();
         src.position(offset);
@@ -187,6 +224,7 @@ public class MessageMetaData implements StorableMessageMetaData
                 final AMQShortString routingKey = EncodingUtils.readAMQShortString(minaSrc);
 
                 final byte flags = EncodingUtils.readByte(minaSrc);
+                long sessionID = EncodingUtils.readLong(minaSrc);
                 long arrivalTime = EncodingUtils.readLong(minaSrc);
 
                 MessagePublishInfo publishBody =
@@ -222,7 +260,7 @@ public class MessageMetaData implements StorableMessageMetaData
                                 return routingKey;
                             }
                         };
-                return new MessageMetaData(publishBody, chb, 0, arrivalTime);
+                return new MessageMetaData(publishBody, chb, sessionID, 0, arrivalTime);
             }
             catch (AMQException e)
             {

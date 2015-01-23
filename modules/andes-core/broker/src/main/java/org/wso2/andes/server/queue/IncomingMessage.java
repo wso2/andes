@@ -44,6 +44,10 @@ public class IncomingMessage implements Filterable, InboundMessage, EnqueableMes
     private final MessagePublishInfo _messagePublishInfo;
     private ContentHeaderBody _contentHeaderBody;
 
+    /**
+     * Publisher's session id to validate whether subscriber and publisher has the same session
+     */
+    private long publisherSessionID;
 
     /**
      * Keeps a track of how many bytes we have received in body frames
@@ -116,6 +120,14 @@ public class IncomingMessage implements Filterable, InboundMessage, EnqueableMes
                 }
             }
 
+    }
+
+    public long getPublisherSessionID() {
+        return publisherSessionID;
+    }
+
+    public void setPublisherSessionID(long uniquePublisherSessionID) {
+        this.publisherSessionID = uniquePublisherSessionID;
     }
 
     public void setArrivalTime() {

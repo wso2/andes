@@ -157,7 +157,7 @@ public class MQTTUtils {
      */
     public static String generateTopicSpecficClientID() {
         final String mqttSubscriptionID = "MQTTAndesSubscriber:";
-        return mqttSubscriptionID + String.valueOf(MessagingEngine.getInstance().generateNewMessageId());
+        return mqttSubscriptionID + String.valueOf(MessagingEngine.getInstance().generateUniqueId());
     }
 
     /**

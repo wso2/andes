@@ -291,4 +291,9 @@ public class SubscriptionTestHelper implements Subscription
     {
         return false;
     }
+
+    @Override
+    public boolean isNoLocal() {
+        return false;
+    }
 }

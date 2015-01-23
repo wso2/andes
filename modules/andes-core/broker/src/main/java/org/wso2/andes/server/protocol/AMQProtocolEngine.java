@@ -26,6 +26,7 @@ import org.wso2.andes.codec.AMQCodecFactory;
 import org.wso2.andes.codec.AMQDecoder;
 import org.wso2.andes.common.ClientProperties;
 import org.wso2.andes.framing.*;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.pool.Job;
 import org.wso2.andes.pool.ReferenceCountingExecutorService;
 import org.wso2.andes.protocol.AMQConstant;
@@ -133,8 +134,8 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
     private MethodDispatcher _dispatcher;
     private ProtocolSessionIdentifier _sessionIdentifier;
 
-    // Create a simple ID that increments for ever new Session
-    private final long _sessionID = idGenerator.getAndIncrement();
+    // Create a unique id, used to validate different sessions were used by publisher and subscriber
+    private final long _sessionID = MessagingEngine.getInstance().generateUniqueId();
 
     private AMQPConnectionActor _actor;
     private LogSubject _logSubject;

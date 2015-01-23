@@ -39,6 +39,7 @@ public class AMQPMetaDataHandler implements MetaDataHandler {
         int contentChunkCount = ((MessageMetaData) originalMeataData)
                 .getContentChunkCount();
         long arrivalTime = ((MessageMetaData) originalMeataData).getArrivalTime();
+        long sessionID =((MessageMetaData) originalMeataData).getPublisherSessionID();
 
         // modify routing key to the binding name
         MessagePublishInfo messagePublishInfo = new CustomMessagePublishInfo(
@@ -46,8 +47,7 @@ public class AMQPMetaDataHandler implements MetaDataHandler {
         messagePublishInfo.setRoutingKey(new AMQShortString(routingKey));
         messagePublishInfo.setExchange(new AMQShortString(exchange));
         MessageMetaData modifiedMetaData = new MessageMetaData(
-                messagePublishInfo, contentHeaderBody, contentChunkCount,
-                arrivalTime);
+                messagePublishInfo, contentHeaderBody, sessionID, contentChunkCount, arrivalTime);
 
         final int bodySize = 1 + modifiedMetaData.getStorableSize();
         byte[] underlying = new byte[bodySize];

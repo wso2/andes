@@ -27,10 +27,18 @@ import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.DeliveryRule;
+import org.wso2.andes.kernel.NoLocalRule;
+import org.wso2.andes.kernel.MessageExpiredRule;
+import org.wso2.andes.kernel.MaximumNumOfDeliveryRule;
+import org.wso2.andes.kernel.HasInterestRule;
+import org.wso2.andes.kernel.MessagePurgeRule;
+import org.wso2.andes.kernel.OnflightMessageTracker;
+import org.wso2.andes.kernel.MessageStatus;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
-import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
@@ -39,6 +47,8 @@ import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -60,6 +70,12 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
     //AMQP transport channel subscriber is dealing with
     AMQChannel channel = null;
 
+    private boolean isBoundToTopic;
+    private boolean isDurable;
+
+    private OnflightMessageTracker onflightMessageTracker;
+    private List<DeliveryRule> deliveryRulesList = new ArrayList<DeliveryRule>();
+
     public AMQPLocalSubscription(AMQQueue amqQueue, Subscription amqpSubscription, String subscriptionID, String destination,
                                  boolean isBoundToTopic, boolean isExclusive, boolean isDurable,
                                  String subscribedNode, long subscribeTime, String targetQueue, String targetQueueOwner,
@@ -71,10 +87,31 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
 
         this.amqQueue = amqQueue;
         this.amqpSubscription = amqpSubscription;
+        this.isBoundToTopic = isBoundToTopic;
+        this.isDurable = isDurable;
+        onflightMessageTracker = OnflightMessageTracker.getInstance();
 
         if (amqpSubscription != null && amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
             channel = ((SubscriptionImpl.AckSubscription) amqpSubscription).getChannel();
+            initializeDeliveryRules();
         }
+    }
+
+    /**
+     * Initializing Delivery Rules
+     */
+    private void initializeDeliveryRules() {
+
+        //checking counting delivery rule
+        deliveryRulesList.add(new MaximumNumOfDeliveryRule(channel));
+        //checking message expiration deliver rule
+        deliveryRulesList.add(new MessageExpiredRule());
+        //checking message purged delivery rule
+        deliveryRulesList.add(new MessagePurgeRule());
+        //checking has interest delivery rule
+        deliveryRulesList.add(new HasInterestRule(amqpSubscription));
+        //checking no local delivery rule
+        deliveryRulesList.add(new NoLocalRule(amqpSubscription, channel));
     }
 
     public boolean isActive() {
@@ -108,7 +145,50 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
         if (isRedelivery) {
             messageToSend.setRedelivered();
         }
-        sendQueueEntryToSubscriber(messageToSend);
+
+        if (evaluateDeliveryRules(messageToSend)) {
+            int numOfDeliveriesOfCurrentMsg =
+                    onflightMessageTracker.getNumOfMsgDeliveries4Channel(message.getMessageId(), channel.getId());
+
+            onflightMessageTracker.setMessageStatus(MessageStatus.DELIVERY_OK, message.getMessageId());
+            if (numOfDeliveriesOfCurrentMsg == 1) {
+                onflightMessageTracker.setMessageStatus(MessageStatus.SENT, message.getMessageId());
+            } else if (numOfDeliveriesOfCurrentMsg > 1) {
+                onflightMessageTracker.setMessageStatus(MessageStatus.RESENT, message.getMessageId());
+            }
+            sendQueueEntryToSubscriber(messageToSend);
+        } else {
+            //Set message status to reject
+            onflightMessageTracker.setMessageStatus(MessageStatus.DELIVERY_REJECT, message.getMessageId());
+            /**
+             * Message tracker rejected this message from sending. Hence moving
+             * to dead letter channel
+             */
+            String destinationQueue = message.getMessageMetaData().getMessagePublishInfo().getRoutingKey().toString();
+            // Move message to DLC
+            // All the Queues and Durable Topics related messages are adding to DLC
+            if (!isBoundToTopic || isDurable)
+                MessagingEngine.getInstance().moveMessageToDeadLetterChannel(message.getMessageId(), destinationQueue);
+        }
+    }
+
+    /**
+     * Evaluating Delivery rules before sending the messages
+     *
+     * @param message AMQ Message
+     * @return IsOKToDelivery
+     * @throws AndesException
+     */
+    private boolean evaluateDeliveryRules(QueueEntry message) throws AndesException {
+        boolean isOKToDelivery = true;
+
+        for (DeliveryRule element : deliveryRulesList) {
+            if (!element.evaluate(message)) {
+                isOKToDelivery = false;
+                break;
+            }
+        }
+        return isOKToDelivery;
     }
 
     /**
@@ -149,12 +229,10 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
         }
 
         try {
-            AMQProtocolSession session = channel.getProtocolSession();
-            ((AMQMessage) queueEntry.getMessage()).setClientIdentifier(session);
             
             // TODO: We might have to carefully implement this in every new subscription type we implement
             // shall we move this up to LocalSubscription level?
-            OnflightMessageTracker.getInstance().incrementNonAckedMessageCount(channel.getId());
+            onflightMessageTracker.incrementNonAckedMessageCount(channel.getId());
 
             if (amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
                 //this check is needed to detect if subscription has suddenly closed

@@ -185,7 +185,7 @@ public class QpidDeprecatedMessageStore implements MessageStore {
     @Override
     public <T extends StorableMessageMetaData> StoredMessage<T> addMessage(T metaData) {
         try {
-            long mid = MessagingEngine.getInstance().generateNewMessageId();
+            long mid = MessagingEngine.getInstance().generateUniqueId();
             if (log.isDebugEnabled()) {
                 log.debug("MessageID generated:" + mid);
             }
