@@ -37,11 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SubscriptionStore {
     private static final String TOPIC_PREFIX = "topic.";
-
-
     private static final String QUEUE_PREFIX = "queue.";
-
-
     private static Log log = LogFactory.getLog(SubscriptionStore.class);
 
     //<routing key, List of local subscriptions>
