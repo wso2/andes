@@ -49,6 +49,7 @@ public class SubscriptionBitMap {
      * Mapping from the routing key to the integer
      *
      * Map<routing key, index>
+     * Example : Subscriptions WSO2, WSO2.*, WSO2.MB
      */
     private Map<String, Integer> localSubscriptionMapping;
     private Map<String, Integer> clusteredSubscriptionMapping;
