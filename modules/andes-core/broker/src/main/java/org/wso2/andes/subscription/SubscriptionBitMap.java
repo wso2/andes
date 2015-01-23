@@ -50,6 +50,12 @@ public class SubscriptionBitMap {
      *
      * Map<routing key, index>
      * Example : Subscriptions WSO2, WSO2.*, WSO2.MB
+     * The index of the Subscriptions will be 0,1,and 2
+     *
+     * The Mapping is as follows
+     *  WSO2 --------> 0
+     *  WSO2.* -------> 1
+     *  WSO2.MB -------> 2
      */
     private Map<String, Integer> localSubscriptionMapping;
     private Map<String, Integer> clusteredSubscriptionMapping;
