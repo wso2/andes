@@ -24,9 +24,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 
 /**
- * This class represents the bitmap mapping from scenario (routing key) to subscription
- *
- *
+ * This class is responsible for adding of the subscriptions into the bitmap, matching and the removal
+ * of subscriptions from bitmap
  */
 public class SubscriptionBitMap {
     /**

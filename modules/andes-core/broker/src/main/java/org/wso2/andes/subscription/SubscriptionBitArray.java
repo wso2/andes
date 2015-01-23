@@ -35,29 +35,12 @@ public class SubscriptionBitArray {
     private BitSet bitList;
 
     /**
-     * Constructs the Bit Array with no elements
-     */
-    public SubscriptionBitArray() {
-        bitList = new BitSet();
-    }
-
-    /**
      * Initialize the BitSet with the pre-specified length
      *
-     * @param nbits
+     * @param nbits number of bits the bitset should have
      */
     public SubscriptionBitArray(int nbits) {
         bitList = new BitSet(nbits);
-    }
-
-    /**
-     * Initializes the BitArray with the pre-specified BitSet
-     *
-     * @param bitList
-     *            pre-specified BitSet
-     */
-    public SubscriptionBitArray(BitSet bitList) {
-        this.bitList = bitList;
     }
 
     /**
@@ -83,7 +66,8 @@ public class SubscriptionBitArray {
     /**
      * To change the bitarray
      *
-     * @param bitList
+     * @param bitList the new set of bits which the old set bits should be replaced to
+     *
      */
     public void changeBitArray(BitSet bitList) {
         this.bitList = bitList;
