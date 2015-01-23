@@ -36,6 +36,7 @@ public class SubscriptionBitMap {
      * Map <Index of the subscriber, Map<Subscription ID, LocalSubscription>
      */
     private Map<Integer, Map<String, LocalSubscription>> localSubscriptions;
+
     /**
      * Keeps track of the Andes subscriptions
      *
