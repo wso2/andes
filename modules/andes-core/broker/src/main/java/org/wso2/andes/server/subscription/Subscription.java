@@ -103,4 +103,11 @@ public interface Subscription
     public Object get(String key);
 
     boolean isSessionTransactional();
+
+    /**
+     * Used this method to get whether the subscription has Nolocal option
+     *
+     * @return isNoLocal true / false
+     */
+    public boolean isNoLocal();
 }

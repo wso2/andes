@@ -28,6 +28,7 @@ public class AndesRemovableMetadata {
     private String storageDestination;
     private String messageDestination;
     private boolean isForTopic;
+    private Long expirationTime;
 
     public AndesRemovableMetadata(long messageID, String messageDestination, String storageDestination){
         this.messageID = messageID;
@@ -65,5 +66,13 @@ public class AndesRemovableMetadata {
 
     public void setForTopic(boolean isForTopic) {
         this.isForTopic = isForTopic;
+    }
+
+    public Long getExpirationTime() {
+        return expirationTime;
+    }
+
+    public void setExpirationTime(Long expirationTime) {
+        this.expirationTime = expirationTime;
     }
 }

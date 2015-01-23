@@ -259,4 +259,9 @@ public class MockSubscription implements Subscription
     {
         return false;
     }
+
+    @Override
+    public boolean isNoLocal() {
+        return false;
+    }
 }

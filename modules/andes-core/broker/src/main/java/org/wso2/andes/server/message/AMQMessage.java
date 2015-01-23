@@ -66,8 +66,8 @@ public class AMQMessage implements ServerMessage
 
     WeakReference<AMQChannel> _channelRef;
     
-    private boolean isTopicMessage = false; 
-
+    private boolean isTopicMessage = false;
+    private long publisherSessionID;
 
     public AMQMessage(StoredMessage<MessageMetaData> handle)
     {
@@ -350,5 +350,12 @@ public class AMQMessage implements ServerMessage
     {
         return _channelRef == null ? null : ((SessionConfig) _channelRef.get());
    }
-    
+
+    public long getPublisherSessionID() {
+        return publisherSessionID;
+    }
+
+    public void setPublisherSessionID(long publisherSessionID) {
+        this.publisherSessionID = publisherSessionID;
+    }
 }

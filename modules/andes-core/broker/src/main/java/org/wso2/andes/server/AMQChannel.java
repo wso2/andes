@@ -323,7 +323,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             }
 
             _currentMessage.setContentHeaderBody(contentHeaderBody);
-
+            _currentMessage.setPublisherSessionID(_session.getSessionID());
             _currentMessage.setExpiration();
             _currentMessage.setArrivalTime();
 
@@ -1217,6 +1217,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
         message.setExpiration(incomingMessage.getExpiration());
         message.setClientIdentifier(_session);
+        message.setPublisherSessionID(_session.getSessionID());
         return message;
     }
 

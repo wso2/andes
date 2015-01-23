@@ -99,103 +99,6 @@ public class OnflightMessageTracker {
     private final ConcurrentMap<UUID, AtomicInteger> unAckedMsgCountMap = new ConcurrentHashMap<UUID, AtomicInteger>();
 
     /**
-     * Message status to keep track in which state message is
-     */
-    public enum MessageStatus {
-
-        /**
-         * Message has been read from store
-         */
-        READ,
-
-        /**
-         * Message has been buffered for delivery
-         */
-        BUFFERED,
-
-        /**
-         * Message has been sent to its routed consumer
-         */
-        SENT,
-
-        /**
-         * In a topic scenario, message has been sent to all subscribers
-         */
-        SENT_TO_ALL,
-
-        /**
-         * The consumer has acknowledged receipt of the message
-         */
-        ACKED,
-
-        /**
-         * In a topic scenario, all subscribed consumers have acknowledged receipt of message
-         */
-        ACKED_BY_ALL,
-
-
-        /**
-         * Consumer has rejected the message ad it has been buffered again for delivery (possibly to another waiting
-         * consumer)
-         */
-        REJECTED_AND_BUFFERED,
-
-
-        /**
-         * Message has been added to the final async delivery queue (deliverAsynchronously method has been called for
-         * the message.)
-         */
-        SCHEDULED_TO_SEND,
-
-        /**
-         * Message has passed all the delivery rules and is eligible to be sent.
-         */
-        DELIVERY_OK,
-
-        /**
-         * Message did not align with one or more delivery rules, and has not been sent.
-         */
-        DELIVERY_REJECT,
-
-        /**
-         * Message has been sent more than once.
-         */
-        RESENT,
-
-        /**
-         * All messages of the slot containing this message have been handled successfully, causing it to be removed
-         */
-        SLOT_REMOVED,
-
-        /**
-         * Message has expired (JMS Expiration duration sent with the message has passed)
-         */
-        EXPIRED,
-
-        /**
-         * Message is moved to the DLC queue
-         */
-        DLC_MESSAGE,
-
-        /**
-         * Message has been cleared from delivery due to a queue purge event.
-         */
-        PURGED;
-
-
-        /**
-         * Is OK to remove tracking message
-         *
-         * @return eligibility to remove
-         */
-        public static boolean isOKToRemove(List<MessageStatus> messageStatus) {
-            return (messageStatus.contains(MessageStatus.ACKED_BY_ALL) || messageStatus.contains(MessageStatus.EXPIRED)
-                    || messageStatus.contains(MessageStatus.DLC_MESSAGE));
-        }
-
-    }
-
-    /**
      * Class to keep tracking data of a message
      */
     private class MsgData {
@@ -302,7 +205,15 @@ public class OnflightMessageTracker {
         }
 
         private int getNumOfDeliveires4Channel(UUID channelID) {
-            return channelToNumOfDeliveries.get(channelID);
+         /* Since sometimes Broker tries to send stored messages when it initialised a subscription
+            so then it returns null value for that subscription's channel's amount of deliveries,
+            Since we need to the evaluate the rules before we send message, therefore we have to ignore the null value,
+            then we have to check the number of deliveries for the particular channel */
+            if (null != channelToNumOfDeliveries.get(channelID)) {
+                return channelToNumOfDeliveries.get(channelID);
+            } else {
+                return 0;
+            }
         }
 
         private boolean allAcksReceived() {
@@ -349,56 +260,48 @@ public class OnflightMessageTracker {
     }
 
     /**
-     * Any custom checks or procedures that should be executed before message delivery should
-     * happen here. Any message rejected at this stage will be sent to DLC
+     * To get number of deliveries to a particular channel for a particular message
      *
-     * @param messageId id of message metadata entry to evaluate for delivery
-     * @return eligibility deliver
+     * @param messageID MessageID id of the message
+     * @param channelID ChannelID id of the subscriber's channel
+     * @return Number of message deliveries for this particular channel
      */
-    public boolean evaluateDeliveryRules(long messageId, UUID channelID) throws AndesException {
-        boolean isOKToDeliver = true;
-        MsgData trackingData = getTrackingData(messageId);
-
-        //check if number of redelivery tries has breached.
-        int numOfDeliveriesOfCurrentMsg = trackingData.getNumOfDeliveires4Channel(channelID);
-
-        // Get last purged timestamp of the destination queue.
-        long lastPurgedTimestampOfQueue = MessageFlusher.getInstance()
-                .getMessageDeliveryInfo(trackingData.destination).getLastPurgedTimestamp();
-
-        if (numOfDeliveriesOfCurrentMsg > maximumRedeliveryTimes) {
-
-            log.warn("Number of Maximum Redelivery Tries Has Breached. Routing Message to DLC : id= " +
-                    messageId);
-            isOKToDeliver = false;
-
-        //check if destination entry has expired. Any expired message will not be delivered
-        } else if (trackingData.isExpired()) {
-
-            stampMessageAsExpired(messageId);
-            log.warn("Message is expired. Routing Message to DLC : id= " + messageId);
-            isOKToDeliver = false;
-
-        } else if (trackingData.arrivalTime <= lastPurgedTimestampOfQueue) {
-
-            log.warn("Message was sent at " + trackingData.arrivalTime + " before last purge event at "
-                    + lastPurgedTimestampOfQueue + ". Will be skipped. id= " + messageId);
-
-            trackingData.addMessageStatus(MessageStatus.PURGED);
-            isOKToDeliver = false;
-        }
-        if (isOKToDeliver) {
-            trackingData.addMessageStatus(MessageStatus.DELIVERY_OK);
-            if (numOfDeliveriesOfCurrentMsg == 1) {
-                trackingData.addMessageStatus(MessageStatus.SENT);
-            } else if (numOfDeliveriesOfCurrentMsg > 1) {
-                trackingData.addMessageStatus(MessageStatus.RESENT);
-            }
-
+    public int getNumOfMsgDeliveriesForChannel(long messageID, UUID channelID) {
+        if (null != getTrackingData(messageID)) {
+            return getTrackingData(messageID).getNumOfDeliveires4Channel(channelID);
         } else {
-            trackingData.addMessageStatus(MessageStatus.DELIVERY_REJECT);
+            return 0;
         }
-        return isOKToDeliver;
+    }
+
+    /**
+     * To get arrival time of the message
+     *
+     * @param messageID Id of the message
+     * @return Message arrival time
+     */
+    public long getMsgArrivalTime(long messageID) {
+        return getTrackingData(messageID).arrivalTime;
+    }
+
+    /**
+     * To check whether message is expired or not
+     *
+     * @param messageID Id of the message
+     * @return Msg is expired or not (boolean value)
+     */
+    public boolean isMsgExpired(long messageID) {
+        return getTrackingData(messageID).isExpired();
+    }
+
+    /**
+     * To get destination of the message
+     *
+     * @param messageID Id of the message
+     * @return Destination of the message
+     */
+    public String getMsgDestination(long messageID) {
+        return getTrackingData(messageID).destination;
     }
 
     /**
@@ -463,11 +366,11 @@ public class OnflightMessageTracker {
         //decrement delivery count
         trackingData.decrementDeliveryCount(channel);
 
-        setMessageStatus(MessageStatus.ACKED, trackingData);
+        trackingData.addMessageStatus(MessageStatus.ACKED);
 
         //we consider ack is received if all acks came for channels message was sent
         if (trackingData.allAcksReceived() && getNumberOfScheduledDeliveries(messageID) == 0) {
-            setMessageStatus(MessageStatus.ACKED_BY_ALL, trackingData);
+            trackingData.addMessageStatus(MessageStatus.ACKED_BY_ALL);
             //record how much time took between delivery and ack receive
             long timeTook = (System.currentTimeMillis() - trackingData.timestamp);
             if (log.isDebugEnabled()) {
@@ -650,10 +553,10 @@ public class OnflightMessageTracker {
      * This can be buffered, sent, rejected etc
      *
      * @param messageStatus status of the message
-     * @param msgData       message tracking object
+     * @param messageID Id of the message to set expired
      */
-    public void setMessageStatus(MessageStatus messageStatus, MsgData msgData) {
-        msgData.addMessageStatus(messageStatus);
+    public void setMessageStatus(MessageStatus messageStatus, long messageID) {
+        getTrackingData(messageID).addMessageStatus(messageStatus);
     }
 
     /**
@@ -682,7 +585,7 @@ public class OnflightMessageTracker {
      * @param messageID id of the message
      * @return tracking object for message
      */
-    public MsgData getTrackingData(long messageID) {
+    private MsgData getTrackingData(long messageID) {
         return msgId2MsgData.get(messageID);
     }
 

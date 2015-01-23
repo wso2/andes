@@ -549,7 +549,7 @@ public class MessagingEngine {
      *
      * @return id generated
      */
-    public long generateNewMessageId() {
+    public long generateUniqueId() {
         long messageId = messageIdGenerator.getNextId();
         if (log.isTraceEnabled()) {
             log.trace("MessageID generated: " + messageId);
