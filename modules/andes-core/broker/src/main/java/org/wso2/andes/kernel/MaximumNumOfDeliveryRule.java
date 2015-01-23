@@ -16,13 +16,16 @@
 * under the License.
 */
 package org.wso2.andes.kernel;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.queue.QueueEntry;
+
 import java.util.UUID;
+
 /**
  * This class represents Counting Delivery Rule
  * This class has info and methods to evaluate counting delivery rule
@@ -33,11 +36,19 @@ public class MaximumNumOfDeliveryRule implements DeliveryRule {
     /**
      * Maximum number of times a message is tried to deliver
      */
-    private Integer maximumRedeliveryTimes = AndesConfigurationManager.readValue
-            (AndesConfiguration.TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS);
+    private int maximumRedeliveryTimes = (Integer) AndesConfigurationManager
+            .readValue(AndesConfiguration.TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS);
+
+    /**
+     * Used to get message information
+     */
+    private OnflightMessageTracker onflightMessageTracker;
+
     public MaximumNumOfDeliveryRule(AMQChannel channel) {
         this.amqChannelID = channel.getId();
+        onflightMessageTracker = OnflightMessageTracker.getInstance();
     }
+
     /**
      * Evaluating the maximum number of delivery rule
      *
@@ -48,12 +59,10 @@ public class MaximumNumOfDeliveryRule implements DeliveryRule {
     public boolean evaluate(QueueEntry message) throws AndesException {
         long messageID = message.getMessage().getMessageNumber();
         //Check if number of redelivery tries has breached.
-        Integer numOfDeliveriesOfCurrentMsg =
-                OnflightMessageTracker.getInstance().getNumOfMsgDeliveries4Channel(messageID,
-                                                                                   amqChannelID);
+        Integer numOfDeliveriesOfCurrentMsg = onflightMessageTracker.getNumOfMsgDeliveriesForChannel(messageID,
+                                                                                                     amqChannelID);
         if (numOfDeliveriesOfCurrentMsg > maximumRedeliveryTimes) {
-            log.warn("Number of Maximum Redelivery Tries Has Breached. Routing Message to DLC : id= " +
-                     messageID);
+            log.warn("Number of Maximum Redelivery Tries Has Breached. Routing Message to DLC : id= " + messageID);
             return false;
         } else {
             return true;

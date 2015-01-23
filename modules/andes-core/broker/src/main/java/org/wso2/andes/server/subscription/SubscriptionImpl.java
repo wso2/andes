@@ -271,17 +271,15 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                 // be resent
                 // when channel is available
                 if (getChannel().isClosing()) {
-                    AndesMessageMetadata message = AMQPUtils.convertAMQMessageToAndesMetadata(
-                            (AMQMessage) entry.getMessage(), getChannel().getId());
+                    AndesMessageMetadata message = AMQPUtils
+                            .convertAMQMessageToAndesMetadata((AMQMessage) entry.getMessage(), getChannel().getId());
                     MessagingEngine.getInstance().messageRejected(message);
                     return;
                 }
 
                 if (log.isDebugEnabled()) {
-                    log.debug("sent message : " + messageID + " JMSMessageId " +
-                              ": " + entry.getMessageHeader().getMessageId() + " channel=" +
-                              getChannel()
-                                      .getChannelId());
+                    log.debug("sent message : " + messageID + " JMSMessageId " + ": " +
+                              entry.getMessageHeader().getMessageId() + " channel=" + getChannel().getChannelId());
 
                 }
 

@@ -28,6 +28,15 @@ public class MessagePurgeRule implements DeliveryRule {
     private static Log log = LogFactory.getLog(MessagePurgeRule.class);
 
     /**
+     * Used to get message information
+     */
+    private OnflightMessageTracker onflightMessageTracker;
+
+    public MessagePurgeRule() {
+        onflightMessageTracker = OnflightMessageTracker.getInstance();
+    }
+
+    /**
      * Evaluating the message purge delivery rule
      *
      * @return isOKToDelivery
@@ -37,9 +46,9 @@ public class MessagePurgeRule implements DeliveryRule {
     public boolean evaluate(QueueEntry message) throws AndesException {
         long messageID = message.getMessage().getMessageNumber();
         // Get last purged timestamp of the destination queue.
-        OnflightMessageTracker onflightMessageTracker = OnflightMessageTracker.getInstance();
-        long lastPurgedTimestampOfQueue = MessageFlusher.getInstance().getMessageDeliveryInfo(
-                onflightMessageTracker.getMsgDestination(messageID)).getLastPurgedTimestamp();
+        long lastPurgedTimestampOfQueue =
+                MessageFlusher.getInstance().getMessageDeliveryInfo(onflightMessageTracker.getMsgDestination(messageID))
+                              .getLastPurgedTimestamp();
         if (onflightMessageTracker.getMsgArrivalTime(messageID) <= lastPurgedTimestampOfQueue) {
             log.warn("Message was sent at " + onflightMessageTracker.getMsgArrivalTime(messageID) +
                      " before last purge event at " + lastPurgedTimestampOfQueue + ". Will be skipped. id= " +

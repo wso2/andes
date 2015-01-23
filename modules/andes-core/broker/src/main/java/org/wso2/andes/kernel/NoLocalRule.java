@@ -51,10 +51,10 @@ public class NoLocalRule implements DeliveryRule {
         AMQMessage amqMessage = (AMQMessage) message.getMessage();
         boolean isOKToDelivery;
         if (amqpSubscription.isNoLocal()) {
-/*
-When subscription's no local option is enabled we should block sending messages to the same session
-that mean we don't send messages for local subscribers
-*/
+        /*
+        When subscription's no local option is enabled we should block sending messages to the same session
+        that mean we don't send messages for local subscribers
+        */
             if (amqMessage.getMessageMetaData().getPublisherSessionID() !=
                 amqChannel.getProtocolSession().getSessionID()) {
                 isOKToDelivery = true;

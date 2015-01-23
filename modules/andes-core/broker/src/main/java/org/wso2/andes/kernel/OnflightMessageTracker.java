@@ -266,7 +266,7 @@ public class OnflightMessageTracker {
      * @param channelID ChannelID id of the subscriber's channel
      * @return Number of message deliveries for this particular channel
      */
-    public int getNumOfMsgDeliveries4Channel(long messageID, UUID channelID) {
+    public int getNumOfMsgDeliveriesForChannel(long messageID, UUID channelID) {
         if (null != getTrackingData(messageID)) {
             return getTrackingData(messageID).getNumOfDeliveires4Channel(channelID);
         } else {
@@ -277,8 +277,8 @@ public class OnflightMessageTracker {
     /**
      * To get arrival time of the message
      *
-     * @param messageID id of the message
-     * @return message arrival time
+     * @param messageID Id of the message
+     * @return Message arrival time
      */
     public long getMsgArrivalTime(long messageID) {
         return getTrackingData(messageID).arrivalTime;
@@ -287,7 +287,7 @@ public class OnflightMessageTracker {
     /**
      * To check whether message is expired or not
      *
-     * @param messageID id of the message
+     * @param messageID Id of the message
      * @return Msg is expired or not (boolean value)
      */
     public boolean isMsgExpired(long messageID) {
@@ -297,8 +297,8 @@ public class OnflightMessageTracker {
     /**
      * To get destination of the message
      *
-     * @param messageID id of the message
-     * @return destination of the message
+     * @param messageID Id of the message
+     * @return Destination of the message
      */
     public String getMsgDestination(long messageID) {
         return getTrackingData(messageID).destination;
@@ -553,7 +553,7 @@ public class OnflightMessageTracker {
      * This can be buffered, sent, rejected etc
      *
      * @param messageStatus status of the message
-     * @param messageID id of the message to set expired
+     * @param messageID Id of the message to set expired
      */
     public void setMessageStatus(MessageStatus messageStatus, long messageID) {
         getTrackingData(messageID).addMessageStatus(messageStatus);

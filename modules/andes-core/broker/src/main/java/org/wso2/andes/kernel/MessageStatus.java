@@ -16,7 +16,9 @@
 * under the License.
 */
 package org.wso2.andes.kernel;
+
 import java.util.List;
+
 /**
  * Message status to keep track in which state message is
  */
@@ -83,6 +85,7 @@ public enum MessageStatus {
      * Message has been cleared from delivery due to a queue purge event.
      */
     PURGED;
+
     /**
      * Is OK to remove tracking message
      *

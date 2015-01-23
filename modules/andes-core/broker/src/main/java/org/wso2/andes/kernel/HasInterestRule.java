@@ -28,7 +28,6 @@ import org.wso2.andes.server.subscription.Subscription;
  */
 public class HasInterestRule implements DeliveryRule {
     private static Log log = LogFactory.getLog(HasInterestRule.class);
-    // Ack Subscription
     /**
      * This Subscription used to check whether subscription is interest in the message
      */
@@ -45,9 +44,9 @@ public class HasInterestRule implements DeliveryRule {
      */
     @Override
     public boolean evaluate(QueueEntry message) {
-/*All we have to do is to find any subscription interest is to call this method.
-This hasInterest method was implemented by QPid developers to identify subscriber's interest from the protocol layer.
-It was implemented according to AMQP spec to support filters like jms selectors */
+        /*All we have to do is to find any subscription interest is to call this method.
+        This hasInterest method was implemented by QPid developers to identify subscriber's interest from the protocol layer.
+        It was implemented according to AMQP spec to support filters like jms selectors */
         if (amqpSubscription.hasInterest(message)) {
             return true;
         } else {

@@ -41,7 +41,6 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.message.AMQMessage;
-import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.subscription.Subscription;
@@ -70,10 +69,21 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
     //AMQP transport channel subscriber is dealing with
     AMQChannel channel = null;
 
+    /**
+     * Whether subscription is bound to topic or not
+     */
     private boolean isBoundToTopic;
+    /**
+     * Whether subscription is durable or not
+     */
     private boolean isDurable;
-
+    /**
+     * OnflightMessageTracker stores message information, using it to get message information
+     */
     private OnflightMessageTracker onflightMessageTracker;
+    /**
+     * List of Delivery Rules to evaluate
+     */
     private List<DeliveryRule> deliveryRulesList = new ArrayList<DeliveryRule>();
 
     public AMQPLocalSubscription(AMQQueue amqQueue, Subscription amqpSubscription, String subscriptionID, String destination,
@@ -148,7 +158,7 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
 
         if (evaluateDeliveryRules(messageToSend)) {
             int numOfDeliveriesOfCurrentMsg =
-                    onflightMessageTracker.getNumOfMsgDeliveries4Channel(message.getMessageId(), channel.getId());
+                    onflightMessageTracker.getNumOfMsgDeliveriesForChannel(message.getMessageId(), channel.getId());
 
             onflightMessageTracker.setMessageStatus(MessageStatus.DELIVERY_OK, message.getMessageId());
             if (numOfDeliveriesOfCurrentMsg == 1) {
