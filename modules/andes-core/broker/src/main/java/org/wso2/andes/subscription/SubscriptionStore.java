@@ -1,3 +1,22 @@
+/*
+ * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+
 package org.wso2.andes.subscription;
 
 import org.apache.commons.logging.Log;
@@ -16,25 +35,6 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
-/*
- * Copyright (c) 2005-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
- *
- * WSO2 Inc. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
-
 public class SubscriptionStore {
     private static final String TOPIC_PREFIX = "topic.";
     private static final String QUEUE_PREFIX = "queue.";
@@ -42,11 +42,9 @@ public class SubscriptionStore {
 
     //<routing key, List of local subscriptions>
     //TODO: hasitha - wrap this list by a map to reduce cost
-    //private Map<String, List<AndesSubscription>> clusterTopicSubscriptionMap = new ConcurrentHashMap<String, List<AndesSubscription>>();
     private Map<String, List<AndesSubscription>> clusterQueueSubscriptionMap = new ConcurrentHashMap<String, List<AndesSubscription>>();
 
     //<destination, <subscriptionID,LocalSubscription>>
-    //private Map<String, Map<String, LocalSubscription>> localTopicSubscriptionMap = new ConcurrentHashMap<String, Map<String, LocalSubscription>>();
     private Map<String, Map<String, LocalSubscription>> localQueueSubscriptionMap = new ConcurrentHashMap<String, Map<String, LocalSubscription>>();
 
     private SubscriptionBitMap subscriptionBitMap;
@@ -71,7 +69,7 @@ public class SubscriptionStore {
     public List<AndesSubscription> getAllSubscribersForDestination(String destination, boolean isTopic) throws AndesException {
         // returing empty arraylist if requested map is empty
         if (isTopic) {
-            return new ArrayList<AndesSubscription>(subscriptionBitMap.getAllSubscribedForDestination(destination) == null ? new ArrayList<AndesSubscription>() : subscriptionBitMap.getAllSubscribedForDestination(destination));
+            return new ArrayList<AndesSubscription>(subscriptionBitMap.getAllClusteredSubscribedForDestination(destination) == null ? new ArrayList<AndesSubscription>() : subscriptionBitMap.getAllClusteredSubscribedForDestination(destination));
         } else {
             return new ArrayList<AndesSubscription>(clusterQueueSubscriptionMap.get(destination) == null ? new ArrayList<AndesSubscription>() : clusterQueueSubscriptionMap.get(destination));
         }
@@ -120,7 +118,8 @@ public class SubscriptionStore {
 
     public List<AndesSubscription> getAllClusterSubscriptions(boolean isTopic) throws AndesException {
         List<AndesSubscription> allActiveSubscriptions = new ArrayList<AndesSubscription>();
-        Set<String> destinations = isTopic ? (Set<String>) subscriptionBitMap.getAllDestinationsOfSubscriptions() : clusterQueueSubscriptionMap.keySet();
+        Set<String> destinations;
+        destinations = !isTopic ? clusterQueueSubscriptionMap.keySet() : (Set<String>) subscriptionBitMap.getAllDestinationsOfSubscriptions();
         for(String destination : destinations) {
             allActiveSubscriptions.addAll(getClusterSubscribersForDestination(destination, isTopic));
         }
@@ -220,11 +219,12 @@ public class SubscriptionStore {
     }
 
 
+
     public int numberOfSubscriptionsForDestinationAtNode(String destination, String nodeID) throws AndesException {
         List<AndesSubscription> subscriptions = getClusterSubscribersForDestination(destination,
                 false);
         int count = 0;
-        if (subscriptions != null && !subscriptions.isEmpty()) {
+        if (null != subscriptions && !subscriptions.isEmpty()) {
             for (AndesSubscription sub : subscriptions) {
                 if (sub.getSubscribedNode().equals(nodeID)) {
                     count++;
@@ -374,7 +374,7 @@ public class SubscriptionStore {
     public List<AndesSubscription> getClusterSubscriptionList(String destination, boolean isTopic) {
         if(!isTopic)
             return clusterQueueSubscriptionMap.get(destination);
-        return subscriptionBitMap.getAllSubscribedForDestination(destination);
+        return subscriptionBitMap.getAllClusteredSubscribedForDestination(destination);
     }
 
     /**
@@ -435,13 +435,13 @@ public class SubscriptionStore {
         }
 
         Collection<Map<String, LocalSubscription>> topicSubscriptions = subscriptionBitMap.getLocalSubscriptions();
-        Iterator<Map<String, LocalSubscription>> iterator = topicSubscriptions.iterator();
 
-        while(iterator.hasNext()){
-            List<LocalSubscription> localSubscriptions = new ArrayList<LocalSubscription>(iterator.next().values());
+        for (Iterator<Map<String, LocalSubscription>> iterator = topicSubscriptions.iterator(); iterator.hasNext(); ) {
+            Map<String, LocalSubscription> topicSubscription = iterator.next();
+            List<LocalSubscription> localSubscriptions = new ArrayList<LocalSubscription>(topicSubscription.values());
 
-            for(LocalSubscription localSubscription : localSubscriptions){
-                if(localSubscription.getTargetQueue().equals(queueName))
+            for (LocalSubscription localSubscription : localSubscriptions) {
+                if (localSubscription.getTargetQueue().equals(queueName))
                     subscriptionsOfQueue.add(localSubscription);
             }
         }
@@ -566,7 +566,7 @@ public class SubscriptionStore {
             subscriptionList = clusterQueueSubscriptionMap.get(destination);
 
             if (type == SubscriptionChange.ADDED) {
-                if (subscriptionList != null) {
+                if (null != subscriptionList) {
                     //iterate and remove all similar subscriptions
                     //TODO: hasitha - wrap this list by a map to reduce cost
                     Iterator itr = subscriptionList.iterator();
@@ -583,6 +583,7 @@ public class SubscriptionStore {
                     subscriptionList.add(subscription);
                     clusterQueueSubscriptionMap.put(destination, subscriptionList);
                 }
+                if (log.isDebugEnabled())
                 log.debug("Added Subscription to map. queue name:" + subscription.getTargetQueue() + ", Type: " + subscription.getTargetQueueBoundExchangeType());
 
             } else if (type == SubscriptionChange.DISCONNECTED) {
@@ -601,6 +602,7 @@ public class SubscriptionStore {
                 subscriptionList.add(subscription);
                 clusterQueueSubscriptionMap.put(destination, subscriptionList);
 
+                if (log.isDebugEnabled())
                 log.debug("Disconnected Subscription from map: " + subscription.encodeAsStr());
 
             } else if (type == SubscriptionChange.DELETED) {
@@ -618,16 +620,17 @@ public class SubscriptionStore {
                 if (subscriptionList.size() == 0) {
                     clusterQueueSubscriptionMap.remove(destination);
                 }
+                if (log.isDebugEnabled())
                 log.debug("DELETED Subscription from map. queue name:" + subscription.getTargetQueue() + ", Type: " + subscription.getTargetQueueBoundExchangeType());
             }
-
-            log.debug("+++++++++++++++++Updated cluster subscription maps++++++++++++++++");
-            this.printSubscriptionMap(clusterQueueSubscriptionMap);
-            //      this.printSubscriptionMap(clusterTopicSubscriptionMap);
-            log.debug("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+            if (log.isDebugEnabled()) {
+                log.debug("Updated cluster subscription maps");
+                this.printSubscriptionMap(clusterQueueSubscriptionMap);
+                log.debug("End of clustered map");
+            }
         }
         else {
-            subscriptionList = subscriptionBitMap.getAllSubscribedForDestination(destination);
+            subscriptionList = subscriptionBitMap.getAllClusteredSubscribedForDestination(destination);
 
             if (type == SubscriptionChange.ADDED) {
                 if (subscriptionList != null) {
@@ -640,11 +643,12 @@ public class SubscriptionStore {
                             subscriptionBitMap.removeClusteredSubscription(sub.getSubscriptionID());
                         }
                     }
-                    subscriptionBitMap.addClusteredSubscription(subscription.getSubscribedDestination(),subscription);
+                    subscriptionBitMap.addClusteredSubscription(subscription.getSubscribedDestination(), subscription);
 
                 } else {
-                    subscriptionBitMap.addClusteredSubscription(subscription.getSubscribedDestination(),subscription);
+                    subscriptionBitMap.addClusteredSubscription(subscription.getSubscribedDestination(), subscription);
                 }
+                if (log.isDebugEnabled())
                 log.debug("Added Subscription to map. queue name:" + subscription.getTargetQueue() + ", Type: " + subscription.getTargetQueueBoundExchangeType());
 
             } else if (type == SubscriptionChange.DISCONNECTED) {
@@ -661,6 +665,7 @@ public class SubscriptionStore {
                 }
                 subscriptionBitMap.addClusteredSubscription(subscription.getSubscribedDestination(), subscription);
 
+                if (log.isDebugEnabled())
                 log.debug("Disconnected Subscription from map: " + subscription.encodeAsStr());
 
             } else if (type == SubscriptionChange.DELETED) {
@@ -676,33 +681,38 @@ public class SubscriptionStore {
                     }
                 }
 
+                if (log.isDebugEnabled())
                 log.debug("DELETED Subscription from map. queue name:" + subscription.getTargetQueue() + ", Type: " + subscription.getTargetQueueBoundExchangeType());
             }
-
-            log.debug("+++++++++++++++++Updated cluster subscription maps++++++++++++++++");
-            //this.printSubscriptionMap();
-            //      this.printSubscriptionMap(clusterTopicSubscriptionMap);
-            log.debug("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+            if (log.isDebugEnabled()) {
+                log.debug("Updated cluster subscription maps");
+                printSubscriptionMap(clusterQueueSubscriptionMap);
+                log.debug("End of Subscription Map");
+            }
 
         }
     }
 
 
     private void printSubscriptionMap(Map<String, List<AndesSubscription>> map) {
-        for (Entry<String, List<AndesSubscription>> entry : map.entrySet()) {
-            log.debug("Destination: " + entry.getKey());
-            for (AndesSubscription s : entry.getValue()) {
-                log.debug("\t---" + s.encodeAsStr());
+        if (log.isDebugEnabled()) {
+            for (Entry<String, List<AndesSubscription>> entry : map.entrySet()) {
+                log.debug("Destination: " + entry.getKey());
+                for (AndesSubscription s : entry.getValue()) {
+                    log.debug("\t---" + s.encodeAsStr());
+                }
             }
         }
     }
 
     private void printLocalSubscriptionMap(Map<String, Map<String, LocalSubscription>> map) {
-        for (Entry<String, Map<String, LocalSubscription>> entry : map.entrySet()) {
-            log.debug("Destination: " + entry.getKey());
-            Map<String, LocalSubscription> mapForDestination = entry.getValue();
-            for (Entry<String, LocalSubscription> sub : mapForDestination.entrySet()) {
-                log.debug("\t SubID: " + sub.getKey() + "-----" + sub.getValue().encodeAsStr());
+        if (log.isDebugEnabled()) {
+            for (Entry<String, Map<String, LocalSubscription>> entry : map.entrySet()) {
+                log.debug("Destination: " + entry.getKey());
+                Map<String, LocalSubscription> mapForDestination = entry.getValue();
+                for (Entry<String, LocalSubscription> sub : mapForDestination.entrySet()) {
+                    log.debug("\t SubID: " + sub.getKey() + "-----" + sub.getValue().encodeAsStr());
+                }
             }
         }
     }
@@ -729,7 +739,7 @@ public class SubscriptionStore {
             while(iterator.hasNext()) {
                 Map<String, AndesSubscription> map = iterator.next();
                 List<AndesSubscription> existingSubscriptions = new ArrayList<AndesSubscription>(map.values());
-                if (existingSubscriptions != null && !existingSubscriptions.isEmpty()) {
+                if (null != existingSubscriptions && !existingSubscriptions.isEmpty()) {
                     for (AndesSubscription sub : existingSubscriptions) {
                         //queue is durable
                         if (sub.isDurable() &&
@@ -789,13 +799,8 @@ public class SubscriptionStore {
                 localQueueSubscriptionMap.put(destinationQueue, localSubscriptions);
 
             } else if (subscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
-              /*  Map<String, LocalSubscription> localSubscriptions = localTopicSubscriptionMap.get(destinationQueue);
-                if (localSubscriptions == null) {
-                    localSubscriptions = new ConcurrentHashMap<String, LocalSubscription>();
-                }
-                localSubscriptions.put(subscriptionID, subscription);*/
+
                 subscriptionBitMap.addLocalSubscription(destinationQueue, subscription);
-                //    localTopicSubscriptionMap.put(destinationQueue, localSubscriptions);
             }
 
         } else if (type == SubscriptionChange.DELETED) {
@@ -803,10 +808,11 @@ public class SubscriptionStore {
             log.info("Local Subscription Removed " + subscription.toString());
         }
 
-        log.debug("===============Updated local subscription maps================");
-        this.printLocalSubscriptionMap(localQueueSubscriptionMap);
-        //      this.printLocalSubscriptionMap(localTopicSubscriptionMap);
-        log.debug("========================================================");
+        if (log.isDebugEnabled()) {
+            log.debug("===============Updated local subscription maps================");
+            this.printLocalSubscriptionMap(localQueueSubscriptionMap);
+            log.debug("========================================================");
+        }
 
     }
 
@@ -816,7 +822,7 @@ public class SubscriptionStore {
         LocalSubscription subscriptionToRemove = null;
         //check queue local subscriptions
         Map<String, LocalSubscription> subscriptionList = getLocalSubscriptionMap(destination,false);
-        if(subscriptionList != null) {
+        if (null != subscriptionList) {
             Iterator<LocalSubscription> iterator = subscriptionList.values().iterator();
             while (iterator.hasNext()) {
                 LocalSubscription currentSubscription = iterator.next();
@@ -832,9 +838,9 @@ public class SubscriptionStore {
         }
 
         //check topic local subscriptions
-        if (subscriptionToRemove == null) {
+        if (null == subscriptionToRemove) {
             subscriptionList = getLocalSubscriptionMap(destination, true);
-            if(subscriptionList != null) {
+            if (null != subscriptionList) {
                 Iterator<LocalSubscription> iterator = subscriptionList.values().iterator();
                 while (iterator.hasNext()) {
                     LocalSubscription currentSubscription = iterator.next();
@@ -848,7 +854,7 @@ public class SubscriptionStore {
             }
         }
 
-        if (subscriptionToRemove != null) {
+        if (null != subscriptionToRemove) {
             String destinationIdentifier = new StringBuffer().append((subscriptionToRemove.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX))
                     .append(destination).toString();
             andesContextStore.removeDurableSubscription(destinationIdentifier, subscription.getSubscribedNode() + "_" + subscriptionID);

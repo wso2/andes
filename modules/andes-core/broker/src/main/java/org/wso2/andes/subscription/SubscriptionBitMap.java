@@ -1,13 +1,5 @@
-package org.wso2.andes.subscription;
-
-import org.wso2.andes.kernel.AndesSubscription;
-import org.wso2.andes.kernel.LocalSubscription;
-
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.BitSet;
 /*
- * Copyright (c) 2005-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -24,18 +16,30 @@ import java.util.BitSet;
  * under the License.
  */
 
+package org.wso2.andes.subscription;
+
+import org.wso2.andes.kernel.AndesSubscription;
+import org.wso2.andes.kernel.LocalSubscription;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.BitSet;
+
 /**
  * This class is responsible for adding of the subscriptions into the bitmap, matching and the removal
  * of subscriptions from bitmap
  */
 public class SubscriptionBitMap {
     /**
+     * Represents the mapping from criteria to clustered subscriptions
+     */
+    protected ArrayList<Map<String, java.util.BitSet>> bitMapClustered;
+    /**
      * Keeps track of the local subscriptions
      * <p/>
      * Map <Index of the subscriber, Map<Subscription ID, LocalSubscription>
      */
     private Map<Integer, Map<String, LocalSubscription>> localSubscriptions;
-
     /**
      * Keeps track of the Andes subscriptions
      * <p/>
@@ -45,7 +49,6 @@ public class SubscriptionBitMap {
      */
 
     private Map<Integer, Map<String, AndesSubscription>> clusteredSubscriptions;
-
     /**
      * Mapping from the routing key to the integer
      * <p/>
@@ -60,17 +63,14 @@ public class SubscriptionBitMap {
      */
     private Map<String, Integer> localSubscriptionMapping;
     private Map<String, Integer> clusteredSubscriptionMapping;
-
     /**
      * Keeps track of the local subscribers count with distinct routing keys
      */
     private int localSubscriptionCount;
-
     /**
      * Keeps track of the andes subscribers count with distinct routing keys
      */
     private int clusteredSubscriptionCount;
-
     /**
      * Represents the mapping from criteria to local subscriptions
      * <p/>
@@ -79,13 +79,6 @@ public class SubscriptionBitMap {
      * Each bit map table Map<Constituent part, BitMap for the constituent part >
      */
     private ArrayList<Map<String, java.util.BitSet>> bitMapLocal;
-
-    /**
-     * Represents the mapping from criteria to clustered subscriptions
-     */
-    protected ArrayList<Map<String, java.util.BitSet>> bitMapClustered;
-
-
     /**
      * Keeps track of the deleted local subscription indexes
      * Whenever this arraylist is not empty, the index for the new subscription is found from this
@@ -594,7 +587,13 @@ public class SubscriptionBitMap {
         return matchingSubscriptionsForTheMessage;
     }
 
-    public List<AndesSubscription> getAllSubscribedForDestination(String destination) {
+    /**
+     * To get all the andes subscriptions which are subscribed for a destination
+     *
+     * @param destination destination required
+     * @return the andes subscriptions which are subscribed for a destination
+     */
+    public List<AndesSubscription> getAllClusteredSubscribedForDestination(String destination) {
         if (null != clusteredSubscriptionMapping.get(destination)) {
             int number = clusteredSubscriptionMapping.get(destination);
             return new ArrayList<AndesSubscription>(clusteredSubscriptions.get(number).values());
@@ -603,6 +602,11 @@ public class SubscriptionBitMap {
 
     }
 
+    /**
+     * To get all the local subscriptions that are subscribed for a destination
+     * @param destination specific destination
+     * @return the local subscriptions which are subscribed for a destination
+     */
     public Map<String, LocalSubscription> getAllLocalSubscribedForDestination(String destination) {
         if (null != localSubscriptionMapping.get(destination)) {
             int number = localSubscriptionMapping.get(destination);
@@ -613,20 +617,37 @@ public class SubscriptionBitMap {
 
     }
 
-
+    /**
+     * To get all the destinations which have the clustered subscriptions
+     * @return the all destinations which have the clustered subscription
+     */
     public List<String> getAllDestinationsOfSubscriptions() {
         return new ArrayList<String>(clusteredSubscriptionMapping.keySet());
 
     }
 
+    /**
+     * To get the Andes Subscriptions and the subscription ID
+     * @return the Andes Subscriptions and the subscription ID
+     */
     public Collection<Map<String, AndesSubscription>> getClusteredSubscriptions() {
         return clusteredSubscriptions.values();
     }
 
+    /**
+     * To get the Local Subscriptions and the subscription ID
+     * @return the Local Subscriptions and the subscription ID
+     */
     public Collection<Map<String, LocalSubscription>> getLocalSubscriptions() {
         return localSubscriptions.values();
     }
 
+    /**
+     * Method to replace the all the previous subscriptions for a destination with a new list
+     * @param destination destination to be replaced
+     * @param newSubscriptionList new list of subscriptions
+     * @return the old list of the subscriptions
+     */
     public List<AndesSubscription> getAllClustered(String destination, List<AndesSubscription> newSubscriptionList) {
         List<AndesSubscription> oldList = null;
         if (null != clusteredSubscriptionMapping.get(destination)) {
