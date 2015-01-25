@@ -399,7 +399,7 @@ public class SubscriptionBitMap {
         // clear the bit related with the deletion of subscription
         for (int i = 0; i < bitMap.size(); i++) {
             Map<String, BitSet> bitSetMap = bitMap.get(i);
-            for (String s : bitSetMap.keySet()) bitSetMap.get(s).clear(toberemoved);
+            for (Map.Entry<String, BitSet> entryMap : bitSetMap.entrySet()) entryMap.getValue().clear(toberemoved);
             bitMap.remove(i);
             bitMap.add(i, bitSetMap);
         }
@@ -412,19 +412,20 @@ public class SubscriptionBitMap {
      * @param subscriptionID subscription ID of the subscription need to be removed
      */
     public void removeLocalSubscription(String subscriptionID) {
-        for (Integer i : localSubscriptions.keySet())
-            if (localSubscriptions.get(i).get(subscriptionID) != null) {
-                String destination = localSubscriptions.get(i).get(subscriptionID).getSubscribedDestination();
-                localSubscriptions.get(i).remove(subscriptionID);
+        for (Map.Entry<Integer, Map<String, LocalSubscription>> mapEntry : localSubscriptions.entrySet()) {
+            if (mapEntry.getValue().get(subscriptionID) != null) {
+                String destination = localSubscriptions.get(mapEntry.getKey()).get(subscriptionID).getSubscribedDestination();
+                mapEntry.getValue().remove(subscriptionID);
                 //remove the entry if the subscription count with the particular size goes to zero
-                if (localSubscriptions.get(i).size() == 0) {
-                    localSubscriptions.remove(i);
+                if (mapEntry.getValue().size() == 0) {
+                    localSubscriptions.remove(mapEntry.getKey());
                     localSubscriptionMapping.remove(destination);
-                    removeSubscription(i, true);
-                    deletedLocals.add(i);
+                    removeSubscription(mapEntry.getKey(), true);
+                    deletedLocals.add(mapEntry.getKey());
                 }
                 return;
             }
+        }
     }
 
     /**
@@ -433,15 +434,16 @@ public class SubscriptionBitMap {
      * @param subscriptionID subscription ID of the subscription need to be removed
      */
     public void removeClusteredSubscription(String subscriptionID) {
-        for (Integer i : clusteredSubscriptions.keySet()) {
-            if (clusteredSubscriptions.get(i).get(subscriptionID) != null) {
-                String destination = clusteredSubscriptions.get(i).get(subscriptionID).getSubscribedDestination();
-                clusteredSubscriptions.get(i).remove(subscriptionID);
-                if (clusteredSubscriptions.get(i).size() == 0) {
-                    clusteredSubscriptions.remove(i);
+        for (Map.Entry<Integer, Map<String, AndesSubscription>> mapEntry : clusteredSubscriptions.entrySet()) {
+            if (mapEntry.getValue().get(subscriptionID) != null) {
+                String destination = clusteredSubscriptions.get(mapEntry.getKey()).get(subscriptionID).getSubscribedDestination();
+                mapEntry.getValue().remove(subscriptionID);
+                //remove the entry if the subscription count with the particular size goes to zero
+                if (mapEntry.getValue().size() == 0) {
+                    clusteredSubscriptions.remove(mapEntry.getKey());
                     clusteredSubscriptionMapping.remove(destination);
-                    removeSubscription(i, false);
-                    deletedClusters.add(i);
+                    removeSubscription(mapEntry.getKey(), false);
+                    deletedClusters.add(mapEntry.getKey());
                 }
                 return;
             }
