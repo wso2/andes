@@ -37,6 +37,7 @@ import javax.management.MBeanException;
 import javax.management.NotCompliantMBeanException;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 public class QueueManagementInformationMBean extends AMQManagedObject implements QueueManagementInformation {
@@ -73,6 +74,15 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
         try {
             List<String> queuesList = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
+            Iterator itr = queuesList.iterator();
+            //remove topic specific queues
+            while (itr.hasNext()) {
+                String destinationQueueName = (String) itr.next();
+                if(destinationQueueName.startsWith("tmp_") || destinationQueueName.contains
+                        ("carbon:") || destinationQueueName.startsWith("TempQueue")) {
+                    itr.remove();
+                }
+            }
             String[] queues= new String[queuesList.size()];
             queuesList.toArray(queues);
             return queues;
