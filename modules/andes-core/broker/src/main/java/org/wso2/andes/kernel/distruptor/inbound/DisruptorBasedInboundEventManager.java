@@ -18,23 +18,22 @@
 
 package org.wso2.andes.kernel.distruptor.inbound;
 
-import com.google.common.util.concurrent.SettableFuture;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.*;
 import com.lmax.disruptor.dsl.Disruptor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+
+import static org.wso2.andes.configuration.enums.AndesConfiguration.*;
+import static org.wso2.andes.kernel.distruptor.inbound.InboundEvent.Type.*;
 
 /**
  * Disruptor based inbound event handling class.
@@ -50,15 +49,15 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
                                              MessagingEngine messagingEngine) {
 
         Integer bufferSize = AndesConfigurationManager.readValue(
-                AndesConfiguration.PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE);
+                PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE);
         Integer writeHandlerCount = AndesConfigurationManager.readValue(
-                AndesConfiguration.PERFORMANCE_TUNING_PARALLEL_MESSAGE_WRITERS);
+                PERFORMANCE_TUNING_PARALLEL_MESSAGE_WRITERS);
         Integer ackHandlerCount = AndesConfigurationManager.readValue(
-                AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLER_COUNT);
+                PERFORMANCE_TUNING_ACK_HANDLER_COUNT);
         Integer writerBatchSize = AndesConfigurationManager.readValue(
-                AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_WRITER_BATCH_SIZE);
+                PERFORMANCE_TUNING_MESSAGE_WRITER_BATCH_SIZE);
         Integer ackHandlerBatchSize = AndesConfigurationManager.readValue(
-                AndesConfiguration.PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE);
+                PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE);
 
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                                     .setNameFormat("Disruptor Inbound Event Thread %d").build();
@@ -69,7 +68,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
                 new MultiThreadedClaimStrategy(bufferSize),
                 new BlockingWaitStrategy());
 
-        disruptor.handleExceptionsWith(new IgnoreExceptionHandler());
+        disruptor.handleExceptionsWith(new InboundLogExceptionHandler());
 
         // Pre processor runs first then Write handlers and ack handlers run in parallel. State event handler comes
         // after them
@@ -86,7 +85,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
                     turn,
                     writeHandlerCount,
                     writerBatchSize,
-                    InboundEvent.Type.MESSAGE_EVENT
+                    MESSAGE_EVENT
             );
         }
 
@@ -94,11 +93,11 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
             processors[writeHandlerCount + turn] = new ConcurrentBatchProcessor(
                     disruptor.getRingBuffer(),
                     barrier,
-                    new AckHandler(),
+                    new AckHandler(messagingEngine),
                     turn,
                     ackHandlerCount,
                     ackHandlerBatchSize,
-                    InboundEvent.Type.ACKNOWLEDGEMENT_EVENT
+                    ACKNOWLEDGEMENT_EVENT
             );
         }
 
@@ -120,7 +119,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
         long sequence = ringBuffer.next();
         InboundEvent event = ringBuffer.get(sequence);
 
-        event.setEventType(InboundEvent.Type.MESSAGE_EVENT);
+        event.setEventType(MESSAGE_EVENT);
         event.messageList.add(message);
         event.setChannel(andesChannel);
         // make the event available to EventProcessors
@@ -140,7 +139,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
         long sequence = ringBuffer.next();
         InboundEvent event = ringBuffer.get(sequence);
 
-        event.setEventType(InboundEvent.Type.ACKNOWLEDGEMENT_EVENT);
+        event.setEventType(ACKNOWLEDGEMENT_EVENT);
         event.ackData = ackData;
         // make the event available to EventProcessors
         ringBuffer.publish(sequence);
@@ -149,16 +148,6 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
             log.debug("[ sequence: " + sequence + " ] Message acknowledgement published to disruptor. Message id " +
                     ackData.getMessageID());
         }
-    }
-
-    @Override
-    public void messageRejected(AndesMessageMetadata metadata) {
-
-    }
-
-    @Override
-    public void reQueueMessage(AndesMessageMetadata messageMetadata, LocalSubscription subscription) throws AndesException {
-
     }
 
     @Override
@@ -171,148 +160,28 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
     }
 
     @Override
-    public void purgeQueue(String destinationQueue, String ownerName, boolean isTopic) throws AndesException {
-    }
-
-    @Override
-    public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
-
-    }
-
-    @Override
     public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws AndesException {
 
     }
 
-    /**
-     * @inheritDoc
-     */
     @Override
-    public void startMessageDelivery() throws Exception {
-        publishToRingBuffer(InboundEvent.Type.START_MESSAGE_DELIVERY_EVENT, null,
-                "Start message delivery event published to disruptor.");
-    }
-
-    /**
-     * @inheritDoc
-     */
-    @Override
-    public void stopMessageDelivery() {
-        publishToRingBuffer(InboundEvent.Type.STOP_MESSAGE_DELIVERY_EVENT, null,
-                "Stop message delivery event published to disruptor");
-    }
-
-    /**
-     * @inheritDoc
-     */
-    @Override
-    public void shutDown() {
-        publishToRingBuffer(InboundEvent.Type.SHUTDOWN_MESSAGING_ENGINE_EVENT, null,
-                "Shutdown messaging engine event published to disruptor.");
-    }
-
-    /**
-     * @inheritDoc
-     */
-    @Override
-    public void startMessageExpirationWorker() {
-        publishToRingBuffer(InboundEvent.Type.START_EXPIRATION_WORKER_EVENT, null,
-                "Start message expiration worker event published to disruptor.");
-
-    }
-
-    /**
-     * @inheritDoc
-     */
-    @Override
-    public void stopMessageExpirationWorker() {
-         publishToRingBuffer(InboundEvent.Type.STOP_EXPIRATION_WORKER_EVENT, null,
-                 "Shutdown message expiration worker event published to disruptor.");
-
-    }
-
-    /**
-     * @inheritDoc
-     */
-    @Override
-    public void clientConnectionClosed(UUID channelID) {
-        publishToRingBuffer(InboundEvent.Type.CHANNEL_CLOSE_EVENT, channelID, "Channel close event published to disruptor.");
-    }
-
-    /**
-     * @inheritDoc
-     */
-    @Override
-    public void clientConnectionCreated(UUID channelID) {
-        publishToRingBuffer(InboundEvent.Type.CHANNEL_OPEN_EVENT, channelID, "Channel open event published to disruptor.");
-    }
-
-    /**
-     * @inheritDoc
-     */
-    @Override
-    public void closeLocalSubscription(LocalSubscription localSubscription) throws AndesException {
-        InboundEvent event = publishToRingBuffer(InboundEvent.Type.CLOSE_SUBSCRIPTION_EVENT,
-                localSubscription,
-                "Close subscription event published to disruptor.");
-        SettableFuture<String> future =  event.getFuture();
-        try {
-            String result = future.get();
-        } catch (InterruptedException e) {
-           Thread.currentThread().interrupt();
-        } catch (ExecutionException e) {
-            throw new AndesException("Error occurred while closing the subscriber " +
-                    localSubscription.getSubscriptionID(), e);
-        }
-
-    }
-
-    /**
-     * @inheritDoc
-     */
-    @Override
-    public void openLocalSubscription(LocalSubscription localSubscription) throws SubscriptionAlreadyExistingException {
-        InboundEvent event = publishToRingBuffer(InboundEvent.Type.OPEN_SUBSCRIPTION_EVENT,
-                localSubscription,
-                "Open new subscription event published to disruptor.");
-       SettableFuture<String> future =  event.getFuture();
-        try {
-            String result = future.get();
-        } catch (InterruptedException ignored) {
-            //Silently ignore
-        } catch (ExecutionException e) {
-            throw new SubscriptionAlreadyExistingException("Subscription already added.");
-
-        }
-
-
-    }
-
-    /**
-     * Publish the event to ring buffer
-     *
-     * @param eventType        Event type (e.g: MESSAGE_EVENT, ACKNOWLEDGEMENT_EVENT
-     * @param data             data related to the event
-     * @param eventDescription brief description of event
-     */
-    private InboundEvent publishToRingBuffer(InboundEvent.Type eventType, Object data,
-                                  String eventDescription) {
+    public void publishStateEvent(AndesInboundStateEvent stateEvent) {
+        
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEvent event = ringBuffer.get(sequence);
-        //A future is created and set to InboundEvent. When exception is occurred at the
-        // disruptor that exception will be set to this future.
-        SettableFuture<String> future = SettableFuture.create();
-        event.setFuture(future);
-        event.setEventType(eventType);
-        event.setData(data);
-        // make the event available to EventProcessors
-        ringBuffer.publish(sequence);
-
-        if (log.isDebugEnabled()) {
-            log.debug("[ sequence: " + sequence + " ] " + eventDescription);
+        try {
+            event.setEventType(STATE_CHANGE_EVENT);
+            event.setStateEvent(stateEvent);
+        } finally {
+            // make the event available to EventProcessors
+            ringBuffer.publish(sequence);
+            if (log.isDebugEnabled()) {
+                log.debug("[ Sequence: " + sequence + " ] State change event '" + stateEvent.getEventType() +
+                        "' published to Disruptor");
+            }
         }
 
-        return event;
     }
+
 }

@@ -236,6 +236,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
             ("performanceTuning/inboundEvents/messageWriterBatchSize", "70", Integer.class),
 
     /**
+     * Timeout for waiting for a queue purge event to end to get the purged count. Doesn't affect actual purging.
+     * If purge takes time, increasing the value will improve the possibility of retrieving the correct purged count.
+     * Having a lower value doesn't stop purge event. Getting the purged count is affected by this
+     */
+    PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT
+            ("performanceTuning/inboundEvents/purgedCountTimeout", "180", Integer.class),
+    
+    /**
      * Average batch size of the batch acknowledgement handling for message acknowledgements. Andes will be updated
      * of acknowledgements batched around this number.
      */

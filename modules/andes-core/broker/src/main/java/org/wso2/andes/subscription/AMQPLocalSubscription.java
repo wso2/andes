@@ -36,6 +36,7 @@ import org.wso2.andes.kernel.HasInterestRule;
 import org.wso2.andes.kernel.MessagePurgeRule;
 import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.kernel.MessageStatus;
+import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
@@ -57,7 +58,8 @@ import java.util.regex.Pattern;
  * This class has info and methods to deal with qpid AMQP transports and
  * send messages to the subscription
  */
-public class AMQPLocalSubscription extends BasicSubscription implements LocalSubscription {
+public class AMQPLocalSubscription extends InboundSubscriptionEvent {
+    
     private static Log log = LogFactory.getLog(AMQPLocalSubscription.class);
 
     //internal qpid queue subscription is bound to
@@ -235,10 +237,12 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
     private void sendMessage(QueueEntry queueEntry) throws AndesException {
 
         String msgHeaderStringID = "";
+        Long messageNumber = null;
 
         if (queueEntry != null) {
             msgHeaderStringID = (String) queueEntry.getMessageHeader().
                     getHeader("msgID");
+            messageNumber = queueEntry.getMessage().getMessageNumber();
         }
 
         try {
@@ -251,8 +255,7 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
                 //this check is needed to detect if subscription has suddenly closed
                 if (log.isDebugEnabled()) {
                     log.debug("TRACING>> QDW- sent queue/durable topic message " +
-                            (msgHeaderStringID == null ? "" : msgHeaderStringID + " messageID-" +
-                                    queueEntry.getMessage().getMessageNumber()) + "-to " +
+                            msgHeaderStringID + " messageID-" + messageNumber + "-to " +
                             "subscription " + amqpSubscription);
                 }
                 amqpSubscription.send(queueEntry);

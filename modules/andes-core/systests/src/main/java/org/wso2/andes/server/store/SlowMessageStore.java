@@ -184,9 +184,9 @@ public class SlowMessageStore implements MessageStore
 
     public void removeExchange(Exchange exchange) throws AMQStoreException
     {
-        doPreDelay("removeExchange");
+        doPreDelay("deleteExchange");
         _realStore.removeExchange(exchange);
-        doPostDelay("removeExchange");
+        doPostDelay("deleteExchange");
     }
 
     public void bindQueue(Exchange exchange, AMQShortString routingKey, AMQQueue queue, FieldTable args) throws AMQStoreException

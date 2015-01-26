@@ -25,9 +25,8 @@ public class InboundEventManagerFactory {
 
     public static InboundEventManager createEventManager(SubscriptionStore subscriptionStore,
                                                          MessagingEngine messagingEngine) {
-        return new DisruptorBasedInboundEventManager(subscriptionStore, messagingEngine);
+        return new DisruptorBasedInboundEventManager(subscriptionStore, messagingEngine );
     }
-
 
     private InboundEventManagerFactory(){
     }

@@ -114,7 +114,7 @@ public class QueueDeleteHandler implements StateAwareMethodListener<QueueDeleteB
                 }
 
                 boolean isQueueDeletable = ClusterResourceHolder.getInstance().
-                        getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queue.getName());
+                        getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queue);
 
                 if(isQueueDeletable)
                 {

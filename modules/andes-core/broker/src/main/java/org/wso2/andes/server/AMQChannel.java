@@ -634,7 +634,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         forgetMessages4Channel();
 
         QpidAMQPBridge.getInstance().channelIsClosing(this.getId());
-        Andes.getInstance().removeChannel(andesChannel);
+        Andes.getInstance().deleteChannel(andesChannel);
 
         if (_managedObject != null) {
             _managedObject.unregister();

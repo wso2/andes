@@ -587,8 +587,12 @@ public class SubscriptionStore {
      * @param subscription subscription to add/disconnect or remove
      * @param type         type of change
      * @throws AndesException
+     * @throws org.wso2.andes.kernel.SubscriptionAlreadyExistsException
      */
-    public synchronized void createDisconnectOrRemoveLocalSubscription(LocalSubscription subscription, SubscriptionChange type) throws AndesException {
+    public synchronized void createDisconnectOrRemoveLocalSubscription(LocalSubscription subscription,
+                                                                       SubscriptionChange type) 
+            throws AndesException, SubscriptionAlreadyExistsException {
+        
         Boolean allowSharedSubscribers =  AndesConfigurationManager.readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
         //We need to handle durable topic subscriptions
         boolean hasDurableSubscriptionAlreadyInPlace = false;
@@ -628,7 +632,7 @@ public class SubscriptionStore {
             } else if (hasDurableSubscriptionAlreadyInPlace && type == SubscriptionChange.ADDED) {
                 if(!allowSharedSubscribers) {
                     //not permitted
-                    throw new AndesException("A subscription already exists for Durable subscriptions on " +
+                    throw new SubscriptionAlreadyExistsException("A subscription already exists for Durable subscriptions on " +
                                              subscription.getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
                 }
             }

@@ -18,7 +18,6 @@
 
 package org.wso2.andes.kernel.distruptor.inbound;
 
-import com.google.common.util.concurrent.SettableFuture;
 import com.lmax.disruptor.EventFactory;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
@@ -35,26 +34,12 @@ public class InboundEvent {
 
     private AndesChannel channel;
 
-    /**
-     * This future is used to catch exceptions occurring at the disruptor. When exception is
-     * occurred at the disruptor that exception will be set to the future.
-     */
-    private SettableFuture<String> future;
-
     public AndesChannel getChannel() {
         return channel;
     }
 
     public void setChannel(AndesChannel channel) {
         this.channel = channel;
-    }
-
-    public SettableFuture<String> getFuture() {
-        return future;
-    }
-
-    public void setFuture(SettableFuture<String> future) {
-        this.future = future;
     }
 
     /**
@@ -68,37 +53,12 @@ public class InboundEvent {
         /** Message acknowledgement receive event */
         ACKNOWLEDGEMENT_EVENT,
 
-        /** Specific client channel close event */
-        CHANNEL_CLOSE_EVENT,
-
-        /** New client connected and client channel is opened event */
-        CHANNEL_OPEN_EVENT,
-
-        /** Stop message delivery in Andes core */
-        STOP_MESSAGE_DELIVERY_EVENT,
-
-        /** Start message delivery in Andes core event */
-        START_MESSAGE_DELIVERY_EVENT,
-
-        /** Shutdown andes broker messaging engine event*/
-        SHUTDOWN_MESSAGING_ENGINE_EVENT,
-
-        /** New local subscription created event */
-        OPEN_SUBSCRIPTION_EVENT,
-
-        /** Close a local subscription event */
-        CLOSE_SUBSCRIPTION_EVENT,
-
-        /** Start expired message deleting task, notification event */
-        START_EXPIRATION_WORKER_EVENT,
-
-        /** Stop expired message deleting task, notification event */
-        STOP_EXPIRATION_WORKER_EVENT,
-
+        /** Andes state change related event type */
+        STATE_CHANGE_EVENT,
+        
         /** Ignore the event and skip processing */
-        IGNORE_EVENT
-
-        }
+        IGNORE_EVENT;
+    }
 
     /**
      * Specific event type of relevant to this InboundEvent
@@ -106,9 +66,9 @@ public class InboundEvent {
     private Type eventType;
 
     /**
-     * data holder for the inbound event related information.
+     * Andes state change related event 
      */
-    private Object data;
+    private AndesInboundStateEvent stateEvent;
 
     /**
      * For topic we may need to duplicate content. Message Pre processor will do that
@@ -133,19 +93,21 @@ public class InboundEvent {
         this.eventType = eventType;
     }
 
-    public void setData(Object data) {
-        this.data = data;
+    public AndesInboundStateEvent getStateEvent() {
+        return stateEvent;
     }
 
-    public Object getData() {
-        return data;
+    public void setStateEvent(AndesInboundStateEvent stateEvent) {
+        this.stateEvent = stateEvent;
     }
 
-
+    /**
+     * Reset internal references null and sets event type to IGNORE_EVENT
+     */
     public void clear() {
         messageList.clear();
         ackData = null;
-        data = null;
+        stateEvent = null;
         eventType = Type.IGNORE_EVENT;
     }
     /**

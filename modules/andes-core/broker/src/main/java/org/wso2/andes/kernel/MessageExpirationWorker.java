@@ -84,7 +84,7 @@ public class MessageExpirationWorker extends Thread {
                             log.trace("Expired messages queued for deletion : " + messagesQueuedForExpiry);
                         }
 
-                        MessagingEngine.getInstance().deleteMessages(expiredMessages, saveExpiredToDLC);
+                        Andes.getInstance().deleteMessages(expiredMessages, saveExpiredToDLC);
                         sleepForWaitInterval(workerWaitInterval);
 
                         // Note : We had a different alternative to employ cassandra column level TTLs to automatically handle

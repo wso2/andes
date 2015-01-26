@@ -20,6 +20,7 @@ package org.wso2.andes.kernel.distruptor.delivery;
 
 import com.lmax.disruptor.EventHandler;
 import org.apache.log4j.Logger;
+import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
@@ -117,7 +118,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
             List<AndesRemovableMetadata> messageToMoveToDLC = new ArrayList<AndesRemovableMetadata>();
             messageToMoveToDLC.add(removableMessage);
             try {
-                MessagingEngine.getInstance().deleteMessages(messageToMoveToDLC, true);
+                Andes.getInstance().deleteMessages(messageToMoveToDLC, true);
             } catch (AndesException dlcException) {
                 // If an exception occur in this level, it means that there is a message store level error.
                 // There's a possibility that we might lose this message
