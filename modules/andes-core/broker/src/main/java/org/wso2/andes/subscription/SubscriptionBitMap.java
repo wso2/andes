@@ -190,12 +190,12 @@ public class SubscriptionBitMap {
                  */
                 Map<String, BitSet> bitMapForithConstituent = bitMapLocal.get(i);
 
-                if (destinations[i].equals("#") || destinations[i].equals("*")) {
+                if ("#".equals(destinations[i]) || "*".equals(destinations[i])) {
                     for (Map.Entry<String, BitSet> mapEntryForithBitMap : bitMapLocal.get(i).entrySet())
                         if (null != mapEntryForithBitMap.getKey()) {
                             mapEntryForithBitMap.getValue().set(columnIndexOfTheSubscriptionInBitMap);
                         } else {
-                            if (destinations[i].equals("#"))
+                            if ("#".equals(destinations[i]))
                                 mapEntryForithBitMap.getValue().set(columnIndexOfTheSubscriptionInBitMap);
                         }
                 } else {
@@ -219,7 +219,7 @@ public class SubscriptionBitMap {
              * If the number constituent parts in the routing key is less than the number of bitmap tables
              * set the bit for th null and also update the # accordingly
              */
-            if (destinations[destinations.length - 1].equals("#")) {
+            if ("#".equals(destinations[destinations.length - 1])) {
                 for (int i = destinations.length; i < bitMapLocal.size(); i++) {
                     for (Map.Entry<String, BitSet> entry : bitMapLocal.get(i).entrySet())
                         entry.getValue().set(columnIndexOfTheSubscriptionInBitMap);
@@ -328,12 +328,12 @@ public class SubscriptionBitMap {
                  */
                 Map<String, BitSet> bitMapForithConstituent = bitMapClustered.get(i);
 
-                if (destinations[i].equals("#") || destinations[i].equals("*")) {
+                if ("#".equals(destinations[i]) || "*".equals(destinations[i])) {
                     for (Map.Entry<String, BitSet> mapEntryForithBitMap : bitMapClustered.get(i).entrySet())
                         if (null != mapEntryForithBitMap.getKey()) {
                             mapEntryForithBitMap.getValue().set(columnIndexOfTheSubscriptionInBitMap);
                         } else {
-                            if (destinations[i].equals("#"))
+                            if ("#".equals(destinations[i]))
                                 mapEntryForithBitMap.getValue().set(columnIndexOfTheSubscriptionInBitMap);
                         }
                 } else {
@@ -357,7 +357,7 @@ public class SubscriptionBitMap {
              * If the number constituent parts in the routing key is less than the number of bitmap tables
              * set the bit for th null and also update the # accordingly
              */
-            if (destinations[destinations.length - 1].equals("#")) {
+            if ("#".equals(destinations[destinations.length - 1])) {
                 for (int i = destinations.length; i < bitMapClustered.size(); i++) {
                     for (Map.Entry<String, BitSet> entry : bitMapClustered.get(i).entrySet())
                         entry.getValue().set(columnIndexOfTheSubscriptionInBitMap);
