@@ -16,7 +16,6 @@
  * under the License.
  */
 
-// Hello
 
 package org.wso2.andes.subscription;
 
