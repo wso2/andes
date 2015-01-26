@@ -339,7 +339,7 @@ public class SubscriptionBitMap {
                 } else {
                     BitSet bitSetForspecificConstituentPartOfSubscription;
                     bitSetForspecificConstituentPartOfSubscription = bitMapForithConstituent.get(destinations[i]);
-                    if (bitSetForspecificConstituentPartOfSubscription == null)
+                    if ( null == bitSetForspecificConstituentPartOfSubscription)
                         bitSetForspecificConstituentPartOfSubscription = (BitSet) bitMapClustered.get(i).get("other")
                                 .clone();
 
