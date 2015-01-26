@@ -114,10 +114,13 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
 
         //checking counting delivery rule
         deliveryRulesList.add(new MaximumNumOfDeliveryRule(channel));
-        //checking message expiration deliver rule
-        deliveryRulesList.add(new MessageExpiredRule());
-        //checking message purged delivery rule
-        deliveryRulesList.add(new MessagePurgeRule());
+
+        // NOTE: Feature Message Expiration moved to a future release
+//        //checking message expiration deliver rule
+//        deliveryRulesList.add(new MessageExpiredRule());
+
+//        //checking message purged delivery rule
+//        deliveryRulesList.add(new MessagePurgeRule());
         //checking has interest delivery rule
         deliveryRulesList.add(new HasInterestRule(amqpSubscription));
         //checking no local delivery rule

@@ -390,7 +390,9 @@ public class AndesKernelBoot {
      */
     public static void startMessaging() throws Exception {
         Andes.getInstance().startMessageDelivery();
-        Andes.getInstance().startMessageExpirationWorker();
+
+        // NOTE: Feature Message Expiration moved to a future release
+//        Andes.getInstance().startMessageExpirationWorker();
     }
 
     /**
@@ -399,7 +401,9 @@ public class AndesKernelBoot {
      * @throws Exception
      */
     private static void stopMessaging() throws Exception {
-        Andes.getInstance().stopMessageExpirationWorker();
+        // NOTE: Feature Message Expiration moved to a future release
+//        Andes.getInstance().stopMessageExpirationWorker();
+
         //this will un-assign all slots currently owned
         Andes.getInstance().stopMessageDelivery();
     }

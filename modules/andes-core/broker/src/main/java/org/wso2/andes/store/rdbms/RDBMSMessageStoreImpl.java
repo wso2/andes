@@ -900,7 +900,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     public void addMessageToExpiryQueue(Long messageId, Long expirationTime,
                                         boolean isMessageForTopic, String destination)
             throws AndesException {
-        // todo: need to be implemented with changes done to topic messages.
+        // NOTE: Feature Message Expiration moved to a future release
     }
 
     /**

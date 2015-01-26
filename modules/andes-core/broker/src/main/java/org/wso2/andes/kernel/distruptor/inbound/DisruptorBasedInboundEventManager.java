@@ -69,6 +69,8 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
                 new MultiThreadedClaimStrategy(bufferSize),
                 new BlockingWaitStrategy());
 
+        disruptor.handleExceptionsWith(new IgnoreExceptionHandler());
+
         // Pre processor runs first then Write handlers and ack handlers run in parallel. State event handler comes
         // after them
         SequenceBarrier barrier = disruptor.handleEventsWith(new MessagePreProcessor(subscriptionStore))
@@ -106,7 +108,6 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
         // State event handler update the state of Andes after other handlers work is done.
         disruptor.after(processors).handleEventsWith(new StateEventHandler(messagingEngine));
 
-        disruptor.handleExceptionsWith(new IgnoreExceptionHandler());
         ringBuffer = disruptor.start();
     }
 

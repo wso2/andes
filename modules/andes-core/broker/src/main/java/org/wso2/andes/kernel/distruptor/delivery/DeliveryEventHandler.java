@@ -90,7 +90,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                     MessageFlusher.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
                 }
             } catch (Throwable e) {
-                log.error("Error while delivering message. Moving to Dead Letter Queue.", e);
+                log.error("Error while delivering message. Message id " + message.getMessageID(), e);
                 //increment above schedule count because exception occurred while send message to subscriber
                 OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
                 handleSendError(message);
@@ -110,6 +110,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
         // If message is a queue message we move the message to the Dead Letter Channel
         // since topics doesn't have a Dead Letter Channel
         if (!message.isTopic()) {
+            log.info("Moving message to Dead Letter Channel. Message ID " + message.getMessageID());
             AndesRemovableMetadata removableMessage = new AndesRemovableMetadata(message.getMessageID(),
                                                                                  message.getDestination(),
                                                                                  message.getStorageQueueName());
