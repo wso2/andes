@@ -464,21 +464,20 @@ public class SubscriptionBitMap {
          */
         for (int i = 0; i < bitMapLocal.size() && i < destinations.length; i++) {
 
-            Map<String, BitSet> bitMapOfithConstituent = bitMapLocal.get(i);
-            BitSet bitSetOfithConstituent;
+            Map<String, BitSet> bitMapOfIthConstituent = bitMapLocal.get(i);
+            BitSet bitSetOfIthConstituent;
 
 
             // Take the entry for the constituent part
-            if (null != bitMapOfithConstituent.get(destinations[i]))
-                bitSetOfithConstituent = (BitSet) bitMapOfithConstituent.get(destinations[i]).clone();
+            if (null != bitMapOfIthConstituent.get(destinations[i]))
+                bitSetOfIthConstituent = (BitSet) bitMapOfIthConstituent.get(destinations[i]).clone();
             else
-                bitSetOfithConstituent = (BitSet) bitMapOfithConstituent.get("other").clone();
-
+                bitSetOfIthConstituent = (BitSet) bitMapOfIthConstituent.get("other").clone();
 
             if (i != 0) {
-                results.and(bitSetOfithConstituent);
+                results.and(bitSetOfIthConstituent);
             } else
-                results = bitSetOfithConstituent;
+                results = bitSetOfIthConstituent;
 
         }
 
@@ -492,10 +491,10 @@ public class SubscriptionBitMap {
             if (destinations.length > bitMapLocal.size()) {
                 Map<String, BitSet> map = bitMapLocal
                         .get(bitMapLocal.size() - 1);
-                BitSet bitSetForother = (BitSet) map.get("other").clone();
-                BitSet bitSetFornull = (BitSet) map.get(null).clone();
-                bitSetForother.and(bitSetFornull);
-                results.and(bitSetForother);
+                BitSet bitSetForOther = (BitSet) map.get("other").clone();
+                BitSet bitSetForNull = (BitSet) map.get(null).clone();
+                bitSetForOther.and(bitSetForNull);
+                results.and(bitSetForOther);
             }
 
             /**
