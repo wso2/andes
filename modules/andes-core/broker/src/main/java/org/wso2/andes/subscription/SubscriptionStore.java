@@ -110,7 +110,7 @@ public class SubscriptionStore {
             }
         }
         else {
-            subscriptionList = subscriptionBitMapHandler.getMatchingAndes(destination);
+            subscriptionList = subscriptionBitMapHandler.findMatchingClusteredSubscriptions(destination);
         }
 
         return subscriptionList;
@@ -173,7 +173,7 @@ public class SubscriptionStore {
         }
         else {
 
-            matchingDestinatins = subscriptionBitMapHandler.getMatching(messageDest);
+            matchingDestinatins = subscriptionBitMapHandler.findMatchingLocalSubscriptions(messageDest);
         }
 
         return matchingDestinatins;

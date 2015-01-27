@@ -32,7 +32,10 @@ import java.util.BitSet;
 public class SubscriptionBitMapHandler {
 
     private static final String CONSTITUENT_TOPIC_CONSTANT = "other";
-
+    /**
+     * Represents the mapping from criteria to clustered subscriptions
+     */
+    protected ArrayList<Map<String, java.util.BitSet>> bitMapClustered;
     /**
      * Represents the mapping from criteria to local subscriptions
      * <p/>
@@ -41,12 +44,6 @@ public class SubscriptionBitMapHandler {
      * Each bit map table Map<Constituent part, BitMap for the constituent part >
      */
     private ArrayList<Map<String, java.util.BitSet>> bitMapLocal;
-
-    /**
-     * Represents the mapping from criteria to clustered subscriptions
-     */
-    protected ArrayList<Map<String, java.util.BitSet>> bitMapClustered;
-
     /**
      * Keeps track of the local subscriptions
      * <p/>
@@ -459,7 +456,7 @@ public class SubscriptionBitMapHandler {
      *
      * @param destination routing pattern of the message
      */
-    public ArrayList<LocalSubscription> getMatching(String destination) {
+    public ArrayList<LocalSubscription> findMatchingLocalSubscriptions(String destination) {
         /**
          * Split the routing key of the subscriptions into the constituent parts
          */
@@ -498,7 +495,7 @@ public class SubscriptionBitMapHandler {
              *
              */
 
-            if (destinations.length > bitMapLocal.size()) {
+            if (bitMapLocal.size() != 0 && destinations.length > bitMapLocal.size()) {
                 Map<String, BitSet> map = bitMapLocal
                         .get(bitMapLocal.size() - 1);
                 BitSet bitSetForOther = (BitSet) map.get(CONSTITUENT_TOPIC_CONSTANT).clone();
@@ -510,7 +507,7 @@ public class SubscriptionBitMapHandler {
             /**
              * If the number of constituent parts in the bitmap is greater and with the null and # entry bitmap
              */
-            else if (bitMapLocal.size() > destinations.length) {
+            else if (destinations.length != 0 && bitMapLocal.size() > destinations.length) {
                 Map<String, BitSet> map = bitMapLocal
                         .get(destinations.length);
                 BitSet bitSetForNull = map.get(null);
@@ -543,7 +540,7 @@ public class SubscriptionBitMapHandler {
      * @param destination routing pattern of the message
      *                    Same logic as the local subscriptions
      */
-    public ArrayList<AndesSubscription> getMatchingAndes(String destination) {
+    public ArrayList<AndesSubscription> findMatchingClusteredSubscriptions(String destination) {
         String[] destinations = destination.split("\\.");
         java.util.BitSet results = new java.util.BitSet();
         ArrayList<AndesSubscription> matchingSubscriptionsForTheMessage = new ArrayList<AndesSubscription>();
@@ -566,22 +563,25 @@ public class SubscriptionBitMapHandler {
 
         }
 
-        if (!(destinations.length == bitMapClustered.size())) if (destinations.length > bitMapClustered.size()) {
-            Map<String, BitSet> map = bitMapClustered.get(bitMapClustered
-                    .size() - 1);
-            BitSet bitSetForOther = (BitSet) map.get(CONSTITUENT_TOPIC_CONSTANT).clone();
-            BitSet bitSetForNull = (BitSet) map.get(null).clone();
+        if (!(destinations.length == bitMapClustered.size())) {
 
-            bitSetForOther.and(bitSetForNull);
-            results.and(bitSetForOther);
+            if (bitMapClustered.size() != 0 && destinations.length > bitMapClustered.size()) {
+                Map<String, BitSet> map = bitMapClustered.get(bitMapClustered
+                        .size() - 1);
+                BitSet bitSetForOther = (BitSet) map.get(CONSTITUENT_TOPIC_CONSTANT).clone();
+                BitSet bitSetForNull = (BitSet) map.get(null).clone();
 
-        } else if (bitMapClustered.size() > destinations.length) {
-            Map<String, BitSet> map = bitMapClustered
-                    .get(destinations.length);
-            BitSet bitSetForOther = map.get(null);
+                bitSetForOther.and(bitSetForNull);
+                results.and(bitSetForOther);
 
-            results.and(bitSetForOther);
+            } else if (destinations.length != 0 && bitMapClustered.size() > destinations.length) {
+                Map<String, BitSet> map = bitMapClustered
+                        .get(destinations.length);
+                BitSet bitSetForOther = map.get(null);
 
+                results.and(bitSetForOther);
+
+            }
         }
 
         for (int i = 0; i < clusteredSubscriptionCount; ) {
