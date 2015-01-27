@@ -32,6 +32,7 @@ import java.util.BitSet;
 public class SubscriptionBitMapHandler {
 
     private static final String CONSTITUENT_TOPIC_CONSTANT = "other";
+    private final String SPECIAL_CHARACTER_FOR_NULL = "*";
     /**
      * Represents the mapping from criteria to clustered subscriptions
      */
@@ -50,7 +51,6 @@ public class SubscriptionBitMapHandler {
      * Map <Index of the subscriber, Map<Subscription ID, LocalSubscription>
      */
     private Map<Integer, Map<String, LocalSubscription>> localSubscriptions;
-
     /**
      * Keeps track of the Andes subscriptions
      * <p/>
@@ -60,7 +60,6 @@ public class SubscriptionBitMapHandler {
      */
 
     private Map<Integer, Map<String, AndesSubscription>> clusteredSubscriptions;
-
     /**
      * Mapping from the routing key to the integer
      * <p/>
@@ -75,28 +74,23 @@ public class SubscriptionBitMapHandler {
      */
     private Map<String, Integer> localSubscriptionMapping;
     private Map<String, Integer> clusteredSubscriptionMapping;
-
     /**
      * Keeps track of the local subscribers count with distinct routing keys
      */
     private int localSubscriptionCount;
-
     /**
      * Keeps track of the andes subscribers count with distinct routing keys
      */
     private int clusteredSubscriptionCount;
-
     /**
      * Keeps track of the deleted local subscription indexes
      * Whenever this arraylist is not empty, the index for the new subscription is found from this
      */
     private ArrayList<Integer> deletedLocals;
-
     /**
      * Keeps track of the deleted clustered subscription indexes
      */
     private ArrayList<Integer> deletedClusters;
-
     /**
      * Initialize the BitMap
      */
@@ -173,7 +167,7 @@ public class SubscriptionBitMapHandler {
 
                     for (int deleted : deletedLocals) bitSet.clear(deleted);
                     bitSet.clear(columnIndexOfTheSubscriptionInBitMap);
-                    newBitMapForIthConstituent.put(null, bitSet);
+                    newBitMapForIthConstituent.put(SPECIAL_CHARACTER_FOR_NULL, bitSet);
 
                     BitSet bitSetForPreviousOther;
                     bitSetForPreviousOther = new BitSet();
@@ -182,7 +176,7 @@ public class SubscriptionBitMapHandler {
                         bitSetForPreviousOther = (BitSet) bitMapLocal
                                 .get(constituentPart - 1).get(CONSTITUENT_TOPIC_CONSTANT).clone();
                         BitSet bitArrayForPreviousNull = (BitSet) bitMapLocal
-                                .get(constituentPart - 1).get(null).clone();
+                                .get(constituentPart - 1).get(SPECIAL_CHARACTER_FOR_NULL).clone();
 
                         bitSetForPreviousOther.and(bitArrayForPreviousNull);
                     }
@@ -198,13 +192,14 @@ public class SubscriptionBitMapHandler {
                 Map<String, BitSet> bitMapForithConstituent = bitMapLocal.get(constituentPart);
 
                 if ("#".equals(destinations[constituentPart]) || "*".equals(destinations[constituentPart])) {
-                    for (Map.Entry<String, BitSet> mapEntryForithBitMap : bitMapLocal.get(constituentPart).entrySet())
-                        if (null != mapEntryForithBitMap.getKey()) {
+                    for (Map.Entry<String, BitSet> mapEntryForithBitMap : bitMapLocal.get(constituentPart).entrySet()) {
+                        if (!SPECIAL_CHARACTER_FOR_NULL.equals(mapEntryForithBitMap.getKey())) {
                             mapEntryForithBitMap.getValue().set(columnIndexOfTheSubscriptionInBitMap);
                         } else {
                             if ("#".equals(destinations[constituentPart]))
                                 mapEntryForithBitMap.getValue().set(columnIndexOfTheSubscriptionInBitMap);
                         }
+                    }
                 } else {
                     BitSet bitSetForspecificConstituentPartOfSubscription;
                     bitSetForspecificConstituentPartOfSubscription = bitMapForithConstituent.get(destinations[constituentPart]);
@@ -233,7 +228,7 @@ public class SubscriptionBitMapHandler {
                 }
             } else {
                 for (int i = destinations.length; i < bitMapLocal.size(); i++)
-                    bitMapLocal.get(i).get(null).set(columnIndexOfTheSubscriptionInBitMap);
+                    bitMapLocal.get(i).get(SPECIAL_CHARACTER_FOR_NULL).set(columnIndexOfTheSubscriptionInBitMap);
             }
 
         }
@@ -311,7 +306,7 @@ public class SubscriptionBitMapHandler {
 
                     for (int deleted : deletedClusters) bitSet.clear(deleted);
                     bitSet.clear(columnIndexOfTheSubscriptionInBitMap);
-                    newBitMapForithConstituent.put(null, bitSet);
+                    newBitMapForithConstituent.put(SPECIAL_CHARACTER_FOR_NULL, bitSet);
 
                     BitSet bitSetForPreviousOther;
                     bitSetForPreviousOther = new BitSet();
@@ -320,7 +315,7 @@ public class SubscriptionBitMapHandler {
                         bitSetForPreviousOther = (BitSet) bitMapClustered
                                 .get(i - 1).get(CONSTITUENT_TOPIC_CONSTANT).clone();
                         BitSet bitArrayForPreviousNull = (BitSet) bitMapClustered
-                                .get(i - 1).get(null).clone();
+                                .get(i - 1).get(SPECIAL_CHARACTER_FOR_NULL).clone();
 
                         bitSetForPreviousOther.and(bitArrayForPreviousNull);
                     }
@@ -337,7 +332,7 @@ public class SubscriptionBitMapHandler {
 
                 if ("#".equals(destinations[i]) || "*".equals(destinations[i])) {
                     for (Map.Entry<String, BitSet> mapEntryForIthBitMap : bitMapClustered.get(i).entrySet())
-                        if (null != mapEntryForIthBitMap.getKey()) {
+                        if (!SPECIAL_CHARACTER_FOR_NULL.equals(mapEntryForIthBitMap.getKey())) {
                             mapEntryForIthBitMap.getValue().set(columnIndexOfTheSubscriptionInBitMap);
                         } else {
                             if ("#".equals(destinations[i]))
@@ -371,7 +366,7 @@ public class SubscriptionBitMapHandler {
                 }
             } else {
                 for (int i = destinations.length; i < bitMapClustered.size(); i++)
-                    bitMapClustered.get(i).get(null).set(columnIndexOfTheSubscriptionInBitMap);
+                    bitMapClustered.get(i).get(SPECIAL_CHARACTER_FOR_NULL).set(columnIndexOfTheSubscriptionInBitMap);
             }
 
         }
@@ -499,7 +494,7 @@ public class SubscriptionBitMapHandler {
                 Map<String, BitSet> map = bitMapLocal
                         .get(bitMapLocal.size() - 1);
                 BitSet bitSetForOther = (BitSet) map.get(CONSTITUENT_TOPIC_CONSTANT).clone();
-                BitSet bitSetForNull = (BitSet) map.get(null).clone();
+                BitSet bitSetForNull = (BitSet) map.get(SPECIAL_CHARACTER_FOR_NULL).clone();
                 bitSetForOther.and(bitSetForNull);
                 results.and(bitSetForOther);
             }
@@ -510,7 +505,7 @@ public class SubscriptionBitMapHandler {
             else if (destinations.length != 0 && bitMapLocal.size() > destinations.length) {
                 Map<String, BitSet> map = bitMapLocal
                         .get(destinations.length);
-                BitSet bitSetForNull = map.get(null);
+                BitSet bitSetForNull = map.get(SPECIAL_CHARACTER_FOR_NULL);
                 results.and(bitSetForNull);
 
             }
@@ -569,7 +564,7 @@ public class SubscriptionBitMapHandler {
                 Map<String, BitSet> map = bitMapClustered.get(bitMapClustered
                         .size() - 1);
                 BitSet bitSetForOther = (BitSet) map.get(CONSTITUENT_TOPIC_CONSTANT).clone();
-                BitSet bitSetForNull = (BitSet) map.get(null).clone();
+                BitSet bitSetForNull = (BitSet) map.get(SPECIAL_CHARACTER_FOR_NULL).clone();
 
                 bitSetForOther.and(bitSetForNull);
                 results.and(bitSetForOther);
@@ -577,7 +572,7 @@ public class SubscriptionBitMapHandler {
             } else if (destinations.length != 0 && bitMapClustered.size() > destinations.length) {
                 Map<String, BitSet> map = bitMapClustered
                         .get(destinations.length);
-                BitSet bitSetForOther = map.get(null);
+                BitSet bitSetForOther = map.get(SPECIAL_CHARACTER_FOR_NULL);
 
                 results.and(bitSetForOther);
 
