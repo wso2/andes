@@ -166,7 +166,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
 
     @Override
     public void publishStateEvent(AndesInboundStateEvent stateEvent) {
-        
+
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEvent event = ringBuffer.get(sequence);

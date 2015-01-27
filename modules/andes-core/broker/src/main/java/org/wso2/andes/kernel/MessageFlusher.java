@@ -26,6 +26,7 @@ import org.wso2.andes.kernel.distruptor.delivery.DisruptorBasedFlusher;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.subscription.SubscriptionStore;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -350,6 +351,8 @@ public class MessageFlusher {
          */
         int sentMessageCount = 0;
         Iterator<AndesMessageMetadata> iterator = messages.iterator();
+        List<AndesRemovableMetadata> droppedTopicMessageList = new ArrayList<AndesRemovableMetadata>();
+
         while (iterator.hasNext()) {
 
             try {
@@ -381,10 +384,16 @@ public class MessageFlusher {
                     }
                 }
 
-                //check id destination has any subscription
+                //check id destination has any subscription for the current message
                 //todo return the slot
                 if (subscriptions4Queue.size() == 0) {
-                    return 0;
+                    iterator.remove(); // remove buffer
+                    OnflightMessageTracker.getInstance().decrementMessageCountInSlotAndCheckToResend(message.getSlot());
+                    AndesRemovableMetadata removableMetadata = new AndesRemovableMetadata(message.getMessageID(),
+                            message.getDestination(), message.getStorageQueueName());
+                    droppedTopicMessageList.add(removableMetadata);
+
+                    continue; // skip this iteration if no subscriptions for the message
                 }
 
                 int numOfCurrentMsgDeliverySchedules = 0;
@@ -456,6 +465,9 @@ public class MessageFlusher {
                 break;
             }
         }
+
+        // delete topic messages that were dropped due to no subscriptions for the message
+        Andes.getInstance().deleteMessages(droppedTopicMessageList, false);
         return sentMessageCount;
     }
 

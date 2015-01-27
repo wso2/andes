@@ -167,7 +167,7 @@ public class SlotDeliveryWorker extends Thread {
                                                 currentSlot.getDestinationOfMessagesInSlot());
                                     } else {
                                         currentSlot.setSlotInActive();
-                                        MBThriftClient.deleteSlot(storageQueueName, currentSlot, nodeId);
+                                        deleteSlot(currentSlot, nodeId);
                                     }
                                 }
                             //Standalone mode
@@ -363,10 +363,7 @@ public class SlotDeliveryWorker extends Thread {
             if (messagesReturnedFromCassandra.isEmpty()) {
                 try {
                     slot.setSlotInActive();
-
-                    if (isClusteringEnabled) {
-                        MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
-                    }
+                    deleteSlot(slot, nodeId);
                 } catch (ConnectionException e) {
                     throw new AndesException(
                             "Error deleting slot while checking for slot completion.", e);
@@ -383,15 +380,22 @@ public class SlotDeliveryWorker extends Thread {
         } else {
             try {
                 slot.setSlotInActive();
-
-                if (isClusteringEnabled) {
-                    MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
-                }
+                deleteSlot(slot, nodeId);
             } catch (ConnectionException e) {
                 throw new AndesException(
                         "Error deleting slot while checking for slot completion.", e);
             }
         }
+    }
+
+
+    public void deleteSlot(Slot slot,String nodeId) throws ConnectionException {
+
+        if(isClusteringEnabled){
+            MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
+        }
+        OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
+
     }
 }
 

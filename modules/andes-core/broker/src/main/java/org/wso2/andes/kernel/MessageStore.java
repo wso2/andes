@@ -135,13 +135,13 @@ public interface MessageStore {
     /**
      * read a metadata list from store specifying a message id range
      *
-     * @param queueName name of the queue
+     * @param storageQueueName name of the queue messages are stored
      * @param firstMsgId first id of the range
      * @param lastMsgID last id of the range
      * @return list of metadata
      * @throws AndesException
      */
-    public List<AndesMessageMetadata> getMetaDataList(final String queueName, long firstMsgId,
+    public List<AndesMessageMetadata> getMetaDataList(final String storageQueueName, long firstMsgId,
                                                       long lastMsgID) throws AndesException;
 
     /**

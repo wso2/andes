@@ -94,7 +94,6 @@ public class Andes {
         flowControlManager = new FlowControlManager();
     }
 
-    
     /**
      * Initialise is package specific. We don't need outsiders initialising the API
      */
@@ -152,37 +151,26 @@ public class Andes {
         inboundEventManager.publishStateEvent(channelEvent);
     }
 
-    /**
-     * Close an already existing subscription from this node
-     *
-     * @param subscriptionEvent LocalSubscription event
-     * @throws AndesException
-     */
     public void closeLocalSubscription(InboundSubscriptionEvent subscriptionEvent) throws AndesException {
-        subscriptionEvent.prepareForCloseSubscription(subscriptionManager);
+        subscriptionEvent.prepareForNewSubscription(subscriptionManager);
         inboundEventManager.publishStateEvent(subscriptionEvent);
         try {
             subscriptionEvent.waitForCompletion();
-        } catch (SubscriptionAlreadyExistsException ignore) {
-            // only thrown for adding subscription
+        } catch (SubscriptionAlreadyExistsException e) {
+            log.error("Error occurred while closing subscription ", e);
         }
     }
 
     /**
      * When a local subscription is created notify Andes through this method. This need to be called first to receive
      * any messages from this local subscription
-     * @param localSubscription LocalSubscription
-     * @throws SubscriptionAlreadyExistingException
+     * @param subscriptionEvent InboundSubscriptionEvent
+     * @throws SubscriptionAlreadyExistsException
      */
-    public void openLocalSubscription(InboundSubscriptionEvent subscriptionEvent) throws SubscriptionAlreadyExistsException {
+    public void openLocalSubscription(InboundSubscriptionEvent subscriptionEvent) throws SubscriptionAlreadyExistsException, AndesException {
         subscriptionEvent.prepareForNewSubscription(subscriptionManager);
         inboundEventManager.publishStateEvent(subscriptionEvent);
-        try {
-            subscriptionEvent.waitForCompletion();
-        } catch (AndesException e) {
-            throw new SubscriptionAlreadyExistsException("Subscription already added. Subscription id " +
-                    subscriptionEvent.getSubscriptionID(), e);
-        }
+        subscriptionEvent.waitForCompletion();
     }
 
     /**

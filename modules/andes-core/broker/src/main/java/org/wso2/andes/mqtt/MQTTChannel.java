@@ -181,9 +181,11 @@ public class MQTTChannel {
                     log.debug("Subscription registered to the " + topic + " with channel id " + clientID);
                 }
             } catch (SubscriptionAlreadyExistsException e) {
-                final String message = "Error ocured while creating the topic subscription in the kernal";
+                final String message = "Error occurred while creating the topic subscription in the kernel";
                 log.error(message, e);
                 throw new MQTTException(message, e);
+            } catch (AndesException e) {
+                log.error("Error occurred while opening subscription ", e);
             }
         } else {
             //This will be similer to a durable subscription of AMQP
@@ -203,9 +205,11 @@ public class MQTTChannel {
                     log.debug("Subscription registered to the " + topic + " with channel id " + clientID);
                 }
             } catch (SubscriptionAlreadyExistsException e) {
-                final String message = "Error ocured while creating the topic subscription in the kernal";
+                final String message = "Error occurred while creating the topic subscription in the kernel";
                 log.error(message, e);
                 throw new MQTTException(message, e);
+            } catch (AndesException e) {
+                log.error("Error occurred while opening subscription", e);
             }
 
         }
