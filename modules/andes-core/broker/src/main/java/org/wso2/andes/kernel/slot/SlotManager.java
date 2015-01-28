@@ -224,8 +224,10 @@ public class SlotManager {
             wrapper = new TreeSetLongWrapper();
             wrapper.setLongTreeSet(messageIdSet);
             slotIDMap.putIfAbsent(queueName, wrapper);
-            messageIdSet = slotIDMap.get(queueName).getLongTreeSet();
         }
+        // Read message Id set for slots
+        messageIdSet = wrapper.getLongTreeSet();
+
         String lockKey = queueName + SlotManager.class;
         synchronized (lockKey.intern()) {
             /**
