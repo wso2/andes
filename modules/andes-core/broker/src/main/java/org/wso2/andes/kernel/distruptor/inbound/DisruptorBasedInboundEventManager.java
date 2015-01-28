@@ -250,9 +250,20 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
      * @inheritDoc
      */
     @Override
-    public void closeLocalSubscription(LocalSubscription localSubscription) {
-        publishToRingBuffer(InboundEvent.Type.CLOSE_SUBSCRIPTION_EVENT, localSubscription,
+    public void closeLocalSubscription(LocalSubscription localSubscription) throws AndesException {
+        InboundEvent event = publishToRingBuffer(InboundEvent.Type.CLOSE_SUBSCRIPTION_EVENT,
+                localSubscription,
                 "Close subscription event published to disruptor.");
+        SettableFuture<String> future =  event.getFuture();
+        try {
+            String result = future.get();
+        } catch (InterruptedException e) {
+           Thread.currentThread().interrupt();
+        } catch (ExecutionException e) {
+            throw new AndesException("Error occurred while closing the subscriber " +
+                    localSubscription.getSubscriptionID(), e);
+        }
+
     }
 
     /**

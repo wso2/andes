@@ -156,7 +156,7 @@ public interface InboundEventManager {
      * Notify Andes to close an existing local subscription.
      * @param localSubscription LocalSubscription
      */
-    public void closeLocalSubscription(LocalSubscription localSubscription);
+    public void closeLocalSubscription(LocalSubscription localSubscription) throws AndesException;
 
     /**
      * When a local subscription is created notify Andes. This need to be called first to receive
