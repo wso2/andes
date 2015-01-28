@@ -471,29 +471,15 @@ public class OnflightMessageTracker {
         }
         ConcurrentHashMap<Long, MsgData> messagesOfSlot = messageBufferingTracker.remove(slot);
         if (messagesOfSlot != null) {
-            for (Long messageIdOfSlot : messagesOfSlot.keySet()) {
-                getTrackingData(messageIdOfSlot).addMessageStatus(MessageStatus.SLOT_REMOVED);
-                if (checkIfReadyToRemoveFromTracking(messageIdOfSlot)) {
+            for (Long messageId : messagesOfSlot.keySet()) {
+                getTrackingData(messageId).addMessageStatus(MessageStatus.SLOT_REMOVED);
+                if (checkIfReadyToRemoveFromTracking(messageId)) {
                     if (log.isDebugEnabled()) {
-                        log.debug("removing tracking object from memory id= " + messageIdOfSlot);
+                        log.debug("removing tracking object from memory id " + messageId);
                     }
-                    msgId2MsgData.remove(messageIdOfSlot);
+                    msgId2MsgData.remove(messageId);
                 }
             }
-        }
-    }
-
-    /**
-     * Metadata removed once ack received. At the same time we remove tracking data of message.
-     *
-     * @param messageId ID of a message
-     */
-    public void removeTrackingDataOfMessage(Long messageId) {
-        if (checkIfReadyToRemoveFromTracking(messageId)) {
-            if (log.isDebugEnabled()) {
-                log.debug("removing tracking object from memory id= " + messageId);
-            }
-            msgId2MsgData.remove(messageId);
         }
     }
 
