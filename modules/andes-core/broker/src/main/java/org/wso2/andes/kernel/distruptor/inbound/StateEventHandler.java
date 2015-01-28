@@ -90,7 +90,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
                     openLocalSubscription((LocalSubscription) event.getData(), event);
                     break;
                 case CLOSE_SUBSCRIPTION_EVENT:
-                    closeLocalSubscription((LocalSubscription) event.getData());
+                    closeLocalSubscription((LocalSubscription) event.getData(), event);
                     break;
             }
 
@@ -182,10 +182,11 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      *
      * @param localSubscription LocalSubscription
      */
-    public void closeLocalSubscription(LocalSubscription localSubscription) {
+    public void closeLocalSubscription(LocalSubscription localSubscription, InboundEvent event) {
         AndesSubscriptionManager subscriptionManager = ClusterResourceHolder.getInstance().getSubscriptionManager();
         try {
             subscriptionManager.closeLocalSubscription(localSubscription);
+            event.getFuture().set("success");
         } catch (AndesException e) {
             log.error("Error occurred while closing subscription. Subscription id "
                     + localSubscription.getSubscriptionID(), e);
