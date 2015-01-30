@@ -38,13 +38,13 @@
         <dependency>
             <groupId>org.wso2.andes</groupId>
             <artifactId>andes-client</artifactId>
-            <version>${project.version}</version>
+            <version>${andes.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.wso2.andes</groupId>
             <artifactId>andes-common</artifactId>
-            <version>${project.version}</version>
+            <version>${andes.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>

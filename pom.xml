@@ -616,6 +616,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <carbon.kernel.version>4.3.0</carbon.kernel.version>
         <project.scm.id>my-scm-server</project.scm.id>
+        <andes.version>2.5.0-SNAPSHOT</andes.version>
     </properties>
 
     <mailingLists>
