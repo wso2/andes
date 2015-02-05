@@ -659,11 +659,11 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
         // When it is the CC_OK_Handler then it makes sence to remove the channel else we will leak memory.
         // We do it from the Close Handler as we are sending the OK back to the client.
         // While this is AMQP spec compliant. The Java client in the event of an IllegalArgumentException
-        // will send a close-ok.. Where we should call removeChannel.
+        // will send a close-ok.. Where we should call deleteChannel.
         // However, due to the poor exception handling on the client. The client-user will be notified of the
         // InvalidArgument and if they then decide to close the session/connection then the there will be time
         // for that to occur i.e. a new close method be sent before the exeption handling can mark the session closed.
-        //removeChannel(channelId);
+        //deleteChannel(channelId);
         _closingChannelsList.remove(channelId);
     }
 

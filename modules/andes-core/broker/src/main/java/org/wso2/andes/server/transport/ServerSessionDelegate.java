@@ -1070,7 +1070,7 @@ public class ServerSessionDelegate extends SessionDelegate
                     {
 
                         boolean isQueueDeletable = ClusterResourceHolder.getInstance().
-                                getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queue.getName());
+                                getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queue);
 
                         if(isQueueDeletable) {
                             queue.delete();

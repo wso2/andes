@@ -20,6 +20,7 @@ package org.wso2.andes.kernel.distruptor.delivery;
 
 import com.lmax.disruptor.EventHandler;
 import org.apache.log4j.Logger;
+import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
@@ -90,7 +91,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                     MessageFlusher.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
                 }
             } catch (Throwable e) {
-                log.error("Error while delivering message. Moving to Dead Letter Queue.", e);
+                log.error("Error while delivering message. Message id " + message.getMessageID(), e);
                 //increment above schedule count because exception occurred while send message to subscriber
                 OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
                 handleSendError(message);
@@ -110,13 +111,14 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
         // If message is a queue message we move the message to the Dead Letter Channel
         // since topics doesn't have a Dead Letter Channel
         if (!message.isTopic()) {
+            log.info("Moving message to Dead Letter Channel. Message ID " + message.getMessageID());
             AndesRemovableMetadata removableMessage = new AndesRemovableMetadata(message.getMessageID(),
                                                                                  message.getDestination(),
                                                                                  message.getStorageQueueName());
             List<AndesRemovableMetadata> messageToMoveToDLC = new ArrayList<AndesRemovableMetadata>();
             messageToMoveToDLC.add(removableMessage);
             try {
-                MessagingEngine.getInstance().deleteMessages(messageToMoveToDLC, true);
+                Andes.getInstance().deleteMessages(messageToMoveToDLC, true);
             } catch (AndesException dlcException) {
                 // If an exception occur in this level, it means that there is a message store level error.
                 // There's a possibility that we might lose this message

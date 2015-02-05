@@ -20,10 +20,22 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.kernel.distruptor.inbound.InboundAndesChannelEvent;
+import org.wso2.andes.kernel.distruptor.inbound.InboundBindingEvent;
+import org.wso2.andes.kernel.distruptor.inbound.InboundDeleteMessagesEvent;
+import org.wso2.andes.kernel.distruptor.inbound.InboundExchangeEvent;
+import org.wso2.andes.kernel.distruptor.inbound.InboundKernelOpsEvent;
+import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
+import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import static org.wso2.andes.configuration.enums.AndesConfiguration.PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT;
 
 /**
  * API for all the tasks done by Andes.
@@ -35,6 +47,11 @@ public class Andes {
     private static Andes instance = new Andes();
 
     /**
+     * Max purge timeout to return the value of purge message count 
+     */
+    private final int PURGE_TIMEOUT_SECONDS;
+
+    /**
      * Use to manage channel according to flow control rules
      */
     private final FlowControlManager flowControlManager;
@@ -44,6 +61,20 @@ public class Andes {
      * Eg: open channel, publish message, process acknowledgments
      */
     private InboundEventManager inboundEventManager;
+
+    /**
+     *  Andes context related information manager. Exchanges, Queues and Bindings
+     */
+    private AndesContextInformationManager contextInformationManager;
+    /**
+     * handle all message related functions.
+     */
+    private MessagingEngine messagingEngine;
+
+    /**
+     * Manages all subscription related events 
+     */
+    private AndesSubscriptionManager subscriptionManager;
 
     /**
      * Instance of AndesAPI returned
@@ -58,13 +89,23 @@ public class Andes {
      * Singleton class. Hence private constructor.
      */
     private Andes() {
+
+        PURGE_TIMEOUT_SECONDS = (Integer) AndesConfigurationManager.readValue(PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT);
         flowControlManager = new FlowControlManager();
     }
 
     /**
      * Initialise is package specific. We don't need outsiders initialising the API
      */
-    void initialise(SubscriptionStore subscriptionStore, MessagingEngine messagingEngine) {
+    void initialise(SubscriptionStore subscriptionStore,
+                    MessagingEngine messagingEngine,
+                    AndesContextInformationManager contextInformationManager,
+                    AndesSubscriptionManager subscriptionManager) {
+        
+        this.contextInformationManager = contextInformationManager;
+        this.messagingEngine = messagingEngine;
+        this.subscriptionManager = subscriptionManager;
+
         inboundEventManager = InboundEventManagerFactory.createEventManager(subscriptionStore, messagingEngine);
         log.info("Andes API initialised.");
     }
@@ -73,7 +114,7 @@ public class Andes {
      * When a message is received from a transport it should be converted to an AndesMessage and handed over to Andes
      * for delivery through this method.
      * @param message AndesMessage
-     * @param andesChannel
+     * @param andesChannel AndesChannel
      */
     public void messageReceived(AndesMessage message, AndesChannel andesChannel) {
         inboundEventManager.messageReceived(message, andesChannel);
@@ -94,7 +135,9 @@ public class Andes {
      * @param channelID id of the closed connection
      */
     public void clientConnectionClosed(UUID channelID) {
-        inboundEventManager.clientConnectionClosed(channelID);
+        InboundAndesChannelEvent channelEvent = new InboundAndesChannelEvent(channelID);
+        channelEvent.prepareForChannelClose();
+        inboundEventManager.publishStateEvent(channelEvent);
     }
 
     /**
@@ -103,21 +146,31 @@ public class Andes {
      * @param channelID channelID of the client connection
      */
     public void clientConnectionCreated(UUID channelID) {
-        inboundEventManager.clientConnectionCreated(channelID);
+        InboundAndesChannelEvent channelEvent = new InboundAndesChannelEvent(channelID);
+        channelEvent.prepareForChannelOpen();
+        inboundEventManager.publishStateEvent(channelEvent);
     }
 
-    public void closeLocalSubscription(LocalSubscription localSubscription) throws AndesException {
-        inboundEventManager.closeLocalSubscription(localSubscription);
+    public void closeLocalSubscription(InboundSubscriptionEvent subscriptionEvent) throws AndesException {
+        subscriptionEvent.prepareForNewSubscription(subscriptionManager);
+        inboundEventManager.publishStateEvent(subscriptionEvent);
+        try {
+            subscriptionEvent.waitForCompletion();
+        } catch (SubscriptionAlreadyExistsException e) {
+            log.error("Error occurred while closing subscription ", e);
+        }
     }
 
     /**
      * When a local subscription is created notify Andes through this method. This need to be called first to receive
      * any messages from this local subscription
-     * @param localSubscription LocalSubscription
-     * @throws AndesException
+     * @param subscriptionEvent InboundSubscriptionEvent
+     * @throws SubscriptionAlreadyExistsException
      */
-    public void openLocalSubscription(LocalSubscription localSubscription) throws SubscriptionAlreadyExistingException {
-        inboundEventManager.openLocalSubscription(localSubscription);
+    public void openLocalSubscription(InboundSubscriptionEvent subscriptionEvent) throws SubscriptionAlreadyExistsException, AndesException {
+        subscriptionEvent.prepareForNewSubscription(subscriptionManager);
+        inboundEventManager.publishStateEvent(subscriptionEvent);
+        subscriptionEvent.waitForCompletion();
     }
 
     /**
@@ -126,14 +179,18 @@ public class Andes {
      * @throws Exception
      */
     public void startMessageDelivery() throws Exception {
-        inboundEventManager.startMessageDelivery();
+        InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
+        kernelOpsEvent.prepareForStartMessageDelivery(messagingEngine);
+        inboundEventManager.publishStateEvent(kernelOpsEvent);
     }
 
     /**
      * Stop message delivery
      */
     public void stopMessageDelivery() {
-        inboundEventManager.stopMessageDelivery();
+        InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
+        kernelOpsEvent.prepareForStopMessageDelivery(messagingEngine);
+        inboundEventManager.publishStateEvent(kernelOpsEvent);
     }
 
     /**
@@ -141,7 +198,9 @@ public class Andes {
      * NOTE: This is package specific. We don't need access outside from kernel for this task
      */
     void shutDown() {
-        inboundEventManager.shutDown();
+        InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
+        kernelOpsEvent.prepareForShutdownMessagingEngine(messagingEngine);
+        inboundEventManager.publishStateEvent(kernelOpsEvent);
     }
 
     /**
@@ -149,7 +208,9 @@ public class Andes {
      * NOTE: This is package specific. We don't need access outside from kernel for this task
      */
     void startMessageExpirationWorker() {
-        inboundEventManager.startMessageExpirationWorker();
+        InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
+        kernelOpsEvent.prepareForStartMessageExpirationWorker(messagingEngine);
+        inboundEventManager.publishStateEvent(kernelOpsEvent);
     }
 
     /**
@@ -157,7 +218,9 @@ public class Andes {
      * NOTE: This is package specific. We don't need outside kernel access for this task
      */
     void stopMessageExpirationWorker() {
-        inboundEventManager.stopMessageExpirationWorker();
+        InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
+        kernelOpsEvent.prepareForStopMessageExpirationWorker(messagingEngine);
+        inboundEventManager.publishStateEvent(kernelOpsEvent);
     }
 
     /**
@@ -165,15 +228,21 @@ public class Andes {
      * MQTTBridge or UI MBeans (QueueManagementInformationMBean)
      * Remove messages of the queue matching to given destination queue (cassandra / h2 / mysql etc. )
      *
-     * @param destination queue or topic name (subscribed routing key) whose messages should be removed
-     * @param ownerName The user who initiated the purge request
+     * @param queueEvent queue event related to purge 
      * @param isTopic weather purging happens for a topic
-     * @return number of messages removed (in memory message count may not be 100% accurate
      * since we cannot guarantee that we caught all messages in delivery threads.)
      * @throws AndesException
      */
-    public int purgeMessages(String destination, String ownerName, boolean isTopic) throws AndesException {
-        return MessagingEngine.getInstance().purgeMessages(destination, ownerName, isTopic);
+    public int purgeQueue(InboundQueueEvent queueEvent, boolean isTopic) throws AndesException {
+        queueEvent.purgeQueue(messagingEngine, isTopic);
+        inboundEventManager.publishStateEvent(queueEvent);
+        try {
+            return queueEvent.getPurgedCount(PURGE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            log.error("Purge event timed out. Purge may have failed or may take longer than " 
+                    + PURGE_TIMEOUT_SECONDS + " seconds", e);
+        }
+        return -1;
     }
 
     /**
@@ -185,7 +254,32 @@ public class Andes {
      */
     public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel)
             throws AndesException {
-        MessagingEngine.getInstance().deleteMessages(messagesToRemove, moveToDeadLetterChannel);
+        InboundDeleteMessagesEvent deleteMessagesEvent = new InboundDeleteMessagesEvent(
+                messagesToRemove,moveToDeadLetterChannel);
+        deleteMessagesEvent.prepareForDelete(messagingEngine);
+        inboundEventManager.publishStateEvent(deleteMessagesEvent);
+    }
+
+    /**
+     * Create queue in Andes kernel
+     *
+     * @param queueEvent queue event to create
+     * @throws AndesException
+     */
+    public void createQueue(InboundQueueEvent queueEvent) throws AndesException {
+        queueEvent.prepareForCreateQueue(contextInformationManager);
+        inboundEventManager.publishStateEvent(queueEvent);
+    }
+
+    /**
+     * Delete the queue from broker. This will purge the queue and
+     * delete cluster-wide
+     * @param queueEvent  queue event for deleting queue
+     * @throws AndesException
+     */
+    public void deleteQueue(InboundQueueEvent queueEvent) throws AndesException {
+        queueEvent.prepareForDeleteQueue(contextInformationManager);
+        inboundEventManager.publishStateEvent(queueEvent);
     }
 
     /**
@@ -355,8 +449,57 @@ public class Andes {
      * @param channel
      *         Andes channel
      */
-    public void removeChannel(AndesChannel channel) {
-        flowControlManager.removeChannel(channel);
+    public void deleteChannel(AndesChannel channel) {
+        flowControlManager.deleteChannel(channel);
+    }
+
+    /**
+     * Create andes binding in Andes kernel
+     * @param bindingsEvent InboundBindingEvent binding to be created
+     * @throws AndesException
+     */
+    public void addBinding(InboundBindingEvent bindingsEvent) throws AndesException {
+        bindingsEvent.prepareForAddBindingEvent(contextInformationManager);
+        inboundEventManager.publishStateEvent(bindingsEvent);
+    }
+
+    /**
+     * Remove andes binding from andes kernel
+     * @param bindingEvent binding to be removed
+     * @throws AndesException
+     */
+    public void removeBinding(InboundBindingEvent bindingEvent) throws AndesException {
+        bindingEvent.prepareForRemoveBinding(contextInformationManager);
+        inboundEventManager.publishStateEvent(bindingEvent);
+    }
+
+    /**
+     * Create an exchange in Andes kernel
+     *
+     * @param exchangeEvent InboundExchangeEvent for AMQP exchange
+     * @throws AndesException
+     */
+    public void createExchange(InboundExchangeEvent exchangeEvent) throws AndesException {
+        exchangeEvent.prepareForCreateExchange(contextInformationManager);
+        inboundEventManager.publishStateEvent(exchangeEvent);
+    }
+
+    /**
+     * Delete exchange from andes kernel
+     *
+     * @param exchangeEvent  exchange to delete
+     * @throws AndesException
+     */
+    public void deleteExchange(InboundExchangeEvent exchangeEvent) throws AndesException{
+        exchangeEvent.prepareForDeleteExchange(contextInformationManager);
+        inboundEventManager.publishStateEvent(exchangeEvent);
+    }
+
+    public boolean checkIfQueueDeletable(InboundQueueEvent queueEvent) throws AndesException {
+        queueEvent.prepareForCheckIfQueueDeletable(contextInformationManager);
+        inboundEventManager.publishStateEvent(queueEvent);
+        
+        return queueEvent.IsQueueDeletable();
     }
 }
 

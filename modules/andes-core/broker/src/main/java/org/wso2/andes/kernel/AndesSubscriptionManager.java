@@ -84,7 +84,7 @@ public class AndesSubscriptionManager {
      * @param localSubscription local subscription
      * @throws AndesException
      */
-    public void addSubscription(LocalSubscription localSubscription) throws AndesException {
+    public void addSubscription(LocalSubscription localSubscription) throws AndesException, SubscriptionAlreadyExistsException {
 
         //store subscription in context store
         subscriptionStore.createDisconnectOrRemoveLocalSubscription(localSubscription, SubscriptionListener.SubscriptionChange.ADDED);
@@ -135,7 +135,11 @@ public class AndesSubscriptionManager {
         if (!activeSubscriptions.isEmpty()) {
             for (LocalSubscription sub : activeSubscriptions) {
                 //close and notify
-                subscriptionStore.createDisconnectOrRemoveLocalSubscription(sub, SubscriptionListener.SubscriptionChange.DELETED);
+                try {
+                    subscriptionStore.createDisconnectOrRemoveLocalSubscription(sub, SubscriptionListener.SubscriptionChange.DELETED);
+                } catch (SubscriptionAlreadyExistsException ignore) {
+                    // newer thrown for close subscriptions
+                }
                 notifyLocalSubscriptionHasChanged(sub, SubscriptionListener.SubscriptionChange.DELETED);
             }
         }
@@ -222,7 +226,11 @@ public class AndesSubscriptionManager {
         } else {
             chageType = SubscriptionListener.SubscriptionChange.DELETED;
         }
-        subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, chageType);
+        try {
+            subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, chageType);
+        } catch (SubscriptionAlreadyExistsException ignore) {
+            // never thrown for close local subscription
+        }
         notifyLocalSubscriptionHasChanged(subscription, chageType);
     }
 
@@ -235,7 +243,11 @@ public class AndesSubscriptionManager {
         List<LocalSubscription> subscriptionsOfQueue = subscriptionStore.getListOfLocalSubscriptionsBoundToQueue(
                 boundQueueName);
         for(LocalSubscription subscription : subscriptionsOfQueue) {
-            subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, SubscriptionListener.SubscriptionChange.DELETED);
+            try {
+                subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, SubscriptionListener.SubscriptionChange.DELETED);
+            } catch (SubscriptionAlreadyExistsException ignore) {
+                // never thrown for delete
+            }
             notifyLocalSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.DELETED);
         }
     }

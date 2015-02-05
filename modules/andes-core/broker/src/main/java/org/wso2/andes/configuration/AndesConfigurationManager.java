@@ -159,8 +159,8 @@ public class AndesConfigurationManager {
      * enums (e.g.- config.enums.BrokerConfiguration) to pass the required property and
      * its meta information.
      *
-     * @param configurationProperty relevant enum value (e.g.- config.enums.AndesConfiguration)
      * @param <T>                   Expected data type of the property
+     * @param configurationProperty relevant enum value (e.g.- config.enums.AndesConfiguration)
      * @return Value of config in the expected data type.
      * @throws org.wso2.andes.kernel.AndesException
      */

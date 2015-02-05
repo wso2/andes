@@ -23,6 +23,7 @@ import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
 import org.wso2.andes.server.management.AMQManagedObject;
@@ -128,9 +129,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             // state of qpid is updated. This method also validates the request owner and throws
             // an exception if permission is denied.
 
-            int purgedMessageCount = Andes.getInstance().purgeMessages(queueName,
-                                                                                 ownerName,
-                                                                                 false);
+            InboundQueueEvent andesQueue = AMQPUtils.createAndesQueue(queue);
+            int purgedMessageCount = Andes.getInstance().purgeQueue(andesQueue, false);
             log.info("Total message count purged for queue (from store) : " + queueName + " : " +
                     purgedMessageCount + ". All in memory messages received before the purge call" +
                     " are abandoned from delivery phase. ");
@@ -166,7 +166,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             removableMetadataList.add(new AndesRemovableMetadata(messageId, deadLetterQueueName, deadLetterQueueName));
         }
         try {
-            MessagingEngine.getInstance().deleteMessages(removableMetadataList, false);
+            Andes.getInstance().deleteMessages(removableMetadataList, false);
         } catch (AndesException e) {
             throw new RuntimeException("Error deleting messages from Dead Letter Channel", e);
         }

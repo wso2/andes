@@ -36,9 +36,14 @@ public class AndesContextInformationManager {
 
     private static final Log log = LogFactory.getLog(AndesContextInformationManager.class);
 
-    private static AndesContextInformationManager contextManager;
+    /**
+     * Interface to store and retrieve Andes subscription related information
+     */
+    private SubscriptionStore subscriptionStore;
 
-    private AndesContextInformationManager() {
+    public AndesContextInformationManager(SubscriptionStore subscriptionStore) {
+        
+        this.subscriptionStore = subscriptionStore;
         //register listeners for queue changes
         addQueueListener(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
 
@@ -49,28 +54,10 @@ public class AndesContextInformationManager {
         addBindingListener(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
     }
 
-    private SubscriptionStore subscriptionStore;
-
-    static {
-        contextManager = new AndesContextInformationManager();
-    }
-
-    public static AndesContextInformationManager getInstance() {
-        return contextManager;
-    }
-
     //keep listeners that should be triggered when constructs are updated
     private List<QueueListener> queueListeners = new ArrayList<QueueListener>();
     private List<ExchangeListener> exchangeListeners = new ArrayList<ExchangeListener>();
     private List<BindingListener> bindingListeners = new ArrayList<BindingListener>();
-
-    /**
-     * Initialize the context manager
-     * @throws AndesException
-     */
-    public void initialize() throws AndesException {
-        subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-    }
 
     /**
      * Register a listener interested in local binding changes
@@ -126,7 +113,7 @@ public class AndesContextInformationManager {
      * Create queue in andes kernel
      *
      * @param queue queue to create
-     *@throws org.wso2.andes.kernel.AndesException
+     * @throws AndesException
      */
     public void createQueue(AndesQueue queue) throws AndesException {
         AndesContext.getInstance().getAMQPConstructStore().addQueue(queue, true);
@@ -156,8 +143,6 @@ public class AndesContextInformationManager {
      * @throws AndesException
      */
     public void deleteQueue(String queueName) throws AndesException {
-        //purge the queue cluster-wide
-        MessagingEngine.getInstance().purgeMessages(queueName, null, false);
         //identify queue to delete
         AndesQueue queueToDelete = null;
         List<AndesQueue> queueList = AndesContext.getInstance().getAndesContextStore()
@@ -168,6 +153,10 @@ public class AndesContextInformationManager {
                 break;
             }
         }
+        
+        //purge the queue cluster-wide
+        MessagingEngine.getInstance().purgeMessages(queueName, null, false);
+        
         //delete queue from context store
         AndesContext.getInstance().getAndesContextStore().deleteQueueInformation(queueName);
         AndesContext.getInstance().getAndesContextStore().removeMessageCounterForQueue(queueName);

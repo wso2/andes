@@ -130,16 +130,16 @@ public class VirtualHostConfigSynchronizer implements
 
     /**
      * Check if queue is deletable
-     * @param queueName name of the queue
+     * @param queue AMQQueue
      * @return possibility of deleting queue
      * @throws AMQException
      */
-    public boolean checkIfQueueDeletable(String queueName) throws AMQException{
+    public boolean checkIfQueueDeletable(AMQQueue queue) throws AMQException{
         try {
-            return AndesContextInformationManager.getInstance().checkIfQueueDeletable(queueName);
+            return Andes.getInstance().checkIfQueueDeletable(AMQPUtils.createAndesQueue(queue));
         } catch (AndesException e) {
             log.error("error while checking if queue is deletable", e);
-            throw new AMQException("error while checking if queue is deletable : " + queueName, e);
+            throw new AMQException("error while checking if queue is deletable : " + queue, e);
         }
     }
 

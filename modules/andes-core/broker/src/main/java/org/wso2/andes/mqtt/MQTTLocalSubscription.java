@@ -24,6 +24,7 @@ import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.subscription.BasicSubscription;
@@ -39,7 +40,7 @@ import java.util.UUID;
  * The subscriber will contain a reference to the relavent bridge connection where the bridge will notify the protocol
  * engine to inform the relavant subscriptions which are channel bound
  */
-public class MQTTLocalSubscription extends BasicSubscription implements LocalSubscription {
+public class MQTTLocalSubscription extends InboundSubscriptionEvent {
     //Will log the flows in relevent for this class
     private static Log log = LogFactory.getLog(MQTTLocalSubscription.class);
     //The reference to the bridge object

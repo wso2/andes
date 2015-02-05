@@ -35,8 +35,8 @@ public class ConcurrentBatchProcessor implements EventProcessor {
 
     private static Log log = LogFactory.getLog(ConcurrentBatchProcessor.class);
 
-    private final AtomicBoolean running = new AtomicBoolean(false);
-    private ExceptionHandler exceptionHandler = new IgnoreExceptionHandler();
+    private final AtomicBoolean running;
+    private ExceptionHandler exceptionHandler;
     private final RingBuffer<InboundEvent> ringBuffer;
     private final SequenceBarrier sequenceBarrier;
     private final BatchEventHandler eventHandler;
@@ -79,7 +79,8 @@ public class ConcurrentBatchProcessor implements EventProcessor {
         this.batchSize = batchSize;
         this.eventType = eventType;
         eventList = new ArrayList<InboundEvent>(this.batchSize);
-
+        exceptionHandler = new InboundLogExceptionHandler();
+        running = new AtomicBoolean(false);
         if (eventHandler instanceof SequenceReportingEventHandler) {
             ((SequenceReportingEventHandler<?>) eventHandler).setSequenceCallback(sequence);
         }

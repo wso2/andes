@@ -34,6 +34,12 @@ import org.wso2.andes.server.stats.PerformanceCounter;
 public class AckHandler implements BatchEventHandler {
 
     private static Log log = LogFactory.getLog(AckHandler.class);
+    
+    private final MessagingEngine messagingEngine;
+    
+    AckHandler(MessagingEngine messagingEngine) {
+        this.messagingEngine = messagingEngine;
+    }
 
     @Override
     public void onEvent(final List<InboundEvent> eventList) throws Exception {
@@ -83,7 +89,7 @@ public class AckHandler implements BatchEventHandler {
             event.clear();
         }
 
-        MessagingEngine.getInstance().deleteMessages(removableMetadata, false);
+        messagingEngine.deleteMessages(removableMetadata, false);
 
         if (log.isTraceEnabled()) {
             StringBuilder messageIDsString = new StringBuilder();

@@ -476,7 +476,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesMessageMetadata> getMetaDataList(final String queueName, long firstMsgId,
+    public List<AndesMessageMetadata> getMetaDataList(final String storageQueueName, long firstMsgId,
                                                       long lastMsgID) throws AndesException {
 
         List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>();
@@ -487,7 +487,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             connection = getConnection();
             preparedStatement = connection
                     .prepareStatement(RDBMSConstants.PS_SELECT_METADATA_RANGE_FROM_QUEUE);
-            preparedStatement.setInt(1, getCachedQueueID(queueName));
+            preparedStatement.setInt(1, getCachedQueueID(storageQueueName));
             preparedStatement.setLong(2, firstMsgId);
             preparedStatement.setLong(3, lastMsgID);
 
@@ -498,18 +498,19 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                         resultSet.getBytes(RDBMSConstants.METADATA),
                         true
                 );
+                md.setStorageQueueName(storageQueueName);
                 metadataList.add(md);
             }
             if (log.isDebugEnabled()) {
                 log.debug("request: metadata range (" + firstMsgId + " , " + lastMsgID +
-                        ") in destination queue " + queueName
+                        ") in destination queue " + storageQueueName
                         + "\nresponse: metadata count " + metadataList.size());
             }
         } catch (SQLException e) {
             throw new AndesException("Error occurred while retrieving messages between msg id "
-                    + firstMsgId + " and " + lastMsgID + " from queue " + queueName, e);
+                    + firstMsgId + " and " + lastMsgID + " from queue " + storageQueueName, e);
         } finally {
-            String task = RDBMSConstants.TASK_RETRIEVING_METADATA_RANGE_FROM_QUEUE + queueName;
+            String task = RDBMSConstants.TASK_RETRIEVING_METADATA_RANGE_FROM_QUEUE + storageQueueName;
             close(resultSet, task);
             close(preparedStatement, task);
             close(connection, task);
@@ -549,6 +550,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                         results.getBytes(RDBMSConstants.METADATA),
                         true
                 );
+                md.setStorageQueueName(storageQueueName);
                 mdList.add(md);
                 resultCount++;
             }
@@ -900,7 +902,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     public void addMessageToExpiryQueue(Long messageId, Long expirationTime,
                                         boolean isMessageForTopic, String destination)
             throws AndesException {
-        // todo: need to be implemented with changes done to topic messages.
+        // NOTE: Feature Message Expiration moved to a future release
     }
 
     /**

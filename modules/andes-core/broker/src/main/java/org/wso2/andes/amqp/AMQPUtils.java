@@ -21,6 +21,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.distruptor.inbound.InboundBindingEvent;
+import org.wso2.andes.kernel.distruptor.inbound.InboundExchangeEvent;
+import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
+import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.DirectExchange;
@@ -202,7 +206,7 @@ public class AMQPUtils {
      * @throws AndesException
      */
     //in order to tell if this is a queue subscription or a topic subscription, binding is needed
-    public static LocalSubscription createAMQPLocalSubscription(AMQQueue queue, Subscription subscription, Binding b) throws AndesException {
+    public static InboundSubscriptionEvent createAMQPLocalSubscription(AMQQueue queue, Subscription subscription, Binding b) throws AndesException {
 
         String subscriptionID = String.valueOf(subscription.getSubscriptionID());
         Exchange exchange = b.getExchange();
@@ -354,8 +358,8 @@ public class AMQPUtils {
      * @param amqQueue qpid queue
      * @return andes queue
      */
-    public static AndesQueue createAndesQueue(AMQQueue amqQueue) {
-        return new AndesQueue(amqQueue.getName(),
+    public static InboundQueueEvent createAndesQueue(AMQQueue amqQueue) {
+        return new InboundQueueEvent(amqQueue.getName(),
                 (amqQueue.getOwner() != null) ? amqQueue.getOwner().toString() : "null",
                 amqQueue.isExclusive(), amqQueue.isDurable());
     }
@@ -366,8 +370,8 @@ public class AMQPUtils {
      * @param exchange qpid exchange
      * @return andes exchange
      */
-    public static AndesExchange createAndesExchange(Exchange exchange) {
-        return new AndesExchange(exchange.getName(), exchange.getType().getName().toString(),
+    public static InboundExchangeEvent createAndesExchange(Exchange exchange) {
+        return new InboundExchangeEvent(exchange.getName(), exchange.getType().getName().toString(),
                 exchange.isAutoDelete());
     }
 
@@ -377,9 +381,9 @@ public class AMQPUtils {
      * @param exchange   qpid exchange binding points
      * @param queue      qpid queue binding points
      * @param routingKey routing key
-     * @return Andes binding
+     * @return InboundBindingEvent binding event that wrap AndesBinding
      */
-    public static AndesBinding createAndesBinding(Exchange exchange, AMQQueue queue, AMQShortString routingKey) {
+    public static InboundBindingEvent createAndesBinding(Exchange exchange, AMQQueue queue, AMQShortString routingKey) {
         /**
          * we are checking the type of exchange to avoid the confusion
          * <<default>> exchange is actually a direct exchange. No need to keep two bindings
@@ -391,7 +395,7 @@ public class AMQPUtils {
         } else if (exchange.getType().equals(TopicExchange.TYPE)) {
             exchangeName = TopicExchange.TYPE.getDefaultExchangeName().toString();
         }
-        return new AndesBinding(exchangeName, AMQPUtils.createAndesQueue(queue), routingKey.toString());
+        return new InboundBindingEvent(exchangeName, AMQPUtils.createAndesQueue(queue), routingKey.toString());
     }
 
     public static String generateQueueName() {

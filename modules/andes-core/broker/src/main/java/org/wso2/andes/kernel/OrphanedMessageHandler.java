@@ -103,6 +103,10 @@ public class OrphanedMessageHandler implements SubscriptionListener {
 
     private void removeMessagesOfDestinationForNode(String destination,
                 String ownerName, boolean isTopic) throws AndesException {
+        // This is a class used by AndesSubscriptionManager. Andes Subscription Manager is behind Disruptor layer.
+        // Hence the call should be made to MessagingEngine NOT Andes.
+        // Calling Andes methods from here will lead to probable deadlocks if Futures are used.
+        // NOTE: purge call should be made to MessagingEngine not Andes
         MessagingEngine.getInstance().purgeMessages(destination,ownerName,isTopic);
     }
 }

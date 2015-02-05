@@ -201,12 +201,21 @@ public class AndesKernelBoot {
         andesContextStore.init(
                 virtualHostsConfiguration.getContextStoreProperties()
         );
+        
+        log.info("AndesContextStore initialised with " + contextStoreClassName);
         AndesContext.getInstance().setAndesContextStore(andesContextStore);
         AndesKernelBoot.contextStore = andesContextStore;
 
         //create subscription store
         SubscriptionStore subscriptionStore = new SubscriptionStore();
         AndesContext.getInstance().setSubscriptionStore(subscriptionStore);
+
+        /**
+         * initialize subscription managing
+         */
+        AndesSubscriptionManager subscriptionManager = new AndesSubscriptionManager();
+        ClusterResourceHolder.getInstance().setSubscriptionManager(subscriptionManager);
+        subscriptionManager.init();
 
         //create AMQP Constructs store
         AMQPConstructStore amqpConstructStore = new AMQPConstructStore();
@@ -227,12 +236,19 @@ public class AndesKernelBoot {
         messageStore.initializeMessageStore(
                 virtualHostsConfiguration.getMessageStoreProperties()
         );
+        log.info("Andes MessageStore initialised with " + messageStoreClassName);
+        
         MessagingEngine messagingEngine = MessagingEngine.getInstance();
         messagingEngine.initialise(messageStore, andesContextStore,subscriptionStore);
         AndesKernelBoot.messageStore = messageStore;
 
+        // initialise Andes context information related manager class
+        AndesContextInformationManager contextInformationManager = 
+                new AndesContextInformationManager(subscriptionStore);
+        
         // When message stores are initialised initialise Andes as well.
-        Andes.getInstance().initialise(subscriptionStore, messagingEngine);
+        Andes.getInstance().initialise(subscriptionStore, messagingEngine,
+                contextInformationManager, subscriptionManager);
 
         // initialize amqp constructs syncing into Qpid
         VirtualHostConfigSynchronizer _VirtualHostConfigSynchronizer = new
@@ -341,18 +357,6 @@ public class AndesKernelBoot {
     public static void startAndesComponents() throws Exception {
 
         /**
-         * initialize subscription managing
-         */
-        AndesSubscriptionManager subscriptionManager = new AndesSubscriptionManager();
-        ClusterResourceHolder.getInstance().setSubscriptionManager(subscriptionManager);
-        subscriptionManager.init();
-
-        /**
-         * initialize context information managing (exchanges/bindings etc)
-         */
-        AndesContextInformationManager.getInstance().initialize();
-
-        /**
          * initialize cluster manager for managing nodes in MB cluster
          */
         ClusterManager clusterManager = new ClusterManager();
@@ -390,7 +394,9 @@ public class AndesKernelBoot {
      */
     public static void startMessaging() throws Exception {
         Andes.getInstance().startMessageDelivery();
-        Andes.getInstance().startMessageExpirationWorker();
+
+        // NOTE: Feature Message Expiration moved to a future release
+//        Andes.getInstance().startMessageExpirationWorker();
     }
 
     /**
@@ -399,7 +405,9 @@ public class AndesKernelBoot {
      * @throws Exception
      */
     private static void stopMessaging() throws Exception {
-        Andes.getInstance().stopMessageExpirationWorker();
+        // NOTE: Feature Message Expiration moved to a future release
+//        Andes.getInstance().stopMessageExpirationWorker();
+
         //this will un-assign all slots currently owned
         Andes.getInstance().stopMessageDelivery();
     }

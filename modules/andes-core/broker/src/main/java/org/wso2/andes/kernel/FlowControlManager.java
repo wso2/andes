@@ -220,7 +220,7 @@ public class FlowControlManager {
      * @param channel
      *         Andes channel
      */
-    public synchronized void removeChannel(AndesChannel channel) {
+    public synchronized void deleteChannel(AndesChannel channel) {
         channels.remove(channel);
     }
 
