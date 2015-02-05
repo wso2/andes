@@ -179,7 +179,6 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
         //Will publish the message to the respective queue
         if (mqqtServerChannel != null) {
             try {
-                OnflightMessageTracker.getInstance().incrementNonAckedMessageCount(channelID);
                 OnflightMessageTracker.getInstance().addMessageToSendingTracker(getChannelID(),
                         messageMetadata.getMessageID());
                 try {
@@ -187,8 +186,6 @@ public class MQTTLocalSubscription extends BasicSubscription implements LocalSub
                             this.getStorageQueueName(), message, messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
                             messageMetadata.isPersistent(), getMqttSubscriptionID(), getSubscriberQOS());
                 } catch (MQTTException ex) {
-                    //We need to decrement the tracker count
-                    OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(channelID);
                     final String error = "Error occured while sending the message to subscriber ";
                     log.error(error, ex);
                     throw new AndesException(error, ex);

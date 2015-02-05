@@ -34,10 +34,15 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class will track message delivery by broker
@@ -57,6 +62,11 @@ public class OnflightMessageTracker {
             log.error("Error occurred when reading configurations : ", e);
         }
     }
+
+    /**
+     * Track messages sent as retained messages
+     */
+    private ConcurrentTrackingList<Long> retainedMessageList;
 
     public static OnflightMessageTracker getInstance() {
         return instance;
@@ -232,7 +242,7 @@ public class OnflightMessageTracker {
         // Concurrency level set to 6. Currently SlotDeliveryWorker, AckHandler AckSubscription, DeliveryEventHandler,
         // MessageFlusher access this. To be on the safe side set to 6.
         msgId2MsgData = new ConcurrentHashMap<Long, MsgData>(16, 0.75f, 6);
-
+        retainedMessageList = new ConcurrentTrackingList<Long>();
     }
 
     /**
@@ -345,6 +355,16 @@ public class OnflightMessageTracker {
     }
 
     /**
+     * Record the given message ID as a retained message in the trcker.
+     *
+     * @param messageID
+     *         Message ID of the retained message
+     */
+    public void recordRetainedMessage(long messageID) {
+        retainedMessageList.add(messageID);
+    }
+
+    /**
      * Track acknowledgement for message
      *
      * @param channel   channel of the ack
@@ -355,6 +375,11 @@ public class OnflightMessageTracker {
     public boolean handleAckReceived(UUID channel, long messageID) throws AndesException {
         if (log.isDebugEnabled()) {
             log.debug("Ack Received message id= " + messageID + " channel id= " + channel);
+        }
+
+        if (retainedMessageList.contains(messageID)) {
+            retainedMessageList.remove(messageID);
+            return false;
         }
 
         boolean isOKToDeleteMessage = false;
@@ -599,6 +624,10 @@ public class OnflightMessageTracker {
      * @return if message is redelivered
      */
     public boolean addMessageToSendingTracker(UUID channelID, long messageID) {
+        if (retainedMessageList.contains(messageID)) {
+            return false;
+        }
+
         if (log.isDebugEnabled()) {
             log.debug("Adding message to sending tracker channel id = " + channelID + " message id = " +
                     messageID);
@@ -630,7 +659,7 @@ public class OnflightMessageTracker {
      */
     public void addNewChannelForTracking(UUID channelID) {
         //We would check if the method returns and object,
-        // if it does it means there was a prviouse key linked with the object
+        // if it does it means there was a previous key linked with the object
         if (null != messageSendingTracker.putIfAbsent(channelID, new ConcurrentHashMap<Long, MsgData>())) {
             log.warn("Trying to initialise tracking for channel " + channelID + " which is already initialised.");
         }
@@ -820,6 +849,69 @@ public class OnflightMessageTracker {
         } catch (IOException e) {
             log.error("Error while dumping message status to file", e);
             throw new AndesException("Error while dumping message status to file", e);
+        }
+    }
+
+    /**
+     * Concurrent List like implementation
+     *
+     * @param <T>
+     *         Type of list items
+     */
+    private static class ConcurrentTrackingList<T> {
+        private final LinkedList<T> dataList;
+        private final ReentrantReadWriteLock lock;
+
+        private ConcurrentTrackingList() {
+            dataList = new LinkedList<T>();
+            lock = new ReentrantReadWriteLock();
+        }
+
+        /**
+         * Returns true if this list contains the specified element.
+         *
+         * @param item
+         *         Ite, whose presence in this list is to be tested
+         * @return true if this list contains the specified element
+         */
+        private boolean contains(T item) {
+            try {
+                lock.readLock().lock();
+                return dataList.contains(item);
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+
+        /**
+         * Appends the specified element to the end of this list.
+         *
+         * @param item
+         *         Item to be appended to this list
+         */
+        private void add(T item) {
+            try {
+                lock.writeLock().lock();
+                dataList.add(item);
+            } finally {
+                lock.writeLock().unlock();
+            }
+        }
+
+        /**
+         * Removes the first occurrence of the specified element from this list, if it is present. If this list does not
+         * contain the element, it is unchanged.
+         *
+         * @param item
+         *         Item to be removed from this list, if present
+         */
+        private void remove(T item) {
+            try {
+                lock.writeLock().lock();
+                dataList.remove(item);
+            } finally {
+                lock.writeLock().unlock();
+            }
         }
     }
 

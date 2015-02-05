@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -11,7 +11,7 @@
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
+ * KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations
  * under the License.
  */
@@ -22,53 +22,35 @@ import org.wso2.andes.configuration.util.ConfigurationProperties;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
- * Message meta data and content storing related data base types specific logic is abstracted out
- * using this interface.
+ * Message meta data and content storing related data base types specific logic is abstracted out using this interface.
  */
 public interface MessageStore {
 
     /**
-     * Initialise the MessageStore and returns the DurableStoreConnection used by store
-     * @param connectionProperties ConfigurationProperties to be used to create the connection
-     * @return DurableStoreConnection object created to make the connection to store
+     * add messages to expiry queue
+     *
+     * @param messageId
+     *         id of the message to add
+     * @param expirationTime
+     *         expiration time
+     * @param isMessageForTopic
+     *         is message addressed to topic
+     * @param destination
+     *         destination message is addressed to
      * @throws AndesException
      */
-    public DurableStoreConnection initializeMessageStore(ConfigurationProperties
-                                                                 connectionProperties)
+    public void addMessageToExpiryQueue(Long messageId, Long expirationTime,
+                                        boolean isMessageForTopic, String destination)
             throws AndesException;
-
-    /**
-     * store a message content chunk set
-     *
-     * @param partList message content chunk list
-     * @throws AndesException
-     */
-    public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException;
-
-    /**
-     * delete message contents of messages from store
-     *
-     * @param messageIdList ids of messages
-     * @throws AndesException
-     */
-    public void deleteMessageParts(Collection<Long> messageIdList) throws AndesException;
-
-    /**
-     * read content chunk from store
-     *
-     * @param messageId id of the message chunk belongs
-     * @param offsetValue chunk offset
-     * @return message content part
-     * @throws AndesException
-     */
-    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException;
 
     /**
      * store mata data of messages
      *
-     * @param metadataList metadata list to store
+     * @param metadataList
+     *         metadata list to store
      * @throws AndesException
      */
     public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException;
@@ -76,7 +58,8 @@ public interface MessageStore {
     /**
      * store metadata of a single message
      *
-     * @param metadata metadata to store
+     * @param metadata
+     *         metadata to store
      * @throws AndesException
      */
     public void addMetaData(AndesMessageMetadata metadata) throws AndesException;
@@ -84,8 +67,10 @@ public interface MessageStore {
     /**
      * store metadata specifically under a queue
      *
-     * @param queueName name of the queue to store metadata
-     * @param metadata metadata to store
+     * @param queueName
+     *         name of the queue to store metadata
+     * @param metadata
+     *         metadata to store
      * @throws AndesException
      */
     public void addMetaDataToQueue(final String queueName, AndesMessageMetadata metadata)
@@ -94,39 +79,114 @@ public interface MessageStore {
     /**
      * store metadata list specifically under a queue
      *
-     * @param queueName name of the queue to store metadata
-     * @param metadata metadata list to store
+     * @param queueName
+     *         name of the queue to store metadata
+     * @param metadata
+     *         metadata list to store
      * @throws AndesException
      */
     public void addMetadataToQueue(final String queueName, List<AndesMessageMetadata> metadata)
             throws AndesException;
 
     /**
-     * Store a message in a different Queue without altering the meta data.
-     *
-     * @param messageId        The message Id to move
-     * @param currentQueueName The current destination of the message
-     * @param targetQueueName  The target destination Queue name
-     * @throws AndesException
+     * close the message store
      */
-    public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName) throws
-            AndesException;
+    public void close();
 
     /**
-     * Update the meta data for the given message with the given information in the AndesMetaData. Update destination
-     * and meta data bytes.
+     * Store level method to remove all metadata references to all messages addressed to a specific queue.
      *
-     * @param currentQueueName The queue the Meta Data currently in
-     * @param metadataList     The updated meta data list.
+     * @param storageQueueName
+     *         name of the queue being purged
      * @throws AndesException
      */
-    public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
-            AndesException;
+    public void deleteAllMessageMetadata(String storageQueueName) throws AndesException;
+
+    /**
+     * Store level method to remove all DLC records of all messages addressed to a specific queue.
+     *
+     * @param storageQueueName
+     *         name of the queue being purged
+     * @return int number of deleted messages
+     * @throws AndesException
+     */
+    public int deleteAllMessageMetadataFromDLC(String storageQueueName, String DLCQueueName) throws AndesException;
+
+    /**
+     * delete message metadata of messages for a queue
+     *
+     * @param storageQueueName
+     *         name of the queue
+     * @param messagesToRemove
+     *         messages to remove
+     * @throws AndesException
+     */
+    public void deleteMessageMetadataFromQueue(final String storageQueueName,
+                                               List<AndesRemovableMetadata> messagesToRemove)
+            throws AndesException;
+
+    /**
+     * delete message contents of messages from store
+     *
+     * @param messageIdList
+     *         ids of messages
+     * @throws AndesException
+     */
+    public void deleteMessageParts(Collection<Long> messageIdList) throws AndesException;
+
+    /**
+     * delete messages from expiry queue
+     *
+     * @param messagesToRemove
+     *         message IDs to remove
+     * @throws AndesException
+     */
+    public void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException;
+
+    /**
+     * Return all topic names with retained messages in the DB
+     *
+     * @return Topic list with retained messages
+     * @throws AndesException
+     */
+    public List<String> getAllRetainedTopics() throws AndesException;
+
+    /**
+     * read content chunk from store
+     *
+     * @param messageId
+     *         id of the message chunk belongs
+     * @param offsetValue
+     *         chunk offset
+     * @return message content part
+     * @throws AndesException
+     */
+    public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException;
+
+    /**
+     * get expired messages from store
+     *
+     * @param limit
+     *         max num of messages to read
+     * @return AndesRemovableMetadata
+     * @throws AndesException
+     */
+    public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException;
+
+    /**
+     * Get Message ID list addressed to a specific queue.
+     *
+     * @param storageQueueName
+     *         name of the queue being purged.
+     * @throws AndesException
+     */
+    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName) throws AndesException;
 
     /**
      * read metadata from store
      *
-     * @param messageId id of the message
+     * @param messageId
+     *         id of the message
      * @return metadata of the message
      * @throws AndesException
      */
@@ -135,9 +195,12 @@ public interface MessageStore {
     /**
      * read a metadata list from store specifying a message id range
      *
-     * @param queueName name of the queue
-     * @param firstMsgId first id of the range
-     * @param lastMsgID last id of the range
+     * @param queueName
+     *         name of the queue
+     * @param firstMsgId
+     *         first id of the range
+     * @param lastMsgID
+     *         last id of the range
      * @return list of metadata
      * @throws AndesException
      */
@@ -147,9 +210,12 @@ public interface MessageStore {
     /**
      * read  a metadata list from store specifying a starting message id and a count
      *
-     * @param storageQueueName name of the queue
-     * @param firstMsgId first id
-     * @param count how many messages to read
+     * @param storageQueueName
+     *         name of the queue
+     * @param firstMsgId
+     *         first id
+     * @param count
+     *         how many messages to read
      * @return list of metadata
      * @throws AndesException
      */
@@ -158,72 +224,79 @@ public interface MessageStore {
             throws AndesException;
 
     /**
-     * delete message metadata of messages for a queue
+     * Get all content parts for the given message ID. The message ID should belong to a existing retained message.
      *
-     * @param storageQueueName name of the queue
-     * @param messagesToRemove messages to remove
+     * @param messageID
+     *         Message ID of the message
+     * @return List of content parts
      * @throws AndesException
      */
-    public void deleteMessageMetadataFromQueue(final String storageQueueName,
-                                               List<AndesRemovableMetadata> messagesToRemove)
+    public Map<Integer, AndesMessagePart> getRetainedContentParts(long messageID) throws AndesException;
+
+    /**
+     * Return retained message metadata for the given destination. Null is returned if no retained message is available
+     * for a destination.
+     *
+     * @param destination
+     *         Destination/Topic name
+     * @return AndesMessageMetadata
+     * @throws AndesException
+     */
+    public AndesMessageMetadata getRetainedMetaData(String destination) throws AndesException;
+
+    /**
+     * Initialise the MessageStore and returns the DurableStoreConnection used by store
+     *
+     * @param connectionProperties
+     *         ConfigurationProperties to be used to create the connection
+     * @return DurableStoreConnection object created to make the connection to store
+     * @throws AndesException
+     */
+    public DurableStoreConnection initializeMessageStore(ConfigurationProperties
+                                                                 connectionProperties)
             throws AndesException;
 
     /**
-     * get expired messages from store
+     * Store a message in a different Queue without altering the meta data.
      *
-     * @param limit max num of messages to read
-     * @return AndesRemovableMetadata
+     * @param messageId
+     *         The message Id to move
+     * @param currentQueueName
+     *         The current destination of the message
+     * @param targetQueueName
+     *         The target destination Queue name
      * @throws AndesException
      */
-    public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException;
+    public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName) throws
+                                                                                                     AndesException;
 
     /**
-     * delete messages from expiry queue
+     * store a message content chunk set
      *
-     * @param messagesToRemove message IDs to remove
+     * @param partList
+     *         message content chunk list
      * @throws AndesException
      */
-    public void deleteMessagesFromExpiryQueue(List<Long> messagesToRemove) throws AndesException;
+    public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException;
 
     /**
-     * add messages to expiry queue
+     * Store retained message list in the message store
      *
-     * @param messageId id of the message to add
-     * @param expirationTime expiration time
-     * @param isMessageForTopic is message addressed to topic
-     * @param destination destination message is addressed to
-     * @throws AndesException
+     * @param retainList
+     *         Retained messages
      */
-    public void addMessageToExpiryQueue(Long messageId, Long expirationTime,
-                                        boolean isMessageForTopic, String destination)
-            throws AndesException;
-
-    /***
-     * Store level method to remove all metadata references to all messages addressed to a specific queue.
-     * @param storageQueueName name of the queue being purged
-     * @throws AndesException
-     */
-    public void deleteAllMessageMetadata(String storageQueueName) throws AndesException;
-
-    /***
-     * Store level method to remove all DLC records of all messages addressed to a specific queue.
-     *
-     * @param storageQueueName name of the queue being purged
-     * @return int number of deleted messages
-     * @throws AndesException
-     */
-    public int deleteAllMessageMetadataFromDLC(String storageQueueName, String DLCQueueName) throws AndesException;
-
-    /***
-     * Get Message ID list addressed to a specific queue.
-     * @param storageQueueName name of the queue being purged.
-     * @throws AndesException
-     */
-    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName) throws AndesException;
+    public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException;
 
     /**
-     * close the message store
+     * Update the meta data for the given message with the given information in the AndesMetaData. Update destination
+     * and meta data bytes.
+     *
+     * @param currentQueueName
+     *         The queue the Meta Data currently in
+     * @param metadataList
+     *         The updated meta data list.
+     * @throws AndesException
      */
-    public void close();
-
+    public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
+                                                                                                            AndesException;
 }

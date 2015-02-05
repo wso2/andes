@@ -239,11 +239,6 @@ public class AMQPLocalSubscription extends BasicSubscription implements LocalSub
         }
 
         try {
-            
-            // TODO: We might have to carefully implement this in every new subscription type we implement
-            // shall we move this up to LocalSubscription level?
-            onflightMessageTracker.incrementNonAckedMessageCount(channel.getId());
-
             if (amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
                 //this check is needed to detect if subscription has suddenly closed
                 if (log.isDebugEnabled()) {

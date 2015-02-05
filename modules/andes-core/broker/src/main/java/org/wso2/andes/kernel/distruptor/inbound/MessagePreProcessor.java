@@ -22,7 +22,12 @@ import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.subscription.SubscriptionStore;
 
@@ -90,6 +95,11 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
 
     private void handleTopicRoutine(InboundEvent event, AndesMessage message, AndesChannel andesChannel) {
         String messageRoutingKey = message.getMetadata().getDestination();
+
+        if (message.getMetadata().isRetain()) {
+            event.retainMessage = message;
+        }
+
         //get all topic subscriptions in the cluster matching to routing key
         //including hierarchical topic case
         List<AndesSubscription> subscriptionList;

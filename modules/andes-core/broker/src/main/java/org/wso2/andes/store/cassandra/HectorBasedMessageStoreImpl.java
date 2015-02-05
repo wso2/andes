@@ -32,6 +32,7 @@ import org.wso2.andes.server.stats.PerformanceCounter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This is the implementation of MessageStore that deals with Cassandra no SQL DB.
@@ -283,6 +284,39 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
 
         addMetaDataToQueue(targetQueueName, messageMetadataList.get(0));
         deleteMessageMetadataFromQueue(currentQueueName, removableMetaDataList);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException {
+        // TODO: implement this method
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public List<String> getAllRetainedTopics() throws AndesException {
+        // TODO: implement this method
+        return  null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public AndesMessageMetadata getRetainedMetaData(String destination) throws AndesException {
+        // TODO: implement this method
+        return  null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<Integer, AndesMessagePart> getRetainedContentParts(long messageID) throws AndesException {
+        // TODO: implement this method
+        return  null;
     }
 
     /**

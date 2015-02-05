@@ -95,11 +95,17 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      */
     private Slot slot;
 
+    /**
+     * True if this message should be retained
+     */
+    private boolean retain;
+
     public AndesMessageMetadata() {
+        this.retain = false;
     }
 
     public AndesMessageMetadata(long messageID, byte[] metadata, boolean parse) {
-        super();
+        this();
         this.messageID = messageID;
         this.metadata = metadata;
         if (parse) {
@@ -110,6 +116,15 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
     public long getMessageID() {
         return messageID;
+    }
+
+    /**
+     * Return retained status of the current message
+     *
+     * @return True if this message should be retained
+     */
+    public boolean isRetain() {
+        return retain;
     }
 
     public void setMessageID(long messageID) {
@@ -152,6 +167,16 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
     public boolean isTopic() {
         return isTopic;
+    }
+
+    /**
+     * Set retain flag for current message
+     *
+     * @param retain
+     *         Retain
+     */
+    public void setRetain(boolean retain) {
+        this.retain = retain;
     }
 
     public void setTopic(boolean isTopic) {
@@ -214,6 +239,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         clone.destination = destination;
         clone.storageQueueName = storageQueueName;
         clone.isPersistent = isPersistent;
+        clone.retain = retain;
         clone.slot = slot;
         clone.arrivalTime = arrivalTime;
         return clone;

@@ -20,7 +20,15 @@ package org.wso2.andes.mqtt;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.Andes;
+import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.FlowControlListener;
+import org.wso2.andes.kernel.SubscriptionAlreadyExistingException;
 import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.nio.ByteBuffer;
@@ -169,11 +177,14 @@ public class MQTTChannel {
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
                               boolean isCleanSesion, int qos, UUID subscriptionChannelID) throws MQTTException {
 
+        //First, notify on the client connection
+        Andes.getInstance().clientConnectionCreated(subscriptionChannelID);
+
         String queue_identifier = topic + mqttClientID;
         if (isCleanSesion) {
             MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
                     true, qos, subscriptionChannelID, topic, true, true);
-            //Shold indicate the record in the cluster
+            //Should indicate the record in the cluster
             try {
                 Andes.getInstance().openLocalSubscription(mqttTopicSubscriber);
                 //First will register the subscription as a queue
@@ -192,7 +203,7 @@ public class MQTTChannel {
             MQTTLocalSubscription mqttQueueSubscriber = createSubscription(channel, queue_identifier, clientID,
                     mqttClientID, false, qos, subscriptionChannelID, queue_identifier, false, true);
 
-            //Shold indicate the record in the cluster
+            //Should indicate the record in the cluster
             try {
                 //Will record the subscription as a topic
                 Andes.getInstance().openLocalSubscription(mqttTopicSubscriber);
@@ -209,9 +220,6 @@ public class MQTTChannel {
             }
 
         }
-
-        //Finally will notify on the client connection
-        Andes.getInstance().clientConnectionCreated(subscriptionChannelID);
     }
 
     /**
