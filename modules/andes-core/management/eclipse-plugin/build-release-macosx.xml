@@ -25,12 +25,12 @@
    <property name="release.app" value="${release.subdir}/${application.dir}"/>
 
    <target name="release-bin-qpid-mc-plugin">
-        <available file="${build.lib}/qpid-management-eclipse-plugin-${project.version}.jar" property="management-eclipse-plugin.jar.present"/>
+        <available file="${build.lib}/qpid-management-eclipse-plugin-${andes.version}.jar" property="management-eclipse-plugin.jar.present"/>
         <fail unless="management-eclipse-plugin.jar.present" message="Please run ant build for the management-eclipse-plugin module"/>
 
         <!-- Copy the qpid management-eclipse-plugin module jar -->
         <copy tofile="${release.app}/plugins/${mcplugin.filename}.jar" flatten="true" failonerror="true">
-            <fileset file="${build.lib}/qpid-management-eclipse-plugin-${project.version}.jar"/>
+            <fileset file="${build.lib}/qpid-management-eclipse-plugin-${andes.version}.jar"/>
         </copy>
    </target>
 
@@ -42,12 +42,12 @@
    </target>
 
    <target name="release-bin-qpid-management-common-plugin">
-        <available file="${build.lib}/qpid-management-common_${project.version}.0.osgi.jar" property="management-common.jar.present"/>
+        <available file="${build.lib}/qpid-management-common_${andes.version}.0.osgi.jar" property="management-common.jar.present"/>
         <fail unless="management-common.jar.present" message="Please run ant bundle for the management-common module"/>
 
         <!-- Copy the qpid-management-common module osgi jar -->
        <copy todir="${release.app}/plugins" flatten="true" failonerror="true">
-           <fileset file="${build.lib}/qpid-management-common_${project.version}.0.osgi.jar"/>
+           <fileset file="${build.lib}/qpid-management-common_${andes.version}.0.osgi.jar"/>
        </copy>
    </target>
 

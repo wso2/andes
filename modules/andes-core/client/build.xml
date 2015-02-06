@@ -28,7 +28,7 @@
   <import file="../module.xml"/>
 
   <property name="example.src.dir" value="${project.root}/client/example/src/main/java" />
-  <property name="example.jar.file" value="${build.lib}/qpid-client-example-${project.version}.jar" />
+  <property name="example.jar.file" value="${build.lib}/qpid-client-example-${andes.version}.jar" />
 
   <property name="output.dir" value="${module.precompiled}/org/wso2/andes/filter/selector"/>
 

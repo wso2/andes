@@ -55,8 +55,8 @@
   <property name="module.bin"          location="bin"/>
   <property name="module.etc"          location="etc"/>
     
-  <property name="module.namever"      value="${project.name}-${module.name}-${project.version}"/>
-  <property name="module.namever.osgi" value="${project.name}-${module.name}_${project.version}.0.osgi"/>
+  <property name="module.namever"      value="${project.name}-${module.name}-${andes.version}"/>
+  <property name="module.namever.osgi" value="${project.name}-${module.name}_${andes.version}.0.osgi"/>
   <property name="module.release.base" value="${basedir}/release"/>
   <property name="module.release"      value="${module.release.base}/${module.namever}"/>
   <property name="module.release.lib"  value="${module.release}/lib"/>
@@ -83,7 +83,7 @@
   <available property="module.bin.exists" file="${module.bin}"/>
 
   <property name="module.source.jar"
-            location="${build.lib}/${project.name}-${module.name}-${project.version}-sources.jar"/>
+            location="${build.lib}/${project.name}-${module.name}-${andes.version}-sources.jar"/>
 
   <!-- module.depends and module.test.depends are supplied by the importing file -->
   <property name="module.depends"       value=""/>
@@ -157,8 +157,8 @@
   </path>
 
   <condition property="module.jar"
-             value="${build.plugins}/${project.name}-${module.name}-${project.version}.jar"
-             else="${build.lib}/${project.name}-${module.name}-${project.version}.jar">
+             value="${build.plugins}/${project.name}-${module.name}-${andes.version}.jar"
+             else="${build.lib}/${project.name}-${module.name}-${andes.version}.jar">
     <and>
       <isset property="module.plugin"/>
       <istrue value="${module.plugin}"/>
@@ -166,7 +166,7 @@
   </condition>
 
   <property name="module.test.jar"
-            location="${build.lib}/${project.name}-${module.name}-tests-${project.version}.jar"/>
+            location="${build.lib}/${project.name}-${module.name}-tests-${andes.version}.jar"/>
 
   <path id="module.class.path">
     <pathelement location="${module.classes}"/>
@@ -225,7 +225,7 @@
         <arg line='-o "${build.scratch}/qpid-${module.name}.pom"'/>
         <arg line="-u ${project.url}"/>
         <arg line="-g ${project.groupid}"/>
-        <arg line="-v ${project.version}${maven.version.suffix}"/>
+        <arg line="-v ${andes.version}${maven.version.suffix}"/>
         <arg line="-p qpid"/>
         <arg line='-m "${module.depends}"'/>
         <arg line="-a ${module.name}"/>
@@ -482,7 +482,7 @@
   </target>
 
   <map property="module.depends.jars" value="${module.depends}" join=",">
-    <globmapper from="*" to="${project.name}-*-${project.version}.jar"/>
+    <globmapper from="*" to="${project.name}-*-${andes.version}.jar"/>
     <filtermapper>
         <replacestring from="/" to="-"/>
     </filtermapper>
@@ -747,7 +747,7 @@
   <target name="create-version" depends="check-version" if="version.stale">
     <!-- Write the version.properties out.-->
     <!-- Echos exactly as shown, so leave no spaces before/after lines -->
-    <echo file="${version.file}" append="false">qpid.version=${project.version}
+    <echo file="${version.file}" append="false">qpid.version=${andes.version}
 qpid.svnversion=${svnversion.output}
 qpid.name=${project.name}
 </echo>
