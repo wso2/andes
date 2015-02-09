@@ -36,6 +36,13 @@ public class SubscriptionBitMapHandler {
      * will be considered as 'other' in the table
      */
     private static final String CONSTITUENT_TOPIC_CONSTANT = "other";
+    /**
+     * NULL in the constituent table is replaced with *
+     * Ex
+     *    If we have a topic WSO2 and three constituent tables
+     *    Then the entry for the topic WSO2 in 2nd and 3rd table
+     *    will be null
+     */
     private final String SPECIAL_CHARACTER_FOR_NULL = "*";
     /**
      * Represents the mapping from criteria to clustered subscriptions
