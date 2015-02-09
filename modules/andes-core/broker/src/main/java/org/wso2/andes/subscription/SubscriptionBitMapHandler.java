@@ -31,6 +31,10 @@ import java.util.BitSet;
  */
 public class SubscriptionBitMapHandler {
 
+    /**
+     * The constituent parts which are not in the table
+     * will be considered as 'other' in the table
+     */
     private static final String CONSTITUENT_TOPIC_CONSTANT = "other";
     private final String SPECIAL_CHARACTER_FOR_NULL = "*";
     /**
