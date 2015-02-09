@@ -381,7 +381,7 @@ public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
      */
     public void recordChannelClose(long channelID) {
         channelDeliveryInfo.remove(channelID);
-        tryToDeleteMessageFromStore();
+        //tryToDeleteMessageFromStore();
     }
 
     /**
@@ -498,7 +498,15 @@ public class DeliverableAndesMessageMetadata extends AndesMessageMetadata{
     public boolean tryToDeleteMessageFromStore() {
         boolean isOKToRemoveMessage = isOKToRemoveMessage();
         if(isOKToRemoveMessage) {
-            //TODO: trigger delete
+            List<AndesRemovableMetadata> messagesToDelete = new ArrayList<AndesRemovableMetadata>(1);
+            AndesRemovableMetadata msgToDelete = new AndesRemovableMetadata(messageID,getDestination(),getStorageQueueName());
+            messagesToDelete.add(msgToDelete);
+            try {
+                getSlot().decrementPendingMessageCountBySlot();
+                MessagingEngine.getInstance().deleteMessages(messagesToDelete, false);
+            } catch (AndesException e) {
+                log.error("Error while removing message from store", e);
+            }
         }
         return isOKToRemoveMessage;
     }
