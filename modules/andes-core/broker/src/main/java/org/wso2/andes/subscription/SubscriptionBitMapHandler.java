@@ -203,7 +203,7 @@ public class SubscriptionBitMapHandler {
                     BitSet bitSetForspecificConstituentPartOfSubscription;
                     bitSetForspecificConstituentPartOfSubscription = bitMapForithConstituent.get(destinations[constituentPart]);
                     if (bitSetForspecificConstituentPartOfSubscription == null)
-                        bitSetForspecificConstituentPartOfSubscription = (BitSet) bitMapLocal.get(constituentPart).get("other")
+                        bitSetForspecificConstituentPartOfSubscription = (BitSet) bitMapLocal.get(constituentPart).get(CONSTITUENT_TOPIC_CONSTANT)
                                 .clone();
 
 
