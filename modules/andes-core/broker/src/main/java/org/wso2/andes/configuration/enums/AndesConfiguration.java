@@ -307,7 +307,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * 0 - DEFAULT Selector
      * 1  - Topic Matching using Bit Maps
      */
-    PERFORMANCE_TUNING_TOPIC_MATCHING_METHOD("performanceTuning/topicMatching", "1", Integer.class),
+    PERFORMANCE_TUNING_TOPIC_MATCHING_METHOD("performanceTuning/topicMatching", "0", Integer.class),
 
     /**
      * The number of messages to be handled in a single operation related to browser subscriptions.
