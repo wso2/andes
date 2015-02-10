@@ -69,6 +69,13 @@ public class SubscriptionStore {
         subscriptionBitMapHandler = new SubscriptionBitMapHandler();
 
         andesContextStore = AndesContext.getInstance().getAndesContextStore();
+
+        topicMatchingType = AndesConfigurationManager.readValue(AndesConfiguration.PERFORMANCE_TUNING_TOPIC_MATCHING_METHOD);
+
+        isBitmap = topicMatchingType == 1 ? true : false;
+        if(isBitmap){
+            log.info("Topic Matching Type is BitMap");
+        }
     }
 
     /**
