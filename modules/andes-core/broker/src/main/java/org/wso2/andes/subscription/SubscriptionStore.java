@@ -42,15 +42,23 @@ public class SubscriptionStore {
 
     //<routing key, List of local subscriptions>
     //TODO: hasitha - wrap this list by a map to reduce cost
+    private Map<String, List<AndesSubscription>> clusterTopicSubscriptionMap = new ConcurrentHashMap<String, List<AndesSubscription>>();
     private Map<String, List<AndesSubscription>> clusterQueueSubscriptionMap = new ConcurrentHashMap<String, List<AndesSubscription>>();
 
     //<destination, <subscriptionID,LocalSubscription>>
+    private Map<String, Map<String, LocalSubscription>> localTopicSubscriptionMap = new ConcurrentHashMap<String, Map<String, LocalSubscription>>();
     private Map<String, Map<String, LocalSubscription>> localQueueSubscriptionMap = new ConcurrentHashMap<String, Map<String, LocalSubscription>>();
 
     private SubscriptionBitMapHandler subscriptionBitMapHandler;
 
     private AndesContextStore andesContextStore;
 
+    /**
+     * To switch between topic matching methods
+     * native or bitmap
+     * if true bitmap, if false native
+     */
+    private boolean isBitmap;
 
     public SubscriptionStore() throws AndesException {
         subscriptionBitMapHandler = new SubscriptionBitMapHandler();
@@ -67,11 +75,16 @@ public class SubscriptionStore {
      * @throws org.wso2.andes.kernel.AndesException
      */
     public List<AndesSubscription> getAllSubscribersForDestination(String destination, boolean isTopic) throws AndesException {
-        // returing empty arraylist if requested map is empty
-        if (isTopic) {
-            return new ArrayList<AndesSubscription>(subscriptionBitMapHandler.getAllClusteredSubscribedForDestination(destination) == null ? new ArrayList<AndesSubscription>() : subscriptionBitMapHandler.getAllClusteredSubscribedForDestination(destination));
-        } else {
-            return new ArrayList<AndesSubscription>(clusterQueueSubscriptionMap.get(destination) == null ? new ArrayList<AndesSubscription>() : clusterQueueSubscriptionMap.get(destination));
+        if(isBitmap) {
+            // returing empty arraylist if requested map is empty
+            if (isTopic) {
+                return new ArrayList<AndesSubscription>(subscriptionBitMapHandler.getAllClusteredSubscribedForDestination(destination) == null ? new ArrayList<AndesSubscription>() : subscriptionBitMapHandler.getAllClusteredSubscribedForDestination(destination));
+            } else {
+                return new ArrayList<AndesSubscription>(clusterQueueSubscriptionMap.get(destination) == null ? new ArrayList<AndesSubscription>() : clusterQueueSubscriptionMap.get(destination));
+            }
+        }
+        else{
+
         }
     }
 
