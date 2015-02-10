@@ -175,7 +175,10 @@ public class SubscriptionBitMapHandler {
                     bitSet = new BitSet(localSubscriptionCount);
                     bitSet.set(0, localSubscriptionCount);
 
-                    for (int deleted : deletedLocals) bitSet.clear(deleted);
+                    for (int deleted : deletedLocals) {
+                        bitSet.clear(deleted);
+                    }
+
                     bitSet.clear(columnIndexOfTheSubscriptionInBitMap);
                     newBitMapForIthConstituent.put(SPECIAL_CHARACTER_FOR_NULL, bitSet);
 
@@ -481,15 +484,18 @@ public class SubscriptionBitMapHandler {
 
 
             // Take the entry for the constituent part
-            if (null != bitMapOfIthConstituent.get(destinations[constituentCount]))
+            if (null != bitMapOfIthConstituent.get(destinations[constituentCount])) {
                 bitSetOfIthConstituent = (BitSet) bitMapOfIthConstituent.get(destinations[constituentCount]).clone();
-            else
+            }
+            else {
                 bitSetOfIthConstituent = (BitSet) bitMapOfIthConstituent.get(CONSTITUENT_TOPIC_CONSTANT).clone();
+            }
 
             if (constituentCount != 0) {
                 results.and(bitSetOfIthConstituent);
-            } else
+            } else {
                 results = bitSetOfIthConstituent;
+            }
 
         }
 
