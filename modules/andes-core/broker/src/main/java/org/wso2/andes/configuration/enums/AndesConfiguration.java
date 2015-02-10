@@ -360,7 +360,13 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * NOT USED FOR NOW.
      */
     FLOW_CONTROL_CONNECTION_BASED_PER_CONNECTION_MESSAGE_THRESHOLD("flowControl/connectionBased" +
-            "/perConnectionMessageThreshold", "1000", Integer.class);
+            "/perConnectionMessageThreshold", "1000", Integer.class),
+
+    /**
+     * Decisive configurations coming from broker.xml that affect topic matching
+     * whether BitMap implementation is implemented or not
+     */
+    TOPIC_MATCHING_METHOD("topicMatching" + "/bitMapImplementation", "false", Boolean.class);
 
 
     private final MetaProperties metaProperties;
