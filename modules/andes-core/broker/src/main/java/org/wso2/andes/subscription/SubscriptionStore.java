@@ -21,14 +21,11 @@ package org.wso2.andes.subscription;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.python.antlr.op.Sub;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.AndesContextStore;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesSubscription;
-import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
 
 import java.util.*;
@@ -960,7 +957,7 @@ public class SubscriptionStore {
      * @param type         type of change
      * @throws org.wso2.andes.kernel.AndesException
      */
-    public synchronized void createDisconnectOrRemoveLocalSubscription(LocalSubscription subscription, SubscriptionChange type) throws AndesException {
+    public synchronized void createDisconnectOrRemoveLocalSubscription(LocalSubscription subscription, SubscriptionChange type) throws AndesException,SubscriptionAlreadyExistsException {
         if(isBitmap){
             createDisconnectOrRemoveLocalSubscriptionUsingBitMap(subscription,type);
         }
@@ -978,7 +975,7 @@ public class SubscriptionStore {
      * @param type         type of change
      * @throws org.wso2.andes.kernel.AndesException
      */
-    private synchronized void createDisconnectOrRemoveLocalSubscriptionUsingNativeMethod(LocalSubscription subscription, SubscriptionChange type) throws AndesException{
+    private synchronized void createDisconnectOrRemoveLocalSubscriptionUsingNativeMethod(LocalSubscription subscription, SubscriptionChange type) throws AndesException, SubscriptionAlreadyExistsException{
         Boolean allowSharedSubscribers =  AndesConfigurationManager.readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
         //We need to handle durable topic subscriptions
         boolean hasDurableSubscriptionAlreadyInPlace = false;
@@ -1018,7 +1015,7 @@ public class SubscriptionStore {
             } else if (hasDurableSubscriptionAlreadyInPlace && type == SubscriptionChange.ADDED) {
                 if(!allowSharedSubscribers) {
                     //not permitted
-                    throw new AndesException("A subscription already exists for Durable subscriptions on " +
+                    throw new SubscriptionAlreadyExistsException("A subscription already exists for Durable subscriptions on " +
                             subscription.getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
                 }
             }
@@ -1077,7 +1074,7 @@ public class SubscriptionStore {
      * @param type         type of change
      * @throws org.wso2.andes.kernel.AndesException
      */
-    private synchronized void createDisconnectOrRemoveLocalSubscriptionUsingBitMap(LocalSubscription subscription, SubscriptionChange type) throws AndesException{
+    private synchronized void createDisconnectOrRemoveLocalSubscriptionUsingBitMap(LocalSubscription subscription, SubscriptionChange type) throws AndesException, SubscriptionAlreadyExistsException{
     Boolean allowSharedSubscribers =  AndesConfigurationManager.readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
     //We need to handle durable topic subscriptions
     boolean hasDurableSubscriptionAlreadyInPlace = false;
@@ -1121,7 +1118,7 @@ public class SubscriptionStore {
         } else if (hasDurableSubscriptionAlreadyInPlace && type == SubscriptionChange.ADDED) {
             if(!allowSharedSubscribers) {
                 //not permitted
-                throw new AndesException("A subscription already exists for Durable subscriptions on " +
+                throw new SubscriptionAlreadyExistsException("A subscription already exists for Durable subscriptions on " +
                         subscription.getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
             }
         }
