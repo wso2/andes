@@ -302,6 +302,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     PERFORMANCE_TUNING_MESSAGE_COUNTER_UPDATE_BATCH_SIZE
             ("performanceTuning/messageCounter/countUpdateBatchSize", "100", Integer.class),
+    /**
+     * This allows to select topic matching algorithm
+     * false - DEFAULT
+     * true  - Topic Matching using Bit Maps
+     */
+    TOPIC_MATCHING_METHOD("performanceTuning/topicMatching", "0", Integer.class),
 
     /**
      * The number of messages to be handled in a single operation related to browser subscriptions.
@@ -360,13 +366,8 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * NOT USED FOR NOW.
      */
     FLOW_CONTROL_CONNECTION_BASED_PER_CONNECTION_MESSAGE_THRESHOLD("flowControl/connectionBased" +
-            "/perConnectionMessageThreshold", "1000", Integer.class),
+            "/perConnectionMessageThreshold", "1000", Integer.class);
 
-    /**
-     * Decisive configurations coming from broker.xml that affect topic matching
-     * whether BitMap implementation is implemented or not
-     */
-    TOPIC_MATCHING_METHOD("topicMatching" + "/bitMapImplementation", "false", Boolean.class);
 
 
     private final MetaProperties metaProperties;
