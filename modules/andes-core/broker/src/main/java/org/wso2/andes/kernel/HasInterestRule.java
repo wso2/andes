@@ -50,7 +50,9 @@ public class HasInterestRule implements DeliveryRule {
         if (amqpSubscription.hasInterest(message)) {
             return true;
         } else {
-            log.warn("Subscriber doesn't interest on this message : id= " + message.getMessage().getMessageNumber());
+        	if (log.isDebugEnabled()){
+                log.debug("Subscriber doesn't interest on this message : id= " + message.getMessage().getMessageNumber());
+        	}
             return false;
         }
     }
