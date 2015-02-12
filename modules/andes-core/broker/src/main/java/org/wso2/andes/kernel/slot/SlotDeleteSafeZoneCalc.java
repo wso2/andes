@@ -18,6 +18,9 @@
 
 package org.wso2.andes.kernel.slot;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +28,8 @@ import java.util.Set;
 import java.util.TreeSet;
 
 public class SlotDeleteSafeZoneCalc implements Runnable{
+
+    private static Log log = LogFactory.getLog(SlotDeleteSafeZoneCalc.class);
 
     private long slotDeleteSafeZone;
 
@@ -76,6 +81,8 @@ public class SlotDeleteSafeZoneCalc implements Runnable{
                  }
 
                  slotDeleteSafeZone = safeZoneValue;
+
+                 log.info("FIXX : " + "Safe Zone Calculated : " + safeZoneValue);
 
                  try {
                      Thread.sleep(seekInterval);

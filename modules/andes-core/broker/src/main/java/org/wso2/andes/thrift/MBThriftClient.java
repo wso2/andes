@@ -319,6 +319,7 @@ public class MBThriftClient {
     public static long updateSlotDeletionSafeZone(long safeZoneMessageID) {
         long globalSafeZone = 0;
         try {
+            client = getServiceClient();
             globalSafeZone = client.updateCurrentMessageIdForSafeZone(safeZoneMessageID);
         } catch (TException e) {
             log.error("Error while sending slot deletion safe zone update" , e);

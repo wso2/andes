@@ -122,6 +122,8 @@ public class SlotManager {
      */
     public Slot getSlot(String queueName, String nodeId) {
         Slot slotToBeAssigned;
+
+        log.info("FIXX : " + "Getting Slot for node : "  + nodeId + " for queue : " + queueName );
         /**
          *First look in the unassigned slots pool for free slots. These slots are previously own by
          * other nodes
@@ -141,11 +143,13 @@ public class SlotManager {
 
         if (null != slotToBeAssigned) {
             updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
+            log.info("FIXX : Returning slot for node : " + nodeId + " ||| " + slotToBeAssigned);
         } else {
             if (log.isDebugEnabled()) {
                 log.debug("Slot Manager - returns empty slot for the queue: " + queueName);
             }
         }
+
         return slotToBeAssigned;
 
     }
@@ -234,9 +238,9 @@ public class SlotManager {
                 queueToSlotMap.put(queueName, currentSlotList);
                 wrapper.setStringListHashMap(queueToSlotMap);
                 overLappedSlotMap.set(nodeId, wrapper);
-                if (log.isDebugEnabled()) {
-                    log.debug("Slot Manager - giving a slot from overlapped slot pool. Slot= " + slotToBeAssigned);
-                }
+                //if (log.isDebugEnabled()) {
+                    log.info("FIXX : " + "Slot Manager - giving a slot from overlapped slot pool. Slot= " + slotToBeAssigned);
+                //}
             }
         }
         return slotToBeAssigned;
@@ -309,21 +313,34 @@ public class SlotManager {
 
             // Check if input slot's start message ID is less than ast assigned message ID
             if ((null != lastAssignedMessageId) && startMessageIdInTheSlot < lastAssignedMessageId) {
+                log.info("FIXX : " + "Found an overlapping slot : " + startMessageIdInTheSlot + " to : " + lastMessageIdInTheSlot + ". Comparing to lastAssignedID : " +lastAssignedMessageId );
                 // Find overlapping slots
                 TreeSet<Slot> overlappingSlots = getOverlappedAssignedSlots(queueName,startMessageIdInTheSlot,lastMessageIdInTheSlot);
 
                 if (overlappingSlots.size() > 0) {
+                    log.info("FIXX : " + "Found " + overlappingSlots.size() + " overlapping slots.");
                     if (startMessageIdInTheSlot < overlappingSlots.first().getStartMessageId()) {
                         // This means that we have a piece of the slot exceeding the earliest assigned slot.
                         // breaking that piece and adding it as a new,unassigned slot.
                         Slot leftExtraSlot = new Slot(startMessageIdInTheSlot, overlappingSlots.first().getStartMessageId()-1, queueName);
                         //TODO add to collection
+                        log.info("FIXX : " + "LeftExtra in overlapping slot : " + leftExtraSlot);
                     }
                     if (lastMessageIdInTheSlot > overlappingSlots.last().getEndMessageId()) {
                         // This means that we have a piece of the slot exceeding the latest assigned slot.
                         // breaking that piece and adding it as a new,unassigned slot.
                         Slot rightExtraSlot = new Slot(overlappingSlots.last().getEndMessageId()+1,lastMessageIdInTheSlot,queueName);
-                        //TODO add to collection
+
+                        log.info("FIXX : " + "RightExtra in overlapping slot : " + rightExtraSlot);
+                        //Update last message ID - expand ongoing slot to cater this leftover part.
+                        messageIdSet.add(lastMessageIdInTheSlot);
+                        wrapper.setLongTreeSet(messageIdSet);
+                        slotIDMap.set(queueName, wrapper);
+                        nodeToLastPublishedIDMap.set(nodeId,lastMessageIdInTheSlot);
+                        //if (log.isDebugEnabled()) {
+                            log.info(lastMessageIdInTheSlot + " added to slotIdMap (RightExtraSlot). Current values in " +
+                                    "map " + messageIdSet);
+                        //}
                     }
 
                     //Add newly found overlaps to global overlapping slots tree.
@@ -344,10 +361,10 @@ public class SlotManager {
                 wrapper.setLongTreeSet(messageIdSet);
                 slotIDMap.set(queueName, wrapper);
                 nodeToLastPublishedIDMap.set(nodeId,lastMessageIdInTheSlot);
-                if (log.isDebugEnabled()) {
-                    log.debug(lastMessageIdInTheSlot + " added to slotIdMap. Current values in " +
+                //if (log.isDebugEnabled()) {
+                    log.info(lastMessageIdInTheSlot + " added to slotIdMap. Current values in " +
                             "map " + messageIdSet);
-                }
+                //}
             }
         }
 
@@ -408,7 +425,8 @@ public class SlotManager {
      * @param emptySlot reference of the slot to be deleted
      */
     public boolean deleteSlot(String queueName, Slot emptySlot, String nodeId) {
-        long startMsgId = emptySlot.getStartMessageId();
+        return false;
+        /*long startMsgId = emptySlot.getStartMessageId();
         if(getSlotDeleteSafeZone() > startMsgId) {
             String lockKey = nodeId + SlotManager.class;
             synchronized (lockKey.intern()) {
@@ -437,7 +455,7 @@ public class SlotManager {
             return true;
         } else {
             return false;
-        }
+        } */
     }
 
     /**

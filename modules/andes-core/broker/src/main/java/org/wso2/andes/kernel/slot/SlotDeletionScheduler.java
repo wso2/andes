@@ -58,6 +58,7 @@ public class SlotDeletionScheduler {
         public void run() {
             //perform slot deletion
             boolean deleteSuccess = false;
+            log.info("FIXX : " + "Trying to delete slot : " + slotToDelete);
             try {
                 deleteSuccess = MBThriftClient
                         .deleteSlot(slotToDelete.getStorageQueueName(), slotToDelete, nodeID);
@@ -69,6 +70,8 @@ public class SlotDeletionScheduler {
                 //clear local tracking of slot
                 OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slotToDelete);
                 timer.cancel();
+                log.info("FIXX : " + "Deleted slot of queue : " + slotToDelete.getStorageQueueName() + " : by node : " +
+                        "" + nodeID + " | " + slotToDelete);
             }
         }
     }

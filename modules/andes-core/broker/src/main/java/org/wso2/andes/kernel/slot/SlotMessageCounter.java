@@ -135,6 +135,7 @@ public class SlotMessageCounter {
 
     private void submitCurrentSafeZone(long currentSlotDeleteSafeZone) {
         MBThriftClient.updateSlotDeletionSafeZone(currentSlotDeleteSafeZone);
+        log.info("FIXX : " + "Submitted safe zone from node : " + HazelcastAgent.getInstance().getNodeId() + " | safe zone : " + currentSlotDeleteSafeZone);
     }
 
     /**

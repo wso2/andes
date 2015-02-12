@@ -92,6 +92,8 @@ public final class CoordinationConstants {
      */
     public static String SLOT_ASSIGNMENT_MAP_NAME = "slotAssignmentMap";
 
+    public static String OVERLAPPED_SLOT_MAP_NAME = "overLappedSlotMap";
+
     /**
      * Name of the distributed map to store thrift server details
      */

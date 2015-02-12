@@ -78,6 +78,8 @@ public class AndesKernelBoot {
         startMessaging();
         createSuperTenantDLC();
 
+        Andes.getInstance().startSafeZoneAnalysisWorker();
+
     }
 
     /**

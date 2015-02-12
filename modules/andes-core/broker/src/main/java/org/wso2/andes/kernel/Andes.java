@@ -121,14 +121,21 @@ public class Andes {
 
         inboundEventManager = InboundEventManagerFactory.createEventManager(subscriptionStore, messagingEngine);
 
+        log.info("Andes API initialised.");
+    }
+
+    public void startSafeZoneAnalysisWorker() {
         SafeZoneUpdateEventTriggeringTask safeZoneUpdateTask =
                 new SafeZoneUpdateEventTriggeringTask(inboundEventManager);
 
+        log.info("FIXX : " + "Starting Safe Zone Calclulator");
         safeZoneUpdateScheduler.scheduleAtFixedRate(safeZoneUpdateTask,
                 5, safeZoneUpdateTriggerInterval, TimeUnit.MILLISECONDS);
 
-        log.info("Andes API initialised.");
     }
+
+
+
 
     /**
      * When a message is received from a transport it should be converted to an AndesMessage and handed over to Andes

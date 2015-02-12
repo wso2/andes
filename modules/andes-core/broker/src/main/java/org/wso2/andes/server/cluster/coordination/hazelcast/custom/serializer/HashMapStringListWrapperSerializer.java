@@ -42,7 +42,7 @@ public class HashMapStringListWrapperSerializer implements
         stringBuilder.append("{");
         HashMap<String, TreeSet<Slot>> hashmap = hashmapStringTreeSetWrapper.getStringListHashMap();
         if (hashmap != null) {
-            stringBuilder.append("\"stringListHashMap\":{");
+            stringBuilder.append("\"stringTreeSetHashMap\":{");
             Set<Map.Entry<String, TreeSet<Slot>>> entrySet = hashmap.entrySet();
             for (Map.Entry<String, TreeSet<Slot>> entry : entrySet) {
                 stringBuilder.append("\"").append(entry.getKey()).append("\":[");
@@ -59,6 +59,8 @@ public class HashMapStringListWrapperSerializer implements
                                 append(",").append("\"startMessageId\":").append(slot.getStartMessageId()).
                                 append(",").append("\"endMessageId\":").append(slot.getEndMessageId()).
                                 append(",\"storageQueueName\":\"").append(slot.getStorageQueueName()).
+                                append(",\"isAnOverlappingSlot\":\"").append(String.valueOf(slot.isAnOverlappingSlot())).
+                                append(",\"destinationOfMessagesInSlot\":\"").append(slot.getDestinationOfMessagesInSlot()).
                                 append("\",\"isSlotActive\":").append(isActiveString).append("},");
                     }
                     if (slots.size() != 0) {
@@ -84,7 +86,7 @@ public class HashMapStringListWrapperSerializer implements
         HashmapStringTreeSetWrapper wrapper = new HashmapStringTreeSetWrapper();
         HashMap<String, TreeSet<Slot>> hashMap = new HashMap<String, TreeSet<Slot>>();
         JsonObject jsonObject = new JsonParser().parse(jsonString).getAsJsonObject()
-                .getAsJsonObject("stringListHashMap");
+                .getAsJsonObject("stringTreeSetHashMap");
         Set<Map.Entry<String, JsonElement>> set = jsonObject.entrySet();
         for (Map.Entry<String, JsonElement> entry : set) {
             String key = entry.getKey();
