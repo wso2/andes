@@ -310,6 +310,16 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "/messageBatchSizeForBrowserSubscriptions", "200", Integer.class),
 
     /**
+     * This property defines the maximum message content length that can be displayed at the management console when
+     * browsing queues. If the message length exceeds the value, a truncated content will be displayed with a statement
+     * "message content too large to display." at the end. default value is 100000 (can roughly display a 100KB message.)
+     * NOTE : Increasing this value could cause delays when loading the message content page.
+     * (Introduced as per jira MB_939.)
+     */
+    MANAGEMENT_CONSOLE_MAX_DISPLAY_LENGTH_FOR_MESSAGE_CONTENT("managementConsole" +
+            "/maximumMessageDisplayLength", "100000", Integer.class),
+
+    /**
      * This is the per publisher buffer size low limit which disable the flow control for a channel if the flow-control
      * was enabled previously.
      */
