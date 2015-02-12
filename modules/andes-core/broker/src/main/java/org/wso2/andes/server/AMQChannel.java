@@ -544,13 +544,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
         _tag2SubscriptionMap.put(tag, subscription);
 
-        try {
-            //Will finally create a DLC queue for the domain if it has not being created before
-            DLCQueueUtils.createDLCQueue(queue.getResourceName(), getVirtualHost(),
-                                         ((AMQProtocolEngine) _session).getAuthId().toString());
-        } catch (AndesException e) {
-            throw new AMQException("Error creating Dead Letter Queue.", e);
-        }
         return tag;
     }
 

@@ -402,7 +402,7 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
         //However browser subscriptions should be allowed
         if (DLCQueueUtils.isDeadLetterQueue(getResourceName()) && !(subscription instanceof SubscriptionImpl
                 .BrowserSubscription)) {
-            throw new AMQSecurityException("Subscription to " + AndesConstants.DEAD_LETTER_QUEUE_NAME + " Queue is " +
+            throw new AMQSecurityException("Subscription to " + AndesConstants.DEAD_LETTER_QUEUE_SUFFIX + " Queue is " +
                     "Not Allowed !, Please use a Different Alias");
         }
 
