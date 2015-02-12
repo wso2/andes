@@ -26,8 +26,10 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper
+        .HashmapStringTreeSetWrapper;
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetSlotWrapper;
-import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.HashmapStringListWrapper;
+
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetLongWrapper;
 
 
@@ -88,12 +90,23 @@ public class HazelcastAgent {
     /**
      * to keep track of assigned slots up to now. Key of the map contains nodeID+"_"+queueName
      */
-    private IMap<String, HashmapStringListWrapper> slotAssignmentMap;
+    private IMap<String, HashmapStringTreeSetWrapper> slotAssignmentMap;
+
+    /**
+     * To keep track of slots that overlap with already assigned slots (in slotAssignmentMap). This is to ensure that
+     * messages assigned to a specific assigned slot are only handled by that node itself.
+     */
+    private IMap<String, HashmapStringTreeSetWrapper> overLappedSlotMap;
 
     /**
      *distributed Map to store last assigned ID against queue name
      */
     private IMap<String, Long> lastAssignedIDMap;
+
+    /**
+     * distributed Map to store last published ID against node ID
+     */
+    private IMap<String, Long> lastPublishedIDMap;
 
     /**
      * Distributed Map to keep track of non-empty slots which are unassigned from
@@ -128,6 +141,7 @@ public class HazelcastAgent {
      * This map is used to store coordinator node's host address and port.
      */
     private IMap<String,String> coordinatorNodeDetailsMap;
+
 
     /**
      * Private constructor.
@@ -209,6 +223,7 @@ public class HazelcastAgent {
         unAssignedSlotMap = hazelcastInstance.getMap(CoordinationConstants.UNASSIGNED_SLOT_MAP_NAME);
         slotIdMap = hazelcastInstance.getMap(CoordinationConstants.SLOT_ID_MAP_NAME);
         lastAssignedIDMap = hazelcastInstance.getMap(CoordinationConstants.LAST_ASSIGNED_ID_MAP_NAME);
+        lastPublishedIDMap = hazelcastInstance.getMap(CoordinationConstants.LAST_PUBLISHED_ID_MAP_NAME);
         slotAssignmentMap = hazelcastInstance.getMap(CoordinationConstants.SLOT_ASSIGNMENT_MAP_NAME);
 
         /**
@@ -393,8 +408,16 @@ public class HazelcastAgent {
         return lastAssignedIDMap;
     }
 
-    public IMap<String, HashmapStringListWrapper> getSlotAssignmentMap() {
+    public IMap<String, Long> getLastPublishedIDMap() {
+        return lastPublishedIDMap;
+    }
+
+    public IMap<String, HashmapStringTreeSetWrapper> getSlotAssignmentMap() {
         return slotAssignmentMap;
+    }
+
+    public IMap<String, HashmapStringTreeSetWrapper> getOverLappedSlotMap() {
+        return overLappedSlotMap;
     }
 
     /**

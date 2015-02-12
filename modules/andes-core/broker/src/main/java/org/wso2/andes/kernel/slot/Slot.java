@@ -52,6 +52,11 @@ public class Slot implements Serializable, Comparable<Slot> {
     private boolean isSlotActive;
 
     /**
+     * Indicates whether the slot is a fresh one or an overlapped one
+     */
+    private boolean isAnOverlappingSlot;
+
+    /**
      * Keep actual destination of messages in slot
      */
     private String destinationOfMessagesInSlot;
@@ -59,6 +64,14 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     public Slot() {
         isSlotActive = true;
+        isAnOverlappingSlot = false;
+    }
+
+    public Slot(long start, long end, String destinationOfMessagesInSlot) {
+        this();
+        this.startMessageId = start;
+        this.endMessageId = end;
+        this.destinationOfMessagesInSlot = destinationOfMessagesInSlot;
     }
 
     public void setStorageQueueName(String storageQueueName) {
@@ -99,6 +112,14 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     public boolean isSlotActive() {
         return isSlotActive;
+    }
+
+    public boolean isAnOverlappingSlot() {
+        return isAnOverlappingSlot;
+    }
+
+    public void setAnOverlappingSlot(boolean isAnOverlappingSlot) {
+        this.isAnOverlappingSlot = isAnOverlappingSlot;
     }
 
     public String getDestinationOfMessagesInSlot() {

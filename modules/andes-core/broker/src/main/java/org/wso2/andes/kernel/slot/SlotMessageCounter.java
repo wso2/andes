@@ -25,10 +25,13 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.thrift.MBThriftClient;
+import org.wso2.andes.thrift.slot.gen.SlotManagementService;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
@@ -49,6 +52,13 @@ public class SlotMessageCounter {
     private Log log = LogFactory.getLog(SlotMessageCounter.class);
     private static SlotMessageCounter slotMessageCounter = new SlotMessageCounter();
     private Integer slotWindowSize;
+    private long currentSlotDeleteSafeZone;
+
+    /** Keep track of how many update loops
+     * are skipped without messages. */
+    private int slotSubmitLoopSkipCount;
+
+    private static final int SLOT_SUBMIT_LOOP_SKIP_COUNT_THRESHOLD = 10;
 
     private SlotMessageCounter() {
         scheduleSubmitSlotToCoordinatorTimer();
@@ -58,6 +68,8 @@ public class SlotMessageCounter {
 
         timeOutForMessagesInQueue = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY);
+
+        slotSubmitLoopSkipCount = 0;
     }
 
     /**
@@ -66,7 +78,8 @@ public class SlotMessageCounter {
     private void scheduleSubmitSlotToCoordinatorTimer() {
         submitSlotToCoordinatorTimer.scheduleAtFixedRate(new TimerTask() {
             public void run() {
-                for (Map.Entry<String, Long> entry : slotTimeOutMap.entrySet()) {
+                Set<Map.Entry<String, Long>> slotTimeoutEntries = slotTimeOutMap.entrySet();
+                for (Map.Entry<String, Long> entry : slotTimeoutEntries) {
                     if ((System.currentTimeMillis() - entry
                             .getValue()) > timeOutForMessagesInQueue) {
                         try {
@@ -80,6 +93,14 @@ public class SlotMessageCounter {
                                     "Error occurred while connecting to the thrift coordinator " + e
                                             .getMessage(), e);
                         }
+                    }
+                }
+                if(slotTimeoutEntries.isEmpty()) {
+                    slotSubmitLoopSkipCount += 1;
+                    if(slotSubmitLoopSkipCount == SLOT_SUBMIT_LOOP_SKIP_COUNT_THRESHOLD) {
+                        //update current slot Deletion Safe Zone
+                        submitCurrentSafeZone(currentSlotDeleteSafeZone);
+                        slotSubmitLoopSkipCount = 0;
                     }
                 }
             }
@@ -110,6 +131,10 @@ public class SlotMessageCounter {
                 }
             }
         }
+    }
+
+    private void submitCurrentSafeZone(long currentSlotDeleteSafeZone) {
+        MBThriftClient.updateSlotDeletionSafeZone(currentSlotDeleteSafeZone);
     }
 
     /**
@@ -146,7 +171,7 @@ public class SlotMessageCounter {
         Slot slot = queueToSlotMap.get(storageQueueName);
         if (null != slot) {
             try {
-                MBThriftClient.updateMessageId(storageQueueName, slot.getEndMessageId());
+                MBThriftClient.updateMessageId(storageQueueName, HazelcastAgent.getInstance().getNodeId(), slot.getStartMessageId(), slot.getEndMessageId());
                 queueToSlotMap.remove(storageQueueName);
                 slotTimeOutMap.remove(storageQueueName);
 
@@ -157,6 +182,11 @@ public class SlotMessageCounter {
                         .getMessage(), e);
             }
         }
+    }
+
+
+    public void updateSafeZoneForNode(long currentSafeZoneVal) {
+        currentSlotDeleteSafeZone = currentSafeZoneVal;
     }
 
     /**

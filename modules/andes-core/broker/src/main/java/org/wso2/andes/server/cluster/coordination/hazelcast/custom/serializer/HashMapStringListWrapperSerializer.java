@@ -22,7 +22,7 @@ import com.google.gson.*;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.StreamSerializer;
-import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.HashmapStringListWrapper;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.HashmapStringTreeSetWrapper;
 import org.wso2.andes.kernel.slot.Slot;
 
 
@@ -31,21 +31,22 @@ import java.util.*;
 
 @SuppressWarnings("unused")
 public class HashMapStringListWrapperSerializer implements
-        StreamSerializer<HashmapStringListWrapper> {
+        StreamSerializer<HashmapStringTreeSetWrapper> {
 
 
     @Override
-    public void write(ObjectDataOutput objectDataOutput, HashmapStringListWrapper hashmapStringListWrapper) throws IOException {
+    public void write(ObjectDataOutput objectDataOutput, HashmapStringTreeSetWrapper
+            hashmapStringTreeSetWrapper) throws IOException {
         //Convert the hashmapStringListWrapper object to a json string and save it in hazelcast map
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("{");
-        HashMap<String, List<Slot>> hashmap = hashmapStringListWrapper.getStringListHashMap();
+        HashMap<String, TreeSet<Slot>> hashmap = hashmapStringTreeSetWrapper.getStringListHashMap();
         if (hashmap != null) {
             stringBuilder.append("\"stringListHashMap\":{");
-            Set<Map.Entry<String, List<Slot>>> entrySet = hashmap.entrySet();
-            for (Map.Entry<String, List<Slot>> entry : entrySet) {
+            Set<Map.Entry<String, TreeSet<Slot>>> entrySet = hashmap.entrySet();
+            for (Map.Entry<String, TreeSet<Slot>> entry : entrySet) {
                 stringBuilder.append("\"").append(entry.getKey()).append("\":[");
-                List<Slot> slots = entry.getValue();
+                TreeSet<Slot> slots = entry.getValue();
                 if (slots != null) {
                     for (Slot slot : slots) {
                         String isActiveString;
@@ -77,18 +78,18 @@ public class HashMapStringListWrapperSerializer implements
     }
 
     @Override
-    public HashmapStringListWrapper read(ObjectDataInput objectDataInput) throws IOException {
+    public HashmapStringTreeSetWrapper read(ObjectDataInput objectDataInput) throws IOException {
         //Build HashmapStringListWrapper object using json string.
         String jsonString = objectDataInput.readUTF();
-        HashmapStringListWrapper wrapper = new HashmapStringListWrapper();
-        HashMap<String, List<Slot>> hashMap = new HashMap<String, List<Slot>>();
+        HashmapStringTreeSetWrapper wrapper = new HashmapStringTreeSetWrapper();
+        HashMap<String, TreeSet<Slot>> hashMap = new HashMap<String, TreeSet<Slot>>();
         JsonObject jsonObject = new JsonParser().parse(jsonString).getAsJsonObject()
                 .getAsJsonObject("stringListHashMap");
         Set<Map.Entry<String, JsonElement>> set = jsonObject.entrySet();
         for (Map.Entry<String, JsonElement> entry : set) {
             String key = entry.getKey();
             JsonElement value = entry.getValue();
-            List<Slot> arrayList = new ArrayList<Slot>();
+            TreeSet<Slot> arrayList = new TreeSet<Slot>();
             JsonArray jsonArray = value.getAsJsonArray();
             for (JsonElement elem : jsonArray) {
                 Slot slot = new Slot();

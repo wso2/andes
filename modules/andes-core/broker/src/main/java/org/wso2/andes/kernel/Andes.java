@@ -32,6 +32,8 @@ import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -77,6 +79,17 @@ public class Andes {
     private AndesSubscriptionManager subscriptionManager;
 
     /**
+     * Scheduler for periodically trigger Slot Deletion Safe Zone
+     * update events
+     */
+    private final ScheduledExecutorService safeZoneUpdateScheduler = Executors.newScheduledThreadPool(1);
+
+    /**
+     * Interval in milliseconds above update call should trigger
+     */
+    private static final int safeZoneUpdateTriggerInterval = 3000;
+
+    /**
      * Instance of AndesAPI returned
      *
      * @return AndesAPI
@@ -107,6 +120,13 @@ public class Andes {
         this.subscriptionManager = subscriptionManager;
 
         inboundEventManager = InboundEventManagerFactory.createEventManager(subscriptionStore, messagingEngine);
+
+        SafeZoneUpdateEventTriggeringTask safeZoneUpdateTask =
+                new SafeZoneUpdateEventTriggeringTask(inboundEventManager);
+
+        safeZoneUpdateScheduler.scheduleAtFixedRate(safeZoneUpdateTask,
+                5, safeZoneUpdateTriggerInterval, TimeUnit.MILLISECONDS);
+
         log.info("Andes API initialised.");
     }
 

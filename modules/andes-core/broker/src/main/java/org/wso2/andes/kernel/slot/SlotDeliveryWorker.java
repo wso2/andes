@@ -55,6 +55,9 @@ public class SlotDeliveryWorker extends Thread {
     private volatile boolean running;
     private String nodeId;
     private MessageFlusher messageFlusher;
+    private SlotDeletionScheduler slotDeletionScheduler;
+
+    private static final long SLOT_DELETION_SCHEDULE_INTERVAL = 15*1000;
 
     public SlotDeliveryWorker() {
         messageFlusher = MessageFlusher.getInstance();
@@ -62,6 +65,7 @@ public class SlotDeliveryWorker extends Thread {
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
         localLastProcessedIdMap = new HashMap<String, Long>();
+        slotDeletionScheduler = new SlotDeletionScheduler(SLOT_DELETION_SCHEDULE_INTERVAL);
         /*
         Start slot deleting thread only if clustering is enabled. Otherwise slots assignment will
          not happen
@@ -167,7 +171,7 @@ public class SlotDeliveryWorker extends Thread {
                                                 currentSlot.getDestinationOfMessagesInSlot());
                                     } else {
                                         currentSlot.setSlotInActive();
-                                        deleteSlot(currentSlot, nodeId);
+                                        deleteSlot(currentSlot);
                                     }
                                 }
                             //Standalone mode
@@ -361,13 +365,8 @@ public class SlotDeliveryWorker extends Thread {
             // Return the slot if all messages remaining in slot are already sent.
             // Otherwise the slot will not be removed and send remaining messages to flusher
             if (messagesReturnedFromCassandra.isEmpty()) {
-                try {
-                    slot.setSlotInActive();
-                    deleteSlot(slot, nodeId);
-                } catch (ConnectionException e) {
-                    throw new AndesException(
-                            "Error deleting slot while checking for slot completion.", e);
-                }
+                slot.setSlotInActive();
+                deleteSlot(slot);
             } else {
                 if (log.isDebugEnabled()) {
                     log.debug(
@@ -378,23 +377,20 @@ public class SlotDeliveryWorker extends Thread {
             }
         // All metadata has been removed and therefore return the slot
         } else {
-            try {
-                slot.setSlotInActive();
-                deleteSlot(slot, nodeId);
-            } catch (ConnectionException e) {
-                throw new AndesException(
-                        "Error deleting slot while checking for slot completion.", e);
-            }
+            slot.setSlotInActive();
+            deleteSlot(slot);
         }
     }
 
 
-    public void deleteSlot(Slot slot,String nodeId) throws ConnectionException {
+    public void deleteSlot(Slot slot) {
 
         if(isClusteringEnabled){
-            MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
+            String nodeID = HazelcastAgent.getInstance().getNodeId();
+            slotDeletionScheduler.scheduleSlotDeletion(slot, nodeID);
+        } else {
+            OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
         }
-        OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
 
     }
 }

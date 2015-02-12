@@ -63,6 +63,9 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
                 case STATE_CHANGE_EVENT:
                     event.getStateEvent().updateState();
                     break;
+                case SAFE_ZONE_DECLARE_EVENT:
+                    updateSlotDeleteSafeZone(event);
+                    break;
             }
 
         } finally {
@@ -71,6 +74,11 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
             // previous iterations.
             event.clear();
         }
+    }
+
+    private void updateSlotDeleteSafeZone(InboundEvent event) {
+        long currentSafeZoneVal = event.getSafeZoneLimit();
+        SlotMessageCounter.getInstance().updateSafeZoneForNode(currentSafeZoneVal);
     }
 
     private int getProcessedAmount(List<AndesMessage> messages) {

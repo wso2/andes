@@ -19,6 +19,7 @@
 package org.wso2.andes.kernel.distruptor.inbound;
 
 import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.Sequence;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
@@ -29,6 +30,8 @@ import org.wso2.andes.subscription.SubscriptionStore;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static org.wso2.andes.kernel.distruptor.inbound.InboundEvent.Type.MESSAGE_EVENT;
 
 /**
  * This event processor goes through the ring buffer first and update AndesMessage data event objects.
@@ -48,8 +51,26 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
     @Override
     public void onEvent(InboundEvent inboundEvent, long sequence, boolean endOfBatch ) throws Exception {
 
-        if(InboundEvent.Type.MESSAGE_EVENT == inboundEvent.getEventType()) {
+        if(MESSAGE_EVENT == inboundEvent.getEventType()) {
             updateRoutingInformation(inboundEvent, sequence);
+        }
+        switch (inboundEvent.getEventType()) {
+            case MESSAGE_EVENT:
+                updateRoutingInformation(inboundEvent, sequence);
+                break;
+            case SAFE_ZONE_DECLARE_EVENT:
+                setSafeZoneLimit(inboundEvent, sequence);
+                break;
+
+
+        }
+    }
+
+    private void setSafeZoneLimit(InboundEvent event, long sequence) {
+        long safeZoneLimit = idGenerator.getNextId();
+        event.setSafeZoneLimit(safeZoneLimit);
+        if(log.isDebugEnabled()){
+            log.debug("[ Sequence " + sequence + " ] Pre processing message. Setting the Safe Zone " + safeZoneLimit);
         }
     }
 
