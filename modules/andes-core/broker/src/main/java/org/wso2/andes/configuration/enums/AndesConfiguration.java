@@ -314,7 +314,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * browsing queues. If the message length exceeds the value, a truncated content will be displayed with a statement
      * "message content too large to display." at the end. default value is 100000 (can roughly display a 100KB message.)
      * NOTE : Increasing this value could cause delays when loading the message content page.
-     * (Introduced as per jira MB_939.)
+     * (Introduced as per jira MB_939. )
      */
     MANAGEMENT_CONSOLE_MAX_DISPLAY_LENGTH_FOR_MESSAGE_CONTENT("managementConsole" +
             "/maximumMessageDisplayLength", "100000", Integer.class),
