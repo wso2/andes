@@ -21,7 +21,7 @@ package org.wso2.andes.kernel.distruptor.inbound;
 import java.util.List;
 
 /**
- * Batch event handler for ConcurrentBatchProcessor
+ * Batch event handler for ConcurrentBatchEventHandler
  */
 public interface BatchEventHandler {
 
