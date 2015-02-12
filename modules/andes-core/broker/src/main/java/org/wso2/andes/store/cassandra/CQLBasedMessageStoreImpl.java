@@ -41,6 +41,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.gte;
@@ -254,6 +255,15 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         }
 
         return messagePart;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<Long, List<AndesMessagePart>> getContent(List<Long> messageIdList) throws AndesException {
+        // TODO: implement
+        return null;
     }
 
     /**

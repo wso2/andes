@@ -228,6 +228,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
                                                          Integer.class),
 
     /**
+     * Content batch size for each content batch read. This is a loose guarantee.
+     */
+    PERFORMANCE_TUNING_DELIVERY_CONTENT_READ_BATCH_SIZE("performanceTuning/delivery/contentReadBatchSize", "65000",
+            Integer.class),
+
+    /**
      * Number of parallel writers used to write content to message store. Increasing this value will speedup
      * the message receiving mechanism. But the load on the data store will increase.
      */

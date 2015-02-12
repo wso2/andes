@@ -77,23 +77,6 @@ public class RDBMSMessageStoreImplTest {
         dropTables();
     }
 
-    public void dropTables() throws SQLException {
-
-        String[] queries = {
-                "DROP TABLE messages",
-                "DROP TABLE queues ",
-                "DROP TABLE reference_counts ",
-                "DROP TABLE metadata ",
-                "DROP TABLE expiration_data "
-        };
-        Statement stmt = connection.createStatement();
-        for (String q : queries) {
-            stmt.addBatch(q);
-        }
-        stmt.executeBatch();
-        stmt.close();
-    }
-
     @Test
     public void testStoreRetrieveMessagePart() throws Exception {
 
@@ -110,6 +93,14 @@ public class RDBMSMessageStoreImplTest {
             Assert.assertEquals(msgPart.getDataLength(), p.getDataLength());
             Assert.assertEquals(msgPart.getOffSet(), p.getOffSet());
         }
+    }
+    
+    @Test
+    public void testGetMessageContent() {
+        
+        // store message part
+        
+        
     }
 
     @Test
@@ -465,44 +456,38 @@ public class RDBMSMessageStoreImplTest {
 
     private void createTables() throws SQLException {
         String[] queries = {
-                "CREATE TABLE IF NOT EXISTS messages (" +
-                        "message_id BIGINT, " +
-                        "offset INT, " +
-                        "content BINARY NOT NULL, " +
-                        "PRIMARY KEY (message_id,offset)" +
+                "CREATE TABLE IF NOT EXISTS MB_CONTENT (" +
+                        "MESSAGE_ID BIGINT, " +
+                        "CONTENT_OFFSET INT, " +
+                        "MESSAGE_CONTENT BLOB NOT NULL, " +
+                        "PRIMARY KEY (MESSAGE_ID,CONTENT_OFFSET)" +
                         ");"
                 ,
 
-                "CREATE TABLE IF NOT EXISTS queues (" +
-                        "queue_id INT AUTO_INCREMENT, " +
-                        "name VARCHAR NOT NULL, " +
-                        "UNIQUE (name)," +
-                        "PRIMARY KEY (queue_id)" +
+                "CREATE TABLE IF NOT EXISTS MB_QUEUE_MAPPING (" +
+                        "QUEUE_ID INT AUTO_INCREMENT, " +
+                        "QUEUE_NAME VARCHAR NOT NULL, " +
+                        "UNIQUE (QUEUE_NAME)," +
+                        "PRIMARY KEY (QUEUE_ID)" +
                         ");",
 
-                "CREATE TABLE IF NOT EXISTS reference_counts ( " +
-                        "message_id BIGINT, " +
-                        "reference_count INT, " +
-                        "PRIMARY KEY (message_id)" +
+                "CREATE TABLE IF NOT EXISTS MB_METADATA (" +
+                        "MESSAGE_ID BIGINT, " +
+                        "QUEUE_ID INT, " +
+                        "MESSAGE_METADATA BINARY, " +
+                        "PRIMARY KEY (MESSAGE_ID, QUEUE_ID), " +
+                        "FOREIGN KEY (QUEUE_ID) REFERENCES MB_QUEUE_MAPPING (QUEUE_ID) " +
                         ");"
                 ,
 
-                "CREATE TABLE IF NOT EXISTS metadata (" +
-                        "message_id BIGINT, " +
-                        "queue_id INT, " +
-                        "data BINARY, " +
-                        "PRIMARY KEY (message_id, queue_id), " +
-                        "FOREIGN KEY (queue_id) " +
-                        "REFERENCES queues (queue_id) " +
-                        ");",
+                "CREATE TABLE IF NOT EXISTS MB_EXPIRATION_DATA (" +
+                        "MESSAGE_ID BIGINT UNIQUE," +
+                        "EXPIRATION_TIME BIGINT, " +
+                        "MESSAGE_DESTINATION VARCHAR NOT NULL, " +
+                        "FOREIGN KEY (MESSAGE_ID) REFERENCES MB_METADATA (MESSAGE_ID)" +
+                        ");"
 
-                "CREATE TABLE IF NOT EXISTS expiration_data (" +
-                        "message_id BIGINT UNIQUE," +
-                        "expiration_time BIGINT, " +
-                        "destination VARCHAR NOT NULL, " +
-                        "FOREIGN KEY (message_id) " +
-                        "REFERENCES metadata (message_id)" +
-                        "); "
+
         };
         Statement stmt = connection.createStatement();
         for (String q : queries) {
@@ -511,5 +496,21 @@ public class RDBMSMessageStoreImplTest {
         stmt.executeBatch();
         stmt.close();
 
+    }
+
+    public void dropTables() throws SQLException {
+
+        String[] queries = {
+                "DROP TABLE MB_CONTENT",
+                "DROP TABLE MB_QUEUE_MAPPING ",
+                "DROP TABLE MB_METADATA ",
+                "DROP TABLE MB_EXPIRATION_DATA "
+        };
+        Statement stmt = connection.createStatement();
+        for (String q : queries) {
+            stmt.addBatch(q);
+        }
+        stmt.executeBatch();
+        stmt.close();
     }
 }

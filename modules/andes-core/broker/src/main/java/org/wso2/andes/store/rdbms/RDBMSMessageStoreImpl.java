@@ -26,9 +26,16 @@ import javax.sql.DataSource;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static org.wso2.andes.store.rdbms.RDBMSConstants.CONTENT_TABLE;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_CONTENT;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_ID;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
 
 /**
  * ANSI SQL based message store implementation. Message persistence related methods are implemented
@@ -52,6 +59,15 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * Connection pooled data source
      */
     private DataSource datasource;
+
+    /**
+     * Partially created prepared statement to retrieve content of multiple messages using IN operator
+     * this will be completed on the fly when the request comes 
+     */
+    private static final String PS_SELECT_CONTENT_PART = 
+            "SELECT " + MESSAGE_CONTENT + ", " + MESSAGE_ID + ", " + MSG_OFFSET +
+                    " FROM " + CONTENT_TABLE +
+                    " WHERE " + MESSAGE_ID + " IN (";
 
     public RDBMSMessageStoreImpl() {
         queueMap = new ConcurrentHashMap<String, Integer>();
@@ -150,12 +166,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             results = preparedStatement.executeQuery();
 
             if (results.next()) {
-                byte[] b = results.getBytes(RDBMSConstants.MESSAGE_CONTENT);
-                messagePart = new AndesMessagePart();
-                messagePart.setMessageID(messageId);
-                messagePart.setData(b);
-                messagePart.setDataLength(b.length);
-                messagePart.setOffSet(offsetValue);
+                messagePart = createMessagePart(results, messageId, offsetValue);
             }
         } catch (SQLException e) {
             throw new AndesException("Error occurred while retrieving message content from DB" +
@@ -166,6 +177,79 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             close(connection, RDBMSConstants.TASK_RETRIEVING_MESSAGE_PARTS);
         }
         return messagePart;
+    }
+
+    @Override
+    public Map<Long, List<AndesMessagePart>> getContent(List<Long> messageIDList) throws AndesException {
+        
+        Map<Long, List<AndesMessagePart>> contentList = new HashMap<Long, List<AndesMessagePart>>(messageIDList.size());
+        
+        if (messageIDList.isEmpty()) {
+            return contentList;
+        }
+        
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(getSelectContentPreparedStmt(messageIDList.size()));
+            for (int i = 0; i < messageIDList.size(); i++) {
+                preparedStatement.setLong(i+1, messageIDList.get(i));
+            }
+            
+            resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                long messageID = resultSet.getLong(MESSAGE_ID);
+                int offset = resultSet.getInt(MSG_OFFSET);
+                List<AndesMessagePart> partList = contentList.get(messageID);
+                if (null == partList) {
+                    partList = new ArrayList<AndesMessagePart>();
+                    contentList.put(messageID, partList);
+                }
+                AndesMessagePart msgPart = createMessagePart(resultSet, messageID, offset);
+                partList.add(msgPart);
+            }
+            
+        } catch (SQLException e) {
+            throw new AndesException("Error occurred while retrieving message content from DB for " + 
+                    messageIDList.size() + " messages ", e);
+        } finally {
+            close(connection, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
+            close(preparedStatement, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
+            close(resultSet, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
+        }
+        return contentList;
+    }
+    
+    
+    private AndesMessagePart createMessagePart(ResultSet results, long messageId, int offsetValue) throws SQLException {
+        byte[] b = results.getBytes(MESSAGE_CONTENT);
+        AndesMessagePart  messagePart = new AndesMessagePart();
+        messagePart.setMessageID(messageId);
+        messagePart.setData(b);
+        messagePart.setDataLength(b.length);
+        messagePart.setOffSet(offsetValue);
+        
+        return messagePart;
+    }
+
+    /**
+     * Create a prepared statement with given number of ? values set to IN operator 
+     * @param messageCount number of messages that content need to be retrieved from. 
+     *                     CONDITION: messageCount > 0
+     * @return Prepared Statement
+     */
+    private String getSelectContentPreparedStmt(int messageCount) {
+        
+        StringBuilder stmtBuilder = new StringBuilder(PS_SELECT_CONTENT_PART);
+        for (int i = 0; i < messageCount - 1; i++) {
+            stmtBuilder.append("?,");
+        }
+        
+        stmtBuilder.append("?);");
+        return stmtBuilder.toString();
     }
 
     /**

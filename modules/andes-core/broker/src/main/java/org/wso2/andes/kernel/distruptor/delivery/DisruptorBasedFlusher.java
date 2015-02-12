@@ -21,10 +21,12 @@ package org.wso2.andes.kernel.distruptor.delivery;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
 
@@ -54,6 +56,8 @@ public class DisruptorBasedFlusher {
                 AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_PARALLEL_CONTENT_READERS);
         Integer parallelDeliveryHandlers = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_PARALLEL_DELIVERY_HANDLERS);
+        Integer contentSizeToBatch = AndesConfigurationManager.readValue(
+                AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_CONTENT_READ_BATCH_SIZE);
 
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("DisruptorBasedFlusher-%d").build();
         Executor threadPoolExecutor = Executors.newCachedThreadPool(namedThreadFactory);
@@ -65,19 +69,31 @@ public class DisruptorBasedFlusher {
 
         disruptor.handleExceptionsWith(new DeliveryExceptionHandler());
 
+        // This barrier is used for contentReaders. Content read processors process events first. Hence take the
+        // barrier directly from ring buffer
+        SequenceBarrier barrier = disruptor.getRingBuffer().newBarrier();
+        
         // Initialize content readers
-        ContentCacheCreator[] contentReaders = new ContentCacheCreator[parallelContentReaders];
+        ConcurrentContentReadTaskBatchProcessor[] contentReadTaskBatchProcessor = new ConcurrentContentReadTaskBatchProcessor[parallelContentReaders];
         for (int i = 0; i < parallelContentReaders; i++) {
-            contentReaders[i] = new ContentCacheCreator(i, parallelContentReaders);
+            contentReadTaskBatchProcessor[i] = new ConcurrentContentReadTaskBatchProcessor(
+                    disruptor.getRingBuffer(),
+                    barrier,
+                    new ContentCacheCreator(),
+                    i, 
+                    parallelContentReaders,
+                    contentSizeToBatch);
+            
+            contentReadTaskBatchProcessor[i].setExceptionHandler(new DeliveryExceptionHandler());
         }
-
+    
         // Initialize delivery handlers
         DeliveryEventHandler[] deliveryEventHandlers = new DeliveryEventHandler[parallelDeliveryHandlers];
         for (int i = 0; i < parallelDeliveryHandlers; i++) {
             deliveryEventHandlers[i] = new DeliveryEventHandler(i, parallelDeliveryHandlers);
         }
 
-        disruptor.handleEventsWith(contentReaders).then(deliveryEventHandlers);
+        disruptor.handleEventsWith(contentReadTaskBatchProcessor).then(deliveryEventHandlers);
 
         disruptor.start();
         ringBuffer = disruptor.getRingBuffer();

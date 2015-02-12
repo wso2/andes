@@ -32,6 +32,7 @@ import org.wso2.andes.server.stats.PerformanceCounter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This is the implementation of MessageStore that deals with Cassandra no SQL DB.
@@ -151,6 +152,15 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                     "Error while reading content messageID=" + messageId + " offset=" +
                             offsetValue, e);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<Long, List<AndesMessagePart>> getContent(List<Long> messageIdList) throws AndesException {
+        // TODO implement
+        return null;
     }
 
     /**

@@ -22,6 +22,7 @@ import org.wso2.andes.configuration.util.ConfigurationProperties;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Message meta data and content storing related data base types specific logic is abstracted out
@@ -64,6 +65,15 @@ public interface MessageStore {
      * @throws AndesException
      */
     public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException;
+
+    /**
+     * Read content for given message metadata list
+     *  
+     * @param messageIDList message id list for the content to be retrieved
+     * @return <code>Map<Long, List<AndesMessagePart>></code> Message id and its corresponding message part list
+     * @throws AndesException
+     */
+    public Map<Long, List<AndesMessagePart> > getContent(List<Long> messageIDList) throws AndesException;
 
     /**
      * store mata data of messages
