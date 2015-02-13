@@ -152,7 +152,7 @@ public class Andes {
     }
 
     public void closeLocalSubscription(InboundSubscriptionEvent subscriptionEvent) throws AndesException {
-        subscriptionEvent.prepareForNewSubscription(subscriptionManager);
+        subscriptionEvent.prepareForCloseSubscription(subscriptionManager);
         inboundEventManager.publishStateEvent(subscriptionEvent);
         try {
             subscriptionEvent.waitForCompletion();

@@ -86,6 +86,7 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
     public InboundQueueEvent(String queueName, String queueOwner, boolean isExclusive, boolean isDurable) {
         super(queueName, queueOwner, isExclusive, isDurable);
         purgedCount = SettableFuture.create();
+        isQueueDeletable = SettableFuture.create();
         isTopic = false;
     }
 
