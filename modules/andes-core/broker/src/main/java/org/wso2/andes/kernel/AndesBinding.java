@@ -68,6 +68,9 @@ public class AndesBinding implements Serializable {
                 "/EX=" + boundQueue.isExclusive;
     }
 
+    /**
+     * Encode object to a string.
+     */
     public String encodeAsString() {
         return "boundExchange&" + boundExchangeName +
                 "|boundQueue&" + boundQueue.encodeAsString() +
@@ -93,6 +96,4 @@ public class AndesBinding implements Serializable {
                 append(routingKey).
                 toHashCode();
     }
-
-
 }

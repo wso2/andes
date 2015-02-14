@@ -179,6 +179,12 @@ public class RDBMSConstants {
                     DURABLE_SUB_DATA + ") " +
                     " VALUES (?,?,?)";
 
+    protected static final String PS_UPDATE_DURABLE_SUBSCRIPTION =
+            "UPDATE " + DURABLE_SUB_TABLE +
+                    " SET " + DURABLE_SUB_DATA + "=? " +
+                    " WHERE " + DESTINATION_IDENTIFIER + "=? AND " +
+                    DURABLE_SUB_ID + "=?;";
+
     protected static final String PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS =
             "SELECT " + DESTINATION_IDENTIFIER + "," + DURABLE_SUB_DATA +
                     " FROM " + DURABLE_SUB_TABLE;
@@ -336,6 +342,7 @@ public class RDBMSConstants {
 
     // Andes Context Store related jdbc tasks executed
     protected static final String TASK_STORING_DURABLE_SUBSCRIPTION = "storing durable subscription";
+    protected static final String TASK_UPDATING_DURABLE_SUBSCRIPTION = "updating durable subscription";
     protected static final String TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION = "retrieving " +
             "all durable subscriptions. ";
 

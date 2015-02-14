@@ -33,9 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SubscriptionStore {
     private static final String TOPIC_PREFIX = "topic.";
 
-
     private static final String QUEUE_PREFIX = "queue.";
-
 
     private static Log log = LogFactory.getLog(SubscriptionStore.class);
 
@@ -48,9 +46,12 @@ public class SubscriptionStore {
     private Map<String, Map<String, LocalSubscription>> localTopicSubscriptionMap = new ConcurrentHashMap<String, Map<String, LocalSubscription>>();
     private Map<String, Map<String, LocalSubscription>> localQueueSubscriptionMap = new ConcurrentHashMap<String, Map<String, LocalSubscription>>();
 
+    /** 
+     * Channel wise indexing of local subscriptions for acknowledgement handling
+     */
+    private Map<UUID, LocalSubscription> channelIdMap = new ConcurrentHashMap<UUID, LocalSubscription>();
 
     private AndesContextStore andesContextStore;
-
 
     public SubscriptionStore() throws AndesException {
 
@@ -94,18 +95,37 @@ public class SubscriptionStore {
      */
     public List<AndesSubscription> getClusterSubscribersForDestination(String destination,
                                                                        boolean isTopic) throws AndesException {
-        Map<String, List<AndesSubscription>> subMap = isTopic ? clusterTopicSubscriptionMap: clusterQueueSubscriptionMap;
+        List<AndesSubscription> subscriptionList = new ArrayList<AndesSubscription>();
+        
+        if (isTopic) {
+            // In topic scenario if this is a durable topic it's in cluster queue subscription map,
+            // hence we need to check both maps
+            subscriptionList.addAll(getSubscriptionsInMap(destination, clusterTopicSubscriptionMap));
+            subscriptionList.addAll(getSubscriptionsInMap(destination, clusterQueueSubscriptionMap));
+        } else {
+            subscriptionList = clusterQueueSubscriptionMap.get(destination);
+        }
+        
+        return subscriptionList;
+    }
+
+    /**
+     * Get subscriptions related to destination. Get hierarchical topic scenario into consideration
+     * @param destination queue topic 
+     * @param subMap Map<String, List<AndesSubscription>>
+     * @return  List<AndesSubscription>
+     */
+    private List<AndesSubscription> getSubscriptionsInMap(String destination, Map<String, List<AndesSubscription>> subMap) {
         List<AndesSubscription> subscriptionList = new ArrayList<AndesSubscription>();
         for(Map.Entry<String,List<AndesSubscription>> entry: subMap.entrySet()) {
             String subDestination = entry.getKey();
-            if(AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(subDestination, destination)) {
+            if (AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(subDestination, destination)) {
                 List<AndesSubscription> subscriptionsOfDestination = entry.getValue();
                 if (null != subscriptionsOfDestination) {
                     subscriptionList.addAll(subscriptionsOfDestination);
                 }
             }
         }
-
         return subscriptionList;
     }
 
@@ -181,27 +201,13 @@ public class SubscriptionStore {
     }
 
     /**
-     * Get local subscription given the subscribed destination and
-     * channel subscription use to send messages
+     * Get local subscription given the channel id of subscription
      * @param channelID  id of the channel subscriber deals with
-     * @param messageDestination  destination of subscription
-     * @param isTopic True if searching for topic subscriptions
      * @return subscription object. Null if no match
      * @throws AndesException
      */
-    public LocalSubscription getLocalSubscriptionForChannelId(UUID channelID,
-                                                              String messageDestination, boolean isTopic)
-
-            throws AndesException {
-        List<LocalSubscription> activeLocalSubscriptions =
-                getAllActiveSubscriptions4MsgDestination(
-                        messageDestination, isTopic);
-        for (LocalSubscription sub : activeLocalSubscriptions) {
-            if (sub.getChannelID().equals(channelID)) {
-                return sub;
-            }
-        }
-        return null;
+    public LocalSubscription getLocalSubscriptionForChannelId(UUID channelID) throws AndesException {
+        return channelIdMap.get(channelID);
     }
 
 
@@ -495,8 +501,18 @@ public class SubscriptionStore {
      */
     public synchronized void createDisconnectOrRemoveClusterSubscription(AndesSubscription subscription, SubscriptionChange type) throws AndesException{
 
-        boolean isTopic = subscription.isBoundToTopic();
-        Map<String, List<AndesSubscription>> clusterSubscriptionMap = isTopic ? clusterTopicSubscriptionMap : clusterQueueSubscriptionMap;
+        Map<String, List<AndesSubscription>> clusterSubscriptionMap;
+        if(subscription.isBoundToTopic()) {
+            if (subscription.isDurable()) {
+                // Treat durable subscription for topic as a queue subscription. Therefore its in 
+                // cluster queue subscription map
+                clusterSubscriptionMap = clusterQueueSubscriptionMap;
+            } else { // Topics
+                clusterSubscriptionMap = clusterTopicSubscriptionMap;
+            }
+        } else { // Queues
+            clusterSubscriptionMap = clusterQueueSubscriptionMap;
+        }
         String destination = subscription.getSubscribedDestination();
         List<AndesSubscription> subscriptionList = clusterSubscriptionMap.get(destination);
 
@@ -555,10 +571,10 @@ public class SubscriptionStore {
             log.debug("DELETED Subscription from map. queue name:" + subscription.getTargetQueue() + ", Type: " + subscription.getTargetQueueBoundExchangeType());
         }
 
-        log.debug("+++++++++++++++++Updated cluster subscription maps++++++++++++++++");
+        log.debug("\n\tUpdated cluster subscription maps\n");
         this.printSubscriptionMap(clusterQueueSubscriptionMap);
         this.printSubscriptionMap(clusterTopicSubscriptionMap);
-        log.debug("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+        log.debug("\n");
     }
 
 
@@ -595,33 +611,33 @@ public class SubscriptionStore {
         
         Boolean allowSharedSubscribers =  AndesConfigurationManager.readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
         //We need to handle durable topic subscriptions
-        boolean hasDurableSubscriptionAlreadyInPlace = false;
+        boolean durableSubExists = false;
+        boolean hasExternalSubscriptions = false;
         if (subscription.isDurable()) {
-            /**
-             * Check if an active durable topic subscription already in place. If so we should not accept the subscription
-             */
-            //scan all the destinations as the subscription can come for different topic
-            for (String destination : clusterTopicSubscriptionMap.keySet()) {
-                List<AndesSubscription> existingSubscriptions = clusterTopicSubscriptionMap.get(destination);
+
+            // Check if an active durable subscription already in place. If so we should not accept the subscription
+            // Scan all the destinations as the subscription can come for different topic
+            for (Entry<String, List<AndesSubscription>> entry : clusterQueueSubscriptionMap.entrySet()) {
+                List<AndesSubscription> existingSubscriptions = entry.getValue();
                 if (existingSubscriptions != null && !existingSubscriptions.isEmpty()) {
                     for (AndesSubscription sub : existingSubscriptions) {
-                        //queue is durable
-                        if (sub.isDurable() &&
-                                //target queues are matched
-                                sub.getTargetQueue().equals(subscription.getTargetQueue()) &&
-                                //target queue has a active subscriber
-                                sub.hasExternalSubscriptions()) {
-                            hasDurableSubscriptionAlreadyInPlace = true;
-                            break;
+                        // Queue is durable and target queues are matched
+                        if (sub.isDurable() && sub.getTargetQueue().equals(subscription.getTargetQueue())) {
+                            durableSubExists = true;
+                            // Target queue for durable topic subscription has an active subscriber
+                            if (subscription.isBoundToTopic() && sub.hasExternalSubscriptions()) {
+                                hasExternalSubscriptions = true;
+                                break;
+                            }
                         }
                     }
                 }
-                if (hasDurableSubscriptionAlreadyInPlace) {
+                if (hasExternalSubscriptions) {
                     break;
                 }
             }
 
-            if (!hasDurableSubscriptionAlreadyInPlace && type == SubscriptionChange.DISCONNECTED) {
+            if (!hasExternalSubscriptions && type == SubscriptionChange.DISCONNECTED) {
                 //when there are multiple subscribers possible with same clientID we keep only one
                 //topic subscription record for all of them. Thus when closing there can be no subscriber
                 //to close in multiple durable topic subscription case
@@ -629,7 +645,7 @@ public class SubscriptionStore {
                     throw new AndesException("There is no active subscriber to close subscribed to " + subscription.
                                              getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
                 }
-            } else if (hasDurableSubscriptionAlreadyInPlace && type == SubscriptionChange.ADDED) {
+            } else if (hasExternalSubscriptions && type == SubscriptionChange.ADDED) {
                 if(!allowSharedSubscribers) {
                     //not permitted
                     throw new SubscriptionAlreadyExistsException("A subscription already exists for Durable subscriptions on " +
@@ -645,12 +661,13 @@ public class SubscriptionStore {
             //Store the subscription
             String destinationIdentifier = (subscription.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destinationQueue;
             String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
-            andesContextStore.storeDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
 
-            if (type == SubscriptionChange.ADDED) {
-                log.info("New Local Subscription Added " + subscription.toString());
+            if (type == SubscriptionChange.ADDED && !durableSubExists) {
+                andesContextStore.storeDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
+                log.info("New local subscription added " + subscription.toString());
             } else {
-                log.info("New Local Subscription Disconnected " + subscription.toString());
+                andesContextStore.updateDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
+                log.info("New local subscription " + type + " " + subscription.toString());
             }
 
             //add or update local subscription map
@@ -675,11 +692,18 @@ public class SubscriptionStore {
             removeLocalSubscription(subscription);
             log.info("Local Subscription Removed " + subscription.toString());
         }
+        
+        // Update channel id map
+        if (type == SubscriptionChange.ADDED) {
+            channelIdMap.put(subscription.getChannelID(), subscription);
+        } else {
+            channelIdMap.remove(subscription.getChannelID());
+        }
 
-        log.debug("===============Updated local subscription maps================");
+        log.debug("\n\tUpdated local subscription maps\n");
         this.printLocalSubscriptionMap(localQueueSubscriptionMap);
         this.printLocalSubscriptionMap(localTopicSubscriptionMap);
-        log.debug("========================================================");
+        log.debug("\n");
 
     }
 
