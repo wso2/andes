@@ -27,6 +27,8 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.kernel.AndesConstants;
+import org.wso2.andes.server.registry.ApplicationRegistry;
+import org.wso2.andes.server.registry.IApplicationRegistry;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
 
@@ -39,25 +41,24 @@ public class DLCQueueUtils {
 
     private static final Logger log = Logger.getLogger(DLCQueueUtils.class);
 
+    public static final String DLC_QUEUE_SEPARATOR = "/";
+
     /**
      * Derive the Dead Letter Queue name of the tenant with respect to a given queue of the same
      * tenant.
      *
-     * @param queueName
-     *         A queue name in the same tenant.
-     * @param dlcString
-     *         The Dead Letter Queue suffix.
+     * @param queueName A queue name in the same tenant.
      * @return The Dead Letter Queue name for the tenant.
      */
-    public static String identifyTenantInformationAndGenerateDLCString(String queueName,
-                                                                       String dlcString) {
+    public static String identifyTenantInformationAndGenerateDLCString(String queueName) {
         String destinationString;
 
-        if ("/".contains(queueName)) {
+        if (queueName.contains(DLC_QUEUE_SEPARATOR)) {
             //The Queue is in the tenant realm
-            destinationString = queueName.split("/", 2)[0] + "/" + dlcString;
+            destinationString = queueName.split(DLC_QUEUE_SEPARATOR, 2)[0] + DLC_QUEUE_SEPARATOR + AndesConstants
+                    .DEAD_LETTER_QUEUE_SUFFIX;
         } else {
-            destinationString = dlcString;
+            destinationString = AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
         }
 
         return destinationString;
@@ -66,19 +67,18 @@ public class DLCQueueUtils {
     /**
      * Decides on whether a given queue name is a Dead Letter Queue or not.
      *
-     * @param queueName
-     *         The Queue name to test.
+     * @param queueName The Queue name to test.
      * @return True if a Dead Letter Queue, False if not a Dead Letter Queue.
      */
     public static boolean isDeadLetterQueue(String queueName) {
         boolean isDeadLetterQueue = false;
         if (queueName.contains("/")) {
             //The Queue is in the tenant realm
-            if (queueName.split("/", 2)[1].contains(AndesConstants.DEAD_LETTER_QUEUE_NAME)) {
+            if (queueName.split("/", 2)[1].contains(AndesConstants.DEAD_LETTER_QUEUE_SUFFIX)) {
                 isDeadLetterQueue = true;
             }
         } else {
-            if (queueName.equals(AndesConstants.DEAD_LETTER_QUEUE_NAME)) {
+            if (queueName.equals(AndesConstants.DEAD_LETTER_QUEUE_SUFFIX)) {
                 isDeadLetterQueue = true;
             }
         }
@@ -87,28 +87,35 @@ public class DLCQueueUtils {
     }
 
     /**
-     * Creates a Dead Letter Queue for the tenant in a given queue name.
+     * Creates a Dead Letter Queue for the tenant.
+     * Only one DLC queue is valid for a tenant.
      *
-     * @param queueName
-     *         A queue name in the same tenant.
-     * @param host
-     *         The Virtual Host.
-     * @param owner
-     *         The tenant owner.
+     * @param tenantName  The tenant name for which the DLC should be created.
+     * @param tenantOwner The admin of the tenant
      * @throws AndesException
      */
-    public static synchronized void createDLCQueue(String queueName, VirtualHost host,
-                                                   String owner) throws AndesException {
-        String dlcQueueName = identifyTenantInformationAndGenerateDLCString(queueName,
-                AndesConstants.DEAD_LETTER_QUEUE_NAME);
-        QueueRegistry queueRegistry = host.getQueueRegistry();
+    public static synchronized void createDLCQueue(String tenantName, String tenantOwner) throws AndesException {
+        IApplicationRegistry applicationRegistry = ApplicationRegistry.getInstance();
+        VirtualHost virtualHost = applicationRegistry.getVirtualHostRegistry().getDefaultVirtualHost();
+        QueueRegistry queueRegistry = virtualHost.getQueueRegistry();
+
+        String dlcQueueName;
+
+        if (org.wso2.carbon.base.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME == tenantName) {
+            dlcQueueName = AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
+        } else {
+            dlcQueueName = tenantName + DLC_QUEUE_SEPARATOR + AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
+        }
+
+        // Try to retrieve queue to check if it is already available
         AMQQueue queue = queueRegistry.getQueue(new AMQShortString(dlcQueueName));
-        if (queue == null && !isDeadLetterQueue(queueName)) {
-            AndesQueue andesQueue = new AndesQueue(dlcQueueName, owner, false, true);
+
+        if (queue == null) { // Skip creating if already available
+            AndesQueue andesQueue = new AndesQueue(dlcQueueName, tenantOwner, false, true);
 
             AndesContext.getInstance().getAMQPConstructStore().addQueue(andesQueue, true);
-            ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().queue(dlcQueueName, owner, false,
-                    null);
+            ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().queue(dlcQueueName, tenantOwner,
+                    false, null);
 
             QueueListener queueListener = new ClusterCoordinationHandler(HazelcastAgent
                     .getInstance());
@@ -117,7 +124,7 @@ public class DLCQueueUtils {
             LocalSubscription mockSubscription =
                     new AMQPLocalSubscription(queueRegistry.getQueue(new AMQShortString(dlcQueueName)),
                             null, "0", dlcQueueName, false, false, true, nodeID,
-                            System.currentTimeMillis(), dlcQueueName, owner,
+                            System.currentTimeMillis(), dlcQueueName, tenantOwner,
                             ExchangeDefaults.DIRECT_EXCHANGE_NAME.toString(), "DIRECT", null, false);
 
             AndesContext.getInstance().getSubscriptionStore().createDisconnectOrRemoveClusterSubscription
