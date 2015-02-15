@@ -47,8 +47,7 @@ public class DLCQueueUtils {
      * Derive the Dead Letter Queue name of the tenant with respect to a given queue of the same
      * tenant.
      *
-     * @param queueName
-     *         A queue name in the same tenant.
+     * @param queueName A queue name in the same tenant.
      * @return The Dead Letter Queue name for the tenant.
      */
     public static String identifyTenantInformationAndGenerateDLCString(String queueName) {
@@ -56,7 +55,8 @@ public class DLCQueueUtils {
 
         if (queueName.contains(DLC_QUEUE_SEPARATOR)) {
             //The Queue is in the tenant realm
-            destinationString = queueName.split(DLC_QUEUE_SEPARATOR, 2)[0] + DLC_QUEUE_SEPARATOR + AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
+            destinationString = queueName.split(DLC_QUEUE_SEPARATOR, 2)[0] + DLC_QUEUE_SEPARATOR + AndesConstants
+                    .DEAD_LETTER_QUEUE_SUFFIX;
         } else {
             destinationString = AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
         }
@@ -67,8 +67,7 @@ public class DLCQueueUtils {
     /**
      * Decides on whether a given queue name is a Dead Letter Queue or not.
      *
-     * @param queueName
-     *         The Queue name to test.
+     * @param queueName The Queue name to test.
      * @return True if a Dead Letter Queue, False if not a Dead Letter Queue.
      */
     public static boolean isDeadLetterQueue(String queueName) {
@@ -115,7 +114,8 @@ public class DLCQueueUtils {
             AndesQueue andesQueue = new AndesQueue(dlcQueueName, tenantOwner, false, true);
 
             AndesContext.getInstance().getAMQPConstructStore().addQueue(andesQueue, true);
-            ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().queue(dlcQueueName, tenantOwner, false, null);
+            ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().queue(dlcQueueName, tenantOwner,
+                    false, null);
 
             QueueListener queueListener = new ClusterCoordinationHandler(HazelcastAgent
                     .getInstance());
