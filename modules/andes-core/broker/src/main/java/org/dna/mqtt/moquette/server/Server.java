@@ -28,9 +28,13 @@ public class Server {
     SimpleMessaging messaging;
 
     public void startServer(int port) throws IOException {
-        Properties configProps = loadConfigurations();
-        configProps.put("port",Integer.toString(port));
-        serverInit(configProps);
+        if (AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_ENABLED)) {
+            Properties configProps = loadConfigurations();
+            configProps.put("port",Integer.toString(port));
+            serverInit(configProps);
+        } else {
+            log.warn("MQTT Transport is disabled as per configuration.");
+        }
     }
     
     public void startServer() throws IOException {
