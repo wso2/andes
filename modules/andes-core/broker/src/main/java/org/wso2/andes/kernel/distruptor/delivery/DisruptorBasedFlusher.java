@@ -29,6 +29,10 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.carbon.metrics.manager.Gauge;
+import org.wso2.carbon.metrics.manager.Level;
+import org.wso2.carbon.metrics.manager.MetricManager;
+import org.wso2.carbon.metrics.manager.Timer;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -97,6 +101,10 @@ public class DisruptorBasedFlusher {
 
         disruptor.start();
         ringBuffer = disruptor.getRingBuffer();
+
+        //Will start the gauge
+        MetricManager.gauge(Level.INFO, MetricManager.name(this.getClass(),
+                "outBoundRingSize"),new DisruptorOutBoundRingGauge());
     }
 
     /**
@@ -126,4 +134,17 @@ public class DisruptorBasedFlusher {
     public void stop() {
         disruptor.shutdown();
     }
+
+    /**
+     * Utility class used to gauge ring size.
+     *
+     */
+    private class DisruptorOutBoundRingGauge implements Gauge <Long>{
+        @Override
+        public Long getValue() {
+            long disruptorRemainingSlotSize = ringBuffer.getBufferSize() - ringBuffer.remainingCapacity();
+            return disruptorRemainingSlotSize;
+        }
+    }
 }
+
