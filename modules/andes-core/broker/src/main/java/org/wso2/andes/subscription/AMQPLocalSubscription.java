@@ -213,19 +213,7 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
      * @throws AndesException
      */
     public void sendQueueEntryToSubscriber(QueueEntry message) throws AndesException {
-        if (message.getQueue().checkIfBoundToTopicExchange()) {
-            //topic messages should be sent to all matching subscriptions
-            String routingKey = message.getMessage().getRoutingKey();
-            for (Binding bindingOfQueue : amqQueue.getBindings()) {
-                if (isMatching(bindingOfQueue.getBindingKey(), routingKey)) {
-                    sendMessage(message);
-                    break;
-                }
-            }
-        } else {
-            sendMessage(message);
-        }
-
+        sendMessage(message);
     }
 
     /**

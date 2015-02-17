@@ -216,8 +216,7 @@ public class MessagingEngine {
     public void messageRejected(AndesMessageMetadata metadata) throws AndesException {
 
         OnflightMessageTracker.getInstance().handleFailure(metadata);
-        LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId
-                (metadata.getChannelId(), metadata.getDestination(), metadata.isTopic());
+        LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId(metadata.getChannelId());
         if (subToResend != null) {
             reQueueMessage(metadata, subToResend);
         } else {

@@ -47,8 +47,7 @@ public class AndesSubscriptionManager {
     private List<SubscriptionListener> subscriptionListeners = new ArrayList<SubscriptionListener>();
 
     private static final String TOPIC_PREFIX = "topic.";
-    private static final String QUEUE_PREFIX = "destination.";
-
+    private static final String QUEUE_PREFIX = "queue.";
 
     public void init() {
         subscriptionStore = AndesContext.getInstance().getSubscriptionStore();

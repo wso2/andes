@@ -382,19 +382,27 @@ public class MessageFlusher {
                             subscriptionIterator.remove();
                         }
                     }
+
+                    if (subscriptions4Queue.size() == 0) {
+                        iterator.remove(); // remove buffer
+                        OnflightMessageTracker.getInstance().decrementMessageCountInSlotAndCheckToResend(message.getSlot());
+                        AndesRemovableMetadata removableMetadata = new AndesRemovableMetadata(message.getMessageID(),
+                                message.getDestination(), message.getStorageQueueName());
+                        droppedTopicMessageList.add(removableMetadata);
+
+                        continue; // skip this iteration if no subscriptions for the message
+                    }
+
+                } else { // Queue
+                    if (subscriptions4Queue.size() == 0) {
+                        // We don't have subscribers for this message
+                        // todo: Handle orphaned slot created with this no subscription scenario for queue
+                        break; // break the loop
+                    }
                 }
+
 
                 //check id destination has any subscription for the current message
-                //todo return the slot
-                if (subscriptions4Queue.size() == 0) {
-                    iterator.remove(); // remove buffer
-                    OnflightMessageTracker.getInstance().decrementMessageCountInSlotAndCheckToResend(message.getSlot());
-                    AndesRemovableMetadata removableMetadata = new AndesRemovableMetadata(message.getMessageID(),
-                            message.getDestination(), message.getStorageQueueName());
-                    droppedTopicMessageList.add(removableMetadata);
-
-                    continue; // skip this iteration if no subscriptions for the message
-                }
 
                 int numOfCurrentMsgDeliverySchedules = 0;
 

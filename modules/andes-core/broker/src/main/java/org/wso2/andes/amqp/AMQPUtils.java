@@ -228,7 +228,15 @@ public class AMQPUtils {
             queueBoundExchangeName = DirectExchange.TYPE.getDefaultExchangeName().toString();
             isBoundToTopic = false;
         } else if (exchange.getType().equals(TopicExchange.TYPE)) {
-            queueBoundExchangeName = TopicExchange.TYPE.getDefaultExchangeName().toString();
+            if(queue.isDurable()) {
+                // Topic messages for durable subscribers are routed through queue path. Hence the durable subscriptions
+                // for topics should get the messages from queues which are bound to direct exchange.
+                // Hence we change the exchange for durable subscription to a direct exchange in Andes
+                queueBoundExchangeName = DirectExchange.TYPE.getDefaultExchangeName().toString();
+                queueBoundExchangeType = DirectExchange.TYPE.toString();
+            } else {
+                queueBoundExchangeName = TopicExchange.TYPE.getDefaultExchangeName().toString();
+            }
             isBoundToTopic = true;
         }
 

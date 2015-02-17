@@ -139,6 +139,38 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
+    public void updateDurableSubscription(String destinationIdentifier, String subscriptionID, String subscriptionEncodeAsStr) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        try {
+
+            connection = getConnection();
+            connection.setAutoCommit(false);
+
+            preparedStatement = connection.prepareStatement(
+                    RDBMSConstants.PS_UPDATE_DURABLE_SUBSCRIPTION);
+
+            preparedStatement.setString(1, subscriptionEncodeAsStr);
+            preparedStatement.setString(2, destinationIdentifier);
+            preparedStatement.setString(3, subscriptionID);
+            preparedStatement.executeUpdate();
+
+            connection.commit();
+
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_UPDATING_DURABLE_SUBSCRIPTION);
+            throw new AndesException("Error occurred while updating durable subscription. sub id: "
+                    + subscriptionID + " destination identifier: " + destinationIdentifier, e);
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_UPDATING_DURABLE_SUBSCRIPTION);
+            close(connection, RDBMSConstants.TASK_UPDATING_DURABLE_SUBSCRIPTION);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void removeDurableSubscription(String destinationIdentifier, String subscriptionID)
             throws AndesException {
         Connection connection = null;
