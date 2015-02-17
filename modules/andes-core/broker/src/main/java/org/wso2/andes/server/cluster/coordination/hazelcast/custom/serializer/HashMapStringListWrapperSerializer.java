@@ -37,12 +37,14 @@ public class HashMapStringListWrapperSerializer implements
     @Override
     public void write(ObjectDataOutput objectDataOutput, HashmapStringTreeSetWrapper
             hashmapStringTreeSetWrapper) throws IOException {
+
+        System.out.println("FIXX: TO WRITE: " + hashmapStringTreeSetWrapper);
         //Convert the hashmapStringListWrapper object to a json string and save it in hazelcast map
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("{");
         HashMap<String, TreeSet<Slot>> hashmap = hashmapStringTreeSetWrapper.getStringListHashMap();
+        stringBuilder.append("\"stringTreeSetHashMap\":{");
         if (hashmap != null) {
-            stringBuilder.append("\"stringTreeSetHashMap\":{");
             Set<Map.Entry<String, TreeSet<Slot>>> entrySet = hashmap.entrySet();
             for (Map.Entry<String, TreeSet<Slot>> entry : entrySet) {
                 stringBuilder.append("\"").append(entry.getKey()).append("\":[");
@@ -59,8 +61,8 @@ public class HashMapStringListWrapperSerializer implements
                                 append(",").append("\"startMessageId\":").append(slot.getStartMessageId()).
                                 append(",").append("\"endMessageId\":").append(slot.getEndMessageId()).
                                 append(",\"storageQueueName\":\"").append(slot.getStorageQueueName()).
-                                append(",\"isAnOverlappingSlot\":\"").append(String.valueOf(slot.isAnOverlappingSlot())).
-                                append(",\"destinationOfMessagesInSlot\":\"").append(slot.getDestinationOfMessagesInSlot()).
+                                append("\",\"isAnOverlappingSlot\":\"").append(String.valueOf(slot.isAnOverlappingSlot())).
+                                append("\",\"destinationOfMessagesInSlot\":\"").append(slot.getDestinationOfMessagesInSlot()).
                                 append("\",\"isSlotActive\":").append(isActiveString).append("},");
                     }
                     if (slots.size() != 0) {
@@ -72,10 +74,12 @@ public class HashMapStringListWrapperSerializer implements
             if (hashmap.keySet().size() != 0) {
                 stringBuilder.deleteCharAt(stringBuilder.length() - 1);
             }
-            stringBuilder.append("}");
+
         }
         stringBuilder.append("}");
+        stringBuilder.append("}");
 
+        System.out.println(" FIXX: WRITE JASON: == " + stringBuilder.toString());
         objectDataOutput.writeUTF(stringBuilder.toString());
     }
 
@@ -108,6 +112,7 @@ public class HashMapStringListWrapperSerializer implements
             hashMap.put(key, arrayList);
         }
         wrapper.setStringListHashMap(hashMap);
+        System.out.println("FIXX: READ JSON: == " + jsonString);
         return wrapper;
     }
 

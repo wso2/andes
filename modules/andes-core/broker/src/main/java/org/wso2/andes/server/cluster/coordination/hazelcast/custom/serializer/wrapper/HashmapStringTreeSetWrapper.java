@@ -24,6 +24,7 @@ import org.wso2.andes.kernel.slot.Slot;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeSet;
 
 /**
@@ -46,4 +47,26 @@ public class HashmapStringTreeSetWrapper implements Serializable {
     public void setStringListHashMap(HashMap<String, TreeSet<Slot>> stringListHashMap) {
         this.stringListHashMap = stringListHashMap;
     }
+
+    @Override
+    public String toString() {
+
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("MAPP");
+
+
+        if (null != stringListHashMap) {
+            for (Map.Entry<String, TreeSet<Slot>> map : stringListHashMap.entrySet()) {
+                sb.append("queueName : " + map.getKey());
+
+                for (Slot slot : map.getValue()) {
+                    sb.append(slot);
+                }
+            }
+        }
+
+        return sb.toString();
+    }
+
 }

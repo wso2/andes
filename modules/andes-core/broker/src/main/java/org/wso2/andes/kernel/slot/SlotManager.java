@@ -346,11 +346,31 @@ public class SlotManager {
                     //Add newly found overlaps to global overlapping slots tree.
                     if (!overLappedSlotMap.containsKey(nodeId)) {
                         overLappedSlotMap.put(nodeId,new HashmapStringTreeSetWrapper());
+                        log.info("FIXX : overlappedSlotMap before add queue entry : " + overLappedSlotMap.get(nodeId));
                     }
-                    if (!overLappedSlotMap.get(nodeId).getStringListHashMap().containsKey(queueName)) {
-                        overLappedSlotMap.get(nodeId).getStringListHashMap().put(queueName, new TreeSet<Slot>());
+                    HashmapStringTreeSetWrapper olWrapper = overLappedSlotMap.get(nodeId);
+                    HashMap<String,TreeSet<Slot>> olSlotMap = olWrapper.getStringListHashMap();
+
+                    if (!olSlotMap.containsKey(queueName)) {
+                        olSlotMap.put(queueName,overlappingSlots);
+                        olWrapper.setStringListHashMap(olSlotMap);
+                        overLappedSlotMap.set(nodeId,olWrapper);
+                        log.info("FIXX : overlappedSlotMap before adding slots : " + overLappedSlotMap.get(nodeId));
+                    } else {
+                        olSlotMap.get(queueName).addAll(overlappingSlots);
+                        olWrapper.setStringListHashMap(olSlotMap);
+                        overLappedSlotMap.set(nodeId, olWrapper);
                     }
-                    overLappedSlotMap.get(nodeId).getStringListHashMap().get(queueName).addAll(overlappingSlots);
+
+                    if(null == overLappedSlotMap) {
+                        log.info("FIXX: 1");
+                    } else if(null == overLappedSlotMap.get(nodeId).getStringListHashMap()) {
+                        log.info("FIXX: 2");
+                    } else if(null == overLappedSlotMap.get(nodeId).getStringListHashMap().get(queueName)) {
+                        log.info("FIXX: 3");
+                    }
+
+                    //overLappedSlotMap.get(nodeId).getStringListHashMap().get(queueName).addAll(overlappingSlots);
 
                 }
             } else {
