@@ -418,6 +418,12 @@ public class MessageFlusher {
                             if (log.isDebugEnabled()) {
                                 log.debug("Scheduled to send id = " + message.getMessageID());
                             }
+
+                            // In a re-queue for delivery scenario we need the correct destination. Hence setting
+                            // it back correctly in AndesMetadata for durable subscription for topics
+                            if (localSubscription.isBoundToTopic()) {
+                                message.setDestination(localSubscription.getSubscribedDestination());
+                            }
                             deliverMessageAsynchronously(localSubscription, message);
                             numOfCurrentMsgDeliverySchedules++;
                             break;
