@@ -18,6 +18,12 @@
 
 package org.wso2.andes.store.rdbms;
 
+import static org.wso2.andes.store.rdbms.RDBMSConstants.CONTENT_TABLE;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_CONTENT;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_ID;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -28,11 +34,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
 import static org.wso2.andes.store.rdbms.RDBMSConstants.CONTENT_TABLE;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_CONTENT;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_ID;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
+
+
+import javax.sql.DataSource;
+
 
 import javax.sql.DataSource;
 
@@ -88,6 +99,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     private Timer deleteMessagePartsTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "deleteMessageParts"));
 
     private Timer getContentTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "getContent"));
+
+    
+    private Timer getContentBatchedTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "getContentBatched"));
+    
 
     private Timer addMetaDataListTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "addMetaData(List"));
 
@@ -249,7 +264,13 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
 
+        
+        Context context = getContentBatchedTimer.start();
+                
+
         try {
+            
+            
             connection = getConnection();
             preparedStatement = connection.prepareStatement(getSelectContentPreparedStmt(messageIDList.size()));
             for (int i = 0; i < messageIDList.size(); i++) {
@@ -273,6 +294,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             throw new AndesException("Error occurred while retrieving message content from DB for " +
                     messageIDList.size() + " messages ", e);
         } finally {
+            
+            context.stop();
+            
             close(connection, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
             close(preparedStatement, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
             close(resultSet, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
