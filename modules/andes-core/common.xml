@@ -48,8 +48,8 @@
     <property name="build.coveragereport"  location="${build}/coverage"/>
     <property name="build.findbugs"        location="${build}/findbugs"/>
 
-    <property name="java.target"           value="1.5"/>
-    <property name="java.source"           value="1.5"/>
+    <property name="java.target"           value="1.6"/>
+    <property name="java.source"           value="1.6"/>
 
     <property name="release"               location="${project.root}/release"/>
 

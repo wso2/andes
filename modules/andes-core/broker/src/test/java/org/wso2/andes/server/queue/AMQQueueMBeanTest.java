@@ -20,6 +20,7 @@
  */
 package org.wso2.andes.server.queue;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.ContentHeaderBody;
 import org.wso2.andes.framing.AMQShortString;
@@ -38,7 +39,6 @@ import org.wso2.andes.server.protocol.InternalTestProtocolSession;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.store.TestableMemoryMessageStore;
 import org.apache.mina.common.ByteBuffer;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import javax.management.JMException;
 
