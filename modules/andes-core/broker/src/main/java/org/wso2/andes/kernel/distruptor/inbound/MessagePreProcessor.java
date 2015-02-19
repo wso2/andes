@@ -50,10 +50,6 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
 
     @Override
     public void onEvent(InboundEvent inboundEvent, long sequence, boolean endOfBatch ) throws Exception {
-
-        if(MESSAGE_EVENT == inboundEvent.getEventType()) {
-            updateRoutingInformation(inboundEvent, sequence);
-        }
         switch (inboundEvent.getEventType()) {
             case MESSAGE_EVENT:
                 updateRoutingInformation(inboundEvent, sequence);
@@ -61,8 +57,6 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
             case SAFE_ZONE_DECLARE_EVENT:
                 setSafeZoneLimit(inboundEvent, sequence);
                 break;
-
-
         }
     }
 

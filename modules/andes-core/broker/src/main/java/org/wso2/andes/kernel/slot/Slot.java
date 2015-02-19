@@ -18,7 +18,13 @@
 
 package org.wso2.andes.kernel.slot;
 
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This class stores all the data related to a slot
@@ -29,7 +35,6 @@ public class Slot implements Serializable, Comparable<Slot> {
      * Number of messages in the slot
      */
     private long messageCount;
-
 
     /**
      * Start message ID of the slot
@@ -57,14 +62,23 @@ public class Slot implements Serializable, Comparable<Slot> {
     private boolean isAnOverlappingSlot;
 
     /**
+     * Keep state of the slot
+     */
+    private List<SlotState> slotStates;
+
+    /**
      * Keep actual destination of messages in slot
      */
     private String destinationOfMessagesInSlot;
+
+    private static Log log = LogFactory.getLog(Slot.class);
 
 
     public Slot() {
         isSlotActive = true;
         isAnOverlappingSlot = false;
+        this.slotStates = new ArrayList<SlotState>();
+        addState(SlotState.CREATED);
     }
 
     public Slot(long start, long end, String destinationOfMessagesInSlot) {
@@ -120,6 +134,9 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     public void setAnOverlappingSlot(boolean isAnOverlappingSlot) {
         this.isAnOverlappingSlot = isAnOverlappingSlot;
+        if(isAnOverlappingSlot) {
+            addState(SlotState.OVERLAPPED);
+        }
     }
 
     public String getDestinationOfMessagesInSlot() {
@@ -128,6 +145,67 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     public void setDestinationOfMessagesInSlot(String destinationOfMessagesInSlot) {
         this.destinationOfMessagesInSlot = destinationOfMessagesInSlot;
+    }
+
+    /**
+     * Check if state going to be added is valid considering it as the next
+     * transition compared to current latest state.
+     * @param state state to be transferred
+     */
+    public void addState(SlotState state) {
+        if(slotStates.isEmpty()) {
+            if(SlotState.CREATED.equals(state)) {
+                slotStates.add(state);
+            } else {
+                throw new RuntimeException("Invalid State transition suggested: " + state);
+            }
+        } else {
+            boolean isValidTransition = slotStates.get(slotStates.size() - 1).isValidNextTransition(state);
+            if(isValidTransition) {
+                slotStates.add(state);
+            } else {
+                throw new RuntimeException("Invalid State transition from " + slotStates.get
+                        (slotStates.size() - 1) + " suggested: " + state + " Slot ID: " + this
+                        .getId());
+            }
+        }
+    }
+
+    public List<SlotState> getSlotStates() {
+        return slotStates;
+    }
+
+    public String encodeSlotStates() {
+        String encodedString;
+        StringBuilder builder = new StringBuilder();
+        for (SlotState slotState : slotStates) {
+            builder.append(slotState.getCode()).append("%");
+        }
+        encodedString = builder.toString();
+        log.info("FIXX : Encoded States: " + encodedString);
+        return encodedString;
+    }
+
+    public void decodeAndSetSlotStates(String stateInfo) {
+        log.info("FIXX: SlotInfo : " + stateInfo);
+        String[] states = StringUtils.split(stateInfo, "%");
+        slotStates.clear();
+        for (String state : states) {
+            int code = Integer.parseInt(state);
+            slotStates.add(SlotState.parseSlotState(code));
+        }
+    }
+
+    public SlotState getCurrentState() {
+        return slotStates.get(slotStates.size() - 1);
+    }
+
+    private String getPrintableSlotStates() {
+        StringBuilder stringBuilder = new StringBuilder();
+        for(SlotState state: slotStates) {
+            stringBuilder.append(state).append(" ,");
+        }
+        return stringBuilder.toString();
     }
 
     @Override
@@ -154,11 +232,19 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     @Override
     public String toString() {
-        return "Slot{" +
-                "startMessageId=" + startMessageId +
-                ", storageQueueName='" + storageQueueName + '\'' +
-                ", endMessageId=" + endMessageId +
-                '}';
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("Slot{")
+                .append("startMessageId=")
+                .append(startMessageId)
+                .append(", storageQueueName='")
+                .append(storageQueueName)
+                .append("'")
+                .append(", endMessageId=")
+                .append(endMessageId)
+                .append(", states=")
+                .append(getPrintableSlotStates())
+                .append("}");
+        return stringBuilder.toString();
     }
 
     /**

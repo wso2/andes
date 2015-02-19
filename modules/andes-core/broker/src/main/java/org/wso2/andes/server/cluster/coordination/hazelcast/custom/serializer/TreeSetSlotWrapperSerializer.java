@@ -49,11 +49,14 @@ public class TreeSetSlotWrapperSerializer implements StreamSerializer<TreeSetSlo
                 } else {
                     isActiveString = "false";
                 }
-                stringBuilder.append("{\"messageCount\":").append(slot
-                        .getMessageCount()).append(",\"startMessageId\":").append(slot.getStartMessageId()).
-                        append(",").append("\"endMessageId\":").append(slot.getEndMessageId()).append(",").
-                        append("\"storageQueueName\":\"").append(slot.getStorageQueueName()).append("\",").
-                        append("\"isSlotActive\":").append(isActiveString).append("},");
+                stringBuilder.append("{\"messageCount\":").append(slot.getMessageCount()).
+                        append(",").append("\"startMessageId\":").append(slot.getStartMessageId()).
+                        append(",").append("\"endMessageId\":").append(slot.getEndMessageId()).
+                        append(",\"storageQueueName\":\"").append(slot.getStorageQueueName()).
+                        append("\",\"destinationOfMessagesInSlot\":\"").append(slot.getDestinationOfMessagesInSlot()).
+                        append("\",\"states\":\"").append(slot.encodeSlotStates()).
+                        append("\",\"isAnOverlappingSlot\":").append(String.valueOf(slot.isAnOverlappingSlot())).
+                        append(",\"isSlotActive\":").append(isActiveString).append("},");
             }
             if (treeSet.size() != 0) {
                 stringBuilder.deleteCharAt(stringBuilder.length() - 1);
@@ -61,6 +64,10 @@ public class TreeSetSlotWrapperSerializer implements StreamSerializer<TreeSetSlo
             stringBuilder.append("]");
         }
         stringBuilder.append("}");
+
+/*        System.out.println("==FIXX: TreeSetSlotWrapperSerializer Json write -- " + stringBuilder
+                .toString());*/
+
         objectDataOutput.writeUTF(stringBuilder.toString());
     }
 
@@ -78,6 +85,9 @@ public class TreeSetSlotWrapperSerializer implements StreamSerializer<TreeSetSlo
             slot.setStartMessageId(jsonObject.get("startMessageId").getAsLong());
             slot.setEndMessageId(jsonObject.get("endMessageId").getAsLong());
             slot.setStorageQueueName(jsonObject.get("storageQueueName").getAsString());
+            slot.decodeAndSetSlotStates(jsonObject.get("states").getAsString());
+/*            System.out.println("FIXX: TreeSetSlotWrapperSerializer Json read -- " + jsonObject.get("states").getAsString
+                    ());*/
             if (!jsonObject.get("isSlotActive").getAsBoolean()) {
                 slot.setSlotInActive();
             }
