@@ -34,6 +34,9 @@ import java.util.List;
  */
 public class AndesContextInformationManager {
 
+    /**
+     * The logger used for logging information, warnings, errors and etc.
+     */
     private static final Log log = LogFactory.getLog(AndesContextInformationManager.class);
 
     //keep listeners that should be triggered when constructs are updated
@@ -46,6 +49,11 @@ public class AndesContextInformationManager {
      */
     private SubscriptionStore subscriptionStore;
 
+    /**
+     * Initializes the andes context information manager
+     *
+     * @param subscriptionStore The subscriptions store
+     */
     public AndesContextInformationManager(SubscriptionStore subscriptionStore) {
 
         this.subscriptionStore = subscriptionStore;
@@ -200,9 +208,12 @@ public class AndesContextInformationManager {
     }
 
     /**
+     * Notifying the exchange listeners stating that a change has occurred for the exchanges in the
+     * local node. This will then get notified throughout the cluster if clustered deployment is
+     * available.
      *
-     * @param exchange
-     * @param change
+     * @param exchange The andes exchange in which the change occurred.
+     * @param change   The change that is being occurred
      * @throws AndesException
      */
     private void notifyExchangeListeners(AndesExchange exchange,
@@ -213,6 +224,15 @@ public class AndesContextInformationManager {
         }
     }
 
+    /**
+     * Notifying the queue listeners stating that a change has occurred for the queues in the
+     * local node. This will then get notified throughout the cluster if clustered deployment is
+     * available.
+     *
+     * @param queue  Andes queue in which the change occurred.
+     * @param change The change that was occurred.
+     * @throws AndesException
+     */
     private void notifyQueueListeners(AndesQueue queue, QueueListener.QueueEvent change)
             throws AndesException {
         for (QueueListener listener : queueListeners) {
@@ -220,6 +240,15 @@ public class AndesContextInformationManager {
         }
     }
 
+    /**
+     * Notifying the bindings listeners stating that a change has occurred for the bindings in the
+     * local node. This will then get notified throughout the cluster if clustered deployment is
+     * available.
+     *
+     * @param binding The binding in which the change occurred.
+     * @param change  The change that occurred.
+     * @throws AndesException
+     */
     private void notifyBindingListeners(AndesBinding binding, BindingListener.BindingEvent change)
             throws AndesException {
         for (BindingListener listener : bindingListeners) {
