@@ -27,6 +27,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+/**
+ * This Runnable will calculate safe zone for the cluster time to time.
+ * In normal cases, this should run as long as the Slot manager node is alive
+ */
 public class SlotDeleteSafeZoneCalc implements Runnable{
 
     private static Log log = LogFactory.getLog(SlotDeleteSafeZoneCalc.class);
@@ -55,34 +59,44 @@ public class SlotDeleteSafeZoneCalc implements Runnable{
                          SlotManager.getInstance().getNodeInformedSlotDeletionSafeZones();
 
                  //calculate safe zone (minimum value of starting messageIDs of assigned slots of every node in cluster)
-                 long safeZoneValue = Long.MAX_VALUE;
+                 long globalSafeZoneVal = Long.MAX_VALUE;
                  //node-wise iterate
                  for (String nodeID : nodesWithPublishedMessages) {
-                     Long safeZoneByPublishedMessages = SlotManager.getInstance().getLastPublishedIDByNode(nodeID);
+                     long safeZoneValue = Long.MAX_VALUE;
+                     Long safeZoneByPublishedMessages = SlotManager.getInstance()
+                             .getLastPublishedIDByNode(nodeID);
 
                      if(null != safeZoneByPublishedMessages) {
                          safeZoneValue = safeZoneByPublishedMessages;
                      }
 
-                     long nodeInformedSafeZone = nodeInformedSafeZones.get(nodeID);
+                     Long nodeInformedSafeZone = nodeInformedSafeZones.get(nodeID);
 
                      /**
                       * if no new messages are published and no new slot assignment happened
                       * node informed value can be bigger. We need to accept that to keep the
                       * safe zone moving
                       */
-                     if(Long.MAX_VALUE != safeZoneValue) {
-                         if(safeZoneValue < nodeInformedSafeZone) {
+                     if(null != nodeInformedSafeZone) {
+                         if (Long.MAX_VALUE != safeZoneValue) {
+                             if (safeZoneValue < nodeInformedSafeZone) {
+                                 safeZoneValue = nodeInformedSafeZone;
+                             }
+                         } else {
                              safeZoneValue = nodeInformedSafeZone;
                          }
-                     } else {
-                         safeZoneValue = nodeInformedSafeZone;
+                     }
+
+                     if(globalSafeZoneVal > safeZoneValue) {
+                         globalSafeZoneVal = safeZoneValue;
                      }
                  }
 
-                 slotDeleteSafeZone = safeZoneValue;
+                 if(slotDeleteSafeZone < globalSafeZoneVal) {
+                     slotDeleteSafeZone = globalSafeZoneVal;
+                 }
 
-                 log.info("FIXX : " + "Safe Zone Calculated : " + safeZoneValue);
+                 log.info("FIXX : " + "Safe Zone Calculated : " + globalSafeZoneVal);
 
                  try {
                      Thread.sleep(seekInterval);

@@ -97,6 +97,8 @@ public class SlotManager {
             nodeInformedSlotDeletionSafeZones = new HashMap<String, Long>();
             //start a thread to calculate slot delete safe zone
             slotDeleteSafeZoneCalc = new SlotDeleteSafeZoneCalc(SAFE_ZONE_EVALUATION_INTERVAL);
+            //TODO: use a common  thread pool for tasks like this?
+            new Thread(slotDeleteSafeZoneCalc).start();
 
         }
     }
@@ -346,12 +348,13 @@ public class SlotManager {
                         olSlotMap.put(queueName,overlappingSlots);
                         olWrapper.setStringListHashMap(olSlotMap);
                         overLappedSlotMap.set(nodeId,olWrapper);
-                        log.info("FIXX : overlappedSlotMap created slots : " + overLappedSlotMap.get(nodeId));
+//                        log.info("FIXX : overlappedSlotMap created slots : " + overLappedSlotMap.get(nodeId));
                     } else {
                         olSlotMap.get(queueName).addAll(overlappingSlots);
                         olWrapper.setStringListHashMap(olSlotMap);
                         overLappedSlotMap.set(nodeId, olWrapper);
-                        log.info("FIXX : overlappedSlotMap updated slots : " + overLappedSlotMap.get(nodeId));
+//                        log.info("FIXX : overlappedSlotMap updated slots : " + overLappedSlotMap
+//                                .get(nodeId));
                     }
 
                 }
@@ -450,6 +453,7 @@ public class SlotManager {
                         // com.google.gson.Gson gson = new GsonBuilder().create();
                         //get the actual reference of the slot to be removed
                         Slot slotInAssignmentMap = currentSlotList.ceiling(emptySlot);
+                        log.info("FIXX : Deleting slot : " + slotInAssignmentMap);
                         slotInAssignmentMap.addState(SlotState.DELETED);
                         currentSlotList.remove(emptySlot);
                         queueToSlotMap.put(queueName, currentSlotList);
@@ -548,7 +552,7 @@ public class SlotManager {
         return nodeInformedSlotDeletionSafeZones;
     }
 
-    protected long getLastPublishedIDByNode(String nodeID) {
+    protected Long getLastPublishedIDByNode(String nodeID) {
         return nodeToLastPublishedIDMap.get(nodeID);
     }
 

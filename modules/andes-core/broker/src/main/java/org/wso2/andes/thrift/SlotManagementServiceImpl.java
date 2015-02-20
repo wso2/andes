@@ -82,8 +82,14 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     }
 
     @Override
-    public long updateCurrentMessageIdForSafeZone(long messageId) throws TException {
-        return 0;  //To change body of implemented methods use File | Settings | File Templates.
+    public long updateCurrentMessageIdForSafeZone(long messageId, String nodeId) throws TException {
+        long slotDeletionSafeZone;
+        if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
+            slotDeletionSafeZone = slotManager.updateAndReturnSlotDeleteSafeZone(nodeId,messageId);
+        } else {
+            throw new TException("This node is not the slot coordinator right now");
+        }
+        return slotDeletionSafeZone;
     }
 
 }
