@@ -37,23 +37,47 @@ public class ConcurrentBatchEventHandler implements EventHandler<InboundEvent> {
 
     private static Log log = LogFactory.getLog(ConcurrentBatchEventHandler.class);
 
-
+    /**
+     * Batch event handler for handling batched events
+     */
     private final BatchEventHandler eventHandler;
+
+    /**
+     * Turn is the value of, sequence % groupCount this batch processor process events. Turn must be
+     * less than groupCount
+     */
     private final long turn;
+
+    /**
+     * total number of concurrent batch processors for the event type
+     */
     private final int groupCount;
+
+    /**
+     * Maximum size of the batch
+     */
     private int batchSize;
+
+    /**
+     * Type of event to do batching
+     */
     private final InboundEvent.Type eventType;
+
+    /**
+     * Events are batched using this until the event handler is called
+     */
     private final List<InboundEvent> eventList;
 
     /**
      * Creates an event handler that can be used with a batch processor to do custom batching of inbound
-     * event using inbound event type 
+     * event using inbound event type
      *
-     * @param turn            is the value of, sequence % groupCount this batch processor process events. Turn must be
-     *                        less than groupCount
-     * @param groupCount      total number of concurrent batch processors for the event type
-     * @param batchSize       maximum size of the batch
-     * @param eventType       type of event to batch
+     * @param turn         is the value of, sequence % groupCount this batch processor process events. Turn must be
+     *                     less than groupCount
+     * @param groupCount   total number of concurrent batch processors for the event type
+     * @param batchSize    maximum size of the batch
+     * @param eventType    type of event to batch
+     * @param eventHandler event handler that does the actual per event, event handling
      */
     public ConcurrentBatchEventHandler(long turn, int groupCount, int batchSize,
                                        InboundEvent.Type eventType, BatchEventHandler eventHandler) {
