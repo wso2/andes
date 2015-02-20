@@ -180,7 +180,7 @@ public class AndesContextInformationManager {
         //delete all subscription entries if remaining (inactive entries)
         ClusterResourceHolder.getInstance().getSubscriptionManager()
                 .deleteAllLocalSubscriptionsOfBoundQueue(queueName);
-        log.info("Delete queue " + queueName);
+        log.info("Delete queue : " + queueName);
     }
 
     /**
