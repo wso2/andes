@@ -382,19 +382,27 @@ public class MessageFlusher {
                             subscriptionIterator.remove();
                         }
                     }
+
+                    if (subscriptions4Queue.size() == 0) {
+                        iterator.remove(); // remove buffer
+                        OnflightMessageTracker.getInstance().decrementMessageCountInSlotAndCheckToResend(message.getSlot());
+                        AndesRemovableMetadata removableMetadata = new AndesRemovableMetadata(message.getMessageID(),
+                                message.getDestination(), message.getStorageQueueName());
+                        droppedTopicMessageList.add(removableMetadata);
+
+                        continue; // skip this iteration if no subscriptions for the message
+                    }
+
+                } else { // Queue
+                    if (subscriptions4Queue.size() == 0) {
+                        // We don't have subscribers for this message
+                        // todo: Handle orphaned slot created with this no subscription scenario for queue
+                        break; // break the loop
+                    }
                 }
+
 
                 //check id destination has any subscription for the current message
-                //todo return the slot
-                if (subscriptions4Queue.size() == 0) {
-                    iterator.remove(); // remove buffer
-                    OnflightMessageTracker.getInstance().decrementMessageCountInSlotAndCheckToResend(message.getSlot());
-                    AndesRemovableMetadata removableMetadata = new AndesRemovableMetadata(message.getMessageID(),
-                            message.getDestination(), message.getStorageQueueName());
-                    droppedTopicMessageList.add(removableMetadata);
-
-                    continue; // skip this iteration if no subscriptions for the message
-                }
 
                 int numOfCurrentMsgDeliverySchedules = 0;
 
@@ -409,6 +417,12 @@ public class MessageFlusher {
                         if (isThisSubscriptionHasRoom(localSubscription)) {
                             if (log.isDebugEnabled()) {
                                 log.debug("Scheduled to send id = " + message.getMessageID());
+                            }
+
+                            // In a re-queue for delivery scenario we need the correct destination. Hence setting
+                            // it back correctly in AndesMetadata for durable subscription for topics
+                            if (localSubscription.isBoundToTopic()) {
+                                message.setDestination(localSubscription.getSubscribedDestination());
                             }
                             deliverMessageAsynchronously(localSubscription, message);
                             numOfCurrentMsgDeliverySchedules++;

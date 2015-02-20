@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.lang.NotImplementedException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.common.AMQPFilterTypes;
 import org.wso2.andes.framing.AMQShortString;
@@ -57,7 +58,6 @@ import org.wso2.andes.server.txn.ServerTransaction;
 import org.wso2.andes.server.util.InternalBrokerBaseCase;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.util.FileUtils;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * This tests the MessageStores by using the available interfaces.

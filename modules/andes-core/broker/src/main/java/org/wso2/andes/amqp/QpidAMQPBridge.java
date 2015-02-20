@@ -22,6 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInternalException;
+import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.framing.abstraction.ContentChunk;
@@ -202,7 +203,7 @@ public class QpidAMQPBridge {
                 log.debug("ack received for message id= " + messageID + " channelId= " + channelID);
             }
             AndesSubscription ackSentSubscription = AndesContext.getInstance().
-                    getSubscriptionStore().getLocalSubscriptionForChannelId(channelID, routingKey, isTopic);
+                    getSubscriptionStore().getLocalSubscriptionForChannelId(channelID);
             if (ackSentSubscription == null) {
                 //TODO : if an ack came here after subscription is closed, should we discard message?
                 log.error("Cannot handle Ack. Subscription is null for channel= " + channelID + "Message Destination= "
@@ -372,6 +373,15 @@ public class QpidAMQPBridge {
      */
     public void createBinding(Exchange exchange, AMQShortString routingKey,
                               AMQQueue queue, FieldTable args) throws AMQInternalException {
+
+        // We ignore default exchange events. Andes doesn't honor creation of AMQ default exchange bindings
+        if (exchange.getNameShortString().equals(ExchangeDefaults.DEFAULT_EXCHANGE_NAME)) {
+            if (log.isDebugEnabled()) {
+                log.debug("Ignored binding for default exchange " + exchange.getNameShortString());
+            }
+            return;
+        }
+
         if (log.isDebugEnabled()) {
             log.debug("AMQP BRIDGE: addBinding exchange=" + exchange.getName() + " routingKey=" + routingKey + " queue=" + queue.getName());
         }
@@ -391,16 +401,29 @@ public class QpidAMQPBridge {
     /**
      * remove binding from andes kernel
      *
-     * @param b           qpid binding
+     * @param binding           qpid binding
      * @param virtualHost virtualhost binding belongs
      * @throws AndesException
      */
-    public void removeBinding(Binding b, VirtualHost virtualHost) throws AndesException {
-        if (log.isDebugEnabled()) {
-            log.debug("AMQP BRIDGE: removeBinding binding key: " + b.getBindingKey() + " exchange: " + b.getExchange().getName() + " queue: " + b.getQueue().getName());
+    public void removeBinding(Binding binding, VirtualHost virtualHost) throws AndesException {
+
+        Exchange exchange = binding.getExchange();
+
+        // We ignore default exchange events. Andes doesn't honor creation of AMQ default exchange bindings
+        if (exchange.getNameShortString().equals(ExchangeDefaults.DEFAULT_EXCHANGE_NAME)) {
+            if (log.isDebugEnabled()) {
+                log.debug("Ignored binding for default exchange " + exchange.getNameShortString());
+            }
+            return;
         }
-        InboundBindingEvent binding = AMQPUtils.createAndesBinding(b.getExchange(), b.getQueue(), new AMQShortString(b.getBindingKey()));
-        Andes.getInstance().removeBinding(binding);
+
+        if (log.isDebugEnabled()) {
+            log.debug("AMQP BRIDGE: removeBinding binding key: " + binding.getBindingKey() + " exchange: "
+                    + binding.getExchange().getName() + " queue: " + binding.getQueue().getName());
+        }
+        InboundBindingEvent inboundBindingEvent = AMQPUtils.createAndesBinding(binding.getExchange(),
+                binding.getQueue(), new AMQShortString(binding.getBindingKey()));
+        Andes.getInstance().removeBinding(inboundBindingEvent);
     }
 
     /**
@@ -417,12 +440,14 @@ public class QpidAMQPBridge {
             Set<AndesBinding> uniqueBindings = new HashSet<AndesBinding>();
             List<InboundSubscriptionEvent> alreadyAddedSubscriptions = new ArrayList<InboundSubscriptionEvent>();
 
-            /**
-             * Iterate unique bindings of the queue and add subscription entries.
-             */
-
+            // Iterate unique bindings of the queue and add subscription entries.
             try {
                 for (Binding b : bindingList) {
+                    // We ignore default exchange events. Andes doesn't honor creation of AMQ default exchange bindings
+                    if (b.getExchange().getNameShortString().equals(ExchangeDefaults.DEFAULT_EXCHANGE_NAME.toString())) {
+                        continue;
+                    }
+
                     AndesBinding andesBinding = AMQPUtils.createAndesBinding(b.getExchange(), b.getQueue(), new AMQShortString(b.getBindingKey()));
                     if (uniqueBindings.add(andesBinding)) {
                         InboundSubscriptionEvent localSubscription = AMQPUtils.createAMQPLocalSubscription(queue, subscription, b);
@@ -451,10 +476,14 @@ public class QpidAMQPBridge {
         List<Binding> bindingList = queue.getBindings();
         if (bindingList != null && !bindingList.isEmpty()) {
             Set<AndesBinding> uniqueBindings = new HashSet<AndesBinding>();
-            /**
-             * Iterate unique bindings of the queue and remove subscription entries.
-             */
+
+            // Iterate unique bindings of the queue and remove subscription entries.
             for (Binding b : bindingList) {
+                // We ignore default exchange events. Andes doesn't honor creation of AMQ default exchange bindings
+                if (b.getExchange().getNameShortString().equals(ExchangeDefaults.DEFAULT_EXCHANGE_NAME.toString())) {
+                    continue;
+                }
+
                 AndesBinding andesBinding = AMQPUtils.createAndesBinding(b.getExchange(), b.getQueue(), new AMQShortString(b.getBindingKey()));
                 if (uniqueBindings.add(andesBinding)) {
                     InboundSubscriptionEvent localSubscription = AMQPUtils.createAMQPLocalSubscription(queue, subscription, b);

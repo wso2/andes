@@ -17,6 +17,7 @@
  */
 package org.wso2.andes.mqtt;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -27,8 +28,6 @@ import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.kernel.OnflightMessageTracker;
-import org.wso2.andes.subscription.BasicSubscription;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;

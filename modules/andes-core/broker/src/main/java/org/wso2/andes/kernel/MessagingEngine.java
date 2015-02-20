@@ -216,8 +216,7 @@ public class MessagingEngine {
     public void messageRejected(AndesMessageMetadata metadata) throws AndesException {
 
         OnflightMessageTracker.getInstance().handleFailure(metadata);
-        LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId
-                (metadata.getChannelId(), metadata.getDestination(), metadata.isTopic());
+        LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId(metadata.getChannelId());
         if (subToResend != null) {
             reQueueMessage(metadata, subToResend);
         } else {
@@ -248,12 +247,15 @@ public class MessagingEngine {
      */
     public void moveMessageToDeadLetterChannel(long messageId, String destinationQueueName)
             throws AndesException {
-        String deadLetterQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString
-                (destinationQueueName, AndesConstants.DEAD_LETTER_QUEUE_NAME);
+        String deadLetterQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(destinationQueueName);
 
         long start = System.currentTimeMillis();
         messageStore.moveMetaDataToQueue(messageId, destinationQueueName, deadLetterQueueName);
         PerformanceCounter.warnIfTookMoreTime("Move Metadata ", start, 10);
+
+        // Increment count by 1 in DLC and decrement by 1 in original queue
+        incrementQueueCount(deadLetterQueueName, 1);
+        decrementQueueCount(destinationQueueName, 1);
 
         //remove tracking of the message
         OnflightMessageTracker.getInstance()
@@ -355,8 +357,7 @@ public class MessagingEngine {
             // into memory. Options are to delete dlc messages leisurely with another thread,
             // or to break from original DLC pattern and maintain multiple DLC queues per each queue.
             Integer messageCountFromDLC = messageStore.deleteAllMessageMetadataFromDLC(DLCQueueUtils
-                    .identifyTenantInformationAndGenerateDLCString(storageQueueName,
-                            AndesConstants.DEAD_LETTER_QUEUE_NAME), storageQueueName);
+                    .identifyTenantInformationAndGenerateDLCString(storageQueueName), storageQueueName);
 
             // Clear message content leisurely / asynchronously using retrieved message IDs
             messageStore.deleteMessageParts(messageIDsAddressedToQueue);
@@ -411,7 +412,13 @@ public class MessagingEngine {
             //if to move, move to DLC. This is costy. Involves per message read and writes
             if (moveToDeadLetterChannel) {
                 AndesMessageMetadata metadata = messageStore.getMetaData(message.getMessageID());
-                messageStore.addMetaDataToQueue(AndesConstants.DEAD_LETTER_QUEUE_NAME, metadata);
+                String dlcQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(message
+                                .getMessageDestination());
+                messageStore.addMetaDataToQueue(dlcQueueName, metadata);
+
+                // Increment queue count of DLC
+                // Cannot increment whole count at once since there are separate DLC queues for each tenant
+                incrementQueueCount(dlcQueueName, 1);
             }
         }
 
@@ -428,11 +435,6 @@ public class MessagingEngine {
             //remove content
             //TODO: - hasitha if a topic message be careful as it is shared
             deleteMessageParts(idsOfMessagesToRemove);
-        }
-
-        if(moveToDeadLetterChannel) {
-            //increment message count of DLC
-            incrementQueueCount(AndesConstants.DEAD_LETTER_QUEUE_NAME, messagesToRemove.size());
         }
 
     }

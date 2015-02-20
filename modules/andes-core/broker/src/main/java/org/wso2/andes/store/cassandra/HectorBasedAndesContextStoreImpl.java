@@ -121,6 +121,15 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
+    public void updateDurableSubscription(String destinationIdentifier, String subscriptionID, String subscriptionEncodeAsStr) throws AndesException {
+        // updating and inserting in Hector has the same effect
+        storeDurableSubscription(destinationIdentifier, subscriptionID, subscriptionEncodeAsStr);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void removeDurableSubscription(String destinationIdentifier,
                                           String subscriptionID) throws AndesException {
         try {

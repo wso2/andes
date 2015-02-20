@@ -28,6 +28,6 @@ public class AndesConstants {
     /**
      * The default Dead Letter Channel queue name suffix
      */
-    public static final String DEAD_LETTER_QUEUE_NAME = "DeadLetterChannel";
+    public static final String DEAD_LETTER_QUEUE_SUFFIX = "DeadLetterChannel";
 
 }

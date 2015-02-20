@@ -47,11 +47,23 @@ public interface AndesContextStore {
     /**
      * Store subscription to the durable store
      *
-     * @param destinationIdentifier   identifier of the destination (queue/topic) of the queue this subscription is bound to
-     * @param subscriptionID          id of the subscription
-     * @param subscriptionEncodeAsStr string encoded subscription
+     * @param destinationIdentifier   Identifier of the destination (queue/topic) of the queue this subscription is bound to
+     * @param subscriptionID          Id of the subscription
+     * @param subscriptionEncodeAsStr String encoded subscription
+     * @throws AndesException
      */
     public void storeDurableSubscription(String destinationIdentifier, String subscriptionID, String subscriptionEncodeAsStr) throws AndesException;
+
+
+    /**
+     * Update already existing subscription
+     *
+     * @param destinationIdentifier     Identifier of the destination (queue/topic) of the queue this subscription is bound to
+     * @param subscriptionID            Id of the subscription
+     * @param subscriptionEncodeAsStr   String encoded subscription to be updated
+     * @throws AndesException
+     */
+    void updateDurableSubscription(String destinationIdentifier, String subscriptionID, String subscriptionEncodeAsStr) throws AndesException;
 
     /**
      * Remove stored subscription from durable store

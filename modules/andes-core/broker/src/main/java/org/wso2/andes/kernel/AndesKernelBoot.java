@@ -30,10 +30,13 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
 import org.wso2.andes.kernel.slot.SlotManager;
+import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.thrift.MBThriftServer;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.carbon.context.CarbonContext;
+import org.wso2.carbon.user.api.UserStoreException;
 
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -73,6 +76,7 @@ public class AndesKernelBoot {
         registerMBeans();
         startThriftServer();
         startMessaging();
+        createSuperTenantDLC();
 
     }
 
@@ -102,7 +106,7 @@ public class AndesKernelBoot {
 
                     for (AndesQueue queue : queueList) {
                         // Skip slot creation for Dead letter Channel
-                        if (AndesConstants.DEAD_LETTER_QUEUE_NAME.equals(queue.queueName)) {
+                        if (DLCQueueUtils.isDeadLetterQueue(queue.queueName)) {
                             continue;
                         }
 
@@ -428,5 +432,18 @@ public class AndesKernelBoot {
      */
     private static void stopThriftServer(){
         MBThriftServer.getInstance().stop();
+    }
+
+    /**
+     * Create a DEAD_LETTER_CHANNEL for the super tenant.
+     */
+    private static void createSuperTenantDLC() throws AndesException {
+        CarbonContext carbonContext = CarbonContext.getThreadLocalCarbonContext();
+        try {
+            String adminUserName = carbonContext.getUserRealm().getRealmConfiguration().getAdminUserName();
+            DLCQueueUtils.createDLCQueue(carbonContext.getTenantDomain(), adminUserName);
+        } catch (UserStoreException e) {
+            throw new AndesException("Error getting super tenant username", e);
+        }
     }
 }

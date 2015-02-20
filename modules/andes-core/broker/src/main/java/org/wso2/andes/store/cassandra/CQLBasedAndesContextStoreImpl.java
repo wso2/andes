@@ -21,6 +21,7 @@ package org.wso2.andes.store.cassandra;
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
+import com.datastax.driver.core.querybuilder.Assignment;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
@@ -39,6 +40,7 @@ import java.util.Map;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.decr;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.incr;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.set;
 
 /**
  * CQL 3 based AndesContextStore implementation. This is intended to support Cassandra 2.xx series upwards.
@@ -177,6 +179,21 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
 
         execute(statement, "storing durable subscription for sub-id " + subscriptionID + " and destination identifier" +
                 destinationIdentifier);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateDurableSubscription(String destinationIdentifier, String subscriptionID, String subscriptionEncodeAsStr) throws AndesException {
+        Statement statement = QueryBuilder.update(config.getKeyspace(), DURABLE_SUB_TABLE).
+                with(set(DURABLE_SUB_DATA, subscriptionEncodeAsStr)).
+                where(eq(DESTINATION_IDENTIFIER, destinationIdentifier)).
+                and(eq(subscriptionID, subscriptionID)).
+                setConsistencyLevel(config.getWriteConsistencyLevel());
+
+        execute(statement, "Updating durable subscription for sub id " + subscriptionID + " and destination "
+                + "identifier " + destinationIdentifier);
     }
 
     /**
