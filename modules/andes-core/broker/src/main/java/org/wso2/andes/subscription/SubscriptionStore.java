@@ -65,15 +65,15 @@ public class SubscriptionStore {
      * If 0 native method
      * If 1 bitmap
      */
-    private int topicMatchingType;
+    private TopicMathcingSelection topicMathcingSelection;
 
     public SubscriptionStore() throws AndesException {
         andesContextStore = AndesContext.getInstance().getAndesContextStore();
         subscriptionBitMapHandler = new SubscriptionBitMapHandler();
 
-        topicMatchingType = AndesConfigurationManager.readValue(AndesConfiguration.PERFORMANCE_TUNING_TOPIC_MATCHING_METHOD);
+        topicMathcingSelection = AndesConfigurationManager.readValue(AndesConfiguration.PERFORMANCE_TUNING_TOPIC_MATCHING_METHOD);
 
-        if(topicMatchingType == 1){
+        if(topicMathcingSelection == TopicMathcingSelection.SIMPLE){
             isBitmap = true;
         }
         else
