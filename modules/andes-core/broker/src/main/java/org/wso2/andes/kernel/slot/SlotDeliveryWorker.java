@@ -339,49 +339,6 @@ public class SlotDeliveryWorker extends Thread {
         this.running = running;
     }
 
-    /**
-     * Check whether the slot is empty and if not resend the remaining messages. If the slot is
-     * empty delete the slot from slot manager and clear all tracking data in OnflightMessageTracker
-     *
-     * @param slot
-     *         to be checked for emptiness
-     * @throws AndesException
-     */
-    public void checkForSlotCompletionAndResend(Slot slot) throws AndesException {
-        // Once again get all metadata of given slot to check all sent messages' metadata has been removed
-        List<AndesMessageMetadata> messagesReturnedFromCassandra = MessagingEngine.getInstance().getMetaDataList(
-                slot.getStorageQueueName(), slot.getStartMessageId(),
-                slot.getEndMessageId());
-        // All metadata has not been removed
-        if (!messagesReturnedFromCassandra.isEmpty()) {
-            // Check messages returned from cassandra has already been buffered. If so removed each buffered from list
-            Iterator<AndesMessageMetadata> iterator = messagesReturnedFromCassandra.iterator();
-            while (iterator.hasNext()) {
-                if (OnflightMessageTracker.getInstance().checkIfMessageIsAlreadyBuffered(slot,
-                        iterator.next().getMessageID())) {
-                    iterator.remove();
-                }
-            }
-            // Return the slot if all messages remaining in slot are already sent.
-            // Otherwise the slot will not be removed and send remaining messages to flusher
-            if (messagesReturnedFromCassandra.isEmpty()) {
-                slot.setSlotInActive();
-                deleteSlot(slot);
-            } else {
-                if (log.isDebugEnabled()) {
-                    log.debug(
-                            "Resending missing " + messagesReturnedFromCassandra.size() + " messages " +
-                                    "for slot: " + slot.toString());
-                }
-                MessageFlusher.getInstance().sendMessagesInBuffer(slot.getDestinationOfMessagesInSlot());
-            }
-        // All metadata has been removed and therefore return the slot
-        } else {
-            slot.setSlotInActive();
-            deleteSlot(slot);
-        }
-    }
-
 
     public void deleteSlot(Slot slot) {
 

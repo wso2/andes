@@ -20,6 +20,9 @@ package org.wso2.andes.kernel.slot;
 
 import java.util.EnumSet;
 
+/**
+ * This enum defines the states of slots
+ */
 public enum SlotState {
 
     CREATED(1),
@@ -29,31 +32,57 @@ public enum SlotState {
     DELETED(5);
 
     private int code;
+
+    //keep next possible states
     private EnumSet<SlotState> next;
+
+    //keep previous possible states
     private EnumSet<SlotState> previous;
 
-    SlotState(int c){
-        code = c;
+    /**
+     * Define a slot state
+     *
+     * @param code integer representing state
+     */
+    SlotState(int code) {
+        this.code = code;
     }
 
-    int getCode() {
+    /**
+     * Get code of the state
+     *
+     * @return integer representing state
+     */
+    public int getCode() {
         return code;
     }
 
-    boolean isValidNextTransition(SlotState nextState){
+    /**
+     * Check if submitted state is an allowed state as per state model
+     *
+     * @param nextState suggested next state to transit
+     * @return if transition is valid
+     */
+    public boolean isValidNextTransition(SlotState nextState) {
 
-      return  next.contains(nextState);
+        return next.contains(nextState);
 
     }
 
-    boolean isValidPreviousState(SlotState previousState){
+    /**
+     * Check if submitted state is an allowed state as per state model
+     *
+     * @param previousState suggested next state to transit
+     * @return if transition is valid
+     */
+    public boolean isValidPreviousState(SlotState previousState) {
         return previous.contains(previousState);
     }
 
-    static SlotState parseSlotState(int state){
+    static SlotState parseSlotState(int state) {
 
-        for ( SlotState s : SlotState.values()){
-            if (s.code == state){
+        for (SlotState s : SlotState.values()) {
+            if (s.code == state) {
                 return s;
             }
         }
@@ -61,7 +90,7 @@ public enum SlotState {
         throw new IllegalArgumentException("Invalid slot state agument speicified: " + state);
     }
 
-    static{
+    static {
 
         CREATED.next = EnumSet.of(ASSIGNED);
         CREATED.previous = EnumSet.complementOf(EnumSet.allOf(SlotState.class));
@@ -69,8 +98,8 @@ public enum SlotState {
         ASSIGNED.next = EnumSet.of(OVERLAPPED, DELETED, RETURNED);
         ASSIGNED.previous = EnumSet.of(CREATED, RETURNED);
 
-        OVERLAPPED.next = EnumSet.of(ASSIGNED,OVERLAPPED);
-        OVERLAPPED.previous = EnumSet.of(ASSIGNED,OVERLAPPED);
+        OVERLAPPED.next = EnumSet.of(ASSIGNED, OVERLAPPED);
+        OVERLAPPED.previous = EnumSet.of(ASSIGNED, OVERLAPPED);
 
         RETURNED.next = EnumSet.of(ASSIGNED, OVERLAPPED);
         RETURNED.previous = EnumSet.of(ASSIGNED, OVERLAPPED);

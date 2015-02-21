@@ -26,6 +26,9 @@ import org.wso2.andes.thrift.MBThriftClient;
 import java.util.Timer;
 import java.util.TimerTask;
 
+/**
+ * This class is responsible for deleting slots and scheduling slot deletions.
+ */
 public class SlotDeletionScheduler {
 
     private long deleteRetryInterval;
@@ -33,16 +36,32 @@ public class SlotDeletionScheduler {
     private static Log log = LogFactory.getLog(SlotDeletionScheduler.class);
 
 
+    /**
+     * Create slot deletion scheduler
+     *
+     * @param deleteRetryInterval interval in milliseconds slot delete re-tries should be
+     *                            scheduled.
+     */
     SlotDeletionScheduler(long deleteRetryInterval) {
         this.deleteRetryInterval = deleteRetryInterval;
     }
 
+    /**
+     * Schedule a slot for deletion. This will continuously try to delete the slot
+     * until slot manager informs that the slot is successfully removed
+     *
+     * @param slotToDelete slot to be removed from cluster
+     * @param nodeID       Cluster unique ID of the node
+     */
     public void scheduleSlotDeletion(Slot slotToDelete, String nodeID) {
         Timer timer = new Timer();
-        SlotDeletionTimerTask timerTask = new SlotDeletionTimerTask(timer,slotToDelete,nodeID);
+        SlotDeletionTimerTask timerTask = new SlotDeletionTimerTask(timer, slotToDelete, nodeID);
         timer.schedule(timerTask, 0, deleteRetryInterval);
     }
 
+    /**
+     * SlotDeletionTimerTask class defines a timer task to delete slots
+     */
     private class SlotDeletionTimerTask extends TimerTask {
 
         private Timer timer;
@@ -58,20 +77,23 @@ public class SlotDeletionScheduler {
         public void run() {
             //perform slot deletion
             boolean deleteSuccess = false;
-            log.debug("FIXX : " + "Trying to delete slot : " + slotToDelete);
+            if (log.isDebugEnabled()) {
+                log.debug("Trying to delete slot : " + slotToDelete);
+            }
             try {
                 deleteSuccess = MBThriftClient
                         .deleteSlot(slotToDelete.getStorageQueueName(), slotToDelete, nodeID);
             } catch (ConnectionException e) {
                 log.error("Error while trying to delete the slot " + slotToDelete + " Thrift connection failed. Rescheduling delete.");
             }
-            //Terminate the timer thread
-            if(deleteSuccess) {
-                //clear local tracking of slot
+            if (deleteSuccess) {
+                //Terminate the timer thread. Clear local tracking of slot
                 OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slotToDelete);
                 timer.cancel();
-                log.debug("FIXX : " + "Deleted slot of queue : " + slotToDelete.getStorageQueueName() + " : by node : " +
-                        "" + nodeID + " | " + slotToDelete);
+                if (log.isDebugEnabled()) {
+                    log.debug("Deleted slot of queue : " + slotToDelete.getStorageQueueName() +
+                            " : by node : " + nodeID + " | " + slotToDelete);
+                }
             }
         }
     }

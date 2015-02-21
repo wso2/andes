@@ -175,6 +175,10 @@ public class Slot implements Serializable, Comparable<Slot> {
         return slotStates;
     }
 
+    public SlotState getCurrentState() {
+        return slotStates.get(slotStates.size() - 1);
+    }
+
     public String encodeSlotStates() {
         String encodedString;
         StringBuilder builder = new StringBuilder();
@@ -194,10 +198,6 @@ public class Slot implements Serializable, Comparable<Slot> {
             int code = Integer.parseInt(state);
             slotStates.add(SlotState.parseSlotState(code));
         }
-    }
-
-    public SlotState getCurrentState() {
-        return slotStates.get(slotStates.size() - 1);
     }
 
     private String getPrintableSlotStates() {
@@ -256,6 +256,7 @@ public class Slot implements Serializable, Comparable<Slot> {
         return storageQueueName + "|" + startMessageId + "-" + endMessageId;
     }
 
+    @SuppressWarnings("NullableProblems")
     @Override
     public int compareTo(Slot other) {
         if(this.getStartMessageId() == other.getStartMessageId()) {
