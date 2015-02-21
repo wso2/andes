@@ -19,9 +19,6 @@
 package org.wso2.andes.kernel.slot;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,8 +67,6 @@ public class Slot implements Serializable, Comparable<Slot> {
      * Keep actual destination of messages in slot
      */
     private String destinationOfMessagesInSlot;
-
-    private static Log log = LogFactory.getLog(Slot.class);
 
 
     public Slot() {
@@ -186,12 +181,10 @@ public class Slot implements Serializable, Comparable<Slot> {
             builder.append(slotState.getCode()).append("%");
         }
         encodedString = builder.toString();
-        log.info("FIXX : Encoded States: " + encodedString);
         return encodedString;
     }
 
     public void decodeAndSetSlotStates(String stateInfo) {
-        log.info("FIXX: SlotInfo : " + stateInfo);
         String[] states = StringUtils.split(stateInfo, "%");
         slotStates.clear();
         for (String state : states) {
@@ -215,11 +208,9 @@ public class Slot implements Serializable, Comparable<Slot> {
 
         Slot slot = (Slot) o;
 
-        if (endMessageId != slot.endMessageId) return false;
-        if (startMessageId != slot.startMessageId) return false;
-        if (!storageQueueName.equals(slot.storageQueueName)) return false;
+        return endMessageId == slot.endMessageId && startMessageId == slot.startMessageId &&
+                storageQueueName.equals(slot.storageQueueName);
 
-        return true;
     }
 
     @Override
