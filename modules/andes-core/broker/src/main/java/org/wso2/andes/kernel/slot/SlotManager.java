@@ -386,12 +386,14 @@ public class SlotManager {
                         messageIdSet.add(lastMessageIdInTheSlot);
                         wrapper.setLongTreeSet(messageIdSet);
                         slotIDMap.set(queueName, wrapper);
-                        nodeToLastPublishedIDMap.set(nodeId, lastMessageIdInTheSlot);
                         if (log.isDebugEnabled()) {
                             log.debug(lastMessageIdInTheSlot + " added to slotIdMap " +
                                    "(RightExtraSlot). Current values in " +
                                 "map " + messageIdSet);
                         }
+
+                        //record last published message id
+                        nodeToLastPublishedIDMap.set(nodeId, lastMessageIdInTheSlot);
                     }
 
                     //Add newly found overlaps to global overlapping slots tree.
@@ -424,11 +426,14 @@ public class SlotManager {
                 messageIdSet.add(lastMessageIdInTheSlot);
                 wrapper.setLongTreeSet(messageIdSet);
                 slotIDMap.set(queueName, wrapper);
-                nodeToLastPublishedIDMap.set(nodeId, lastMessageIdInTheSlot);
                 if (log.isDebugEnabled()) {
-                    log.debug("No overlapping slots found during slot submit. Added msgID " +
+                    log.debug("No overlapping slots found during slot submit "+ startMessageIdInTheSlot + " to : " +
+                            lastMessageIdInTheSlot+". Added msgID " +
                             lastMessageIdInTheSlot + " to slotIDMap");
                 }
+
+                //record last published message ID
+                nodeToLastPublishedIDMap.set(nodeId, lastMessageIdInTheSlot);
             }
         }
     }
@@ -574,7 +579,7 @@ public class SlotManager {
             //set back
             HashmapStringTreeSetWrapper overlappedSlotWrapper = overLappedSlotMap.get(nodeId);
             HashMap<String, TreeSet<Slot>> queueToOverlappedSlotMap = null;
-            if (wrapper != null) {
+            if (overlappedSlotWrapper != null) {
                 queueToOverlappedSlotMap = overlappedSlotWrapper.getStringListHashMap();
             }
             if (queueToOverlappedSlotMap != null) {

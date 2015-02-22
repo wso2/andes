@@ -153,6 +153,7 @@ public class SlotMessageCounter {
         Slot currentSlot = queueToSlotMap.get(storageQueueName);
         if (currentSlot == null) {
             currentSlot = new Slot();
+            currentSlot.setStartMessageId(metadata.getMessageID());
             currentSlot.setEndMessageId(metadata.getMessageID());
             currentSlot.setMessageCount(1L);
             queueToSlotMap.put(storageQueueName, currentSlot);
