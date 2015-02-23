@@ -66,7 +66,7 @@ public class SubscriptionStore {
      * If 1 bitmap
      */
 
-    private TopicMathcingSelection topicMathcingSelection;
+    private TopicMatchingSelection topicMatchingSelection;
 
     /**
      * Enum to identify subscription type
@@ -81,9 +81,9 @@ public class SubscriptionStore {
         andesContextStore = AndesContext.getInstance().getAndesContextStore();
         subscriptionBitMapHandler = new SubscriptionBitMapHandler();
 
-        topicMathcingSelection = AndesConfigurationManager.readValue(AndesConfiguration.PERFORMANCE_TUNING_TOPIC_MATCHING_METHOD);
+        topicMatchingSelection = AndesConfigurationManager.readValue(AndesConfiguration.PERFORMANCE_TUNING_TOPIC_MATCHING_METHOD);
 
-        if(topicMathcingSelection == TopicMathcingSelection.BITMAPS){
+        if(topicMatchingSelection == TopicMatchingSelection.BITMAPS){
             log.info("Bit map topic matching selected");
             isBitmap = true;
         }
