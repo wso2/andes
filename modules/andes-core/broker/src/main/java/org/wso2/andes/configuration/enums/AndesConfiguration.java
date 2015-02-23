@@ -312,6 +312,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     PERFORMANCE_TUNING_MESSAGE_COUNTER_UPDATE_BATCH_SIZE
             ("performanceTuning/messageCounter/countUpdateBatchSize", "100", Integer.class),
+    /**
+     * This allows to select topic matching algorithm
+     * 0 - DEFAULT Selector
+     * 1  - Topic Matching using Bit Maps
+     */
+    PERFORMANCE_TUNING_TOPIC_MATCHING_METHOD("performanceTuning/topicMatching", "SIMPLE", TopicMatchingSelection.class),
 
     /**
      * The number of messages to be handled in a single operation related to browser subscriptions.
@@ -381,6 +387,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     FLOW_CONTROL_CONNECTION_BASED_PER_CONNECTION_MESSAGE_THRESHOLD("flowControl/connectionBased" +
             "/perConnectionMessageThreshold", "1000", Integer.class);
+
 
 
     private final MetaProperties metaProperties;
