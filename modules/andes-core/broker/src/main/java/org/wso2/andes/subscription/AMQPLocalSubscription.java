@@ -23,23 +23,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.kernel.AndesContent;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.LocalSubscription;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.DeliveryRule;
-import org.wso2.andes.kernel.NoLocalRule;
-import org.wso2.andes.kernel.MessageExpiredRule;
-import org.wso2.andes.kernel.MaximumNumOfDeliveryRule;
-import org.wso2.andes.kernel.HasInterestRule;
-import org.wso2.andes.kernel.MessagePurgeRule;
-import org.wso2.andes.kernel.OnflightMessageTracker;
-import org.wso2.andes.kernel.MessageStatus;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -59,18 +46,14 @@ import java.util.regex.Pattern;
  * send messages to the subscription
  */
 public class AMQPLocalSubscription extends InboundSubscriptionEvent {
-    
+
     private static Log log = LogFactory.getLog(AMQPLocalSubscription.class);
-
-    //internal qpid queue subscription is bound to
-    private AMQQueue amqQueue;
-
-    //internal qpid subscription
-    private Subscription amqpSubscription;
-
     //AMQP transport channel subscriber is dealing with
     AMQChannel channel = null;
-
+    //internal qpid queue subscription is bound to
+    private AMQQueue amqQueue;
+    //internal qpid subscription
+    private Subscription amqpSubscription;
     /**
      * Whether subscription is bound to topic or not
      */
@@ -234,7 +217,7 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
         }
 
         try {
-            
+
             // TODO: We might have to carefully implement this in every new subscription type we implement
             // shall we move this up to LocalSubscription level?
             onflightMessageTracker.incrementNonAckedMessageCount(channel.getId());

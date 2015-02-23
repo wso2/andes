@@ -27,7 +27,6 @@ import org.wso2.andes.configuration.enums.TopicMatchingSelection;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
 
-
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -70,26 +69,16 @@ public class SubscriptionStore {
 
     private TopicMatchingSelection topicMatchingSelection;
 
-    /**
-     * Enum to identify subscription type
-     */
-    private enum SUBSCRIPTION_TYPE {
-        QUEUE_SUBSCRIPTION,
-        TOPIC_SUBSCRIPTION,
-        ALL
-    }
-
     public SubscriptionStore() throws AndesException {
         andesContextStore = AndesContext.getInstance().getAndesContextStore();
         subscriptionBitMapHandler = new SubscriptionBitMapHandler();
 
         topicMatchingSelection = AndesConfigurationManager.readValue(AndesConfiguration.PERFORMANCE_TUNING_TOPIC_MATCHING_METHOD);
 
-        if(topicMatchingSelection == TopicMatchingSelection.BITMAPS){
+        if (topicMatchingSelection == TopicMatchingSelection.BITMAPS) {
             log.info("Bit map topic matching selected");
             isBitmap = true;
-        }
-        else {
+        } else {
             isBitmap = false;
         }
     }
@@ -150,8 +139,7 @@ public class SubscriptionStore {
             // hence we need to check both maps
             if (isBitmap) {
                 subscriptionList.addAll(subscriptionBitMapHandler.findMatchingClusteredSubscriptions(destination));
-            }
-            else {
+            } else {
                 subscriptionList.addAll(getSubscriptionsInMap(destination,
                         clusterTopicSubscriptionMap, SUBSCRIPTION_TYPE.ALL));
             }
@@ -169,16 +157,17 @@ public class SubscriptionStore {
 
     /**
      * Get subscriptions related to destination. Get hierarchical topic scenario into consideration
-     * @param destination queue topic
-     * @param subMap Map<String, List<AndesSubscription>>
+     *
+     * @param destination          queue topic
+     * @param subMap               Map<String, List<AndesSubscription>>
      * @param filterBySubscription filter results by subscription type
-     * @return  List<AndesSubscription>
+     * @return List<AndesSubscription>
      */
     private List<AndesSubscription> getSubscriptionsInMap(String destination,
                                                           Map<String, List<AndesSubscription>> subMap,
-                                                          SUBSCRIPTION_TYPE filterBySubscription ) {
+                                                          SUBSCRIPTION_TYPE filterBySubscription) {
         List<AndesSubscription> subscriptionList = new ArrayList<AndesSubscription>();
-        for(Map.Entry<String,List<AndesSubscription>> entry: subMap.entrySet()) {
+        for (Map.Entry<String, List<AndesSubscription>> entry : subMap.entrySet()) {
             String subDestination = entry.getKey();
             if (AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(subDestination, destination)) {
                 List<AndesSubscription> subscriptionsOfDestination = entry.getValue();
@@ -297,7 +286,6 @@ public class SubscriptionStore {
 
     }
 
-
     /**
      * Get all ACTIVE LOCAL subscription entries for destination (queue/topic)
      * hierarchical subscription mapping is NOT considered here
@@ -322,7 +310,6 @@ public class SubscriptionStore {
     public LocalSubscription getLocalSubscriptionForChannelId(UUID channelID) throws AndesException {
         return channelIdMap.get(channelID);
     }
-
 
     public int numberOfSubscriptionsForDestinationAtNode(String destination, String nodeID) throws AndesException {
         List<AndesSubscription> subscriptions = getClusterSubscribersForDestination(destination,
@@ -602,7 +589,6 @@ public class SubscriptionStore {
         }
         return subscriptionsOfQueue;
     }
-
 
     /**
      * Get ALL (ACTIVE + INACTIVE) cluster subscriptions whose bound queue is given
@@ -966,6 +952,11 @@ public class SubscriptionStore {
 
     }
 
+    /**
+     * To print the subscription maps with the destinations
+     *
+     * @param map Map to be printed
+     */
     private void printSubscriptionMap(Map<String, List<AndesSubscription>> map) {
         for (Entry<String, List<AndesSubscription>> entry : map.entrySet()) {
             log.debug("Destination: " + entry.getKey());
@@ -975,6 +966,11 @@ public class SubscriptionStore {
         }
     }
 
+    /**
+     * To print the subscription maps with the destinations
+     *
+     * @param map Map to be printed
+     */
     private void printLocalSubscriptionMap(Map<String, Map<String, LocalSubscription>> map) {
         for (Entry<String, Map<String, LocalSubscription>> entry : map.entrySet()) {
             log.debug("Destination: " + entry.getKey());
@@ -1068,10 +1064,9 @@ public class SubscriptionStore {
                 localQueueSubscriptionMap.put(destinationQueue, localSubscriptions);
 
             } else if (subscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
-                if(isBitmap){
-                    subscriptionBitMapHandler.addLocalSubscription(destinationQueue,subscription);
-                }
-                else {
+                if (isBitmap) {
+                    subscriptionBitMapHandler.addLocalSubscription(destinationQueue, subscription);
+                } else {
                     Map<String, LocalSubscription> localSubscriptions = localTopicSubscriptionMap.get(destinationQueue);
                     if (localSubscriptions == null) {
                         localSubscriptions = new ConcurrentHashMap<String, LocalSubscription>();
@@ -1099,7 +1094,7 @@ public class SubscriptionStore {
         String subscriptionID = subscription.getSubscriptionID();
         LocalSubscription subscriptionToRemove = null;
         //check queue local subscriptions
-        Map<String, LocalSubscription> subscriptionList = getLocalSubscriptionMap(destination,false);
+        Map<String, LocalSubscription> subscriptionList = getLocalSubscriptionMap(destination, false);
         if (null != subscriptionList) {
             Iterator<LocalSubscription> iterator = subscriptionList.values().iterator();
             while (iterator.hasNext()) {
@@ -1149,7 +1144,7 @@ public class SubscriptionStore {
             String destinationIdentifier = new StringBuffer().append((subscriptionToRemove.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX))
                     .append(destination).toString();
             andesContextStore.removeDurableSubscription(destinationIdentifier, subscription.getSubscribedNode() + "_" + subscriptionID);
-            if(log.isDebugEnabled())
+            if (log.isDebugEnabled())
                 log.debug("Subscription Removed Locally for  " + destination + "@" + subscriptionID + " " + subscriptionToRemove);
         } else {
             throw new AndesException("Could not find an subscription ID " + subscriptionID + " under destination " + destination);
@@ -1161,10 +1156,19 @@ public class SubscriptionStore {
      * @return list of ACTIVE and INACTIVE topics in cluster
      */
     public List<String> getTopics() {
-        if(isBitmap)
+        if (isBitmap)
             return new ArrayList<String>(subscriptionBitMapHandler.getAllDestinationsOfSubscriptions());
         else
             return new ArrayList<String>(clusterTopicSubscriptionMap.keySet());
 
+    }
+
+    /**
+     * Enum to identify subscription type
+     */
+    private enum SUBSCRIPTION_TYPE {
+        QUEUE_SUBSCRIPTION,
+        TOPIC_SUBSCRIPTION,
+        ALL
     }
 }
