@@ -19,6 +19,9 @@
 
 package org.wso2.andes.configuration.enums;
 
+/**
+ * Representation of different topic matching algorithm used by message broker
+ */
 public enum TopicMatchingSelection {
     SIMPLE,BITMAPS
 }

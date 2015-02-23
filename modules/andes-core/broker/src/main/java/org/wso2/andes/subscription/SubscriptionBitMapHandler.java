@@ -208,20 +208,20 @@ public class SubscriptionBitMapHandler {
                 /** Set the bit for the subscription constituent part
                  *
                  */
-                Map<String, BitSet> bitMapForithConstituent = bitMapLocal.get(constituentPart);
+                Map<String, BitSet> bitMapForCurrentConstituent = bitMapLocal.get(constituentPart);
 
                 if (WILDCARD_CHARACTER_FOR_ZERO_OR_MORE_WORDS.equals(destinations[constituentPart]) || WILDCARD_CHARACTER_FOR_ONE_WORD.equals(destinations[constituentPart])) {
-                    for (Map.Entry<String, BitSet> mapEntryForithBitMap : bitMapLocal.get(constituentPart).entrySet()) {
-                        if (!SPECIAL_CHARACTER_FOR_NULL.equals(mapEntryForithBitMap.getKey())) {
-                            mapEntryForithBitMap.getValue().set(columnIndexOfTheSubscriptionInBitMap);
+                    for (Map.Entry<String, BitSet> mapEntryForCurrentBitMap : bitMapLocal.get(constituentPart).entrySet()) {
+                        if (!SPECIAL_CHARACTER_FOR_NULL.equals(mapEntryForCurrentBitMap.getKey())) {
+                            mapEntryForCurrentBitMap.getValue().set(columnIndexOfTheSubscriptionInBitMap);
                         } else {
                             if (WILDCARD_CHARACTER_FOR_ZERO_OR_MORE_WORDS.equals(destinations[constituentPart]))
-                                mapEntryForithBitMap.getValue().set(columnIndexOfTheSubscriptionInBitMap);
+                                mapEntryForCurrentBitMap.getValue().set(columnIndexOfTheSubscriptionInBitMap);
                         }
                     }
                 } else {
                     BitSet bitSetForspecificConstituentPartOfSubscription;
-                    bitSetForspecificConstituentPartOfSubscription = bitMapForithConstituent.get(destinations[constituentPart]);
+                    bitSetForspecificConstituentPartOfSubscription = bitMapForCurrentConstituent.get(destinations[constituentPart]);
                     if (bitSetForspecificConstituentPartOfSubscription == null)
                         bitSetForspecificConstituentPartOfSubscription = (BitSet) bitMapLocal.get(constituentPart).get(CONSTITUENT_TOPIC_CONSTANT)
                                 .clone();
@@ -229,9 +229,9 @@ public class SubscriptionBitMapHandler {
 
                     bitSetForspecificConstituentPartOfSubscription.set(columnIndexOfTheSubscriptionInBitMap);
 
-                    bitMapForithConstituent.put(destinations[constituentPart], bitSetForspecificConstituentPartOfSubscription);
+                    bitMapForCurrentConstituent.put(destinations[constituentPart], bitSetForspecificConstituentPartOfSubscription);
                     bitMapLocal.remove(constituentPart);
-                    bitMapLocal.add(constituentPart, bitMapForithConstituent);
+                    bitMapLocal.add(constituentPart, bitMapForCurrentConstituent);
 
                 }
             }
