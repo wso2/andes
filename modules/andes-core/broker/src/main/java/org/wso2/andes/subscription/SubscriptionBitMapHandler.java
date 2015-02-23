@@ -96,11 +96,11 @@ public class SubscriptionBitMapHandler {
      * Keeps track of the deleted local subscription indexes
      * Whenever this arraylist is not empty, the index for the new subscription is found from this
      */
-    private ArrayList<Integer> deletedLocals;
+    private ArrayList<Integer> deletedLocalSubscriptions;
     /**
      * Keeps track of the deleted clustered subscription indexes
      */
-    private ArrayList<Integer> deletedClusters;
+    private ArrayList<Integer> deletedClusterSubscriptions;
     /**
      * Initialize the BitMap
      */
@@ -113,8 +113,8 @@ public class SubscriptionBitMapHandler {
         bitMapClustered = new ArrayList<Map<String, BitSet>>();
         localSubscriptionCount = 0;
         clusteredSubscriptionCount = 0;
-        deletedClusters = new ArrayList<Integer>();
-        deletedLocals = new ArrayList<Integer>();
+        deletedClusterSubscriptions = new ArrayList<Integer>();
+        deletedLocalSubscriptions = new ArrayList<Integer>();
     }
 
     /**
@@ -134,8 +134,8 @@ public class SubscriptionBitMapHandler {
              * If the removed subscription places still remain take the index for the subscription
              * from there
              */
-            if (deletedLocals.size() > 0) {
-                columnIndexOfTheSubscriptionInBitMap = deletedLocals.remove(0);
+            if (deletedLocalSubscriptions.size() > 0) {
+                columnIndexOfTheSubscriptionInBitMap = deletedLocalSubscriptions.remove(0);
             } else {
                 /**
                  * else get the index from the localSubscriptionCount variable
@@ -175,7 +175,7 @@ public class SubscriptionBitMapHandler {
                     bitSet = new BitSet(localSubscriptionCount);
                     bitSet.set(0, localSubscriptionCount);
 
-                    for (int deleted : deletedLocals) {
+                    for (int deleted : deletedLocalSubscriptions) {
                         bitSet.clear(deleted);
                     }
 
@@ -276,8 +276,8 @@ public class SubscriptionBitMapHandler {
              * If the removed subscription places still remain take the index for the subscription
              * from there
              */
-            if (deletedClusters.size() > 0) {
-                columnIndexOfTheSubscriptionInBitMap = deletedClusters.remove(0);
+            if (deletedClusterSubscriptions.size() > 0) {
+                columnIndexOfTheSubscriptionInBitMap = deletedClusterSubscriptions.remove(0);
             } else {
                 /**
                  * else get the index from the clusteredSubscriptionCount variable
@@ -317,7 +317,7 @@ public class SubscriptionBitMapHandler {
                     bitSet = new BitSet(clusteredSubscriptionCount);
                     bitSet.set(0, clusteredSubscriptionCount);
 
-                    for (int deleted : deletedClusters) bitSet.clear(deleted);
+                    for (int deleted : deletedClusterSubscriptions) bitSet.clear(deleted);
                     bitSet.clear(columnIndexOfTheSubscriptionInBitMap);
                     newBitMapForithConstituent.put(SPECIAL_CHARACTER_FOR_NULL, bitSet);
 
@@ -429,7 +429,7 @@ public class SubscriptionBitMapHandler {
                     localSubscriptions.remove(mapEntry.getKey());
                     localSubscriptionMapping.remove(destination);
                     removeSubscription(mapEntry.getKey(), true);
-                    deletedLocals.add(mapEntry.getKey());
+                    deletedLocalSubscriptions.add(mapEntry.getKey());
                 }
                 return;
             }
@@ -451,7 +451,7 @@ public class SubscriptionBitMapHandler {
                     clusteredSubscriptions.remove(mapEntry.getKey());
                     clusteredSubscriptionMapping.remove(destination);
                     removeSubscription(mapEntry.getKey(), false);
-                    deletedClusters.add(mapEntry.getKey());
+                    deletedClusterSubscriptions.add(mapEntry.getKey());
                 }
                 return;
             }
