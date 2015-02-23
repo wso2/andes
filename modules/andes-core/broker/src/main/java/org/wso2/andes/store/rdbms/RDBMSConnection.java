@@ -43,16 +43,29 @@ public class RDBMSConnection implements DurableStoreConnection {
     public void initialize(ConfigurationProperties connectionProperties) throws AndesException {
         Connection connection = null;
         String jndiLookupName = "";
+        String dataSourceUserName   = "";
         isConnected = false;
         try {
             // try to get the lookup name. If error empty string will be returned
             jndiLookupName = connectionProperties.getProperty(RDBMSConstants.PROP_JNDI_LOOKUP_NAME);
             datasource = InitialContext.doLookup(jndiLookupName);
+
+            if (datasource instanceof org.apache.tomcat.jdbc.pool.DataSource) {
+                org.apache.tomcat.jdbc.pool.DataSource tcDataSource =
+                        (org.apache.tomcat.jdbc.pool.DataSource)datasource;
+                if(!tcDataSource.getUsername().isEmpty()) {
+                    dataSourceUserName = tcDataSource.getUsername();
+                }
+            }
+
             connection = datasource.getConnection();
             isConnected = true; // if no errors
             logger.info("JDBC connection established with jndi config " + jndiLookupName);
         } catch (SQLException e) {
-            throw new AndesException("Connecting to database failed with jndi lookup", e);
+            throw new AndesException("Connecting to database failed with jndi lookup : " +
+                                     jndiLookupName + ". data source username : " +
+                                     dataSourceUserName + ". SQL Error message : " +
+                                     e.getMessage(), e);
         } catch (NamingException e) {
             throw new AndesException("Couldn't look up jndi entry for " +
                                      "\"" + jndiLookupName + "\"", e);
