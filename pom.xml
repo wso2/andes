@@ -222,11 +222,10 @@
                 <version>1.1.7</version>
             </dependency>
             <dependency>
-                <groupId>com.googlecode.disruptor.wso2</groupId>
+                <groupId>org.wso2.lmax</groupId>
                 <artifactId>disruptor</artifactId>
-                <version>2.10.4-wso2v2</version>
+                <version>3.3.0.wso2v1</version>
             </dependency>
-
             <dependency>
                 <groupId>com.datastax.cassandra</groupId>
                 <artifactId>cassandra-driver-core</artifactId>

@@ -2,8 +2,10 @@ package org.dna.mqtt.moquette.messaging.spi.impl;
 
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.IgnoreExceptionHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
+import com.lmax.disruptor.dsl.Disruptor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.IMessaging;
@@ -14,7 +16,9 @@ import org.dna.mqtt.moquette.proto.messages.*;
 import org.dna.mqtt.moquette.server.Constants;
 import org.dna.mqtt.moquette.server.IAuthenticator;
 import org.dna.mqtt.moquette.server.ServerChannel;
-import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
+
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -31,9 +35,11 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
     private IStorageService m_storageService;
 
-    private ExecutorService m_executor;
-    BatchEventProcessor<ValueEvent> m_eventProcessor;
-
+    /**
+     * Disruptor for inbound ValueEvent handling 
+     */
+    private Disruptor<ValueEvent> disruptor;
+    
     private static SimpleMessaging INSTANCE;
 
     private ProtocolProcessor m_processor = new ProtocolProcessor();
@@ -52,16 +58,20 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
     public void init(Properties configProps) {
         subscriptions = new SubscriptionsStore();
-        m_executor = Executors.newFixedThreadPool(1);
+        ExecutorService executor = Executors.newFixedThreadPool(1);
+        Integer ringBufferSize = AndesConfigurationManager.readValue(
+                AndesConfiguration.TRANSPORTS_MQTT_INBOUND_BUFFER_SIZE);
 
-        m_ringBuffer = new RingBuffer<ValueEvent>(ValueEvent.EVENT_FACTORY, 1024 * 32);
-
-        SequenceBarrier barrier = m_ringBuffer.newBarrier();
-        m_eventProcessor = new BatchEventProcessor<ValueEvent>(m_ringBuffer, barrier, this);
-        //TODO in a presentation is said to don't do the followinf line!!
-        m_ringBuffer.setGatingSequences(m_eventProcessor.getSequence());
-        m_executor.submit(m_eventProcessor);
-
+        disruptor = new Disruptor<ValueEvent>( ValueEvent.EVENT_FACTORY, ringBufferSize, executor);
+        
+        disruptor.handleExceptionsWith(new IgnoreExceptionHandler());
+        SequenceBarrier barrier = disruptor.getRingBuffer().newBarrier();
+        BatchEventProcessor<ValueEvent> eventProcessor = new BatchEventProcessor<ValueEvent>(
+                disruptor.getRingBuffer(), barrier, this);
+        
+        disruptor.handleEventsWith(eventProcessor);
+        m_ringBuffer = disruptor.start();
+        
         disruptorPublish(new InitEvent(configProps));
     }
 
@@ -197,7 +207,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
         m_storageService.close();
 
 //        m_eventProcessor.halt();
-        m_executor.shutdown();
+        disruptor.shutdown();
 
         subscriptions = null;
         m_stopLatch.countDown();

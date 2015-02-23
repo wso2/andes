@@ -2,8 +2,10 @@ package org.dna.mqtt.moquette.messaging.spi.impl;
 
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.IgnoreExceptionHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
+import com.lmax.disruptor.dsl.Disruptor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.IMatchingCondition;
@@ -20,6 +22,7 @@ import org.dna.mqtt.moquette.server.Constants;
 import org.dna.mqtt.moquette.server.IAuthenticator;
 import org.dna.mqtt.moquette.server.ServerChannel;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
+import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.mqtt.MQTTException;
 
 import java.nio.ByteBuffer;
@@ -30,6 +33,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static org.wso2.andes.configuration.enums.AndesConfiguration.TRANSPORTS_MQTT_DELIVERY_BUFFER_SIZE;
+
 public class ProtocolProcessor implements EventHandler<ValueEvent> {
 
     private static Log log = LogFactory.getLog(ProtocolProcessor.class);
@@ -39,8 +44,6 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
     private IStorageService m_storageService;
     private IAuthenticator m_authenticator;
 
-    private ExecutorService m_executor;
-    BatchEventProcessor<ValueEvent> m_eventProcessor;
     private RingBuffer<ValueEvent> m_ringBuffer;
 
     ProtocolProcessor() {
@@ -59,18 +62,24 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         this.subscriptions = subscriptions;
         m_authenticator = authenticator;
         m_storageService = storageService;
+        Integer RingBufferSize = AndesConfigurationManager.readValue(TRANSPORTS_MQTT_DELIVERY_BUFFER_SIZE);
 
-        //init the output ringbuffer
-        m_executor = Executors.newFixedThreadPool(1);
+        // Init the output Disruptor
+        ExecutorService executor = Executors.newFixedThreadPool(1);
 
-        m_ringBuffer = new RingBuffer<ValueEvent>(ValueEvent.EVENT_FACTORY, 1024 * 32);
+        Disruptor<ValueEvent> disruptor = new Disruptor<ValueEvent>(
+                ValueEvent.EVENT_FACTORY,
+                RingBufferSize,
+                executor);
+        
+        disruptor.handleExceptionsWith(new IgnoreExceptionHandler());
+        SequenceBarrier barrier = disruptor.getRingBuffer().newBarrier();
+        BatchEventProcessor<ValueEvent> m_eventProcessor = new BatchEventProcessor<ValueEvent>(
+                disruptor.getRingBuffer(), barrier, this);
+        
+        disruptor.handleEventsWith(m_eventProcessor);
 
-        SequenceBarrier barrier = m_ringBuffer.newBarrier();
-        m_eventProcessor = new BatchEventProcessor<ValueEvent>(m_ringBuffer, barrier, this);
-        //TODO in a presentation is said to don't do the followinf line!!
-        m_ringBuffer.setGatingSequences(m_eventProcessor.getSequence());
-        m_executor.submit(m_eventProcessor);
-
+        m_ringBuffer = disruptor.start();
         //Will initialize the bridge
         //Andes Specific
         initAndesBridge(subscriptions, storageService);
