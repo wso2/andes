@@ -168,8 +168,8 @@ public class SubscriptionBitMapHandler {
                  * 2 constituentsAdd a new table for the constituent part 3
                  */
                 if (bitMapLocal.size() <= constituentPart) {
-                    Map<String, BitSet> newBitMapForIthConstituent;
-                    newBitMapForIthConstituent = Collections.synchronizedMap(new HashMap<String, BitSet>());
+                    Map<String, BitSet> bitMapForCurrentConstituent;
+                    bitMapForCurrentConstituent = Collections.synchronizedMap(new HashMap<String, BitSet>());
 
                     BitSet bitSet;
                     bitSet = new BitSet(localSubscriptionCount);
@@ -180,7 +180,7 @@ public class SubscriptionBitMapHandler {
                     }
 
                     bitSet.clear(columnIndexOfTheSubscriptionInBitMap);
-                    newBitMapForIthConstituent.put(SPECIAL_CHARACTER_FOR_NULL, bitSet);
+                    bitMapForCurrentConstituent.put(SPECIAL_CHARACTER_FOR_NULL, bitSet);
 
                     BitSet bitSetForPreviousOther;
                     bitSetForPreviousOther = new BitSet();
@@ -195,8 +195,8 @@ public class SubscriptionBitMapHandler {
                     }
 
                     BitSet bitSetForOther = bitSetForPreviousOther;
-                    newBitMapForIthConstituent.put(CONSTITUENT_TOPIC_CONSTANT, bitSetForOther);
-                    bitMapLocal.add(newBitMapForIthConstituent);
+                    bitMapForCurrentConstituent.put(CONSTITUENT_TOPIC_CONSTANT, bitSetForOther);
+                    bitMapLocal.add(bitMapForCurrentConstituent);
                 }
 
                 /** Set the bit for the subscription constituent part
@@ -668,7 +668,7 @@ public class SubscriptionBitMapHandler {
      * @param newSubscriptionList new list of subscriptions
      * @return the old list of the subscriptions
      */
-    public List<AndesSubscription> getAllClustered(String destination, List<AndesSubscription> newSubscriptionList) {
+    public List<AndesSubscription> getAllClusteredSubscriptions(String destination, List<AndesSubscription> newSubscriptionList) {
         List<AndesSubscription> oldList = null;
         if (null != clusteredSubscriptionMapping.get(destination)) {
             int mappingIndex = clusteredSubscriptionMapping.get(destination);

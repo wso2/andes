@@ -546,7 +546,7 @@ public class SubscriptionStore {
                     return new ArrayList<AndesSubscription>();
                 }
             } else {
-                return subscriptionBitMapHandler.getAllClustered(destination, newSubList);
+                return subscriptionBitMapHandler.getAllClusteredSubscriptions(destination, newSubList);
             }
         } else {
             Map<String, List<AndesSubscription>> subscriptionMap = isTopic ? clusterTopicSubscriptionMap : clusterQueueSubscriptionMap;
