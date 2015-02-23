@@ -107,6 +107,16 @@ public enum AndesConfiguration implements ConfigurationProperty {
     TRANSPORTS_MQTT_SSL_PORT("transports/mqtt/sslPort", "1884", Integer.class),
 
     /**
+     * Ring buffer size of MQTT inbound event Disruptor. Default is set to 32768 (1024 * 32)
+     */
+    TRANSPORTS_MQTT_INBOUND_BUFFER_SIZE("transports/mqtt/inboundBufferSize", "32768", Integer.class),
+
+    /**
+     * Ring buffer size of MQTT delivery event Disruptor. Default is set to 32768 (1024 * 32)
+     */
+    TRANSPORTS_MQTT_DELIVERY_BUFFER_SIZE("transports/mqtt/deliveryBufferSize", "32768", Integer.class),
+
+    /**
      * This is a temporary list of user elements to enable user-authentication for MQTT.
      */
     LIST_TRANSPORTS_MQTT_USERNAMES("transports/mqtt/users/user/@userName", "",

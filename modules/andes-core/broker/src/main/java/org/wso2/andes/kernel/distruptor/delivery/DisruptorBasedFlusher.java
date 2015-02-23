@@ -20,9 +20,9 @@ package org.wso2.andes.kernel.distruptor.delivery;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.MultiThreadedClaimStrategy;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
+import com.lmax.disruptor.dsl.ProducerType;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -56,10 +56,11 @@ public class DisruptorBasedFlusher {
                 AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_PARALLEL_DELIVERY_HANDLERS);
 
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("DisruptorBasedFlusher-%d").build();
-        Executor threadPool = Executors.newCachedThreadPool(namedThreadFactory);
+        Executor threadPoolExecutor = Executors.newCachedThreadPool(namedThreadFactory);
 
-        disruptor = new Disruptor<DeliveryEventData>(new DeliveryEventData.DeliveryEventDataFactory(), threadPool,
-                                                     new MultiThreadedClaimStrategy(ringBufferSize),
+        disruptor = new Disruptor<DeliveryEventData>(new DeliveryEventData.DeliveryEventDataFactory(), ringBufferSize,
+                                                     threadPoolExecutor,
+                                                     ProducerType.MULTI,
                                                      new BlockingWaitStrategy());
 
         disruptor.handleExceptionsWith(new DeliveryExceptionHandler());
