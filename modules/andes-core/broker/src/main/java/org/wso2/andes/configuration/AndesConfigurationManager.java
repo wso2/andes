@@ -332,6 +332,8 @@ public class AndesConfigurationManager {
                 DateFormat df = new SimpleDateFormat("MMM dd kk:mm:ss z yyyy", Locale.ENGLISH);
                 return dataType.cast(df.parse(validValue));
 
+            } else if (dataType.isEnum()) {
+                return (T) Enum.valueOf((Class<? extends Enum>) dataType, validValue);
             } else {
                 return dataType.getConstructor(String.class).newInstance(validValue);
             }
@@ -384,7 +386,7 @@ public class AndesConfigurationManager {
             String valueInFile = compositeConfiguration.getString(configurationProperty.get().getKeyInFile());
 
             Integer portFromConfiguration = (Integer) deriveValidConfigurationValue(configurationProperty.get()
-                    .getKeyInFile(), configurationProperty.get().getDataType(),
+                            .getKeyInFile(), configurationProperty.get().getDataType(),
                     configurationProperty.get().getDefaultValue(), valueInFile);
 
             return portFromConfiguration + carbonPortOffset;
