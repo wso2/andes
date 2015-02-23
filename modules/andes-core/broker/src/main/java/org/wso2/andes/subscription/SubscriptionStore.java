@@ -53,6 +53,15 @@ public class SubscriptionStore {
 
     private AndesContextStore andesContextStore;
 
+    /**
+     * Enum to identify subscription type
+     */
+    private enum SUBSCRIPTION_TYPE {
+        QUEUE_SUBSCRIPTION,
+        TOPIC_SUBSCRIPTION,
+        ALL
+    }
+
     public SubscriptionStore() throws AndesException {
 
         andesContextStore = AndesContext.getInstance().getAndesContextStore();
@@ -96,16 +105,23 @@ public class SubscriptionStore {
     public List<AndesSubscription> getClusterSubscribersForDestination(String destination,
                                                                        boolean isTopic) throws AndesException {
         List<AndesSubscription> subscriptionList = new ArrayList<AndesSubscription>();
-        
+
         if (isTopic) {
             // In topic scenario if this is a durable topic it's in cluster queue subscription map,
             // hence we need to check both maps
-            subscriptionList.addAll(getSubscriptionsInMap(destination, clusterTopicSubscriptionMap));
-            subscriptionList.addAll(getSubscriptionsInMap(destination, clusterQueueSubscriptionMap));
+
+            // Topic map is only have topic messages
+            subscriptionList.addAll(getSubscriptionsInMap(destination,
+                    clusterTopicSubscriptionMap, SUBSCRIPTION_TYPE.ALL));
+
+            // Get durable topic subscriptions from Queue map
+            subscriptionList.addAll(getSubscriptionsInMap(destination,
+                    clusterQueueSubscriptionMap, SUBSCRIPTION_TYPE.TOPIC_SUBSCRIPTION));
         } else {
-            subscriptionList = clusterQueueSubscriptionMap.get(destination);
+            subscriptionList = getSubscriptionsInMap(destination,
+                    clusterQueueSubscriptionMap, SUBSCRIPTION_TYPE.QUEUE_SUBSCRIPTION);
         }
-        
+
         return subscriptionList;
     }
 
@@ -113,16 +129,41 @@ public class SubscriptionStore {
      * Get subscriptions related to destination. Get hierarchical topic scenario into consideration
      * @param destination queue topic 
      * @param subMap Map<String, List<AndesSubscription>>
+     * @param filterBySubscription filter results by subscription type
      * @return  List<AndesSubscription>
      */
-    private List<AndesSubscription> getSubscriptionsInMap(String destination, Map<String, List<AndesSubscription>> subMap) {
+    private List<AndesSubscription> getSubscriptionsInMap(String destination,
+                                                          Map<String, List<AndesSubscription>> subMap,
+                                                          SUBSCRIPTION_TYPE filterBySubscription ) {
         List<AndesSubscription> subscriptionList = new ArrayList<AndesSubscription>();
         for(Map.Entry<String,List<AndesSubscription>> entry: subMap.entrySet()) {
             String subDestination = entry.getKey();
             if (AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(subDestination, destination)) {
                 List<AndesSubscription> subscriptionsOfDestination = entry.getValue();
                 if (null != subscriptionsOfDestination) {
-                    subscriptionList.addAll(subscriptionsOfDestination);
+
+                    switch (filterBySubscription) {
+                        case TOPIC_SUBSCRIPTION:
+                            // Check for durable topic subscriptions and add them
+                            for (AndesSubscription andesSubscription : subscriptionsOfDestination) {
+                                if (andesSubscription.isBoundToTopic() && andesSubscription.isDurable()) {
+                                    subscriptionList.add(andesSubscription);
+                                }
+                            }
+                            break;
+                        case QUEUE_SUBSCRIPTION:
+                            // Check for queue subscriptions and add them
+                            for (AndesSubscription andesSubscription : subscriptionsOfDestination) {
+                                if (!andesSubscription.isBoundToTopic()) {
+                                    subscriptionList.add(andesSubscription);
+                                }
+                            }
+                            break;
+                        default:
+                            subscriptionList.addAll(subscriptionsOfDestination);
+                            break;
+                    }
+
                 }
             }
         }
