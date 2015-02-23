@@ -37,6 +37,10 @@ public class SubscriptionBitMapHandler {
     private static final String CONSTITUENT_TOPIC_CONSTANT = "other";
 
     private static final String CONSTITUENT_DELIMITER = "\\.";
+
+    private static final String WILDCARD_CHARACTER_FOR_ZERO_OR_MORE_WORDS = "#";
+
+    private static final String WILDCARD_CHARACTER_FOR_ONE_WORD = "*";
     /**
      * NULL in the constituent table is replaced with *
      * Ex
@@ -206,12 +210,12 @@ public class SubscriptionBitMapHandler {
                  */
                 Map<String, BitSet> bitMapForithConstituent = bitMapLocal.get(constituentPart);
 
-                if ("#".equals(destinations[constituentPart]) || "*".equals(destinations[constituentPart])) {
+                if (WILDCARD_CHARACTER_FOR_ZERO_OR_MORE_WORDS.equals(destinations[constituentPart]) || WILDCARD_CHARACTER_FOR_ONE_WORD.equals(destinations[constituentPart])) {
                     for (Map.Entry<String, BitSet> mapEntryForithBitMap : bitMapLocal.get(constituentPart).entrySet()) {
                         if (!SPECIAL_CHARACTER_FOR_NULL.equals(mapEntryForithBitMap.getKey())) {
                             mapEntryForithBitMap.getValue().set(columnIndexOfTheSubscriptionInBitMap);
                         } else {
-                            if ("#".equals(destinations[constituentPart]))
+                            if (WILDCARD_CHARACTER_FOR_ZERO_OR_MORE_WORDS.equals(destinations[constituentPart]))
                                 mapEntryForithBitMap.getValue().set(columnIndexOfTheSubscriptionInBitMap);
                         }
                     }
@@ -236,7 +240,7 @@ public class SubscriptionBitMapHandler {
              * If the number constituent parts in the routing key is less than the number of bitmap tables
              * set the bit for th null and also update the # accordingly
              */
-            if ("#".equals(destinations[destinations.length - 1])) {
+            if (WILDCARD_CHARACTER_FOR_ZERO_OR_MORE_WORDS.equals(destinations[destinations.length - 1])) {
                 for (int i = destinations.length; i < bitMapLocal.size(); i++) {
                     for (Map.Entry<String, BitSet> entry : bitMapLocal.get(i).entrySet())
                         entry.getValue().set(columnIndexOfTheSubscriptionInBitMap);
@@ -345,12 +349,12 @@ public class SubscriptionBitMapHandler {
                  */
                 Map<String, BitSet> bitMapForCurrentConstituent = bitMapClustered.get(constituentIndex);
 
-                if ("#".equals(destinations[constituentIndex]) || "*".equals(destinations[constituentIndex])) {
+                if (WILDCARD_CHARACTER_FOR_ZERO_OR_MORE_WORDS.equals(destinations[constituentIndex]) || WILDCARD_CHARACTER_FOR_ONE_WORD.equals(destinations[constituentIndex])) {
                     for (Map.Entry<String, BitSet> mapEntryForCurrentBitMap : bitMapClustered.get(constituentIndex).entrySet())
                         if (!SPECIAL_CHARACTER_FOR_NULL.equals(mapEntryForCurrentBitMap.getKey())) {
                             mapEntryForCurrentBitMap.getValue().set(columnIndexOfTheSubscriptionInBitMap);
                         } else {
-                            if ("#".equals(destinations[constituentIndex]))
+                            if (WILDCARD_CHARACTER_FOR_ZERO_OR_MORE_WORDS.equals(destinations[constituentIndex]))
                                 mapEntryForCurrentBitMap.getValue().set(columnIndexOfTheSubscriptionInBitMap);
                         }
                 } else {
@@ -374,7 +378,7 @@ public class SubscriptionBitMapHandler {
              * If the number constituent parts in the routing key is less than the number of bitmap tables
              * set the bit for th null and also update the # accordingly
              */
-            if ("#".equals(destinations[destinations.length - 1])) {
+            if (WILDCARD_CHARACTER_FOR_ZERO_OR_MORE_WORDS.equals(destinations[destinations.length - 1])) {
                 for (int constituentIndex = destinations.length; constituentIndex < bitMapClustered.size(); constituentIndex++) {
                     for (Map.Entry<String, BitSet> entry : bitMapClustered.get(constituentIndex).entrySet())
                         entry.getValue().set(columnIndexOfTheSubscriptionInBitMap);
