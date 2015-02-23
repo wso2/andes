@@ -1089,6 +1089,12 @@ public class SubscriptionStore {
 
     }
 
+    /**
+     * To remove the local subscription
+     * @param subscription Subscription to be removed
+     * @return the removed local subscription
+     * @throws AndesException
+     */
     private LocalSubscription removeLocalSubscription(AndesSubscription subscription) throws AndesException {
         String destination = subscription.getSubscribedDestination();
         String subscriptionID = subscription.getSubscriptionID();
