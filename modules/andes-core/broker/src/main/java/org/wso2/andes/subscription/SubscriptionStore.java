@@ -23,8 +23,10 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.enums.TopicMatchingSelection;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
+
 
 import java.util.*;
 import java.util.Map.Entry;
