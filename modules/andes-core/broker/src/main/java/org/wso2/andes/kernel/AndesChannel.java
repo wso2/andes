@@ -112,7 +112,9 @@ public class AndesChannel {
         this.messagesOnBuffer = new AtomicInteger(0);
         this.flowControlEnabled = false;
 
-        log.info("Channel created with ID: " + id);
+        if(log.isDebugEnabled()) {
+            log.debug("Channel created with ID: " + id);
+        }
     }
 
     /**
