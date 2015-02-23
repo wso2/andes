@@ -73,12 +73,12 @@ public class SubscriptionStore {
 
         topicMathcingSelection = AndesConfigurationManager.readValue(AndesConfiguration.PERFORMANCE_TUNING_TOPIC_MATCHING_METHOD);
 
-        if(topicMathcingSelection == TopicMathcingSelection.SIMPLE){
-            log.info("Bitmap topic matching selected.");
+        if(topicMathcingSelection == TopicMathcingSelection.BITMAPS){
             isBitmap = true;
         }
-        else
+        else {
             isBitmap = false;
+        }
     }
 
     /**
