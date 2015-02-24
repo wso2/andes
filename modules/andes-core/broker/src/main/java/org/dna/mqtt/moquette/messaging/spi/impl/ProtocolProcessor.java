@@ -549,8 +549,14 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         session.close(true);
 
         //de-activate the subscriptions for this ClientID
-//        String clientID = (String) evt.getSession().getAttribute(Constants.ATTR_CLIENTID);
         subscriptions.deactivate(clientID);
+
+        try {
+            AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID);
+        } catch (MQTTException e) {
+            log.error("Error occurred when attempting to disconnect subscriber", e);
+        }
+
         log.info("Disconnected client " + clientID + " with clean session " + cleanSession);
     }
 
