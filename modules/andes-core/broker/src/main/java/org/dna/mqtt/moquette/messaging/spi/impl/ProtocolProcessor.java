@@ -553,11 +553,10 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 
         try {
             AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID);
+            log.info("Disconnected client " + clientID + " with clean session " + cleanSession);
         } catch (MQTTException e) {
             log.error("Error occurred when attempting to disconnect subscriber", e);
         }
-
-        log.info("Disconnected client " + clientID + " with clean session " + cleanSession);
     }
 
     void proccessConnectionLost(String clientID) {
