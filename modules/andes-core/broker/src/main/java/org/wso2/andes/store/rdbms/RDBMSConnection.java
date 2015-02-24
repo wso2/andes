@@ -18,6 +18,7 @@
 
 package org.wso2.andes.store.rdbms;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesException;
@@ -52,8 +53,8 @@ public class RDBMSConnection implements DurableStoreConnection {
 
             if (datasource instanceof org.apache.tomcat.jdbc.pool.DataSource) {
                 org.apache.tomcat.jdbc.pool.DataSource tcDataSource =
-                        (org.apache.tomcat.jdbc.pool.DataSource)datasource;
-                if(!tcDataSource.getUsername().isEmpty()) {
+                        (org.apache.tomcat.jdbc.pool.DataSource) datasource;
+                if (StringUtils.isNotBlank(tcDataSource.getUsername())) {
                     dataSourceUserName = tcDataSource.getUsername();
                 }
             }
