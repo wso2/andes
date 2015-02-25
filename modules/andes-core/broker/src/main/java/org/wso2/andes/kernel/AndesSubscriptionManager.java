@@ -89,8 +89,13 @@ public class AndesSubscriptionManager {
         subscriptionStore.createDisconnectOrRemoveLocalSubscription(localSubscription, SubscriptionListener.SubscriptionChange.ADDED);
 
         //start a slot delivery worker on the destination (or topicQueue) subscription refers
+        //destination would be target queue if it is durable topic, otherwise it is queue or non durable topic
         SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
-        slotDeliveryWorkerManager.startSlotDeliveryWorker(localSubscription.getStorageQueueName(), localSubscription.getSubscribedDestination());
+        if(localSubscription.isBoundToTopic() && localSubscription.isDurable()){
+            slotDeliveryWorkerManager.startSlotDeliveryWorker(localSubscription.getStorageQueueName(), localSubscription.getTargetQueue());
+        } else {
+            slotDeliveryWorkerManager.startSlotDeliveryWorker(localSubscription.getStorageQueueName(), localSubscription.getSubscribedDestination());
+        }
 
         //notify the local subscription change to listeners
         notifyLocalSubscriptionHasChanged(localSubscription, SubscriptionListener.SubscriptionChange.ADDED);
