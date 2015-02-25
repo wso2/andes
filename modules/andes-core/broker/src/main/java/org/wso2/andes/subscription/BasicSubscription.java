@@ -58,6 +58,9 @@ public class BasicSubscription implements AndesSubscription {
     //whether the subscription is online or offline - MANDOTORY
     protected boolean hasExternalSubscriptions;
 
+    // The subscription type the basic subscription belongs to, basically this represents the protocol - OPTIONAL
+    private SubscriptionType subscriptionType;
+
 
     /**
      * Create a basic subscription instance from encoded info
@@ -94,6 +97,10 @@ public class BasicSubscription implements AndesSubscription {
                 this.isTargetQueueBoundExchangeAutoDeletable = tokens[1].equals("null") ? null : Short.parseShort(tokens[1]);
             } else if (tokens[0].equals("hasExternalSubscriptions")) {
                 this.hasExternalSubscriptions = Boolean.parseBoolean(tokens[1]);
+            } else if (tokens[0].equals("subscriptionType")) {
+                this.subscriptionType = SubscriptionType.valueOf(tokens[1]);
+                // Will automatically throw an IllegalArgumentException if the value does not match to any
+                // SubscriptionType
             } else {
                 if (tokens[0].trim().length() > 0) {
                     throw new UnsupportedOperationException("Unexpected token " + tokens[0]);
@@ -146,6 +153,20 @@ public class BasicSubscription implements AndesSubscription {
         this.isTargetQueueBoundExchangeAutoDeletable = isTargetQueueBoundExchangeAutoDeletable;
         this.hasExternalSubscriptions = hasExternalSubscriptions;
         setStorageQueueName();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void setSubscriptionType(SubscriptionType subscriptionType) {
+        this.subscriptionType = subscriptionType;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public SubscriptionType getSubscriptionType() {
+        return subscriptionType;
     }
 
     @Override
@@ -252,6 +273,11 @@ public class BasicSubscription implements AndesSubscription {
                 .append(",subscribedNode=").append(subscribedNode)
                 .append(",subscribedTime=").append(subscribeTime)
                 .append(",hasExternalSubscriptions=").append(hasExternalSubscriptions);
+
+        if (subscriptionType != null) {
+            buf.append(",subscriptionType=").append(subscriptionType);
+        }
+
         return buf.toString();
     }
 

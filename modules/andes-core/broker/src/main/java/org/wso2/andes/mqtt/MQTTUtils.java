@@ -19,6 +19,7 @@ package org.wso2.andes.mqtt;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.dna.mqtt.moquette.messaging.spi.impl.subscriptions.SubscriptionsStore;
 import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
 import org.wso2.andes.kernel.*;
 
@@ -178,5 +179,18 @@ public class MQTTUtils {
      */
     public static int convertMQTTProtocolTypeToInteger(AbstractMessage.QOSType qos) {
         return qos.getValue();
+    }
+
+    /**
+     * Check if a subscribed queue bound destination routing key matches with a given message routing key using MQTT
+     * wildcards.
+     *
+     * @param queueBoundRoutingKey The subscribed destination with/without wildcards
+     * @param messageRoutingKey    The message destination routing key without wildcards
+     * @return Is queue bound routing key match the message routing key
+     */
+    public static boolean isTargetQueueBoundByMatchingToRoutingKey(String queueBoundRoutingKey,
+                                                                   String messageRoutingKey) {
+        return SubscriptionsStore.matchTopics(messageRoutingKey, queueBoundRoutingKey);
     }
 }

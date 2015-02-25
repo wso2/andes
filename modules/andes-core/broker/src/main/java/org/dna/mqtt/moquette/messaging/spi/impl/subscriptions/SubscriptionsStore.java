@@ -261,10 +261,7 @@ public class SubscriptionsStore {
                     }
                 }
             }
-            //if last token was a SINGLE then treat it as an empty
-            if (subToken == Token.SINGLE && (i - msgTokens.size() == 1)) {
-               i--; 
-            }
+
             return i == msgTokens.size();
         } catch (ParseException ex) {
             LOG.error(null, ex);

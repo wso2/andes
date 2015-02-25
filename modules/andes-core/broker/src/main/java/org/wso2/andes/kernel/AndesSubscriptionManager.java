@@ -171,28 +171,6 @@ public class AndesSubscriptionManager {
     }
 
     /**
-     * check if any local active non durable subscription exists
-     *
-     * @param isTopic if topic subscriptions are queried
-     * @return if any subscription exists
-     */
-    public boolean checkIfActiveLocalNonDurableSubscriptionsExists(boolean isTopic) {
-        List<LocalSubscription> activeSubscriptions = subscriptionStore.getActiveNonDurableLocalSubscribers(isTopic);
-        return !activeSubscriptions.isEmpty();
-    }
-
-    /**
-     * check if any cluster active subscription exists
-     *
-     * @param isTopic if topic subscriptions are queried
-     * @return if any subscription exists
-     */
-    public boolean checkIfActiveClusterSubscriptionsExists(boolean isTopic) {
-        List<AndesSubscription> activeSubscriptions = subscriptionStore.getActiveClusterSubscribersForNode(ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(), isTopic);
-        return !activeSubscriptions.isEmpty();
-    }
-
-    /**
      * close subscription
      *
      * @param subscription subscription to close
