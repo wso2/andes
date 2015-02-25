@@ -322,9 +322,9 @@ public class QMFService implements ConfigStore.ConfigEventListener, Closeable {
         registerSchema(PACKAGE);
 
 
-        for (ConfigObjectType<T,C> v : _qmfClassMapping.values()) {
+        for (ConfigObjectType<T, C> v : _qmfClassMapping.values()) {
 
-            ConfigStore.ConfigEventListener<T,C> temp = this;
+            ConfigStore.ConfigEventListener<T, C> temp = this;
             configStore.addConfigEventListener(v, temp);
         }
         init();
@@ -335,8 +335,8 @@ public class QMFService implements ConfigStore.ConfigEventListener, Closeable {
     }
 
     private <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> void closes() {
-        for (ConfigObjectType<T,C> v : _qmfClassMapping.values()) {
-            ConfigStore.ConfigEventListener<T,C> temp = this;
+        for (ConfigObjectType<T, C> v : _qmfClassMapping.values()) {
+            ConfigStore.ConfigEventListener<T, C> temp = this;
             _configStore.removeConfigEventListener(v, temp);
         }
         _listeners.clear();
