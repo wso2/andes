@@ -1042,6 +1042,7 @@ public class SubscriptionStore {
         if (type == SubscriptionChange.ADDED || type == SubscriptionChange.DISCONNECTED) {
 
             String destinationQueue = subscription.getTargetQueue();
+            String destinationTopic = subscription.getSubscribedDestination();
             //Store the subscription
             String destinationIdentifier = (subscription.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destinationQueue;
             String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
@@ -1065,14 +1066,14 @@ public class SubscriptionStore {
 
             } else if (subscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
                 if (isBitmap) {
-                    subscriptionBitMapHandler.addLocalSubscription(destinationQueue, subscription);
+                    subscriptionBitMapHandler.addLocalSubscription(destinationTopic, subscription);
                 } else {
-                    Map<String, LocalSubscription> localSubscriptions = localTopicSubscriptionMap.get(destinationQueue);
+                    Map<String, LocalSubscription> localSubscriptions = localTopicSubscriptionMap.get(destinationTopic);
                     if (localSubscriptions == null) {
                         localSubscriptions = new ConcurrentHashMap<String, LocalSubscription>();
                     }
                     localSubscriptions.put(subscriptionID, subscription);
-                    localTopicSubscriptionMap.put(destinationQueue, localSubscriptions);
+                    localTopicSubscriptionMap.put(destinationTopic, localSubscriptions);
                 }
             }
 
