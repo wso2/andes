@@ -123,6 +123,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
             List.class),
 
     /**
+     * class name of the authenticator to use. class should inherit from {@link org.dna.mqtt.moquette.server.IAuthenticator}
+     * <p>Note: default implementation authenticates against carbon user store based on supplied username/password     
+     */
+    TRANSPORTS_MQTT_USER_AUTHENTICATOR_CLASS("transports/mqtt/authenticator/@class", 
+                                             "org.wso2.carbon.andes.authentication.mqtt.CarbonBasedMQTTAuthenticator", String.class),
+    
+            
+    /**
      * Request the username of a user based on its index in the transports/mqtt/users/user collection.
      */
     TRANSPORTS_MQTT_USERNAME("transports/mqtt/users/user[{i}]/@userName", "",
