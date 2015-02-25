@@ -1041,7 +1041,7 @@ public class SubscriptionStore {
 
         if (type == SubscriptionChange.ADDED || type == SubscriptionChange.DISCONNECTED) {
 
-            String destinationQueue = subscription.getSubscribedDestination();
+            String destinationQueue = subscription.getTargetQueue();
             //Store the subscription
             String destinationIdentifier = (subscription.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destinationQueue;
             String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
