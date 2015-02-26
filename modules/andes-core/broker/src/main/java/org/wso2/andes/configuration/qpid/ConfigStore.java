@@ -26,7 +26,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class ConfigStore {
+public class ConfigStore
+{
     private ConcurrentHashMap<ConfigObjectType, ConcurrentHashMap<UUID, ConfiguredObject>> _typeMap =
             new ConcurrentHashMap<ConfigObjectType, ConcurrentHashMap<UUID, ConfiguredObject>>();
 
@@ -38,43 +39,57 @@ public class ConfigStore {
     private final AtomicLong _objectIdSource = new AtomicLong(0l);
 
 
-    public enum Event {
+    public enum Event
+    {
         CREATED, DELETED
     }
 
-    public interface ConfigEventListener<T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> {
+    public interface ConfigEventListener<T extends ConfigObjectType<T,C>, C extends ConfiguredObject<T, C>>
+    {
         void onEvent(C object, Event evt);
     }
 
-    private ConfigStore() {
+    private ConfigStore()
+    {
     }
 
-    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> ConfiguredObject<T, C> getConfiguredObject(ConfigObjectType<T, C> type, UUID id) {
+    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> ConfiguredObject<T, C> getConfiguredObject(ConfigObjectType<T,C> type, UUID id)
+    {
         ConcurrentHashMap<UUID, ConfiguredObject> typeMap = _typeMap.get(type);
-        if (typeMap != null) {
+        if(typeMap != null)
+        {
             return typeMap.get(id);
-        } else {
+        }
+        else
+        {
             return null;
         }
 
     }
 
-    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> Collection<? extends C> getConfiguredObjects(ConfigObjectType<T, C> type) {
+    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> Collection<? extends C> getConfiguredObjects(ConfigObjectType<T,C> type)
+    {
         ConcurrentHashMap typeMap = _typeMap.get(type);
-        if (typeMap != null) {
+        if(typeMap != null)
+        {
             return typeMap.values();
-        } else {
+        }
+        else
+        {
             return Collections.EMPTY_LIST;
         }
 
     }
 
-    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> void addConfiguredObject(ConfiguredObject<T, C> object) {
+    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> void addConfiguredObject(ConfiguredObject<T, C> object)
+    {
         ConcurrentHashMap typeMap = _typeMap.get(object.getConfigType());
-        if (typeMap == null) {
+        if(typeMap == null)
+        {
             typeMap = new ConcurrentHashMap();
             ConcurrentHashMap oldMap = _typeMap.putIfAbsent(object.getConfigType(), typeMap);
-            if (oldMap != null) {
+            if(oldMap != null)
+            {
                 typeMap = oldMap;
             }
 
@@ -85,20 +100,25 @@ public class ConfigStore {
     }
 
 
-    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> void removeConfiguredObject(ConfiguredObject<T, C> object) {
+    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> void removeConfiguredObject(ConfiguredObject<T, C> object)
+    {
         ConcurrentHashMap typeMap = _typeMap.get(object.getConfigType());
-        if (typeMap != null) {
+        if(typeMap != null)
+        {
             typeMap.remove(object.getId());
             sendEvent(Event.DELETED, object);
         }
     }
 
-    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> void addConfigEventListener(ConfigObjectType<T, C> type, ConfigEventListener<T, C> listener) {
+    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> void addConfigEventListener(T type, ConfigEventListener<T,C> listener)
+    {
         CopyOnWriteArrayList listeners = _listenerMap.get(type);
-        if (listeners == null) {
+        if(listeners == null)
+        {
             listeners = new CopyOnWriteArrayList();
             CopyOnWriteArrayList oldListeners = _listenerMap.putIfAbsent(type, listeners);
-            if (oldListeners != null) {
+            if(oldListeners != null)
+            {
                 listeners = oldListeners;
             }
 
@@ -108,41 +128,53 @@ public class ConfigStore {
 
     }
 
-    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> void removeConfigEventListener(ConfigObjectType<T, C> type, ConfigEventListener<T, C> listener) {
+    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> void removeConfigEventListener(T type, ConfigEventListener<T,C> listener)
+    {
         CopyOnWriteArrayList listeners = _listenerMap.get(type);
-        if (listeners != null) {
+        if(listeners != null)
+        {
             listeners.remove(listener);
         }
     }
 
-    private void sendEvent(Event e, ConfiguredObject o) {
+    private void sendEvent(Event e, ConfiguredObject o)
+    {
         CopyOnWriteArrayList<ConfigEventListener> listeners = _listenerMap.get(o.getConfigType());
-        if (listeners != null) {
-            for (ConfigEventListener listener : listeners) {
+        if(listeners != null)
+        {
+            for(ConfigEventListener listener : listeners)
+            {
                 listener.onEvent(o, e);
             }
         }
     }
 
-    public boolean setRoot(SystemConfig object) {
-        if (_root.compareAndSet(null, object)) {
+    public boolean setRoot(SystemConfig object)
+    {
+        if(_root.compareAndSet(null,object))
+        {
             addConfiguredObject(object);
             return true;
-        } else {
+        }
+        else
+        {
             return false;
         }
     }
 
-    public UUID createId() {
+    public UUID createId()
+    {
         return new UUID(0l, _objectIdSource.getAndIncrement());
     }
 
 
-    public SystemConfig getRoot() {
+    public SystemConfig getRoot()
+    {
         return _root.get();
     }
 
-    public static ConfigStore newInstance() {
+    public static ConfigStore newInstance()
+    {
         return new ConfigStore();
     }
 

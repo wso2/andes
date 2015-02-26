@@ -34,18 +34,14 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class QMFService implements ConfigStore.ConfigEventListener, Closeable {
 
-
     private IApplicationRegistry _applicationRegistry;
     private ConfigStore _configStore;
 
 
     private final Map<String, QMFPackage> _supportedSchemas = new HashMap<String, QMFPackage>();
-
     private static final Map<String, ConfigObjectType> _qmfClassMapping = new HashMap<String, ConfigObjectType>();
 
-
     static {
-
         _qmfClassMapping.put("system", SystemConfigType.getInstance());
         _qmfClassMapping.put("broker", BrokerConfigType.getInstance());
         _qmfClassMapping.put("vhost", VirtualHostConfigType.getInstance());
@@ -316,28 +312,20 @@ public class QMFService implements ConfigStore.ConfigEventListener, Closeable {
             };
 
 
-    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> QMFService(ConfigStore configStore, IApplicationRegistry applicationRegistry) {
+    public QMFService(ConfigStore configStore, IApplicationRegistry applicationRegistry) {
         _configStore = configStore;
         _applicationRegistry = applicationRegistry;
         registerSchema(PACKAGE);
 
-
-        for (ConfigObjectType<T, C> v : _qmfClassMapping.values()) {
-
-            ConfigStore.ConfigEventListener<T, C> temp = this;
-            configStore.addConfigEventListener(v, temp);
+        for (ConfigObjectType v : _qmfClassMapping.values()) {
+            configStore.addConfigEventListener(v, this);
         }
         init();
     }
 
     public void close() {
-        closes();
-    }
-
-    private <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> void closes() {
-        for (ConfigObjectType<T, C> v : _qmfClassMapping.values()) {
-            ConfigStore.ConfigEventListener<T, C> temp = this;
-            _configStore.removeConfigEventListener(v, temp);
+        for (ConfigObjectType v : _qmfClassMapping.values()) {
+            _configStore.removeConfigEventListener(v, this);
         }
         _listeners.clear();
 
