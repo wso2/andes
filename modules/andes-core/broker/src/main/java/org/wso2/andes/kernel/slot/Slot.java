@@ -18,7 +18,12 @@
 
 package org.wso2.andes.kernel.slot;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +32,8 @@ import java.util.List;
  * This class stores all the data related to a slot
  */
 public class Slot implements Serializable, Comparable<Slot> {
+
+    private static Log log = LogFactory.getLog(Slot.class);
 
     /**
      * Number of messages in the slot
@@ -147,23 +154,33 @@ public class Slot implements Serializable, Comparable<Slot> {
      * transition compared to current latest state.
      * @param state state to be transferred
      */
-    public void addState(SlotState state) {
+    public boolean addState(SlotState state) {
+
+        boolean isValidTransition = false;
+
         if(slotStates.isEmpty()) {
             if(SlotState.CREATED.equals(state)) {
+                isValidTransition = true;
                 slotStates.add(state);
             } else {
-                throw new RuntimeException("Invalid State transition suggested: " + state);
+                log.warn("Invalid State transition suggested: " + state);
             }
         } else {
-            boolean isValidTransition = slotStates.get(slotStates.size() - 1).isValidNextTransition(state);
+            isValidTransition = slotStates.get(slotStates.size() - 1).isValidNextTransition(state);
             if(isValidTransition) {
                 slotStates.add(state);
             } else {
-                throw new RuntimeException("Invalid State transition from " + slotStates.get
+                log.warn("Invalid State transition from " + slotStates.get
                         (slotStates.size() - 1) + " suggested: " + state + " Slot ID: " + this
                         .getId());
+
+//                throw new RuntimeException("Invalid State transition from " + slotStates.get
+//                        (slotStates.size() - 1) + " suggested: " + state + " Slot ID: " + this
+//                        .getId());
             }
         }
+
+        return isValidTransition;
     }
 
     public List<SlotState> getSlotStates() {
@@ -223,19 +240,9 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     @Override
     public String toString() {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("Slot{")
-                .append("startMessageId=")
-                .append(startMessageId)
-                .append(", storageQueueName='")
-                .append(storageQueueName)
-                .append("'")
-                .append(", endMessageId=")
-                .append(endMessageId)
-                .append(", states=")
-                .append(getPrintableSlotStates())
-                .append("}");
-        return stringBuilder.toString();
+
+        Gson gson = new GsonBuilder().create();
+        return gson.toJson(this);
     }
 
     /**
@@ -250,7 +257,8 @@ public class Slot implements Serializable, Comparable<Slot> {
     @SuppressWarnings("NullableProblems")
     @Override
     public int compareTo(Slot other) {
-        if(this.getStartMessageId() == other.getStartMessageId()) {
+        if ((this.getStartMessageId() == other.getStartMessageId()) && (this.getEndMessageId() == other
+                .getEndMessageId()) && this.getStorageQueueName().equals(other.getStorageQueueName())) {
             return 0;
         } else {
             return this.getStartMessageId() > other.getStartMessageId() ? 1 : -1;

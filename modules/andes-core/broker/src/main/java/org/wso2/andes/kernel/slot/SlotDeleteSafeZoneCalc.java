@@ -106,12 +106,10 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                     }
                 }
 
-                if (slotDeleteSafeZone < globalSafeZoneVal) {
-                    slotDeleteSafeZone = globalSafeZoneVal;
-                }
+                slotDeleteSafeZone = globalSafeZoneVal;
 
                 if (log.isDebugEnabled()) {
-                    log.info("Safe Zone Calculated : " + globalSafeZoneVal);
+                    log.info("Safe Zone Calculated : " + slotDeleteSafeZone);
                 }
 
                 try {
