@@ -330,12 +330,13 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
                 m_storageService.storePublishForFuture(newPublishEvt);
             } else {
                 //if QoS 2 then store it in temp memory
-                if (qos == AbstractMessage.QOSType.EXACTLY_ONCE) {
+                //TODO need to address the situation of the subscriber failing to receive the message in QOS 2
+          /*      if (qos == AbstractMessage.QOSType.EXACTLY_ONCE) {
                     String publishKey = String.format("%s%d", subscription.getClientId(), messageID);
                     PublishEvent newPublishEvt = new PublishEvent(topic, qos, message, retain,
                             subscription.getClientId(), messageID, null);
                     m_storageService.addInFlight(newPublishEvt, publishKey);
-                }
+                }*/
                 //publish
                 if (subscription.isActive()) {
                     //Change done by WSO2 will be overloading the method
@@ -531,12 +532,16 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
     }
 
     void processPubComp(String clientID, int messageID) {
+        //For now let's stick with only the debug log to indicate the arrival of the message
+        //However need to add the mechanism to recover if the subscriber fails to send the PUBCOMP
         if (log.isDebugEnabled()) {
             log.debug("ProcessPubComp invoked for clientID " + clientID + " ad messageID " + messageID);
         }
         //once received the PUBCOMP then remove the message from the temp memory
-        String publishKey = String.format("%s%d", clientID, messageID);
-        m_storageService.cleanInFlight(publishKey);
+        //String publishKey = String.format("%s%d", clientID, messageID);
+        //Commented since its usage is not applicable here
+        //TODO need to define actions when the subscriber fails to send the PUBCOMP back to the server
+      //  m_storageService.cleanInFlight(publishKey);
     }
 
     void processDisconnect(ServerChannel session, String clientID, boolean cleanSession) throws InterruptedException {
