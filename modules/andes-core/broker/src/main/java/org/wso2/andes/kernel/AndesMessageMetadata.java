@@ -95,6 +95,11 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      */
     private Slot slot;
 
+    /**
+     * The meta data type which specify which protocol this meta data belongs to``
+     */
+    private MessageMetaDataType metaDataType;
+
     public AndesMessageMetadata() {
     }
 
@@ -216,6 +221,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         clone.isPersistent = isPersistent;
         clone.slot = slot;
         clone.arrivalTime = arrivalTime;
+        clone.metaDataType = metaDataType;
         return clone;
     }
 
@@ -255,6 +261,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         buf.position(1);
         buf = buf.slice();
         MessageMetaDataType type = MessageMetaDataType.values()[metadata[0]];
+        metaDataType = type;
         StorableMessageMetaData mdt = type.getFactory()
                 .createMetaData(buf);
         //todo need to discuss on making the flow more generic
@@ -291,6 +298,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         buf.position(1);
         buf = buf.slice();
         MessageMetaDataType type = MessageMetaDataType.values()[originalMetadata[0]];
+        metaDataType = type;
         StorableMessageMetaData original_mdt = type.getFactory()
                 .createMetaData(buf);
 
@@ -356,5 +364,13 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         } else {
             return this.getMessageID() > other.getMessageID() ? 1 : -1;
         }
+    }
+
+    public MessageMetaDataType getMetaDataType() {
+        return metaDataType;
+    }
+
+    public void setMetaDataType(MessageMetaDataType metaDataType) {
+        this.metaDataType = metaDataType;
     }
 }

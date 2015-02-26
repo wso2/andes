@@ -105,6 +105,7 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
      */
     public MQTTLocalSubscription(String mqttTopicSubscription) {
         super(mqttTopicSubscription);
+        setSubscriptionType(SubscriptionType.MQTT);
         //setTargetBoundExchange();
         setIsTopic(true);
         setNodeInfo();

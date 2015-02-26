@@ -24,6 +24,7 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.distruptor.delivery.DisruptorBasedFlusher;
 import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.ArrayList;
@@ -379,6 +380,16 @@ public class MessageFlusher {
                          * subscribers who appeared before publishing this message should receive it
                          */
                         if (subscription.isDurable() || (subscription.getSubscribeTime() > message.getArrivalTime())) {
+                            subscriptionIterator.remove();
+                        }
+
+                        // Avoid sending if the subscriber is MQTT and message is not MQTT
+                        if (AndesSubscription.SubscriptionType.MQTT == subscription.getSubscriptionType()
+                                && MessageMetaDataType.META_DATA_MQTT != message.getMetaDataType()) {
+                            subscriptionIterator.remove();
+                        // Avoid sending if the subscriber is AMQP and message is MQTT
+                        } else if (AndesSubscription.SubscriptionType.AMQP == subscription.getSubscriptionType()
+                                && MessageMetaDataType.META_DATA_MQTT == message.getMetaDataType()) {
                             subscriptionIterator.remove();
                         }
                     }

@@ -20,6 +20,15 @@ package org.wso2.andes.kernel;
 
 
 public interface AndesSubscription {
+
+    /**
+     * Different subscription types represented by a {@link AndesSubscription} object.
+     */
+    public enum SubscriptionType {
+        MQTT,
+        AMQP
+    }
+
     /**
      * @return subscription ID of the subscription or null
      */
@@ -103,4 +112,16 @@ public interface AndesSubscription {
      * @return  whether subscribed queue external subscription
      */
     public boolean hasExternalSubscriptions();
+
+    /**
+     * Set the subscription type to indicate to which protocol this subscription belongs to.
+     * @param subscriptionType The subscription type
+     */
+    public void setSubscriptionType(SubscriptionType subscriptionType);
+
+    /**
+     * Get the subscription type which decide the protocol this subscription belongs to.
+     * @return Subscription type
+     */
+    public SubscriptionType getSubscriptionType();
 }

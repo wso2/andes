@@ -37,8 +37,6 @@ import org.wso2.andes.server.subscription.SubscriptionImpl;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * This class represents a AMQP subscription locally created
@@ -79,6 +77,8 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
 
         super(subscriptionID, destination, isBoundToTopic, isExclusive, isDurable, subscribedNode, subscribeTime, targetQueue, targetQueueOwner,
                 targetQueueBoundExchange, targetQueueBoundExchangeType, isTargetQueueBoundExchangeAutoDeletable, hasExternalSubscriptions);
+
+        setSubscriptionType(SubscriptionType.AMQP);
 
         this.amqQueue = amqQueue;
         this.amqpSubscription = amqpSubscription;
@@ -241,31 +241,6 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
         } catch (AndesException e) {
             throw new AndesException("Error occurred while delivering message with ID : " + msgHeaderStringID, e);
         }
-    }
-
-    /**
-     * perform AMQP specific routing key match
-     *
-     * @param binding binding key
-     * @param topic   binding key to match
-     * @return is matching
-     */
-    private boolean isMatching(String binding, String topic) {
-        boolean isMatching = false;
-        if (binding.equals(topic)) {
-            isMatching = true;
-        } else if (binding.indexOf(".#") > 1) {
-            String p = binding.substring(0, binding.indexOf(".#"));
-            Pattern pattern = Pattern.compile(p + ".*");
-            Matcher matcher = pattern.matcher(topic);
-            isMatching = matcher.matches();
-        } else if (binding.indexOf(".*") > 1) {
-            String p = binding.substring(0, binding.indexOf(".*"));
-            Pattern pattern = Pattern.compile("^" + p + "[.][^.]+$");
-            Matcher matcher = pattern.matcher(topic);
-            isMatching = matcher.matches();
-        }
-        return isMatching;
     }
 
 
