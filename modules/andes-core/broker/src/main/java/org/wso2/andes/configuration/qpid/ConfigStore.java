@@ -110,7 +110,7 @@ public class ConfigStore
         }
     }
 
-    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> void addConfigEventListener(T type, ConfigEventListener<T,C> listener)
+    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> void addConfigEventListener(ConfigObjectType<T,C> type, ConfigEventListener<T,C> listener)
     {
         CopyOnWriteArrayList listeners = _listenerMap.get(type);
         if(listeners == null)
@@ -128,7 +128,7 @@ public class ConfigStore
 
     }
 
-    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> void removeConfigEventListener(T type, ConfigEventListener<T,C> listener)
+    public <T extends ConfigObjectType<T, C>, C extends ConfiguredObject<T, C>> void removeConfigEventListener(ConfigObjectType<T,C> type, ConfigEventListener<T,C> listener)
     {
         CopyOnWriteArrayList listeners = _listenerMap.get(type);
         if(listeners != null)
