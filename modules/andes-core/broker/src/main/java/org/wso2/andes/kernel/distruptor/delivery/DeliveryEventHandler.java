@@ -88,6 +88,12 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                 if (subscription.isActive()) {
                     subscription.sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
                 } else {
+                    //destination would be target queue if it is durable topic, otherwise it is queue or non durable topic
+                    if(subscription.isBoundToTopic() && subscription.isDurable()){
+                        message.setDestination(subscription.getTargetQueue());
+                    } else {
+                        message.setDestination(subscription.getSubscribedDestination());
+                    }
                     MessageFlusher.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
                 }
             } catch (Throwable e) {
