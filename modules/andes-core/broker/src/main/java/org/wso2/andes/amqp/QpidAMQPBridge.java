@@ -84,12 +84,17 @@ public class QpidAMQPBridge {
      * @throws AMQException
      */
     public void messageReceived(IncomingMessage incomingMessage, UUID channelID, AndesChannel andesChannel) throws AMQException {
+
+        long receivedTime = System.currentTimeMillis();
         try {
             if (log.isDebugEnabled()) {
                 log.debug("Message id " + incomingMessage.getMessageNumber() + " received");
             }
             AMQMessage message = new AMQMessage(incomingMessage.getStoredMessage());
-            message.getMessageMetaData().setArrivalTime(incomingMessage.getArrivalTime());
+
+            // message arrival time set to mb node's system time without using
+            // message published time by publisher.
+            message.getMessageMetaData().setArrivalTime(receivedTime);
 
             AndesMessageMetadata metadata = AMQPUtils.convertAMQMessageToAndesMetadata(message, channelID);
             String queue = message.getRoutingKey();

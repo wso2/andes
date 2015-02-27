@@ -108,6 +108,8 @@ public class MQTTUtils {
      */
     public static AndesMessageMetadata convertToAndesHeader(long messageID, String topic, int qosLevel,
                                                             int messageContentLength, boolean retain, UUID publisherID) {
+        long receivedTime = System.currentTimeMillis();
+
         AndesMessageMetadata messageHeader = new AndesMessageMetadata();
         messageHeader.setMessageID(messageID);
         messageHeader.setTopic(true);
@@ -116,6 +118,8 @@ public class MQTTUtils {
         messageHeader.setChannelId(publisherID);
         messageHeader.setMessageContentLength(messageContentLength);
         messageHeader.setStorageQueueName(topic);
+        // message arrival time set to mb node's system time.
+        messageHeader.setArrivalTime(receivedTime);
         if (log.isDebugEnabled()) {
             log.debug("Message with id " + messageID + " having the topic " + topic + " with QOS" + qosLevel
                     + " and retain flag set to " + retain + " was created");
