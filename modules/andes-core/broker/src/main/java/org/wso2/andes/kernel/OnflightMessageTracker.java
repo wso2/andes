@@ -327,7 +327,6 @@ public class OnflightMessageTracker {
             }
             slot.setSlotInActive();
             slotWorker.deleteSlot(slot);
-            //slotWorker.checkForSlotCompletionAndResend(slot);
         }
 
     }

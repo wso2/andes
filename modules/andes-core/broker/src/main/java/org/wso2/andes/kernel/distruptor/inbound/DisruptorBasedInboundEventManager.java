@@ -175,6 +175,9 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
 
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void updateSlotDeletionSafeZone() {
         // Publishers claim events in sequence
@@ -186,8 +189,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
             // make the event available to EventProcessors
             ringBuffer.publish(sequence);
             if (log.isDebugEnabled()) {
-                log.debug("[ Sequence: " + sequence + " ] " + event.getEventType() +
-                          "' published to Disruptor");
+                log.debug("[ Sequence: " + sequence + " ] " + event.getEventType() + "' published to Disruptor");
             }
         }
     }

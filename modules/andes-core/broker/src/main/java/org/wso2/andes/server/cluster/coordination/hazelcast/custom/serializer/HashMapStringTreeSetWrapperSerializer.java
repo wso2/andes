@@ -29,8 +29,11 @@ import org.wso2.andes.kernel.slot.Slot;
 import java.io.IOException;
 import java.util.*;
 
+/**
+ * Class used to serialize/un-serialize a HashMap<String,TreeSet<Slot>> data structure.
+ */
 @SuppressWarnings("unused")
-public class HashMapStringListWrapperSerializer implements
+public class HashMapStringTreeSetWrapperSerializer implements
         StreamSerializer<HashmapStringTreeSetWrapper> {
 
 
@@ -77,8 +80,6 @@ public class HashMapStringListWrapperSerializer implements
         }
         stringBuilder.append("}");
         stringBuilder.append("}");
-        /*System.out.println("==FIXX: HashMapStringListWrapperSerializer Json write -- " + stringBuilder
-                .toString());*/
         objectDataOutput.writeUTF(stringBuilder.toString());
     }
 
@@ -104,8 +105,6 @@ public class HashMapStringListWrapperSerializer implements
                 slot.setEndMessageId(jsonObjectForSlot.get("endMessageId").getAsLong());
                 slot.setStorageQueueName(jsonObjectForSlot.get("storageQueueName").getAsString());
                 slot.decodeAndSetSlotStates(jsonObjectForSlot.get("states").getAsString());
-                /*System.out.println("FIXX: HashMapStringListWrapperSerializer Json read -- " + jsonObjectForSlot.get("states").getAsString
-                        ());*/
                 if (!jsonObjectForSlot.get("isSlotActive").getAsBoolean()) {
                     slot.setSlotInActive();
                 }

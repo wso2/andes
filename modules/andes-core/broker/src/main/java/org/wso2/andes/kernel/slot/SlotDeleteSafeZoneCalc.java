@@ -20,6 +20,7 @@ package org.wso2.andes.kernel.slot;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 
 import java.util.Map;
 import java.util.Set;

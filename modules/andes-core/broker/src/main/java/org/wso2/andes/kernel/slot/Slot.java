@@ -174,23 +174,16 @@ public class Slot implements Serializable, Comparable<Slot> {
                         (slotStates.size() - 1) + " suggested: " + state + " Slot ID: " + this
                         .getId());
 
-//                throw new RuntimeException("Invalid State transition from " + slotStates.get
-//                        (slotStates.size() - 1) + " suggested: " + state + " Slot ID: " + this
-//                        .getId());
             }
         }
 
         return isValidTransition;
     }
 
-    public List<SlotState> getSlotStates() {
-        return slotStates;
-    }
-
-    public SlotState getCurrentState() {
-        return slotStates.get(slotStates.size() - 1);
-    }
-
+    /**
+     * Convert Slot state list to a string
+     * @return Encoded string
+     */
     public String encodeSlotStates() {
         String encodedString;
         StringBuilder builder = new StringBuilder();
@@ -201,6 +194,10 @@ public class Slot implements Serializable, Comparable<Slot> {
         return encodedString;
     }
 
+    /**
+     * Decode slot states from a string
+     * @param stateInfo encoded string
+     */
     public void decodeAndSetSlotStates(String stateInfo) {
         String[] states = StringUtils.split(stateInfo, "%");
         slotStates.clear();
@@ -208,14 +205,6 @@ public class Slot implements Serializable, Comparable<Slot> {
             int code = Integer.parseInt(state);
             slotStates.add(SlotState.parseSlotState(code));
         }
-    }
-
-    private String getPrintableSlotStates() {
-        StringBuilder stringBuilder = new StringBuilder();
-        for(SlotState state: slotStates) {
-            stringBuilder.append(state).append(" ,");
-        }
-        return stringBuilder.toString();
     }
 
     @Override
@@ -246,7 +235,7 @@ public class Slot implements Serializable, Comparable<Slot> {
     }
 
     /**
-     * Return uniqueue id for the slot
+     * Return unique id for the slot
      *
      * @return slot message id
      */

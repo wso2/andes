@@ -65,9 +65,6 @@ public class TreeSetSlotWrapperSerializer implements StreamSerializer<TreeSetSlo
         }
         stringBuilder.append("}");
 
-/*        System.out.println("==FIXX: TreeSetSlotWrapperSerializer Json write -- " + stringBuilder
-                .toString());*/
-
         objectDataOutput.writeUTF(stringBuilder.toString());
     }
 
@@ -86,8 +83,6 @@ public class TreeSetSlotWrapperSerializer implements StreamSerializer<TreeSetSlo
             slot.setEndMessageId(jsonObject.get("endMessageId").getAsLong());
             slot.setStorageQueueName(jsonObject.get("storageQueueName").getAsString());
             slot.decodeAndSetSlotStates(jsonObject.get("states").getAsString());
-/*            System.out.println("FIXX: TreeSetSlotWrapperSerializer Json read -- " + jsonObject.get("states").getAsString
-                    ());*/
             if (!jsonObject.get("isSlotActive").getAsBoolean()) {
                 slot.setSlotInActive();
             }

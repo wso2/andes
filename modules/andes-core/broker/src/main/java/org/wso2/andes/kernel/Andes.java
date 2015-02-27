@@ -124,11 +124,15 @@ public class Andes {
         log.info("Andes API initialised.");
     }
 
+    /**
+     * Start the safe zone calculation worker. The safe zone is used to decide if a slot can be safely deleted,
+     * assuming all messages in the slot range has been delivered.
+     */
     public void startSafeZoneAnalysisWorker() {
         SafeZoneUpdateEventTriggeringTask safeZoneUpdateTask =
                 new SafeZoneUpdateEventTriggeringTask(inboundEventManager);
 
-        log.info("FIXX : " + "Starting Safe Zone Calclulator");
+        log.info("Starting Safe Zone Calculator for slots.");
         safeZoneUpdateScheduler.scheduleAtFixedRate(safeZoneUpdateTask,
                 5, safeZoneUpdateTriggerInterval, TimeUnit.MILLISECONDS);
 

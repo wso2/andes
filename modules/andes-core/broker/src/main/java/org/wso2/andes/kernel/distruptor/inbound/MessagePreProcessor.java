@@ -60,6 +60,11 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
         }
     }
 
+    /**
+     * Calculate the current safe zone for this node (using the last generated message ID)
+     * @param event event
+     * @param sequence position of the event at the event ringbuffer
+     */
     private void setSafeZoneLimit(InboundEvent event, long sequence) {
         long safeZoneLimit = idGenerator.getNextId();
         event.setSafeZoneLimit(safeZoneLimit);

@@ -34,6 +34,9 @@ public class InboundEvent {
 
     private AndesChannel channel;
 
+    /**
+     * Maintains the last generated message ID as the safe zone of this node.
+     */
     private long safeZoneLimit;
 
     public AndesChannel getChannel() {

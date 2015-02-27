@@ -18,6 +18,10 @@
 
 package org.wso2.andes.kernel;
 
+/**
+ * Disruptor task used to asynchronously communicate safe zone of this node to the coordinator and retrieve the
+ * derived safe zone value for the whole cluster.
+ */
 public class SafeZoneUpdateEventTriggeringTask implements Runnable{
 
     private InboundEventManager inboundEventManager;
