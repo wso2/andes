@@ -714,14 +714,16 @@ public class SlotManager {
                     //clear overlapped slot map
                     HashmapStringTreeSetWrapper overlappedSlotsWrapper = overLappedSlotMap.get
                             (nodeId);
-                    HashMap<String, TreeSet<Slot>> queueToOverlappedSlotMap = null;
-                    if (wrapper != null) {
-                        queueToOverlappedSlotMap = overlappedSlotsWrapper.getStringListHashMap();
-                    }
-                    if (queueToSlotMap != null) {
-                        queueToOverlappedSlotMap.remove(queueName);
-                        overlappedSlotsWrapper.setStringListHashMap(queueToOverlappedSlotMap);
-                        overLappedSlotMap.set(nodeId, overlappedSlotsWrapper);
+                    if (null != overlappedSlotsWrapper) {
+                        HashMap<String, TreeSet<Slot>> queueToOverlappedSlotMap = null;
+                        if (wrapper != null) {
+                            queueToOverlappedSlotMap = overlappedSlotsWrapper.getStringListHashMap();
+                        }
+                        if (queueToSlotMap != null) {
+                            queueToOverlappedSlotMap.remove(queueName);
+                            overlappedSlotsWrapper.setStringListHashMap(queueToOverlappedSlotMap);
+                            overLappedSlotMap.set(nodeId, overlappedSlotsWrapper);
+                        }
                     }
                 }
             }
