@@ -316,7 +316,7 @@ public class MBThriftClient {
         reconnectingStarted = reconnectingFlag;
     }
 
-    public static long updateSlotDeletionSafeZone(long safeZoneMessageID, String nodeID) {
+    public static synchronized long updateSlotDeletionSafeZone(long safeZoneMessageID, String nodeID) {
         long globalSafeZone = 0;
         try {
             client = getServiceClient();
