@@ -6,6 +6,7 @@ import com.lmax.disruptor.IgnoreExceptionHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.dsl.Disruptor;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.IMatchingCondition;
@@ -23,6 +24,7 @@ import org.dna.mqtt.moquette.server.IAuthenticator;
 import org.dna.mqtt.moquette.server.ServerChannel;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.MQTTUserAuthenticationScheme;
 import org.wso2.andes.mqtt.MQTTException;
 
 import java.nio.ByteBuffer;
@@ -34,6 +36,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.wso2.andes.configuration.enums.AndesConfiguration.TRANSPORTS_MQTT_DELIVERY_BUFFER_SIZE;
+import static org.wso2.andes.configuration.enums.AndesConfiguration.TRANSPORTS_MQTT_USER_ATHENTICATION;
 
 public class ProtocolProcessor implements EventHandler<ValueEvent> {
 
@@ -46,6 +49,11 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 
     private RingBuffer<ValueEvent> m_ringBuffer;
 
+    /**
+     * indicates (via configuration) that server should always expect credentials from users.
+     */
+    private boolean isAuthenticationRequired;
+    
     ProtocolProcessor() {
     }
 
@@ -62,8 +70,12 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         this.subscriptions = subscriptions;
         m_authenticator = authenticator;
         m_storageService = storageService;
+        
+        isAuthenticationRequired = 
+                    AndesConfigurationManager.readValue(TRANSPORTS_MQTT_USER_ATHENTICATION) == MQTTUserAuthenticationScheme.REQUIRED;
+        
         Integer RingBufferSize = AndesConfigurationManager.readValue(TRANSPORTS_MQTT_DELIVERY_BUFFER_SIZE);
-
+        
         // Init the output Disruptor
         ExecutorService executor = Executors.newFixedThreadPool(1);
 
@@ -160,7 +172,17 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
             processPublish(pubEvt);
         }
 
-        //handle user authentication
+       
+       //Server enforces user authentication but user doesn't supply credentials
+       // NOTE: this is just a interim solution for a potential security threat.
+       if ( isAuthenticationRequired && (! msg.isUserFlag())) {
+           ConnAckMessage okResp = new ConnAckMessage();
+           okResp.setReturnCode(ConnAckMessage.BAD_USERNAME_OR_PASSWORD);
+           session.write(okResp);
+           return;
+       }
+
+       //handle user authentication
         if (msg.isUserFlag()) {
             String pwd = null;
             if (msg.isPasswordFlag()) {

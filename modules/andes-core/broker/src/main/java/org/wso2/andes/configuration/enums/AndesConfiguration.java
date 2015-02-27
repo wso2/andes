@@ -123,24 +123,19 @@ public enum AndesConfiguration implements ConfigurationProperty {
             List.class),
 
     /**
-     * class name of the authenticator to use. class should inherit from {@link org.dna.mqtt.moquette.server.IAuthenticator}
+     * Class name of the authenticator to use. class should inherit from {@link org.dna.mqtt.moquette.server.IAuthenticator}
      * <p>Note: default implementation authenticates against carbon user store based on supplied username/password     
      */
-    TRANSPORTS_MQTT_USER_AUTHENTICATOR_CLASS("transports/mqtt/authenticator/@class", 
-                                             "org.wso2.carbon.andes.authentication.andes.CarbonBasedMQTTAuthenticator", String.class),
+    TRANSPORTS_MQTT_USER_AUTHENTICATOR_CLASS("transports/mqtt/security/authenticator", 
+                                             "org.wso2.carbon.andes.authentication.mqtt.CarbonBasedMQTTAuthenticator", String.class),
                                               
-            
+    
     /**
-     * Request the username of a user based on its index in the transports/mqtt/users/user collection.
+     * Instructs the MQTT server to sending credential is required or optional. 
+     * This behavior is subject to change in mqtt specification v 3.1.1
      */
-    TRANSPORTS_MQTT_USERNAME("transports/mqtt/users/user[{i}]/@userName", "",
-            String.class),
-
-    /**
-     * Request the password of a user based on its index in the transports/mqtt/users/user collection.
-     */
-    TRANSPORTS_MQTT_PASSWORD("transports/mqtt/users/user[{i}]/@password", "",
-            String.class),
+    TRANSPORTS_MQTT_USER_ATHENTICATION("transports/mqtt/security/authentication", "OPTIONAL", MQTTUserAuthenticationScheme.class),
+                                                                                      
 
     /**
      * The class that is used to access an external RDBMS database to operate on messages.
@@ -322,8 +317,8 @@ public enum AndesConfiguration implements ConfigurationProperty {
             ("performanceTuning/messageCounter/countUpdateBatchSize", "100", Integer.class),
     /**
      * This allows to select topic matching algorithm
-     * 0 - DEFAULT Selector
-     * 1  - Topic Matching using Bit Maps
+     * SIMPLE  - Simple iterative method for topic matching
+     * BITMAPS - Inverse bitmaps based topic matching.
      */
     PERFORMANCE_TUNING_TOPIC_MATCHING_METHOD("performanceTuning/topicMatching", "SIMPLE", TopicMatchingSelection.class),
 

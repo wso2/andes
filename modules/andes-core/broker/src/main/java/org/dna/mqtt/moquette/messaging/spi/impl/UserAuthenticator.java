@@ -18,28 +18,25 @@
 
 package org.dna.mqtt.moquette.messaging.spi.impl;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.commons.lang.StringUtils;
 import org.dna.mqtt.moquette.server.IAuthenticator;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.AndesException;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * This is the class used to authenticate MQTT activities against users. The configured users are used temporarily.
  * Once proper authentication model is bought for MQTT, this should support working with the carbon authentication
  * model.
  */
+@Deprecated()
 public class UserAuthenticator implements IAuthenticator {
 
     private Map<String, String> users = new HashMap<String, String>();
     
     UserAuthenticator() {
 
-        List<String> list = AndesConfigurationManager.readValueList(AndesConfiguration.LIST_TRANSPORTS_MQTT_USERNAMES);
+        /*List<String> list = AndesConfigurationManager.readValueList(AndesConfiguration.LIST_TRANSPORTS_MQTT_USERNAMES);
 
         for (int i =1; i<list.size(); i++) {
             String userName = AndesConfigurationManager.readValueOfChildByIndex(AndesConfiguration.TRANSPORTS_MQTT_USERNAME, i);
@@ -47,6 +44,7 @@ public class UserAuthenticator implements IAuthenticator {
 
             users.put(userName, password);
         }
+        */
     }
     
     public boolean checkValid(String username, String password) {
