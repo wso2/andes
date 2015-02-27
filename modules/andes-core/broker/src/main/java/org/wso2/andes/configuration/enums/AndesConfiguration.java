@@ -127,7 +127,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * <p>Note: default implementation authenticates against carbon user store based on supplied username/password     
      */
     TRANSPORTS_MQTT_USER_AUTHENTICATOR_CLASS("transports/mqtt/security/authenticator", 
-                                             "org.wso2.carbon.andes.authentication.mqtt.CarbonBasedMQTTAuthenticator", String.class),
+                                             "org.wso2.carbon.andes.authentication.andes.CarbonBasedMQTTAuthenticator", String.class),
                                               
     
     /**
