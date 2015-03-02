@@ -18,18 +18,27 @@
 
 package org.wso2.andes.kernel.slot;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This class stores all the data related to a slot
  */
 public class Slot implements Serializable, Comparable<Slot> {
 
+    private static Log log = LogFactory.getLog(Slot.class);
+
     /**
      * Number of messages in the slot
      */
     private long messageCount;
-
 
     /**
      * Start message ID of the slot
@@ -52,6 +61,16 @@ public class Slot implements Serializable, Comparable<Slot> {
     private boolean isSlotActive;
 
     /**
+     * Indicates whether the slot is a fresh one or an overlapped one
+     */
+    private boolean isAnOverlappingSlot;
+
+    /**
+     * Keep state of the slot
+     */
+    private List<SlotState> slotStates;
+
+    /**
      * Keep actual destination of messages in slot
      */
     private String destinationOfMessagesInSlot;
@@ -59,6 +78,16 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     public Slot() {
         isSlotActive = true;
+        isAnOverlappingSlot = false;
+        this.slotStates = new ArrayList<SlotState>();
+        addState(SlotState.CREATED);
+    }
+
+    public Slot(long start, long end, String destinationOfMessagesInSlot) {
+        this();
+        this.startMessageId = start;
+        this.endMessageId = end;
+        this.destinationOfMessagesInSlot = destinationOfMessagesInSlot;
     }
 
     public void setStorageQueueName(String storageQueueName) {
@@ -101,12 +130,81 @@ public class Slot implements Serializable, Comparable<Slot> {
         return isSlotActive;
     }
 
+    public boolean isAnOverlappingSlot() {
+        return isAnOverlappingSlot;
+    }
+
+    public void setAnOverlappingSlot(boolean isAnOverlappingSlot) {
+        this.isAnOverlappingSlot = isAnOverlappingSlot;
+        if(isAnOverlappingSlot) {
+            addState(SlotState.OVERLAPPED);
+        }
+    }
+
     public String getDestinationOfMessagesInSlot() {
         return destinationOfMessagesInSlot;
     }
 
     public void setDestinationOfMessagesInSlot(String destinationOfMessagesInSlot) {
         this.destinationOfMessagesInSlot = destinationOfMessagesInSlot;
+    }
+
+    /**
+     * Check if state going to be added is valid considering it as the next
+     * transition compared to current latest state.
+     * @param state state to be transferred
+     */
+    public boolean addState(SlotState state) {
+
+        boolean isValidTransition = false;
+
+        if(slotStates.isEmpty()) {
+            if(SlotState.CREATED.equals(state)) {
+                isValidTransition = true;
+                slotStates.add(state);
+            } else {
+                log.warn("Invalid State transition suggested: " + state);
+            }
+        } else {
+            isValidTransition = slotStates.get(slotStates.size() - 1).isValidNextTransition(state);
+            if(isValidTransition) {
+                slotStates.add(state);
+            } else {
+                log.warn("Invalid State transition from " + slotStates.get
+                        (slotStates.size() - 1) + " suggested: " + state + " Slot ID: " + this
+                        .getId());
+
+            }
+        }
+
+        return isValidTransition;
+    }
+
+    /**
+     * Convert Slot state list to a string
+     * @return Encoded string
+     */
+    public String encodeSlotStates() {
+        String encodedString;
+        StringBuilder builder = new StringBuilder();
+        for (SlotState slotState : slotStates) {
+            builder.append(slotState.getCode()).append("%");
+        }
+        encodedString = builder.toString();
+        return encodedString;
+    }
+
+    /**
+     * Decode slot states from a string
+     * @param stateInfo encoded string
+     */
+    public void decodeAndSetSlotStates(String stateInfo) {
+        String[] states = StringUtils.split(stateInfo, "%");
+        slotStates.clear();
+        for (String state : states) {
+            int code = Integer.parseInt(state);
+            slotStates.add(SlotState.parseSlotState(code));
+        }
     }
 
     @Override
@@ -116,11 +214,9 @@ public class Slot implements Serializable, Comparable<Slot> {
 
         Slot slot = (Slot) o;
 
-        if (endMessageId != slot.endMessageId) return false;
-        if (startMessageId != slot.startMessageId) return false;
-        if (!storageQueueName.equals(slot.storageQueueName)) return false;
+        return endMessageId == slot.endMessageId && startMessageId == slot.startMessageId &&
+                storageQueueName.equals(slot.storageQueueName);
 
-        return true;
     }
 
     @Override
@@ -133,15 +229,13 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     @Override
     public String toString() {
-        return "Slot{" +
-                "startMessageId=" + startMessageId +
-                ", storageQueueName='" + storageQueueName + '\'' +
-                ", endMessageId=" + endMessageId +
-                '}';
+
+        Gson gson = new GsonBuilder().create();
+        return gson.toJson(this);
     }
 
     /**
-     * Return uniqueue id for the slot
+     * Return unique id for the slot
      *
      * @return slot message id
      */
@@ -149,9 +243,11 @@ public class Slot implements Serializable, Comparable<Slot> {
         return storageQueueName + "|" + startMessageId + "-" + endMessageId;
     }
 
+    @SuppressWarnings("NullableProblems")
     @Override
     public int compareTo(Slot other) {
-        if(this.getStartMessageId() == other.getStartMessageId()) {
+        if ((this.getStartMessageId() == other.getStartMessageId()) && (this.getEndMessageId() == other
+                .getEndMessageId()) && this.getStorageQueueName().equals(other.getStorageQueueName())) {
             return 0;
         } else {
             return this.getStartMessageId() > other.getStartMessageId() ? 1 : -1;

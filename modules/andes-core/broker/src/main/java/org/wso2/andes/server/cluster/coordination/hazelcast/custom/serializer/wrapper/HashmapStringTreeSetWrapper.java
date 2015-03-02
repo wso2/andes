@@ -24,25 +24,49 @@ import org.wso2.andes.kernel.slot.Slot;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
 
 /**
- * This class is a wrapper class to a HashMap with String and Slot List.It encapsulates a
+ * This class is a wrapper class to a HashMap with String and Slot Tree Set. It encapsulates a
  * hashmap in order to
  * customize
- * the serialization of a HashMap<String,List<Slot>> in hazelcast. This class is used because
+ * the serialization of a HashMap<String,TreeSet<Slot>> in hazelcast. This class is used because
  * general HashMap<T,V>
  * class should not affect with the custom serialization.
  */
-public class HashmapStringListWrapper implements Serializable {
+public class HashmapStringTreeSetWrapper implements Serializable {
 
-    private HashMap<String, List<Slot>>  stringListHashMap;
+    private HashMap<String, TreeSet<Slot>>  stringListHashMap;
 
 
-    public HashMap<String, List<Slot>> getStringListHashMap() {
+    public HashMap<String, TreeSet<Slot>> getStringListHashMap() {
         return stringListHashMap;
     }
 
-    public void setStringListHashMap(HashMap<String, List<Slot>> stringListHashMap) {
+    public void setStringListHashMap(HashMap<String, TreeSet<Slot>> stringListHashMap) {
         this.stringListHashMap = stringListHashMap;
     }
+
+    @Override
+    public String toString() {
+
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("MAPP");
+
+
+        if (null != stringListHashMap) {
+            for (Map.Entry<String, TreeSet<Slot>> map : stringListHashMap.entrySet()) {
+                sb.append("queueName : " + map.getKey());
+
+                for (Slot slot : map.getValue()) {
+                    sb.append(slot);
+                }
+            }
+        }
+
+        return sb.toString();
+    }
+
 }

@@ -78,6 +78,8 @@ public class AndesKernelBoot {
         startMessaging();
         createSuperTenantDLC();
 
+        Andes.getInstance().startSafeZoneAnalysisWorker();
+
     }
 
     /**
@@ -138,14 +140,16 @@ public class AndesKernelBoot {
                 .getNextNMessageMetadataFromQueue(queueName, 0, slotSize);
         int numberOfMessages = messageList.size();
         long lastMessageID;
+        long firstMessageID;
 
         while (numberOfMessages > 0) {
             lastMessageID = messageList.get(messageList.size() - 1).getMessageID();
+            firstMessageID = messageList.get(0).getMessageID();
 
             if (log.isDebugEnabled()) {
                 log.debug("Created a slot with " + messageList.size() + " messages for queue (" + queueName + ")");
             }
-            SlotManager.getInstance().updateMessageID(queueName, lastMessageID);
+            SlotManager.getInstance().updateMessageID(queueName, HazelcastAgent.getInstance().getNodeId(), firstMessageID, lastMessageID);
 
             // We need to increment lastMessageID since the getNextNMessageMetadataFromQueue returns message list
             // including the given starting ID.

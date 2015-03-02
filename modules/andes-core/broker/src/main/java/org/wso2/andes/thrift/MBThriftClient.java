@@ -31,8 +31,8 @@ import org.wso2.andes.kernel.slot.ConnectionException;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
-import org.wso2.andes.thrift.gen.SlotInfo;
-import org.wso2.andes.thrift.gen.SlotManagementService;
+import org.wso2.andes.thrift.slot.gen.SlotInfo;
+import org.wso2.andes.thrift.slot.gen.SlotManagementService;
 
 /**
  * A wrapper client for the native thrift client. All the public methods in this class are
@@ -99,24 +99,26 @@ public class MBThriftClient {
     }
 
     /**
-     * updateMessageId method. This method will pass message ID to SlotManager. Slot manager
-     * maintains a list of random messageIds in a map along with the queue. This messageId will
+     * updateMessageId method. This method will pass the locally chosen slot range to the SlotManager. Slot manager
+     * maintains a list of slot ranges in a map along with the queue. This messageId will
      * be stored in that map.
      *
      * @param queueName name of the queue
-     * @param messageId a known message ID
+     * @param nodeId unique hazelcast identifier of node.
+     * @param startMessageId start message Id of the locally chosen slot.
+     * @param endMessageId end message Id of the locally chosen slot.
      * @throws TException in case of an connection error
      */
-    public static synchronized void updateMessageId(String queueName,
-                                                    long messageId) throws ConnectionException {
+    public static synchronized void updateMessageId(String queueName, String nodeId,
+                                                    long startMessageId, long endMessageId) throws ConnectionException {
         try {
             client = getServiceClient();
-            client.updateMessageId(queueName, messageId);
+            client.updateMessageId(queueName, nodeId, startMessageId, endMessageId);
         } catch (TException e) {
             try {
                 //retry once
                 reConnectToServer();
-                client.updateMessageId(queueName, messageId);
+                client.updateMessageId(queueName, nodeId, startMessageId, endMessageId);
             } catch (TException e1) {
                 resetServiceClient();
                 throw new ConnectionException("Coordinator has changed", e);
@@ -133,23 +135,25 @@ public class MBThriftClient {
      * @param slot      to be deleted
      * @throws TException
      */
-    public static synchronized void deleteSlot(String queueName, Slot slot,
+    public static synchronized boolean deleteSlot(String queueName, Slot slot,
                                                String nodeId) throws ConnectionException {
         SlotInfo slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(),
-                slot.getStorageQueueName());
+                slot.getStorageQueueName(),nodeId,slot.isAnOverlappingSlot());
+        boolean deleteSuccess = false;
         try {
             client = getServiceClient();
-            client.deleteSlot(queueName, slotInfo, nodeId);
+            deleteSuccess = client.deleteSlot(queueName, slotInfo, nodeId);
         } catch (TException e) {
             try {
                 //retry to connect once
                 reConnectToServer();
-                client.deleteSlot(queueName, slotInfo, nodeId);
+                deleteSuccess = client.deleteSlot(queueName, slotInfo, nodeId);
             } catch (TException e1) {
                 resetServiceClient();
                 throw new ConnectionException("Coordinator has changed", e);
             }
         }
+        return deleteSuccess;
     }
 
     /**
@@ -310,5 +314,16 @@ public class MBThriftClient {
      */
     public static void setReconnectingFlag(boolean reconnectingFlag) {
         reconnectingStarted = reconnectingFlag;
+    }
+
+    public static synchronized long updateSlotDeletionSafeZone(long safeZoneMessageID, String nodeID) {
+        long globalSafeZone = 0;
+        try {
+            client = getServiceClient();
+            globalSafeZone = client.updateCurrentMessageIdForSafeZone(safeZoneMessageID, nodeID);
+        } catch (TException e) {
+            log.error("Error while sending slot deletion safe zone update" , e);
+        }
+        return globalSafeZone;
     }
 }

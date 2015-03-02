@@ -1,4 +1,4 @@
-namespace java org.wso2.andes.server.slot.thrift.gen
+namespace java org.wso2.andes.thrift.slot.gen
 
 //typedef i64 long
 
@@ -13,6 +13,9 @@ struct SlotInfo {
     2: i64  startMessageId;
     3: i64  endMessageId;
     4: string queueName;
+    5: string assignedNodeId;
+    6: bool hasOverlappingSlots;
+    
 }
 
 /*
@@ -23,16 +26,23 @@ service SlotManagementService {
     */
     SlotInfo getSlotInfo(1: string queueName, 2: string nodeId),
 
-    /* The updateMessageId operation is to update the message ID in the coordinator after chunk of messages are published
+    /* The updateMessageId operation is to update the message ID in the coordinator after chunk of messages are published.
+    *  In addition, the coordinator will check if the received slot overlaps with any existing,assigned slots, 
+    *  and memorize such ranges to be given back to the same node.
     */
-    void updateMessageId(1: string queueName, 2: i64 messageId),
+    void updateMessageId(1: string queueName, 2: string nodeId, 3: i64 startMessageId, 4: i64 endMessageId),
 
-    /*delete empty slots
+    /* Delete empty slots
     */
-    void deleteSlot(1: string queueName, 2: SlotInfo slotInfo, 3: string nodeId),
+    bool deleteSlot(1: string queueName, 2: SlotInfo slotInfo, 3: string nodeId),
 
-    /*re-assign the slot when there are no local subscribers in the node
+    /* Re-assign the slot when there are no local subscribers in the node
     */
-    void reAssignSlotWhenNoSubscribers(1: string nodeId, 2: string queueName)
+    void reAssignSlotWhenNoSubscribers(1: string nodeId, 2: string queueName),
+
+    /* This is used by nodes to communicate their current generated message ID, so that the coordinator can decide the minimal message ID 
+    *  to derive the safe zone for deleting slots.
+    */
+    i64 updateCurrentMessageIdForSafeZone(1: i64 messageId)
 
 }

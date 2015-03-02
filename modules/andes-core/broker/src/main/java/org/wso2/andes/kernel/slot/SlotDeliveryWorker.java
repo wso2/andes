@@ -55,6 +55,9 @@ public class SlotDeliveryWorker extends Thread {
     private volatile boolean running;
     private String nodeId;
     private MessageFlusher messageFlusher;
+    private SlotDeletionScheduler slotDeletionScheduler;
+
+    private static final long SLOT_DELETION_SCHEDULE_INTERVAL = 15*1000;
 
     public SlotDeliveryWorker() {
         messageFlusher = MessageFlusher.getInstance();
@@ -62,6 +65,7 @@ public class SlotDeliveryWorker extends Thread {
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
         localLastProcessedIdMap = new HashMap<String, Long>();
+        slotDeletionScheduler = new SlotDeletionScheduler(SLOT_DELETION_SCHEDULE_INTERVAL);
         /*
         Start slot deleting thread only if clustering is enabled. Otherwise slots assignment will
          not happen
@@ -167,7 +171,7 @@ public class SlotDeliveryWorker extends Thread {
                                                 currentSlot.getDestinationOfMessagesInSlot());
                                     } else {
                                         currentSlot.setSlotInActive();
-                                        deleteSlot(currentSlot, nodeId);
+                                        deleteSlot(currentSlot);
                                     }
                                 }
                             //Standalone mode
@@ -335,66 +339,15 @@ public class SlotDeliveryWorker extends Thread {
         this.running = running;
     }
 
-    /**
-     * Check whether the slot is empty and if not resend the remaining messages. If the slot is
-     * empty delete the slot from slot manager and clear all tracking data in OnflightMessageTracker
-     *
-     * @param slot
-     *         to be checked for emptiness
-     * @throws AndesException
-     */
-    public void checkForSlotCompletionAndResend(Slot slot) throws AndesException {
-        // Once again get all metadata of given slot to check all sent messages' metadata has been removed
-        List<AndesMessageMetadata> messagesReturnedFromCassandra = MessagingEngine.getInstance().getMetaDataList(
-                slot.getStorageQueueName(), slot.getStartMessageId(),
-                slot.getEndMessageId());
-        // All metadata has not been removed
-        if (!messagesReturnedFromCassandra.isEmpty()) {
-            // Check messages returned from cassandra has already been buffered. If so removed each buffered from list
-            Iterator<AndesMessageMetadata> iterator = messagesReturnedFromCassandra.iterator();
-            while (iterator.hasNext()) {
-                if (OnflightMessageTracker.getInstance().checkIfMessageIsAlreadyBuffered(slot,
-                        iterator.next().getMessageID())) {
-                    iterator.remove();
-                }
-            }
-            // Return the slot if all messages remaining in slot are already sent.
-            // Otherwise the slot will not be removed and send remaining messages to flusher
-            if (messagesReturnedFromCassandra.isEmpty()) {
-                try {
-                    slot.setSlotInActive();
-                    deleteSlot(slot, nodeId);
-                } catch (ConnectionException e) {
-                    throw new AndesException(
-                            "Error deleting slot while checking for slot completion.", e);
-                }
-            } else {
-                if (log.isDebugEnabled()) {
-                    log.debug(
-                            "Resending missing " + messagesReturnedFromCassandra.size() + " messages " +
-                                    "for slot: " + slot.toString());
-                }
-                MessageFlusher.getInstance().sendMessagesInBuffer(slot.getDestinationOfMessagesInSlot());
-            }
-        // All metadata has been removed and therefore return the slot
-        } else {
-            try {
-                slot.setSlotInActive();
-                deleteSlot(slot, nodeId);
-            } catch (ConnectionException e) {
-                throw new AndesException(
-                        "Error deleting slot while checking for slot completion.", e);
-            }
-        }
-    }
 
-
-    public void deleteSlot(Slot slot,String nodeId) throws ConnectionException {
+    public void deleteSlot(Slot slot) {
 
         if(isClusteringEnabled){
-            MBThriftClient.deleteSlot(slot.getStorageQueueName(), slot, nodeId);
+            String nodeID = HazelcastAgent.getInstance().getNodeId();
+            slotDeletionScheduler.scheduleSlotDeletion(slot, nodeID);
+        } else {
+            OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
         }
-        OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
 
     }
 }

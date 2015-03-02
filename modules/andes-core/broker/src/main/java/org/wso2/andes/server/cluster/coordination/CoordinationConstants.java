@@ -83,9 +83,16 @@ public final class CoordinationConstants {
     public static String LAST_ASSIGNED_ID_MAP_NAME = "lastAssignedIDMap";
 
     /**
+     * Name of the distributed map to store last published message ID against nodeID
+     */
+    public static String LAST_PUBLISHED_ID_MAP_NAME = "lastPublishedIDMap";
+
+    /**
      * Name of the distributed map to store list of assigned slots against queue name
      */
     public static String SLOT_ASSIGNMENT_MAP_NAME = "slotAssignmentMap";
+
+    public static String OVERLAPPED_SLOT_MAP_NAME = "overLappedSlotMap";
 
     /**
      * Name of the distributed map to store thrift server details

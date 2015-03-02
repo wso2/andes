@@ -78,4 +78,11 @@ public interface InboundEventManager {
      */
     public void publishStateEvent(AndesInboundStateEvent stateEvent);
 
+    /**
+     * Publish an event to update safe zone message ID
+     * as per this node (this is used when deleting slots)
+     */
+    public void updateSlotDeletionSafeZone();
+
+
 }

@@ -27,7 +27,7 @@ import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.thrift.gen.SlotManagementService;
+import org.wso2.andes.thrift.slot.gen.SlotManagementService;
 
 import java.net.InetSocketAddress;
 

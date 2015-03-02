@@ -74,11 +74,11 @@ public class OnflightMessageTracker {
     private final ConcurrentHashMap<Long, MsgData> msgId2MsgData;
 
     /**
-     * Map to track messages being buffered to be sent <slot reference, messageID, MsgData
+     * Map to track messages being buffered to be sent <Id of the slot, messageID, MsgData
      * reference>
      */
-    private final ConcurrentHashMap<Slot, ConcurrentHashMap<Long, MsgData>> messageBufferingTracker
-            = new ConcurrentHashMap<Slot, ConcurrentHashMap<Long, MsgData>>();
+    private final ConcurrentHashMap<String, ConcurrentHashMap<Long, MsgData>> messageBufferingTracker
+            = new ConcurrentHashMap<String, ConcurrentHashMap<Long, MsgData>>();
 
     /**
      * Map to track messages being sent <channel id, message id, MsgData reference>
@@ -325,7 +325,8 @@ public class OnflightMessageTracker {
             if (log.isDebugEnabled()) {
                 log.debug("Slot has no pending messages. Now re-checking slot for messages");
             }
-            slotWorker.checkForSlotCompletionAndResend(slot);
+            slot.setSlotInActive();
+            slotWorker.deleteSlot(slot);
         }
 
     }
@@ -417,10 +418,11 @@ public class OnflightMessageTracker {
         if (log.isDebugEnabled()) {
             log.debug("Buffering message id = " + messageID + " slot = " + slot.toString());
         }
-        ConcurrentHashMap<Long, MsgData> messagesOfSlot = messageBufferingTracker.get(slot);
+        String slotID = slot.getId();
+        ConcurrentHashMap<Long, MsgData> messagesOfSlot = messageBufferingTracker.get(slotID);
         if (messagesOfSlot == null) {
             messagesOfSlot = new ConcurrentHashMap<Long, MsgData>();
-            messageBufferingTracker.put(slot, messagesOfSlot);
+            messageBufferingTracker.put(slotID, messagesOfSlot);
         }
         MsgData trackingData = messagesOfSlot.get(messageID);
         if (trackingData == null) {
@@ -450,7 +452,8 @@ public class OnflightMessageTracker {
      */
     public boolean checkIfMessageIsAlreadyBuffered(Slot slot, long messageID) {
         boolean isAlreadyBuffered = false;
-        MsgData trackingData = messageBufferingTracker.get(slot).get(messageID);
+        String slotID = slot.getId();
+        MsgData trackingData = messageBufferingTracker.get(slotID).get(messageID);
         if (trackingData != null) {
             isAlreadyBuffered = true;
         }
@@ -469,7 +472,8 @@ public class OnflightMessageTracker {
         if (log.isDebugEnabled()) {
             log.debug("Releasing tracking of messages for slot " + slot.toString());
         }
-        ConcurrentHashMap<Long, MsgData> messagesOfSlot = messageBufferingTracker.remove(slot);
+        String slotID = slot.getId();
+        ConcurrentHashMap<Long, MsgData> messagesOfSlot = messageBufferingTracker.remove(slotID);
         if (messagesOfSlot != null) {
             for (Long messageId : messagesOfSlot.keySet()) {
                 getTrackingData(messageId).addMessageStatus(MessageStatus.SLOT_REMOVED);
@@ -531,7 +535,8 @@ public class OnflightMessageTracker {
         if (log.isDebugEnabled()) {
             log.debug("Releasing message buffering tacking id= " + messageId);
         }
-        messageBufferingTracker.get(slot).remove(messageId);
+        String slotID = slot.getId();
+        messageBufferingTracker.get(slotID).remove(messageId);
     }
 
     /**

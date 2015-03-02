@@ -34,12 +34,25 @@ public class InboundEvent {
 
     private AndesChannel channel;
 
+    /**
+     * Maintains the last generated message ID as the safe zone of this node.
+     */
+    private long safeZoneLimit;
+
     public AndesChannel getChannel() {
         return channel;
     }
 
     public void setChannel(AndesChannel channel) {
         this.channel = channel;
+    }
+
+    public void setSafeZoneLimit(long safeZoneLimit) {
+        this.safeZoneLimit = safeZoneLimit;
+    }
+
+    public long getSafeZoneLimit() {
+        return safeZoneLimit;
     }
 
     /**
@@ -57,7 +70,10 @@ public class InboundEvent {
         STATE_CHANGE_EVENT,
         
         /** Ignore the event and skip processing */
-        IGNORE_EVENT;
+        IGNORE_EVENT,
+
+        /** slot deletion safe zone update event */
+        SAFE_ZONE_DECLARE_EVENT
     }
 
     /**
@@ -83,6 +99,8 @@ public class InboundEvent {
     public InboundEvent() {
         messageList = new ArrayList<AndesMessage>();
         eventType = Type.IGNORE_EVENT;
+        safeZoneLimit = Long.MAX_VALUE;
+
     }
 
     public final Type getEventType() {

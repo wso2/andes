@@ -22,30 +22,34 @@ import com.google.gson.*;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.StreamSerializer;
-import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.HashmapStringListWrapper;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.HashmapStringTreeSetWrapper;
 import org.wso2.andes.kernel.slot.Slot;
 
 
 import java.io.IOException;
 import java.util.*;
 
+/**
+ * Class used to serialize/un-serialize a HashMap<String,TreeSet<Slot>> data structure.
+ */
 @SuppressWarnings("unused")
-public class HashMapStringListWrapperSerializer implements
-        StreamSerializer<HashmapStringListWrapper> {
+public class HashMapStringTreeSetWrapperSerializer implements
+        StreamSerializer<HashmapStringTreeSetWrapper> {
 
 
     @Override
-    public void write(ObjectDataOutput objectDataOutput, HashmapStringListWrapper hashmapStringListWrapper) throws IOException {
+    public void write(ObjectDataOutput objectDataOutput, HashmapStringTreeSetWrapper
+            hashmapStringTreeSetWrapper) throws IOException {
         //Convert the hashmapStringListWrapper object to a json string and save it in hazelcast map
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("{");
-        HashMap<String, List<Slot>> hashmap = hashmapStringListWrapper.getStringListHashMap();
+        HashMap<String, TreeSet<Slot>> hashmap = hashmapStringTreeSetWrapper.getStringListHashMap();
+        stringBuilder.append("\"stringTreeSetHashMap\":{");
         if (hashmap != null) {
-            stringBuilder.append("\"stringListHashMap\":{");
-            Set<Map.Entry<String, List<Slot>>> entrySet = hashmap.entrySet();
-            for (Map.Entry<String, List<Slot>> entry : entrySet) {
+            Set<Map.Entry<String, TreeSet<Slot>>> entrySet = hashmap.entrySet();
+            for (Map.Entry<String, TreeSet<Slot>> entry : entrySet) {
                 stringBuilder.append("\"").append(entry.getKey()).append("\":[");
-                List<Slot> slots = entry.getValue();
+                TreeSet<Slot> slots = entry.getValue();
                 if (slots != null) {
                     for (Slot slot : slots) {
                         String isActiveString;
@@ -58,7 +62,10 @@ public class HashMapStringListWrapperSerializer implements
                                 append(",").append("\"startMessageId\":").append(slot.getStartMessageId()).
                                 append(",").append("\"endMessageId\":").append(slot.getEndMessageId()).
                                 append(",\"storageQueueName\":\"").append(slot.getStorageQueueName()).
-                                append("\",\"isSlotActive\":").append(isActiveString).append("},");
+                                append("\",\"destinationOfMessagesInSlot\":\"").append(slot.getDestinationOfMessagesInSlot()).
+                                append("\",\"states\":\"").append(slot.encodeSlotStates()).
+                                append("\",\"isAnOverlappingSlot\":").append(String.valueOf(slot.isAnOverlappingSlot())).
+                                append(",\"isSlotActive\":").append(isActiveString).append("},");
                     }
                     if (slots.size() != 0) {
                         stringBuilder.deleteCharAt(stringBuilder.length() - 1);
@@ -69,26 +76,26 @@ public class HashMapStringListWrapperSerializer implements
             if (hashmap.keySet().size() != 0) {
                 stringBuilder.deleteCharAt(stringBuilder.length() - 1);
             }
-            stringBuilder.append("}");
+
         }
         stringBuilder.append("}");
-
+        stringBuilder.append("}");
         objectDataOutput.writeUTF(stringBuilder.toString());
     }
 
     @Override
-    public HashmapStringListWrapper read(ObjectDataInput objectDataInput) throws IOException {
+    public HashmapStringTreeSetWrapper read(ObjectDataInput objectDataInput) throws IOException {
         //Build HashmapStringListWrapper object using json string.
         String jsonString = objectDataInput.readUTF();
-        HashmapStringListWrapper wrapper = new HashmapStringListWrapper();
-        HashMap<String, List<Slot>> hashMap = new HashMap<String, List<Slot>>();
+        HashmapStringTreeSetWrapper wrapper = new HashmapStringTreeSetWrapper();
+        HashMap<String, TreeSet<Slot>> hashMap = new HashMap<String, TreeSet<Slot>>();
         JsonObject jsonObject = new JsonParser().parse(jsonString).getAsJsonObject()
-                .getAsJsonObject("stringListHashMap");
+                .getAsJsonObject("stringTreeSetHashMap");
         Set<Map.Entry<String, JsonElement>> set = jsonObject.entrySet();
         for (Map.Entry<String, JsonElement> entry : set) {
             String key = entry.getKey();
             JsonElement value = entry.getValue();
-            List<Slot> arrayList = new ArrayList<Slot>();
+            TreeSet<Slot> arrayList = new TreeSet<Slot>();
             JsonArray jsonArray = value.getAsJsonArray();
             for (JsonElement elem : jsonArray) {
                 Slot slot = new Slot();
@@ -97,6 +104,7 @@ public class HashMapStringListWrapperSerializer implements
                 slot.setStartMessageId(jsonObjectForSlot.get("startMessageId").getAsLong());
                 slot.setEndMessageId(jsonObjectForSlot.get("endMessageId").getAsLong());
                 slot.setStorageQueueName(jsonObjectForSlot.get("storageQueueName").getAsString());
+                slot.decodeAndSetSlotStates(jsonObjectForSlot.get("states").getAsString());
                 if (!jsonObjectForSlot.get("isSlotActive").getAsBoolean()) {
                     slot.setSlotInActive();
                 }

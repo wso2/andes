@@ -175,4 +175,23 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
 
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateSlotDeletionSafeZone() {
+        // Publishers claim events in sequence
+        long sequence = ringBuffer.next();
+        InboundEvent event = ringBuffer.get(sequence);
+        try {
+            event.setEventType(SAFE_ZONE_DECLARE_EVENT);
+        } finally {
+            // make the event available to EventProcessors
+            ringBuffer.publish(sequence);
+            if (log.isDebugEnabled()) {
+                log.debug("[ Sequence: " + sequence + " ] " + event.getEventType() + "' published to Disruptor");
+            }
+        }
+    }
+
 }

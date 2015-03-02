@@ -22,8 +22,8 @@ import org.apache.thrift.TException;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotManager;
-import org.wso2.andes.thrift.gen.SlotInfo;
-import org.wso2.andes.thrift.gen.SlotManagementService;
+import org.wso2.andes.thrift.slot.gen.SlotInfo;
+import org.wso2.andes.thrift.slot.gen.SlotManagementService;
 
 /**
  * This is the implementation of SlotManagementService interface. This class contains operations
@@ -42,7 +42,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
             SlotInfo slotInfo = new SlotInfo();
             if (null != slot) {
                 slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(),
-                        slot.getStorageQueueName());
+                        slot.getStorageQueueName(),nodeId,slot.isAnOverlappingSlot());
             }
             return slotInfo;
         } else {
@@ -51,22 +51,22 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     }
 
     @Override
-    public void updateMessageId(String queueName, long messageId) throws TException {
+    public void updateMessageId(String queueName, String nodeId, long startMessageId, long endMessageId) throws TException {
         if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
-            slotManager.updateMessageID(queueName, messageId);
+            slotManager.updateMessageID(queueName, nodeId, startMessageId, endMessageId);
         } else {
             throw new TException("This node is not the slot coordinator right now");
         }
     }
 
     @Override
-    public void deleteSlot(String queueName, SlotInfo slotInfo, String nodeId) throws TException {
+    public boolean deleteSlot(String queueName, SlotInfo slotInfo, String nodeId) throws TException {
         if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
             Slot slot = new Slot();
             slot.setStartMessageId(slotInfo.getStartMessageId());
             slot.setEndMessageId(slotInfo.getEndMessageId());
             slot.setStorageQueueName(slotInfo.getQueueName());
-            slotManager.deleteSlot(queueName, slot, nodeId);
+            return slotManager.deleteSlot(queueName, slot, nodeId);
         } else {
             throw new TException("This node is not the slot coordinator right now");
         }
@@ -79,6 +79,17 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
         } else {
             throw new TException("This node is not the slot coordinator right now");
         }
+    }
+
+    @Override
+    public long updateCurrentMessageIdForSafeZone(long messageId, String nodeId) throws TException {
+        long slotDeletionSafeZone;
+        if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
+            slotDeletionSafeZone = slotManager.updateAndReturnSlotDeleteSafeZone(nodeId,messageId);
+        } else {
+            throw new TException("This node is not the slot coordinator right now");
+        }
+        return slotDeletionSafeZone;
     }
 
 }
