@@ -155,7 +155,7 @@ public class SlotManager {
         if (null != slotToBeAssigned) {
             updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
             if (log.isDebugEnabled()) {
-                log.info("Assigning slot for node : " + nodeId + " ||| " + slotToBeAssigned);
+                log.debug("Assigning slot for node : " + nodeId + " ||| " + slotToBeAssigned);
             }
         } else {
             if (log.isDebugEnabled()) {
