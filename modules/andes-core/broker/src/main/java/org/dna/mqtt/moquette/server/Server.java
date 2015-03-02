@@ -52,8 +52,8 @@ public class Server {
 
         mqttProperties.put("sslPort",AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_SSL_PORT));
 
-        mqttProperties.put("host",AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
-
+        mqttProperties.put("host",AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_BIND_ADDRESS));       
+        
         return mqttProperties;
     }
 

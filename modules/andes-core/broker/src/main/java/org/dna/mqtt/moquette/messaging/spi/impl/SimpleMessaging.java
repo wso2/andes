@@ -6,6 +6,7 @@ import com.lmax.disruptor.IgnoreExceptionHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.dsl.Disruptor;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.IMessaging;
@@ -195,8 +196,22 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
         subscriptions.init(m_storageService);
 
-        IAuthenticator authenticator = new UserAuthenticator();
-        m_processor.init(subscriptions, m_storageService, authenticator);
+        String authenticatorClassName = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_USER_AUTHENTICATOR_CLASS);
+        
+        try {
+            Class<? extends IAuthenticator> authenticatorClass = Class.forName(authenticatorClassName).asSubclass(IAuthenticator.class);
+            IAuthenticator authenticator = authenticatorClass.newInstance();
+            m_processor.init(subscriptions, m_storageService, authenticator);
+                   
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("unable to find the class authenticator: " +  authenticatorClassName, e);
+        } catch (InstantiationException e) {
+            throw new RuntimeException("unable to create an instance of :" + authenticatorClassName,e);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException("unable to create an instance of :", e);
+        }
+        
+
     }
 
 

@@ -333,7 +333,8 @@ public class AndesConfigurationManager {
                 return dataType.cast(df.parse(validValue));
 
             } else if (dataType.isEnum()) {
-                return (T) Enum.valueOf((Class<? extends Enum>) dataType, validValue);
+                // this will indirectly forces programmer to define enum values in upper case
+                return (T) Enum.valueOf((Class<? extends Enum>) dataType, validValue.toUpperCase(Locale.ENGLISH));
             } else {
                 return dataType.getConstructor(String.class).newInstance(validValue);
             }
