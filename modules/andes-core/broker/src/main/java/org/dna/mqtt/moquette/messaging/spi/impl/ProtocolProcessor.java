@@ -50,7 +50,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
     private RingBuffer<ValueEvent> m_ringBuffer;
 
     /**
-     * indicates (via configuration) that server should always expect credentials from users.
+     * Indicates (via configuration) that server should always expect credentials from users.
      */
     private boolean isAuthenticationRequired;
     
