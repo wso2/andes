@@ -284,10 +284,12 @@ public class MessageFlusher {
 
         }
         try {
-            log.debug(
-                    "Sending messages from buffer num of msg = " + messageDeliveryInfo
-                            .readButUndeliveredMessages
-                            .size());
+            if(log.isDebugEnabled()) {
+                log.debug(
+                        "Sending messages from buffer num of msg = " + messageDeliveryInfo
+                                .readButUndeliveredMessages
+                                .size());
+            }
             sendMessagesToSubscriptions(messageDeliveryInfo.destination,
                     messageDeliveryInfo.readButUndeliveredMessages);
         } catch (Exception e) {
@@ -351,6 +353,7 @@ public class MessageFlusher {
          * deliver messages to subscriptions
          */
         int sentMessageCount = 0;
+        boolean orphanedSlot = false;
         Iterator<AndesMessageMetadata> iterator = messages.iterator();
         List<AndesRemovableMetadata> droppedTopicMessageList = new ArrayList<AndesRemovableMetadata>();
 
@@ -407,7 +410,8 @@ public class MessageFlusher {
                 } else { // Queue
                     if (subscriptions4Queue.size() == 0) {
                         // We don't have subscribers for this message
-                        // todo: Handle orphaned slot created with this no subscription scenario for queue
+                        // Handle orphaned slot created with this no subscription scenario for queue
+                        orphanedSlot = true;
                         break; // break the loop
                     }
                 }
@@ -490,7 +494,13 @@ public class MessageFlusher {
                 break;
             }
         }
-
+        // clear all tracking when orphan slot situation
+        if (orphanedSlot) {
+            for (AndesMessageMetadata message : messages) {
+                OnflightMessageTracker.getInstance().clearAllTrackingWhenSlotOrphaned(message.getSlot());
+            }
+            messages.clear();
+        }
         // delete topic messages that were dropped due to no subscriptions for the message
         Andes.getInstance().deleteMessages(droppedTopicMessageList, false);
         return sentMessageCount;

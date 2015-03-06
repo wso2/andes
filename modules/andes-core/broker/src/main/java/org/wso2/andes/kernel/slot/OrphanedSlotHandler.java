@@ -21,16 +21,14 @@ package org.wso2.andes.kernel.slot;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesSubscription;
-import org.wso2.andes.kernel.LocalSubscription;
-import org.wso2.andes.kernel.SubscriptionListener;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.thrift.MBThriftClient;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Collection;
+import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * This class will reassign the slots own by this node when its last subscriber leaves
@@ -70,7 +68,7 @@ public class OrphanedSlotHandler implements SubscriptionListener {
      * @throws AndesException
      */
     private void reAssignSlotsIfNeeded(AndesSubscription subscription) throws AndesException {
-        if (!subscription.isBoundToTopic()) {
+        if (subscription.isDurable()) {
             // Problem happens only with Queues
             SubscriptionStore subscriptionStore = AndesContext
                     .getInstance().getSubscriptionStore();
@@ -83,6 +81,15 @@ public class OrphanedSlotHandler implements SubscriptionListener {
                 try {
                     MBThriftClient.reAssignSlotWhenNoSubscribers(nodeId,
                             subscription.getTargetQueue());
+                    //remove tracking when orphan slot situation
+                    ConcurrentMap<String, Set<Slot>> subscriptionSlotTracker = OnflightMessageTracker.getInstance()
+                            .getSubscriptionSlotTracker();
+                    Set<Slot> slotsToRemoveTrackingIfOrphaned = subscriptionSlotTracker
+                            .get(subscription.getTargetQueue());
+                    for (Slot slot : slotsToRemoveTrackingIfOrphaned) {
+                        OnflightMessageTracker.getInstance().clearAllTrackingWhenSlotOrphaned(slot);
+                    }
+
                 } catch (ConnectionException e) {
                     log.error("Error occurred while re-assigning the slot to slot manager", e);
                     throw new AndesException(
