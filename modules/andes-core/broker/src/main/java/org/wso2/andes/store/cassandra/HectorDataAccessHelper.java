@@ -20,12 +20,21 @@ package org.wso2.andes.store.cassandra;
 
 import me.prettyprint.cassandra.model.ConfigurableConsistencyLevel;
 import me.prettyprint.cassandra.model.thrift.ThriftCounterColumnQuery;
-import me.prettyprint.cassandra.serializers.*;
+import me.prettyprint.cassandra.serializers.ByteBufferSerializer;
+import me.prettyprint.cassandra.serializers.BytesArraySerializer;
+import me.prettyprint.cassandra.serializers.IntegerSerializer;
+import me.prettyprint.cassandra.serializers.LongSerializer;
+import me.prettyprint.cassandra.serializers.StringSerializer;
 import me.prettyprint.cassandra.service.ThriftCfDef;
 import me.prettyprint.cassandra.service.ThriftKsDef;
 import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.Keyspace;
-import me.prettyprint.hector.api.beans.*;
+import me.prettyprint.hector.api.beans.ColumnSlice;
+import me.prettyprint.hector.api.beans.HColumn;
+import me.prettyprint.hector.api.beans.HCounterColumn;
+import me.prettyprint.hector.api.beans.OrderedRows;
+import me.prettyprint.hector.api.beans.Row;
+import me.prettyprint.hector.api.beans.Rows;
 import me.prettyprint.hector.api.ddl.ColumnFamilyDefinition;
 import me.prettyprint.hector.api.ddl.ColumnType;
 import me.prettyprint.hector.api.ddl.ComparatorType;
@@ -33,13 +42,23 @@ import me.prettyprint.hector.api.ddl.KeyspaceDefinition;
 import me.prettyprint.hector.api.exceptions.HectorException;
 import me.prettyprint.hector.api.factory.HFactory;
 import me.prettyprint.hector.api.mutation.Mutator;
-import me.prettyprint.hector.api.query.*;
+import me.prettyprint.hector.api.query.ColumnQuery;
+import me.prettyprint.hector.api.query.CounterQuery;
+import me.prettyprint.hector.api.query.MultigetSliceQuery;
+import me.prettyprint.hector.api.query.QueryResult;
+import me.prettyprint.hector.api.query.RangeSlicesQuery;
+import me.prettyprint.hector.api.query.SliceQuery;
 import org.apache.commons.lang.StringUtils;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.MessageExpirationWorker;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Class <code>HectorDataAccessHelper</code> Encapsulate the Cassandra DataAccessLogic used in
@@ -836,6 +855,107 @@ public class HectorDataAccessHelper {
             results.put(rowkey, list);
         }
         return results;
+    }
+
+    /**
+     * Read message content as a batch in cassandra
+     *
+     * @param columnFamily name of column family
+     * @param keyspace     name of key space
+     * @param messageId    list of message IDs
+     * @return List of content List<AndesMessagePart>
+     * @throws CassandraDataAccessException
+     */
+    public static Map<Long, List<AndesMessagePart>> getMessageContentBatch(
+            String columnFamily,
+            Keyspace keyspace, List<Long> messageId) throws
+            CassandraDataAccessException {
+
+        //Holds the messages that will be sent back to the API for delivery
+        Map<Long, List<AndesMessagePart>> messageContentBatch = new HashMap<Long, List<AndesMessagePart>>();
+
+        try {
+            //Specify the range of offsets in a message
+            Integer startOffSet = 0;
+            Integer maxOffset = Integer.MAX_VALUE;
+
+            //TODO remove this once the mid is taken out from hector
+            //TODO need to verify the reason for appending mid for the hector case
+            List<String> sanitizedMessageID = new ArrayList<String>();
+            //Need to prefix the message id since in the DB the message comes sanitized
+            for (int msgIDs = 0; msgIDs < messageId.size(); msgIDs++) {
+                sanitizedMessageID.add(HectorBasedMessageStoreImpl.MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX +
+                        messageId.get(msgIDs));
+            }
+
+            //Create the query to get the list of messages for the specified list of ids
+            //SELECT * FROM MB_KEYSPACE.MB_CONTENT WHERE "QpidKeySpace"."MessageContent"
+            Collection messageIDs = sanitizedMessageID;
+            MultigetSliceQuery getMessageListQuery = HFactory
+                    .createMultigetSliceQuery(keyspace, stringSerializer, integerSerializer, byteBufferSerializer);
+            getMessageListQuery.setColumnFamily(columnFamily);
+            getMessageListQuery.setRange(startOffSet, maxOffset, false, maxOffset);
+            getMessageListQuery.setKeys(messageIDs);
+
+            //The data structure holds message represented as ids in each row, messageID ---> offsets (1..*)
+            // Each chunk will be defined as an offset, which which will be the column
+            // i.e messageID   offset 0 offset 1
+            //First for the given list of ids all the messages will be fetched from the database
+
+            //Will return each row represented through the list of provided message ids
+            QueryResult<Rows<String, Integer, ByteBuffer>> results = getMessageListQuery.execute();
+
+            //Will go through the list of rows
+            for (Row<String, Integer, ByteBuffer> messageIDRows : results.get()) {
+
+                //Each column will represent an offset that will hold the message chunk
+                List<HColumn<Integer, ByteBuffer>> columnSliced = messageIDRows.getColumnSlice().getColumns();
+
+                //This will be the id of the message
+
+                Long columnKey = Long.valueOf(messageIDRows.getKey().
+                        substring(HectorBasedMessageStoreImpl.MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX.length()));
+
+                //Will iterate through each slice, each slice will represent an offset
+                for (HColumn<Integer, ByteBuffer> column : columnSliced) {
+                    if (column != null) {
+                        int offset = column.getName();
+                        byte[] content = bytesArraySerializer.fromByteBuffer(column
+                                .getValue());
+
+                        List<AndesMessagePart> andesMessagePart = messageContentBatch.get(columnKey);
+
+                        if (null == andesMessagePart) {
+                            andesMessagePart = new ArrayList<AndesMessagePart>();
+                            messageContentBatch.put(columnKey, andesMessagePart);
+                        }
+
+                        AndesMessagePart msgPart = new AndesMessagePart();
+                        msgPart.setMessageID(columnKey);
+                        msgPart.setDataLength(content.length);
+                        msgPart.setOffSet(offset);
+                        msgPart.setData(content);
+                        andesMessagePart.add(msgPart);
+                    } else {
+                        throw new RuntimeException("Unexpected Error , content already deleted for " +
+                                "message id :" + messageId);
+                    }
+                }
+            }
+
+
+        } catch (Exception e) {
+            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+                throw new CassandraDataAccessException("Error while getting message content " +
+                        "since cassandra connection is down");
+            } else {
+                throw new CassandraDataAccessException("Error while getting message content", e);
+            }
+        }
+
+        return messageContentBatch;
+
+
     }
 
     /**

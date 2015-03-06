@@ -26,13 +26,22 @@ import me.prettyprint.hector.api.mutation.Mutator;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.AndesRemovableMetadata;
+import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.kernel.MessageStore;
+import org.wso2.andes.matrics.DataAccessMatrixManager;
+import org.wso2.andes.matrics.MatrixConstants;
 import org.wso2.andes.server.stats.PerformanceCounter;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+
+import static org.wso2.carbon.metrics.manager.Timer.*;
 
 /**
  * This is the implementation of MessageStore that deals with Cassandra no SQL DB.
@@ -80,8 +89,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException {
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_MESSAGE_PART, this).start();
         try {
-
             Mutator<String> mutator = HFactory.createMutator(keyspace,
                     CassandraConstants.stringSerializer);
 
@@ -90,7 +99,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                         + part.getMessageID();
 
                 HectorDataAccessHelper.addMessageToQueue(CassandraConstants
-                        .MESSAGE_CONTENT_COLUMN_FAMILY,
+                                .MESSAGE_CONTENT_COLUMN_FAMILY,
                         rowKey, part.getOffSet(),
                         part.getData(), mutator, false);
             }
@@ -102,6 +111,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             //TODO handle Cassandra failures
             //When a error happened, we should remember that and stop accepting messages
             throw new AndesException("Error while adding the message part to the store", e);
+        } finally {
+            context.stop();
         }
     }
 
@@ -111,6 +122,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public void deleteMessageParts(Collection<Long> messageIdList) throws AndesException {
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.DELETE_MESSAGE_PART, this).start();
         try {
 
             Mutator<String> mutator = HFactory.createMutator(keyspace,
@@ -133,6 +145,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             mutator.execute();
         } catch (CassandraDataAccessException e) {
             throw new AndesException(e);
+        } finally {
+            context.stop();
         }
     }
 
@@ -141,6 +155,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_CONTENT, this).start();
         try {
             String rowKey = MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX + messageId;
             return HectorDataAccessHelper.getMessageContent(rowKey,
@@ -151,6 +166,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             throw new AndesException(
                     "Error while reading content messageID=" + messageId + " offset=" +
                             offsetValue, e);
+        } finally {
+            context.stop();
         }
     }
 
@@ -159,8 +176,19 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public Map<Long, List<AndesMessagePart>> getContent(List<Long> messageIdList) throws AndesException {
-        // TODO implement
-        return null;
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_CONTENT, this).start();
+        try {
+
+            return HectorDataAccessHelper.getMessageContentBatch(
+                    CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY, keyspace, messageIdList);
+
+        } catch (Exception e) {
+            throw new AndesException(
+                    "Error while reading content messageIDs", e);
+        } finally {
+            context.stop();
+        }
+
     }
 
     /**
@@ -168,6 +196,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException {
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_META_DATA_LIST, this).start();
         try {
 
             Mutator<String> mutator = HFactory.createMutator(keyspace,
@@ -201,6 +230,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             //TODO may be we can write those message to a disk, or do something. Currently we
             // will just loose them
             throw new AndesException("Error while writing incoming messages to Cassandra", e);
+        } finally {
+            context.stop();
         }
     }
 
@@ -209,6 +240,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public void addMetaData(AndesMessageMetadata metadata) throws AndesException {
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_META_DATA, this).start();
         try {
             Mutator<String> mutator = HFactory.createMutator(keyspace,
                     CassandraConstants.stringSerializer);
@@ -222,6 +254,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
 
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while writing incoming message to cassandra.", e);
+        } finally {
+            context.stop();
         }
     }
 
@@ -231,19 +265,21 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     @Override
     public void addMetaDataToQueue(String queueName, AndesMessageMetadata metadata)
             throws AndesException {
-
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_META_DATA_TO_QUEUE, this).start();
         try {
             Mutator<String> mutator = HFactory.createMutator(keyspace,
                     CassandraConstants.stringSerializer);
 
             HectorDataAccessHelper.addMessageToQueue(CassandraConstants
-                    .META_DATA_COLUMN_FAMILY,
+                            .META_DATA_COLUMN_FAMILY,
                     queueName,
                     metadata.getMessageID(),
                     metadata.getMetadata(), mutator, true);
 
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while writing incoming message to cassandra.", e);
+        } finally {
+            context.stop();
         }
     }
 
@@ -253,6 +289,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     @Override
     public void addMetadataToQueue(String queueName, List<AndesMessageMetadata> metadataList)
             throws AndesException {
+
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_META_DATA_TO_QUEUE_LIST, this).start();
         try {
 
             Mutator<String> mutator = HFactory.createMutator(keyspace,
@@ -271,6 +309,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             mutator.execute();
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while writing incoming message to cassandra.", e);
+        } finally {
+            context.stop();
         }
     }
 
@@ -301,6 +341,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     @Override
     public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata>
             metadataList) throws AndesException {
+
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.UPDATE_META_DATA_INFORMATION, this).start();
         try {
             Mutator<String> insertMutator = HFactory.createMutator(keyspace,
                     CassandraConstants.stringSerializer);
@@ -341,6 +383,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
 
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while updating message meta data", e);
+        } finally {
+            context.stop();
         }
     }
 
@@ -349,6 +393,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public AndesMessageMetadata getMetaData(long messageId) throws AndesException {
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_META_DATA, this).start();
         try {
 
             byte[] value = HectorDataAccessHelper
@@ -359,6 +404,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         } catch (Exception e) {
             throw new AndesException("Error while getting meta data for messageID " + messageId,
                     e);
+        } finally {
+            context.stop();
         }
     }
 
@@ -370,6 +417,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     @Override
     public List<AndesMessageMetadata> getMetaDataList(String queueName, long firstMsgId,
                                                       long lastMsgID) throws AndesException {
+
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_META_DATA_LIST, this).start();
         try {
             //Contains all metadata between firstMsgId and lastMsgID
             List<AndesMessageMetadata> allMetadataList = new ArrayList<AndesMessageMetadata>();
@@ -397,6 +446,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while reading meta data list for message IDs " +
                     "from " + firstMsgId + " to " + lastMsgID, e);
+        } finally {
+            context.stop();
         }
     }
 
@@ -407,6 +458,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String queueName,
                                                                        long firstMsgId, int count)
             throws AndesException {
+
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_NEXT_MESSAGE_METADATA_FROM_QUEUE, this).start();
         try {
             return HectorDataAccessHelper
                     .getMessagesFromQueue(queueName,
@@ -417,6 +470,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while reading meta data list for message IDs " +
                     "from " + firstMsgId + " to " + firstMsgId, e);
+        } finally {
+            context.stop();
         }
     }
 
@@ -426,6 +481,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     @Override
     public void deleteMessageMetadataFromQueue(String queueName, List<AndesRemovableMetadata>
             messagesToRemove) throws AndesException {
+
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.DELETE_MESSAGE_META_DATA_FROM_QUEUE, this).start();
         try {
             if (log.isTraceEnabled()) {
                 StringBuilder messageIDsString = new StringBuilder();
@@ -449,6 +506,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
 
         } catch (Exception e) {
             throw new AndesException("Error while deleting messages", e);
+        } finally {
+            context.stop();
         }
     }
 

@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Concurrently read content read tasks and batch the event and forward the batched events to event handler
- * for batched content read task 
+ * for batched content read task
  */
 public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
 
@@ -82,7 +82,7 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
         this.turn = turn;
         this.groupCount = groupCount;
         this.batchSize = batchSize;
-        
+
         exceptionHandler = new DeliveryExceptionHandler();
         running = new AtomicBoolean(false);
         if (eventHandler instanceof SequenceReportingEventHandler) {
@@ -99,6 +99,11 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
     public void halt() {
         running.set(false);
         sequenceBarrier.alert();
+    }
+
+    @Override
+    public boolean isRunning() {
+        return running.get();
     }
 
     /**
@@ -158,7 +163,7 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
                         if (log.isDebugEnabled()) {
                             log.debug("Event handler called with message id list " + messageIDList );
                         }
-                        
+
                         // reset counters and lists
                         eventList.clear();
                         messageIDList.clear();

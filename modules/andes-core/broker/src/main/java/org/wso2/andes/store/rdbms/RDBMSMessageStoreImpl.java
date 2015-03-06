@@ -18,12 +18,18 @@
 
 package org.wso2.andes.store.rdbms;
 
-import static org.wso2.andes.store.rdbms.RDBMSConstants.CONTENT_TABLE;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_CONTENT;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_ID;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
-
+import org.apache.log4j.Logger;
+import org.wso2.andes.configuration.util.ConfigurationProperties;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.AndesRemovableMetadata;
+import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.kernel.MessageStore;
+import org.wso2.andes.matrics.DataAccessMatrixManager;
+import org.wso2.andes.matrics.MatrixConstants;
+import org.wso2.carbon.metrics.manager.Timer.Context;
+import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -35,30 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.wso2.andes.store.rdbms.RDBMSConstants.CONTENT_TABLE;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_CONTENT;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_ID;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
-
-
-import javax.sql.DataSource;
-
-
-import javax.sql.DataSource;
-
-import org.apache.log4j.Logger;
-import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.AndesRemovableMetadata;
-import org.wso2.andes.kernel.DurableStoreConnection;
-import org.wso2.andes.kernel.MessageStore;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.MetricManager;
-import org.wso2.carbon.metrics.manager.Timer;
-import org.wso2.carbon.metrics.manager.Timer.Context;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.*;
 
 /**
  * ANSI SQL based message store implementation. Message persistence related methods are implemented
@@ -94,41 +77,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     " WHERE " + MESSAGE_ID + " IN (";
 
 
-    private Timer storeMessagePartTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "storeMessagePart"));
-
-    private Timer deleteMessagePartsTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "deleteMessageParts"));
-
-    private Timer getContentTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "getContent"));
-
-    
-    private Timer getContentBatchedTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "getContentBatched"));
-    
-
-    private Timer addMetaDataListTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "addMetaData(List"));
-
-    private Timer addMetaDataTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "addMetaData(AndesMessageMetadata"));
-
-    private Timer addMetaDataToQueueTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "addMetaDataToQueue"));
-
-    private Timer addMetaDataToQueueListTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "addMetadataToQueueList"));
-
-    private Timer updateMetaDataInformationTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "updateMetaDataInformation"));
-
-    private Timer addMetadataToBatchTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "addMetadataToBatch"));
-
-
-    private Timer getMetaDataTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "getMetaData"));
-
-    private Timer getMetaDataListTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "getMetaDataList"));
-
-    private Timer getNextNMessageMetadataFromQueueTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "getNextNMessageMetadataFromQueue"));
-
-    private Timer deleteMessageMetadataFromQueueTimer = MetricManager.timer(Level.INFO, MetricManager.name(this.getClass(), "deleteMessageMetadataFromQueue"));
-
-
     public RDBMSMessageStoreImpl() {
         queueMap = new ConcurrentHashMap<String, Integer>();
-
     }
 
     /**
@@ -154,7 +104,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context context = storeMessagePartTimer.start();
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_MESSAGE_PART, this).start();
         try {
 
             connection = getConnection();
@@ -193,7 +143,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
-        Context context = deleteMessagePartsTimer.start();
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.DELETE_MESSAGE_PART, this).start();
 
         try {
             connection = getConnection();
@@ -226,7 +176,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
 
-        Context context = getContentTimer.start();
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_CONTENT, this).start();
 
         try {
             connection = getConnection();
@@ -264,13 +214,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
 
-        
-        Context context = getContentBatchedTimer.start();
-                
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_CONTENT_BATCH, this).start();
+
 
         try {
-            
-            
+
+
             connection = getConnection();
             preparedStatement = connection.prepareStatement(getSelectContentPreparedStmt(messageIDList.size()));
             for (int i = 0; i < messageIDList.size(); i++) {
@@ -294,9 +243,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             throw new AndesException("Error occurred while retrieving message content from DB for " +
                     messageIDList.size() + " messages ", e);
         } finally {
-            
+
             context.stop();
-            
+
             close(connection, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
             close(preparedStatement, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
             close(resultSet, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
@@ -343,7 +292,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
-        Context context = addMetaDataListTimer.start();
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_META_DATA_LIST, this).start();
 
         try {
             connection = getConnection();
@@ -380,7 +329,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
-        Context context = addMetaDataTimer.start();
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_META_DATA, this).start();
 
         try {
             connection = getConnection();
@@ -419,7 +368,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
-        Context context = addMetaDataToQueueTimer.start();
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_META_DATA_TO_QUEUE, this).start();
 
         try {
             connection = getConnection();
@@ -456,7 +405,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
-        Context context = addMetaDataToQueueListTimer.start();
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_META_DATA_TO_QUEUE_LIST, this).start();
 
         try {
             connection = getConnection();
@@ -526,7 +475,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
-        Context context = updateMetaDataInformationTimer.start();
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.UPDATE_META_DATA_INFORMATION, this).start();
 
         try {
             connection = getConnection();
@@ -571,14 +520,17 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                                     final String queueName) throws SQLException {
 
 
-        Context context = addMetadataToBatchTimer.start();
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_META_DATA_TO_BATCH, this).start();
 
-        preparedStatement.setLong(1, metadata.getMessageID());
-        preparedStatement.setInt(2, getCachedQueueID(queueName));
-        preparedStatement.setBytes(3, metadata.getMetadata());
-        preparedStatement.addBatch();
+        try {
+            preparedStatement.setLong(1, metadata.getMessageID());
+            preparedStatement.setInt(2, getCachedQueueID(queueName));
+            preparedStatement.setBytes(3, metadata.getMetadata());
+            preparedStatement.addBatch();
+        } finally {
+            context.stop();
+        }
 
-        context.stop();
 
     }
 
@@ -655,7 +607,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
 
-        Context context = getMetaDataTimer.start();
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_META_DATA, this).start();
 
         try {
             connection = getConnection();
@@ -693,7 +645,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
 
-        Context context = getMetaDataListTimer.start();
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_META_DATA_LIST, this).start();
 
         try {
             connection = getConnection();
@@ -747,7 +699,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         ResultSet results = null;
 
 
-        Context context = getNextNMessageMetadataFromQueueTimer.start();
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_NEXT_MESSAGE_METADATA_FROM_QUEUE,
+                this).start();
 
         try {
             connection = getConnection();
@@ -798,7 +751,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
-        Context context = deleteMessageMetadataFromQueueTimer.start();
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.DELETE_MESSAGE_META_DATA_FROM_QUEUE, this).
+                start();
 
         try {
             int queueID = getCachedQueueID(storageQueueName);

@@ -107,9 +107,9 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
 
         //Will start the gauge
         MetricManager.gauge(Level.INFO, MetricManager.name(this.getClass(),
-                "InBoundRingSize"), new DistuptorInBoundRingGauge());
+                "InBoundRingSize"), new InBoundRingGauge());
         MetricManager.gauge(Level.INFO, MetricManager.name(this.getClass(),
-                "MessageAckCount"), new DisrtuptorAckedMessageCountGauge());
+                "MessageAckCount"), new AckedMessageCountGauge());
     }
 
     /**
@@ -209,22 +209,28 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
         }
     }
     
-    private class DistuptorInBoundRingGauge implements Gauge<Long>{
+   /**
+     * Utility to get the in bound ring guage
+     */
+    private class InBoundRingGauge implements Gauge<Long> {
 
         @Override
         public Long getValue() {
+            //The total message size will be reduced by the remaining capacity to get the total ring size
             return ringBuffer.getBufferSize() - ringBuffer.remainingCapacity();
         }
     }
 
-    private class DisrtuptorAckedMessageCountGauge implements Gauge<Integer>{
+    /**
+     * Utility to get the acked message count
+     */
+    private class AckedMessageCountGauge implements Gauge<Integer> {
 
 
         @Override
         public Integer getValue() {
-
+            //Acked message count at a given time
             return ackedMessageCount.getAndSet(0);
-
         }
     }
 

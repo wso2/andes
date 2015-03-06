@@ -36,16 +36,18 @@ import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
+import org.wso2.andes.matrics.DataAccessMatrixManager;
+import org.wso2.andes.matrics.MatrixConstants;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.gte;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.lte;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.*;
+import static org.wso2.carbon.metrics.manager.Timer.Context;
 
 /**
  * CQL 3 based Cassandra MessageStore implementation. This is intended to support Cassandra 2.xx series upwards.
@@ -196,18 +198,25 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException {
 
-        BatchStatement batchStatement = new BatchStatement();
-        batchStatement.setConsistencyLevel(config.getWriteConsistencyLevel());
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_MESSAGE_PART, this).start();
 
-        for (AndesMessagePart andesMessagePart : partList) {
-            batchStatement.add(psInsertMessagePart.bind(
-                            andesMessagePart.getMessageID(),
-                            andesMessagePart.getOffSet(),
-                            ByteBuffer.wrap(andesMessagePart.getData()))
-            );
+        try {
+            BatchStatement batchStatement = new BatchStatement();
+            batchStatement.setConsistencyLevel(config.getWriteConsistencyLevel());
+
+            for (AndesMessagePart andesMessagePart : partList) {
+                batchStatement.add(psInsertMessagePart.bind(
+                                andesMessagePart.getMessageID(),
+                                andesMessagePart.getOffSet(),
+                                ByteBuffer.wrap(andesMessagePart.getData()))
+                );
+            }
+
+            execute(batchStatement, "adding message parts list. List size " + partList.size());
+        } finally {
+            context.stop();
         }
 
-        execute(batchStatement, "adding message parts list. List size " + partList.size());
     }
 
     /**
@@ -216,14 +225,21 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public void deleteMessageParts(Collection<Long> messageIdList) throws AndesException {
 
-        BatchStatement batchStatement = new BatchStatement();
-        batchStatement.setConsistencyLevel(config.getWriteConsistencyLevel());
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.DELETE_MESSAGE_PART, this).start();
 
-        for (Long messageID : messageIdList) {
-            batchStatement.add(psDeleteMessagePart.bind(messageID));
+        try {
+            BatchStatement batchStatement = new BatchStatement();
+            batchStatement.setConsistencyLevel(config.getWriteConsistencyLevel());
+
+            for (Long messageID : messageIdList) {
+                batchStatement.add(psDeleteMessagePart.bind(messageID));
+            }
+
+            execute(batchStatement, "deleting message part list. List size " + messageIdList.size());
+        } finally {
+            context.stop();
         }
 
-        execute(batchStatement, "deleting message part list. List size " + messageIdList.size());
     }
 
     /**
@@ -232,29 +248,37 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
 
-        Statement statement = QueryBuilder.select().all().
-                from(config.getKeyspace(), CONTENT_TABLE).
-                where(eq(MESSAGE_ID, messageId)).and(eq(MESSAGE_OFFSET, offsetValue)).
-                setConsistencyLevel(config.getReadConsistencyLevel());
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_CONTENT, this).start();
 
-        ResultSet resultSet = execute(statement, "retrieving message part for msg id " + messageId +
-                " offset " + offsetValue);
+        try {
+            Statement statement = QueryBuilder.select().all().
+                    from(config.getKeyspace(), CONTENT_TABLE).
+                    where(eq(MESSAGE_ID, messageId)).and(eq(MESSAGE_OFFSET, offsetValue)).
+                    setConsistencyLevel(config.getReadConsistencyLevel());
 
-        AndesMessagePart messagePart = null;
-        Row row = resultSet.one();
-        if (null != row) {
-            ByteBuffer buffer = row.getBytes(MESSAGE_CONTENT);
-            byte[] content = new byte[buffer.remaining()];
-            buffer.get(content);
+            ResultSet resultSet = execute(statement, "retrieving message part for msg id " + messageId +
+                    " offset " + offsetValue);
 
-            messagePart = new AndesMessagePart();
-            messagePart.setMessageID(row.getLong(MESSAGE_ID));
-            messagePart.setOffSet(row.getInt(MESSAGE_OFFSET));
-            messagePart.setData(content);
-            messagePart.setDataLength(content.length);
+            AndesMessagePart messagePart = null;
+            Row row = resultSet.one();
+            if (null != row) {
+                ByteBuffer buffer = row.getBytes(MESSAGE_CONTENT);
+                byte[] content = new byte[buffer.remaining()];
+                buffer.get(content);
+
+                messagePart = new AndesMessagePart();
+                messagePart.setMessageID(row.getLong(MESSAGE_ID));
+                messagePart.setOffSet(row.getInt(MESSAGE_OFFSET));
+                messagePart.setData(content);
+                messagePart.setDataLength(content.length);
+            }
+            return messagePart;
+        } finally {
+            context.stop();
+
         }
 
-        return messagePart;
+
     }
 
     /**
@@ -262,8 +286,59 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public Map<Long, List<AndesMessagePart>> getContent(List<Long> messageIdList) throws AndesException {
-        // TODO: implement
-        return null;
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_CONTENT_BATCH, this).start();
+
+        try {
+
+            //The content batch would hold the message id as the key and the content chunks as the value
+            Map<Long, List<AndesMessagePart>> messageContentBatch = new HashMap<Long, List<AndesMessagePart>>
+                    (messageIdList.size());
+
+            //First we need to convert the list into a Long [] since collections are not supported by CQL
+            //More information could be found in https://datastax-oss.atlassian.net/browse/JAVA-110
+            Object[] messageIds = messageIdList.toArray();
+
+            //SELECT * FROM MB_KEYSPACE.MB_CONTENT WHERE MESSAGE_ID IN (messageIDs...);
+            Statement statement = QueryBuilder.select().all().
+                    from(config.getKeyspace(), CONTENT_TABLE).
+                    where(in(MESSAGE_ID, messageIds)).
+                    setConsistencyLevel(config.getReadConsistencyLevel());
+
+            //The list of messages retrieved from the database
+            ResultSet listOfMessages = execute(statement, "retrieving message part for the provided list of ids");
+
+            //Will iterate through each message and will create
+            for (Row row : listOfMessages) {
+                long messageID = row.getLong(MESSAGE_ID);
+                int offset = row.getInt(MESSAGE_OFFSET);
+                ByteBuffer buffer = row.getBytes(MESSAGE_CONTENT);
+                byte[] content = new byte[buffer.remaining()];
+                buffer.get(content);
+
+                List<AndesMessagePart> partList = messageContentBatch.get(messageID);
+
+                //If the message has not being added
+                if (null == partList) {
+                    partList = new ArrayList<AndesMessagePart>();
+                    messageContentBatch.put(messageID, partList);
+                }
+
+                //Will create a message part
+                AndesMessagePart messagePart = new AndesMessagePart();
+                messagePart.setMessageID(messageID);
+                messagePart.setOffSet(offset);
+                messagePart.setData(content);
+                messagePart.setDataLength(content.length);
+
+                partList.add(messagePart);
+
+            }
+            return messageContentBatch;
+        } finally {
+            context.stop();
+        }
+
+
     }
 
     /**
@@ -272,13 +347,19 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException {
 
-        BatchStatement batchStatement = new BatchStatement();
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_META_DATA_LIST, this).start();
 
-        for (AndesMessageMetadata metadata : metadataList) {
-            addMetadataToBatch(batchStatement, metadata, metadata.getStorageQueueName());
+        try {
+            BatchStatement batchStatement = new BatchStatement();
+
+            for (AndesMessageMetadata metadata : metadataList) {
+                addMetadataToBatch(batchStatement, metadata, metadata.getStorageQueueName());
+            }
+
+            execute(batchStatement, " adding metadata list. list size " + metadataList.size());
+        } finally {
+            context.stop();
         }
-
-        execute(batchStatement, " adding metadata list. list size " + metadataList.size());
 
     }
 
@@ -288,11 +369,17 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public void addMetaData(AndesMessageMetadata metadata) throws AndesException {
 
-        BatchStatement batchStatement = new BatchStatement();
-        addMetadataToBatch(batchStatement, metadata, metadata.getStorageQueueName());
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_META_DATA, this).start();
 
-        execute(batchStatement, "adding metadata with msg id " + metadata.getMessageID() + " storage queue "
-                + metadata.getStorageQueueName());
+        try {
+            BatchStatement batchStatement = new BatchStatement();
+            addMetadataToBatch(batchStatement, metadata, metadata.getStorageQueueName());
+
+            execute(batchStatement, "adding metadata with msg id " + metadata.getMessageID() + " storage queue "
+                    + metadata.getStorageQueueName());
+        } finally {
+            context.stop();
+        }
     }
 
     /**
@@ -321,11 +408,17 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     public void addMetaDataToQueue(String queueName,
                                    AndesMessageMetadata metadata) throws AndesException {
 
-        BatchStatement batchStatement = new BatchStatement();
-        addMetadataToBatch(batchStatement, metadata, queueName);
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_META_DATA_TO_QUEUE, this).start();
 
-        execute(batchStatement, "adding metadata to queue " + queueName +
-                " with msg id " + metadata.getMessageID());
+        try {
+            BatchStatement batchStatement = new BatchStatement();
+            addMetadataToBatch(batchStatement, metadata, queueName);
+
+            execute(batchStatement, "adding metadata to queue " + queueName +
+                    " with msg id " + metadata.getMessageID());
+        } finally {
+            context.stop();
+        }
     }
 
     /**
@@ -335,13 +428,20 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     public void addMetadataToQueue(String queueName,
                                    List<AndesMessageMetadata> metadataList) throws AndesException {
 
-        BatchStatement batchStatement = new BatchStatement();
+        Context context = DataAccessMatrixManager.
+                addAndGetTimer(MatrixConstants.ADD_META_DATA_TO_QUEUE_LIST, this).start();
 
-        for (AndesMessageMetadata metadata : metadataList) {
-            addMetadataToBatch(batchStatement, metadata, queueName);
+        try {
+            BatchStatement batchStatement = new BatchStatement();
+
+            for (AndesMessageMetadata metadata : metadataList) {
+                addMetadataToBatch(batchStatement, metadata, queueName);
+            }
+
+            execute(batchStatement, "adding metadata list to queue ");
+        } finally {
+            context.stop();
         }
-
-        execute(batchStatement, "adding metadata list to queue ");
     }
 
     /**
@@ -372,19 +472,26 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     public void updateMetaDataInformation(String currentQueueName,
                                           List<AndesMessageMetadata> metadataList) throws AndesException {
 
-        // Step 1 add metadata to the new queue
-        addMetaData(metadataList);
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.UPDATE_META_DATA_INFORMATION, this)
+                .start();
 
-        // Step 2 - Delete the old meta data when inserting new meta is complete to avoid
-        // losing messages
-        List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>(metadataList.size());
-        for (AndesMessageMetadata metadata : metadataList) {
-            removableMetadataList.add(new AndesRemovableMetadata(metadata.getMessageID(),
-                            metadata.getDestination(),
-                            currentQueueName)
-            );
+        try {
+            // Step 1 add metadata to the new queue
+            addMetaData(metadataList);
+
+            // Step 2 - Delete the old meta data when inserting new meta is complete to avoid
+            // losing messages
+            List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>(metadataList.size());
+            for (AndesMessageMetadata metadata : metadataList) {
+                removableMetadataList.add(new AndesRemovableMetadata(metadata.getMessageID(),
+                                metadata.getDestination(),
+                                currentQueueName)
+                );
+            }
+            deleteMessageMetadataFromQueue(currentQueueName, removableMetadataList);
+        } finally {
+            context.stop();
         }
-        deleteMessageMetadataFromQueue(currentQueueName, removableMetadataList);
 
     }
 
@@ -399,24 +506,31 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public AndesMessageMetadata getMetaData(long messageId) throws AndesException {
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_META_DATA, this)
+                .start();
 
-        AndesMessageMetadata metadata = null;
+        try {
+            AndesMessageMetadata metadata = null;
 
-        Statement statement = QueryBuilder.select().column(METADATA).
-                from(config.getKeyspace(), METADATA_TABLE).
-                where(eq(MESSAGE_ID, messageId)).
-                limit(1).
-                allowFiltering().
-                setConsistencyLevel(config.getReadConsistencyLevel());
+            Statement statement = QueryBuilder.select().column(METADATA).
+                    from(config.getKeyspace(), METADATA_TABLE).
+                    where(eq(MESSAGE_ID, messageId)).
+                    limit(1).
+                    allowFiltering().
+                    setConsistencyLevel(config.getReadConsistencyLevel());
 
-        ResultSet resultSet = execute(statement, "retrieving metadata for msg id " + messageId);
-        Row row = resultSet.one();
+            ResultSet resultSet = execute(statement, "retrieving metadata for msg id " + messageId);
+            Row row = resultSet.one();
 
-        if (null != row) {
-            metadata = getMetadataFromRow(row, messageId);
+            if (null != row) {
+                metadata = getMetadataFromRow(row, messageId);
+            }
+            return metadata;
+        } finally {
+            context.stop();
         }
 
-        return metadata;
+
     }
 
     /**
@@ -427,23 +541,31 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                                                       long firstMsgId,
                                                       long lastMsgID) throws AndesException {
 
-        Statement statement = QueryBuilder.select().column(MESSAGE_ID).column(METADATA).
-                from(config.getKeyspace(), METADATA_TABLE).
-                where(eq(QUEUE_NAME, queueName)).
-                and(gte(MESSAGE_ID, firstMsgId)).
-                and(lte(MESSAGE_ID, lastMsgID)).
-                setConsistencyLevel(config.getReadConsistencyLevel());
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_META_DATA_LIST, this).start();
 
-        ResultSet resultSet = execute(statement, "retrieving metadata list from queue " + queueName +
-                "between msg id " + firstMsgId + " and " + lastMsgID);
-        List<AndesMessageMetadata> metadataList =
-                new ArrayList<AndesMessageMetadata>(resultSet.getAvailableWithoutFetching());
+        try {
+            Statement statement = QueryBuilder.select().column(MESSAGE_ID).column(METADATA).
+                    from(config.getKeyspace(), METADATA_TABLE).
+                    where(eq(QUEUE_NAME, queueName)).
+                    and(gte(MESSAGE_ID, firstMsgId)).
+                    and(lte(MESSAGE_ID, lastMsgID)).
+                    setConsistencyLevel(config.getReadConsistencyLevel());
 
-        for (Row row : resultSet) {
-            metadataList.add(getMetadataFromRow(row, row.getLong(MESSAGE_ID)));
+            ResultSet resultSet = execute(statement, "retrieving metadata list from queue " + queueName +
+                    "between msg id " + firstMsgId + " and " + lastMsgID);
+            List<AndesMessageMetadata> metadataList =
+                    new ArrayList<AndesMessageMetadata>(resultSet.getAvailableWithoutFetching());
+
+            for (Row row : resultSet) {
+                metadataList.add(getMetadataFromRow(row, row.getLong(MESSAGE_ID)));
+            }
+            return metadataList;
+
+        } finally {
+            context.stop();
         }
 
-        return metadataList;
+
     }
 
     /**
@@ -454,23 +576,31 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                                                                        long firstMsgId,
                                                                        int count) throws AndesException {
 
-        Statement statement = QueryBuilder.select().column(METADATA).column(MESSAGE_ID).
-                from(config.getKeyspace(), METADATA_TABLE).
-                where(eq(QUEUE_NAME, storageQueueName)).
-                and(gte(MESSAGE_ID, firstMsgId)).
-                limit(count).
-                setConsistencyLevel(config.getReadConsistencyLevel());
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.
+                GET_NEXT_MESSAGE_METADATA_FROM_QUEUE, this).start();
 
-        ResultSet resultSet = execute(statement, "retrieving metadata list from " + storageQueueName +
-                " with starting msg id " + firstMsgId + " and limit " + count);
-        List<AndesMessageMetadata> metadataList =
-                new ArrayList<AndesMessageMetadata>(resultSet.getAvailableWithoutFetching());
+        try {
+            Statement statement = QueryBuilder.select().column(METADATA).column(MESSAGE_ID).
+                    from(config.getKeyspace(), METADATA_TABLE).
+                    where(eq(QUEUE_NAME, storageQueueName)).
+                    and(gte(MESSAGE_ID, firstMsgId)).
+                    limit(count).
+                    setConsistencyLevel(config.getReadConsistencyLevel());
 
-        for (Row row : resultSet) {
-            metadataList.add(getMetadataFromRow(row, row.getLong(MESSAGE_ID)));
+            ResultSet resultSet = execute(statement, "retrieving metadata list from " + storageQueueName +
+                    " with starting msg id " + firstMsgId + " and limit " + count);
+            List<AndesMessageMetadata> metadataList =
+                    new ArrayList<AndesMessageMetadata>(resultSet.getAvailableWithoutFetching());
+
+            for (Row row : resultSet) {
+                metadataList.add(getMetadataFromRow(row, row.getLong(MESSAGE_ID)));
+            }
+            return metadataList;
+        } finally {
+            context.stop();
         }
 
-        return metadataList;
+
     }
 
     /**
@@ -493,17 +623,25 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     public void deleteMessageMetadataFromQueue(String storageQueueName,
                                                List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
 
-        BatchStatement batchStatement = new BatchStatement();
+        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.DELETE_MESSAGE_META_DATA_FROM_QUEUE, this).
+                start();
 
-        for (AndesRemovableMetadata metadata : messagesToRemove) {
-            batchStatement.add(psDeleteMetadata.bind(
-                    storageQueueName,
-                    metadata.getMessageID()
-            ));
+        try {
+            BatchStatement batchStatement = new BatchStatement();
+
+            for (AndesRemovableMetadata metadata : messagesToRemove) {
+                batchStatement.add(psDeleteMetadata.bind(
+                        storageQueueName,
+                        metadata.getMessageID()
+                ));
+            }
+
+            execute(batchStatement, "deleting metadata list from " + storageQueueName +
+                    " list size " + messagesToRemove.size());
+        } finally {
+            context.stop();
         }
 
-        execute(batchStatement, "deleting metadata list from " + storageQueueName +
-                " list size " + messagesToRemove.size());
     }
 
     /**

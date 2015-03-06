@@ -26,13 +26,11 @@ import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.matrics.DataAccessMatrixManager;
+import org.wso2.andes.matrics.MatrixConstants;
 import org.wso2.carbon.metrics.manager.Gauge;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.MetricManager;
-import org.wso2.carbon.metrics.manager.Timer;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -76,7 +74,7 @@ public class DisruptorBasedFlusher {
         // This barrier is used for contentReaders. Content read processors process events first. Hence take the
         // barrier directly from ring buffer
         SequenceBarrier barrier = disruptor.getRingBuffer().newBarrier();
-        
+
         // Initialize content readers
         ConcurrentContentReadTaskBatchProcessor[] contentReadTaskBatchProcessor = new ConcurrentContentReadTaskBatchProcessor[parallelContentReaders];
         for (int i = 0; i < parallelContentReaders; i++) {
@@ -84,13 +82,13 @@ public class DisruptorBasedFlusher {
                     disruptor.getRingBuffer(),
                     barrier,
                     new ContentCacheCreator(),
-                    i, 
+                    i,
                     parallelContentReaders,
                     contentSizeToBatch);
-            
+
             contentReadTaskBatchProcessor[i].setExceptionHandler(new DeliveryExceptionHandler());
         }
-    
+
         // Initialize delivery handlers
         DeliveryEventHandler[] deliveryEventHandlers = new DeliveryEventHandler[parallelDeliveryHandlers];
         for (int i = 0; i < parallelDeliveryHandlers; i++) {
@@ -102,9 +100,9 @@ public class DisruptorBasedFlusher {
         disruptor.start();
         ringBuffer = disruptor.getRingBuffer();
 
-        //Will start the gauge
-        MetricManager.gauge(Level.INFO, MetricManager.name(this.getClass(),
-                "outBoundRingSize"),new DisruptorOutBoundRingGauge());
+        //Will add the guage listener to periodically calculate the outbound messages in the ring
+        DataAccessMatrixManager.addAndGetGuage(MatrixConstants.DISRUPTOR_OUTBOUND_RING, this.getClass(),
+                new OutBoundRingGuage());
     }
 
     /**
@@ -139,11 +137,11 @@ public class DisruptorBasedFlusher {
      * Utility class used to gauge ring size.
      *
      */
-    private class DisruptorOutBoundRingGauge implements Gauge <Long>{
+    private class OutBoundRingGuage implements Gauge<Long> {
         @Override
         public Long getValue() {
-            long disruptorRemainingSlotSize = ringBuffer.getBufferSize() - ringBuffer.remainingCapacity();
-            return disruptorRemainingSlotSize;
+            //The total ring size will be reduced from the remaining ring size
+            return ringBuffer.getBufferSize() - ringBuffer.remainingCapacity();
         }
     }
 }
