@@ -522,7 +522,7 @@ public class OnflightMessageTracker {
      *
      * @param slot slot to release
      */
-    public void clearAllTrackingWhenOrphanedSlotSituation(Slot slot) {
+    public void clearAllTrackingWhenSlotOrphaned(Slot slot) {
         if (log.isDebugEnabled()) {
             log.debug("Orphan slot situation and clear tracking of messages for slot = " + slot);
         }

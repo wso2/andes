@@ -353,7 +353,7 @@ public class MessageFlusher {
          * deliver messages to subscriptions
          */
         int sentMessageCount = 0;
-        boolean orphanedSlotSituation = false;
+        boolean orphanedSlot = false;
         Iterator<AndesMessageMetadata> iterator = messages.iterator();
         List<AndesRemovableMetadata> droppedTopicMessageList = new ArrayList<AndesRemovableMetadata>();
 
@@ -411,7 +411,7 @@ public class MessageFlusher {
                     if (subscriptions4Queue.size() == 0) {
                         // We don't have subscribers for this message
                         // Handle orphaned slot created with this no subscription scenario for queue
-                        orphanedSlotSituation = true;
+                        orphanedSlot = true;
                         break; // break the loop
                     }
                 }
@@ -495,9 +495,9 @@ public class MessageFlusher {
             }
         }
         // clear all tracking when orphan slot situation
-        if (orphanedSlotSituation) {
+        if (orphanedSlot) {
             for (AndesMessageMetadata message : messages) {
-                OnflightMessageTracker.getInstance().clearAllTrackingWhenOrphanedSlotSituation(message.getSlot());
+                OnflightMessageTracker.getInstance().clearAllTrackingWhenSlotOrphaned(message.getSlot());
             }
             messages.clear();
         }

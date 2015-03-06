@@ -87,7 +87,7 @@ public class OrphanedSlotHandler implements SubscriptionListener {
                     Set<Slot> slotsToRemoveTrackingIfOrphaned = subscriptionSlotTracker
                             .get(subscription.getTargetQueue());
                     for (Slot slot : slotsToRemoveTrackingIfOrphaned) {
-                        OnflightMessageTracker.getInstance().clearAllTrackingWhenOrphanedSlotSituation(slot);
+                        OnflightMessageTracker.getInstance().clearAllTrackingWhenSlotOrphaned(slot);
                     }
 
                 } catch (ConnectionException e) {
