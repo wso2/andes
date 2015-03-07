@@ -26,6 +26,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.matrics.MatrixConstants;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.carbon.metrics.manager.Gauge;
 import org.wso2.carbon.metrics.manager.Level;
@@ -107,9 +108,9 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
 
         //Will start the gauge
         MetricManager.gauge(Level.INFO, MetricManager.name(this.getClass(),
-                "InBoundRingSize"), new InBoundRingGauge());
+                MatrixConstants.DISRUPTOR_INBOUND_RING), new InBoundRingGauge());
         MetricManager.gauge(Level.INFO, MetricManager.name(this.getClass(),
-                "MessageAckCount"), new AckedMessageCountGauge());
+                MatrixConstants.DISRUPTOR_MESSAGE_ACK), new AckedMessageCountGauge());
     }
 
     /**
