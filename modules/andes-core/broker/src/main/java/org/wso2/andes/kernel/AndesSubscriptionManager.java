@@ -31,8 +31,10 @@ import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 
@@ -106,7 +108,7 @@ public class AndesSubscriptionManager {
      */
     public void closeAllClusterSubscriptionsOfNode(String nodeID) throws AndesException {
 
-        List<AndesSubscription> activeSubscriptions = subscriptionStore.getActiveClusterSubscribersForNode(nodeID, true);
+        Set<AndesSubscription> activeSubscriptions = subscriptionStore.getActiveClusterSubscribersForNode(nodeID, true);
         activeSubscriptions.addAll(subscriptionStore.getActiveClusterSubscribersForNode(nodeID, false));
 
         if (!activeSubscriptions.isEmpty()) {
@@ -128,8 +130,7 @@ public class AndesSubscriptionManager {
      */
     public void closeAllLocalSubscriptionsOfNode() throws AndesException {
 
-        log.info("Closing all existing local subscriptions.");
-        List<LocalSubscription> activeSubscriptions = subscriptionStore.getActiveLocalSubscribers(true);
+        Set<LocalSubscription> activeSubscriptions = subscriptionStore.getActiveLocalSubscribers(true);
         activeSubscriptions.addAll(subscriptionStore.getActiveLocalSubscribers(false));
 
         if (!activeSubscriptions.isEmpty()) {
@@ -151,10 +152,7 @@ public class AndesSubscriptionManager {
     public boolean checkIfActiveNonDurableLocalSubscriptionExistsForTopic(String boundTopicName)
                                                                              throws AndesException {
         boolean subscriptionExists = false;
-        List<LocalSubscription> activeSubscriptions = (List<LocalSubscription>) subscriptionStore.
-                                                                           getActiveLocalSubscribers(
-                                                                           boundTopicName,
-                                                                           true);
+        Set<LocalSubscription> activeSubscriptions = subscriptionStore.getActiveLocalSubscribers(boundTopicName, true);
         for(LocalSubscription sub : activeSubscriptions) {
             if(!sub.isDurable()) {
                 subscriptionExists = true;
@@ -213,7 +211,7 @@ public class AndesSubscriptionManager {
      * @throws AndesException
      */
     public synchronized void deleteAllLocalSubscriptionsOfBoundQueue(String boundQueueName) throws AndesException{
-        List<LocalSubscription> subscriptionsOfQueue = subscriptionStore.getListOfLocalSubscriptionsBoundToQueue(
+        Set<LocalSubscription> subscriptionsOfQueue = subscriptionStore.getListOfLocalSubscriptionsBoundToQueue(
                 boundQueueName);
         for(LocalSubscription subscription : subscriptionsOfQueue) {
             try {
@@ -236,156 +234,56 @@ public class AndesSubscriptionManager {
     }
 
     /**
-     * Reload subscriptions from DB storage and update cluster subscription lists
+     * Reload subscriptions from DB storage and update cluster subscriptions in subscription store.
      */
     public void reloadSubscriptionsFromStorage() throws AndesException {
-        //this part will evaluate what is in DB with in-memory lists
-        Map<String, List<String>> results = AndesContext.getInstance().getAndesContextStore().getAllStoredDurableSubscriptions();
+
+        Map<String, List<String>> results = AndesContext.getInstance().getAndesContextStore()
+                .getAllStoredDurableSubscriptions();
+
         for (Map.Entry<String, List<String>> entry : results.entrySet()) {
             String destination = entry.getKey();
-            List<AndesSubscription> newSubscriptionList = new ArrayList<AndesSubscription>();
-            for (String subscriptionAsStr : entry.getValue()) {
-                BasicSubscription subscription = new BasicSubscription(subscriptionAsStr);
-                newSubscriptionList.add(subscription);
-            }
+            Set<AndesSubscription> dbSubscriptions = new HashSet<AndesSubscription>();
+            Set<AndesSubscription> memorySubscriptions = new HashSet<AndesSubscription>();
 
-            List<AndesSubscription> oldSubscriptionList;
-
-            //existing destination subscriptions list
             if (destination.startsWith(QUEUE_PREFIX)) {
                 String destinationQueueName = destination.replace(QUEUE_PREFIX, "");
-                oldSubscriptionList = subscriptionStore.replaceClusterSubscriptionListOfDestination
-                        (destinationQueueName, new ArrayList<AndesSubscription>(newSubscriptionList), false);
-            }
-            //existing topic subscriptions list
-            else {
+                memorySubscriptions.addAll(subscriptionStore.getClusterSubscribersForDestination
+                        (destinationQueueName, false, AndesSubscription.SubscriptionType.AMQP));
+            } else {
                 String topicName = destination.replace(TOPIC_PREFIX, "");
-                oldSubscriptionList = subscriptionStore.replaceClusterSubscriptionListOfDestination
-                        (topicName, new ArrayList<AndesSubscription>(newSubscriptionList), true);
+                // Get all the subscriptions for the destination available in memory
+                memorySubscriptions.addAll(subscriptionStore.getClusterSubscribersForDestination(topicName, true,
+                        AndesSubscription.SubscriptionType.AMQP));
+                memorySubscriptions.addAll(subscriptionStore.getClusterSubscribersForDestination(topicName, true,
+                        AndesSubscription.SubscriptionType.MQTT));
             }
 
-            if (oldSubscriptionList == null) {
-                oldSubscriptionList = Collections.emptyList();
-            }
+            // Check for db subscriptions that are not available in memory and add them
+            for (String subscriptionAsStr : entry.getValue()) {
+                BasicSubscription subscription = new BasicSubscription(subscriptionAsStr);
+                dbSubscriptions.add(subscription);
 
-            //TODO may be there is a better way to do the subscription Diff
-            if (subscriptionListeners.size() > 0) {
-                List<AndesSubscription> duplicatedNewSubscriptionList = new ArrayList<AndesSubscription>(newSubscriptionList);
-                /**
-                 * for all subscriptions which are in store but ont in-memory simulate the incoming 'create'
-                 * cluster notification for the subscription
-                 */
-                newSubscriptionList.removeAll(oldSubscriptionList);
-                for (AndesSubscription subscription : newSubscriptionList) {
-                    log.warn("Recovering node. Adding subscription " + subscription.toString());
+                boolean subscriptionAvailable = subscriptionStore.isSubscriptionAvailable(subscription);
+
+                if (!subscriptionAvailable) {
+                    // Subscription not available in subscription store, need to add
+                    subscriptionStore.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
+                            .SubscriptionChange.ADDED);
+
                     notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.ADDED);
                 }
+            }
 
-                /**
-                 * for all subscriptions which are in-memory but not in store simulate the incoming 'delete'
-                 * cluster notification for the subscription
-                 */
-                oldSubscriptionList.removeAll(duplicatedNewSubscriptionList);
-                for (AndesSubscription subscription : oldSubscriptionList) {
-                    log.warn("Recovering node. Removing subscription " + subscription.toString());
+            // Check for subscriptions in memory that are not available in db and remove them
+            for (AndesSubscription subscription : memorySubscriptions) {
+                if (!dbSubscriptions.contains(subscription)) {
+                    subscriptionStore.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
+                            .SubscriptionChange.DELETED);
                     notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.DELETED);
                 }
             }
         }
-
-        //this part will evaluate destinations that are in in-memory subscription lists but not in DB
-        List<String> queues = subscriptionStore.getAllDestinationsOfSubscriptions(false);
-        List<String> topics = subscriptionStore.getAllDestinationsOfSubscriptions(true);
-        List<String> queuesInDB = new ArrayList<String>();
-        List<String> topicsInDB = new ArrayList<String>();
-
-        for (String destination : results.keySet()) {
-            if (destination.startsWith(QUEUE_PREFIX)) {
-                queuesInDB.add(destination.replace(QUEUE_PREFIX, ""));
-            } else if (destination.startsWith(TOPIC_PREFIX)) {
-                topicsInDB.add(destination.replace(TOPIC_PREFIX, ""));
-            }
-        }
-        queues.removeAll(queuesInDB);
-        topics.removeAll(topicsInDB);
-
-        for (String queue : queues) {
-            List<String> subscriptionsFromStore = results.get(QUEUE_PREFIX + queue);
-            List<AndesSubscription> newSubscriptionList = new ArrayList<AndesSubscription>();
-            if (subscriptionsFromStore != null) {
-                for (String subscriptionAsStr : subscriptionsFromStore) {
-                    BasicSubscription subscription = new BasicSubscription(subscriptionAsStr);
-                    newSubscriptionList.add(subscription);
-                }
-            }
-            List<AndesSubscription> oldSubscriptionList;
-            oldSubscriptionList = subscriptionStore.replaceClusterSubscriptionListOfDestination
-                    (queue, new ArrayList<AndesSubscription>(newSubscriptionList), false);
-            if (oldSubscriptionList == null) {
-                oldSubscriptionList = Collections.emptyList();
-            }
-            if (subscriptionListeners.size() > 0) {
-                List<AndesSubscription> duplicatedNewSubscriptionList = new ArrayList<AndesSubscription>(newSubscriptionList);
-                /**
-                 * for all subscriptions which are in store but ont in-memory simulate the incoming 'create'
-                 * cluster notification for the subscription
-                 */
-                newSubscriptionList.removeAll(oldSubscriptionList);
-                for (AndesSubscription subscription : newSubscriptionList) {
-                    log.warn("Recovering node. Adding subscription " + subscription.toString());
-                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.ADDED);
-                }
-
-                /**
-                 * for all subscriptions which are in-memory but not in store simulate the incoming 'delete'
-                 * cluster notification for the subscription
-                 */
-                oldSubscriptionList.removeAll(duplicatedNewSubscriptionList);
-                for (AndesSubscription subscription : oldSubscriptionList) {
-                    log.warn("Recovering node. Removing subscription " + subscription.toString());
-                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.DELETED);
-                }
-            }
-        }
-        for (String topic : topics) {
-            List<String> subscriptionsFromStore = results.get(TOPIC_PREFIX + topic);
-            List<AndesSubscription> newSubscriptionList = new ArrayList<AndesSubscription>();
-            if (subscriptionsFromStore != null) {
-                for (String subscriptionAsStr : subscriptionsFromStore) {
-                    BasicSubscription subscription = new BasicSubscription(subscriptionAsStr);
-                    newSubscriptionList.add(subscription);
-                }
-            }
-            List<AndesSubscription> oldSubscriptionList;
-            oldSubscriptionList = subscriptionStore.replaceClusterSubscriptionListOfDestination
-                    (topic, new ArrayList<AndesSubscription>(newSubscriptionList), true);
-            if (oldSubscriptionList == null) {
-                oldSubscriptionList = Collections.emptyList();
-            }
-            if (subscriptionListeners.size() > 0) {
-                List<AndesSubscription> duplicatedNewSubscriptionList = new ArrayList<AndesSubscription>(newSubscriptionList);
-                /**
-                 * for all subscriptions which are in store but ont in-memory simulate the incoming 'create'
-                 * cluster notification for the subscription
-                 */
-                newSubscriptionList.removeAll(oldSubscriptionList);
-                for (AndesSubscription subscription : newSubscriptionList) {
-                    log.warn("Recovering node. Adding subscription " + subscription.toString());
-                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.ADDED);
-                }
-
-                /**
-                 * for all subscriptions which are in-memory but not in store simulate the incoming 'delete'
-                 * cluster notification for the subscription
-                 */
-                oldSubscriptionList.removeAll(duplicatedNewSubscriptionList);
-                for (AndesSubscription subscription : oldSubscriptionList) {
-                    log.warn("Recovering node. Removing subscription " + subscription.toString());
-                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.DELETED);
-                }
-            }
-        }
-
     }
 
     private void notifyLocalSubscriptionHasChanged(final LocalSubscription subscription, final SubscriptionListener.SubscriptionChange change) throws AndesException {

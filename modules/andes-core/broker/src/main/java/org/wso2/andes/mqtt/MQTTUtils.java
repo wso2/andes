@@ -22,6 +22,7 @@ import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.impl.subscriptions.SubscriptionsStore;
 import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.server.store.MessageMetaDataType;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
@@ -42,6 +43,10 @@ public class MQTTUtils {
     //This will be required to be at the initial byte stream the meta data will have since when the message is proccessed
     //back from andes since the message relevency is checked ex :- whether its amqp, mqtt etc
     public static final String MQTT_META_INFO = "\u0002MQTT Protocol v3.1";
+
+    public static final String SINGLE_LEVEL_WILDCARD = "+";
+    public static final String MULTI_LEVEL_WILDCARD = "#";
+
 
     /**
      * The pulished messages will be taken in as a byte stream, the mesage will be transformed into AndesMessagePart as
@@ -118,6 +123,7 @@ public class MQTTUtils {
         messageHeader.setChannelId(publisherID);
         messageHeader.setMessageContentLength(messageContentLength);
         messageHeader.setStorageQueueName(topic);
+        messageHeader.setMetaDataType(MessageMetaDataType.META_DATA_MQTT);
         // message arrival time set to mb node's system time.
         messageHeader.setArrivalTime(receivedTime);
         if (log.isDebugEnabled()) {
@@ -196,5 +202,21 @@ public class MQTTUtils {
     public static boolean isTargetQueueBoundByMatchingToRoutingKey(String queueBoundRoutingKey,
                                                                    String messageRoutingKey) {
         return SubscriptionsStore.matchTopics(messageRoutingKey, queueBoundRoutingKey);
+    }
+
+    /**
+     * Checks whether a given subscription is a wildcard subscription.
+     *
+     * @param subscribedDestination The destination string subscriber subscribed to
+     * @return is this a wild card subscription
+     */
+    public static boolean isWildCardSubscription(String subscribedDestination) {
+        boolean isWildCard = false;
+
+        if (subscribedDestination.contains(SINGLE_LEVEL_WILDCARD) || subscribedDestination.contains(MULTI_LEVEL_WILDCARD)) {
+            isWildCard = true;
+        }
+
+        return isWildCard;
     }
 }

@@ -678,11 +678,11 @@ public class SubscriptionBitMapHandler {
      * @param newSubscriptionList new list of subscriptions
      * @return the old list of the subscriptions
      */
-    public List<AndesSubscription> getAllClusteredSubscriptions(String destination, List<AndesSubscription> newSubscriptionList) {
-        List<AndesSubscription> oldList = null;
+    public Set<AndesSubscription> getAllClusteredSubscriptions(String destination, Set<AndesSubscription> newSubscriptionList) {
+        Set<AndesSubscription> oldList = null;
         if (null != clusteredSubscriptionMapping.get(destination)) {
             int mappingIndex = clusteredSubscriptionMapping.get(destination);
-            oldList = new ArrayList<AndesSubscription>(clusteredSubscriptions.remove(mappingIndex).values());
+            oldList = new HashSet<AndesSubscription>(clusteredSubscriptions.remove(mappingIndex).values());
             Map<String, AndesSubscription> newList = new ConcurrentHashMap<String, AndesSubscription>();
             for (AndesSubscription andesSubscription : newSubscriptionList) {
                 newList.put(andesSubscription.getSubscriptionID(), andesSubscription);
