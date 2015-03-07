@@ -222,8 +222,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             connection = getConnection();
             preparedStatement = connection.prepareStatement(getSelectContentPreparedStmt(messageIDList.size()));
-            for (int i = 0; i < messageIDList.size(); i++) {
-                preparedStatement.setLong(i + 1, messageIDList.get(i));
+            for (int mesageIDCounter = 0; mesageIDCounter < messageIDList.size(); mesageIDCounter++) {
+                preparedStatement.setLong(mesageIDCounter + 1, messageIDList.get(mesageIDCounter));
             }
 
             resultSet = preparedStatement.executeQuery();
