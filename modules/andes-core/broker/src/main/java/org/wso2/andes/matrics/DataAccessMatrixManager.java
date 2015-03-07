@@ -34,11 +34,14 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DataAccessMatrixManager {
 
 
-    //Holds the timers which will periodically trigger the matrix info
-    //Key - Timer definition, Value - timer object which will record info against the defined operation
-    //Map will be concurrently accessed during multiple db operations during run time.
+    /*
+     *Holds the timers which will periodically trigger the matrix info
+     *Key - Timer definition, Value - timer object which will record info against the defined operation
+     *Map will be concurrently accessed during multiple db operations during run time.
+     * */
     private static Map<String, Timer> timers = new ConcurrentHashMap<String, Timer>();
-    //Sets the level in which the matrix should be handled the levels could be INFO, WARN, DEBUG, TRACE
+
+    /*Sets the level in which the matrix should be handled the levels could be INFO, WARN, DEBUG, TRACE*/
     private static final Level level = Level.INFO;
 
 
