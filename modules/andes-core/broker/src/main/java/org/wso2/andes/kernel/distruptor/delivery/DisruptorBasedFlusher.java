@@ -101,7 +101,7 @@ public class DisruptorBasedFlusher {
         ringBuffer = disruptor.getRingBuffer();
 
         //Will add the guage listener to periodically calculate the outbound messages in the ring
-        DataAccessMatrixManager.addAndGetGuage(MatrixConstants.DISRUPTOR_OUTBOUND_RING, this.getClass(),
+        DataAccessMatrixManager.addGuage(MatrixConstants.DISRUPTOR_OUTBOUND_RING, this.getClass(),
                 new OutBoundRingGuage());
     }
 
