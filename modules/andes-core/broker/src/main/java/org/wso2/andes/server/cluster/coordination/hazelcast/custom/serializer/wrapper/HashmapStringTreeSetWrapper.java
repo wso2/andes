@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2005-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -23,7 +23,6 @@ import org.wso2.andes.kernel.slot.Slot;
 
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 
@@ -39,6 +38,10 @@ public class HashmapStringTreeSetWrapper implements Serializable {
 
     private HashMap<String, TreeSet<Slot>>  stringListHashMap;
 
+
+    public HashmapStringTreeSetWrapper(){
+         stringListHashMap = new HashMap<String, TreeSet<Slot>>();
+    }
 
     public HashMap<String, TreeSet<Slot>> getStringListHashMap() {
         return stringListHashMap;
