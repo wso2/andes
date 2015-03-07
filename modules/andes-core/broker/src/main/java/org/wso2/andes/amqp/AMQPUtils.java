@@ -55,6 +55,8 @@ import java.util.regex.Pattern;
 
 public class AMQPUtils {
 
+    public static final String TOPIC_AND_CHILDREN_WILDCARD = ".#";
+    public static final String IMMEDIATE_CHILDREN_WILDCARD = ".*";
     public static String DIRECT_EXCHANGE_NAME = "amq.direct";
 
     public static String TOPIC_EXCHANGE_NAME = "amq.topic";
@@ -418,17 +420,33 @@ public class AMQPUtils {
         boolean isMatching = false;
         if (queueBoundRoutingKey.equals(messageRoutingKey)) {
             isMatching = true;
-        } else if (queueBoundRoutingKey.indexOf(".#") > 1) {
-            String p = queueBoundRoutingKey.substring(0, queueBoundRoutingKey.indexOf(".#"));
-            Pattern pattern = Pattern.compile(p + ".*");
+        } else if (queueBoundRoutingKey.indexOf(TOPIC_AND_CHILDREN_WILDCARD) > 1) {
+            String p = queueBoundRoutingKey.substring(0, queueBoundRoutingKey.indexOf(TOPIC_AND_CHILDREN_WILDCARD));
+            Pattern pattern = Pattern.compile(p + IMMEDIATE_CHILDREN_WILDCARD);
             Matcher matcher = pattern.matcher(messageRoutingKey);
             isMatching = matcher.matches();
-        } else if (queueBoundRoutingKey.indexOf(".*") > 1) {
-            String p = queueBoundRoutingKey.substring(0, queueBoundRoutingKey.indexOf(".*"));
+        } else if (queueBoundRoutingKey.indexOf(IMMEDIATE_CHILDREN_WILDCARD) > 1) {
+            String p = queueBoundRoutingKey.substring(0, queueBoundRoutingKey.indexOf(IMMEDIATE_CHILDREN_WILDCARD));
             Pattern pattern = Pattern.compile("^" + p + "[.][^.]+$");
             Matcher matcher = pattern.matcher(messageRoutingKey);
             isMatching = matcher.matches();
         }
         return isMatching;
+    }
+
+    /**
+     * Checks whether a given subscription is a wildcard subscription.
+     *
+     * @param subscribedDestination The destination string subscriber subscribed to
+     * @return is this a wild card subscription
+     */
+    public static boolean isWildCardSubscription(String subscribedDestination) {
+        boolean isWildCard = false;
+
+        if (subscribedDestination.contains(TOPIC_AND_CHILDREN_WILDCARD) || subscribedDestination.contains(IMMEDIATE_CHILDREN_WILDCARD)) {
+            isWildCard = true;
+        }
+
+        return isWildCard;
     }
 }

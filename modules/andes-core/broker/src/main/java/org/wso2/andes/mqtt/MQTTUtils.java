@@ -43,6 +43,10 @@ public class MQTTUtils {
     //back from andes since the message relevency is checked ex :- whether its amqp, mqtt etc
     public static final String MQTT_META_INFO = "\u0002MQTT Protocol v3.1";
 
+    public static final String SINGLE_LEVEL_WILDCARD = "+";
+    public static final String MULTI_LEVEL_WILDCARD = "#";
+
+
     /**
      * The pulished messages will be taken in as a byte stream, the mesage will be transformed into AndesMessagePart as
      * its required by the Andes kernal for processing
@@ -196,5 +200,21 @@ public class MQTTUtils {
     public static boolean isTargetQueueBoundByMatchingToRoutingKey(String queueBoundRoutingKey,
                                                                    String messageRoutingKey) {
         return SubscriptionsStore.matchTopics(messageRoutingKey, queueBoundRoutingKey);
+    }
+
+    /**
+     * Checks whether a given subscription is a wildcard subscription.
+     *
+     * @param subscribedDestination The destination string subscriber subscribed to
+     * @return is this a wild card subscription
+     */
+    public static boolean isWildCardSubscription(String subscribedDestination) {
+        boolean isWildCard = false;
+
+        if (subscribedDestination.contains(SINGLE_LEVEL_WILDCARD) || subscribedDestination.contains(MULTI_LEVEL_WILDCARD)) {
+            isWildCard = true;
+        }
+
+        return isWildCard;
     }
 }

@@ -112,7 +112,7 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
         String messageRoutingKey = message.getMetadata().getDestination();
         //get all topic subscriptions in the cluster matching to routing key
         //including hierarchical topic case
-        List<AndesSubscription> subscriptionList;
+        Set<AndesSubscription> subscriptionList;
         try {
 
             // TODO: This call is O(n2). In critical path. Need to improve
