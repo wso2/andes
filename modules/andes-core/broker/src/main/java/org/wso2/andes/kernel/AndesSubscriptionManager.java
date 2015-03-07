@@ -133,13 +133,7 @@ public class AndesSubscriptionManager {
 
         if (!activeSubscriptions.isEmpty()) {
             for (LocalSubscription sub : activeSubscriptions) {
-                //close and notify
-                try {
-                    subscriptionStore.createDisconnectOrRemoveLocalSubscription(sub, SubscriptionListener.SubscriptionChange.DELETED);
-                } catch (SubscriptionAlreadyExistsException ignore) {
-                    // newer thrown for close subscriptions
-                }
-                notifyLocalSubscriptionHasChanged(sub, SubscriptionListener.SubscriptionChange.DELETED);
+                closeLocalSubscription(sub);
             }
         }
 
@@ -177,7 +171,7 @@ public class AndesSubscriptionManager {
      * @throws AndesException
      */
     public void closeLocalSubscription(LocalSubscription subscription) throws AndesException {
-        SubscriptionListener.SubscriptionChange chageType;
+        SubscriptionListener.SubscriptionChange changeType;
         /**
          * For durable topic subscriptions, mark this as a offline subscription.
          * When a new one comes with same subID, same topic it will become online again
@@ -194,22 +188,22 @@ public class AndesSubscriptionManager {
              */
             if (allowSharedSubscribers) {
                 if (subscriptionStore.getActiveLocalSubscribers(subscription.getTargetQueue(), false).size() == 1) {
-                    chageType = SubscriptionListener.SubscriptionChange.DISCONNECTED;
+                    changeType = SubscriptionListener.SubscriptionChange.DISCONNECTED;
                 } else {
-                    chageType = SubscriptionListener.SubscriptionChange.DELETED;
+                    changeType = SubscriptionListener.SubscriptionChange.DELETED;
                 }
             } else {
-                chageType = SubscriptionListener.SubscriptionChange.DISCONNECTED;
+                changeType = SubscriptionListener.SubscriptionChange.DISCONNECTED;
             }
         } else {
-            chageType = SubscriptionListener.SubscriptionChange.DELETED;
+            changeType = SubscriptionListener.SubscriptionChange.DELETED;
         }
         try {
-            subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, chageType);
+            subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, changeType);
         } catch (SubscriptionAlreadyExistsException ignore) {
             // never thrown for close local subscription
         }
-        notifyLocalSubscriptionHasChanged(subscription, chageType);
+        notifyLocalSubscriptionHasChanged(subscription, changeType);
     }
 
     /**

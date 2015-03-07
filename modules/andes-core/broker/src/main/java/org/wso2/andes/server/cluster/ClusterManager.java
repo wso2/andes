@@ -344,4 +344,8 @@ public class ClusterManager {
         }
         return addresses;
     }
+
+    public SlotManagerClusterMode getSlotManager() {
+        return slotManager;
+    }
 }

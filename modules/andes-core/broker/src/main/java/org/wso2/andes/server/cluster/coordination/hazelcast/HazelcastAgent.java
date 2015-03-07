@@ -362,38 +362,54 @@ public class HazelcastAgent {
 
 
     public void notifySubscriptionsChanged(ClusterNotification clusterNotification) {
-        log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
-        this.subscriptionChangedNotifierChannel.publish(clusterNotification);
+        if (this.isActive()) {
+            if (log.isDebugEnabled()) {
+                log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
+            }
+            this.subscriptionChangedNotifierChannel.publish(clusterNotification);
+        }
     }
 
 
     public void notifyQueuesChanged(ClusterNotification clusterNotification) throws AndesException {
-        log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
-        try {
-            this.queueChangedNotifierChannel.publish(clusterNotification);
-        } catch (Exception e) {
-            log.error("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), e);
-            throw new AndesException("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), e);
+        if (isActive()) {
+            if (log.isDebugEnabled()) {
+                log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
+            }
+            try {
+                this.queueChangedNotifierChannel.publish(clusterNotification);
+            } catch (Exception e) {
+                log.error("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), e);
+                throw new AndesException("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), e);
+            }
         }
     }
 
     public void notifyExchangesChanged(ClusterNotification clusterNotification) throws AndesException {
-        log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
-        try {
-            this.exchangeChangeNotifierChannel.publish(clusterNotification);
-        } catch (Exception e) {
-            log.error("Error while sending exchange change notification" + clusterNotification.getEncodedObjectAsString(), e);
-            throw new AndesException("Error while sending exchange change notification" + clusterNotification.getEncodedObjectAsString(), e);
+        if (isActive()) {
+            if (log.isDebugEnabled()) {
+                log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
+            }
+            try {
+                this.exchangeChangeNotifierChannel.publish(clusterNotification);
+            } catch (Exception e) {
+                log.error("Error while sending exchange change notification" + clusterNotification.getEncodedObjectAsString(), e);
+                throw new AndesException("Error while sending exchange change notification" + clusterNotification.getEncodedObjectAsString(), e);
+            }
         }
     }
 
     public void notifyBindingsChanged(ClusterNotification clusterNotification) throws AndesException {
-        log.debug("GOSSIP: " + clusterNotification.getDescription());
-        try {
-            this.bindingChangeNotifierChannel.publish(clusterNotification);
-        } catch (Exception e) {
-            log.error("Error while sending binding change notification" + clusterNotification.getEncodedObjectAsString(), e);
-            throw new AndesException("Error while sending binding change notification" + clusterNotification.getEncodedObjectAsString(), e);
+        if (isActive()) {
+            if (log.isDebugEnabled()) {
+                log.debug("GOSSIP: " + clusterNotification.getDescription());
+            }
+            try {
+                this.bindingChangeNotifierChannel.publish(clusterNotification);
+            } catch (Exception e) {
+                log.error("Error while sending binding change notification" + clusterNotification.getEncodedObjectAsString(), e);
+                throw new AndesException("Error while sending binding change notification" + clusterNotification.getEncodedObjectAsString(), e);
+            }
         }
     }
 
@@ -477,6 +493,18 @@ public class HazelcastAgent {
 
         if (log.isDebugEnabled()) {
             log.debug("Initialization lock released.");
+        }
+    }
+
+    /**
+     * Method to check if the hazelcast instance has shutdown.
+     * @return boolean
+     */
+    public boolean isActive() {
+        if (null != hazelcastInstance) {
+            return hazelcastInstance.getLifecycleService().isRunning();
+        } else {
+            return false;
         }
     }
 

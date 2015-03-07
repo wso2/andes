@@ -39,7 +39,7 @@ import org.wso2.andes.transport.network.NetworkConnection;
 
 public class MinaNetworkHandler extends IoHandlerAdapter
 {
-    private static final Logger LOGGER = LoggerFactory.getLogger(MinaNetworkHandler.class);
+    private static final Logger log = LoggerFactory.getLogger(MinaNetworkHandler.class);
 
     private ProtocolEngineFactory _factory;
     private SSLContextFactory _sslFactory = null;
@@ -48,7 +48,7 @@ public class MinaNetworkHandler extends IoHandlerAdapter
     static
     {
         boolean directBuffers = Boolean.getBoolean("amqj.enableDirectBuffers");
-        LOGGER.debug("Using " + (directBuffers ? "direct" : "heap") + " buffers");
+        log.debug("Using " + (directBuffers ? "direct" : "heap") + " buffers");
         ByteBuffer.setUseDirectBuffers(directBuffers);
 
         //override the MINA defaults to prevent use of the PooledByteBufferAllocator
@@ -85,20 +85,20 @@ public class MinaNetworkHandler extends IoHandlerAdapter
         ProtocolEngine engine = (ProtocolEngine) ioSession.getAttachment();
         if(engine != null)
         {
-            LOGGER.error("Exception caught by Mina", throwable);
+            log.error("Exception caught by Mina", throwable);
             engine.exception(throwable);
         }
         else
         {
-            LOGGER.error("Exception caught by Mina but without protocol engine to handle it", throwable);
+            log.error("Exception caught by Mina but without protocol engine to handle it", throwable);
         }
     }
 
     public void sessionCreated(IoSession ioSession) throws Exception
     {
-        if(LOGGER.isDebugEnabled())
+        if(log.isDebugEnabled())
         {
-            LOGGER.debug("Created session: " + ioSession.getRemoteAddress());
+            log.debug("Created session: " + ioSession.getRemoteAddress());
         }
 
         SessionUtil.initialize(ioSession);
@@ -127,9 +127,9 @@ public class MinaNetworkHandler extends IoHandlerAdapter
 
     public void sessionClosed(IoSession ioSession) throws Exception
     {
-        if(LOGGER.isDebugEnabled())
+        if(log.isDebugEnabled())
         {
-            LOGGER.debug("closed: " + ioSession.getRemoteAddress());
+            log.debug("closed: " + ioSession.getRemoteAddress());
         }
 
         ProtocolEngine engine = (ProtocolEngine) ioSession.getAttachment();
@@ -139,7 +139,7 @@ public class MinaNetworkHandler extends IoHandlerAdapter
         }
         else
         {
-            LOGGER.error("Unable to close ProtocolEngine as none was present");
+            log.error("Unable to close ProtocolEngine as none was present");
         }
     }
 

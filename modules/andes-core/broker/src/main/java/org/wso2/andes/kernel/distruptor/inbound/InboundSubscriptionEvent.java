@@ -137,8 +137,8 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
             if (e.getCause() instanceof SubscriptionAlreadyExistsException) {
                 throw (SubscriptionAlreadyExistsException) e.getCause();
             } else {
-                throw new AndesException("Error occurred while processing event '" + eventType  + "' for subscription id "
-                        + getSubscriptionID() , e);
+                log.warn("Error occurred while processing event '" + eventType  + "' for subscription id "
+                        + getSubscriptionID());
             }
         }
         return false;

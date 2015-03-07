@@ -22,6 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Collection;
@@ -86,6 +87,11 @@ public class SlotDeliveryWorker extends Thread {
                         //Check in memory buffer in MessageFlusher has room
                         if (messageFlusher.getMessageDeliveryInfo(destinationOfMessagesInQueue)
                                 .isMessageBufferFull()) {
+
+                            if (AndesContext.getInstance().isClusteringEnabled() && !HazelcastAgent.getInstance().isActive()) {
+                                log.warn("Hazelcast instance is not active. Therefore the cluster is non-responsive.");
+                                continue;
+                            }
 
                             long startTime = System.currentTimeMillis();
                             Slot currentSlot = slotCoordinator.getSlot(storageQueueName);

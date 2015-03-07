@@ -182,6 +182,11 @@ public class Andes {
         inboundEventManager.publishStateEvent(channelEvent);
     }
 
+    /**
+     * Close the local subscription with reference to the input subscription event.
+     * @param subscriptionEvent disruptor event containing the subscription to close.
+     * @throws AndesException
+     */
     public void closeLocalSubscription(InboundSubscriptionEvent subscriptionEvent) throws AndesException {
         subscriptionEvent.prepareForCloseSubscription(subscriptionManager);
         inboundEventManager.publishStateEvent(subscriptionEvent);

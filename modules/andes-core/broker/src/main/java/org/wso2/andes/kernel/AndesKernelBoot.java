@@ -20,6 +20,7 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
@@ -31,6 +32,7 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
 import org.wso2.andes.server.queue.DLCQueueUtils;
+import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.thrift.MBThriftServer;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
@@ -62,10 +64,16 @@ public class AndesKernelBoot {
     private static AndesContextStore contextStore;
 
     /**
+     * This is used by independent worker threads to identify if the kernel is performing shutdown operations.
+     */
+    private static boolean isKernelShuttingDown;
+
+    /**
      * This will boot up all the components in Andes kernel and bring the server to working state
      */
     public static void bootAndesKernel() throws Exception {
 
+        isKernelShuttingDown = false;
         //loadConfigurations - done from outside
         //startAndesStores - done from outside
         int threadPoolCount = 1;
@@ -171,19 +179,29 @@ public class AndesKernelBoot {
     /**
      * This will trigger graceful shutdown of andes broker
      *
-     * @throws Exception
+     * @throws AndesException
      */
-    public static void shutDownAndesKernel() throws Exception {
+    public static void shutDownAndesKernel() throws AndesException {
+
+        // Set flag so independent threads can act accordingly
+        isKernelShuttingDown = true;
 
         stopMessaging();
-        stopThriftServer();
-        unregisterMBeans();
+
+        //Also add to Un register any MBeans at this point as needed
+
         cleanUpAndNotifyCluster();
         stopHouseKeepingThreads();
-        stopAndesComponents();
+
+        stopThriftServer();
+
+        Andes.getInstance().shutDown();
+
+        ApplicationRegistry.remove();
+
         //close stores
         AndesContext.getInstance().getAndesContextStore().close();
-        Andes.getInstance().shutDown();
+
     }
 
     /**
@@ -282,9 +300,9 @@ public class AndesKernelBoot {
     /**
      * clean up broker states and notify the cluster
      *
-     * @throws Exception
+     * @throws AndesException
      */
-    private static void cleanUpAndNotifyCluster() throws Exception {
+    private static void cleanUpAndNotifyCluster() throws AndesException {
         //at the shutDown close all localSubscriptions and notify cluster
         log.info("Closing all local subscriptions existing...");
         ClusterResourceHolder.getInstance().getSubscriptionManager()
@@ -312,7 +330,7 @@ public class AndesKernelBoot {
      *
      * @throws Exception
      */
-    private static void stopHouseKeepingThreads() throws Exception {
+    private static void stopHouseKeepingThreads() {
         log.info("Stop syncing exchanges, queues, bindings and subscriptions...");
         int threadTerminationTimePerod = 20; // seconds
         try {
@@ -320,9 +338,9 @@ public class AndesKernelBoot {
             andesRecoveryTaskScheduler
                     .awaitTermination(threadTerminationTimePerod, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             andesRecoveryTaskScheduler.shutdownNow();
             log.warn("Recovery task scheduler is forcefully shutdown.");
-            throw e;
         }
 
     }
@@ -346,15 +364,6 @@ public class AndesKernelBoot {
         MessageStatusInformationMBean messageStatusInformationMBean = new
                 MessageStatusInformationMBean();
         messageStatusInformationMBean.register();
-    }
-
-    /**
-     * unregister any MBeans registered
-     *
-     * @throws Exception
-     */
-    private static void unregisterMBeans() throws Exception {
-
     }
 
     /**
@@ -387,15 +396,6 @@ public class AndesKernelBoot {
     }
 
     /**
-     * Stop andes components
-     *
-     * @throws Exception
-     */
-    private static void stopAndesComponents() throws Exception {
-
-    }
-
-    /**
      * Start accepting and delivering messages
      *
      * @throws Exception
@@ -408,16 +408,17 @@ public class AndesKernelBoot {
     }
 
     /**
-     * Close transports and stop message delivery
+     * Stop worker threads, close transports and stop message delivery
      *
-     * @throws Exception
      */
-    private static void stopMessaging() throws Exception {
+    private static void stopMessaging() {
         // NOTE: Feature Message Expiration moved to a future release
 //        Andes.getInstance().stopMessageExpirationWorker();
 
         //this will un-assign all slots currently owned
         Andes.getInstance().stopMessageDelivery();
+
+
     }
 
 
@@ -449,5 +450,9 @@ public class AndesKernelBoot {
         } catch (UserStoreException e) {
             throw new AndesException("Error getting super tenant username", e);
         }
+    }
+
+    public static boolean isKernelShuttingDown() {
+        return isKernelShuttingDown;
     }
 }
