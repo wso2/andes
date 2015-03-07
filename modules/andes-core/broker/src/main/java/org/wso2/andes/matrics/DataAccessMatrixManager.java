@@ -72,7 +72,7 @@ public class DataAccessMatrixManager {
      * @param source     the source class which the matrix data should be tabulated
      * @param guage      the guage defined in the class for matrix calculation
      */
-    public static void addAndGetGuage(String definition, Class<?> source, Gauge<?> guage) {
+    public static void addGuage(String definition, Class<?> source, Gauge<?> guage) {
         MetricManager.gauge(Level.INFO, MetricManager.name(source,
                 definition), guage);
     }
