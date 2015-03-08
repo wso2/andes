@@ -19,6 +19,8 @@ package org.wso2.andes.amqp;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.distruptor.inbound.InboundBindingEvent;
@@ -243,8 +245,10 @@ public class AMQPUtils {
         /**
          * For durable topic subscriptions subscription ID should be unique for a client ID.
          * Thus we are redefining the subscription id to client ID
+         * But durable subscription ID form as queue subscription ID if durable topic has enabled shared subscription.
          */
-        if(queue.isDurable() && isBoundToTopic) {
+        Boolean allowSharedSubscribers = AndesConfigurationManager.readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
+        if (queue.isDurable() && isBoundToTopic && !allowSharedSubscribers) {
             subscriptionID = queue.getName();
         }
 

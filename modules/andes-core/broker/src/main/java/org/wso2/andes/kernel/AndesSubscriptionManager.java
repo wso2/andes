@@ -89,13 +89,8 @@ public class AndesSubscriptionManager {
         subscriptionStore.createDisconnectOrRemoveLocalSubscription(localSubscription, SubscriptionListener.SubscriptionChange.ADDED);
 
         //start a slot delivery worker on the destination (or topicQueue) subscription refers
-        //destination would be target queue if it is durable topic, otherwise it is queue or non durable topic
         SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
-        if(localSubscription.isBoundToTopic() && localSubscription.isDurable()){
-            slotDeliveryWorkerManager.startSlotDeliveryWorker(localSubscription.getStorageQueueName(), localSubscription.getTargetQueue());
-        } else {
-            slotDeliveryWorkerManager.startSlotDeliveryWorker(localSubscription.getStorageQueueName(), localSubscription.getSubscribedDestination());
-        }
+        slotDeliveryWorkerManager.startSlotDeliveryWorker(localSubscription.getStorageQueueName(), subscriptionStore.getDestination(localSubscription));
 
         //notify the local subscription change to listeners
         notifyLocalSubscriptionHasChanged(localSubscription, SubscriptionListener.SubscriptionChange.ADDED);
@@ -193,14 +188,15 @@ public class AndesSubscriptionManager {
             Boolean allowSharedSubscribers =  AndesConfigurationManager.readValue
                     (AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
             /**
-             * If multiple subscriptions are allowed mark as disconnected if all local
+             * Last subscriptions is allowed mark as disconnected if last local
              * subscriptions to underlying queue is gone
+             * Any subscription other than last subscription is deleted when it gone.
              */
-            if(allowSharedSubscribers) {
-                if(subscriptionStore.getActiveLocalSubscribers(subscription.getTargetQueue(),false).isEmpty()) {
+            if (allowSharedSubscribers) {
+                if (subscriptionStore.getActiveLocalSubscribers(subscription.getTargetQueue(), false).size() == 1) {
                     chageType = SubscriptionListener.SubscriptionChange.DISCONNECTED;
                 } else {
-                   return;
+                    chageType = SubscriptionListener.SubscriptionChange.DELETED;
                 }
             } else {
                 chageType = SubscriptionListener.SubscriptionChange.DISCONNECTED;

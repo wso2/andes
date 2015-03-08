@@ -819,15 +819,14 @@ public class SubscriptionStore {
 
         if (type == SubscriptionChange.ADDED || type == SubscriptionChange.DISCONNECTED) {
 
-            String destinationQueue = subscription.getTargetQueue();
-            String destinationTopic = subscription.getSubscribedDestination();
+            String destinationQueue = getDestination(subscription);
             //Store the subscription
             String destinationIdentifier = (subscription.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destinationQueue;
             String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
 
             if (type == SubscriptionChange.ADDED && !durableSubExists) {
                 andesContextStore.storeDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
-                log.info("New local subscription added " + subscription.toString());
+                log.info("New local subscription " + type + " " + subscription.toString());
             } else {
                 andesContextStore.updateDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
                 log.info("New local subscription " + type + " " + subscription.toString());
@@ -844,14 +843,14 @@ public class SubscriptionStore {
 
             } else if (subscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
                 if (isBitmap) {
-                    subscriptionBitMapHandler.addLocalSubscription(destinationTopic, subscription);
+                    subscriptionBitMapHandler.addLocalSubscription(destinationQueue, subscription);
                 } else {
-                    Map<String, LocalSubscription> localSubscriptions = localTopicSubscriptionMap.get(destinationTopic);
+                    Map<String, LocalSubscription> localSubscriptions = localTopicSubscriptionMap.get(destinationQueue);
                     if (localSubscriptions == null) {
                         localSubscriptions = new ConcurrentHashMap<String, LocalSubscription>();
                     }
                     localSubscriptions.put(subscriptionID, subscription);
-                    localTopicSubscriptionMap.put(destinationTopic, localSubscriptions);
+                    localTopicSubscriptionMap.put(destinationQueue, localSubscriptions);
                 }
             }
 
@@ -875,7 +874,7 @@ public class SubscriptionStore {
      * @throws AndesException
      */
     private LocalSubscription removeLocalSubscription(AndesSubscription subscription) throws AndesException {
-        String destination = subscription.getSubscribedDestination();
+        String destination = getDestination(subscription);
         String subscriptionID = subscription.getSubscriptionID();
         LocalSubscription subscriptionToRemove = null;
         //check queue local subscriptions
@@ -955,5 +954,20 @@ public class SubscriptionStore {
         QUEUE_SUBSCRIPTION,
         TOPIC_SUBSCRIPTION,
         ALL
+    }
+
+    /**
+     * Return destination based on subscription
+     * Destination would be target queue if it is durable topic, otherwise it is queue or non durable topic
+     *
+     * @param subscription subscription to get destination
+     * @return destination of subscription
+     */
+    public String getDestination(AndesSubscription subscription) {
+        if (subscription.isBoundToTopic() && subscription.isDurable()) {
+            return subscription.getTargetQueue();
+        } else {
+            return subscription.getSubscribedDestination();
+        }
     }
 }
