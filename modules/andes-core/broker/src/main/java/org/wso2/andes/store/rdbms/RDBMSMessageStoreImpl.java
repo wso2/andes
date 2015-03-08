@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -20,6 +20,7 @@ package org.wso2.andes.store.rdbms;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
+import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
@@ -85,8 +86,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public DurableStoreConnection initializeMessageStore(ConfigurationProperties
-                                                                 connectionProperties)
+    public DurableStoreConnection initializeMessageStore(AndesContextStore contextStore, 
+                                                         ConfigurationProperties connectionProperties)
             throws AndesException {
 
         RDBMSConnection RDBMSConnection = new RDBMSConnection();
@@ -1166,6 +1167,80 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         return messageIDs;
 
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addQueue(String destinationQueueName) throws AndesException {
+        // Message count is taken from DB itself. No need to implement this
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getMessageCountForQueue(String storageQueueName) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet results = null;
+        long messageCount = 0;
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_QUEUE_MESSAGE_COUNT);
+            preparedStatement.setInt(1, getCachedQueueID(storageQueueName));
+            
+            results = preparedStatement.executeQuery();
+            
+            while (results.next()) {
+                messageCount = results.getLong(RDBMSConstants.PS_ALIAS_FOR_COUNT);
+            }
+            
+            
+        } catch (SQLException e) {
+            throw new AndesException("Error while getting message count from queue " +
+                    storageQueueName, e);
+        } finally {
+            close(results, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT + storageQueueName);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT + storageQueueName);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT + storageQueueName);
+        }
+
+        return messageCount;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void resetMessageCounterForQueue(String storageQueueName) throws AndesException {
+        // Message count is taken from DB itself. No need to implement this
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void removeQueue(String storageQueueName) throws AndesException {
+        queueMap.remove(storageQueueName);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void incrementMessageCountForQueue(String destinationQueueName, long incrementBy) throws AndesException {
+        // Message count is taken from DB itself. No need to implement this
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void decrementMessageCountForQueue(String destinationQueueName, long decrementBy) throws AndesException {
+        // Message count is taken from DB itself. No need to implement this
     }
 
     /**

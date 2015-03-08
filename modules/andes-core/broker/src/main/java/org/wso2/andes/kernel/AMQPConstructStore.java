@@ -31,7 +31,15 @@ import java.util.Map;
  */
 public class AMQPConstructStore {
 
+    /**
+     * Reference to AndesContextStore to manage exchanges/bindings and queues in persistence storage 
+     */
     private AndesContextStore andesContextStore;
+
+    /**
+     * Reference to message store to be used from message count related functionality 
+     */
+    private MessageStore messageStore;
 
     private Map<String, AndesQueue> andesQueues = new HashMap<String, AndesQueue>();
     private Map<String, AndesExchange> andesExchanges = new HashMap<String, AndesExchange>();
@@ -40,8 +48,9 @@ public class AMQPConstructStore {
     private Map<String, Map<String, AndesBinding>> andesBindings = new HashMap<String, Map<String, AndesBinding>>();
 
 
-    public AMQPConstructStore() throws AndesException {
-        andesContextStore = AndesContext.getInstance().getAndesContextStore();
+    public AMQPConstructStore(AndesContextStore contextStore, MessageStore messageStore) throws AndesException {
+        this.andesContextStore = contextStore;
+        this.messageStore = messageStore;
     }
 
     /**
@@ -104,7 +113,7 @@ public class AMQPConstructStore {
         if (isLocal) {
             andesContextStore.storeQueueInformation(queue.queueName, queue.encodeAsString());
             //create a space to keep message counter on this queue
-            andesContextStore.addMessageCounterForQueue(queue.queueName);
+            messageStore.addQueue(queue.queueName);
         }
         andesQueues.put(queue.queueName, queue);
     }
@@ -120,7 +129,7 @@ public class AMQPConstructStore {
         if (isLocal) {
             andesContextStore.deleteQueueInformation(queueName);
             //create the space created to keep message counter on this queue
-            andesContextStore.removeMessageCounterForQueue(queueName);
+            messageStore.removeQueue(queueName);
         }
         andesQueues.remove(queueName);
     }

@@ -106,6 +106,13 @@ public class RDBMSConstants {
                     RDBMSConstants.QUEUE_NAME + ") " +
                     " VALUES (?)";
 
+    protected static final String PS_ALIAS_FOR_COUNT = "count";
+
+    protected static final String PS_SELECT_QUEUE_MESSAGE_COUNT =
+            "SELECT COUNT(" + QUEUE_ID + ") AS " + PS_ALIAS_FOR_COUNT +
+                    " FROM " + METADATA_TABLE +
+                    " WHERE " + QUEUE_ID + "=?";
+
     protected static final String PS_SELECT_METADATA =
             "SELECT " + METADATA +
                     " FROM " + METADATA_TABLE +

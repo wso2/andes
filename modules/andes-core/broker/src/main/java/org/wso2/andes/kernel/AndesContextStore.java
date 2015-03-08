@@ -103,7 +103,7 @@ public interface AndesContextStore {
      *
      * @param destinationQueueName name of queue
      */
-    public void addMessageCounterForQueue(String destinationQueueName) throws AndesException;
+    void addMessageCounterForQueue(String destinationQueueName) throws AndesException;
 
     /**
      * Get message count of queue
@@ -111,21 +111,21 @@ public interface AndesContextStore {
      * @param destinationQueueName name of queue
      * @return message count
      */
-    public long getMessageCountForQueue(String destinationQueueName) throws AndesException;
+    long getMessageCountForQueue(String destinationQueueName) throws AndesException;
 
     /**
      * Store level method to reset the message counter of a given queue to 0.
      * @param storageQueueName name of the queue being purged
      * @throws AndesException
      */
-    public void resetMessageCounterForQueue(String storageQueueName) throws AndesException;
+    void resetMessageCounterForQueue(String storageQueueName) throws AndesException;
 
     /**
      * Remove Message counting entry
      *
      * @param destinationQueueName name of queue
      */
-    public void removeMessageCounterForQueue(String destinationQueueName) throws AndesException;
+    void removeMessageCounterForQueue(String destinationQueueName) throws AndesException;
 
 
     /**
@@ -134,7 +134,7 @@ public interface AndesContextStore {
      * @param incrementBy  increment counter by
      * @throws AndesException
      */
-    public void incrementMessageCountForQueue(String destinationQueueName, long incrementBy) throws AndesException;
+    void incrementMessageCountForQueue(String destinationQueueName, long incrementBy) throws AndesException;
 
 
     /**
@@ -144,7 +144,7 @@ public interface AndesContextStore {
      * @param decrementBy          decrement counter by
      * @throws AndesException
      */
-    public void decrementMessageCountForQueue(String destinationQueueName, long decrementBy) throws AndesException;
+    void decrementMessageCountForQueue(String destinationQueueName, long decrementBy) throws AndesException;
 
     /**
      * Store exchange information (amqp)

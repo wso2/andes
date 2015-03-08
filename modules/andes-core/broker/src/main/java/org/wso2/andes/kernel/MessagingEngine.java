@@ -90,12 +90,6 @@ public class MessagingEngine {
     private MessageStore messageStore;
 
     /**
-     * Reference to AndesContextStore. This holds information that is not relevant to messages or subscriptions but
-     * relevant to Andes.
-     */
-    private AndesContextStore contextStore;
-
-    /**
      * This listener is primarily added so that messaging engine and communicate a queue purge situation to the cluster.
      * Addition/Deletion of queues are done through AndesContextInformationManager
      */
@@ -132,12 +126,10 @@ public class MessagingEngine {
      * storing strategy will be set according to the configurations by calling this.
      *
      * @param messageStore MessageStore
-     * @param contextStore AndesContextStore
      * @param subscriptionStore SubscriptionStore
      * @throws AndesException
      */
     public void initialise(MessageStore messageStore,
-                           AndesContextStore contextStore,
                            SubscriptionStore subscriptionStore) throws AndesException {
 
         configureMessageIDGenerator();
@@ -152,7 +144,6 @@ public class MessagingEngine {
 
         this.messageStore = messageStore;
         this.subscriptionStore = subscriptionStore;
-        this.contextStore = contextStore;
 
         //register listeners for queue changes
         queueListener = new ClusterCoordinationHandler(HazelcastAgent.getInstance());
@@ -170,7 +161,7 @@ public class MessagingEngine {
                 schedulerPeriod, schedulerPeriod, TimeUnit.SECONDS);
 
         // This task will periodically flush message count value to the store
-        messageCountFlusher = new MessageCountFlusher(contextStore, messageCountFlushNumberGap);
+        messageCountFlusher = new MessageCountFlusher(messageStore, messageCountFlushNumberGap);
 
         asyncStoreTasksScheduler.scheduleWithFixedDelay(messageCountFlusher,
                 messageCountFlushInterval,
@@ -376,7 +367,7 @@ public class MessagingEngine {
             messageStore.deleteAllMessageMetadata(storageQueueName);
 
             // Reset message count for the specific queue
-            contextStore.resetMessageCounterForQueue(storageQueueName);
+            messageStore.resetMessageCounterForQueue(storageQueueName);
 
             // There is only 1 DLC queue per tenant. So we have to read and parse the message
             // metadata and filter messages specific to a given queue.
@@ -517,7 +508,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public long getMessageCountOfQueue(String queueName) throws AndesException {
-        return contextStore.getMessageCountForQueue(queueName);
+        return messageStore.getMessageCountForQueue(queueName);
     }
 
     /**

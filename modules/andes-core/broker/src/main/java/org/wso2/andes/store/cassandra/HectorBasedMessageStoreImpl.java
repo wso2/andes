@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -26,6 +26,7 @@ import me.prettyprint.hector.api.mutation.Mutator;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
+import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
@@ -66,12 +67,17 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     private HectorConnection hectorConnection;
 
     /**
+     * Context store reference to get context store level functionality
+     * Mainly we use this to have the message counts 
+     */
+    private AndesContextStore contextStore;
+
+    /**
      * {@inheritDoc}
      */
     @Override
-    public DurableStoreConnection initializeMessageStore(ConfigurationProperties
-                                                                 connectionProperties)
-            throws AndesException {
+    public DurableStoreConnection initializeMessageStore(AndesContextStore contextStore,
+            ConfigurationProperties connectionProperties) throws AndesException {
         // create connection object
         //todo remove this if after testing
         if (hectorConnection == null) {
@@ -79,6 +85,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         }
         hectorConnection.initialize(connectionProperties);
 
+        this.contextStore = contextStore;
         // get cassandra cluster and create column families
         initializeCassandraMessageStore(hectorConnection);
         return hectorConnection;
@@ -554,7 +561,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     public int deleteAllMessageMetadataFromDLC(String storageQueueName, String DLCQueueName) throws AndesException {
 
-        int messageCountInDLC = 0;
+        int messageCountInDLC;
 
         try {
 
@@ -650,6 +657,54 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         }
 
         return messageIDs;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addQueue(String storageQueueName) throws AndesException {
+        contextStore.addMessageCounterForQueue(storageQueueName);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getMessageCountForQueue(String storageQueueName) throws AndesException {
+        return contextStore.getMessageCountForQueue(storageQueueName);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void resetMessageCounterForQueue(String storageQueueName) throws AndesException {
+        contextStore.resetMessageCounterForQueue(storageQueueName);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void removeQueue(String storageQueueName) throws AndesException {
+        contextStore.removeMessageCounterForQueue(storageQueueName);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void incrementMessageCountForQueue(String storageQueueName, long incrementBy) throws AndesException {
+        contextStore.incrementMessageCountForQueue(storageQueueName, incrementBy);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void decrementMessageCountForQueue(String storageQueueName, long decrementBy) throws AndesException {
+        contextStore.decrementMessageCountForQueue(storageQueueName, decrementBy);
     }
 
     /**

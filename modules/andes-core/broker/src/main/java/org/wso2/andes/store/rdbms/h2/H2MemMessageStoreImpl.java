@@ -21,6 +21,7 @@ package org.wso2.andes.store.rdbms.h2;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.store.rdbms.RDBMSConnection;
@@ -91,12 +92,14 @@ public class H2MemMessageStoreImpl extends RDBMSMessageStoreImpl {
      * NOTE: connectionProperties are ignored to minimise error in pointing the in memory store
      * to a wrong message store
      *
-     * @param connectionProperties IGNORED
+     * @param contextStore AndesContextStore
+     * @param connectionProperties ConfigurationProperties
      * @return DurableStoreConnection
      * @throws AndesException
      */
     @Override
-    public DurableStoreConnection initializeMessageStore(ConfigurationProperties connectionProperties)
+    public DurableStoreConnection initializeMessageStore(AndesContextStore contextStore, 
+                                                         ConfigurationProperties connectionProperties)
             throws AndesException {
 
         // in memory mode should only run in single node mode
@@ -105,8 +108,8 @@ public class H2MemMessageStoreImpl extends RDBMSMessageStoreImpl {
         }
 
         // use the initialisation logic of JDBC MessageStore
-        DurableStoreConnection durableStoreConnection = super.initializeMessageStore(RDBMSConnection
-                .getInMemoryConnectionProperties());
+        DurableStoreConnection durableStoreConnection = super.initializeMessageStore(
+                contextStore, RDBMSConnection.getInMemoryConnectionProperties());
 
         // Additionally create in memory database tables
         createTables();

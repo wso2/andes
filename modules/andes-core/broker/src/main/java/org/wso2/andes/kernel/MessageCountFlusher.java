@@ -43,17 +43,17 @@ public class MessageCountFlusher implements Runnable {
     private int messageCountFlushNumberGap;
 
     /**
-     * Reference for AndesContextStore
+     * Used to increment and decrement message counts
      */
-    private AndesContextStore contextStore;
+    private MessageStore messageStore;
 
     /**
      * Creates a message count flusher object to store message counts in store
-     * @param contextStore AndesContextStore
+     * @param messageStore MessageStore
      * @param messageCountFlushNumberGap batch size of the count update for a given queue.
      */
-    public MessageCountFlusher(AndesContextStore contextStore, int messageCountFlushNumberGap) {
-        this.contextStore = contextStore;
+    public MessageCountFlusher(MessageStore messageStore, int messageCountFlushNumberGap) {
+        this.messageStore = messageStore;
         this.messageCountFlushNumberGap = messageCountFlushNumberGap;
         messageCountDifferenceMap = new ConcurrentHashMap<String, AtomicInteger>();
     }
@@ -141,12 +141,12 @@ public class MessageCountFlusher implements Runnable {
                 if(log.isDebugEnabled()) {
                     log.debug("Increment store count by " + count + " for queue " + queueName);
                 }
-                contextStore.incrementMessageCountForQueue(queueName, count);
+                messageStore.incrementMessageCountForQueue(queueName, count);
             } else if (count < 0) {
                 if(log.isDebugEnabled()) {
                     log.debug("Decrement store count by " + count + " for queue " + queueName);
                 }
-                contextStore.incrementMessageCountForQueue(queueName, count);
+                messageStore.incrementMessageCountForQueue(queueName, count);
             }
         } catch (AndesException e) {
             // On error add back the count. Since the operation didn't run correctly. Next call to this method might

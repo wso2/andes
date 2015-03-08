@@ -232,9 +232,6 @@ public class AndesKernelBoot {
         ClusterResourceHolder.getInstance().setSubscriptionManager(subscriptionManager);
         subscriptionManager.init();
 
-        //create AMQP Constructs store
-        AMQPConstructStore amqpConstructStore = new AMQPConstructStore();
-        AndesContext.getInstance().setAMQPConstructStore(amqpConstructStore);
 
         // create a message store and initialise messaging engine
         String messageStoreClassName = virtualHostsConfiguration.getMessageStoreClassName();
@@ -248,18 +245,22 @@ public class AndesKernelBoot {
         }
 
         MessageStore messageStore = (MessageStore) messageStoreInstance;
-        messageStore.initializeMessageStore(
-                virtualHostsConfiguration.getMessageStoreProperties()
-        );
+        messageStore.initializeMessageStore(andesContextStore,
+                virtualHostsConfiguration.getMessageStoreProperties());
         log.info("Andes MessageStore initialised with " + messageStoreClassName);
-        
+
         MessagingEngine messagingEngine = MessagingEngine.getInstance();
-        messagingEngine.initialise(messageStore, andesContextStore,subscriptionStore);
+        messagingEngine.initialise(messageStore, subscriptionStore);
         AndesKernelBoot.messageStore = messageStore;
+
+        //create AMQP Constructs store
+        AMQPConstructStore amqpConstructStore = new AMQPConstructStore(contextStore, messageStore);
+        AndesContext.getInstance().setAMQPConstructStore(amqpConstructStore);
 
         // initialise Andes context information related manager class
         AndesContextInformationManager contextInformationManager = 
-                new AndesContextInformationManager(subscriptionStore);
+                new AndesContextInformationManager(amqpConstructStore, subscriptionStore,
+                                                   contextStore, messageStore);
         
         // When message stores are initialised initialise Andes as well.
         Andes.getInstance().initialise(subscriptionStore, messagingEngine,
@@ -378,9 +379,9 @@ public class AndesKernelBoot {
         log.info("Reinitializing Andes Stores...");
         StoreConfiguration virtualHostsConfiguration =
                 AndesContext.getInstance().getStoreConfiguration();
-        messageStore.initializeMessageStore(virtualHostsConfiguration.getMessageStoreProperties());
         AndesContextStore andesContextStore = AndesContext.getInstance().getAndesContextStore();
         andesContextStore.init(virtualHostsConfiguration.getContextStoreProperties());
+        messageStore.initializeMessageStore(andesContextStore, virtualHostsConfiguration.getMessageStoreProperties());
     }
 
     /**
