@@ -473,6 +473,15 @@
                 <version>${carbon.kernel.version}</version>
             </dependency>
 
+            <!--Carbon Metrics-->
+            <dependency>
+                <groupId>org.wso2.carbon.metrics</groupId>
+                <artifactId>org.wso2.carbon.metrics.manager</artifactId>
+                <version>1.0.0</version>
+            </dependency>
+
+
+
             <!--Thrift Dependency-->
             <dependency>
                 <groupId>libthrift.wso2</groupId>

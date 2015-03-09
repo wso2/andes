@@ -26,12 +26,17 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.matrics.MatrixConstants;
 import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.carbon.metrics.manager.Gauge;
+import org.wso2.carbon.metrics.manager.Level;
+import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.wso2.andes.configuration.enums.AndesConfiguration.*;
 import static org.wso2.andes.kernel.distruptor.inbound.InboundEvent.Type.*;
@@ -45,6 +50,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
 
     private static Log log = LogFactory.getLog(DisruptorBasedInboundEventManager.class);
     private final RingBuffer<InboundEvent> ringBuffer;
+    private AtomicInteger ackedMessageCount = new AtomicInteger();
 
     public DisruptorBasedInboundEventManager(SubscriptionStore subscriptionStore,
                                              MessagingEngine messagingEngine) {
@@ -99,6 +105,12 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
         disruptor.after(concurrentBatchEventHandlers).handleEventsWith(new StateEventHandler(messagingEngine));
 
         ringBuffer = disruptor.start();
+
+        //Will start the gauge
+        MetricManager.gauge(Level.INFO, MetricManager.name(this.getClass(),
+                MatrixConstants.DISRUPTOR_INBOUND_RING), new InBoundRingGauge());
+        MetricManager.gauge(Level.INFO, MetricManager.name(this.getClass(),
+                MatrixConstants.DISRUPTOR_MESSAGE_ACK), new AckedMessageCountGauge());
     }
 
     /**
@@ -126,6 +138,9 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
      */
     @Override
     public void ackReceived(AndesAckData ackData) {
+        //For matrics
+        ackedMessageCount.getAndIncrement();
+        
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEvent event = ringBuffer.get(sequence);
@@ -175,6 +190,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
 
     }
 
+
     /**
      * {@inheritDoc}
      */
@@ -191,6 +207,31 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
             if (log.isDebugEnabled()) {
                 log.debug("[ Sequence: " + sequence + " ] " + event.getEventType() + "' published to Disruptor");
             }
+        }
+    }
+    
+   /**
+     * Utility to get the in bound ring guage
+     */
+    private class InBoundRingGauge implements Gauge<Long> {
+
+        @Override
+        public Long getValue() {
+            //The total message size will be reduced by the remaining capacity to get the total ring size
+            return ringBuffer.getBufferSize() - ringBuffer.remainingCapacity();
+        }
+    }
+
+    /**
+     * Utility to get the acked message count
+     */
+    private class AckedMessageCountGauge implements Gauge<Integer> {
+
+
+        @Override
+        public Integer getValue() {
+            //Acked message count at a given time
+            return ackedMessageCount.getAndSet(0);
         }
     }
 

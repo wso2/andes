@@ -29,7 +29,6 @@ public class RDBMSConstants {
 
     // Configuration properties
     protected static final String PROP_JNDI_LOOKUP_NAME = "dataSource";
-    protected static final String PROP_MAX_QUEUE_CACHE_SIZE = "maxQueueCacheSize";
 
     // Message Store tables
     protected static final String CONTENT_TABLE = "MB_CONTENT";
@@ -107,13 +106,6 @@ public class RDBMSConstants {
                     RDBMSConstants.QUEUE_NAME + ") " +
                     " VALUES (?)";
 
-    protected static final String PS_ALIAS_FOR_COUNT = "count";
-
-    protected static final String PS_SELECT_QUEUE_MESSAGE_COUNT =
-            "SELECT COUNT(" + QUEUE_ID + ") AS " + PS_ALIAS_FOR_COUNT +
-                    " FROM " + METADATA_TABLE +
-                    " WHERE " + QUEUE_ID + "=?";
-
     protected static final String PS_SELECT_METADATA =
             "SELECT " + METADATA +
                     " FROM " + METADATA_TABLE +
@@ -140,12 +132,6 @@ public class RDBMSConstants {
                     " FROM " + METADATA_TABLE +
                     " WHERE " + QUEUE_ID + "=?" +
                     " ORDER BY " + MESSAGE_ID ;
-
-    protected static final String PS_DELETE_METADATA =
-            "DELETE " +
-                    " FROM " + METADATA_TABLE +
-                    " WHERE " + QUEUE_ID + "=?" +
-                    " AND " + MESSAGE_ID + "=?";
 
     protected static final String PS_DELETE_EXPIRY_DATA = "DELETE " +
             " FROM " + EXPIRATION_TABLE +
@@ -316,6 +302,7 @@ public class RDBMSConstants {
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";
     protected static final String TASK_DELETING_MESSAGE_PARTS = "deleting message parts.";
     protected static final String TASK_RETRIEVING_MESSAGE_PARTS = "retrieving message parts.";
+    protected static final String TASK_RETRIEVING_CONTENT_FOR_MESSAGES = "retrieving content for multiple messages";
     protected static final String TASK_ADDING_METADATA_LIST = "adding metadata list.";
     protected static final String TASK_ADDING_METADATA = "adding metadata.";
     protected static final String TASK_ADDING_METADATA_TO_QUEUE = "adding metadata to " +

@@ -182,6 +182,18 @@ public class MessagingEngine {
         return messageStore.getContent(messageID, offsetInMessage);
     }
 
+    /**
+     * Read content for given message metadata list
+     *
+     * @param messageIdList message id list for the content to be retrieved
+     * @return <code>Map<Long, List<AndesMessagePart>></code> Message id and its corresponding message part list
+     * @throws AndesException
+     */
+    public Map<Long, List<AndesMessagePart>> getContent(List<Long> messageIdList) throws AndesException {
+        return messageStore.getContent(messageIdList);
+        
+    }
+
     public void messagesReceived(List<AndesMessage> messageList) throws AndesException{
         List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>(messageList.size());
         // parts can be more than message list size
