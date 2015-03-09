@@ -94,20 +94,23 @@ public class SubscriptionStore {
      */
     public List<AndesSubscription> getAllSubscribersForDestination(String destination, boolean isTopic)
                                                                         throws AndesException {
-        // returning an empty list if requested map is empty.
         if (isBitmap) {
             if (isTopic) {
                 if (subscriptionBitMapHandler
                             .getAllClusteredSubscribedForDestination(destination) == null) {
+                    // Returning an empty list if requested map is empty.
                     return Collections.emptyList();
                 } else {
+                    // Returning bitmap subscription handler done through bitwise mapping.
                     return new ArrayList<AndesSubscription>(subscriptionBitMapHandler
                                                                     .getAllClusteredSubscribedForDestination(destination));
                 }
             } else {
                 if (clusterQueueSubscriptionMap.get(destination) == null) {
+                    // Returning an empty list if requested map is empty.
                     return Collections.emptyList();
                 } else {
+                    // Returning queue subscriptions
                     return new ArrayList<AndesSubscription>(clusterQueueSubscriptionMap
                                                                     .get(destination));
                 }
@@ -115,16 +118,19 @@ public class SubscriptionStore {
         } else {
             if (isTopic) {
                 if (clusterTopicSubscriptionMap.get(destination) == null) {
+                    // Returning an empty list if requested map is empty.
                     return Collections.emptyList();
                 } else {
+                    // Returning topic subscriptions
                     return new ArrayList<AndesSubscription>(clusterTopicSubscriptionMap
                                                                     .get(destination));
                 }
             } else {
                 if (clusterQueueSubscriptionMap.get(destination) == null) {
-
+                    // Returning an empty list if requested map is empty.
                     return Collections.emptyList();
                 } else {
+                    // Returning queue subscriptions
                     return new ArrayList<AndesSubscription>(clusterQueueSubscriptionMap
                                                                     .get(destination));
                 }
@@ -165,15 +171,15 @@ public class SubscriptionStore {
                 subscriptionList.addAll(subscriptionBitMapHandler.findMatchingClusteredSubscriptions(destination));
             } else {
                 subscriptionList.addAll(getSubscriptionsInMap(destination,
-                                                              clusterTopicSubscriptionMap, SUBSCRIPTION_TYPE.ALL));
+                        clusterTopicSubscriptionMap, SUBSCRIPTION_TYPE.ALL));
             }
 
             // Get durable topic subscriptions from Queue map
             subscriptionList.addAll(getSubscriptionsInMap(destination,
-                                                          clusterQueueSubscriptionMap, SUBSCRIPTION_TYPE.TOPIC_SUBSCRIPTION));
+                    clusterQueueSubscriptionMap, SUBSCRIPTION_TYPE.TOPIC_SUBSCRIPTION));
         } else {
             subscriptionList = getSubscriptionsInMap(destination,
-                                                     clusterQueueSubscriptionMap, SUBSCRIPTION_TYPE.QUEUE_SUBSCRIPTION);
+                    clusterQueueSubscriptionMap, SUBSCRIPTION_TYPE.QUEUE_SUBSCRIPTION);
         }
 
         return subscriptionList;
@@ -194,7 +200,7 @@ public class SubscriptionStore {
         for (Map.Entry<String, List<AndesSubscription>> entry : subMap.entrySet()) {
             String subDestination = entry.getKey();
             if (AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(subDestination, destination)
-                || MQTTUtils.isTargetQueueBoundByMatchingToRoutingKey(subDestination, destination)) {
+                    || MQTTUtils.isTargetQueueBoundByMatchingToRoutingKey(subDestination, destination)) {
                 List<AndesSubscription> subscriptionsOfDestination = entry.getValue();
                 if (null != subscriptionsOfDestination) {
 
@@ -383,7 +389,7 @@ public class SubscriptionStore {
      * @throws AndesException
      */
     public int numberOfSubscriptionsInCluster(String destination, boolean isTopic) throws
-                                                                                   AndesException {
+            AndesException {
         return getClusterSubscribersForDestination(destination, isTopic).size();
     }
 
@@ -807,8 +813,7 @@ public class SubscriptionStore {
                 if (existingSubscriptions != null && !existingSubscriptions.isEmpty()) {
                     for (AndesSubscription sub : existingSubscriptions) {
                         // Queue is durable and target queues are matched
-                        if (sub.isDurable() && sub.getTargetQueue().equals(subscription
-                                                                                   .getTargetQueue())) {
+                        if (sub.isDurable() && sub.getTargetQueue().equals(subscription.getTargetQueue())) {
                             durableSubExists = true;
                             // Target queue for durable topic subscription has an active subscriber
                             if (subscription.isBoundToTopic() && sub.hasExternalSubscriptions()) {
@@ -835,7 +840,7 @@ public class SubscriptionStore {
                 if (!allowSharedSubscribers) {
                     //not permitted
                     throw new SubscriptionAlreadyExistsException("A subscription already exists for Durable subscriptions on " +
-                                                                 subscription.getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
+                            subscription.getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
                 }
             }
 
@@ -849,12 +854,10 @@ public class SubscriptionStore {
             String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
 
             if (type == SubscriptionChange.ADDED && !durableSubExists) {
-                andesContextStore.storeDurableSubscription(destinationIdentifier, subscriptionID, subscription
-                        .encodeAsStr());
+                andesContextStore.storeDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
                 log.info("New local subscription " + type + " " + subscription.toString());
             } else {
-                andesContextStore.updateDurableSubscription(destinationIdentifier, subscriptionID, subscription
-                        .encodeAsStr());
+                andesContextStore.updateDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
                 log.info("New local subscription " + type + " " + subscription.toString());
             }
 
@@ -951,8 +954,7 @@ public class SubscriptionStore {
             }
         }
         if (null != subscriptionToRemove) {
-            String destinationIdentifier = new StringBuffer().append((subscriptionToRemove
-                                                                              .isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX))
+            String destinationIdentifier = new StringBuffer().append((subscriptionToRemove.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX))
                     .append(destination).toString();
             andesContextStore.removeDurableSubscription(destinationIdentifier, subscription.getSubscribedNode() + "_" + subscriptionID);
             if (log.isDebugEnabled())
