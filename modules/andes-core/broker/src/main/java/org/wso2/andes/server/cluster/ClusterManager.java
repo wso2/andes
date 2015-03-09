@@ -207,7 +207,7 @@ public class ClusterManager {
 
         clearAllPersistedStatesOfDisappearedNode(nodeId);
 
-        log.info("NodeID:" + this.nodeId);
+        log.info("Initializing Standalone Mode. Current Node ID:" + this.nodeId);
 
         andesContextStore.storeNodeDetails(nodeId, (String) AndesConfigurationManager.readValue
                 (AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
@@ -222,7 +222,7 @@ public class ClusterManager {
 
         this.hazelcastAgent = HazelcastAgent.getInstance();
         this.nodeId = this.hazelcastAgent.getNodeId();
-        log.info("NodeID:" + this.nodeId);
+        log.info("Initializing Cluster Mode. Current Node ID:" + this.nodeId);
 
         //add node information to durable store
         andesContextStore.storeNodeDetails(nodeId, (String) AndesConfigurationManager.readValue
