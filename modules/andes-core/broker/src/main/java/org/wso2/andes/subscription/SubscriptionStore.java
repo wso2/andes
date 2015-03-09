@@ -96,8 +96,8 @@ public class SubscriptionStore {
                                                                         throws AndesException {
         if (isBitmap) {
             if (isTopic) {
-                if (subscriptionBitMapHandler
-                            .getAllClusteredSubscribedForDestination(destination) == null) {
+                if (null == subscriptionBitMapHandler
+                        .getAllClusteredSubscribedForDestination(destination)) {
                     // Returning an empty list if requested map is empty.
                     return Collections.emptyList();
                 } else {
@@ -106,7 +106,7 @@ public class SubscriptionStore {
                                                                     .getAllClusteredSubscribedForDestination(destination));
                 }
             } else {
-                if (clusterQueueSubscriptionMap.get(destination) == null) {
+                if (null == clusterQueueSubscriptionMap.get(destination)) {
                     // Returning an empty list if requested map is empty.
                     return Collections.emptyList();
                 } else {
@@ -117,7 +117,7 @@ public class SubscriptionStore {
             }
         } else {
             if (isTopic) {
-                if (clusterTopicSubscriptionMap.get(destination) == null) {
+                if (null == clusterTopicSubscriptionMap.get(destination)) {
                     // Returning an empty list if requested map is empty.
                     return Collections.emptyList();
                 } else {
@@ -126,7 +126,7 @@ public class SubscriptionStore {
                                                                     .get(destination));
                 }
             } else {
-                if (clusterQueueSubscriptionMap.get(destination) == null) {
+                if (null == clusterQueueSubscriptionMap.get(destination)) {
                     // Returning an empty list if requested map is empty.
                     return Collections.emptyList();
                 } else {
