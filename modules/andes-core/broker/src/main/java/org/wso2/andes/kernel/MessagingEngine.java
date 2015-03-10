@@ -21,17 +21,16 @@ package org.wso2.andes.kernel;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.slot.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.queue.DLCQueueUtils;
-import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
-import org.wso2.andes.kernel.slot.SlotManager;
-import org.wso2.andes.thrift.MBThriftClient;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.thrift.MBThriftClient;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -97,6 +96,11 @@ public class MessagingEngine {
      * Addition/Deletion of queues are done through AndesContextInformationManager
      */
     private QueueListener queueListener;
+
+    /**
+     * Slot coordinator who is responsible of coordinating with the SlotManager
+     */
+    private SlotCoordinator slotCoordinator;
 
     /**
      * private constructor for singleton pattern
@@ -169,6 +173,14 @@ public class MessagingEngine {
                 messageCountFlushInterval,
                 TimeUnit.SECONDS);
 
+        /*
+        Initialize the SlotCoordinator
+         */
+        if(AndesContext.getInstance().isClusteringEnabled()){
+          slotCoordinator = new SlotCoordinatorCluster();
+        }else {
+          slotCoordinator = new SlotCoordinatorStandalone();
+        }
     }
 
     /**
@@ -310,7 +322,7 @@ public class MessagingEngine {
 
         // Clear all slots assigned to the Queue. This should ideally stop any messages being buffered during the purge.
         // This call clears all slot associations for the queue in all nodes. (could take time)
-        SlotManager.getInstance().clearAllActiveSlotRelationsToQueue(destination);
+        slotCoordinator.clearAllActiveSlotRelationsToQueue(destination);
 
         // Clear in memory messages of self (node)
         clearMessagesFromQueueInMemory(destination, purgedTimestamp);
@@ -662,5 +674,10 @@ public class MessagingEngine {
         if (messageExpirationWorker != null && messageExpirationWorker.isWorking()) {
             messageExpirationWorker.stopWorking();
         }
+    }
+
+
+    public SlotCoordinator getSlotCoordinator() {
+        return slotCoordinator;
     }
 }

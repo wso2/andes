@@ -25,15 +25,9 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.thrift.MBThriftClient;
-import org.wso2.andes.thrift.slot.gen.SlotManagementService;
+import org.wso2.andes.kernel.MessagingEngine;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -58,6 +52,8 @@ public class SlotMessageCounter {
      * are skipped without messages. */
     private int slotSubmitLoopSkipCount;
 
+    private SlotCoordinator slotCoordinator;
+
     private static final int SLOT_SUBMIT_LOOP_SKIP_COUNT_THRESHOLD = 10;
 
     private SlotMessageCounter() {
@@ -70,6 +66,7 @@ public class SlotMessageCounter {
                 (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY);
 
         slotSubmitLoopSkipCount = 0;
+        slotCoordinator = MessagingEngine.getInstance().getSlotCoordinator();
     }
 
     /**
@@ -134,12 +131,8 @@ public class SlotMessageCounter {
     }
 
     private void submitCurrentSafeZone(long currentSlotDeleteSafeZone) {
-        String nodeId = HazelcastAgent.getInstance().getNodeId();
-        MBThriftClient.updateSlotDeletionSafeZone(currentSlotDeleteSafeZone, nodeId);
-        if(log.isDebugEnabled()) {
-            log.info("Submitted safe zone from node : " + nodeId + " | safe zone : " +
-                    currentSlotDeleteSafeZone);
-        }
+        slotCoordinator.updateSlotDeletionSafeZone(currentSlotDeleteSafeZone);
+
     }
 
     /**
@@ -177,7 +170,8 @@ public class SlotMessageCounter {
         Slot slot = queueToSlotMap.get(storageQueueName);
         if (null != slot) {
             try {
-                MBThriftClient.updateMessageId(storageQueueName, HazelcastAgent.getInstance().getNodeId(), slot.getStartMessageId(), slot.getEndMessageId());
+                slotCoordinator.updateMessageId(storageQueueName,slot.getStartMessageId(),
+                        slot.getEndMessageId());
                 queueToSlotMap.remove(storageQueueName);
                 slotTimeOutMap.remove(storageQueueName);
 

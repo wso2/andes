@@ -21,7 +21,6 @@ package org.wso2.andes.kernel.distruptor.inbound;
 import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
@@ -108,9 +107,9 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
 
         // update last message ID in slot message counter. When the slot is filled the last message
         // ID of the slot will be submitted to the slot manager by SlotMessageCounter
-        if (AndesContext.getInstance().isClusteringEnabled()) {
+       // if (AndesContext.getInstance().isClusteringEnabled()) {
             SlotMessageCounter.getInstance().recordMetaDataCountInSlot(messageList);
-        }
+       // }
 
         for (AndesMessage message : messageList) {
             // For each message increment by 1. Underlying messaging engine will handle the increment destination
