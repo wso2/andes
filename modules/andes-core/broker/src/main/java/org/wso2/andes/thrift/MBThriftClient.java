@@ -99,7 +99,7 @@ public class MBThriftClient {
     }
 
     /**
-     * updateMessageId method. This method will pass the locally chosen slot range to the SlotManager. Slot manager
+     * updateMessageId method. This method will pass the locally chosen slot range to the SlotManagerClusterMode. Slot manager
      * maintains a list of slot ranges in a map along with the queue. This messageId will
      * be stored in that map.
      *

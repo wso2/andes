@@ -20,7 +20,6 @@ package org.wso2.andes.kernel.slot;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 
 import java.util.Map;
 import java.util.Set;
@@ -62,9 +61,9 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
         }
         while (running) {
             if (isLive) {
-                Set<String> nodesWithPublishedMessages = SlotManager.getInstance().getMessagePublishedNodes();
+                Set<String> nodesWithPublishedMessages = SlotManagerClusterMode.getInstance().getMessagePublishedNodes();
                 Map<String, Long> nodeInformedSafeZones =
-                        SlotManager.getInstance().getNodeInformedSlotDeletionSafeZones();
+                        SlotManagerClusterMode.getInstance().getNodeInformedSlotDeletionSafeZones();
 
                 /** calculate safe zone (minimum value of messageIDs published so far to the
                  * cluster by each node)
@@ -75,7 +74,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                     long safeZoneValue = Long.MAX_VALUE;
 
                     //get the maximum message id published by node so far
-                    Long safeZoneByPublishedMessages = SlotManager.getInstance()
+                    Long safeZoneByPublishedMessages = SlotManagerClusterMode.getInstance()
                             .getLastPublishedIDByNode(nodeID);
 
                     if (null != safeZoneByPublishedMessages) {

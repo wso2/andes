@@ -33,13 +33,13 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wr
 import java.util.*;
 
 /**
- * Slot Manager is responsible of slot allocating, slot creating, slot re-assigning and slot
- * managing tasks
+ * Slot Manager Cluster Mode is responsible of slot allocating, slot creating,
+ * slot re-assigning and slot managing tasks in cluster mode
  */
-public class SlotManager {
+public class SlotManagerClusterMode {
 
 
-    private static SlotManager slotManager = new SlotManager();
+    private static SlotManagerClusterMode slotManager = new SlotManagerClusterMode();
 
     private static final int SAFE_ZONE_EVALUATION_INTERVAL = 5 * 1000;
 
@@ -91,10 +91,10 @@ public class SlotManager {
     //safe zone calculator
     private SlotDeleteSafeZoneCalc slotDeleteSafeZoneCalc;
 
-    private static Log log = LogFactory.getLog(SlotManager.class);
+    private static Log log = LogFactory.getLog(SlotManagerClusterMode.class);
 
 
-    private SlotManager() {
+    private SlotManagerClusterMode() {
         if (AndesContext.getInstance().isClusteringEnabled()) {
 
             HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
@@ -118,9 +118,9 @@ public class SlotManager {
     }
 
     /**
-     * @return SlotManager instance
+     * @return SlotManagerClusterMode instance
      */
-    public static SlotManager getInstance() {
+    public static SlotManagerClusterMode getInstance() {
         return slotManager;
     }
 
@@ -139,7 +139,7 @@ public class SlotManager {
          *First look in the unassigned slots pool for free slots. These slots are previously own by
          * other nodes
          */
-        String lockKey = queueName + SlotManager.class;
+        String lockKey = queueName + SlotManagerClusterMode.class;
 
         synchronized (lockKey.intern()) {
             slotToBeAssigned = getOverlappedSlot(nodeId, queueName);
@@ -224,7 +224,7 @@ public class SlotManager {
     private Slot getUnassignedSlot(String queueName) {
         Slot slotToBeAssigned = null;
 
-        String lockKey = queueName + SlotManager.class;
+        String lockKey = queueName + SlotManagerClusterMode.class;
 
         synchronized (lockKey.intern()) {
 
@@ -262,7 +262,7 @@ public class SlotManager {
         HashMap<String, TreeSet<Slot>> queueToSlotMap;
         HashmapStringTreeSetWrapper wrapper = overLappedSlotMap.get(nodeId);
 
-        String lockKey = nodeId + SlotManager.class;
+        String lockKey = nodeId + SlotManagerClusterMode.class;
 
         synchronized (lockKey.intern()) {
             if (null != wrapper) {
@@ -297,7 +297,7 @@ public class SlotManager {
         HashMap<String, TreeSet<Slot>> queueToSlotMap;
 
         //Lock is used because this method will be called by multiple nodes at the same time
-        String lockKey = nodeId + SlotManager.class;
+        String lockKey = nodeId + SlotManagerClusterMode.class;
         synchronized (lockKey.intern()) {
 
             HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
@@ -348,7 +348,7 @@ public class SlotManager {
         }
         messageIdSet = wrapper.getLongTreeSet();
 
-        String lockKey = queueName + SlotManager.class;
+        String lockKey = queueName + SlotManagerClusterMode.class;
         synchronized (lockKey.intern()) {
 
             Long lastAssignedMessageId = queueToLastAssignedIDMap.get(queueName);
@@ -454,8 +454,8 @@ public class SlotManager {
                         treeSetStringWrapper.setSlotTreeSet(freeSlotTreeSet);
                         unAssignedSlotMap.putIfAbsent(slotToBeReAssigned.getStorageQueueName(),
                                 treeSetStringWrapper);
-                        //Lock key is queueName + SlotManager Class
-                        String lockKey = entry.getKey() + SlotManager.class;
+                        //Lock key is queueName + SlotManagerClusterMode Class
+                        String lockKey = entry.getKey() + SlotManagerClusterMode.class;
                         synchronized (lockKey.intern()) {
                             if (slotToBeReAssigned.addState(SlotState.RETURNED)) {
                                 treeSetStringWrapper = unAssignedSlotMap
@@ -502,7 +502,7 @@ public class SlotManager {
                     + startMsgId);
         }
         if (slotDeleteSafeZone > endMsgId) {
-            String lockKey = nodeId + SlotManager.class;
+            String lockKey = nodeId + SlotManagerClusterMode.class;
             synchronized (lockKey.intern()) {
                 HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
                 HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
@@ -556,7 +556,7 @@ public class SlotManager {
      */
     public void reAssignSlotWhenNoSubscribers(String nodeId, String queueName) {
         TreeSet<Slot> assignedSlotList = null;
-        String lockKeyForNodeId = nodeId + SlotManager.class;
+        String lockKeyForNodeId = nodeId + SlotManagerClusterMode.class;
         synchronized (lockKeyForNodeId.intern()) {
 
             //Get assigned slots from Hazelcast, delete all belonging to queue
@@ -600,7 +600,7 @@ public class SlotManager {
 
         //add the deleted slots to un-assigned slot map, so that they can be assigned again.
         if (assignedSlotList != null && !assignedSlotList.isEmpty()) {
-            String lockKeyForQueueName = queueName + SlotManager.class;
+            String lockKeyForQueueName = queueName + SlotManagerClusterMode.class;
             synchronized (lockKeyForQueueName.intern()) {
                 TreeSetSlotWrapper treeSetStringWrapper = unAssignedSlotMap.get(queueName);
 
@@ -690,7 +690,7 @@ public class SlotManager {
             List<String> nodeIDs = HazelcastAgent.getInstance().getMembersNodeIDs();
 
             for (String nodeID : nodeIDs) {
-                String lockKey = nodeID + SlotManager.class;
+                String lockKey = nodeID + SlotManagerClusterMode.class;
 
                 synchronized (lockKey.intern()) {
 
@@ -752,7 +752,7 @@ public class SlotManager {
             List<String> nodeIDs = HazelcastAgent.getInstance().getMembersNodeIDs();
 
             for (String nodeID : nodeIDs) {
-                String lockKey = nodeID + SlotManager.class;
+                String lockKey = nodeID + SlotManagerClusterMode.class;
 
                 TreeSet<Slot> overlappingSlotsOnNode = new TreeSet<Slot>();
 

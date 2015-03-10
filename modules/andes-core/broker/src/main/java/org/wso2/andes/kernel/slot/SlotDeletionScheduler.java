@@ -20,8 +20,8 @@ package org.wso2.andes.kernel.slot;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.OnflightMessageTracker;
-import org.wso2.andes.thrift.MBThriftClient;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -81,8 +81,8 @@ public class SlotDeletionScheduler {
                 log.debug("Trying to delete slot : " + slotToDelete);
             }
             try {
-                deleteSuccess = MBThriftClient
-                        .deleteSlot(slotToDelete.getStorageQueueName(), slotToDelete, nodeID);
+                deleteSuccess = MessagingEngine.getInstance().getSlotCoordinator().deleteSlot
+                        (slotToDelete.getStorageQueueName(), slotToDelete);
             } catch (ConnectionException e) {
                 log.error("Error while trying to delete the slot " + slotToDelete + " Thrift connection failed. Rescheduling delete.");
             }
