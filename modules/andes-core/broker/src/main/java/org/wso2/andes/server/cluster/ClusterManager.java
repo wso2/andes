@@ -30,7 +30,7 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
-import org.wso2.andes.kernel.slot.SlotManager;
+import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -65,14 +65,14 @@ public class ClusterManager {
      * AndesContextStore instance
      */
     private AndesContextStore andesContextStore;
-    private SlotManager slotManager;
+    private SlotManagerClusterMode slotManager;
 
     /**
      * Create a ClusterManager instance
      */
     public ClusterManager() {
         this.andesContextStore = AndesContext.getInstance().getAndesContextStore();
-        this.slotManager = SlotManager.getInstance();
+        this.slotManager = SlotManagerClusterMode.getInstance();
     }
 
     /**

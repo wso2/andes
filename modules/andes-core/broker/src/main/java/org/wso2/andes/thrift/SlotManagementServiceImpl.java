@@ -21,7 +21,7 @@ package org.wso2.andes.thrift;
 import org.apache.thrift.TException;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.kernel.slot.SlotManager;
+import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.thrift.slot.gen.SlotInfo;
 import org.wso2.andes.thrift.slot.gen.SlotManagementService;
 
@@ -33,7 +33,7 @@ import org.wso2.andes.thrift.slot.gen.SlotManagementService;
 
 public class SlotManagementServiceImpl implements SlotManagementService.Iface {
 
-    private static SlotManager slotManager = SlotManager.getInstance();
+    private static SlotManagerClusterMode slotManager = SlotManagerClusterMode.getInstance();
 
     @Override
     public SlotInfo getSlotInfo(String queueName, String nodeId) throws TException {

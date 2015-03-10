@@ -23,13 +23,13 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
-import org.wso2.andes.kernel.slot.SlotManager;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.thrift.MBThriftServer;
 import org.wso2.andes.server.virtualhost.VirtualHost;
@@ -149,7 +149,7 @@ public class AndesKernelBoot {
             if (log.isDebugEnabled()) {
                 log.debug("Created a slot with " + messageList.size() + " messages for queue (" + queueName + ")");
             }
-            SlotManager.getInstance().updateMessageID(queueName, HazelcastAgent.getInstance().getNodeId(), firstMessageID, lastMessageID);
+            SlotManagerClusterMode.getInstance().updateMessageID(queueName, HazelcastAgent.getInstance().getNodeId(), firstMessageID, lastMessageID);
 
             // We need to increment lastMessageID since the getNextNMessageMetadataFromQueue returns message list
             // including the given starting ID.

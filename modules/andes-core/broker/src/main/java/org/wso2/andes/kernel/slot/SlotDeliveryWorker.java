@@ -20,17 +20,12 @@ package org.wso2.andes.kernel.slot;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.kernel.MessageFlusher;
-import org.wso2.andes.kernel.OnflightMessageTracker;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.thrift.MBThriftClient;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.subscription.SubscriptionStore;
 
-
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
@@ -45,34 +40,29 @@ public class SlotDeliveryWorker extends Thread {
     private ConcurrentSkipListMap<String, String> storageQueueNameToDestinationMap;
 
     private SubscriptionStore subscriptionStore;
-    private HashMap<String, Long> localLastProcessedIdMap;
-    private static boolean isClusteringEnabled;
     private static Log log = LogFactory.getLog(SlotDeliveryWorker.class);
 
     /**
      * This map contains slotId to slot hashmap against queue name
      */
     private volatile boolean running;
-    private String nodeId;
     private MessageFlusher messageFlusher;
     private SlotDeletionScheduler slotDeletionScheduler;
+    private SlotCoordinator slotCoordinator;
 
-    private static final long SLOT_DELETION_SCHEDULE_INTERVAL = 15*1000;
+    private static final long SLOT_DELETION_SCHEDULE_INTERVAL = 15 * 1000;
 
     public SlotDeliveryWorker() {
         messageFlusher = MessageFlusher.getInstance();
         this.storageQueueNameToDestinationMap = new ConcurrentSkipListMap<String, String>();
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-        isClusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
-        localLastProcessedIdMap = new HashMap<String, Long>();
         slotDeletionScheduler = new SlotDeletionScheduler(SLOT_DELETION_SCHEDULE_INTERVAL);
         /*
         Start slot deleting thread only if clustering is enabled. Otherwise slots assignment will
          not happen
          */
-        if (isClusteringEnabled) {
-            nodeId = HazelcastAgent.getInstance().getNodeId();
-        }
+
+        slotCoordinator = MessagingEngine.getInstance().getSlotCoordinator();
     }
 
     @Override
@@ -96,165 +86,91 @@ public class SlotDeliveryWorker extends Thread {
                         //Check in memory buffer in MessageFlusher has room
                         if (messageFlusher.getMessageDeliveryInfo(destinationOfMessagesInQueue)
                                 .isMessageBufferFull()) {
-                            if (isClusteringEnabled) {
-                                long startTime = System.currentTimeMillis();
-                                Slot currentSlot = MBThriftClient.getSlot(storageQueueName, nodeId);
-                                currentSlot.setDestinationOfMessagesInSlot(destinationOfMessagesInQueue);
-                                long endTime = System.currentTimeMillis();
 
-                                if (log.isDebugEnabled()) {
-                                    log.debug(
-                                            (endTime - startTime) + " milliSec took to get a slot" +
-                                            " from slot manager");
-                                }
-                                /**
-                                 * If the slot is empty
-                                 */
-                                if (0 == currentSlot.getEndMessageId()) {
+                            long startTime = System.currentTimeMillis();
+                            Slot currentSlot = slotCoordinator.getSlot(storageQueueName);
+                            currentSlot.setDestinationOfMessagesInSlot(destinationOfMessagesInQueue);
+                            long endTime = System.currentTimeMillis();
+
+                            if (log.isDebugEnabled()) {
+                                log.debug(
+                                        (endTime - startTime) + " milliSec took to get a slot" +
+                                                " from slot manager");
+                            }
+                            /**
+                             * If the slot is empty
+                             */
+                            if (0 == currentSlot.getEndMessageId()) {
 
                                     /*
                                     If the message buffer in MessageFlusher is not empty
                                      send those messages
                                      */
-                                    if (log.isDebugEnabled()) {
-                                        log.debug("Recieved an empty slot from slot manager in " +
-                                                  "cluster mode");
-                                    }
-                                    boolean sentFromMessageBuffer = sendFromMessageBuffer(
-                                            destinationOfMessagesInQueue);
-                                    if (!sentFromMessageBuffer) {
-                                        //No available free slots
-                                        idleQueueCounter++;
-                                        if (idleQueueCounter == storageQueueNameToDestinationMap.size()) {
-                                            try {
-                                                if (log.isDebugEnabled()) {
-                                                    log.debug("Sleeping Slot Delivery Worker");
-                                                }
-                                                Thread.sleep(100);
-                                            } catch (InterruptedException ignored) {
-                                                //Silently ignore
+                                if (log.isDebugEnabled()) {
+                                    log.debug("Received an empty slot from slot manager");
+                                }
+                                boolean sentFromMessageBuffer = sendFromMessageBuffer(
+                                        destinationOfMessagesInQueue);
+                                if (!sentFromMessageBuffer) {
+                                    //No available free slots
+                                    idleQueueCounter++;
+                                    if (idleQueueCounter == storageQueueNameToDestinationMap.size()) {
+                                        try {
+                                            if (log.isDebugEnabled()) {
+                                                log.debug("Sleeping Slot Delivery Worker");
                                             }
+                                            Thread.sleep(100);
+                                        } catch (InterruptedException ignored) {
+                                            //Silently ignore
                                         }
-                                    }
-                                } else {
-                                    if (log.isDebugEnabled()) {
-                                        log.debug("Received slot for queue " + storageQueueName + " " +
-                                                  "is: " + currentSlot.getStartMessageId() +
-                                                  " - " + currentSlot.getEndMessageId() +
-                                                  "Thread Id:" + Thread.currentThread().getId());
-                                    }
-                                    long firstMsgId = currentSlot.getStartMessageId();
-                                    long lastMsgId = currentSlot.getEndMessageId();
-                                    //Read messages in the slot
-                                    List<AndesMessageMetadata> messagesRead =
-                                            MessagingEngine.getInstance().getMetaDataList(
-                                                    storageQueueName, firstMsgId, lastMsgId);
-
-                                    if(log.isDebugEnabled()) {
-                                        StringBuilder messageIDString = new StringBuilder();
-                                        for (AndesMessageMetadata metadata: messagesRead ) {
-                                            messageIDString.append(metadata.getMessageID()).append(" , ");
-                                        }
-                                        log.debug("Messages Read: " + messageIDString);
-                                    }
-                                    if (messagesRead != null &&
-                                        !messagesRead.isEmpty()) {
-                                        if (log.isDebugEnabled()) {
-                                            log.debug("Number of messages read from slot " +
-                                                      currentSlot.getStartMessageId() + " - " +
-                                                      currentSlot.getEndMessageId() + " is " +
-                                                      messagesRead.size() + " queue= " + storageQueueName);
-                                        }
-                                        MessageFlusher.getInstance().sendMessageToBuffer(
-                                                messagesRead, currentSlot);
-                                        MessageFlusher.getInstance().sendMessagesInBuffer(
-                                                currentSlot.getDestinationOfMessagesInSlot());
-                                    } else {
-                                        currentSlot.setSlotInActive();
-                                        deleteSlot(currentSlot);
                                     }
                                 }
-                            //Standalone mode
                             } else {
-                                long startMessageId = 0;
-                                if (localLastProcessedIdMap.get(storageQueueName) != null) {
-                                    startMessageId = localLastProcessedIdMap.get(storageQueueName) + 1;
+                                if (log.isDebugEnabled()) {
+                                    log.debug("Received slot for queue " + storageQueueName + " " +
+                                            "is: " + currentSlot.getStartMessageId() +
+                                            " - " + currentSlot.getEndMessageId() +
+                                            "Thread Id:" + Thread.currentThread().getId());
                                 }
-
-                                Integer slotWindowSize = AndesConfigurationManager.readValue
-                                        (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
+                                long firstMsgId = currentSlot.getStartMessageId();
+                                long lastMsgId = currentSlot.getEndMessageId();
+                                //Read messages in the slot
                                 List<AndesMessageMetadata> messagesRead =
+                                        MessagingEngine.getInstance().getMetaDataList(
+                                                storageQueueName, firstMsgId, lastMsgId);
 
-                                        MessagingEngine.getInstance()
-                                                       .getNextNMessageMetadataFromQueue
-                                                               (storageQueueName, startMessageId,
-                                                                slotWindowSize);
-                                if(log.isDebugEnabled()) {
+                                if (log.isDebugEnabled()) {
                                     StringBuilder messageIDString = new StringBuilder();
-                                    for (AndesMessageMetadata metadata: messagesRead ) {
+                                    for (AndesMessageMetadata metadata : messagesRead) {
                                         messageIDString.append(metadata.getMessageID()).append(" , ");
                                     }
                                     log.debug("Messages Read: " + messageIDString);
                                 }
-
-                                if (messagesRead == null ||
-                                    messagesRead.isEmpty()) {
-                                    log.debug("No messages are read. StorageQ= " + storageQueueName);
-                                    boolean sentFromMessageBuffer = sendFromMessageBuffer
-                                            (destinationOfMessagesInQueue);
-                                    log.debug(
-                                            "Sent messages from buffer = " + sentFromMessageBuffer);
-                                    if (!sentFromMessageBuffer) {
-                                        idleQueueCounter++;
-                                        try {
-                                            //There are no messages to read
-                                            if (idleQueueCounter == storageQueueNameToDestinationMap
-                                                    .size()) {
-                                                if (log.isDebugEnabled()) {
-                                                    log.debug("Sleeping Slot Delivery Worker");
-                                                }
-                                                Thread.sleep(2000);
-                                            }
-                                        } catch (InterruptedException ignored) {
-                                            //Silently ignore
-                                        }
-
-                                    }
-                                } else {
+                                if (messagesRead != null &&
+                                        !messagesRead.isEmpty()) {
                                     if (log.isDebugEnabled()) {
-                                        log.debug(messagesRead.size() + " " +
-                                                  "number of messages read from Slot Delivery Worker. StorageQ= " + storageQueueName);
+                                        log.debug("Number of messages read from slot " +
+                                                currentSlot.getStartMessageId() + " - " +
+                                                currentSlot.getEndMessageId() + " is " +
+                                                messagesRead.size() + " queue= " + storageQueueName);
                                     }
-                                    long lastMessageId = messagesRead.get(
-                                            messagesRead
-                                                    .size() - 1).getMessageID();
-                                    log.debug(
-                                            "Last message id read = " +
-                                            lastMessageId);
-                                    localLastProcessedIdMap.put(storageQueueName, lastMessageId);
-
-                                    //Simulate a slot here
-                                    Slot currentSlot = new Slot();
-                                    currentSlot.setStorageQueueName(storageQueueName);
-                                    currentSlot.setDestinationOfMessagesInSlot(
-                                            destinationOfMessagesInQueue);
-                                    currentSlot.setStartMessageId(startMessageId);
-                                    currentSlot.setEndMessageId(lastMessageId);
-
-                                    log.debug("sending read messages to flusher << " + currentSlot
-                                            .toString() + " >>");
-                                    messageFlusher.sendMessageToBuffer
-                                            (messagesRead, currentSlot);
-                                    messageFlusher.sendMessagesInBuffer(currentSlot.getDestinationOfMessagesInSlot());
+                                    MessageFlusher.getInstance().sendMessageToBuffer(
+                                            messagesRead, currentSlot);
+                                    MessageFlusher.getInstance().sendMessagesInBuffer(
+                                            currentSlot.getDestinationOfMessagesInSlot());
+                                } else {
+                                    currentSlot.setSlotInActive();
+                                    deleteSlot(currentSlot);
                                 }
                             }
+
                         } else {
                                 /*If there are messages to be sent in the message
                                             buffer in MessageFlusher send them */
                             if (log.isDebugEnabled()) {
                                 log.debug(
                                         "The queue " + storageQueueName + " has no room. Thus sending " +
-                                        "from buffer.");
+                                                "from buffer.");
                             }
                             sendFromMessageBuffer(destinationOfMessagesInQueue);
                         }
@@ -275,7 +191,7 @@ public class SlotDeliveryWorker extends Thread {
                     log.error("Error running Message Store Reader " + e.getMessage(), e);
                 } catch (ConnectionException e) {
                     log.error("Error occurred while connecting to the thrift coordinator " +
-                              e.getMessage(), e);
+                            e.getMessage(), e);
                     setRunning(false);
                     //Any exception should be caught here. Otherwise SDW thread will stop
                     //and MB node will become useless
@@ -341,14 +257,8 @@ public class SlotDeliveryWorker extends Thread {
 
 
     public void deleteSlot(Slot slot) {
-
-        if(isClusteringEnabled){
-            String nodeID = HazelcastAgent.getInstance().getNodeId();
-            slotDeletionScheduler.scheduleSlotDeletion(slot, nodeID);
-        } else {
-            OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
-        }
-
+        String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        slotDeletionScheduler.scheduleSlotDeletion(slot, nodeID);
     }
 }
 
