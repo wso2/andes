@@ -939,11 +939,16 @@ public class SubscriptionStore {
     /**
      * @return list of ACTIVE and INACTIVE topics in cluster
      */
-    public List<String> getTopics() {
-        if (isBitmap)
+    public List<String> getTopics(boolean isDurable) {
+        if (isBitmap) {
             return new ArrayList<String>(subscriptionBitMapHandler.getAllDestinationsOfSubscriptions());
-        else
-            return new ArrayList<String>(clusterTopicSubscriptionMap.keySet());
+        }else{
+            if (!isDurable) {
+                return new ArrayList<String>(clusterTopicSubscriptionMap.keySet());
+            }else{
+                return new ArrayList<String>(clusterQueueSubscriptionMap.keySet());
+            }
+        }
 
     }
 
