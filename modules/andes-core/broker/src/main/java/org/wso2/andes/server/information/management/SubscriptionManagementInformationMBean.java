@@ -76,13 +76,26 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
     @Override
     public String[] getAllTopicSubscriptions(String isDurable, String isActive) {
         try {
+            boolean isDurableTopic;
+            if("false".equals(isDurable)){
+                isDurableTopic = false;
+            } else {
+                isDurableTopic = true;
+            }
             List<String> allSubscriptionsForTopics = new ArrayList<String>();
 
-            List<String> allTopics = AndesContext.getInstance().getSubscriptionStore().getTopics();
+            List<String> allTopics = AndesContext.getInstance().getSubscriptionStore().getTopics
+                    (isDurableTopic);
 
             for (String topic : allTopics) {
 
-                List<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination(topic, true);
+                List<AndesSubscription> subscriptions;
+                if (!isDurableTopic) {
+                    subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination(topic, true);
+                } else {
+                    subscriptions = AndesContext.getInstance().getSubscriptionStore()
+                            .getAllSubscribersForDestination(topic, false);
+                }
 
                 for (AndesSubscription s : subscriptions) {
 
