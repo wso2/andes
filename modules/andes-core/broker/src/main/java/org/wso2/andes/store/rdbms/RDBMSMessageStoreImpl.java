@@ -279,7 +279,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             stmtBuilder.append("?,");
         }
 
-        stmtBuilder.append("?);");
+        stmtBuilder.append("?)");
         return stmtBuilder.toString();
     }
 
