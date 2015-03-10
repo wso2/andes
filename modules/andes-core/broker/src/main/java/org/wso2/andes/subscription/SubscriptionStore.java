@@ -56,6 +56,8 @@ public class SubscriptionStore {
 
     private SubscriptionBitMapHandler subscriptionBitMapHandler;
 
+    private MQTTWildCardBitMapHandler mqttBitMapHandler = new MQTTWildCardBitMapHandler();
+
     public SubscriptionStore() throws AndesException {
         andesContextStore = AndesContext.getInstance().getAndesContextStore();
         subscriptionBitMapHandler = new SubscriptionBitMapHandler();
@@ -85,6 +87,8 @@ public class SubscriptionStore {
             if (null != wildCardSubscriptions) {
                 subscriptions.addAll(wildCardSubscriptions);
             }
+
+            subscriptions.addAll(mqttBitMapHandler.getMatchingSubscriptions(destination));
         } else {
             Set<AndesSubscription> queueSubscriptions = clusterQueueSubscriptionMap.get(destination);
 
@@ -334,6 +338,7 @@ public class SubscriptionStore {
         // Get wildcard subscriptions from bitmap
         if (isTopic) {
             clusterSubscriptions.addAll(subscriptionBitMapHandler.getAllClusteredSubscribedForDestination(destination));
+            clusterSubscriptions.addAll(mqttBitMapHandler.getMatchingSubscriptions(destination));
         }
         return clusterSubscriptions;
     }
@@ -440,6 +445,16 @@ public class SubscriptionStore {
 
             if (wildCardSubscription) {
                 createDisconnectOrRemoveClusterSubscriptionUsingBitmap(subscription, type);
+
+                if (AndesSubscription.SubscriptionType.MQTT == subscription.getSubscriptionType()) {
+                    if (SubscriptionChange.ADDED == type) {
+                        mqttBitMapHandler.addWildCardSubscription(subscription);
+                    } else if (SubscriptionChange.DELETED == type) {
+                        mqttBitMapHandler.removeWildCardSubscription(subscription);
+                    } else {
+                        mqttBitMapHandler.updateWildCardSubscription(subscription);
+                    }
+                }
             } else {
                 clusterSubscriptionMap = clusterTopicSubscriptionMap;
             }
