@@ -18,14 +18,14 @@
 
 package org.wso2.andes.kernel;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * AndesChannel keep track of the states of the local channels
@@ -57,7 +57,7 @@ public class AndesChannel {
     private final Integer flowControlHighLimit;
 
     /**
-     * Flow control manager used to handle gobal flow control events
+     * Flow control manager used to handle global flow control events
      */
     private final FlowControlManager flowControlManager;
 
@@ -87,22 +87,44 @@ public class AndesChannel {
     private boolean flowControlEnabled;
 
     /**
-     * Track global flow control status
+     * Indicates if the buffer based flow controls is enabled a global level.
      */
-    private boolean globalFlowControlEnabled;
+    private boolean globalBufferBasedFlowControlEnabled;
+
+    /**
+     * Indicates if the error based flow controls is enabled ( Note: error based
+     * flow control is only enabled at global level)
+     */
+    private boolean globalErrorBasedFlowControlEnabled;
 
     /**
      * Used to close the flow control timeout task if not required
      */
     private ScheduledFuture<?> scheduledFlowControlTimeoutFuture;
 
+    /**
+     * Instantiates a new andes channel
+     * 
+     * @param flowControlManager
+     *            - instance of the flow control manage to be used
+     * @param listener
+     *            - an implementation of {@link FlowControlListener} which should
+     *            originate from a concrete channel implementation.
+     * @param globalBufferBasedFlowControlEnabled
+     *            Indicates that global buffer based flow control is enabled at
+     *            the time of this channel is created.
+     * @param globalErrBasedFlowControlEnabled
+     *            Indicates that global error based flow control is enabled at
+     *            the time of this channel is created.
+     */
     public AndesChannel(FlowControlManager flowControlManager, FlowControlListener listener,
-                        boolean globalFlowControlEnabled) {
+                        boolean globalBufferBasedFlowControlEnabled, boolean globalErrBasedFlowControlEnabled) {
         this.flowControlManager = flowControlManager;
         this.listener = listener;
         // Used the same executor used by the flow control manager
         this.executor = flowControlManager.getScheduledExecutor();
-        this.globalFlowControlEnabled = globalFlowControlEnabled;
+        this.globalBufferBasedFlowControlEnabled = globalBufferBasedFlowControlEnabled;
+        this.globalErrorBasedFlowControlEnabled = globalErrBasedFlowControlEnabled;
 
         // Read limits
         this.flowControlLowLimit = flowControlManager.getChannelLowLimit();
@@ -118,20 +140,40 @@ public class AndesChannel {
     }
 
     /**
-     * This method is called by the flow control manager when flow control is enforced globally
+     * This method is called by the flow control manager when buffer based flow control is enforced globally
      */
-    public void notifyGlobalFlowControlActivation() {
-        globalFlowControlEnabled = true;
+    public void notifyGlobalBufferBasedFlowControlActivation() {
+        globalBufferBasedFlowControlEnabled = true;
     }
 
     /**
-     * This method is called by the flow control manager when flow control is not enforced globaly
+     * This method is called by the flow control manager when buffer based flow control is not enforced globally
      */
-    public void notifyGlobalFlowControlDeactivation() {
-        globalFlowControlEnabled = false;
+    public void notifyGlobalBufferBasedFlowControlDeactivation() {
+        globalBufferBasedFlowControlEnabled = false;
         unblockLocalChannel();
     }
 
+    
+    /**
+     * Invoked when error based global flow control is enabled.
+     */
+    public void notifyGlobalErrorBasedFlowControlActivation() {
+        globalErrorBasedFlowControlEnabled = true;
+        blockLocalChannel();
+    }
+
+    /**
+     * Invoked when error based global flow control is disabled.
+     */   
+    public void notifyGlobalErrorBasedFlowControlDeactivation() {
+        globalErrorBasedFlowControlEnabled = false;
+        unblockLocalChannel();
+    }
+
+    
+    
+    
     /**
      * Notify local channel to unblock channel
      */
@@ -142,22 +184,6 @@ public class AndesChannel {
             listener.unblock();
 
             log.info("Flow control disabled for channel " + id + ".");
-        }
-    }
-
-    /**
-     * This method should be called when a message is put into the buffer
-     *
-     * @param size
-     *         Number of items added to buffer
-     */
-    public void recordAdditionToBuffer(int size) {
-        flowControlManager.notifyAddition(size);
-
-        int count = messagesOnBuffer.addAndGet(size);
-
-        if (!flowControlEnabled && (globalFlowControlEnabled || count >= flowControlHighLimit)) {
-            blockLocalChannel();
         }
     }
 
@@ -173,6 +199,29 @@ public class AndesChannel {
             log.info("Flow control enabled for channel " + id + ".");
         }
     }
+    
+    
+    /**
+     * This method should be called when a message is put into the buffer
+     *
+     * @param size
+     *         Number of items added to buffer
+     */
+    public void recordAdditionToBuffer(int size) {
+        flowControlManager.notifyAddition(size);
+
+        int count = messagesOnBuffer.addAndGet(size);
+
+        if (!flowControlEnabled && 
+               (globalBufferBasedFlowControlEnabled 
+                 || count >= flowControlHighLimit 
+                 || globalErrorBasedFlowControlEnabled)) {
+            
+            blockLocalChannel();
+        }
+    }
+
+ 
 
     /**
      * This method should be called after a message is processed and no longer required in the buffer.
@@ -185,7 +234,9 @@ public class AndesChannel {
 
         int count = messagesOnBuffer.addAndGet(-size);
 
-        if (flowControlEnabled && !globalFlowControlEnabled && count <= flowControlLowLimit) {
+        if (flowControlEnabled && (!globalBufferBasedFlowControlEnabled) 
+                               && (count <= flowControlLowLimit) 
+                               && (! globalErrorBasedFlowControlEnabled)) {
             unblockLocalChannel();
         }
     }
@@ -198,7 +249,9 @@ public class AndesChannel {
     private class FlowControlTimeoutTask implements Runnable {
         @Override
         public void run() {
-            if (flowControlEnabled && !globalFlowControlEnabled && messagesOnBuffer.get() <= flowControlLowLimit) {
+            if (flowControlEnabled && (! globalBufferBasedFlowControlEnabled) 
+                                      && (messagesOnBuffer.get() <= flowControlLowLimit)
+                                      && (! globalErrorBasedFlowControlEnabled)) {
                 unblockLocalChannel();
             }
         }

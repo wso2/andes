@@ -19,16 +19,19 @@
 package org.wso2.andes.store.cassandra;
 
 import com.datastax.driver.core.exceptions.UnavailableException;
+
 import me.prettyprint.cassandra.model.ConfigurableConsistencyLevel;
 import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.HConsistencyLevel;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.exceptions.HectorException;
+
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.store.StoreHealthListener;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -36,7 +39,7 @@ import javax.naming.NamingException;
 /**
  * Hector based connection to Cassandra
  */
-public class HectorConnection implements DurableStoreConnection {
+public class HectorConnection extends DurableStoreConnection {
 
     private static final Logger log = Logger.getLogger(HectorConnection.class);
 
@@ -65,6 +68,9 @@ public class HectorConnection implements DurableStoreConnection {
      */
     @Override
     public void initialize(ConfigurationProperties connectionProperties) throws AndesException {
+        
+        super.initialize(connectionProperties);
+        
         String jndiLookupName = "";
         try {
 

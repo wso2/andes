@@ -29,6 +29,7 @@ import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.schemabuilder.SchemaBuilder;
+
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -39,6 +40,7 @@ import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.matrics.DataAccessMatrixManager;
 import org.wso2.andes.matrics.MatrixConstants;
+import org.wso2.andes.store.StoreHealthListener;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -140,9 +142,8 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public DurableStoreConnection initializeMessageStore(AndesContextStore contextStore, 
-                                                         ConfigurationProperties connectionProperties) 
-            throws AndesException {
+    public DurableStoreConnection initializeMessageStore(AndesContextStore contextStore,
+                                                         ConfigurationProperties connectionProperties) throws AndesException {
 
         cqlConnection = new CQLConnection();
         cqlConnection.initialize(connectionProperties);
@@ -853,4 +854,13 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             throw new AndesException("Error occurred while " + task, e);
         }
     }
+    
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isOperational(String testString, long testTime){
+        return true;
+    }
+    
+    
 }

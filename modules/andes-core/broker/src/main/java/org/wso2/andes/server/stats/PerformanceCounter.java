@@ -26,6 +26,12 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.log4j.Logger;
 
+
+/**
+ * TODO: We need to use metrics library and records statistics
+ */
+
+@Deprecated
 public class PerformanceCounter {
     private static final Logger log = Logger.getLogger(PerformanceCounter.class);
     private static final int MSG_BUFFER_SIZE = 1000; 

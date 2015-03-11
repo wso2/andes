@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2005-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -19,6 +19,7 @@
 package org.wso2.andes.kernel;
 
 import org.wso2.andes.configuration.util.ConfigurationProperties;
+import org.wso2.andes.store.HealthAwareStore;
 
 import java.util.Collection;
 import java.util.List;
@@ -28,7 +29,7 @@ import java.util.Map;
  * Message meta data and content storing related data base types specific logic is abstracted out
  * using this interface.
  */
-public interface MessageStore {
+public interface MessageStore extends HealthAwareStore{
 
     /**
      * Initialise the MessageStore and returns the DurableStoreConnection used by store
@@ -37,7 +38,8 @@ public interface MessageStore {
      * @throws AndesException
      */
     public DurableStoreConnection initializeMessageStore(AndesContextStore contextStore,
-                                                         ConfigurationProperties connectionProperties)
+                                                         ConfigurationProperties
+                                                                 connectionProperties)
             throws AndesException;
 
     /**

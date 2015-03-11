@@ -18,19 +18,28 @@
 
 package org.wso2.andes.store.rdbms;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.List;
+import java.util.Map;
+
+import javax.naming.Context;
+import javax.naming.InitialContext;
+
 import junit.framework.Assert;
+
 import org.h2.jdbcx.JdbcDataSource;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesExchange;
 import org.wso2.andes.kernel.AndesQueue;
-
-import javax.naming.Context;
-import javax.naming.InitialContext;
-import java.sql.*;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Unit test class for JDBCAndesContextStoreImpl

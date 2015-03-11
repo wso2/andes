@@ -23,6 +23,7 @@ import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.schemabuilder.SchemaBuilder;
+
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -30,6 +31,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesExchange;
 import org.wso2.andes.kernel.AndesQueue;
 import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.store.StoreHealthListener;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -531,5 +533,13 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         } catch (QueryExecutionException e) {
             throw new AndesException("Error occurred while " + task, e);
         }
+    }
+
+    /**
+     * TODO : implementation.
+     */
+    @Override
+    public boolean isOperational(String testString, long testTime) {
+        return true;
     }
 }

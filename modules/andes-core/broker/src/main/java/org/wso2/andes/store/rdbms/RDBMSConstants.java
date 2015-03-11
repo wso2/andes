@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2005-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -35,7 +35,8 @@ public class RDBMSConstants {
     protected static final String METADATA_TABLE = "MB_METADATA";
     protected static final String QUEUES_TABLE = "MB_QUEUE_MAPPING";
     protected static final String EXPIRATION_TABLE = "MB_EXPIRATION_DATA";
-
+    protected static final String MSG_STORE_STATUS_TABLE = "MB_MSG_STORE_STATUS";
+    
     // Message Store table columns
     protected static final String MESSAGE_ID = "MESSAGE_ID";
     protected static final String QUEUE_ID = "QUEUE_ID";
@@ -67,6 +68,7 @@ public class RDBMSConstants {
     protected static final String BINDING_EXCHANGE_NAME = "EXCHANGE_NAME";
     protected static final String QUEUE_DATA = "QUEUE_DATA";
     protected static final String MESSAGE_COUNT = "MESSAGE_COUNT";
+    protected static final String TIME_STAMP = "TIME_STAMP";
 
     // prepared statements for Message Store
     protected static final String PS_INSERT_MESSAGE_PART =
@@ -304,7 +306,34 @@ public class RDBMSConstants {
             "UPDATE " + QUEUE_COUNTER_TABLE +
                     " SET " + MESSAGE_COUNT + "= 0" +
                     " WHERE " + QUEUE_NAME + "=?";
+    
+    
+    /**
+     * Prepared Statement to test inserts are working for message store
+     */
+    protected static final String PS_TEST_MSG_STORE_INSERT =
+            "INSERT INTO " + MSG_STORE_STATUS_TABLE + " (" +
+                    NODE_ID + "," + TIME_STAMP + " ) " +
+                    " VALUES ( ?,? )";
 
+    /**
+     * Prepared Statement to test deletes are working for message store
+     */
+    protected static final String PS_TEST_MSG_STORE_SELECT =
+            "SELECT " + NODE_ID + ", " + TIME_STAMP + " FROM " + MSG_STORE_STATUS_TABLE + 
+            " WHERE "+ NODE_ID +"=? AND " + TIME_STAMP+ "=?";
+    
+    /**
+     * Prepared Statement to test deletes are working for message store
+     */
+    protected static final String PS_TEST_MSG_STORE_DELETE =
+    "DELETE FROM " + MSG_STORE_STATUS_TABLE + " WHERE " + NODE_ID + " = ?" + " AND " 
+            + TIME_STAMP +" = ?";
+
+    
+    
+    
+    
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";
     protected static final String TASK_DELETING_MESSAGE_PARTS = "deleting message parts.";
@@ -368,6 +397,12 @@ public class RDBMSConstants {
     protected static final String TASK_INCREMENTING_QUEUE_COUNT = "incrementing queue count";
     protected static final String TASK_DECREMENTING_QUEUE_COUNT = "decrementing queue count";
 
+    /**
+     * Messages related to checking message store is operational.
+     */
+    protected static final String TASK_TEST_MESSAGE_STORE_OPERATIONAL_READ = "testing data can be read from message store.";
+    protected static final String TASK_TEST_MESSAGE_STORE_OPERATIONAL_INSERT = "testing data can be inserted to message store.";
+    protected static final String TASK_TEST_MESSAGE_STORE_OPERATIONAL_DELETE = "testing data can be deleted from message store.";
     /**
      * Only public static constants are in this class. No need to instantiate.
      */

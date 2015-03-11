@@ -103,9 +103,8 @@ public class Andes {
      * Singleton class. Hence private constructor.
      */
     private Andes() {
-
         PURGE_TIMEOUT_SECONDS = (Integer) AndesConfigurationManager.readValue(PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT);
-        flowControlManager = new FlowControlManager();
+        this.flowControlManager = new FlowControlManager();
     }
 
     /**
@@ -119,9 +118,9 @@ public class Andes {
         this.contextInformationManager = contextInformationManager;
         this.messagingEngine = messagingEngine;
         this.subscriptionManager = subscriptionManager;
-
+        
         inboundEventManager = InboundEventManagerFactory.createEventManager(subscriptionStore, messagingEngine);
-
+        
         log.info("Andes API initialised.");
     }
 
@@ -536,5 +535,6 @@ public class Andes {
         
         return queueEvent.IsQueueDeletable();
     }
+
 }
 
