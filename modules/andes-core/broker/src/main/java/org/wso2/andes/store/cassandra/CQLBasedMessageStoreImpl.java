@@ -18,17 +18,22 @@
 
 package org.wso2.andes.store.cassandra;
 
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.exceptions.NoHostAvailableException;
-import com.datastax.driver.core.exceptions.QueryExecutionException;
-import com.datastax.driver.core.querybuilder.QueryBuilder;
-import com.datastax.driver.core.schemabuilder.SchemaBuilder;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.gte;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.in;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.lte;
+
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -40,49 +45,37 @@ import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.matrics.DataAccessMatrixManager;
 import org.wso2.andes.matrics.MatrixConstants;
+import org.wso2.andes.store.AndesStoreUnavailableException;
+import org.wso2.carbon.metrics.manager.Timer.Context;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-
-import static com.datastax.driver.core.querybuilder.QueryBuilder.*;
-import static org.wso2.carbon.metrics.manager.Timer.Context;
+import com.datastax.driver.core.BatchStatement;
+import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+import com.datastax.driver.core.Statement;
+import com.datastax.driver.core.exceptions.NoHostAvailableException;
+import com.datastax.driver.core.exceptions.QueryExecutionException;
+import com.datastax.driver.core.querybuilder.QueryBuilder;
+import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 
 /**
  * CQL 3 based Cassandra MessageStore implementation. This is intended to support Cassandra 2.xx series upwards.
  */
 public class CQLBasedMessageStoreImpl implements MessageStore {
 
-    // Message Store tables
-    protected static final String CONTENT_TABLE = "MB_CONTENT";
-    protected static final String METADATA_TABLE = "MB_METADATA";
-    // Message Store table columns
-    protected static final String MESSAGE_ID = "MESSAGE_ID";
+  
+    private static final Logger log = Logger.getLogger(CQLBasedMessageStoreImpl.class);
+   
 
-    protected static final String QUEUE_NAME = "QUEUE_NAME";
-    protected static final String METADATA = "MESSAGE_METADATA";
-    protected static final String MESSAGE_OFFSET = "CONTENT_OFFSET";
-    protected static final String MESSAGE_CONTENT = "MESSAGE_CONTENT";
-
-    //CQL batch has a limitation of number of entries we need to ensure that this limit will not exceed
-    protected static final int MAX_MESSAGE_BATCH_SIZE = 1000;
-
-    // Message expiration feature moved to MB 3.1.0
-/*
-    protected static final String EXPIRATION_TABLE = "MB_EXPIRATION_DATA";
-    protected static final String EXPIRATION_TIME = "EXPIRATION_TIME";
-    protected static final String DESTINATION_QUEUE = "MESSAGE_DESTINATION";
-    protected static final String EXPIRATION_TIME_RANGE = "TIME_RANGE";
-*/
     private CassandraConfig config;
     private CQLConnection cqlConnection;
     
     private AndesContextStore contextStore;
 
+    private CQLUtils cqlUtils;
+    
     /**
      * CQL prepared statement to insert message content to DB
      * Params to bind
@@ -91,9 +84,9 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * - MESSAGE_CONTENT
      */
     private static final String PS_INSERT_MESSAGE_PART =
-            "INSERT INTO " + CONTENT_TABLE + " ( " +
-                    MESSAGE_ID + ", " + MESSAGE_OFFSET + ", " +
-                    MESSAGE_CONTENT + ") " +
+            "INSERT INTO " + CQLConstants.CONTENT_TABLE + " ( " +
+                    CQLConstants.MESSAGE_ID + ", " + CQLConstants.MESSAGE_OFFSET + ", " +
+                    CQLConstants.MESSAGE_CONTENT + ") " +
                     "VALUES (?,?,?)";
 
     /**
@@ -102,8 +95,8 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * - MESSAGE_ID
      */
     private static final String PS_DELETE_MESSAGE_CONTENT =
-            "DELETE FROM " + CONTENT_TABLE +
-                    " WHERE " + MESSAGE_ID + " =?";
+            "DELETE FROM " + CQLConstants.CONTENT_TABLE +
+                    " WHERE " + CQLConstants.MESSAGE_ID + " =?";
 
     /**
      * CQL prepared statement to insert message metadata to DB
@@ -113,8 +106,8 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * - METADATA
      */
     private static final String PS_INSERT_METADATA =
-            "INSERT INTO " + METADATA_TABLE + " ( " +
-                    QUEUE_NAME + "," + MESSAGE_ID + "," + METADATA + ") " +
+            "INSERT INTO " + CQLConstants.METADATA_TABLE + " ( " +
+                    CQLConstants.QUEUE_NAME + "," + CQLConstants.MESSAGE_ID + "," + CQLConstants.METADATA + ") " +
                     " VALUES (?,?,?);";
 
     /**
@@ -123,9 +116,9 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * - MESSAGE_ID
      */
     private static final String PS_DELETE_METADATA =
-            "DELETE FROM " + METADATA_TABLE +
-                    " WHERE " + QUEUE_NAME + "=? AND " +
-                    MESSAGE_ID + "=?";
+            "DELETE FROM " + CQLConstants.METADATA_TABLE +
+                    " WHERE " + CQLConstants.QUEUE_NAME + "=? AND " +
+                    CQLConstants.MESSAGE_ID + "=?";
 
     // Prepared Statements bound to session
     private PreparedStatement psInsertMessagePart;
@@ -141,16 +134,16 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public DurableStoreConnection initializeMessageStore(AndesContextStore contextStore, 
-                                                         ConfigurationProperties connectionProperties) 
-            throws AndesException {
+    public DurableStoreConnection initializeMessageStore(AndesContextStore contextStore,
+                                                         ConfigurationProperties connectionProperties) throws AndesException {
 
         cqlConnection = new CQLConnection();
+        cqlUtils = new CQLUtils();
         cqlConnection.initialize(connectionProperties);
 
         this.contextStore = contextStore;
         config.parse(connectionProperties);
-        createSchema(cqlConnection);
+        createSchema(cqlConnection, cqlUtils);
 
         Session session = cqlConnection.getSession();
 
@@ -169,26 +162,28 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      *
      * @param connection CQLConnection
      */
-    private void createSchema(CQLConnection connection) {
+    private void createSchema(CQLConnection connection, CQLUtils cqlUtils) {
 
         Session session = connection.getSession();
 
-        Statement statement = SchemaBuilder.createTable(config.getKeyspace(), CONTENT_TABLE).ifNotExists().
-                addPartitionKey(MESSAGE_ID, DataType.bigint()).
-                addClusteringColumn(MESSAGE_OFFSET, DataType.cint()).
-                addColumn(MESSAGE_CONTENT, DataType.blob()).
+        Statement statement = SchemaBuilder.createTable(config.getKeyspace(), CQLConstants.CONTENT_TABLE).ifNotExists().
+                addPartitionKey(CQLConstants.MESSAGE_ID, DataType.bigint()).
+                addClusteringColumn(CQLConstants.MESSAGE_OFFSET, DataType.cint()).
+                addColumn(CQLConstants.MESSAGE_CONTENT, DataType.blob()).
                 withOptions().gcGraceSeconds(config.getGcGraceSeconds()).
                 setConsistencyLevel(config.getWriteConsistencyLevel());
         session.execute(statement);
 
-        statement = SchemaBuilder.createTable(config.getKeyspace(), METADATA_TABLE).ifNotExists().
-                addPartitionKey(QUEUE_NAME, DataType.text()).
-                addClusteringColumn(MESSAGE_ID, DataType.bigint()).
-                addColumn(METADATA, DataType.blob()).
-                withOptions().clusteringOrder(MESSAGE_ID, SchemaBuilder.Direction.ASC).
+        statement = SchemaBuilder.createTable(config.getKeyspace(), CQLConstants.METADATA_TABLE).ifNotExists().
+                addPartitionKey(CQLConstants.QUEUE_NAME, DataType.text()).
+                addClusteringColumn(CQLConstants.MESSAGE_ID, DataType.bigint()).
+                addColumn(CQLConstants.METADATA, DataType.blob()).
+                withOptions().clusteringOrder(CQLConstants.MESSAGE_ID, SchemaBuilder.Direction.ASC).
                 gcGraceSeconds(config.getGcGraceSeconds()).
                 setConsistencyLevel(config.getWriteConsistencyLevel());
         session.execute(statement);
+
+        cqlUtils.createSchema(connection, config);        
 
         // Message expiration feature moved to MB 3.1.0
 /*
@@ -251,7 +246,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                 messageIDPointer = messageIDPointer + 1;
 
                 //If the maximum batch limit has exceeded we need to execute the current batch first
-                if(messageIDPointer == MAX_MESSAGE_BATCH_SIZE){
+                if(messageIDPointer == CQLConstants.MAX_MESSAGE_BATCH_SIZE){
                     execute(batchStatement, "deleting message part list. List size " + messageIdList.size());
                     //Will clear the batch to add on the rest of the elements
                     batchStatement.clear();
@@ -281,8 +276,8 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
         try {
             Statement statement = QueryBuilder.select().all().
-                    from(config.getKeyspace(), CONTENT_TABLE).
-                    where(eq(MESSAGE_ID, messageId)).and(eq(MESSAGE_OFFSET, offsetValue)).
+                    from(config.getKeyspace(), CQLConstants.CONTENT_TABLE).
+                    where(eq(CQLConstants.MESSAGE_ID, messageId)).and(eq(CQLConstants.MESSAGE_OFFSET, offsetValue)).
                     setConsistencyLevel(config.getReadConsistencyLevel());
 
             ResultSet resultSet = execute(statement, "retrieving message part for msg id " + messageId +
@@ -291,13 +286,13 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             AndesMessagePart messagePart = null;
             Row row = resultSet.one();
             if (null != row) {
-                ByteBuffer buffer = row.getBytes(MESSAGE_CONTENT);
+                ByteBuffer buffer = row.getBytes(CQLConstants.MESSAGE_CONTENT);
                 byte[] content = new byte[buffer.remaining()];
                 buffer.get(content);
 
                 messagePart = new AndesMessagePart();
-                messagePart.setMessageID(row.getLong(MESSAGE_ID));
-                messagePart.setOffSet(row.getInt(MESSAGE_OFFSET));
+                messagePart.setMessageID(row.getLong(CQLConstants.MESSAGE_ID));
+                messagePart.setOffSet(row.getInt(CQLConstants.MESSAGE_OFFSET));
                 messagePart.setData(content);
                 messagePart.setDataLength(content.length);
             }
@@ -329,8 +324,8 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
             //SELECT * FROM MB_KEYSPACE.MB_CONTENT WHERE MESSAGE_ID IN (messageIDs...);
             Statement statement = QueryBuilder.select().all().
-                    from(config.getKeyspace(), CONTENT_TABLE).
-                    where(in(MESSAGE_ID, messageIds)).
+                    from(config.getKeyspace(), CQLConstants.CONTENT_TABLE).
+                    where(in(CQLConstants.MESSAGE_ID, messageIds)).
                     setConsistencyLevel(config.getReadConsistencyLevel());
 
             //The list of messages retrieved from the database
@@ -338,9 +333,9 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
             //Will iterate through each message and will create
             for (Row row : listOfMessages) {
-                long messageID = row.getLong(MESSAGE_ID);
-                int offset = row.getInt(MESSAGE_OFFSET);
-                ByteBuffer buffer = row.getBytes(MESSAGE_CONTENT);
+                long messageID = row.getLong(CQLConstants.MESSAGE_ID);
+                int offset = row.getInt(CQLConstants.MESSAGE_OFFSET);
+                ByteBuffer buffer = row.getBytes(CQLConstants.MESSAGE_CONTENT);
                 byte[] content = new byte[buffer.remaining()];
                 buffer.get(content);
 
@@ -380,6 +375,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
         try {
             BatchStatement batchStatement = new BatchStatement();
+            batchStatement.setConsistencyLevel(config.getWriteConsistencyLevel());
 
             for (AndesMessageMetadata metadata : metadataList) {
                 addMetadataToBatch(batchStatement, metadata, metadata.getStorageQueueName());
@@ -402,6 +398,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
         try {
             BatchStatement batchStatement = new BatchStatement();
+            batchStatement.setConsistencyLevel(config.getWriteConsistencyLevel());
             addMetadataToBatch(batchStatement, metadata, metadata.getStorageQueueName());
 
             execute(batchStatement, "adding metadata with msg id " + metadata.getMessageID() + " storage queue "
@@ -441,6 +438,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
         try {
             BatchStatement batchStatement = new BatchStatement();
+            batchStatement.setConsistencyLevel(config.getWriteConsistencyLevel());
             addMetadataToBatch(batchStatement, metadata, queueName);
 
             execute(batchStatement, "adding metadata to queue " + queueName +
@@ -462,6 +460,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
         try {
             BatchStatement batchStatement = new BatchStatement();
+            batchStatement.setConsistencyLevel(config.getWriteConsistencyLevel());
 
             for (AndesMessageMetadata metadata : metadataList) {
                 addMetadataToBatch(batchStatement, metadata, queueName);
@@ -541,9 +540,9 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         try {
             AndesMessageMetadata metadata = null;
 
-            Statement statement = QueryBuilder.select().column(METADATA).
-                    from(config.getKeyspace(), METADATA_TABLE).
-                    where(eq(MESSAGE_ID, messageId)).
+            Statement statement = QueryBuilder.select().column(CQLConstants.METADATA).
+                    from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
+                    where(eq(CQLConstants.MESSAGE_ID, messageId)).
                     limit(1).
                     allowFiltering().
                     setConsistencyLevel(config.getReadConsistencyLevel());
@@ -573,11 +572,11 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_META_DATA_LIST, this).start();
 
         try {
-            Statement statement = QueryBuilder.select().column(MESSAGE_ID).column(METADATA).
-                    from(config.getKeyspace(), METADATA_TABLE).
-                    where(eq(QUEUE_NAME, queueName)).
-                    and(gte(MESSAGE_ID, firstMsgId)).
-                    and(lte(MESSAGE_ID, lastMsgID)).
+            Statement statement = QueryBuilder.select().column(CQLConstants.MESSAGE_ID).column(CQLConstants.METADATA).
+                    from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
+                    where(eq(CQLConstants.QUEUE_NAME, queueName)).
+                    and(gte(CQLConstants.MESSAGE_ID, firstMsgId)).
+                    and(lte(CQLConstants.MESSAGE_ID, lastMsgID)).
                     setConsistencyLevel(config.getReadConsistencyLevel());
 
             ResultSet resultSet = execute(statement, "retrieving metadata list from queue " + queueName +
@@ -586,7 +585,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                     new ArrayList<AndesMessageMetadata>(resultSet.getAvailableWithoutFetching());
 
             for (Row row : resultSet) {
-                metadataList.add(getMetadataFromRow(row, row.getLong(MESSAGE_ID)));
+                metadataList.add(getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID)));
             }
             return metadataList;
 
@@ -609,10 +608,10 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                 GET_NEXT_MESSAGE_METADATA_FROM_QUEUE, this).start();
 
         try {
-            Statement statement = QueryBuilder.select().column(METADATA).column(MESSAGE_ID).
-                    from(config.getKeyspace(), METADATA_TABLE).
-                    where(eq(QUEUE_NAME, storageQueueName)).
-                    and(gte(MESSAGE_ID, firstMsgId)).
+            Statement statement = QueryBuilder.select().column(CQLConstants.METADATA).column(CQLConstants.MESSAGE_ID).
+                    from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
+                    where(eq(CQLConstants.QUEUE_NAME, storageQueueName)).
+                    and(gte(CQLConstants.MESSAGE_ID, firstMsgId)).
                     limit(count).
                     setConsistencyLevel(config.getReadConsistencyLevel());
 
@@ -622,7 +621,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                     new ArrayList<AndesMessageMetadata>(resultSet.getAvailableWithoutFetching());
 
             for (Row row : resultSet) {
-                metadataList.add(getMetadataFromRow(row, row.getLong(MESSAGE_ID)));
+                metadataList.add(getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID)));
             }
             return metadataList;
         } finally {
@@ -639,7 +638,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * @return AndesMessageMetadata
      */
     private AndesMessageMetadata getMetadataFromRow(Row row, long messageID) {
-        ByteBuffer buffer = row.getBytes(METADATA);
+        ByteBuffer buffer = row.getBytes(CQLConstants.METADATA);
         byte[] bytes = new byte[buffer.remaining()];
         buffer.get(bytes);
         return new AndesMessageMetadata(messageID, bytes, true);
@@ -707,8 +706,8 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public void deleteAllMessageMetadata(String storageQueueName) throws AndesException {
 
-        Statement statement = QueryBuilder.delete().from(config.getKeyspace(), METADATA_TABLE).
-                where(eq(QUEUE_NAME, storageQueueName)).
+        Statement statement = QueryBuilder.delete().from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
+                where(eq(CQLConstants.QUEUE_NAME, storageQueueName)).
                 setConsistencyLevel(config.getWriteConsistencyLevel());
 
         execute(statement, "deleting all metadata from " + storageQueueName);
@@ -721,9 +720,9 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     public int deleteAllMessageMetadataFromDLC(String storageQueueName,
                                                String DLCQueueName) throws AndesException {
 
-        Statement query = QueryBuilder.select().column(MESSAGE_ID).column(METADATA).
-                from(config.getKeyspace(), METADATA_TABLE).
-                where(eq(QUEUE_NAME, DLCQueueName)).
+        Statement query = QueryBuilder.select().column(CQLConstants.MESSAGE_ID).column(CQLConstants.METADATA).
+                from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
+                where(eq(CQLConstants.QUEUE_NAME, DLCQueueName)).
                 setConsistencyLevel(config.getReadConsistencyLevel());
 
         ResultSet resultSet = execute(query, "retrieving metadata from DLC " + DLCQueueName);
@@ -736,7 +735,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         AndesMessageMetadata metadata;
 
         for (Row row : resultSet) {
-            metadata = getMetadataFromRow(row, row.getLong(MESSAGE_ID));
+            metadata = getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID));
 
             if (metadata.getStorageQueueName().equals(storageQueueName)) {
 
@@ -765,16 +764,16 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public List<Long> getMessageIDsAddressedToQueue(String storageQueueName, Long startMessageID) throws AndesException {
 
-        Statement statement = QueryBuilder.select().column(MESSAGE_ID).
-                from(config.getKeyspace(), METADATA_TABLE).
-                where(eq(QUEUE_NAME, storageQueueName)).and(gte(MESSAGE_ID,startMessageID)).
+        Statement statement = QueryBuilder.select().column(CQLConstants.MESSAGE_ID).
+                from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
+                where(eq(CQLConstants.QUEUE_NAME, storageQueueName)).and(gte(CQLConstants.MESSAGE_ID,startMessageID)).
                 setConsistencyLevel(config.getReadConsistencyLevel());
 
         ResultSet resultSet = execute(statement, "retrieving message ids addressed to " + storageQueueName);
         List<Long> msgIDList = new ArrayList<Long>(resultSet.getAvailableWithoutFetching());
 
         for (Row row : resultSet) {
-            msgIDList.add(row.getLong(MESSAGE_ID));
+            msgIDList.add(row.getLong(CQLConstants.MESSAGE_ID));
         }
         return msgIDList;
     }
@@ -849,13 +848,35 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         try {
             return cqlConnection.getSession().execute(statement);
         } catch (NoHostAvailableException e) {
-            throw new AndesException("Error occurred while " + task, e);
+            
+            log.error("Unable to connect to cassandra cluster for " + task, e);
+            
+            Map<InetSocketAddress,Throwable> errors = e.getErrors();
+            for ( Entry<InetSocketAddress, Throwable> err: errors.entrySet()){
+                log.error("Error occured while connecting to cassandra server: " + err.getKey() + " error: ", err.getValue());
+            }
+            
+            throw new AndesStoreUnavailableException("error occured while trying to connect to cassandra server(s) for " + task, e);
+            
         } catch (QueryExecutionException e) {
-            throw new AndesException("Error occurred while " + task, e);
+            throw new AndesStoreUnavailableException("Error occurred while " + task, e);
         }
     }
+    
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isOperational(String testString, long testTime) {
 
-
+        /* Order of tests done is important here */
+        return cqlUtils.isReachable(cqlConnection) &&
+               cqlUtils.testInsert(cqlConnection, config, testString, testTime) &&
+               cqlUtils.testRead(cqlConnection, config, testString, testTime) &&
+               cqlUtils.testDelete(cqlConnection, config, testString, testTime);  
+        
+    }    
+    
+   
     /**
      * {@inheritDoc}
      */

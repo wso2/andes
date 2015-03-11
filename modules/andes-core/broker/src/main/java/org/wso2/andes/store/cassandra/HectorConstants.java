@@ -21,9 +21,9 @@ package org.wso2.andes.store.cassandra;
 import me.prettyprint.cassandra.serializers.*;
 
 /**
- * Constants used by Cassandra Stores related classes
+ * Constants used by Hector related classes
  */
-public class CassandraConstants {
+public class HectorConstants {
 
     // connection properties
     /**

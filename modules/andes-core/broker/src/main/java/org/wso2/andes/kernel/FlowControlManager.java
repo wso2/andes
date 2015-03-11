@@ -18,12 +18,6 @@
 
 package org.wso2.andes.kernel;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
-
 import java.util.ArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -32,7 +26,17 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class FlowControlManager {
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.store.FailureObservingStoreManager;
+import org.wso2.andes.store.HealthAwareStore;
+import org.wso2.andes.store.StoreHealthListener;
+
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
+public class FlowControlManager  implements StoreHealthListener {
     /**
      * Class logger
      */
@@ -76,18 +80,21 @@ public class FlowControlManager {
     /**
      * Indicate if the flow control is enabled globally
      */
-    private boolean globalFlowControlEnabled;
+    private boolean globalBufferBasedFlowControlEnabled;
 
+    /**
+     * Set to true if there are global level error(s) occurred 
+     */
+    private boolean globalErrorBasedFlowControlEnabled;
     /**
      * Global flow control time out task
      */
-    private Runnable flowControlTimeoutTask = new FlowControlTimeoutTask();
-
+    private Runnable flowControlTimeoutTask = new BufferBasedFlowControlTimeoutTask();
+    
     /**
      * Used to close the flow control timeout task if not required
      */
-    private ScheduledFuture<?> scheduledFlowControlTimeoutFuture;
-
+    private ScheduledFuture<?> scheduledBufferBasedFlowControlTimeoutFuture;
 
     public FlowControlManager() {
         // Read configured limits
@@ -105,11 +112,13 @@ public class FlowControlManager {
         }
 
         messagesOnGlobalBuffer = new AtomicInteger(0);
-        globalFlowControlEnabled = false;
+        globalBufferBasedFlowControlEnabled = false;
+        globalErrorBasedFlowControlEnabled = false;
         channels = new ArrayList<AndesChannel>();
 
+        FailureObservingStoreManager.registerStoreHealthListener(this);
         // Initialize executor service for state validity checking
-        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("AndesScheduledTaskManager")
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("AndesScheduledTaskManager-FlowControl")
                                                                      .build();
         executor = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
     }
@@ -122,7 +131,8 @@ public class FlowControlManager {
      * @return AndesChannel
      */
     public synchronized AndesChannel createChannel(FlowControlListener listener) {
-        AndesChannel channel = new AndesChannel(this, listener, globalFlowControlEnabled);
+        AndesChannel channel = new AndesChannel(this, listener, globalBufferBasedFlowControlEnabled, 
+                                                      globalErrorBasedFlowControlEnabled);
         channels.add(channel);
         return channel;
     }
@@ -163,24 +173,8 @@ public class FlowControlManager {
     public void notifyAddition(int size) {
         int count = messagesOnGlobalBuffer.addAndGet(size);
 
-        if (!globalFlowControlEnabled && count >= globalHighLimit) {
-            blockListeners();
-        }
-    }
-
-    /**
-     * Notify all the channel to enable flow control
-     */
-    private synchronized void blockListeners() {
-        if (!globalFlowControlEnabled) {
-            globalFlowControlEnabled = true;
-
-            for (AndesChannel channel : channels) {
-                channel.notifyGlobalFlowControlActivation();
-            }
-
-            scheduledFlowControlTimeoutFuture = executor.schedule(flowControlTimeoutTask, 1, TimeUnit.MINUTES);
-            log.info("Global flow control enabled.");
+        if ((!globalBufferBasedFlowControlEnabled) && (count >= globalHighLimit)) {
+            blockListenersOnBufferBasedFlowControl();
         }
     }
 
@@ -193,24 +187,76 @@ public class FlowControlManager {
     public void notifyRemoval(int size) {
         int count = messagesOnGlobalBuffer.addAndGet(-size);
 
-        if (globalFlowControlEnabled && count <= globalLowLimit) {
-            unblockListeners();
+        if (globalBufferBasedFlowControlEnabled && count <= globalLowLimit) {
+            unblockListenersOnBufferBasedFlowControl();
         }
     }
 
+    
     /**
-     * Notify all the channels to disable flow control
+     * Notify all the channels to enable buffer based flow control
      */
-    private synchronized void unblockListeners() {
-        if (globalFlowControlEnabled) {
-            scheduledFlowControlTimeoutFuture.cancel(false);
-            globalFlowControlEnabled = false;
+    private synchronized void blockListenersOnBufferBasedFlowControl() {
+        if (!globalBufferBasedFlowControlEnabled) {
+            globalBufferBasedFlowControlEnabled = true;
 
             for (AndesChannel channel : channels) {
-                channel.notifyGlobalFlowControlDeactivation();
+                channel.notifyGlobalBufferBasedFlowControlActivation();
             }
 
-            log.info("Global flow control disabled.");
+            scheduledBufferBasedFlowControlTimeoutFuture = executor.schedule(flowControlTimeoutTask, 1, TimeUnit.MINUTES);
+            log.info("Global buffer based flow control enabled.");
+        }
+    }
+
+
+    /**
+     * Notify all the channels to disable buffer based flow control
+     */
+    private synchronized void unblockListenersOnBufferBasedFlowControl() {
+        if (globalBufferBasedFlowControlEnabled) {
+            scheduledBufferBasedFlowControlTimeoutFuture.cancel(false);
+            globalBufferBasedFlowControlEnabled = false;
+
+            for (AndesChannel channel : channels) {
+                channel.notifyGlobalBufferBasedFlowControlDeactivation();
+            }
+
+            log.info("Global buffer based flow control disabled.");
+        }
+    }
+
+
+    /**
+     * Notify all the channels to enable error based flow control
+     */
+    private synchronized void blockListenersOnErrorBasedFlowControl(HealthAwareStore store) {
+        if (!globalErrorBasedFlowControlEnabled) {
+            globalErrorBasedFlowControlEnabled = true;
+
+            for (AndesChannel channel : channels) {
+                channel.notifyGlobalErrorBasedFlowControlActivation();
+            }
+            
+            
+            log.info("Global error based flow control enabled.");
+        }
+    }
+    
+    
+    
+    /**
+     * Notify all the channels to disable error based flow control
+     */
+    private synchronized void unblockListenersOnErrorBasedFlowControl() {
+        if (globalErrorBasedFlowControlEnabled) {
+            globalErrorBasedFlowControlEnabled = false;
+
+            for (AndesChannel channel : channels) {
+                channel.notifyGlobalErrorBasedFlowControlDeactivation();
+            }
+
+            log.info("Global error based flow control disabled.");
         }
     }
 
@@ -229,12 +275,37 @@ public class FlowControlManager {
      * context switch after evaluating the existing condition and during that time all the messages present in global
      * buffer get processed from the StateEventHandler.
      */
-    private class FlowControlTimeoutTask implements Runnable {
+    private class BufferBasedFlowControlTimeoutTask implements Runnable {
         @Override
         public void run() {
-            if (globalFlowControlEnabled && messagesOnGlobalBuffer.get() <= globalLowLimit) {
-                unblockListeners();
+            if (globalBufferBasedFlowControlEnabled && (messagesOnGlobalBuffer.get() <= globalLowLimit)) {
+                unblockListenersOnBufferBasedFlowControl();
             }
         }
     }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * When message stores becomes offline flow control message will enforce
+     * global error based flow control
+     * 
+     */
+    @Override
+    public void storeInoperational(HealthAwareStore store, Exception ex) {
+        blockListenersOnErrorBasedFlowControl(store);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * When message stores becomes offline flow control message will stop global
+     * error based flow control
+     * 
+     */
+    @Override
+    public void storeOperational(HealthAwareStore store) {
+        unblockListenersOnErrorBasedFlowControl();
+    }
+   
 }

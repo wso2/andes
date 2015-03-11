@@ -18,11 +18,16 @@
 
 package org.wso2.andes.store.cassandra;
 
-import com.datastax.driver.core.*;
-import com.datastax.driver.core.exceptions.NoHostAvailableException;
-import com.datastax.driver.core.exceptions.QueryExecutionException;
-import com.datastax.driver.core.querybuilder.QueryBuilder;
-import com.datastax.driver.core.schemabuilder.SchemaBuilder;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.decr;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.incr;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.set;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -31,15 +36,15 @@ import org.wso2.andes.kernel.AndesExchange;
 import org.wso2.andes.kernel.AndesQueue;
 import org.wso2.andes.kernel.DurableStoreConnection;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static com.datastax.driver.core.querybuilder.QueryBuilder.decr;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.incr;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.set;
+import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+import com.datastax.driver.core.Statement;
+import com.datastax.driver.core.exceptions.NoHostAvailableException;
+import com.datastax.driver.core.exceptions.QueryExecutionException;
+import com.datastax.driver.core.querybuilder.QueryBuilder;
+import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 
 /**
  * CQL 3 based AndesContextStore implementation. This is intended to support Cassandra 2.xx series upwards.
@@ -69,11 +74,27 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
     private static final String MESSAGE_COUNT = "MESSAGE_COUNT";
     private static final String QUEUE_NAME = "QUEUE_NAME";
 
+    /**
+     * Encapsulates connectivity related state.
+     */
     private CQLConnection cqlConnection;
+    
+    /**
+     * Cassandra related configurations.
+     */
     private CassandraConfig config;
 
+    /**
+     * Helper class providing utility methods required for testing connection status
+     */
+    private CQLUtils cqlUtils;
+    
+    /**
+     * Constructor.
+     */
     public CQLBasedAndesContextStoreImpl() {
         config = new CassandraConfig();
+        cqlUtils = new CQLUtils();
     }
 
     /**
@@ -133,6 +154,10 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
                 setConsistencyLevel(config.getWriteConsistencyLevel());
 
         session.execute(statement);
+        
+        //Create table required for Cassandra availability tests.
+        cqlUtils.createSchema(cqlConnection, config);
+        
     }
 
     /**
@@ -531,5 +556,17 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         } catch (QueryExecutionException e) {
             throw new AndesException("Error occurred while " + task, e);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isOperational(String testString, long testTime) {
+        return cqlUtils.isReachable(cqlConnection) && 
+               cqlUtils.testInsert(cqlConnection, config, testString, testTime) && 
+               cqlUtils.testRead(cqlConnection, config, testString, testTime) &&
+               cqlUtils.testDelete(cqlConnection, config, testString, testTime);
+        
     }
 }

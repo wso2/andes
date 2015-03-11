@@ -29,6 +29,7 @@ import java.util.TimerTask;
 
 /**
  * This class is responsible for deleting slots and scheduling slot deletions.
+ * TODO: This implementation should be changed to use a Executors (in java.concurrent)
  */
 public class SlotDeletionScheduler {
 

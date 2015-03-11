@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2005-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -22,6 +22,7 @@ import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.beans.ColumnSlice;
 import me.prettyprint.hector.api.beans.HColumn;
+
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
 
@@ -30,7 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.wso2.andes.store.cassandra.CassandraConstants.*;
+import static org.wso2.andes.store.cassandra.HectorConstants.*;
 
 /**
  * Hector based Andes context store implementation.
@@ -77,15 +78,15 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
 
             //Create needed column families
             HectorDataAccessHelper.createColumnFamily(SUBSCRIPTIONS_COLUMN_FAMILY, DEFAULT_KEYSPACE,
-                    cluster, CassandraConstants.UTF8_TYPE, gcGraceSeconds);
+                    cluster, HectorConstants.UTF8_TYPE, gcGraceSeconds);
             HectorDataAccessHelper.createColumnFamily(EXCHANGE_COLUMN_FAMILY, DEFAULT_KEYSPACE, cluster,
-                    CassandraConstants.UTF8_TYPE, gcGraceSeconds);
+                    HectorConstants.UTF8_TYPE, gcGraceSeconds);
             HectorDataAccessHelper.createColumnFamily(QUEUE_COLUMN_FAMILY, DEFAULT_KEYSPACE, cluster,
-                    CassandraConstants.UTF8_TYPE, gcGraceSeconds);
+                    HectorConstants.UTF8_TYPE, gcGraceSeconds);
             HectorDataAccessHelper.createColumnFamily(BINDING_COLUMN_FAMILY, DEFAULT_KEYSPACE, cluster,
-                    CassandraConstants.UTF8_TYPE, gcGraceSeconds);
+                    HectorConstants.UTF8_TYPE, gcGraceSeconds);
             HectorDataAccessHelper.createColumnFamily(NODE_DETAIL_COLUMN_FAMILY, DEFAULT_KEYSPACE, cluster,
-                    CassandraConstants.UTF8_TYPE, gcGraceSeconds);
+                    HectorConstants.UTF8_TYPE, gcGraceSeconds);
 
             return hectorConnection;
         } catch (CassandraDataAccessException e) {
@@ -213,8 +214,8 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
         long messageCount;
         try {
             messageCount = HectorDataAccessHelper.getCountValue(keyspace,
-                    CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, destinationQueueName,
-                    CassandraConstants.MESSAGE_COUNTERS_RAW_NAME);
+                    HectorConstants.MESSAGE_COUNTERS_COLUMN_FAMILY, destinationQueueName,
+                    HectorConstants.MESSAGE_COUNTERS_RAW_NAME);
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while getting message count for queue " +
                     destinationQueueName, e);
@@ -256,8 +257,8 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
                                               long incrementBy) throws AndesException {
         try {
             HectorDataAccessHelper.incrementCounter(destinationQueueName,
-                    CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY,
-                    CassandraConstants.MESSAGE_COUNTERS_RAW_NAME, keyspace, incrementBy);
+                    HectorConstants.MESSAGE_COUNTERS_COLUMN_FAMILY,
+                    HectorConstants.MESSAGE_COUNTERS_RAW_NAME, keyspace, incrementBy);
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while incrementing message counter", e);
         }
@@ -271,8 +272,8 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
                                               long decrementBy) throws AndesException {
         try {
             HectorDataAccessHelper.decrementCounter(destinationQueueName,
-                    CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY,
-                    CassandraConstants.MESSAGE_COUNTERS_RAW_NAME, keyspace, decrementBy);
+                    HectorConstants.MESSAGE_COUNTERS_COLUMN_FAMILY,
+                    HectorConstants.MESSAGE_COUNTERS_RAW_NAME, keyspace, decrementBy);
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while decrementing message counter", e);
         }
@@ -444,5 +445,13 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void close() {
         hectorConnection.close();
+    }
+
+    /**
+     * TODO: implementation.
+     */
+    @Override
+    public boolean isOperational(String testString, long testTime) {
+        return true;
     }
 }
