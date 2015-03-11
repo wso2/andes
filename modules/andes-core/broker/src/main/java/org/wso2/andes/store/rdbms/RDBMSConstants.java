@@ -169,7 +169,7 @@ public class RDBMSConstants {
             "UPDATE " + DURABLE_SUB_TABLE +
                     " SET " + DURABLE_SUB_DATA + "=? " +
                     " WHERE " + DESTINATION_IDENTIFIER + "=? AND " +
-                    DURABLE_SUB_ID + "=?;";
+                    DURABLE_SUB_ID + "=?";
 
     protected static final String PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS =
             "SELECT " + DESTINATION_IDENTIFIER + "," + DURABLE_SUB_DATA +
