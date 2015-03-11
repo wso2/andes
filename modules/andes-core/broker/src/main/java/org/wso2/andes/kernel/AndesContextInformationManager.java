@@ -212,7 +212,8 @@ public class AndesContextInformationManager {
      * local node. This will then get notified throughout the cluster if clustered deployment is
      * available.
      *
-     * @param exchange The andes exchange in which the change occurred.
+     * @param exchange The andes exchange in which the change occurred. The exchange can be
+     *                 "default", "direct" or "topic".
      * @param change   The change that is being occurred
      * @throws AndesException
      */
@@ -245,7 +246,9 @@ public class AndesContextInformationManager {
      * local node. This will then get notified throughout the cluster if clustered deployment is
      * available.
      *
-     * @param binding The binding in which the change occurred.
+     * @param binding The binding in which the change occurred. A binding describes the relationship
+     *                between an exchange and a messages queue which is represented by the routing
+     *                key.
      * @param change  The change that occurred.
      * @throws AndesException
      */
