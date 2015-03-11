@@ -20,34 +20,39 @@ package org.wso2.andes.kernel;
 
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 
-public interface DurableStoreConnection {
+public abstract class DurableStoreConnection {
 
+    
+    ConfigurationProperties connectionProperties;
+    
     /**
      * Initialize database connection
      *
      * @param connectionProperties ConfigurationProperties
      * @throws AndesException
      */
-    public void initialize(ConfigurationProperties connectionProperties) throws AndesException;
+    public void initialize(ConfigurationProperties connectionProperties) throws AndesException {
+        
+        this.connectionProperties = connectionProperties;
+        
+    }
 
     /**
      * Close database connection
      */
-    public void close();
+    public abstract void close();
 
     /**
      * check if connection is live
      *
      * @return if connection is live
      */
-    public boolean isLive();
+    public abstract boolean isLive();
 
     /**
      * return instance of connection
      *
      * @return instance
      */
-    public Object getConnection();
-
-
+    public abstract Object getConnection();
 }

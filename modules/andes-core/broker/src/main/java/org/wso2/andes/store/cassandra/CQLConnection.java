@@ -20,9 +20,11 @@ package org.wso2.andes.store.cassandra;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
+
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.store.StoreHealthListener;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -30,7 +32,7 @@ import javax.naming.NamingException;
 /**
  * CQL based connection object for Cassandra. Supports connecting to any Cassandra 2.xx node
  */
-public class CQLConnection implements DurableStoreConnection {
+public class CQLConnection extends DurableStoreConnection {
 
     /**
      *  Session holds connections to a Cassandra cluster, allowing it to be queried.
@@ -50,7 +52,10 @@ public class CQLConnection implements DurableStoreConnection {
     @Override
     public void initialize(ConfigurationProperties connectionProperties) throws AndesException {
 
+        super.initialize(connectionProperties);
+        
         String jndiLookupName = connectionProperties.getProperty(CassandraConstants.PROP_JNDI_LOOKUP_NAME);
+        
 
         try {
             cluster = InitialContext.doLookup(jndiLookupName);

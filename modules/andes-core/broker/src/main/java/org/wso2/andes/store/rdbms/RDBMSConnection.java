@@ -23,10 +23,12 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.store.StoreHealthListener;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 
@@ -34,7 +36,7 @@ import java.sql.SQLException;
  * JDBC connection class. Connection is made using the jndi lookup name provided and connection
  * pooled data source is used to create new connections
  */
-public class RDBMSConnection implements DurableStoreConnection {
+public class RDBMSConnection extends DurableStoreConnection {
 
     private static final Logger logger = Logger.getLogger(RDBMSConnection.class);
     private boolean isConnected;
@@ -42,6 +44,9 @@ public class RDBMSConnection implements DurableStoreConnection {
 
     @Override
     public void initialize(ConfigurationProperties connectionProperties) throws AndesException {
+        
+        super.initialize(connectionProperties);
+        
         Connection connection = null;
         String jndiLookupName = "";
         String dataSourceUserName   = "";

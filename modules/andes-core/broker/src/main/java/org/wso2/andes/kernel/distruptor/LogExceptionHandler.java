@@ -50,7 +50,7 @@ public class LogExceptionHandler implements ExceptionHandler {
 
     @Override
     public void handleOnStartException(Throwable throwable) {
-        log.error("Error while stating Disruptor ", throwable);
+        log.error("Error while starting Disruptor ", throwable);
     }
 
     @Override

@@ -23,6 +23,7 @@ import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
 
 import javax.sql.DataSource;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -52,12 +53,12 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     public DurableStoreConnection init(ConfigurationProperties connectionProperties) throws
             AndesException {
 
-        RDBMSConnection RDBMSConnection = new RDBMSConnection();
-        RDBMSConnection.initialize(connectionProperties);
+        RDBMSConnection rdbmsConnection = new RDBMSConnection();
+        rdbmsConnection.initialize(connectionProperties);
 
-        datasource = RDBMSConnection.getDataSource();
+        datasource = rdbmsConnection.getDataSource();
         logger.info("Andes Context Store initialised");
-        return RDBMSConnection;
+        return rdbmsConnection;
     }
 
     /**
@@ -912,5 +913,10 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                 logger.error("Closing result set failed after " + task, e);
             }
         }
+    }
+
+    @Override
+    public boolean isOperational(String testString, long testTime) {
+        return true;
     }
 }

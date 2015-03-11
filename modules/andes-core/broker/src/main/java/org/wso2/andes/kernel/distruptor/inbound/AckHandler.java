@@ -20,26 +20,50 @@ package org.wso2.andes.kernel.distruptor.inbound;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesRemovableMetadata;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.kernel.distruptor.BatchEventHandler;
 import org.wso2.andes.server.stats.PerformanceCounter;
+import org.wso2.andes.store.FailureObservingStoreManager;
+import org.wso2.andes.store.HealthAwareStore;
+import org.wso2.andes.store.StoreHealthListener;
+
+import com.google.common.util.concurrent.SettableFuture;
 
 /**
  * Acknowledgement Handler for the Disruptor based inbound event handling.
  * This handler processes acknowledgements received from clients and updates Andes.
  */
-public class AckHandler implements BatchEventHandler {
+public class AckHandler implements BatchEventHandler, StoreHealthListener {
 
     private static Log log = LogFactory.getLog(AckHandler.class);
     
     private final MessagingEngine messagingEngine;
     
+    /**
+     * Indicates and provides a barrier if messages stores become offline.
+     * marked as volatile since this value could be set from a different thread
+     * (other than those of disrupter)
+     */
+    private volatile SettableFuture<Boolean> messageStoresUnavailable;
+    
+    /**
+     * Keeps message meta-data that needs to be removed from the message store.
+     */
+    List<AndesRemovableMetadata> removableMetadata;
+    
     AckHandler(MessagingEngine messagingEngine) {
         this.messagingEngine = messagingEngine;
+        this.messageStoresUnavailable = null;
+        this.removableMetadata = new ArrayList<AndesRemovableMetadata>();
+        FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
     @Override
@@ -69,7 +93,7 @@ public class AckHandler implements BatchEventHandler {
      * @param eventList inboundEvent list
      */
     public void ackReceived(final List<InboundEventContainer> eventList) throws AndesException {
-        List<AndesRemovableMetadata> removableMetadata = new ArrayList<AndesRemovableMetadata>();
+        
         for (InboundEventContainer event : eventList) {
 
             AndesAckData ack = event.ackData;
@@ -90,14 +114,61 @@ public class AckHandler implements BatchEventHandler {
             event.clear();
         }
 
-        messagingEngine.deleteMessages(removableMetadata, false);
-
-        if (log.isTraceEnabled()) {
-            StringBuilder messageIDsString = new StringBuilder();
-            for (AndesRemovableMetadata metadata : removableMetadata) {
-                messageIDsString.append(metadata.getMessageID()).append(" , ");
+        /*
+         *Checks for the message store availability if its not available 
+         *Ack handler needs to await until message store becomes available 
+         */
+        if ( messageStoresUnavailable != null){
+            try {
+                
+                log.info("Message store has become unavailable therefore waiting until store becomes available");
+                messageStoresUnavailable.get();
+                log.info("Message store became available. resuming ack hander");
+                messageStoresUnavailable = null; // we are passing the blockade (therefore clear the it).
+            } catch (InterruptedException e) {
+                throw new AndesException("Thread interrupted while waiting for message stores to come online", e);
+            } catch (ExecutionException e){
+                throw new AndesException("Error occured while waiting for message stores to come online", e);
             }
-            log.trace(eventList.size() + " message ok to remove : " + messageIDsString);
+        }
+
+        
+        try {
+            messagingEngine.deleteMessages(removableMetadata, false);
+            
+            if (log.isTraceEnabled()) {
+                StringBuilder messageIDsString = new StringBuilder();
+                for (AndesRemovableMetadata metadata : removableMetadata) {
+                    messageIDsString.append(metadata.getMessageID()).append(" , ");
+                }
+                log.trace(eventList.size() + " message ok to remove : " + messageIDsString);
+            }
+            removableMetadata.clear();
+        } catch (AndesException ex){             
+            log.warn(String.format("unable to delete messages, probably due to errors in message stores. messages count : %d",
+                                   removableMetadata.size()));
+           throw ex;
         }
     }
+
+
+    /**
+     * {@inheritDoc}
+     * <p> Creates a {@link SettableFuture} indicating message store became offline.
+     */
+    @Override
+    public void storeInoperational(HealthAwareStore store, Exception ex) {
+        log.info(String.format("messagestore became inoperational. messages to delete : %d", removableMetadata.size()));
+        messageStoresUnavailable = SettableFuture.create();
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p> Sets a value for {@link SettableFuture} indicating message store became online.
+     */
+    @Override
+    public void storeOperational(HealthAwareStore store) {
+        log.info(String.format("messagestore became operational. messages to delete : %d", removableMetadata.size()));
+        messageStoresUnavailable.set(false);
+   }
 }

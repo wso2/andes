@@ -18,6 +18,14 @@
 
 package org.wso2.andes.kernel;
 
+import java.net.UnknownHostException;
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import javax.management.JMException;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -34,17 +42,13 @@ import org.wso2.andes.server.information.management.SubscriptionManagementInform
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
+import org.wso2.andes.store.FailureObservingAndesContextStore;
+import org.wso2.andes.store.FailureObservingMessageStore;
+import org.wso2.andes.store.StoreHealthListener;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.thrift.MBThriftServer;
 import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.user.api.UserStoreException;
-
-import javax.management.JMException;
-import java.net.UnknownHostException;
-import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Andes kernel startup/shutdown related work is done through this class.
@@ -205,38 +209,67 @@ public class AndesKernelBoot {
 
     }
 
+    
+    /**
+     * A factory method (/util) to create user specified
+     * {@link AndesContextStore} in broker.xml
+     * 
+     * @return an implementation of {@link AndesContextStore}
+     * @throws Exception if an error occures
+     */
+    private static AndesContextStore createAndesContextStoreFromConfig() throws Exception {
+        StoreConfiguration andesConfiguration = AndesContext.getInstance()
+                .getStoreConfiguration();
+        //create a andes context store and register
+        String contextStoreClassName = andesConfiguration.getAndesContextStoreClassName();
+        Class<? extends AndesContextStore> contextStoreClass = Class.forName(contextStoreClassName).asSubclass(AndesContextStore.class);
+        AndesContextStore contextStoreInstance = contextStoreClass.newInstance();
+        
+        contextStoreInstance.init(andesConfiguration.getContextStoreProperties());
+        log.info("AndesContextStore initialised with " + contextStoreClassName);
+        
+        return contextStoreInstance;
+    }
+    
+    /**
+     * A factory method (/util) to create user specified
+     * {@link MessageStore} in broker.xml
+     * 
+     * @return an implementation of {@link MessageStore}
+     * @throws Exception if an error occurs
+     */
+    private static MessageStore createMessageStoreFromConfig(AndesContextStore andesContextStore) throws Exception {
+        StoreConfiguration andesConfiguration = AndesContext.getInstance()
+                .getStoreConfiguration();
+        
+     // create a message store and initialise messaging engine
+        String messageStoreClassName = andesConfiguration.getMessageStoreClassName();
+        Class<? extends MessageStore> messageStoreClass = Class.forName(messageStoreClassName).asSubclass(MessageStore.class);
+        MessageStore messageStoreInConfig = messageStoreClass.newInstance();
+
+        messageStoreInConfig.initializeMessageStore(andesContextStore,
+                andesConfiguration.getMessageStoreProperties());
+        
+        log.info("Andes MessageStore initialised with " + messageStoreClassName);
+        return messageStoreInConfig;
+    }
+    
     /**
      * start all andes stores message store/context store and AMQP construct store
      * @throws Exception
      */
     public static void startAndesStores() throws Exception {
 
-        StoreConfiguration virtualHostsConfiguration = AndesContext.getInstance()
-                                                                          .getStoreConfiguration();
-        //create a andes context store and register
-        String contextStoreClassName = virtualHostsConfiguration.getAndesContextStoreClassName();
-        Class contextStoreClass = Class.forName(contextStoreClassName);
-        Object contextStoreInstance = contextStoreClass.newInstance();
-
-        if (!(contextStoreInstance instanceof AndesContextStore)) {
-            throw new ClassCastException(
-                    "Message store class must implement " + AndesContextStore.class + ". Class "
-                    + contextStoreClass + " does not.");
-        }
-
-        AndesContextStore andesContextStore = (AndesContextStore) contextStoreInstance;
-        andesContextStore.init(
-                virtualHostsConfiguration.getContextStoreProperties()
-        );
+        //Create a andes context store and register
+        AndesContextStore contextStoreInConfig = createAndesContextStoreFromConfig();
         
-        log.info("AndesContextStore initialised with " + contextStoreClassName);
-        AndesContext.getInstance().setAndesContextStore(andesContextStore);
-        AndesKernelBoot.contextStore = andesContextStore;
-
+        AndesKernelBoot.contextStore =  new FailureObservingAndesContextStore(contextStoreInConfig) ;
+        AndesContext.getInstance().setAndesContextStore(contextStore);
+        
         //create subscription store
         SubscriptionStore subscriptionStore = new SubscriptionStore();
         AndesContext.getInstance().setSubscriptionStore(subscriptionStore);
-
+        
         /**
          * initialize subscription managing
          */
@@ -244,27 +277,11 @@ public class AndesKernelBoot {
         ClusterResourceHolder.getInstance().setSubscriptionManager(subscriptionManager);
         subscriptionManager.init();
 
-
-        // create a message store and initialise messaging engine
-        String messageStoreClassName = virtualHostsConfiguration.getMessageStoreClassName();
-        Class messageStoreClass = Class.forName(messageStoreClassName);
-        Object messageStoreInstance = messageStoreClass.newInstance();
-
-        if (!(messageStoreInstance instanceof org.wso2.andes.kernel.MessageStore)) {
-            throw new ClassCastException(
-                    "Message store class must implement " + MessageStore.class + ". Class " +
-                    messageStoreClass + " does not.");
-        }
-
-        MessageStore messageStore = (MessageStore) messageStoreInstance;
-        messageStore.initializeMessageStore(andesContextStore,
-                virtualHostsConfiguration.getMessageStoreProperties());
-        log.info("Andes MessageStore initialised with " + messageStoreClassName);
-
+        // directly wire the instance without wrapped instance
+        messageStore = new FailureObservingMessageStore(createMessageStoreFromConfig(contextStoreInConfig));
         MessagingEngine messagingEngine = MessagingEngine.getInstance();
         messagingEngine.initialise(messageStore, subscriptionStore);
-        AndesKernelBoot.messageStore = messageStore;
-
+        
         //create AMQP Constructs store
         AMQPConstructStore amqpConstructStore = new AMQPConstructStore(contextStore, messageStore);
         AndesContext.getInstance().setAMQPConstructStore(amqpConstructStore);

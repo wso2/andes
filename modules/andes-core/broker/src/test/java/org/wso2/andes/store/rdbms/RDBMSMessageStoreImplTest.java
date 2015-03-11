@@ -18,25 +18,34 @@
 
 package org.wso2.andes.store.rdbms;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import javax.naming.NameAlreadyBoundException;
+
 import junit.framework.Assert;
+
 import org.h2.jdbcx.JdbcDataSource;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.store.rdbms.h2.H2MemAndesContextStoreImpl;
-
-import javax.naming.Context;
-import javax.naming.InitialContext;
-import javax.naming.NameAlreadyBoundException;
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 public class RDBMSMessageStoreImplTest {
 
@@ -72,7 +81,6 @@ public class RDBMSMessageStoreImplTest {
         ConfigurationProperties connectionProperties = new ConfigurationProperties();
         connectionProperties.addProperty(RDBMSConstants.PROP_JNDI_LOOKUP_NAME,
                                             RDBMSConstants.H2_MEM_JNDI_LOOKUP_NAME);
-        contextStore.init(connectionProperties);
         messageStore.initializeMessageStore(contextStore, connectionProperties);
     }
 
