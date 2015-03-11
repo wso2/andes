@@ -21,7 +21,10 @@ package org.wso2.andes.subscription;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
+import org.wso2.andes.kernel.AndesSubscription.SubscriptionType;
 import org.wso2.andes.mqtt.MQTTUtils;
 
 import java.util.ArrayList;
@@ -32,20 +35,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class MQTTWildCardBitMapHandler {
+public class WildCardBitMapHandler {
 
-    private static final Log log = LogFactory.getLog(MQTTUtils.class);
+    private Log log = LogFactory.getLog(WildCardBitMapHandler.class);
 
-    private static final String CONSTITUENTS_DELIMITER = "/";
+    /**
+     * The topic delimiter to differentiate each constituent according to the current subscription type.
+     */
+    private String constituentsDelimiter;
+
+    /**
+     * The multi level matching wildcard according to the current subscription type.
+     */
+    private String multiLevelWildCard;
+
+    private SubscriptionType subscriptionType;
 
     // Null and Other constituents are picked from restricted topic characters
     private static final String NULL_CONSTITUENT = "%null%";
     private static final String OTHER_CONSTITUENT = "%other%";
 
     /**
-     * Keeps all the wildcard subscriptions indexed as <SubscriptionIndex, Subscription>.
+     * Keeps all the wildcard subscriptions.
       */
-    private List<AndesSubscription> wildCardSubscriptionMap = new ArrayList<AndesSubscription>();
+    private List<AndesSubscription> wildCardSubscriptionList = new ArrayList<AndesSubscription>();
 
     /**
      * Keeps all the subscription destinations broken into their constituents.
@@ -57,16 +70,30 @@ public class MQTTWildCardBitMapHandler {
       */
     private List<Map<String, BitSet>> constituentTables = new ArrayList<Map<String, BitSet>>();
 
-    public void addWildCardSubscription(AndesSubscription subscription) {
+    public WildCardBitMapHandler(SubscriptionType subscriptionType) throws AndesException {
+        if (SubscriptionType.AMQP == subscriptionType) {
+            constituentsDelimiter = ".";
+            multiLevelWildCard = AMQPUtils.TOPIC_AND_CHILDREN_WILDCARD;
+        } else if (SubscriptionType.MQTT == subscriptionType) {
+            constituentsDelimiter = "/";
+            multiLevelWildCard = MQTTUtils.MULTI_LEVEL_WILDCARD;
+        } else {
+            throw new AndesException("Subscription type " + subscriptionType + " is not recognized.");
+        }
+
+        this.subscriptionType = subscriptionType;
+    }
+
+    public void addWildCardSubscription(AndesSubscription subscription) throws AndesException {
         String destination = subscription.getSubscribedDestination();
 
         if (StringUtils.isNotEmpty(destination)) {
-            int newSubscriptionIndex = wildCardSubscriptionMap.size();
+            int newSubscriptionIndex = wildCardSubscriptionList.size();
 
             // The index is added to make it clear to which index this is being inserted
-            wildCardSubscriptionMap.add(newSubscriptionIndex, subscription);
+            wildCardSubscriptionList.add(newSubscriptionIndex, subscription);
 
-            String constituents[] = destination.split(CONSTITUENTS_DELIMITER);
+            String constituents[] = destination.split(constituentsDelimiter);
 
             subscriptionConstituents.put(newSubscriptionIndex, constituents);
 
@@ -81,8 +108,8 @@ public class MQTTWildCardBitMapHandler {
                     constituentTable = new HashMap<String, BitSet>();
 
                     // Add 'null' and 'other' constituent
-                    constituentTable.put(NULL_CONSTITUENT, new BitSet(wildCardSubscriptionMap.size()));
-                    constituentTable.put(OTHER_CONSTITUENT, new BitSet(wildCardSubscriptionMap.size()));
+                    constituentTable.put(NULL_CONSTITUENT, new BitSet(wildCardSubscriptionList.size()));
+                    constituentTable.put(OTHER_CONSTITUENT, new BitSet(wildCardSubscriptionList.size()));
 
                     constituentTables.add(constituentIndex, constituentTable);
                 } else {
@@ -112,7 +139,7 @@ public class MQTTWildCardBitMapHandler {
      *
      * @param subscribedDestination The newly subscribed destination
      */
-    private void addSubscriptionColumn(String subscribedDestination, int subscriptionIndex) {
+    private void addSubscriptionColumn(String subscribedDestination, int subscriptionIndex) throws AndesException {
 
         String[] subscribedDestinationConstituents = subscriptionConstituents.get(subscriptionIndex);
 
@@ -129,7 +156,7 @@ public class MQTTWildCardBitMapHandler {
                 if (constituentOfCurrentRow.equals(currentConstituent)) {
                     bitSet.set(subscriptionIndex);
                 } else if (NULL_CONSTITUENT.equals(constituentOfCurrentRow)) {
-                    int noOfSubscriptions = wildCardSubscriptionMap.size();
+                    int noOfSubscriptions = wildCardSubscriptionList.size();
                     BitSet nullBitSet = new BitSet(noOfSubscriptions);
                     // Set all bits after the number of constituents to true
                     for (int i = subscribedDestinationConstituents.length; i < noOfSubscriptions; i++) {
@@ -137,8 +164,7 @@ public class MQTTWildCardBitMapHandler {
                     }
                 } else if (OTHER_CONSTITUENT.equals(constituentOfCurrentRow)) {
                     // Check if other is matched by comparing wildcard through specific wildcard matching
-                    boolean isMatchingForOther = MQTTUtils.isTargetQueueBoundByMatchingToRoutingKey
-                            (currentConstituent, constituentOfCurrentRow);
+                    boolean isMatchingForOther = isMatchForSubscriptionType(currentConstituent, constituentOfCurrentRow);
 
                     bitSet.set(subscriptionIndex, isMatchingForOther);
                 } else {
@@ -155,9 +181,9 @@ public class MQTTWildCardBitMapHandler {
 
             boolean matchingOthers = true;
             // The OTHER_CONSTITUENT is added here to represent any constituent here
-            if (!MQTTUtils.MULTI_LEVEL_WILDCARD.equals(subscribedDestination)) {
-                String otherConstituentComparer = subscribedDestination + CONSTITUENTS_DELIMITER + OTHER_CONSTITUENT;
-                matchingOthers = MQTTUtils.isTargetQueueBoundByMatchingToRoutingKey(subscribedDestination, otherConstituentComparer);
+            if (!multiLevelWildCard.equals(subscribedDestination)) {
+                String otherConstituentComparer = subscribedDestination + constituentsDelimiter + OTHER_CONSTITUENT;
+                matchingOthers = isMatchForSubscriptionType(subscribedDestination, otherConstituentComparer);
             } // Else matchingOthers will be true
 
             for (int constituentIndex = subscribedDestinationConstituents.length; constituentIndex < noOfMaxConstituents; constituentIndex++) {
@@ -189,10 +215,10 @@ public class MQTTWildCardBitMapHandler {
 //        StringBuilder constituentDestination = new StringBuilder(MQTTUtils.MULTI_LEVEL_WILDCARD);
 //
 //        for (int i = 0; i < constituentIndex - 2; i++) {
-//            constituentDestination.append(CONSTITUENTS_DELIMITER).append(MQTTUtils.MULTI_LEVEL_WILDCARD);
+//            constituentDestination.append(constituentsDelimiter).append(MQTTUtils.MULTI_LEVEL_WILDCARD);
 //        }
 //
-//        constituentDestination.append(CONSTITUENTS_DELIMITER).append(constituent);
+//        constituentDestination.append(constituentsDelimiter).append(constituent);
 
         for (int i = 0; i < subscriptionConstituents.size(); i++) {
             String[] constituentsOfSubscription = subscriptionConstituents.get(i);
@@ -215,6 +241,20 @@ public class MQTTWildCardBitMapHandler {
         constituentTable.put(constituent, bitSet);
     }
 
+    private boolean isMatchForSubscriptionType(String wildCardDestination, String nonWildCardDestination) throws AndesException {
+        boolean matching = false;
+
+        if (SubscriptionType.AMQP == subscriptionType) {
+            matching = AMQPUtils.isTargetQueueBoundByMatchingToRoutingKey(wildCardDestination, nonWildCardDestination);
+        } else if (SubscriptionType.MQTT == subscriptionType) {
+            matching = MQTTUtils.isTargetQueueBoundByMatchingToRoutingKey(wildCardDestination, nonWildCardDestination);
+        } else {
+            throw new AndesException("Subscription type " + subscriptionType + " is not recognized.");
+        }
+
+        return matching;
+    }
+
     /**
      * This methods adds a constituent table with only null and other constituents.
      * This is required when a message comes with more than the available number of constituents. If wildcard
@@ -222,7 +262,7 @@ public class MQTTWildCardBitMapHandler {
      *
      */
     private void addEmptyConstituentTable() {
-        int noOfSubscriptions = wildCardSubscriptionMap.size();
+        int noOfSubscriptions = wildCardSubscriptionList.size();
         Map<String, BitSet> constituentTable = new HashMap<String, BitSet>();
 
         BitSet nullBitSet = new BitSet(noOfSubscriptions);
@@ -236,7 +276,7 @@ public class MQTTWildCardBitMapHandler {
             String[] allConstituent = subscriptionConstituents.get(subscriptionIndex);
             String lastConstituent = allConstituent[allConstituent.length - 1];
 
-            if (MQTTUtils.MULTI_LEVEL_WILDCARD.equals(lastConstituent)) {
+            if (multiLevelWildCard.equals(lastConstituent)) {
                 otherBitSet.set(subscriptionIndex);
             } else {
                 otherBitSet.set(subscriptionIndex, false);
@@ -250,7 +290,7 @@ public class MQTTWildCardBitMapHandler {
     }
 
     public void removeWildCardSubscription(AndesSubscription subscription) {
-        int subscriptionIndex = wildCardSubscriptionMap.indexOf(subscription);
+        int subscriptionIndex = wildCardSubscriptionList.indexOf(subscription);
 
         // TODO:Make this faster. This is too slow even for remove
         // TODO:Also if a row is removed it is also not removed here
@@ -285,12 +325,12 @@ public class MQTTWildCardBitMapHandler {
     }
 
     public void updateWildCardSubscription(AndesSubscription updatedSubscription) {
-        int index = wildCardSubscriptionMap.indexOf(updatedSubscription);
+        int index = wildCardSubscriptionList.indexOf(updatedSubscription);
 
         if (index > -1) {
             // Need to preserve order, hence adding to the same index
-            wildCardSubscriptionMap.remove(index);
-            wildCardSubscriptionMap.add(index, updatedSubscription);
+            wildCardSubscriptionList.remove(index);
+            wildCardSubscriptionList.add(index, updatedSubscription);
         } else {
             log.warn("Subscription is not found to update");
             // TODO:Warn
@@ -302,7 +342,7 @@ public class MQTTWildCardBitMapHandler {
 
         if (StringUtils.isNotEmpty(destination)) {
 
-            String[] constituents = destination.split(CONSTITUENTS_DELIMITER);
+            String[] constituents = destination.split(constituentsDelimiter);
 
             int noOfCurrentMaxConstituents = constituentTables.size();
 
@@ -336,10 +376,10 @@ public class MQTTWildCardBitMapHandler {
 
             // Valid subscriptions are filtered, need to pick from subscription pool
 
-            for (int subscriptionIndex = 0; subscriptionIndex < wildCardSubscriptionMap.size(); subscriptionIndex++) {
+            for (int subscriptionIndex = 0; subscriptionIndex < wildCardSubscriptionList.size(); subscriptionIndex++) {
                 // If set, then pick
                 if (andBitSet.get(subscriptionIndex)) {
-                    subscriptions.add(wildCardSubscriptionMap.get(subscriptionIndex));
+                    subscriptions.add(wildCardSubscriptionList.get(subscriptionIndex));
                 }
             }
 
@@ -349,6 +389,10 @@ public class MQTTWildCardBitMapHandler {
         }
 
         return subscriptions;
+    }
+
+    public List<AndesSubscription> getAllWildCardSubscriptions() {
+        return wildCardSubscriptionList;
     }
 
 
