@@ -114,7 +114,7 @@ public class AndesSubscriptionManager {
                 //close and notify
                 subscriptionStore.createDisconnectOrRemoveClusterSubscription(sub, SubscriptionListener.SubscriptionChange.DELETED);
                 //this is like closing local subscribers of that node thus we need to notify to cluster
-                notifyLocalSubscriptionHasChanged((LocalSubscription) sub, SubscriptionListener.SubscriptionChange.DELETED);
+                notifyClusterSubscriptionHasChanged(sub, SubscriptionListener.SubscriptionChange.DELETED);
             }
         }
 
