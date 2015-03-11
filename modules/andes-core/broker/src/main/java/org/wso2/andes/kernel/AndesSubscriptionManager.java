@@ -150,10 +150,7 @@ public class AndesSubscriptionManager {
     public boolean checkIfActiveNonDurableLocalSubscriptionExistsForTopic(String boundTopicName)
                                                                              throws AndesException {
         boolean subscriptionExists = false;
-        List<LocalSubscription> activeSubscriptions = (List<LocalSubscription>) subscriptionStore.
-                                                                           getActiveLocalSubscribers(
-                                                                           boundTopicName,
-                                                                           true);
+        Set<LocalSubscription> activeSubscriptions = subscriptionStore.getActiveLocalSubscribers(boundTopicName, true);
         for(LocalSubscription sub : activeSubscriptions) {
             if(!sub.isDurable()) {
                 subscriptionExists = true;

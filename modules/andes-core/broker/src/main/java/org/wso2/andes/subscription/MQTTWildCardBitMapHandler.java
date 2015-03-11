@@ -68,13 +68,16 @@ public class MQTTWildCardBitMapHandler {
 
             String constituents[] = destination.split(CONSTITUENTS_DELIMITER);
 
+            subscriptionConstituents.put(newSubscriptionIndex, constituents);
+
 
             for (int constituentIndex = 0; constituentIndex < constituents.length; constituentIndex++) {
                 String constituent = constituents[constituentIndex];
-                Map<String, BitSet> constituentTable = constituentTables.get(constituentIndex);
 
-                // If there is no table for this constituent number then create it
-                if (null == constituentTable) {
+                Map<String, BitSet> constituentTable;
+
+                if (constituentIndex + 1 > constituentTables.size()) {
+                    // No tables exist for this constituent index need to create
                     constituentTable = new HashMap<String, BitSet>();
 
                     // Add 'null' and 'other' constituent
@@ -82,6 +85,8 @@ public class MQTTWildCardBitMapHandler {
                     constituentTable.put(OTHER_CONSTITUENT, new BitSet(wildCardSubscriptionMap.size()));
 
                     constituentTables.add(constituentIndex, constituentTable);
+                } else {
+                    constituentTable = constituentTables.get(constituentIndex);
                 }
 
                 if (!constituentTable.keySet().contains(constituent)) {
@@ -109,7 +114,7 @@ public class MQTTWildCardBitMapHandler {
      */
     private void addSubscriptionColumn(String subscribedDestination, int subscriptionIndex) {
 
-        String[] subscribedDestinationConstituents = subscribedDestination.split(CONSTITUENTS_DELIMITER);
+        String[] subscribedDestinationConstituents = subscriptionConstituents.get(subscriptionIndex);
 
         // Loop through each constituent table for the new constituents
         for (int constituentIndex = 0; constituentIndex < subscribedDestinationConstituents.length; constituentIndex++) {
@@ -132,7 +137,10 @@ public class MQTTWildCardBitMapHandler {
                     }
                 } else if (OTHER_CONSTITUENT.equals(constituentOfCurrentRow)) {
                     // Check if other is matched by comparing wildcard through specific wildcard matching
-                    MQTTUtils.isTargetQueueBoundByMatchingToRoutingKey(currentConstituent, constituentOfCurrentRow);
+                    boolean isMatchingForOther = MQTTUtils.isTargetQueueBoundByMatchingToRoutingKey
+                            (currentConstituent, constituentOfCurrentRow);
+
+                    bitSet.set(subscriptionIndex, isMatchingForOther);
                 } else {
                     bitSet.set(subscriptionIndex, false);
                 }
@@ -145,9 +153,12 @@ public class MQTTWildCardBitMapHandler {
         if (noOfMaxConstituents > subscribedDestinationConstituents.length) {
             // There are more constituent tables to be filled. Wildcard matching is essential here
 
+            boolean matchingOthers = true;
             // The OTHER_CONSTITUENT is added here to represent any constituent here
-            String otherConstituentComparer = subscribedDestination + CONSTITUENTS_DELIMITER + OTHER_CONSTITUENT;
-            boolean matchingOthers = MQTTUtils.isTargetQueueBoundByMatchingToRoutingKey(subscribedDestination, otherConstituentComparer);
+            if (!MQTTUtils.MULTI_LEVEL_WILDCARD.equals(subscribedDestination)) {
+                String otherConstituentComparer = subscribedDestination + CONSTITUENTS_DELIMITER + OTHER_CONSTITUENT;
+                matchingOthers = MQTTUtils.isTargetQueueBoundByMatchingToRoutingKey(subscribedDestination, otherConstituentComparer);
+            } // Else matchingOthers will be true
 
             for (int constituentIndex = subscribedDestinationConstituents.length; constituentIndex < noOfMaxConstituents; constituentIndex++) {
                 Map<String, BitSet> constituentTable = constituentTables.get(constituentIndex);
@@ -184,16 +195,58 @@ public class MQTTWildCardBitMapHandler {
 //        constituentDestination.append(CONSTITUENTS_DELIMITER).append(constituent);
 
         for (int i = 0; i < subscriptionConstituents.size(); i++) {
-            if (subscriptionConstituents.get(i).equals(constituent)) {
-                // The new constituent matches the subscriptions i'th constituent
-                bitSet.set(i);
+            String[] constituentsOfSubscription = subscriptionConstituents.get(i);
+
+            if (constituentIndex < constituentsOfSubscription.length) {
+                // Get the i'th subscription's [constituentIndex]'th constituent
+                if (constituentsOfSubscription[constituentIndex].equals(constituent)) {
+                    // The new constituent matches the subscriptions i'th constituent
+                    bitSet.set(i);
+                } else {
+                    // The new constituent does not match the i'th subscriptions [constituentIndex] constituent
+                    bitSet.set(i, false);
+                }
             } else {
-                // The new constituent does not match the subscriptions i'th constituent
+                // The subscription does not have a constituent for this index
                 bitSet.set(i, false);
             }
         }
 
         constituentTable.put(constituent, bitSet);
+    }
+
+    /**
+     * This methods adds a constituent table with only null and other constituents.
+     * This is required when a message comes with more than the available number of constituents. If wildcard
+     * subscriptions are available for those, they should match. Hence need to create these empty consituent tables.
+     *
+     */
+    private void addEmptyConstituentTable() {
+        int noOfSubscriptions = wildCardSubscriptionMap.size();
+        Map<String, BitSet> constituentTable = new HashMap<String, BitSet>();
+
+        BitSet nullBitSet = new BitSet(noOfSubscriptions);
+        BitSet otherBitSet = new BitSet(noOfSubscriptions);
+
+        // Null constituent will always be true for empty constituents, hence need to flip
+        nullBitSet.flip(0, noOfSubscriptions - 1);
+
+        for (int subscriptionIndex = 0; subscriptionIndex < noOfSubscriptions; subscriptionIndex++) {
+            // For 'other', if subscribers last constituent is multi level wild card then matching
+            String[] allConstituent = subscriptionConstituents.get(subscriptionIndex);
+            String lastConstituent = allConstituent[allConstituent.length - 1];
+
+            if (MQTTUtils.MULTI_LEVEL_WILDCARD.equals(lastConstituent)) {
+                otherBitSet.set(subscriptionIndex);
+            } else {
+                otherBitSet.set(subscriptionIndex, false);
+            }
+        }
+
+        constituentTable.put(NULL_CONSTITUENT, nullBitSet);
+        constituentTable.put(OTHER_CONSTITUENT, otherBitSet);
+
+        constituentTables.add(constituentTable);
     }
 
     public void removeWildCardSubscription(AndesSubscription subscription) {
@@ -251,6 +304,16 @@ public class MQTTWildCardBitMapHandler {
 
             String[] constituents = destination.split(CONSTITUENTS_DELIMITER);
 
+            int noOfCurrentMaxConstituents = constituentTables.size();
+
+            // If given destination has more constituents than any subscriber has, then create constituent tables
+            // for those before collecting matching subscribers
+            if (constituents.length > noOfCurrentMaxConstituents) {
+                for (int i = noOfCurrentMaxConstituents; i < constituents.length; i++) {
+                    addEmptyConstituentTable();
+                }
+            }
+
             // Keeps the results of 'AND' operations between each bit sets
             BitSet andBitSet = new BitSet(constituents.length);
 
@@ -261,10 +324,17 @@ public class MQTTWildCardBitMapHandler {
                 String constituent = constituents[constituentIndex];
                 Map<String, BitSet> constituentTable = constituentTables.get(constituentIndex);
 
-                andBitSet.and(constituentTable.get(constituent));
+                BitSet bitSetForAnd = constituentTable.get(constituent);
+
+                if (null == bitSetForAnd) {
+                    // The constituent is not found in the table, hence matching with 'other' constituent
+                    bitSetForAnd = constituentTable.get(OTHER_CONSTITUENT);
+                }
+
+                andBitSet.and(bitSetForAnd);
             }
 
-            // Valid subscriptions are not filtered, need to pick from subscription pool
+            // Valid subscriptions are filtered, need to pick from subscription pool
 
             for (int subscriptionIndex = 0; subscriptionIndex < wildCardSubscriptionMap.size(); subscriptionIndex++) {
                 // If set, then pick

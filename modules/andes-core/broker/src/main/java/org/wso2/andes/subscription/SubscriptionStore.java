@@ -151,6 +151,9 @@ public class SubscriptionStore {
                 subscriptions.addAll(wildCardSubscriptions);
             }
 
+            // Add MQTT subscriptions
+            subscriptions.addAll(mqttBitMapHandler.getMatchingSubscriptions(destination));
+
             // Get durable topic subscriptions
             Set<AndesSubscription> queueSubscriptions = clusterQueueSubscriptionMap.get(destination);
 
@@ -587,6 +590,7 @@ public class SubscriptionStore {
         if (type == SubscriptionChange.ADDED || type == SubscriptionChange.DISCONNECTED) {
 
             String destinationQueue = getDestination(subscription);
+            String destinationTopic = subscription.getSubscribedDestination();
             //Store the subscription
             String destinationIdentifier = (subscription.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destinationQueue;
             String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
@@ -693,19 +697,23 @@ public class SubscriptionStore {
      * @return list of ACTIVE and INACTIVE topics in cluster
      */
     public List<String> getTopics() {
-        if (isBitmap)
-            return new ArrayList<String>(subscriptionBitMapHandler.getAllDestinationsOfSubscriptions());
-        else
             return new ArrayList<String>(clusterTopicSubscriptionMap.keySet());
 
     }
 
     /**
-     * Enum to identify subscription type
+     * Return destination based on subscription
+     * Destination would be target queue if it is durable topic, otherwise it is queue or non durable topic
+     *
+     * @param subscription subscription to get destination
+     * @return destination of subscription
      */
-    private enum SUBSCRIPTION_TYPE {
-        QUEUE_SUBSCRIPTION,
-        TOPIC_SUBSCRIPTION,
-        ALL
+    public String getDestination(AndesSubscription subscription) {
+        if (subscription.isBoundToTopic() && subscription.isDurable()) {
+            return subscription.getTargetQueue();
+        } else {
+            return subscription.getSubscribedDestination();
+        }
     }
+
 }
