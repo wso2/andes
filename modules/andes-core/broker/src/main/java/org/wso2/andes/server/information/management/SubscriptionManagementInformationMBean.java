@@ -106,6 +106,8 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
                     }
                     if (!isActive.equals("*") && (Boolean.parseBoolean(isActive) != s.hasExternalSubscriptions())) {
                         continue;
+                    } if(!s.isBoundToTopic()){
+                        continue;
                     }
 
                     allSubscriptionsForTopics.add(renderSubscriptionForUI(s,pendingMessageCount.intValue()));
