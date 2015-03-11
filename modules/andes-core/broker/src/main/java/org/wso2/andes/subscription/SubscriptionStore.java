@@ -85,26 +85,55 @@ public class SubscriptionStore {
     }
 
     /**
-     * get all CLUSTER subscription entries subscribed for a queue/topic
+     * Get all cluster subscription entries subscribed for a queue/topic.
      *
-     * @param destination queue/topic name
-     * @param isTopic     is requesting topic subscriptions
-     * @return list of andes subscriptions
+     * @param destination Queue/Topic name
+     * @param isTopic     Is requesting topic subscriptions
+     * @return List of andes subscriptions
      * @throws AndesException
      */
-    public List<AndesSubscription> getAllSubscribersForDestination(String destination, boolean isTopic) throws AndesException {
-        // returing empty arraylist if requested map is empty
+    public List<AndesSubscription> getAllSubscribersForDestination(String destination, boolean isTopic)
+                                                                        throws AndesException {
         if (isBitmap) {
             if (isTopic) {
-                return new ArrayList<AndesSubscription>(subscriptionBitMapHandler.getAllClusteredSubscribedForDestination(destination) == null ? new ArrayList<AndesSubscription>() : subscriptionBitMapHandler.getAllClusteredSubscribedForDestination(destination));
+                if (null == subscriptionBitMapHandler
+                        .getAllClusteredSubscribedForDestination(destination)) {
+                    // Returning an empty list if requested map is empty.
+                    return Collections.emptyList();
+                } else {
+                    // Returning bitmap subscription handler done through bitwise mapping.
+                    return new ArrayList<AndesSubscription>(subscriptionBitMapHandler
+                                                                    .getAllClusteredSubscribedForDestination(destination));
+                }
             } else {
-                return new ArrayList<AndesSubscription>(clusterQueueSubscriptionMap.get(destination) == null ? new ArrayList<AndesSubscription>() : clusterQueueSubscriptionMap.get(destination));
+                if (null == clusterQueueSubscriptionMap.get(destination)) {
+                    // Returning an empty list if requested map is empty.
+                    return Collections.emptyList();
+                } else {
+                    // Returning queue subscriptions
+                    return new ArrayList<AndesSubscription>(clusterQueueSubscriptionMap
+                                                                    .get(destination));
+                }
             }
         } else {
             if (isTopic) {
-                return new ArrayList<AndesSubscription>(clusterTopicSubscriptionMap.get(destination) == null ? new ArrayList<AndesSubscription>() : clusterTopicSubscriptionMap.get(destination));
+                if (null == clusterTopicSubscriptionMap.get(destination)) {
+                    // Returning an empty list if requested map is empty.
+                    return Collections.emptyList();
+                } else {
+                    // Returning topic subscriptions
+                    return new ArrayList<AndesSubscription>(clusterTopicSubscriptionMap
+                                                                    .get(destination));
+                }
             } else {
-                return new ArrayList<AndesSubscription>(clusterQueueSubscriptionMap.get(destination) == null ? new ArrayList<AndesSubscription>() : clusterQueueSubscriptionMap.get(destination));
+                if (null == clusterQueueSubscriptionMap.get(destination)) {
+                    // Returning an empty list if requested map is empty.
+                    return Collections.emptyList();
+                } else {
+                    // Returning queue subscriptions
+                    return new ArrayList<AndesSubscription>(clusterQueueSubscriptionMap
+                                                                    .get(destination));
+                }
             }
         }
     }
