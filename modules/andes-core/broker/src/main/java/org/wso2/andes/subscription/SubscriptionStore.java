@@ -110,12 +110,6 @@ public class SubscriptionStore {
 
         if (isTopic) {
             destinations.addAll(clusterTopicSubscriptionMap.keySet());
-            // Add topic wildcard destinations from bitmap
-            List<String> wildCardSubscriptions = subscriptionBitMapHandler.getAllDestinationsOfSubscriptions();
-
-            if (null != wildCardSubscriptions) {
-                destinations.addAll(wildCardSubscriptions);
-            }
         } else {
             destinations.addAll(clusterQueueSubscriptionMap.keySet());
         }
@@ -340,7 +334,7 @@ public class SubscriptionStore {
         Set<AndesSubscription> oldSubscriptionList = new HashSet<AndesSubscription>();
 
         if (isTopic && (AMQPUtils.isWildCardSubscription(destination) || MQTTUtils.isWildCardSubscription(destination))) {
-            oldSubscriptionList.addAll(subscriptionBitMapHandler.getAllClusteredSubscriptions(destination, newSubList));
+//            oldSubscriptionList.addAll(subscriptionBitMapHandler.getAllClusteredSubscriptions(destination, newSubList));
         } else {
             Map<String, Set<AndesSubscription>> subscriptionMap = isTopic ? clusterTopicSubscriptionMap : clusterQueueSubscriptionMap;
             Set<AndesSubscription> removedSubscriptions = subscriptionMap.put(destination, newSubList);

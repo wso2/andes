@@ -22,78 +22,72 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.AndesSubscription.SubscriptionType;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class WildCardSubscriptionProcessor {
 
-    WildCardBitMapHandler mqttWildCardHandler;
-    WildCardBitMapHandler amqpWildCardHandler;
 
+    /**
+     * Keeps all the bitmap handlers for each subscription type.
+     */
+    private Map<SubscriptionType, WildCardBitMapHandler> bitMapHandlers = new HashMap<SubscriptionType, WildCardBitMapHandler>();
+
+    /**
+     * Initialize wildcard subscription processor with all necessary bitmap handlers.
+     * @throws AndesException
+     */
     public WildCardSubscriptionProcessor() throws AndesException {
-        mqttWildCardHandler = new WildCardBitMapHandler(SubscriptionType.MQTT);
-        amqpWildCardHandler = new WildCardBitMapHandler(SubscriptionType.AMQP);
+        bitMapHandlers.put(SubscriptionType.AMQP, new WildCardBitMapHandler(SubscriptionType.AMQP));
+        bitMapHandlers.put(SubscriptionType.MQTT, new WildCardBitMapHandler(SubscriptionType.MQTT));
+    }
+
+    /**
+     * Always retrieve the correct bitmap handler through this method so validations can happen and can avoid
+     * unnecessary null pointers in case the subscription type is not found.
+     *
+     * @param subscriptionType The subscription type of the bitmap handler
+     * @return The bitmap handler
+     */
+    private WildCardBitMapHandler getBitMapHandler(SubscriptionType subscriptionType) throws AndesException {
+        WildCardBitMapHandler bitMapHandler = bitMapHandlers.get(subscriptionType);
+
+        if (null == bitMapHandler) {
+            throw new AndesException("Subscription type " + subscriptionType + " is not recognized.");
+        }
+
+        return bitMapHandler;
     }
 
     public void addWildCardSubscription(AndesSubscription subscription) throws AndesException {
-        SubscriptionType subscriptionType = subscription.getSubscriptionType();
-        if (SubscriptionType.AMQP == subscriptionType) {
-            amqpWildCardHandler.addWildCardSubscription(subscription);
-        } else if (SubscriptionType.MQTT == subscriptionType) {
-            mqttWildCardHandler.addWildCardSubscription(subscription);
-        } else {
-            throw new AndesException("Subscription type " + subscriptionType + " is not recognized.");
-        }
+        WildCardBitMapHandler bitMapHandler = getBitMapHandler(subscription.getSubscriptionType());
+        bitMapHandler.addWildCardSubscription(subscription);
     }
     public void updateWildCardSubscription(AndesSubscription subscription) throws AndesException  {
-        SubscriptionType subscriptionType = subscription.getSubscriptionType();
-        if (SubscriptionType.AMQP == subscriptionType) {
-            amqpWildCardHandler.updateWildCardSubscription(subscription);
-        } else if (SubscriptionType.MQTT == subscriptionType) {
-            mqttWildCardHandler.updateWildCardSubscription(subscription);
-        } else {
-            throw new AndesException("Subscription type " + subscriptionType + " is not recognized.");
-        }
+        WildCardBitMapHandler bitMapHandler = getBitMapHandler(subscription.getSubscriptionType());
+        bitMapHandler.updateWildCardSubscription(subscription);
     }
     public void removeWildCardSubscription(AndesSubscription subscription) throws AndesException  {
-        SubscriptionType subscriptionType = subscription.getSubscriptionType();
-        if (SubscriptionType.AMQP == subscriptionType) {
-            amqpWildCardHandler.removeWildCardSubscription(subscription);
-        } else if (SubscriptionType.MQTT == subscriptionType) {
-            mqttWildCardHandler.removeWildCardSubscription(subscription);
-        } else {
-            throw new AndesException("Subscription type " + subscriptionType + " is not recognized.");
-        }
+        WildCardBitMapHandler bitMapHandler = getBitMapHandler(subscription.getSubscriptionType());
+        bitMapHandler.removeWildCardSubscription(subscription);
     }
 
     public Set<AndesSubscription> getMatchingSubscriptions(String destination, SubscriptionType subscriptionType)
             throws AndesException {
-        Set<AndesSubscription> subscriptionSet;
-        if (SubscriptionType.AMQP == subscriptionType) {
-            subscriptionSet = amqpWildCardHandler.getMatchingSubscriptions(destination);
-        } else if (SubscriptionType.MQTT == subscriptionType) {
-            subscriptionSet = mqttWildCardHandler.getMatchingSubscriptions(destination);
-        } else {
-            throw new AndesException("Subscription type " + subscriptionType + " is not recognized.");
-        }
-
-        return subscriptionSet;
+        WildCardBitMapHandler bitMapHandler = getBitMapHandler(subscriptionType);
+        return bitMapHandler.getMatchingSubscriptions(destination);
     }
 
     public Set<AndesSubscription> getActiveClusterSubscribersForNode(String nodeID) {
         Set<AndesSubscription> subscriptions = new HashSet<AndesSubscription>();
 
-        // Get all AMQP subscriptions
-        for (AndesSubscription subscription : amqpWildCardHandler.getAllWildCardSubscriptions()) {
-            if (subscription.getSubscribedNode().equals(nodeID)) {
-                subscriptions.add(subscription);
-            }
-        }
-
-        // Get all MQTT subscriptions
-        for (AndesSubscription subscription : mqttWildCardHandler.getAllWildCardSubscriptions()) {
-            if (subscription.getSubscribedNode().equals(nodeID)) {
-                subscriptions.add(subscription);
+        for (Map.Entry<SubscriptionType, WildCardBitMapHandler> entry : bitMapHandlers.entrySet()) {
+            for (AndesSubscription subscription : entry.getValue().getAllWildCardSubscriptions()) {
+                if (subscription.getSubscribedNode().equals(nodeID)) {
+                    subscriptions.add(subscription);
+                }
             }
         }
 

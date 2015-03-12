@@ -139,7 +139,7 @@ public class AndesContextInformationManager {
     public boolean checkIfQueueDeletable(String queueName) throws AndesException {
         boolean queueDeletable = false;
         Set<AndesSubscription> queueSubscriptions = subscriptionStore.getActiveClusterSubscriptionList(
-                queueName, false);
+                queueName, false, AndesSubscription.SubscriptionType.AMQP);
         if (queueSubscriptions.isEmpty()) {
             queueDeletable = true;
         }

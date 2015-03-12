@@ -25,6 +25,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.HashSet;
@@ -115,8 +116,16 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
         Set<AndesSubscription> subscriptionList;
         try {
 
-            // TODO: This call is O(n2). In critical path. Need to improve
-            subscriptionList = subscriptionStore.getClusterSubscribersForDestination(messageRoutingKey, true);
+            // Get subscription list according to the message type
+            AndesSubscription.SubscriptionType subscriptionType;
+
+            if (MessageMetaDataType.META_DATA_MQTT == message.getMetadata().getMetaDataType()) {
+                subscriptionType = AndesSubscription.SubscriptionType.MQTT;
+            } else {
+                subscriptionType = AndesSubscription.SubscriptionType.AMQP;
+            }
+
+            subscriptionList = subscriptionStore.getClusterSubscribersForDestination(messageRoutingKey, true, subscriptionType);
 
             // current message is removed from list and updated cloned messages added later
             event.messageList.clear();
