@@ -628,8 +628,12 @@ public class SubscriptionStore {
     /**
      * @return list of ACTIVE and INACTIVE topics in cluster
      */
-    public List<String> getTopics() {
+    public List<String> getTopics(boolean isDurable) {
+        if (!isDurable) {
             return new ArrayList<String>(clusterTopicSubscriptionMap.keySet());
+        }else{
+            return new ArrayList<String>(clusterQueueSubscriptionMap.keySet());
+        }
 
     }
 
