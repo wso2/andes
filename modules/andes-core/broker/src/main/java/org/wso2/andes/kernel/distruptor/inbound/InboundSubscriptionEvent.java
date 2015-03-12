@@ -128,7 +128,7 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
         this.subscriptionManager = subscriptionManager;
     }
     
-    public boolean waitForCompletion() throws AndesException, SubscriptionAlreadyExistsException {
+    public boolean waitForCompletion() throws SubscriptionAlreadyExistsException {
         try {
             return future.get();
         } catch (InterruptedException e) {
@@ -137,6 +137,7 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
             if (e.getCause() instanceof SubscriptionAlreadyExistsException) {
                 throw (SubscriptionAlreadyExistsException) e.getCause();
             } else {
+                // No point in throwing an exception here and disrupting the server. A warning is sufficient.
                 log.warn("Error occurred while processing event '" + eventType  + "' for subscription id "
                         + getSubscriptionID());
             }

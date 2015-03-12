@@ -177,7 +177,7 @@ public class SlotManagerClusterMode {
         Slot slotToBeAssigned = null;
         TreeSetLongWrapper wrapper = slotIDMap.get(queueName);
         TreeSet<Long> messageIDSet;
-        if (wrapper != null) {
+        if (null != wrapper) {
             messageIDSet = wrapper.getLongTreeSet();
             if (messageIDSet != null && !messageIDSet.isEmpty()) {
 
@@ -230,7 +230,7 @@ public class SlotManagerClusterMode {
 
             TreeSetSlotWrapper unAssignedSlotWrapper = unAssignedSlotMap.get(queueName);
 
-            if (unAssignedSlotWrapper != null) {
+            if (null != unAssignedSlotWrapper) {
                 TreeSet<Slot> slotsFromUnassignedSlotMap = unAssignedSlotWrapper.getSlotTreeSet();
                 if (slotsFromUnassignedSlotMap != null && !slotsFromUnassignedSlotMap.isEmpty()) {
 
@@ -338,7 +338,7 @@ public class SlotManagerClusterMode {
      */
     public void updateMessageID(String queueName, String nodeId, long startMessageIdInTheSlot, long lastMessageIdInTheSlot) {
 
-        if (!AndesKernelBoot.isKernelShuttingDown()) {
+        if (HazelcastAgent.getInstance().isActive()) {
             // Read message Id set for slots from hazelcast
             TreeSet<Long> messageIdSet = new TreeSet<Long>();
             TreeSetLongWrapper wrapper = slotIDMap.get(queueName);
@@ -443,7 +443,7 @@ public class SlotManagerClusterMode {
 
         HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.remove(nodeId);
         HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
-        if (wrapper != null) {
+        if (null != wrapper) {
             queueToSlotMap = wrapper.getStringListHashMap();
         }
         if (queueToSlotMap != null) {
@@ -511,7 +511,7 @@ public class SlotManagerClusterMode {
             synchronized (lockKey.intern()) {
                 HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
                 HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
-                if (wrapper != null) {
+                if (null != wrapper) {
                     queueToSlotMap = wrapper.getStringListHashMap();
                 }
                 if (queueToSlotMap != null) {
@@ -562,7 +562,7 @@ public class SlotManagerClusterMode {
     public void reAssignSlotWhenNoSubscribers(String nodeId, String queueName) {
 
         // Hazelcast could be shut down before hitting this method in case of a server shutdown event. Therefore the check.
-        if (AndesContext.getInstance().isClusteringEnabled() && HazelcastAgent.getInstance().isActive()) {
+        if (HazelcastAgent.getInstance().isActive()) {
             TreeSet<Slot> assignedSlotList = null;
             String lockKeyForNodeId = nodeId + SlotManagerClusterMode.class;
             synchronized (lockKeyForNodeId.intern()) {
@@ -571,7 +571,7 @@ public class SlotManagerClusterMode {
                 //and set back
                 HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
                 HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
-                if (wrapper != null) {
+                if (null != wrapper) {
                     queueToSlotMap = wrapper.getStringListHashMap();
                 }
                 if (queueToSlotMap != null) {
@@ -589,7 +589,7 @@ public class SlotManagerClusterMode {
                 //set back
                 HashmapStringTreeSetWrapper overlappedSlotWrapper = overLappedSlotMap.get(nodeId);
                 HashMap<String, TreeSet<Slot>> queueToOverlappedSlotMap = null;
-                if (overlappedSlotWrapper != null) {
+                if (null != overlappedSlotWrapper) {
                     queueToOverlappedSlotMap = overlappedSlotWrapper.getStringListHashMap();
                 }
                 if (queueToOverlappedSlotMap != null) {
@@ -613,7 +613,7 @@ public class SlotManagerClusterMode {
                     TreeSetSlotWrapper treeSetStringWrapper = unAssignedSlotMap.get(queueName);
 
                     TreeSet<Slot> unAssignedSlotSet = new TreeSet<Slot>();
-                    if (treeSetStringWrapper != null) {
+                    if (null != treeSetStringWrapper) {
                         unAssignedSlotSet = treeSetStringWrapper.getSlotTreeSet();
                     } else {
                         treeSetStringWrapper = new TreeSetSlotWrapper();
@@ -707,7 +707,7 @@ public class SlotManagerClusterMode {
                         //clear slot assignment map
                         HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
                         HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
-                        if (wrapper != null) {
+                        if (null != wrapper) {
                             queueToSlotMap = wrapper.getStringListHashMap();
                         }
                         if (queueToSlotMap != null) {
@@ -721,7 +721,7 @@ public class SlotManagerClusterMode {
                                 (nodeId);
                         if (null != overlappedSlotsWrapper) {
                             HashMap<String, TreeSet<Slot>> queueToOverlappedSlotMap = null;
-                            if (wrapper != null) {
+                            if (null != wrapper) {
                                 queueToOverlappedSlotMap = overlappedSlotsWrapper.getStringListHashMap();
                             }
                             if (queueToSlotMap != null) {
@@ -785,7 +785,7 @@ public class SlotManagerClusterMode {
                         overLappedSlotMap.set(nodeID, olWrapper);
                     }
 
-                    if (wrapper != null) {
+                    if (null != wrapper) {
                         HashMap<String, TreeSet<Slot>> queueToSlotMap = wrapper.getStringListHashMap();
                         if (queueToSlotMap != null) {
                             TreeSet<Slot> slotListForQueueOnNode = queueToSlotMap.get(queueName);

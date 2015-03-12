@@ -635,6 +635,10 @@ public class MessagingEngine {
         log.info("Stopping Disruptor workers from delivering messages to store.");
     }
 
+    /**
+     * Properly shutdown all messaging related operations / tasks
+     * @throws InterruptedException
+     */
     public void close() throws InterruptedException {
 
         stopMessageDelivery();

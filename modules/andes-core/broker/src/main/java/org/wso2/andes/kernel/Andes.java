@@ -212,9 +212,8 @@ public class Andes {
     /**
      * Notify client connection is closed from protocol level
      * State related to connection will be updated within Andes
-     * @throws Exception
      */
-    public void startMessageDelivery() throws Exception {
+    public void startMessageDelivery() {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
         kernelOpsEvent.prepareForStartMessageDelivery(messagingEngine);
         inboundEventManager.publishStateEvent(kernelOpsEvent);

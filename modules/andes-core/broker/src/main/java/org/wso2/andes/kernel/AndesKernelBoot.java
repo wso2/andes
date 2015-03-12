@@ -40,6 +40,8 @@ import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.user.api.UserStoreException;
 
+import javax.management.JMException;
+import java.net.UnknownHostException;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -71,7 +73,7 @@ public class AndesKernelBoot {
     /**
      * This will boot up all the components in Andes kernel and bring the server to working state
      */
-    public static void bootAndesKernel() throws Exception {
+    public static void bootAndesKernel() throws AndesException, UnknownHostException, JMException {
 
         isKernelShuttingDown = false;
         //loadConfigurations - done from outside
@@ -290,7 +292,7 @@ public class AndesKernelBoot {
      *
      * @throws Exception
      */
-    public static void syncNodeWithClusterState() throws Exception {
+    public static void syncNodeWithClusterState() throws AndesException {
         //at the startup reload exchanges/queues/bindings and subscriptions
         log.info("Syncing exchanges, queues, bindings and subscriptions");
         ClusterResourceHolder.getInstance().getAndesRecoveryTask()
@@ -350,7 +352,7 @@ public class AndesKernelBoot {
      *
      * @throws Exception
      */
-    public static void registerMBeans() throws Exception {
+    public static void registerMBeans() throws JMException {
 
         ClusterManagementInformationMBean clusterManagementMBean = new
                 ClusterManagementInformationMBean(
@@ -371,7 +373,7 @@ public class AndesKernelBoot {
      *
      * @throws Exception
      */
-    public static void startAndesComponents() throws Exception {
+    public static void startAndesComponents() throws AndesException, UnknownHostException {
 
         /**
          * initialize cluster manager for managing nodes in MB cluster
@@ -400,7 +402,7 @@ public class AndesKernelBoot {
      *
      * @throws Exception
      */
-    public static void startMessaging() throws Exception {
+    public static void startMessaging() {
         Andes.getInstance().startMessageDelivery();
 
         // NOTE: Feature Message Expiration moved to a future release
