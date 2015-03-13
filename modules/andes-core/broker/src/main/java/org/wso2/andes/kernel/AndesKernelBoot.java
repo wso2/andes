@@ -68,7 +68,7 @@ public class AndesKernelBoot {
     /**
      * This is used by independent worker threads to identify if the kernel is performing shutdown operations.
      */
-    private static boolean isKernelShuttingDown;
+    private static boolean isKernelShuttingDown = false;
 
     /**
      * This will boot up all the components in Andes kernel and bring the server to working state
@@ -188,21 +188,8 @@ public class AndesKernelBoot {
         // Set flag so independent threads can act accordingly
         isKernelShuttingDown = true;
 
-        stopMessaging();
-
-        //Also add to Un register any MBeans at this point as needed
-
-        cleanUpAndNotifyCluster();
-        stopHouseKeepingThreads();
-
-        stopThriftServer();
-
+        // Trigger Shutdown Event
         Andes.getInstance().shutDown();
-
-        ApplicationRegistry.remove();
-
-        //close stores
-        AndesContext.getInstance().getAndesContextStore().close();
 
     }
 
@@ -306,9 +293,8 @@ public class AndesKernelBoot {
      */
     private static void cleanUpAndNotifyCluster() throws AndesException {
         //at the shutDown close all localSubscriptions and notify cluster
-        log.info("Closing all local subscriptions existing...");
-        ClusterResourceHolder.getInstance().getSubscriptionManager()
-                             .closeAllLocalSubscriptionsOfNode();
+
+        ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllLocalSubscriptionsOfNode();
         // notify cluster this MB node is shutting down. For other nodes to do recovery tasks
         ClusterResourceHolder.getInstance().getClusterManager().shutDownMyNode();
     }
@@ -332,7 +318,7 @@ public class AndesKernelBoot {
      *
      * @throws Exception
      */
-    private static void stopHouseKeepingThreads() {
+    public static void stopHouseKeepingThreads() {
         log.info("Stop syncing exchanges, queues, bindings and subscriptions...");
         int threadTerminationTimePerod = 20; // seconds
         try {

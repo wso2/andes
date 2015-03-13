@@ -361,55 +361,54 @@ public class HazelcastAgent {
     }
 
 
-    public void notifySubscriptionsChanged(ClusterNotification clusterNotification) {
-        if (this.isActive()) {
-            if (log.isDebugEnabled()) {
-                log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
-            }
-            this.subscriptionChangedNotifierChannel.publish(clusterNotification);
+    public void notifySubscriptionsChanged(ClusterNotification clusterNotification) throws AndesException {
+        if (log.isDebugEnabled()) {
+            log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
         }
+        try {
+            this.subscriptionChangedNotifierChannel.publish(clusterNotification);
+        } catch (Exception ex) {
+            log.error("Error while sending subscription change notification : " + clusterNotification.getEncodedObjectAsString(), ex);
+            throw new AndesException("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), ex);
+        }
+
     }
 
 
     public void notifyQueuesChanged(ClusterNotification clusterNotification) throws AndesException {
-        if (isActive()) {
-            if (log.isDebugEnabled()) {
-                log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
-            }
-            try {
-                this.queueChangedNotifierChannel.publish(clusterNotification);
-            } catch (Exception e) {
-                log.error("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), e);
-                throw new AndesException("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), e);
-            }
+
+        if (log.isDebugEnabled()) {
+            log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
+        }
+        try {
+            this.queueChangedNotifierChannel.publish(clusterNotification);
+        } catch (Exception e) {
+            log.error("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), e);
+            throw new AndesException("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), e);
         }
     }
 
     public void notifyExchangesChanged(ClusterNotification clusterNotification) throws AndesException {
-        if (isActive()) {
-            if (log.isDebugEnabled()) {
-                log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
-            }
-            try {
-                this.exchangeChangeNotifierChannel.publish(clusterNotification);
-            } catch (Exception e) {
-                log.error("Error while sending exchange change notification" + clusterNotification.getEncodedObjectAsString(), e);
-                throw new AndesException("Error while sending exchange change notification" + clusterNotification.getEncodedObjectAsString(), e);
-            }
+        if (log.isDebugEnabled()) {
+            log.debug("Sending GOSSIP: " + clusterNotification.getDescription());
+        }
+        try {
+            this.exchangeChangeNotifierChannel.publish(clusterNotification);
+        } catch (Exception e) {
+            log.error("Error while sending exchange change notification" + clusterNotification.getEncodedObjectAsString(), e);
+            throw new AndesException("Error while sending exchange change notification" + clusterNotification.getEncodedObjectAsString(), e);
         }
     }
 
     public void notifyBindingsChanged(ClusterNotification clusterNotification) throws AndesException {
-        if (isActive()) {
-            if (log.isDebugEnabled()) {
-                log.debug("GOSSIP: " + clusterNotification.getDescription());
-            }
-            try {
-                this.bindingChangeNotifierChannel.publish(clusterNotification);
-            } catch (Exception e) {
-                log.error("Error while sending binding change notification" + clusterNotification.getEncodedObjectAsString(), e);
-                throw new AndesException("Error while sending binding change notification" + clusterNotification.getEncodedObjectAsString(), e);
-            }
+        if (log.isDebugEnabled()) {
+            log.debug("GOSSIP: " + clusterNotification.getDescription());
+        }
+        try {
+            this.bindingChangeNotifierChannel.publish(clusterNotification);
+        } catch (Exception e) {
+            log.error("Error while sending binding change notification" + clusterNotification.getEncodedObjectAsString(), e);
+            throw new AndesException("Error while sending binding change notification" + clusterNotification.getEncodedObjectAsString(), e);
         }
     }
 

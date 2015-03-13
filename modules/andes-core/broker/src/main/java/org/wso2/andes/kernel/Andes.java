@@ -232,7 +232,7 @@ public class Andes {
      * Shut down Andes.
      * NOTE: This is package specific. We don't need access outside from kernel for this task
      */
-    void shutDown() {
+    public void shutDown() {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
         kernelOpsEvent.prepareForShutdownMessagingEngine(messagingEngine);
         inboundEventManager.publishStateEvent(kernelOpsEvent);

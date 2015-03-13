@@ -40,7 +40,7 @@ public class SlotManagerStandalone {
      */
     private ConcurrentHashMap<String, Long> queueToLastAssignedIDMap;
 
-    private static Log log = LogFactory.getLog(SlotManagerClusterMode.class);
+    private static Log log = LogFactory.getLog(SlotManagerStandalone.class);
 
 
     public SlotManagerStandalone() {

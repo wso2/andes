@@ -23,6 +23,7 @@ import org.apache.log4j.xml.QpidLog4JConfigurator;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesKernelBoot;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
@@ -91,14 +92,7 @@ public class Broker
 
     public void shutdown()
     {
-        /**
-         * shutdown kernel first
-         */
-        try {
-            AndesKernelBoot.shutDownAndesKernel();
-        } catch (AndesException e) {
-            log.error("Error while shutting down andes kernel", e);
-        }
+        Andes.getInstance().shutDown();
     }
 
     public void startup() throws Exception

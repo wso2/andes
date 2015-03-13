@@ -128,6 +128,7 @@ public class AndesSubscriptionManager {
      */
     public void closeAllLocalSubscriptionsOfNode() throws AndesException {
 
+        log.info("Closing all existing local subscriptions.");
         List<LocalSubscription> activeSubscriptions = subscriptionStore.getActiveLocalSubscribers(true);
         activeSubscriptions.addAll(subscriptionStore.getActiveLocalSubscribers(false));
 

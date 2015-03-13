@@ -88,13 +88,6 @@ public class SlotDeliveryWorker extends Thread {
                         if (messageFlusher.getMessageDeliveryInfo(destinationOfMessagesInQueue)
                                 .isMessageBufferFull()) {
 
-                            //If hazelcast is inactive at this moment, we cannot proceed further with the clustered
-                            // data collections. therefore warning and skipping.
-                            if (AndesContext.getInstance().isClusteringEnabled() && !HazelcastAgent.getInstance().isActive()) {
-                                log.warn("Hazelcast instance is not active. Therefore the cluster is non-responsive.");
-                                continue;
-                            }
-
                             long startTime = System.currentTimeMillis();
                             Slot currentSlot = slotCoordinator.getSlot(storageQueueName);
                             currentSlot.setDestinationOfMessagesInSlot(destinationOfMessagesInQueue);

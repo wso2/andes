@@ -632,7 +632,6 @@ public class MessagingEngine {
             MBThriftClient.setReconnectingFlag(false);
         }
         SlotMessageCounter.getInstance().stop();
-        log.info("Stopping Disruptor workers from delivering messages to store.");
     }
 
     /**
@@ -644,6 +643,10 @@ public class MessagingEngine {
         stopMessageDelivery();
         stopMessageExpirationWorker();
 
+        completePendingStoreOperations();
+    }
+
+    public void completePendingStoreOperations() throws InterruptedException {
         try {
             asyncStoreTasksScheduler.shutdown();
             asyncStoreTasksScheduler.awaitTermination(5, TimeUnit.SECONDS);
@@ -653,11 +656,6 @@ public class MessagingEngine {
             messageStore.close();
             log.warn("Content remover task forcefully shutdown.");
             throw e;
-        }
-
-        //Stop Slot manager in coordinator
-        if (AndesContext.getInstance().isClusteringEnabled() && AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
-            ClusterResourceHolder.getInstance().getClusterManager().getSlotManager().shutDownSlotManager();
         }
     }
 
