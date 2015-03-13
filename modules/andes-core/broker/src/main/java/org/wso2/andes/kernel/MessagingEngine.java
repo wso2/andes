@@ -21,7 +21,11 @@ package org.wso2.andes.kernel;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.slot.*;
+import org.wso2.andes.kernel.slot.SlotCoordinator;
+import org.wso2.andes.kernel.slot.SlotCoordinatorCluster;
+import org.wso2.andes.kernel.slot.SlotCoordinatorStandalone;
+import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
+import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
@@ -345,7 +349,7 @@ public class MessagingEngine {
         String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         String storageQueueName = AndesUtils.getStorageQueueForDestination(destination, nodeID, isTopic);
         int purgedNumOfMessages =  purgeQueueFromStore(storageQueueName);
-        log.info("Purged messages of destination " + destination);
+        log.info("Purged " + purgedNumOfMessages + " messages of destination " + destination);
         return purgedNumOfMessages;
     }
 
@@ -627,13 +631,22 @@ public class MessagingEngine {
         if (MBThriftClient.isReconnectingStarted()) {
             MBThriftClient.setReconnectingFlag(false);
         }
-        log.info("Stopping Disruptor writing messages to store.");
+        SlotMessageCounter.getInstance().stop();
     }
 
+    /**
+     * Properly shutdown all messaging related operations / tasks
+     * @throws InterruptedException
+     */
     public void close() throws InterruptedException {
 
         stopMessageDelivery();
         stopMessageExpirationWorker();
+
+        completePendingStoreOperations();
+    }
+
+    public void completePendingStoreOperations() throws InterruptedException {
         try {
             asyncStoreTasksScheduler.shutdown();
             asyncStoreTasksScheduler.awaitTermination(5, TimeUnit.SECONDS);

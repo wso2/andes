@@ -23,6 +23,8 @@ import org.apache.log4j.xml.QpidLog4JConfigurator;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.Andes;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesKernelBoot;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.configuration.qpid.ServerNetworkTransportConfiguration;
@@ -90,15 +92,7 @@ public class Broker
 
     public void shutdown()
     {
-        /**
-         * shutdown kernel first
-         */
-        try {
-            AndesKernelBoot.shutDownAndesKernel();
-        } catch (Exception e) {
-            log.error("Error while shutting down andes kernel", e);
-        }
-        ApplicationRegistry.remove();
+        Andes.getInstance().shutDown();
     }
 
     public void startup() throws Exception
@@ -261,6 +255,7 @@ public class Broker
                     ApplicationRegistry.getInstance().addAcceptor(new InetSocketAddress(bindAddress, port),
                             new QpidAcceptor(transport,"TCP"));
                     CurrentActor.get().message(BrokerMessages.LISTENING("TCP", port));
+
                 }
             }
 

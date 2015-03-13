@@ -182,6 +182,11 @@ public class Andes {
         inboundEventManager.publishStateEvent(channelEvent);
     }
 
+    /**
+     * Close the local subscription with reference to the input subscription event.
+     * @param subscriptionEvent disruptor event containing the subscription to close.
+     * @throws AndesException
+     */
     public void closeLocalSubscription(InboundSubscriptionEvent subscriptionEvent) throws AndesException {
         subscriptionEvent.prepareForCloseSubscription(subscriptionManager);
         inboundEventManager.publishStateEvent(subscriptionEvent);
@@ -207,9 +212,8 @@ public class Andes {
     /**
      * Notify client connection is closed from protocol level
      * State related to connection will be updated within Andes
-     * @throws Exception
      */
-    public void startMessageDelivery() throws Exception {
+    public void startMessageDelivery() {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
         kernelOpsEvent.prepareForStartMessageDelivery(messagingEngine);
         inboundEventManager.publishStateEvent(kernelOpsEvent);
@@ -228,7 +232,7 @@ public class Andes {
      * Shut down Andes.
      * NOTE: This is package specific. We don't need access outside from kernel for this task
      */
-    void shutDown() {
+    public void shutDown() {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
         kernelOpsEvent.prepareForShutdownMessagingEngine(messagingEngine);
         inboundEventManager.publishStateEvent(kernelOpsEvent);

@@ -90,9 +90,6 @@ public class OrphanedMessageHandler implements SubscriptionListener {
                     String subscribedDestination = localSubscription.getSubscribedDestination();
                     if(!subscriptionManager.checkIfActiveNonDurableLocalSubscriptionExistsForTopic
                             (subscribedDestination)) {
-                        if(log.isDebugEnabled()) {
-                            log.debug("Purging messages of this node persisted under " + subscribedDestination);
-                        }
                         log.info("Purging messages of this node persisted under " + subscribedDestination);
                         removeMessagesOfDestinationForNode(subscribedDestination,null,true);
                     }

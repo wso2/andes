@@ -833,8 +833,10 @@ public class SubscriptionStore {
                 //topic subscription record for all of them. Thus when closing there can be no subscriber
                 //to close in multiple durable topic subscription case
                 if (!allowSharedSubscribers) {
-                    throw new AndesException("There is no active subscriber to close subscribed to " + subscription.
-                            getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
+                    // We cannot guarantee that the subscription has not been removed before,
+                    // if the server is in shutting down state. No need to throw this exception. Warning is enough.
+                    log.warn("There is no active subscriber to close subscribed to " + subscription
+                            .getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
                 }
             } else if (hasExternalSubscriptions && type == SubscriptionChange.ADDED) {
                 if (!allowSharedSubscribers) {

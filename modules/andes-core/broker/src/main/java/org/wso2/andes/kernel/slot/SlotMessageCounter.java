@@ -196,4 +196,12 @@ public class SlotMessageCounter {
         return slotMessageCounter;
     }
 
+    /**
+     * Shut down worker threads, submitSlotToCoordinatorTimer so that server can shut down properly without unexpected behaviour.
+     */
+    public void stop() {
+        log.info("Stopping slot message counter.");
+        submitSlotToCoordinatorTimer.cancel();
+    }
+
 }

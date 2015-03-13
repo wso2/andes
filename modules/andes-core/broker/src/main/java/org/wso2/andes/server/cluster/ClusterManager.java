@@ -80,19 +80,14 @@ public class ClusterManager {
      *
      * @throws Exception
      */
-    public void init() throws Exception {
-        try {
-            if (!AndesContext.getInstance().isClusteringEnabled()) {
-                this.initStandaloneMode();
-                return;
-            }
+    public void init() throws AndesException, UnknownHostException {
 
-            initClusterMode();
-
-        } catch (Exception e) {
-            log.error("Error while initializing the Hazelcast coordination ", e);
-            throw e;
+        if (!AndesContext.getInstance().isClusteringEnabled()) {
+            this.initStandaloneMode();
+            return;
         }
+
+        initClusterMode();
     }
 
     /**
@@ -218,7 +213,7 @@ public class ClusterManager {
      *
      * @throws Exception
      */
-    private void initClusterMode() throws Exception {
+    private void initClusterMode() throws AndesException {
 
         this.hazelcastAgent = HazelcastAgent.getInstance();
         this.nodeId = this.hazelcastAgent.getNodeId();
@@ -343,5 +338,9 @@ public class ClusterManager {
             }
         }
         return addresses;
+    }
+
+    public SlotManagerClusterMode getSlotManager() {
+        return slotManager;
     }
 }

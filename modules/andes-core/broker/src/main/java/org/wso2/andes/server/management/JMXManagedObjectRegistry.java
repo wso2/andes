@@ -36,6 +36,7 @@ import java.rmi.server.RMIServerSocketFactory;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
 
+import javax.management.InstanceNotFoundException;
 import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
@@ -361,7 +362,13 @@ public class JMXManagedObjectRegistry implements ManagedObjectRegistry
     public void unregisterObject(ManagedObject managedObject) throws JMException
     {
         if (_mbeanServer.isRegistered(managedObject.getObjectName())) {
-            _mbeanServer.unregisterMBean(managedObject.getObjectName());
+            try {
+                _mbeanServer.unregisterMBean(managedObject.getObjectName());
+            } catch (InstanceNotFoundException ex) {
+                //Can ignore this since the method is anyway trying to un-register the MBean
+                _log.warn("Could not un-register MBean " + managedObject.getObjectName() + " since it had already been removed.");
+            }
+
         }
     }
 

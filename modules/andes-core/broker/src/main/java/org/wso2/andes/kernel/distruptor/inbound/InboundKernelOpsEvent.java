@@ -20,8 +20,12 @@ package org.wso2.andes.kernel.distruptor.inbound;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesKernelBoot;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.server.registry.ApplicationRegistry;
 
 import static org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent.StateEvent.*;
 
@@ -59,7 +63,7 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
                 stopMessageExpirationWorker();
                 break;
             case SHUTDOWN_MESSAGING_ENGINE_EVENT:
-                shutdownMessagingEngine();
+                gracefulShutdown();
                 break;
             default:
                 log.error("Event type not set properly " + eventType);
@@ -103,6 +107,14 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
             messagingEngine.close();
         } catch (InterruptedException e) {
             log.error("Interrupted while closing messaging engine. ", e);
+        }
+    }
+
+    public void completePendingMessageStoringOperations() {
+        try {
+            messagingEngine.completePendingStoreOperations();
+        } catch (InterruptedException e) {
+            log.error("Interrupted while trying to complete pending message storing operations.", e);
         }
     }
 
@@ -154,5 +166,36 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
     @Override
     public StateEvent getEventType() {
         return eventType;
+    }
+
+    private void gracefulShutdown() throws AndesException {
+        // Close subscriptions
+        ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllLocalSubscriptionsOfNode();
+
+        // Stop SlotDeliveryWorkers
+        // Stop Thrift Service
+        // Stop SlotMessageCounter
+        stopMessageDelivery();
+
+        // notify cluster this MB node is shutting down. For other nodes to do recovery tasks
+        ClusterResourceHolder.getInstance().getClusterManager().shutDownMyNode();
+
+        //Stop Recovery threads
+        AndesKernelBoot.stopHouseKeepingThreads();
+
+        // Shut down Store writing tasks - (after waiting for completion)
+        // Shut down message store
+        completePendingMessageStoringOperations();
+
+        //Stop Slot manager in coordinator
+        if (AndesContext.getInstance().isClusteringEnabled() && AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
+            ClusterResourceHolder.getInstance().getClusterManager().getSlotManager().shutDownSlotManager();
+        }
+
+        // Removes the MinaNetworkHandler, Authentication Handlers, etc. Refer ApplicationRegistry.close()
+        ApplicationRegistry.remove();
+
+        // We need this until ApplicationRegistry is done.
+        AndesContext.getInstance().getAndesContextStore().close();
     }
 }

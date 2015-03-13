@@ -209,8 +209,8 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
             }
         }
     }
-    
-   /**
+
+    /**
      * Utility to get the in bound ring guage
      */
     private class InBoundRingGauge implements Gauge<Long> {
