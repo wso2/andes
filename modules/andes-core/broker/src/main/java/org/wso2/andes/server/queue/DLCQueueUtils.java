@@ -41,8 +41,6 @@ public class DLCQueueUtils {
 
     private static final Logger log = Logger.getLogger(DLCQueueUtils.class);
 
-    public static final String DLC_QUEUE_SEPARATOR = "/";
-
     /**
      * Derive the Dead Letter Queue name of the tenant with respect to a given queue of the same
      * tenant.
@@ -53,10 +51,10 @@ public class DLCQueueUtils {
     public static String identifyTenantInformationAndGenerateDLCString(String queueName) {
         String destinationString;
 
-        if (queueName.contains(DLC_QUEUE_SEPARATOR)) {
+        if (queueName.contains(AndesConstants.TENANT_SEPARATOR)) {
             //The Queue is in the tenant realm
-            destinationString = queueName.split(DLC_QUEUE_SEPARATOR, 2)[0] + DLC_QUEUE_SEPARATOR + AndesConstants
-                    .DEAD_LETTER_QUEUE_SUFFIX;
+            destinationString = queueName.split(AndesConstants.TENANT_SEPARATOR,
+                    2)[0] + AndesConstants.TENANT_SEPARATOR + AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
         } else {
             destinationString = AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
         }
@@ -104,7 +102,7 @@ public class DLCQueueUtils {
         if (org.wso2.carbon.base.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME == tenantName) {
             dlcQueueName = AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
         } else {
-            dlcQueueName = tenantName + DLC_QUEUE_SEPARATOR + AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
+            dlcQueueName = tenantName + AndesConstants.TENANT_SEPARATOR + AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
         }
 
         // Try to retrieve queue to check if it is already available

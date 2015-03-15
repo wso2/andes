@@ -30,4 +30,9 @@ public class AndesConstants {
      */
     public static final String DEAD_LETTER_QUEUE_SUFFIX = "DeadLetterChannel";
 
+    /**
+     * The separator to separate a domain name and the queue name in a tenant mode.
+     */
+    public static final String TENANT_SEPARATOR = "/";
+
 }
