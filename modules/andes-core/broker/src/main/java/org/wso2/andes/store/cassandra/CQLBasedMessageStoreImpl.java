@@ -740,7 +740,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName) throws AndesException {
+    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName, Long startMessageID) throws AndesException {
 
         Statement statement = QueryBuilder.select().column(MESSAGE_ID).
                 from(config.getKeyspace(), METADATA_TABLE).

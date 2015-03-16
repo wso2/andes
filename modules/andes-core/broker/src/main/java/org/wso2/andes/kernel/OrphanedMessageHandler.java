@@ -21,7 +21,12 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.kernel.slot.ConnectionException;
+import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.kernel.slot.SlotDeliveryWorker;
+import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.thrift.MBThriftClient;
 
 /**
  * This class will handle removing messages depending on subscription behaviour
@@ -99,11 +104,48 @@ public class OrphanedMessageHandler implements SubscriptionListener {
     }
 
     private void removeMessagesOfDestinationForNode(String destination,
-                String ownerName, boolean isTopic) throws AndesException {
-        // This is a class used by AndesSubscriptionManager. Andes Subscription Manager is behind Disruptor layer.
-        // Hence the call should be made to MessagingEngine NOT Andes.
-        // Calling Andes methods from here will lead to probable deadlocks if Futures are used.
-        // NOTE: purge call should be made to MessagingEngine not Andes
-        MessagingEngine.getInstance().purgeMessages(destination,ownerName,isTopic);
+                                                    String ownerName, boolean isTopic) throws AndesException {
+
+        try {
+
+            Long startMessageID = null;
+            boolean clusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
+            //Will first retrieve the last unassigned slot id
+            String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+            //Will get the storage queue name
+            String storageQueue = AndesUtils.getStorageQueueForDestination(destination, nodeID, isTopic);
+
+            //if (clusteringEnabled) {
+            //We get the relevant slot from the coordinator if running on cluster mode
+            Slot unassignedSlot = MBThriftClient.getSlot(storageQueue, nodeID);
+            //We need to get the starting message ID to inform the DB to start slicing the message from there
+            //This step would be done in order to ensure that tombstones will not be fetched during the querying
+            //operation
+            startMessageID = unassignedSlot.getStartMessageId();
+     /*       } else {
+                //For stand-alone mode the last processed id will be kept within the slot delivery worker itself
+                startMessageID = SlotDeliveryWorkerManager.getInstance().
+                        getLastProcessedMessageIDForDestination(storageQueue);
+                //For stand alone we need to increment by 1 to make sure the message which is processed before will
+                //not overlap
+                startMessageID = startMessageID + 1;
+            }*/
+
+            // This is a class used by AndesSubscriptionManager. Andes Subscription Manager is behind Disruptor layer.
+            // Hence the call should be made to MessagingEngine NOT Andes.
+            // Calling Andes methods from here will lead to probable deadlocks if Futures are used.
+            // NOTE: purge call should be made to MessagingEngine not Andes
+            if (0 < startMessageID) {
+                //If the slot id is 0, which means for the given storage queue there're no unassigned slots which means
+                //we don't need to purge messages in this case
+                //The purpose of purge operation is to make sure that unassigned slots will be removed if no subs exists
+                MessagingEngine.getInstance().purgeMessages(destination, ownerName, isTopic, startMessageID);
+            }
+        } catch (ConnectionException e) {
+            String mesage = "Error while establishing a connection with the thrift server";
+            log.error(mesage);
+            throw new AndesException(mesage, e);
+        }
+
     }
 }

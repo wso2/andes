@@ -229,7 +229,7 @@ public interface MessageStore {
      * @param storageQueueName name of the queue being purged.
      * @throws AndesException
      */
-    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName) throws AndesException;
+    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName, Long startMessageID) throws AndesException;
 
     /**
      * Add message counting entry for queue. queue count is initialised to zero. The counter for

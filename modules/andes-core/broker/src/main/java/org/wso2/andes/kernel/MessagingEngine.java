@@ -305,11 +305,12 @@ public class MessagingEngine {
      * @param destination queue or topic name (subscribed routing key) whose messages should be removed
      * @param ownerName The user who initiated the purge request
      * @param isTopic weather purging happens for a topic
+     * @param startMessageID starting message id for the purge operation, optional parameter
      * @return number of messages removed (in memory message count may not be 100% accurate
      * since we cannot guarantee that we caught all messages in delivery threads.)
      * @throws AndesException
      */
-    public int purgeMessages(String destination, String ownerName, boolean isTopic) throws AndesException {
+    public int purgeMessages(String destination, String ownerName, boolean isTopic,Long startMessageID) throws AndesException {
 
         // The timestamp is recorded to track messages that came before the purge event.
         // Refer OnflightMessageTracker:evaluateDeliveryRules method for more details.
@@ -339,22 +340,24 @@ public class MessagingEngine {
         // queues destination = storage queue. But for topics it is different
         String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         String storageQueueName = AndesUtils.getStorageQueueForDestination(destination, nodeID, isTopic);
-        int purgedNumOfMessages =  purgeQueueFromStore(storageQueueName);
-        log.info("Purged " + purgedNumOfMessages + " messages of destination " + destination);
+        int purgedNumOfMessages =  purgeQueueFromStore(storageQueueName,startMessageID);
+        log.info("Purged messages of destination " + destination);
         return purgedNumOfMessages;
     }
 
     /***
      * Clear all references to all message metadata / content addressed to a specific queue. Used when purging.
      * @param storageQueueName name of storage queue
+     * @param startMessageID id of the message the query should start from
      * @throws AndesException
      */
-    public int purgeQueueFromStore(String storageQueueName) throws AndesException {
+    public int purgeQueueFromStore(String storageQueueName, Long startMessageID) throws AndesException {
 
         try {
             // Retrieve message IDs addressed to the queue and keep track of message count for
             // the queue in the store
-            List<Long> messageIDsAddressedToQueue = messageStore.getMessageIDsAddressedToQueue(storageQueueName);
+            List<Long> messageIDsAddressedToQueue = messageStore.getMessageIDsAddressedToQueue(storageQueueName,
+                    startMessageID);
 
             Integer messageCountInStore = messageIDsAddressedToQueue.size();
 
