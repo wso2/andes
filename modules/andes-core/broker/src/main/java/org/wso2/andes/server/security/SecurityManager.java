@@ -376,15 +376,13 @@ public class SecurityManager
 
     public boolean authorisePublish(final boolean immediate, final String routingKey, final String exchangeName)
     {
-        return true;
-        //TODO Removing this. This is expensive and we do not need to check this unless user have enabled this. 
-//        return checkAllPlugins(new AccessCheck()
-//        {
-//            Result allowed(SecurityPlugin plugin)
-//            {
-//                return plugin.authorise(PUBLISH, EXCHANGE, new ObjectProperties(exchangeName, routingKey, immediate));
-//            }
-//        });
+        return checkAllPlugins(new AccessCheck()
+        {
+            Result allowed(SecurityPlugin plugin)
+            {
+                return plugin.authorise(PUBLISH, EXCHANGE, new ObjectProperties(exchangeName, routingKey, immediate));
+            }
+        });
     }
 
     public boolean authorisePurge(final AMQQueue queue)
