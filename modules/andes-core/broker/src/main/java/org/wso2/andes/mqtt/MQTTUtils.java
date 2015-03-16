@@ -22,6 +22,7 @@ import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.impl.subscriptions.SubscriptionsStore;
 import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.server.store.MessageMetaDataType;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
@@ -122,6 +123,7 @@ public class MQTTUtils {
         messageHeader.setChannelId(publisherID);
         messageHeader.setMessageContentLength(messageContentLength);
         messageHeader.setStorageQueueName(topic);
+        messageHeader.setMetaDataType(MessageMetaDataType.META_DATA_MQTT);
         // message arrival time set to mb node's system time.
         messageHeader.setArrivalTime(receivedTime);
         if (log.isDebugEnabled()) {

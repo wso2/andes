@@ -72,7 +72,8 @@ public class WildCardBitMapHandler {
 
     public WildCardBitMapHandler(SubscriptionType subscriptionType) throws AndesException {
         if (SubscriptionType.AMQP == subscriptionType) {
-            constituentsDelimiter = ".";
+            // Delimeter is . for AMQP
+            constituentsDelimiter = "\\.";
             multiLevelWildCard = AMQPUtils.TOPIC_AND_CHILDREN_WILDCARD;
         } else if (SubscriptionType.MQTT == subscriptionType) {
             constituentsDelimiter = "/";
@@ -268,18 +269,21 @@ public class WildCardBitMapHandler {
         BitSet nullBitSet = new BitSet(noOfSubscriptions);
         BitSet otherBitSet = new BitSet(noOfSubscriptions);
 
-        // Null constituent will always be true for empty constituents, hence need to flip
-        nullBitSet.flip(0, noOfSubscriptions - 1);
+        if (noOfSubscriptions > 0) {
 
-        for (int subscriptionIndex = 0; subscriptionIndex < noOfSubscriptions; subscriptionIndex++) {
-            // For 'other', if subscribers last constituent is multi level wild card then matching
-            String[] allConstituent = subscriptionConstituents.get(subscriptionIndex);
-            String lastConstituent = allConstituent[allConstituent.length - 1];
+            // Null constituent will always be true for empty constituents, hence need to flip
+            nullBitSet.flip(0, noOfSubscriptions - 1);
 
-            if (multiLevelWildCard.equals(lastConstituent)) {
-                otherBitSet.set(subscriptionIndex);
-            } else {
-                otherBitSet.set(subscriptionIndex, false);
+            for (int subscriptionIndex = 0; subscriptionIndex < noOfSubscriptions; subscriptionIndex++) {
+                // For 'other', if subscribers last constituent is multi level wild card then matching
+                String[] allConstituent = subscriptionConstituents.get(subscriptionIndex);
+                String lastConstituent = allConstituent[allConstituent.length - 1];
+
+                if (multiLevelWildCard.equals(lastConstituent)) {
+                    otherBitSet.set(subscriptionIndex);
+                } else {
+                    otherBitSet.set(subscriptionIndex, false);
+                }
             }
         }
 
