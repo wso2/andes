@@ -222,11 +222,7 @@ public class Main {
 
         //Will start the MQTT Broker
         //todo need to startup with the broker options inclusive
-        if (AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_ENABLED)) {
-            startMQTTBroker(options);
-        } else {
-
-        }
+        startMQTTBroker(options);
     }
 
     protected void shutdown(final int status) {
