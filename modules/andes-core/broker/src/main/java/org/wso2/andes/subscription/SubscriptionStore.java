@@ -46,7 +46,14 @@ public class SubscriptionStore {
 
     private static Log log = LogFactory.getLog(SubscriptionStore.class);
 
+    /**
+     * Keeps non-wildcard cluster topic subscriptions.
+     */
     private Map<String, Set<AndesSubscription>> clusterTopicSubscriptionMap = new ConcurrentHashMap<String, Set<AndesSubscription>>();
+
+    /**
+     * Keeps non-wildcard cluster queue subscriptions.
+     */
     private Map<String, Set<AndesSubscription>> clusterQueueSubscriptionMap = new ConcurrentHashMap<String, Set<AndesSubscription>>();
 
     //<destination, <subscriptionID,LocalSubscription>>
@@ -60,11 +67,11 @@ public class SubscriptionStore {
 
     private AndesContextStore andesContextStore;
 
-    private WildCardSubscriptionProcessor wildCardSubscriptionProcessor;
+    private ClusterSubscriptionProcessor clusterSubscriptionProcessor;
 
     public SubscriptionStore() throws AndesException {
         andesContextStore = AndesContext.getInstance().getAndesContextStore();
-        wildCardSubscriptionProcessor = new WildCardSubscriptionProcessor();
+        clusterSubscriptionProcessor = new ClusterSubscriptionProcessor();
     }
 
     /**
@@ -86,7 +93,7 @@ public class SubscriptionStore {
                 subscriptions = directSubscriptions;
             }
             // Get wildcard subscriptions from bitmap
-            subscriptions.addAll(wildCardSubscriptionProcessor.getMatchingSubscriptions(destination, subscriptionType));
+            subscriptions.addAll(clusterSubscriptionProcessor.getMatchingSubscriptions(destination, subscriptionType));
         } else {
             Set<AndesSubscription> queueSubscriptions = clusterQueueSubscriptionMap.get(destination);
 
@@ -136,7 +143,7 @@ public class SubscriptionStore {
             }
 
             // Get wildcard subscriptions
-            subscriptions.addAll(wildCardSubscriptionProcessor.getMatchingSubscriptions(destination, subscriptionType));
+            subscriptions.addAll(clusterSubscriptionProcessor.getMatchingSubscriptions(destination, subscriptionType));
 
             // Get durable topic subscriptions
             Set<AndesSubscription> queueSubscriptions = clusterQueueSubscriptionMap.get(destination);
@@ -230,7 +237,7 @@ public class SubscriptionStore {
 
         if (isTopic) {
             // Get wildcard subscriptions from bitmap. Only topics support wildcards.
-            activeQueueSubscriptions.addAll(wildCardSubscriptionProcessor.getActiveClusterSubscribersForNode(nodeID));
+            activeQueueSubscriptions.addAll(clusterSubscriptionProcessor.getActiveClusterSubscribersForNode(nodeID));
         }
 
         return activeQueueSubscriptions;
@@ -298,7 +305,7 @@ public class SubscriptionStore {
 
         // Get wildcard subscriptions from bitmap
         if (isTopic) {
-            clusterSubscriptions.addAll(wildCardSubscriptionProcessor.getMatchingSubscriptions(destination,
+            clusterSubscriptions.addAll(clusterSubscriptionProcessor.getMatchingSubscriptions(destination,
                     subscriptionType));
         }
         return clusterSubscriptions;
@@ -401,11 +408,11 @@ public class SubscriptionStore {
 
             if (wildCardSubscription) {
                 if (SubscriptionChange.ADDED == type) {
-                    wildCardSubscriptionProcessor.addWildCardSubscription(subscription);
+                    clusterSubscriptionProcessor.addWildCardSubscription(subscription);
                 } else if (SubscriptionChange.DELETED == type) {
-                    wildCardSubscriptionProcessor.removeWildCardSubscription(subscription);
+                    clusterSubscriptionProcessor.removeWildCardSubscription(subscription);
                 } else {
-                    wildCardSubscriptionProcessor.updateWildCardSubscription(subscription);
+                    clusterSubscriptionProcessor.updateWildCardSubscription(subscription);
                 }
             } else {
                 clusterSubscriptionMap = clusterTopicSubscriptionMap;
