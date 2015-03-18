@@ -26,6 +26,7 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
+import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.management.AMQManagedObject;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueRegistry;
@@ -40,6 +41,7 @@ import javax.management.NotCompliantMBeanException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 public class QueueManagementInformationMBean extends AMQManagedObject implements QueueManagementInformation {
 
@@ -48,6 +50,27 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     private final QueueRegistry queueRegistry;
 
     private final String PURGE_QUEUE_ERROR = "Error in purging queue : ";
+
+    /**
+     * The message restore flowcontrol blocking state.
+     * If true message restore will be interrupted from dead letter channel.
+     */
+    boolean restoreBlockedByFlowControl = false;
+
+    /**
+     * AndesChannel for this dead letter channel restore which implements flow control.
+      */
+    AndesChannel andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {
+        @Override
+        public void block() {
+            restoreBlockedByFlowControl = true;
+        }
+
+        @Override
+        public void unblock() {
+            restoreBlockedByFlowControl = false;
+        }
+    });
 
     /***
      * Virtual host information are needed in the constructor to evaluate user permissions for
@@ -189,29 +212,58 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                                                    @MBeanOperationParameter(name = "deadLetterQueueName",
             description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName) {
         List<Long> andesMessageIdList = getValidAndesMessageIdList(messageIDs);
-        List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>(andesMessageIdList.size());
-
-        for (Long messageId : andesMessageIdList) {
-            try {
-                List<AndesMessageMetadata> messageMetadataListForOne =
-                        MessagingEngine.getInstance().getMetaDataList(deadLetterQueueName, messageId, messageId);
-                if (messageMetadataListForOne != null && messageMetadataListForOne.size() > 0) {
-                    metadataList.add(messageMetadataListForOne.get(0));
-                }
-            } catch (AndesException e) {
-                log.error("Error retrieving meta data for message Id " + messageId + " to restore messages from Dead " +
-                        "Letter Channel.", e);
-            }
-        }
+        List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>(andesMessageIdList.size());
 
         try {
-            MessagingEngine.getInstance().updateMetaDataInformation(deadLetterQueueName, metadataList);
+            Map<Long, List<AndesMessagePart>> messageContent = MessagingEngine.getInstance().getContent
+                    (andesMessageIdList);
+
+            boolean interruptedByFlowControl = false;
+
+            for (Long messageId : andesMessageIdList) {
+                if (restoreBlockedByFlowControl) {
+                    interruptedByFlowControl = true;
+                    break;
+                }
+                List<AndesMessageMetadata> messageMetadataListForOne = MessagingEngine.getInstance().getMetaDataList
+                        (deadLetterQueueName, messageId, messageId);
+                AndesMessageMetadata metadata = messageMetadataListForOne.get(0);
+                String destination = metadata.getDestination();
+
+                // Create a removable metadata to remove the current message
+                removableMetadataList.add(new AndesRemovableMetadata(messageId, deadLetterQueueName,
+                        deadLetterQueueName));
+
+                // Set the new destination queue
+                metadata.setDestination(destination);
+                metadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination(destination,
+                        ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(), false));
+                AndesMessage andesMessage = new AndesMessage(metadata);
+
+                // Update Andes message with all the chunk details
+                List<AndesMessagePart> messageParts = messageContent.get(messageId);
+                for (AndesMessagePart messagePart : messageParts) {
+                    andesMessage.addMessagePart(messagePart);
+                }
+
+                // Handover message to Andes
+                Andes.getInstance().messageReceived(andesMessage, andesChannel);
+            }
+
+            // Delete old messages
+            Andes.getInstance().deleteMessages(removableMetadataList, false);
+
+            if (interruptedByFlowControl) {
+                // Throw this out so UI will show this to the user as an error message.
+                throw new RuntimeException("Message restore from dead letter queue has been interrupted by flow " +
+                        "control. Please try again later.");
+            }
+
         } catch (AndesException e) {
             throw new RuntimeException("Error restoring messages from " + deadLetterQueueName, e);
         }
 
         AndesUtils.unregisterBrowserMessageIds(messageIDs);
-
     }
 
     /**
@@ -230,33 +282,56 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                                                    @MBeanOperationParameter(name = "deadLetterQueueName",
             description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName) {
         List<Long> andesMessageIdList = getValidAndesMessageIdList(messageIDs);
-        List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>(andesMessageIdList.size());
-
-        for (Long messageId : andesMessageIdList) {
-            try {
-                List<AndesMessageMetadata> messageMetadataListForOne = MessagingEngine.getInstance().getMetaDataList
-                        (deadLetterQueueName, messageId, messageId);
-                if (messageMetadataListForOne != null && messageMetadataListForOne.size() > 0) {
-                    AndesMessageMetadata currentMetaData = messageMetadataListForOne.get(0);
-
-                    // Set the new destination queue
-                    currentMetaData.setDestination(destination);
-                    currentMetaData.setStorageQueueName(destination);
-                    currentMetaData.updateMetadata(destination, AMQPUtils.DIRECT_EXCHANGE_NAME);
-
-                    metadataList.add(currentMetaData);
-                }
-            } catch (AndesException e) {
-                log.error("Error retrieving meta data for message Id " + messageId + " to restore messages from Dead " +
-                        "Letter Channel.", e);
-            }
-        }
+        List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>(andesMessageIdList.size());
 
         try {
-            MessagingEngine.getInstance().updateMetaDataInformation(deadLetterQueueName, metadataList);
+            Map<Long, List<AndesMessagePart>> messageContent = MessagingEngine.getInstance().getContent
+                    (andesMessageIdList);
+
+            boolean interruptedByFlowControl = false;
+
+            for (Long messageId : andesMessageIdList) {
+                if (restoreBlockedByFlowControl) {
+                    interruptedByFlowControl = true;
+                    break;
+                }
+
+                List<AndesMessageMetadata> messageMetadataListForOne = MessagingEngine.getInstance().getMetaDataList
+                        (deadLetterQueueName, messageId, messageId);
+                AndesMessageMetadata metadata = messageMetadataListForOne.get(0);
+
+                // Create a removable metadata to remove the current message
+                removableMetadataList.add(new AndesRemovableMetadata(messageId, deadLetterQueueName,
+                        deadLetterQueueName));
+
+                // Set the new destination queue
+                metadata.setDestination(destination);
+                metadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination(destination,
+                        ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(), false));
+                metadata.updateMetadata(destination, "amqp.direct");
+                AndesMessage andesMessage = new AndesMessage(metadata);
+
+                // Update Andes message with all the chunk details
+                List<AndesMessagePart> messageParts = messageContent.get(messageId);
+                for (AndesMessagePart messagePart : messageParts) {
+                    andesMessage.addMessagePart(messagePart);
+                }
+
+                // Handover message to Andes
+                Andes.getInstance().messageReceived(andesMessage, andesChannel);
+            }
+
+            // Delete old messages
+            Andes.getInstance().deleteMessages(removableMetadataList, false);
+
+            if (interruptedByFlowControl) {
+                // Throw this out so UI will show this to the user as an error message.
+                throw new RuntimeException("Message restore from dead letter queue has been interrupted by flow " +
+                        "control. Please try again later.");
+            }
+
         } catch (AndesException e) {
-            throw new RuntimeException("Error restoring messages from " + deadLetterQueueName + " to " + destination,
-                    e);
+            throw new RuntimeException("Error restoring messages from " + deadLetterQueueName, e);
         }
 
         AndesUtils.unregisterBrowserMessageIds(messageIDs);
