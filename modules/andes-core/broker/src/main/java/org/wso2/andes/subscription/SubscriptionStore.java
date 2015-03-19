@@ -71,7 +71,7 @@ public class SubscriptionStore {
 
     public SubscriptionStore() throws AndesException {
         andesContextStore = AndesContext.getInstance().getAndesContextStore();
-        clusterSubscriptionProcessor = new ClusterSubscriptionProcessor();
+        clusterSubscriptionProcessor = ClusterSubscriptionProcessorBuilder.getBitMapClusterSubscriptionProcessor();
     }
 
     /**

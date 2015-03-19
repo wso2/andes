@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class ClusterSubscriptionBitMapHandler {
+public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHandler {
 
     private Log log = LogFactory.getLog(ClusterSubscriptionBitMapHandler.class);
 
@@ -104,6 +104,7 @@ public class ClusterSubscriptionBitMapHandler {
      * @param subscription The subscription to be added.
      * @throws AndesException
      */
+    @Override
     public void addWildCardSubscription(AndesSubscription subscription) throws AndesException {
         String destination = subscription.getSubscribedDestination();
 
@@ -215,11 +216,6 @@ public class ClusterSubscriptionBitMapHandler {
                 } else if (NULL_CONSTITUENT.equals(constituentOfCurrentRow)) {
                     // This subscription has a constituent for this and hence null constituent should not be matched
                     bitSet.set(subscriptionIndex, false);
-//                    int noOfSubscriptions = wildCardSubscriptionList.size();
-                    // Set all bits after the number of constituents to true
-//                    for (int i = subscribedDestinationConstituents.length; i < noOfSubscriptions; i++) {
-//                        bitSet.set(i);
-//                    }
                 } else if (OTHER_CONSTITUENT.equals(constituentOfCurrentRow)) {
                     // Check if other is matched by comparing wildcard through specific wildcard matching
                     boolean isMatchingForOther = isMatchForSubscriptionType(currentConstituent, constituentOfCurrentRow);
@@ -371,6 +367,7 @@ public class ClusterSubscriptionBitMapHandler {
      *
      * @param subscription The subscription to remove
      */
+    @Override
     public void removeWildCardSubscription(AndesSubscription subscription) {
         int subscriptionIndex = wildCardSubscriptionList.indexOf(subscription);
 
@@ -411,6 +408,7 @@ public class ClusterSubscriptionBitMapHandler {
      *
      * @param updatedSubscription The subscription to update
      */
+    @Override
     public void updateWildCardSubscription(AndesSubscription updatedSubscription) {
         int index = wildCardSubscriptionList.indexOf(updatedSubscription);
 
@@ -430,6 +428,7 @@ public class ClusterSubscriptionBitMapHandler {
      * @param destination The destination without wildcard
      * @return Set of matching subscriptions
      */
+    @Override
     public Set<AndesSubscription> getMatchingWildCardSubscriptions(String destination) {
         Set<AndesSubscription> subscriptions= new HashSet<AndesSubscription>();
 
@@ -497,6 +496,7 @@ public class ClusterSubscriptionBitMapHandler {
      *
      * @return List of all subscriptions
      */
+    @Override
     public List<AndesSubscription> getAllWildCardSubscriptions() {
         return wildCardSubscriptionList;
     }

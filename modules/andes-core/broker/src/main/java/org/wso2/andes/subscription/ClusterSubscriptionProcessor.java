@@ -33,15 +33,15 @@ public class ClusterSubscriptionProcessor {
     /**
      * Keeps all the bitmap handlers for each subscription type.
      */
-    private Map<SubscriptionType, ClusterSubscriptionBitMapHandler> bitMapHandlers = new HashMap<SubscriptionType, ClusterSubscriptionBitMapHandler>();
+    private Map<SubscriptionType, ClusterSubscriptionHandler> subscriptionHandlers = new HashMap<SubscriptionType, ClusterSubscriptionHandler>();
 
     /**
-     * Initialize wildcard subscription processor with all necessary bitmap handlers.
+     * Add a processor for a
+     * @param subscriptionType
      * @throws AndesException
      */
-    public ClusterSubscriptionProcessor() throws AndesException {
-        bitMapHandlers.put(SubscriptionType.AMQP, new ClusterSubscriptionBitMapHandler(SubscriptionType.AMQP));
-        bitMapHandlers.put(SubscriptionType.MQTT, new ClusterSubscriptionBitMapHandler(SubscriptionType.MQTT));
+    protected void addSubscriptionType(SubscriptionType subscriptionType, ClusterSubscriptionHandler subscriptionHandler) throws AndesException {
+        subscriptionHandlers.put(subscriptionType, subscriptionHandler);
     }
 
     /**
@@ -51,39 +51,39 @@ public class ClusterSubscriptionProcessor {
      * @param subscriptionType The subscription type of the bitmap handler
      * @return The bitmap handler
      */
-    private ClusterSubscriptionBitMapHandler getBitMapHandler(SubscriptionType subscriptionType) throws AndesException {
-        ClusterSubscriptionBitMapHandler bitMapHandler = bitMapHandlers.get(subscriptionType);
+    private ClusterSubscriptionHandler getBitMapHandler(SubscriptionType subscriptionType) throws AndesException {
+        ClusterSubscriptionHandler subscriptionHandler = subscriptionHandlers.get(subscriptionType);
 
-        if (null == bitMapHandler) {
+        if (null == subscriptionHandler) {
             throw new AndesException("Subscription type " + subscriptionType + " is not recognized.");
         }
 
-        return bitMapHandler;
+        return subscriptionHandler;
     }
 
     public void addWildCardSubscription(AndesSubscription subscription) throws AndesException {
-        ClusterSubscriptionBitMapHandler bitMapHandler = getBitMapHandler(subscription.getSubscriptionType());
+        ClusterSubscriptionHandler bitMapHandler = getBitMapHandler(subscription.getSubscriptionType());
         bitMapHandler.addWildCardSubscription(subscription);
     }
     public void updateWildCardSubscription(AndesSubscription subscription) throws AndesException  {
-        ClusterSubscriptionBitMapHandler bitMapHandler = getBitMapHandler(subscription.getSubscriptionType());
+        ClusterSubscriptionHandler bitMapHandler = getBitMapHandler(subscription.getSubscriptionType());
         bitMapHandler.updateWildCardSubscription(subscription);
     }
     public void removeWildCardSubscription(AndesSubscription subscription) throws AndesException  {
-        ClusterSubscriptionBitMapHandler bitMapHandler = getBitMapHandler(subscription.getSubscriptionType());
+        ClusterSubscriptionHandler bitMapHandler = getBitMapHandler(subscription.getSubscriptionType());
         bitMapHandler.removeWildCardSubscription(subscription);
     }
 
     public Set<AndesSubscription> getMatchingSubscriptions(String destination, SubscriptionType subscriptionType)
             throws AndesException {
-        ClusterSubscriptionBitMapHandler bitMapHandler = getBitMapHandler(subscriptionType);
+        ClusterSubscriptionHandler bitMapHandler = getBitMapHandler(subscriptionType);
         return bitMapHandler.getMatchingWildCardSubscriptions(destination);
     }
 
     public Set<AndesSubscription> getActiveClusterSubscribersForNode(String nodeID) {
         Set<AndesSubscription> subscriptions = new HashSet<AndesSubscription>();
 
-        for (Map.Entry<SubscriptionType, ClusterSubscriptionBitMapHandler> entry : bitMapHandlers.entrySet()) {
+        for (Map.Entry<SubscriptionType, ClusterSubscriptionHandler> entry : subscriptionHandlers.entrySet()) {
             for (AndesSubscription subscription : entry.getValue().getAllWildCardSubscriptions()) {
                 if (subscription.getSubscribedNode().equals(nodeID)) {
                     subscriptions.add(subscription);
