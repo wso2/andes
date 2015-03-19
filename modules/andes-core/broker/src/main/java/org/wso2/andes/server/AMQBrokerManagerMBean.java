@@ -249,7 +249,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
         {
             if (queue != null)
             {
-                //ClusterResourceHolder.getInstance().getCassandraMessageStore().addMessageCounterForQueue(queueName);
+                //ClusterResourceHolder.getInstance().getCassandraMessageStore().addQueue(queueName);
                 throw new JMException("The queue \"" + queueName + "\" already exists.");
             }
 

@@ -30,6 +30,7 @@ import com.datastax.driver.core.exceptions.QueryExecutionException;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
+import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
@@ -74,6 +75,8 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 */
     private CassandraConfig config;
     private CQLConnection cqlConnection;
+    
+    private AndesContextStore contextStore;
 
     /**
      * CQL prepared statement to insert message content to DB
@@ -133,11 +136,14 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public DurableStoreConnection initializeMessageStore(ConfigurationProperties connectionProperties) throws AndesException {
+    public DurableStoreConnection initializeMessageStore(AndesContextStore contextStore, 
+                                                         ConfigurationProperties connectionProperties) 
+            throws AndesException {
 
         cqlConnection = new CQLConnection();
         cqlConnection.initialize(connectionProperties);
 
+        this.contextStore = contextStore;
         config.parse(connectionProperties);
         createSchema(cqlConnection);
 
@@ -748,6 +754,54 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             msgIDList.add(row.getLong(MESSAGE_ID));
         }
         return msgIDList;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addQueue(String destinationQueueName) throws AndesException {
+        contextStore.addMessageCounterForQueue(destinationQueueName);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getMessageCountForQueue(String destinationQueueName) throws AndesException {
+        return contextStore.getMessageCountForQueue(destinationQueueName);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void resetMessageCounterForQueue(String storageQueueName) throws AndesException {
+        contextStore.resetMessageCounterForQueue(storageQueueName);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void removeQueue(String destinationQueueName) throws AndesException {
+        contextStore.removeMessageCounterForQueue(destinationQueueName);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void incrementMessageCountForQueue(String destinationQueueName, long incrementBy) throws AndesException {
+        contextStore.incrementMessageCountForQueue(destinationQueueName, incrementBy);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void decrementMessageCountForQueue(String destinationQueueName, long decrementBy) throws AndesException {
+        contextStore.decrementMessageCountForQueue(destinationQueueName, decrementBy);
     }
 
     /**

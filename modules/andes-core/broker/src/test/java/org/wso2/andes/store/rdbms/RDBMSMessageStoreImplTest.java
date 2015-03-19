@@ -22,10 +22,13 @@ import junit.framework.Assert;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.*;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.MessageStore;
+import org.wso2.andes.store.rdbms.h2.H2MemAndesContextStoreImpl;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
@@ -65,10 +68,12 @@ public class RDBMSMessageStoreImplTest {
     public void setUp() throws Exception {
         createTables();
         messageStore = new RDBMSMessageStoreImpl();
+        AndesContextStore contextStore = new H2MemAndesContextStoreImpl();
         ConfigurationProperties connectionProperties = new ConfigurationProperties();
         connectionProperties.addProperty(RDBMSConstants.PROP_JNDI_LOOKUP_NAME,
                                             RDBMSConstants.H2_MEM_JNDI_LOOKUP_NAME);
-        messageStore.initializeMessageStore(connectionProperties);
+        contextStore.init(connectionProperties);
+        messageStore.initializeMessageStore(contextStore, connectionProperties);
     }
 
     @After

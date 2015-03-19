@@ -45,6 +45,21 @@ public class AndesContextInformationManager {
     private List<BindingListener> bindingListeners = new ArrayList<BindingListener>();
 
     /**
+     * Reference to AndesContextStore to manage exchanges/bindings and queues in persistence storage 
+     */
+    private AndesContextStore contextStore;
+
+    /**
+     * Reference to message store to be used from message count related functionality 
+     */
+    private MessageStore messageStore;
+
+    /**
+     * To manage exchanges bindings and queues
+     */
+    private AMQPConstructStore constructStore;
+
+    /**
      * Interface to store and retrieve Andes subscription related information
      */
     private SubscriptionStore subscriptionStore;
@@ -54,9 +69,15 @@ public class AndesContextInformationManager {
      *
      * @param subscriptionStore The subscriptions store
      */
-    public AndesContextInformationManager(SubscriptionStore subscriptionStore) {
+    public AndesContextInformationManager(AMQPConstructStore constructStore,
+                                          SubscriptionStore subscriptionStore,
+                                          AndesContextStore contextStore,
+                                          MessageStore messageStore) {
 
         this.subscriptionStore = subscriptionStore;
+        this.messageStore = messageStore;
+        this.contextStore = contextStore;
+        this.constructStore = constructStore;
         //register listeners for queue changes
         addQueueListener(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
 
@@ -101,7 +122,7 @@ public class AndesContextInformationManager {
      * @throws org.wso2.andes.kernel.AndesException
      */
     public void createExchange(AndesExchange exchange) throws AndesException {
-        AndesContext.getInstance().getAMQPConstructStore().addExchange(exchange, true);
+        constructStore.addExchange(exchange, true);
         notifyExchangeListeners(exchange, ExchangeListener.ExchangeChange.Added);
     }
 
@@ -112,8 +133,7 @@ public class AndesContextInformationManager {
      * @throws org.wso2.andes.kernel.AndesException
      */
     public void deleteExchange(AndesExchange exchange) throws AndesException {
-        AndesContext.getInstance().getAMQPConstructStore()
-                .removeExchange(exchange.exchangeName, true);
+        constructStore.removeExchange(exchange.exchangeName, true);
         notifyExchangeListeners(exchange, ExchangeListener.ExchangeChange.Deleted);
     }
 
@@ -124,7 +144,7 @@ public class AndesContextInformationManager {
      * @throws AndesException
      */
     public void createQueue(AndesQueue queue) throws AndesException {
-        AndesContext.getInstance().getAMQPConstructStore().addQueue(queue, true);
+        constructStore.addQueue(queue, true);
         notifyQueueListeners(queue, QueueListener.QueueEvent.ADDED);
     }
 
@@ -155,8 +175,7 @@ public class AndesContextInformationManager {
     public void deleteQueue(String queueName) throws AndesException {
         //identify queue to delete
         AndesQueue queueToDelete = null;
-        List<AndesQueue> queueList = AndesContext.getInstance().getAndesContextStore()
-                .getAllQueuesStored();
+        List<AndesQueue> queueList = contextStore.getAllQueuesStored();
         for (AndesQueue queue : queueList) {
             if (queue.queueName.equals(queueName)) {
                 queueToDelete = queue;
@@ -167,12 +186,8 @@ public class AndesContextInformationManager {
         //purge the queue cluster-wide
         MessagingEngine.getInstance().purgeMessages(queueName, null, false);
 
-        //delete queue from context store
-        AndesContext.getInstance().getAndesContextStore().deleteQueueInformation(queueName);
-        AndesContext.getInstance().getAndesContextStore().removeMessageCounterForQueue(queueName);
-
         // delete queue from construct store
-        AndesContext.getInstance().getAMQPConstructStore().removeQueue(queueName, true);
+        constructStore.removeQueue(queueName, true);
 
         //Notify cluster to delete queue
         notifyQueueListeners(queueToDelete, QueueListener.QueueEvent.DELETED);
@@ -190,7 +205,7 @@ public class AndesContextInformationManager {
      * @throws AndesException
      */
     public void createBinding(AndesBinding andesBinding) throws AndesException {
-        AndesContext.getInstance().getAMQPConstructStore().addBinding(andesBinding, true);
+        constructStore.addBinding(andesBinding, true);
         notifyBindingListeners(andesBinding, BindingListener.BindingEvent.ADDED);
     }
 
@@ -201,9 +216,8 @@ public class AndesContextInformationManager {
      * @throws AndesException
      */
     public void removeBinding(AndesBinding andesBinding) throws AndesException {
-        AndesContext.getInstance().getAMQPConstructStore().removeBinding(andesBinding.boundExchangeName,
-                                                                         andesBinding.boundQueue.queueName,
-                                                                         true);
+        constructStore.removeBinding(andesBinding.boundExchangeName, 
+                andesBinding.boundQueue.queueName, true);
         notifyBindingListeners(andesBinding, BindingListener.BindingEvent.DELETED);
     }
 

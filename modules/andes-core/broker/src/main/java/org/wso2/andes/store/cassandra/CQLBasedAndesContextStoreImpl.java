@@ -21,7 +21,6 @@ package org.wso2.andes.store.cassandra;
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
-import com.datastax.driver.core.querybuilder.Assignment;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
