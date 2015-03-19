@@ -1071,6 +1071,15 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
         return _sessions;
     }
 
+    /**
+     * Set all sessions in this connection to active state. This will disable any enforced flow control
+     */
+    public void disableFlowControl() {
+        for (AMQSession session : _sessions.values()) {
+            session.setFlowControl(true); // Set channel active
+        }
+    }
+
     public String getUsername()
     {
         return _username;
