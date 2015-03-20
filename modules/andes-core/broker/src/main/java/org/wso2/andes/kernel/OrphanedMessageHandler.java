@@ -109,33 +109,25 @@ public class OrphanedMessageHandler implements SubscriptionListener {
         try {
 
             Long startMessageID = null;
-            boolean clusteringEnabled = AndesContext.getInstance().isClusteringEnabled();
+            Long endMessageID = null;
+
             //Will first retrieve the last unassigned slot id
             String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
             //Will get the storage queue name
             String storageQueue = AndesUtils.getStorageQueueForDestination(destination, nodeID, isTopic);
-
-            //if (clusteringEnabled) {
             //We get the relevant slot from the coordinator if running on cluster mode
-            Slot unassignedSlot = MBThriftClient.getSlot(storageQueue, nodeID);
+            Slot unassignedSlot = MessagingEngine.getInstance().getSlotCoordinator().getSlot(storageQueue);
             //We need to get the starting message ID to inform the DB to start slicing the message from there
             //This step would be done in order to ensure that tombstones will not be fetched during the querying
             //operation
             startMessageID = unassignedSlot.getStartMessageId();
-     /*       } else {
-                //For stand-alone mode the last processed id will be kept within the slot delivery worker itself
-                startMessageID = SlotDeliveryWorkerManager.getInstance().
-                        getLastProcessedMessageIDForDestination(storageQueue);
-                //For stand alone we need to increment by 1 to make sure the message which is processed before will
-                //not overlap
-                startMessageID = startMessageID + 1;
-            }*/
+            endMessageID = unassignedSlot.getEndMessageId();
 
             // This is a class used by AndesSubscriptionManager. Andes Subscription Manager is behind Disruptor layer.
             // Hence the call should be made to MessagingEngine NOT Andes.
             // Calling Andes methods from here will lead to probable deadlocks if Futures are used.
             // NOTE: purge call should be made to MessagingEngine not Andes
-            if (0 < startMessageID) {
+            if (0 < endMessageID) {
                 //If the slot id is 0, which means for the given storage queue there're no unassigned slots which means
                 //we don't need to purge messages in this case
                 //The purpose of purge operation is to make sure that unassigned slots will be removed if no subs exists

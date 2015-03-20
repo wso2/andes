@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -236,12 +237,32 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         try {
             BatchStatement batchStatement = new BatchStatement();
             batchStatement.setConsistencyLevel(config.getWriteConsistencyLevel());
+            Iterator<Long> messages = messageIdList.iterator();
+            //CQL batch has a limitation of number of entries we need to ensure that this limit will not exceed
+            int MAX_MESSAGE_BATCH_SIZE = 1000;
+            //We need to maintain a pointer to ensure that the batch size limitation would not be exceeded
+            int messageIDPointer = 0;
 
-            for (Long messageID : messageIdList) {
+            while (messages.hasNext()) {
+                Long messageID = messages.next();
                 batchStatement.add(psDeleteMessagePart.bind(messageID));
+                messageIDPointer = messageIDPointer + 1;
+
+                //If the maximum batch limit has exceeded we need to execute the current batch first
+                if(messageIDPointer == MAX_MESSAGE_BATCH_SIZE){
+                    execute(batchStatement, "deleting message part list. List size " + messageIdList.size());
+                    //Will clear the batch to add on the rest of the elements
+                    batchStatement.clear();
+                    //Will reset the pointer back to its origin
+                    messageIDPointer = 0;
+                }
+
+            }
+            //We need to execute if the batch statement has elements in it
+            if(batchStatement.size() > 0) {
+                execute(batchStatement, "deleting message part list. List size " + messageIdList.size());
             }
 
-            execute(batchStatement, "deleting message part list. List size " + messageIdList.size());
         } finally {
             context.stop();
         }
@@ -744,7 +765,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
         Statement statement = QueryBuilder.select().column(MESSAGE_ID).
                 from(config.getKeyspace(), METADATA_TABLE).
-                where(eq(QUEUE_NAME, storageQueueName)).
+                where(eq(QUEUE_NAME, storageQueueName)).and(gte(MESSAGE_ID,startMessageID)).
                 setConsistencyLevel(config.getReadConsistencyLevel());
 
         ResultSet resultSet = execute(statement, "retrieving message ids addressed to " + storageQueueName);

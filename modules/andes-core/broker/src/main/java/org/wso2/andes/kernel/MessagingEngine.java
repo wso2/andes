@@ -315,10 +315,13 @@ public class MessagingEngine {
         // The timestamp is recorded to track messages that came before the purge event.
         // Refer OnflightMessageTracker:evaluateDeliveryRules method for more details.
         Long purgedTimestamp = System.currentTimeMillis();
+        String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        String storageQueueName = AndesUtils.getStorageQueueForDestination(destination, nodeID, isTopic);
 
         // Clear all slots assigned to the Queue. This should ideally stop any messages being buffered during the purge.
         // This call clears all slot associations for the queue in all nodes. (could take time)
-        slotCoordinator.clearAllActiveSlotRelationsToQueue(destination);
+        //Slot relations should be cleared through the storage queue name
+        slotCoordinator.clearAllActiveSlotRelationsToQueue(storageQueueName);
 
         // Clear in memory messages of self (node)
         clearMessagesFromQueueInMemory(destination, purgedTimestamp);
@@ -338,9 +341,7 @@ public class MessagingEngine {
         // in memory within all nodes at the time of purging. (Adding that could unnecessarily
         // block critical pub sub flows.)
         // queues destination = storage queue. But for topics it is different
-        String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
-        String storageQueueName = AndesUtils.getStorageQueueForDestination(destination, nodeID, isTopic);
-        int purgedNumOfMessages =  purgeQueueFromStore(storageQueueName,startMessageID);
+        int purgedNumOfMessages =  purgeQueueFromStore(storageQueueName,startMessageID,isTopic);
         log.info("Purged messages of destination " + destination);
         return purgedNumOfMessages;
     }
@@ -351,7 +352,7 @@ public class MessagingEngine {
      * @param startMessageID id of the message the query should start from
      * @throws AndesException
      */
-    public int purgeQueueFromStore(String storageQueueName, Long startMessageID) throws AndesException {
+    public int purgeQueueFromStore(String storageQueueName, Long startMessageID, boolean isTopic) throws AndesException{
 
         try {
             // Retrieve message IDs addressed to the queue and keep track of message count for
@@ -378,8 +379,16 @@ public class MessagingEngine {
             // to the given queue, We still have to get all 1000
             // into memory. Options are to delete dlc messages leisurely with another thread,
             // or to break from original DLC pattern and maintain multiple DLC queues per each queue.
-            Integer messageCountFromDLC = messageStore.deleteAllMessageMetadataFromDLC(DLCQueueUtils
-                    .identifyTenantInformationAndGenerateDLCString(storageQueueName), storageQueueName);
+
+            //For durable topics and queues the purge would not return true for a topic, non durable topics would not
+            //send the message to the DLC therefor we don't need to purge message for non-durable case
+            Integer messageCountFromDLC = 0;
+            if(!isTopic) {
+                //We would consider removal of messages from the DLC for queues and durable topics
+                messageCountFromDLC = messageStore.deleteAllMessageMetadataFromDLC(DLCQueueUtils
+                        .identifyTenantInformationAndGenerateDLCString(storageQueueName), storageQueueName);
+
+            }
 
             // Clear message content leisurely / asynchronously using retrieved message IDs
             messageStore.deleteMessageParts(messageIDsAddressedToQueue);
