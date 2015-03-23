@@ -67,6 +67,9 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     protected static final String MESSAGE_OFFSET = "CONTENT_OFFSET";
     protected static final String MESSAGE_CONTENT = "MESSAGE_CONTENT";
 
+    //CQL batch has a limitation of number of entries we need to ensure that this limit will not exceed
+    protected static final int MAX_MESSAGE_BATCH_SIZE = 1000;
+
     // Message expiration feature moved to MB 3.1.0
 /*
     protected static final String EXPIRATION_TABLE = "MB_EXPIRATION_DATA";
@@ -238,8 +241,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             BatchStatement batchStatement = new BatchStatement();
             batchStatement.setConsistencyLevel(config.getWriteConsistencyLevel());
             Iterator<Long> messages = messageIdList.iterator();
-            //CQL batch has a limitation of number of entries we need to ensure that this limit will not exceed
-            int MAX_MESSAGE_BATCH_SIZE = 1000;
             //We need to maintain a pointer to ensure that the batch size limitation would not be exceeded
             int messageIDPointer = 0;
 
