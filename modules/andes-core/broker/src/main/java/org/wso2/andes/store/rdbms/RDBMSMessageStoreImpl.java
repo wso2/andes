@@ -1134,7 +1134,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName) throws AndesException {
+    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName, Long startMessageID)
+            throws AndesException {
 
         List<Long> messageIDs = new ArrayList<Long>();
 

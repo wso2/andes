@@ -184,7 +184,7 @@ public class AndesContextInformationManager {
         }
 
         //purge the queue cluster-wide
-        MessagingEngine.getInstance().purgeMessages(queueName, null, false);
+        MessagingEngine.getInstance().purgeMessages(queueName, null, false,null);
 
         // delete queue from construct store
         constructStore.removeQueue(queueName, true);

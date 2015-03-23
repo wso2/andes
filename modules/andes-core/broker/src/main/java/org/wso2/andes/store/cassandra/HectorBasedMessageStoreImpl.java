@@ -622,11 +622,11 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * @throws AndesException
      */
     @Override
-    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName) throws AndesException {
+    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName,Long startMessageID) throws AndesException {
 
         List<Long> messageIDs = new ArrayList<Long>();
 
-        Long lastProcessedID = null;
+        Long lastProcessedID = startMessageID;
         // In case paginated data fetching is slow, this can be set to Integer.MAX.
         // This is set to paginate so that a big data read wont cause continuous timeouts.
         Integer pageSize = HectorDataAccessHelper.STANDARD_PAGE_SIZE;
@@ -636,7 +636,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         while (!allRecordsRetrieved) {
             try {
                 List<Long> currentPage = HectorDataAccessHelper.getNumericColumnKeysOfRow
-                        (keyspace, CassandraConstants.META_DATA_COLUMN_FAMILY, storageQueueName, pageSize, lastProcessedID);
+                        (keyspace, CassandraConstants.META_DATA_COLUMN_FAMILY, storageQueueName, pageSize,
+                                lastProcessedID);
 
                 if (currentPage.size() == 0) {
                     // this means that there are no more messages to be retrieved for this queue
