@@ -145,10 +145,10 @@ public class SlotManagerClusterMode {
         String lockKey = queueName + SlotManagerClusterMode.class;
 
         synchronized (lockKey.intern()) {
-            slotToBeAssigned = getOverlappedSlot(nodeId, queueName);
+            slotToBeAssigned = getUnassignedSlot(queueName);
 
             if (null == slotToBeAssigned) {
-                slotToBeAssigned = getUnassignedSlot(queueName);
+                slotToBeAssigned = getOverlappedSlot(nodeId, queueName);
             }
             if (null == slotToBeAssigned) {
                 slotToBeAssigned = getFreshSlot(queueName);

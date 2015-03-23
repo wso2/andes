@@ -21,16 +21,18 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.server.AMQChannel;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.kernel.slot.OrphanedSlotHandler;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
+import org.wso2.andes.server.AMQChannel;
+import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
+import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.subscription.BasicSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 
@@ -54,9 +56,7 @@ public class AndesSubscriptionManager {
         //adding subscription listeners
         addSubscriptionListener(new OrphanedMessageHandler());
         addSubscriptionListener(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
-        if (AndesContext.getInstance().isClusteringEnabled()) {
-            addSubscriptionListener(new OrphanedSlotHandler());
-        }
+        addSubscriptionListener(new OrphanedSlotHandler());
     }
 
 
