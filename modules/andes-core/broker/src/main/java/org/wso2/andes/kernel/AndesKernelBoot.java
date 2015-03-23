@@ -20,7 +20,6 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
@@ -32,11 +31,10 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
 import org.wso2.andes.server.queue.DLCQueueUtils;
-import org.wso2.andes.server.registry.ApplicationRegistry;
-import org.wso2.andes.thrift.MBThriftServer;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.thrift.MBThriftServer;
 import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.user.api.UserStoreException;
 
@@ -416,8 +414,10 @@ public class AndesKernelBoot {
      * @throws AndesException
      */
     private static void startThriftServer() throws AndesException {
-        MBThriftServer.getInstance().start(AndesContext.getInstance().getThriftServerHost(),
-                AndesContext.getInstance().getThriftServerPort(), "MB-ThriftServer-main-thread");
+        if (AndesContext.getInstance().isClusteringEnabled()) {
+            MBThriftServer.getInstance().start(AndesContext.getInstance().getThriftServerHost(),
+                    AndesContext.getInstance().getThriftServerPort(), "MB-ThriftServer-main-thread");
+        }
 
     }
 

@@ -65,14 +65,12 @@ public class ClusterManager {
      * AndesContextStore instance
      */
     private AndesContextStore andesContextStore;
-    private SlotManagerClusterMode slotManager;
 
     /**
      * Create a ClusterManager instance
      */
     public ClusterManager() {
         this.andesContextStore = AndesContext.getInstance().getAndesContextStore();
-        this.slotManager = SlotManagerClusterMode.getInstance();
     }
 
     /**
@@ -116,7 +114,7 @@ public class ClusterManager {
 
             //Reassign the slot to free slots pool
             if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
-                slotManager.reAssignSlotsWhenMemberLeaves(deletedNodeId);
+                SlotManagerClusterMode.getInstance().reAssignSlotsWhenMemberLeaves(deletedNodeId);
             }
         }
 
@@ -340,7 +338,4 @@ public class ClusterManager {
         return addresses;
     }
 
-    public SlotManagerClusterMode getSlotManager() {
-        return slotManager;
-    }
 }

@@ -24,6 +24,7 @@ import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesKernelBoot;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 
@@ -189,7 +190,7 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
 
         //Stop Slot manager in coordinator
         if (AndesContext.getInstance().isClusteringEnabled() && AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
-            ClusterResourceHolder.getInstance().getClusterManager().getSlotManager().shutDownSlotManager();
+            SlotManagerClusterMode.getInstance().shutDownSlotManager();
         }
 
         // Removes the MinaNetworkHandler, Authentication Handlers, etc. Refer ApplicationRegistry.close()
