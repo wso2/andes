@@ -62,9 +62,7 @@ public class SlotCoordinatorStandalone implements SlotCoordinator {
      */
     @Override
     public boolean deleteSlot(String queueName, Slot slot) throws ConnectionException {
-        //We do not do anything here since slot deletion is not applicable to standalone mode. We
-        // don't keep slot assignment details in standalone mode
-        return true;
+       return slotManagerStandalone.deleteSlot(queueName, slot);
     }
 
     /**
@@ -72,7 +70,7 @@ public class SlotCoordinatorStandalone implements SlotCoordinator {
      */
     @Override
     public void reAssignSlotWhenNoSubscribers(String queueName) throws ConnectionException {
-        //We do not do anything here since slot reassigning is not applicable to standalone mode.
+        slotManagerStandalone.reAssignSlotWhenNoSubscribers(queueName);
     }
 
     /**
