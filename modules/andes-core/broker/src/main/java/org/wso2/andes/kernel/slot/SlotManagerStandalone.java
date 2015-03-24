@@ -53,10 +53,12 @@ public class SlotManagerStandalone {
      */
     private ConcurrentHashMap<String, TreeSet<Slot>> slotAssignmentMap;
 
+    private static SlotManagerStandalone slotManagerStandalone = new SlotManagerStandalone();
+
     private static Log log = LogFactory.getLog(SlotManagerStandalone.class);
 
 
-    public SlotManagerStandalone() {
+    private SlotManagerStandalone() {
 
         /**
          * Initialize distributed maps used in this class
@@ -252,6 +254,14 @@ public class SlotManagerStandalone {
             unAssignedSlotMap.remove(queueName);
         }
 
+    }
+
+    /**
+     *
+     * @return  SlotManagerStandalone instance
+     */
+    public static SlotManagerStandalone getInstance(){
+      return slotManagerStandalone;
     }
 
 }
