@@ -125,7 +125,10 @@ public class AndesKernelBoot {
         }
     }
 
-
+    /**
+     * Generate slots for each queue
+     * @throws AndesException
+     */
     private static void recoverMapsForEachQueue() throws AndesException {
         List<AndesQueue> queueList = contextStore.getAllQueuesStored();
 
