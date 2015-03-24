@@ -26,7 +26,7 @@ public class SlotCoordinatorStandalone implements SlotCoordinator {
     private  SlotManagerStandalone slotManagerStandalone;
 
     public SlotCoordinatorStandalone(){
-        slotManagerStandalone= new SlotManagerStandalone();
+        slotManagerStandalone= SlotManagerStandalone.getInstance();
     }
 
     /**
