@@ -24,6 +24,7 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
+import org.wso2.andes.kernel.slot.SlotManagerStandalone;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
@@ -112,22 +113,32 @@ public class AndesKernelBoot {
                 if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
                     log.info("Restoring slot mapping in the cluster.");
 
-                    List<AndesQueue> queueList = contextStore.getAllQueuesStored();
-
-                    for (AndesQueue queue : queueList) {
-                        // Skip slot creation for Dead letter Channel
-                        if (DLCQueueUtils.isDeadLetterQueue(queue.queueName)) {
-                            continue;
-                        }
-
-                        initializeSlotMapForQueue(queue.queueName);
-                    }
+                   recoverMapsForEachQueue();
 
                     hazelcastAgent.indicateSuccessfulInitilization();
                 }
             } finally {
                 hazelcastAgent.releaseInitializationLock();
             }
+        }else {
+            recoverMapsForEachQueue();
+        }
+    }
+
+    /**
+     * Generate slots for each queue
+     * @throws AndesException
+     */
+    private static void recoverMapsForEachQueue() throws AndesException {
+        List<AndesQueue> queueList = contextStore.getAllQueuesStored();
+
+        for (AndesQueue queue : queueList) {
+            // Skip slot creation for Dead letter Channel
+            if (DLCQueueUtils.isDeadLetterQueue(queue.queueName)) {
+                continue;
+            }
+
+            initializeSlotMapForQueue(queue.queueName);
         }
     }
 
@@ -157,8 +168,11 @@ public class AndesKernelBoot {
             if (log.isDebugEnabled()) {
                 log.debug("Created a slot with " + messageList.size() + " messages for queue (" + queueName + ")");
             }
-            SlotManagerClusterMode.getInstance().updateMessageID(queueName, HazelcastAgent.getInstance().getNodeId(), firstMessageID, lastMessageID);
-
+            if (AndesContext.getInstance().isClusteringEnabled()) {
+                SlotManagerClusterMode.getInstance().updateMessageID(queueName, HazelcastAgent.getInstance().getNodeId(), firstMessageID, lastMessageID);
+            } else {
+                SlotManagerStandalone.getInstance().updateMessageID(queueName,lastMessageID);
+            }
             // We need to increment lastMessageID since the getNextNMessageMetadataFromQueue returns message list
             // including the given starting ID.
             messageList = messageStore
