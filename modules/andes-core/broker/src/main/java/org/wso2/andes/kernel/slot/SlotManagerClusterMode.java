@@ -343,11 +343,10 @@ public class SlotManagerClusterMode {
 
         try {
             // Read message Id set for slots from hazelcast
-            TreeSet<Long> messageIdSet = new TreeSet<Long>();
+            TreeSet<Long> messageIdSet;
             TreeSetLongWrapper wrapper = slotIDMap.get(queueName);
             if (wrapper == null) {
                 wrapper = new TreeSetLongWrapper();
-                wrapper.setLongTreeSet(messageIdSet);
                 slotIDMap.putIfAbsent(queueName, wrapper);
             }
             messageIdSet = wrapper.getLongTreeSet();
