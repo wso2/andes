@@ -106,7 +106,7 @@ public class AndesSubscriptionManager {
      */
     public void closeAllClusterSubscriptionsOfNode(String nodeID) throws AndesException {
 
-        List<AndesSubscription> activeSubscriptions = subscriptionStore.getActiveClusterSubscribersForNode(nodeID, true);
+        Set<AndesSubscription> activeSubscriptions = subscriptionStore.getActiveClusterSubscribersForNode(nodeID, true);
         activeSubscriptions.addAll(subscriptionStore.getActiveClusterSubscribersForNode(nodeID, false));
 
         if (!activeSubscriptions.isEmpty()) {
@@ -128,8 +128,7 @@ public class AndesSubscriptionManager {
      */
     public void closeAllLocalSubscriptionsOfNode() throws AndesException {
 
-        log.info("Closing all existing local subscriptions.");
-        List<LocalSubscription> activeSubscriptions = subscriptionStore.getActiveLocalSubscribers(true);
+        Set<LocalSubscription> activeSubscriptions = subscriptionStore.getActiveLocalSubscribers(true);
         activeSubscriptions.addAll(subscriptionStore.getActiveLocalSubscribers(false));
 
         if (!activeSubscriptions.isEmpty()) {
@@ -151,10 +150,7 @@ public class AndesSubscriptionManager {
     public boolean checkIfActiveNonDurableLocalSubscriptionExistsForTopic(String boundTopicName)
                                                                              throws AndesException {
         boolean subscriptionExists = false;
-        List<LocalSubscription> activeSubscriptions = (List<LocalSubscription>) subscriptionStore.
-                                                                           getActiveLocalSubscribers(
-                                                                           boundTopicName,
-                                                                           true);
+        Set<LocalSubscription> activeSubscriptions = subscriptionStore.getActiveLocalSubscribers(boundTopicName, true);
         for(LocalSubscription sub : activeSubscriptions) {
             if(!sub.isDurable()) {
                 subscriptionExists = true;
@@ -213,7 +209,7 @@ public class AndesSubscriptionManager {
      * @throws AndesException
      */
     public synchronized void deleteAllLocalSubscriptionsOfBoundQueue(String boundQueueName) throws AndesException{
-        List<LocalSubscription> subscriptionsOfQueue = subscriptionStore.getListOfLocalSubscriptionsBoundToQueue(
+        Set<LocalSubscription> subscriptionsOfQueue = subscriptionStore.getListOfLocalSubscriptionsBoundToQueue(
                 boundQueueName);
         for(LocalSubscription subscription : subscriptionsOfQueue) {
             try {
@@ -243,29 +239,29 @@ public class AndesSubscriptionManager {
         Map<String, List<String>> results = AndesContext.getInstance().getAndesContextStore().getAllStoredDurableSubscriptions();
         for (Map.Entry<String, List<String>> entry : results.entrySet()) {
             String destination = entry.getKey();
-            List<AndesSubscription> newSubscriptionList = new ArrayList<AndesSubscription>();
+            Set<AndesSubscription> newSubscriptionList = new HashSet<AndesSubscription>();
             for (String subscriptionAsStr : entry.getValue()) {
                 BasicSubscription subscription = new BasicSubscription(subscriptionAsStr);
                 newSubscriptionList.add(subscription);
             }
 
-            List<AndesSubscription> oldSubscriptionList;
+            Set<AndesSubscription> oldSubscriptionList;
 
             //existing destination subscriptions list
             if (destination.startsWith(QUEUE_PREFIX)) {
                 String destinationQueueName = destination.replace(QUEUE_PREFIX, "");
                 oldSubscriptionList = subscriptionStore.replaceClusterSubscriptionListOfDestination
-                        (destinationQueueName, new ArrayList<AndesSubscription>(newSubscriptionList), false);
+                        (destinationQueueName, newSubscriptionList, false);
             }
             //existing topic subscriptions list
             else {
                 String topicName = destination.replace(TOPIC_PREFIX, "");
                 oldSubscriptionList = subscriptionStore.replaceClusterSubscriptionListOfDestination
-                        (topicName, new ArrayList<AndesSubscription>(newSubscriptionList), true);
+                        (topicName, newSubscriptionList, true);
             }
 
             if (oldSubscriptionList == null) {
-                oldSubscriptionList = Collections.emptyList();
+                oldSubscriptionList = Collections.emptySet();
             }
 
             //TODO may be there is a better way to do the subscription Diff
@@ -294,8 +290,8 @@ public class AndesSubscriptionManager {
         }
 
         //this part will evaluate destinations that are in in-memory subscription lists but not in DB
-        List<String> queues = subscriptionStore.getAllDestinationsOfSubscriptions(false);
-        List<String> topics = subscriptionStore.getAllDestinationsOfSubscriptions(true);
+        Set<String> queues = subscriptionStore.getAllDestinationsOfSubscriptions(false);
+        Set<String> topics = subscriptionStore.getAllDestinationsOfSubscriptions(true);
         List<String> queuesInDB = new ArrayList<String>();
         List<String> topicsInDB = new ArrayList<String>();
 
@@ -311,18 +307,18 @@ public class AndesSubscriptionManager {
 
         for (String queue : queues) {
             List<String> subscriptionsFromStore = results.get(QUEUE_PREFIX + queue);
-            List<AndesSubscription> newSubscriptionList = new ArrayList<AndesSubscription>();
+            Set<AndesSubscription> newSubscriptionList = new HashSet<AndesSubscription>();
             if (subscriptionsFromStore != null) {
                 for (String subscriptionAsStr : subscriptionsFromStore) {
                     BasicSubscription subscription = new BasicSubscription(subscriptionAsStr);
                     newSubscriptionList.add(subscription);
                 }
             }
-            List<AndesSubscription> oldSubscriptionList;
+            Set<AndesSubscription> oldSubscriptionList;
             oldSubscriptionList = subscriptionStore.replaceClusterSubscriptionListOfDestination
-                    (queue, new ArrayList<AndesSubscription>(newSubscriptionList), false);
+                    (queue, newSubscriptionList, false);
             if (oldSubscriptionList == null) {
-                oldSubscriptionList = Collections.emptyList();
+                oldSubscriptionList = Collections.emptySet();
             }
             if (subscriptionListeners.size() > 0) {
                 List<AndesSubscription> duplicatedNewSubscriptionList = new ArrayList<AndesSubscription>(newSubscriptionList);
@@ -349,18 +345,18 @@ public class AndesSubscriptionManager {
         }
         for (String topic : topics) {
             List<String> subscriptionsFromStore = results.get(TOPIC_PREFIX + topic);
-            List<AndesSubscription> newSubscriptionList = new ArrayList<AndesSubscription>();
+            Set<AndesSubscription> newSubscriptionList = new HashSet<AndesSubscription>();
             if (subscriptionsFromStore != null) {
                 for (String subscriptionAsStr : subscriptionsFromStore) {
                     BasicSubscription subscription = new BasicSubscription(subscriptionAsStr);
                     newSubscriptionList.add(subscription);
                 }
             }
-            List<AndesSubscription> oldSubscriptionList;
+            Set<AndesSubscription> oldSubscriptionList;
             oldSubscriptionList = subscriptionStore.replaceClusterSubscriptionListOfDestination
-                    (topic, new ArrayList<AndesSubscription>(newSubscriptionList), true);
+                    (topic, newSubscriptionList, true);
             if (oldSubscriptionList == null) {
-                oldSubscriptionList = Collections.emptyList();
+                oldSubscriptionList = Collections.emptySet();
             }
             if (subscriptionListeners.size() > 0) {
                 List<AndesSubscription> duplicatedNewSubscriptionList = new ArrayList<AndesSubscription>(newSubscriptionList);
