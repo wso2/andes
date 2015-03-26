@@ -76,9 +76,9 @@ public class ClusterManager {
     /**
      * Initialize the Cluster manager.
      *
-     * @throws Exception
+     * @throws AndesException
      */
-    public void init() throws AndesException, UnknownHostException {
+    public void init() throws AndesException{
 
         if (!AndesContext.getInstance().isClusteringEnabled()) {
             this.initStandaloneMode();
@@ -153,16 +153,9 @@ public class ClusterManager {
     /**
      * gracefully stop all global queue workers assigned for the current node
      */
-    public void shutDownMyNode() {
-        try {
-
-            //clear stored node IDS and mark subscriptions of node as closed
-            clearAllPersistedStatesOfDisappearedNode(nodeId);
-
-        } catch (Exception e) {
-            log.error("Error while clearing states when shutting down", e);
-        }
-
+    public void shutDownMyNode() throws AndesException {
+        //clear stored node IDS and mark subscriptions of node as closed
+        clearAllPersistedStatesOfDisappearedNode(nodeId);
     }
 
     /**
@@ -182,34 +175,38 @@ public class ClusterManager {
      *
      * @throws AndesException, UnknownHostException
      */
-    private void initStandaloneMode() throws AndesException, UnknownHostException {
+    private void initStandaloneMode() throws AndesException{
 
-        // Get Node ID configured by user in broker.xml (if not "default" we must use it as the ID)
-        this.nodeId = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_NODE_ID);
+        try {
+            // Get Node ID configured by user in broker.xml (if not "default" we must use it as the ID)
+            this.nodeId = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_NODE_ID);
 
-        if (AndesConfiguration.COORDINATION_NODE_ID.get().getDefaultValue().equals(this.nodeId)) {
-            this.nodeId = CoordinationConstants.NODE_NAME_PREFIX + InetAddress.getLocalHost().toString();
+            if (AndesConfiguration.COORDINATION_NODE_ID.get().getDefaultValue().equals(this.nodeId)) {
+                this.nodeId = CoordinationConstants.NODE_NAME_PREFIX + InetAddress.getLocalHost().toString();
+            }
+
+            //update node information in durable store
+            List<String> nodeList = new ArrayList<String>(andesContextStore.getAllStoredNodeData().keySet());
+
+            for (String node : nodeList) {
+                andesContextStore.removeNodeData(node);
+            }
+
+            clearAllPersistedStatesOfDisappearedNode(nodeId);
+
+            log.info("Initializing Standalone Mode. Current Node ID:" + this.nodeId);
+
+            andesContextStore.storeNodeDetails(nodeId, (String) AndesConfigurationManager.readValue
+                    (AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
+        } catch (UnknownHostException e) {
+            throw new AndesException("Unable to get the localhost address.", e);
         }
-
-        //update node information in durable store
-        List<String> nodeList = new ArrayList<String>(andesContextStore.getAllStoredNodeData().keySet());
-
-        for (String node : nodeList) {
-            andesContextStore.removeNodeData(node);
-        }
-
-        clearAllPersistedStatesOfDisappearedNode(nodeId);
-
-        log.info("Initializing Standalone Mode. Current Node ID:" + this.nodeId);
-
-        andesContextStore.storeNodeDetails(nodeId, (String) AndesConfigurationManager.readValue
-                (AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
     }
 
     /**
      * Initializes cluster mode
      *
-     * @throws Exception
+     * @throws AndesException
      */
     private void initClusterMode() throws AndesException {
 
@@ -222,10 +219,11 @@ public class ClusterManager {
                 (AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
 
         /**
-         * If nodeList size is one, this is the first node joining to cluster. Here we check if there has been
-         * any nodes that lived before and somehow suddenly got killed. If there are such nodes clear the state of them and
-         * copy back node queue messages of them back to global queue.
-         * We need to clear up current node's state as well as there might have been a node with same id and it was killed
+         * If nodeList size is one, this is the first node joining to cluster. Here we check if
+         * there has been any nodes that lived before and somehow suddenly got killed. If there are
+         * such nodes clear the state of them and copy back node queue messages of them back to
+         * global queue. We need to clear up current node's state as well as there might have been a
+         * node with same id and it was killed
          */
         clearAllPersistedStatesOfDisappearedNode(nodeId);
 
@@ -293,14 +291,20 @@ public class ClusterManager {
     }
 
     /**
-     * set coordinator node's host address and pro to hazelcast map
+     * Sets coordinator's hostname and port in
+     * {@link org.wso2.andes.server.cluster.coordination.CoordinationConstants#COORDINATOR_NODE_DETAILS_MAP_NAME}
+     * hazelcast map.
      */
     public void updateCoordinatorNodeDetailMap(){
-        // adding cluster coordinator node ip and port
-        hazelcastAgent.getCoordinatorNodeDetailsMap().put(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP,
-                                                      hazelcastAgent.getLocalMember().getSocketAddress().getAddress().getHostAddress());
-        hazelcastAgent.getCoordinatorNodeDetailsMap().put(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT,
-                                                      Integer.toString(hazelcastAgent.getLocalMember().getSocketAddress().getPort()));
+        if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
+            // Adding cluster coordinator's node IP and port
+            hazelcastAgent.getCoordinatorNodeDetailsMap().put(
+                    SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP,
+                    hazelcastAgent.getLocalMember().getSocketAddress().getAddress().getHostAddress());
+            hazelcastAgent.getCoordinatorNodeDetailsMap().put(
+                    SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT,
+                    Integer.toString(hazelcastAgent.getLocalMember().getSocketAddress().getPort()));
+        }
     }
 
     /**
