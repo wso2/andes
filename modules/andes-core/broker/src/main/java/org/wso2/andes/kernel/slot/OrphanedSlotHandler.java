@@ -86,7 +86,7 @@ public class OrphanedSlotHandler implements SubscriptionListener {
     /**
      * Schedule to re-assign slots of the node related to a particular queue when last subscriber
      * leaves
-     * @param queueName Name of teh queue
+     * @param queueName Name of the queue
      */
     public void scheduleSlotToReassign(String queueName) {
         Timer timer = new Timer();
