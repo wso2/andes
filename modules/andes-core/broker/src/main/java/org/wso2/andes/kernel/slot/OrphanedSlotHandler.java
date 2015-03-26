@@ -26,6 +26,8 @@ import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Collection;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentMap;
 
 /**
@@ -75,28 +77,63 @@ public class OrphanedSlotHandler implements SubscriptionListener {
             Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
                     .getActiveLocalSubscribers(destination, false);
             if (localSubscribersForQueue.size() == 0) {
-                try {
-                    MessagingEngine.getInstance().getSlotCoordinator()
-                            .reAssignSlotWhenNoSubscribers(subscription.getTargetQueue());
-                    //remove tracking when orphan slot situation
-                    ConcurrentMap<String, Set<Slot>> subscriptionSlotTracker = OnflightMessageTracker.getInstance()
-                            .getSubscriptionSlotTracker();
-                    Set<Slot> slotsToRemoveTrackingIfOrphaned = subscriptionSlotTracker
-                            .get(subscription.getTargetQueue());
-                    if (slotsToRemoveTrackingIfOrphaned != null) {
-                        for (Slot slot : slotsToRemoveTrackingIfOrphaned) {
-                            OnflightMessageTracker.getInstance().clearAllTrackingWhenSlotOrphaned(slot);
-                        }
-                    }
-
-                } catch (ConnectionException e) {
-                    log.error("Error occurred while re-assigning the slot to slot manager", e);
-                    throw new AndesException(
-                            "Error occurred while re-assigning the slot to slot manager", e);
-                }
+                scheduleSlotToReassign(subscription.getTargetQueue());
             }
 
         }
     }
 
+    /**
+     * Schedule to re-assign slots of the node related to a particular queue when last subscriber
+     * leaves
+     * @param queueName Name of the queue
+     */
+    public void scheduleSlotToReassign(String queueName) {
+        Timer timer = new Timer();
+        long deleteRetryInterval = 2000;
+        SlotReAssignTimerTask timerTask = new SlotReAssignTimerTask(timer, queueName);
+        timer.schedule(timerTask, 0, deleteRetryInterval);
+    }
+
+    /**
+     * This class is a scheduler class to schedule re-assignment of slots when last subscriber
+     * leaves a particular queue
+     */
+    private class SlotReAssignTimerTask extends TimerTask {
+
+        private Timer timer;
+        private String queueName;
+
+        public SlotReAssignTimerTask(Timer timer, String queueName) {
+            this.timer = timer;
+            this.queueName = queueName;
+        }
+
+        public void run() {
+            if (log.isDebugEnabled()) {
+                log.debug("Trying to reAssign slots for queue " + queueName);
+            }
+            try {
+                MessagingEngine.getInstance().getSlotCoordinator()
+                        .reAssignSlotWhenNoSubscribers(queueName);
+                //remove tracking when orphan slot situation
+                ConcurrentMap<String, Set<Slot>> subscriptionSlotTracker = OnflightMessageTracker.getInstance()
+                        .getSubscriptionSlotTracker();
+                Set<Slot> slotsToRemoveTrackingIfOrphaned = subscriptionSlotTracker
+                        .get(queueName);
+                if (slotsToRemoveTrackingIfOrphaned != null) {
+                    for (Slot slot : slotsToRemoveTrackingIfOrphaned) {
+                        OnflightMessageTracker.getInstance().clearAllTrackingWhenSlotOrphaned(slot);
+                    }
+                }
+                timer.cancel();
+                if (log.isDebugEnabled()) {
+                    log.debug("Re-assigned slots for queue: " + queueName);
+                }
+            } catch (ConnectionException e) {
+                log.error("Error occurred while re-assigning the slot to slot manager", e);
+            }
+
+        }
+    }
 }
