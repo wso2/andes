@@ -57,7 +57,7 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
      * {@inheritDoc}
      */
     @Override
-    public void updateSlotDeletionSafeZone(long currentSlotDeleteSafeZone) {
+    public void updateSlotDeletionSafeZone(long currentSlotDeleteSafeZone) throws ConnectionException {
         MBThriftClient.updateSlotDeletionSafeZone(currentSlotDeleteSafeZone, nodeId);
         if(log.isDebugEnabled()) {
             log.info("Submitted safe zone from node : " + nodeId + " | safe zone : " +

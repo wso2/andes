@@ -45,7 +45,7 @@ public interface SlotCoordinator {
      *  published by them so that safe zone value keeps moving ahead.
      * @param currentSlotDeleteSafeZone Safe zone value of the node
      */
-    public void updateSlotDeletionSafeZone(long currentSlotDeleteSafeZone);
+    public void updateSlotDeletionSafeZone(long currentSlotDeleteSafeZone) throws ConnectionException;
 
     /**
      * Delete slot records from SlotManagerClusterMode

@@ -120,7 +120,7 @@ public class MBThriftClient {
                 reConnectToServer();
                 client.updateMessageId(queueName, nodeId, startMessageId, endMessageId);
             } catch (TException e1) {
-                resetServiceClient();
+                handleCoordinatorChanges();
                 throw new ConnectionException("Coordinator has changed", e);
             }
 
@@ -149,7 +149,7 @@ public class MBThriftClient {
                 reConnectToServer();
                 deleteSuccess = client.deleteSlot(queueName, slotInfo, nodeId);
             } catch (TException e1) {
-                resetServiceClient();
+                handleCoordinatorChanges();
                 throw new ConnectionException("Coordinator has changed", e);
             }
         }
@@ -316,13 +316,28 @@ public class MBThriftClient {
         reconnectingStarted = reconnectingFlag;
     }
 
-    public static synchronized long updateSlotDeletionSafeZone(long safeZoneMessageID, String nodeID) {
+    /**
+     * Update the safeZone message ID of this node
+     * @param safeZoneMessageID safe zone message ID
+     * @param nodeID node ID of this node
+     * @return global safeZone
+     * @throws ConnectionException when MB thrift server is down
+     */
+    public static synchronized long updateSlotDeletionSafeZone(long safeZoneMessageID, String nodeID) throws ConnectionException {
         long globalSafeZone = 0;
         try {
             client = getServiceClient();
             globalSafeZone = client.updateCurrentMessageIdForSafeZone(safeZoneMessageID, nodeID);
         } catch (TException e) {
-            log.error("Error while sending slot deletion safe zone update" , e);
+            try {
+                //retry once
+                reConnectToServer();
+                globalSafeZone = client.updateCurrentMessageIdForSafeZone(safeZoneMessageID, nodeID);
+                return globalSafeZone;
+            } catch (TException e1) {
+                handleCoordinatorChanges();
+                throw new ConnectionException("Coordinator has changed", e);
+            }
         }
         return globalSafeZone;
     }
