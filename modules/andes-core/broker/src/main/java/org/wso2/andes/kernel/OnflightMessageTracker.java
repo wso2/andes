@@ -585,7 +585,10 @@ public class OnflightMessageTracker {
      * @param messageID Id of the message to set expired
      */
     public void setMessageStatus(MessageStatus messageStatus, long messageID) {
-        getTrackingData(messageID).addMessageStatus(messageStatus);
+        MsgData trackingData = getTrackingData(messageID);
+        if (null != trackingData) {
+            trackingData.addMessageStatus(messageStatus);
+        }
     }
 
     /**
