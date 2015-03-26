@@ -96,8 +96,13 @@ public class SlotMessageCounter {
                     slotSubmitLoopSkipCount += 1;
                     if(slotSubmitLoopSkipCount == SLOT_SUBMIT_LOOP_SKIP_COUNT_THRESHOLD) {
                         //update current slot Deletion Safe Zone
-                        submitCurrentSafeZone(currentSlotDeleteSafeZone);
-                        slotSubmitLoopSkipCount = 0;
+                        try {
+                            submitCurrentSafeZone(currentSlotDeleteSafeZone);
+                            slotSubmitLoopSkipCount = 0;
+                        } catch (ConnectionException e) {
+                            log.error("Error while sending slot deletion safe zone update", e);
+                        }
+
                     }
                 }
             }
@@ -130,7 +135,7 @@ public class SlotMessageCounter {
         }
     }
 
-    private void submitCurrentSafeZone(long currentSlotDeleteSafeZone) {
+    private void submitCurrentSafeZone(long currentSlotDeleteSafeZone) throws ConnectionException {
         slotCoordinator.updateSlotDeletionSafeZone(currentSlotDeleteSafeZone);
 
     }
