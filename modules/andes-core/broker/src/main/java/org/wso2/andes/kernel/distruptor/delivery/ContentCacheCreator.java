@@ -61,14 +61,14 @@ public class ContentCacheCreator {
             int contentSize = metaData.getContentSize();
             List<AndesMessagePart> contentList = contentListMap.get(messageID);
 
-            if(null == contentList && log.isDebugEnabled()){
-                log.debug("Empty message parts received while retrieving message content for" +
-                                                                        "message id " + messageID);
-            }
-
             if (null != contentList) {
                 for (AndesMessagePart messagePart : contentList) {
                     deliveryEventData.addMessagePart(messagePart.getOffSet(), messagePart);
+                }
+            } else {
+                if (log.isDebugEnabled()) {
+                    log.debug("Empty message parts received while retrieving message content for" +
+                                                                        "message id " + messageID);
                 }
             }
 
