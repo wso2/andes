@@ -65,11 +65,9 @@ public class ContentCacheCreator {
                 for (AndesMessagePart messagePart : contentList) {
                     deliveryEventData.addMessagePart(messagePart.getOffSet(), messagePart);
                 }
-            } else {
-                if (log.isDebugEnabled()) {
-                    log.debug("Empty message parts received while retrieving message content for" +
+            } else if (log.isDebugEnabled()) {
+                log.debug("Empty message parts received while retrieving message content for" +
                                                                         "message id " + messageID);
-                }
             }
 
             deliveryEventData.setAndesContent(new DisruptorCachedContent(deliveryEventData,
