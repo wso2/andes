@@ -52,7 +52,8 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
             List<String> allQueues = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
 
             for (String queue : allQueues) {
-                Set<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination(queue, false, AndesSubscription.SubscriptionType.AMQP);
+                Set<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionStore()
+                        .getAllSubscribersForDestination(queue, false, AndesSubscription.SubscriptionType.AMQP);
 
                 for (AndesSubscription s : subscriptions) {
                     Long pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(queue);
@@ -92,7 +93,8 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
                 Set<AndesSubscription> subscriptions;
                 if (!isDurableTopic) {
-                    subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination(topic, true, AndesSubscription.SubscriptionType.AMQP);
+                    subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination
+                            (topic, true, AndesSubscription.SubscriptionType.AMQP);
                 } else {
                     subscriptions = AndesContext.getInstance().getSubscriptionStore()
                             .getAllSubscribersForDestination(topic, false, AndesSubscription.SubscriptionType.AMQP);
