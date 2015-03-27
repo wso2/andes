@@ -231,6 +231,8 @@ public class AMQProtocolHandler implements ProtocolEngine
                 if (_failoverState == FailoverState.NOT_STARTED)
                 {
                     _failoverState = FailoverState.IN_PROGRESS;
+                    _logger.debug("Disabling flow control");
+                    _connection.disableFlowControl();
                     startFailoverThread();
                 }
                 else

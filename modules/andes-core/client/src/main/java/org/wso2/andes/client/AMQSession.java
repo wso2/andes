@@ -3104,7 +3104,12 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
     public void setFlowControl(final boolean active)
     {
         flowControlIndicator.setFlowControl(active);
-        log.warn("Broker enforced flow control " + (active ? "no longer in effect" : "has been enforced"));
+        if (active) {
+            log.warn("Broker enforced flow control is no longer in effect");
+        } else {
+            log.warn("Broker enforced flow control");
+        }
+
     }
 
     public void checkFlowControl() throws InterruptedException, JMSException
