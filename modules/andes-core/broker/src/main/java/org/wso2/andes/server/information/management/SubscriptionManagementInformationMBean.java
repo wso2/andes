@@ -28,6 +28,7 @@ import org.wso2.andes.server.management.AMQManagedObject;
 import javax.management.NotCompliantMBeanException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Class to Handle data for all subscription related UIs
@@ -51,7 +52,8 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
             List<String> allQueues = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
 
             for (String queue : allQueues) {
-                List<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination(queue, false);
+                Set<AndesSubscription> subscriptions = AndesContext.getInstance().getSubscriptionStore()
+                        .getAllSubscribersForDestination(queue, false, AndesSubscription.SubscriptionType.AMQP);
 
                 for (AndesSubscription s : subscriptions) {
                     Long pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(queue);
@@ -89,12 +91,13 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
             for (String topic : allTopics) {
 
-                List<AndesSubscription> subscriptions;
+                Set<AndesSubscription> subscriptions;
                 if (!isDurableTopic) {
-                    subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination(topic, true);
+                    subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination
+                            (topic, true, AndesSubscription.SubscriptionType.AMQP);
                 } else {
                     subscriptions = AndesContext.getInstance().getSubscriptionStore()
-                            .getAllSubscribersForDestination(topic, false);
+                            .getAllSubscribersForDestination(topic, false, AndesSubscription.SubscriptionType.AMQP);
                 }
 
                 for (AndesSubscription s : subscriptions) {

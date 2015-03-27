@@ -321,12 +321,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     PERFORMANCE_TUNING_MESSAGE_COUNTER_UPDATE_BATCH_SIZE
             ("performanceTuning/messageCounter/countUpdateBatchSize", "100", Integer.class),
-    /**
-     * This allows to select topic matching algorithm
-     * SIMPLE  - Simple iterative method for topic matching
-     * BITMAPS - Inverse bitmaps based topic matching.
-     */
-    PERFORMANCE_TUNING_TOPIC_MATCHING_METHOD("performanceTuning/topicMatching", "SIMPLE", TopicMatchingSelection.class),
 
     /**
      * The number of messages to be handled in a single operation related to browser subscriptions.

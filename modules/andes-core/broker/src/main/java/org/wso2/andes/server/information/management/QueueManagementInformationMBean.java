@@ -402,7 +402,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      */
     public int getSubscriptionCount( String queueName){
         try {
-            return AndesContext.getInstance().getSubscriptionStore().numberOfSubscriptionsInCluster(queueName, false);
+            return AndesContext.getInstance().getSubscriptionStore().numberOfSubscriptionsInCluster(queueName, false,
+                    AndesSubscription.SubscriptionType.AMQP);
         } catch (Exception e) {
             throw new RuntimeException("Error in getting subscriber count",e);
         }
