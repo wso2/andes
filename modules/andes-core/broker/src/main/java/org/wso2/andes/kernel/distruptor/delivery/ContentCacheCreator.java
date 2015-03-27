@@ -18,7 +18,6 @@
 
 package org.wso2.andes.kernel.distruptor.delivery;
 
-import com.lmax.disruptor.EventHandler;
 import org.apache.log4j.Logger;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.AndesException;
@@ -32,24 +31,26 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Disruptor handler used to load message content to memory
+ * Disruptor handler used to load message content to memory.
  */
 public class ContentCacheCreator {
     /**
-     * Class Logger
+     * Class Logger for logging information, error and warning.
      */
     private static final Logger log = Logger.getLogger(ContentCacheCreator.class);
 
     /**
-     * Load content for a message in to the memory
+     * Load content for a message in to the memory.
      *
-     * @param eventDataList Event data holder
-     * @param messageIdList messageIDs of content to be retrieved from
-     * @throws Exception
+     * @param eventDataList Event data holder.
+     * @param messageIdList Message IDs of content to be retrieved from.
+     * @throws AndesException Thrown when getting content from the message store.
      */
-    public void onEvent(List<DeliveryEventData> eventDataList, List<Long> messageIdList) throws Exception {
+    public void onEvent(List<DeliveryEventData> eventDataList, List<Long> messageIdList)
+                                                                            throws AndesException {
 
-        Map<Long, List<AndesMessagePart>> contentListMap = MessagingEngine.getInstance().getContent(messageIdList);
+        Map<Long, List<AndesMessagePart>> contentListMap =
+                                            MessagingEngine.getInstance().getContent(messageIdList);
 
         for (DeliveryEventData deliveryEventData : eventDataList) {
 
@@ -59,21 +60,24 @@ public class ContentCacheCreator {
             StorableMessageMetaData metaData = AMQPUtils.convertAndesMetadataToAMQMetadata(message);
             int contentSize = metaData.getContentSize();
             List<AndesMessagePart> contentList = contentListMap.get(messageID);
-            if(null == contentList ) {
-                throw new AndesException("Empty message parts received while retrieving message content for" +
-                        "message id " + messageID);
+
+            if(null == contentList && log.isDebugEnabled()){
+                log.debug("Empty message parts received while retrieving message content for" +
+                                                                        "message id " + messageID);
             }
 
-            for (AndesMessagePart messagePart : contentList) {
-                deliveryEventData.addMessagePart(messagePart.getOffSet(), messagePart);
+            if (null != contentList) {
+                for (AndesMessagePart messagePart : contentList) {
+                    deliveryEventData.addMessagePart(messagePart.getOffSet(), messagePart);
+                }
             }
 
-            deliveryEventData.setAndesContent(new DisruptorCachedContent(deliveryEventData, contentSize));
+            deliveryEventData.setAndesContent(new DisruptorCachedContent(deliveryEventData,
+                                                                                    contentSize));
 
             if (log.isTraceEnabled()) {
                 log.trace("All content read for message " + messageID);
             }
         }
-
     }
 }
