@@ -548,7 +548,7 @@ public class SubscriptionStore {
             //add or update local subscription map
             if (subscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.DIRECT_EXCHANGE_NAME)) {
                 Set<LocalSubscription> localSubscriptions = localQueueSubscriptionMap.get(destinationQueue);
-                if (localSubscriptions == null) {
+                if (null == localSubscriptions) {
                     localSubscriptions = Collections.newSetFromMap(new ConcurrentHashMap<LocalSubscription, Boolean>());
                 }
                 localSubscriptions.add(subscription);
@@ -556,8 +556,9 @@ public class SubscriptionStore {
 
             } else if (subscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
                 Set<LocalSubscription> localSubscriptions = localTopicSubscriptionMap.get(destinationTopic);
-                if (localSubscriptions == null) {
-                    // TODO : A Concurrent HashMap has been used here why?
+                if (null == localSubscriptions) {
+                    // A concurrent hash map has been used since since subscriptions can be added and removed while
+                    // iterating
                     localSubscriptions = Collections.newSetFromMap(new ConcurrentHashMap<LocalSubscription, Boolean>());
                 }
                 localSubscriptions.add(subscription);
