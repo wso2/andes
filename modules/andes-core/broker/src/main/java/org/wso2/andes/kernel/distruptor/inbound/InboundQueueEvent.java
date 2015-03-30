@@ -77,14 +77,14 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
 
     /**
      * create an instance of andes queue
-     *
-     * @param queueName   name of the queue
+     *  @param queueName   name of the queue
      * @param queueOwner  owner of the queue (virtual host)
      * @param isExclusive is queue exclusive
      * @param isDurable   is queue durable
+     * @param isExclusiveConsumer
      */
-    public InboundQueueEvent(String queueName, String queueOwner, boolean isExclusive, boolean isDurable) {
-        super(queueName, queueOwner, isExclusive, isDurable);
+    public InboundQueueEvent(String queueName, String queueOwner, boolean isExclusive, boolean isDurable, boolean isExclusiveConsumer) {
+        super(queueName, queueOwner, isExclusive, isDurable, isExclusiveConsumer);
         purgedCount = SettableFuture.create();
         isQueueDeletable = SettableFuture.create();
         isTopic = false;

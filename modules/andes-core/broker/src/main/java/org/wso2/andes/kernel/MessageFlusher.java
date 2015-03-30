@@ -87,13 +87,13 @@ public class MessageFlusher {
         Set<AndesMessageMetadata> readButUndeliveredMessages = new
                 ConcurrentSkipListSet<AndesMessageMetadata>();
 
-        /***
+        /**
          * In case of a purge, we must store the timestamp when the purge was called.
          * This way we can identify messages received before that timestamp that fail and ignore them.
          */
         private Long lastPurgedTimestamp;
 
-        /***
+        /**
          * Constructor
          * initialize lastPurgedTimestamp to 0.
          */
@@ -114,8 +114,9 @@ public class MessageFlusher {
             return hasRoom;
         }
 
-        /***
+        /**
          * Clear the read-but-undelivered collection of messages of the given queue from memory
+         *
          * @return Number of messages that was in the read-but-undelivered buffer
          */
         public int clearReadButUndeliveredMessages() {
@@ -127,7 +128,7 @@ public class MessageFlusher {
             return messageCount;
         }
 
-        /***
+        /**
          * @return Last purged timestamp of queue.
          */
         public Long getLastPurgedTimestamp() {
@@ -136,6 +137,7 @@ public class MessageFlusher {
 
         /**
          * set last purged timestamp for queue.
+         *
          * @param lastPurgedTimestamp the time stamp of the message message which was purged most recently
          */
         public void setLastPurgedTimestamp(Long lastPurgedTimestamp) {
@@ -147,16 +149,14 @@ public class MessageFlusher {
      * Get the next subscription for the given destination. If at end of the subscriptions, it circles
      * around to the first one
      *
-     * @param destination
-     *         name of destination
-     * @param subscriptions4Queue
-     *         subscriptions registered for the destination
+     * @param destination         name of destination
+     * @param subscriptions4Queue subscriptions registered for the destination
      * @return subscription to deliver
      * @throws AndesException
      */
-    private LocalSubscription findNextSubscriptionToSent(String destination,
-                                                         Collection<LocalSubscription>
-                                                                 subscriptions4Queue)
+    protected LocalSubscription findNextSubscriptionToSent(String destination,
+                                                           Collection<LocalSubscription>
+                                                                   subscriptions4Queue)
             throws AndesException {
         LocalSubscription localSubscription = null;
         boolean isValidLocalSubscription = false;
@@ -174,9 +174,9 @@ public class MessageFlusher {
                 break;
             }
         }
-        if(isValidLocalSubscription){
-             return localSubscription;
-        }else {
+        if (isValidLocalSubscription) {
+            return localSubscription;
+        } else {
             it = subscriptions4Queue.iterator();
             messageDeliveryInfo.iterator = it;
             if (it.hasNext()) {
@@ -212,6 +212,7 @@ public class MessageFlusher {
     /**
      * Validates if the the buffer is empty, the messages will be read through this buffer and will be delivered to the
      * relevant subscriptions
+     *
      * @param queueName the name of the queue which hold the messages
      * @return whether the buffer is empty
      */
@@ -222,10 +223,8 @@ public class MessageFlusher {
     /**
      * send the messages to deliver
      *
-     * @param messagesRead
-     *         AndesMetadata list
-     * @param slot
-     *         these messages are belonged to
+     * @param messagesRead AndesMetadata list
+     * @param slot         these messages are belonged to
      */
     public void sendMessageToBuffer(List<AndesMessageMetadata> messagesRead,
                                     Slot slot) {
@@ -246,15 +245,15 @@ public class MessageFlusher {
                 //check and buffer message
                 //stamp this message as buffered
                 boolean isOKToBuffer = OnflightMessageTracker.getInstance()
-                                                             .addMessageToBufferingTracker(slot,
-                                                                                           message);
+                        .addMessageToBufferingTracker(slot,
+                                message);
                 if (isOKToBuffer) {
                     messageDeliveryInfo.readButUndeliveredMessages.add(message);
                     //increment the message count in the slot
                     OnflightMessageTracker.getInstance().incrementMessageCountInSlot(slot);
                 } else {
                     log.warn("Tracker rejected message id= " + message.getMessageID() + " from buffering " +
-                             "to deliver. This is an already buffered message");
+                            "to deliver. This is an already buffered message");
                     //todo: this message is previously buffered. Should be removed from slot
                 }
             }
@@ -284,7 +283,7 @@ public class MessageFlusher {
 
         }
         try {
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug(
                         "Sending messages from buffer num of msg = " + messageDeliveryInfo
                                 .readButUndeliveredMessages
@@ -306,7 +305,7 @@ public class MessageFlusher {
             }
             log.error("Error occurred while sending messages to subscribers from buffer", e);
             throw new AndesException("Error occurred while sending messages to subscribers " +
-                                     "from message buffer", e);
+                    "from message buffer", e);
         }
 
 
@@ -315,11 +314,10 @@ public class MessageFlusher {
     /**
      * does that destination has too many messages pending
      *
-     * @param localSubscription
-     *         local subscription
+     * @param localSubscription local subscription
      * @return is subscription ready to accept messages
      */
-    private boolean isThisSubscriptionHasRoom(LocalSubscription localSubscription) {
+    protected boolean isThisSubscriptionHasRoom(LocalSubscription localSubscription) {
 
         int notAckedMsgCount = OnflightMessageTracker.getInstance().getNotAckedMessageCount(localSubscription.getChannelID());
 
@@ -332,7 +330,7 @@ public class MessageFlusher {
             if (log.isDebugEnabled()) {
                 log.debug(
                         "Not selected, channel =" + localSubscription + " pending count =" +
-                        (notAckedMsgCount));
+                                (notAckedMsgCount));
             }
             return false;
         }
@@ -370,7 +368,7 @@ public class MessageFlusher {
                  * bound to unique queue based on subscription id
                  */
                 Collection<LocalSubscription> subscriptions4Queue =
-                        subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
+                        subscriptionStore.getSubscriptionsForDeliver(destination, message.isTopic());
 
                 //If this is a topic message, we remove all durable topic subscriptions here.
                 //Because durable topic subscriptions will get messages via queue path.
@@ -390,7 +388,7 @@ public class MessageFlusher {
                         if (AndesSubscription.SubscriptionType.MQTT == subscription.getSubscriptionType()
                                 && MessageMetaDataType.META_DATA_MQTT != message.getMetaDataType()) {
                             subscriptionIterator.remove();
-                        // Avoid sending if the subscriber is AMQP and message is MQTT
+                            // Avoid sending if the subscriber is AMQP and message is MQTT
                         } else if (AndesSubscription.SubscriptionType.AMQP == subscription.getSubscriptionType()
                                 && MessageMetaDataType.META_DATA_MQTT == message.getMetaDataType()) {
                             subscriptionIterator.remove();
@@ -464,7 +462,7 @@ public class MessageFlusher {
                     } else {
                         if (log.isDebugEnabled()) {
                             log.debug("All subscriptions for destination " + destination + " have max unacked " +
-                                            "messages " + message.getDestination());
+                                    "messages " + message.getDestination());
                         }
                         //if we continue message order will break
                         break;
@@ -490,7 +488,7 @@ public class MessageFlusher {
                 // to blindly check for a batch of deleted records.
                 // Given this situation, this loop should break so the sendFlusher can re-trigger it.
                 // for tracing purposes can use this : log.warn("NoSuchElementException thrown",ex);
-                log.warn("NoSuchElementException thrown. ",ex);
+                log.warn("NoSuchElementException thrown. ", ex);
                 break;
             }
         }
@@ -506,10 +504,12 @@ public class MessageFlusher {
         return sentMessageCount;
     }
 
+
     /**
      * Schedule to deliver message for the subscription
+     *
      * @param subscription subscription to send
-     * @param message message to send
+     * @param message      message to send
      */
     public void scheduleMessageForSubscription(LocalSubscription subscription,
                                                final AndesMessageMetadata message) {
@@ -522,8 +522,8 @@ public class MessageFlusher {
      * @param subscription local subscription
      * @param message      metadata of the message
      */
-    private void deliverMessageAsynchronously(LocalSubscription subscription, AndesMessageMetadata message) {
-        if(log.isDebugEnabled()) {
+    public void deliverMessageAsynchronously(LocalSubscription subscription, AndesMessageMetadata message) {
+        if (log.isDebugEnabled()) {
             log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
         }
         OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
@@ -531,8 +531,10 @@ public class MessageFlusher {
     }
 
     //TODO: in multiple subscription case this can cause message duplication
+
     /**
      * Will be responsible in placing the message back at the queue if delivery fails
+     *
      * @param message the message which was scheduled for delivery to its subscribers
      */
     public void reQueueUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message) {

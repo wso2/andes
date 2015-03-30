@@ -120,7 +120,7 @@ public class RDBMSTestHelper {
                                            String routingKey,
                                            String owner  ) throws Exception {
         // store queue and exchange information accordingly in db before storing binging.
-        AndesQueue andesQueue = new AndesQueue(boundQueue, "owner1", true, false);
+        AndesQueue andesQueue = new AndesQueue(boundQueue, "owner1", true, false, false);
         AndesBinding andesBinding = new AndesBinding(exchange, andesQueue, routingKey);
         // setup database with queue information
         String insert = "INSERT INTO " + RDBMSConstants.QUEUE_INFO_TABLE + " (" +

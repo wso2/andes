@@ -915,14 +915,14 @@ public class ServerSessionDelegate extends SessionDelegate
                                 store.createQueue(queue, ftArgs);
 
                                 //Tell Andes kernel to create queue
-                                QpidAMQPBridge.getInstance().createQueue(queue);
+                                QpidAMQPBridge.getInstance().createQueue(queue, false);
                             }
                             else
                             {
                                 store.createQueue(queue);
 
                                 //tell andes kernel to create queue
-                                QpidAMQPBridge.getInstance().createQueue(queue);
+                                QpidAMQPBridge.getInstance().createQueue(queue, false);
 
                             }
                         }

@@ -27,13 +27,9 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
 import org.wso2.andes.AMQException;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.logging.LogMessage;
-import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.management.common.mbeans.ManagedBroker;
 import org.wso2.andes.management.common.mbeans.ManagedQueue;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanConstructor;
@@ -67,6 +63,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
     private final DurableConfigurationStore _durableConfig;
 
     private final VirtualHostImpl.VirtualHostMBean _virtualHostMBean;
+
 
     @MBeanConstructor("Creates the Broker Manager MBean")
     public AMQBrokerManagerMBean(VirtualHostImpl.VirtualHostMBean virtualHostMBean) throws JMException
@@ -237,14 +234,16 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
      * in persistance storage if durable queue.
      *
      * @param queueName
-     * @param durable
      * @param owner
+     * @param durable
+     * @param isExclusiveConsumer
      * @throws JMException
      * @throws MBeanException
      */
-    public void createNewQueue(String queueName, String owner, boolean durable) throws JMException, MBeanException
+    public void createNewQueue(String queueName, String owner, boolean durable, boolean isExclusiveConsumer) throws JMException, MBeanException
     {
         AMQQueue queue = _queueRegistry.getQueue(new AMQShortString(queueName));
+
         try
         {
             if (queue != null)
@@ -266,7 +265,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                 _durableConfig.createQueue(queue);
 
                 //tell Andes kernel to create queue
-                QpidAMQPBridge.getInstance().createQueue(queue);
+                QpidAMQPBridge.getInstance().createQueue(queue, isExclusiveConsumer);
             }
 
         }
