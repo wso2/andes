@@ -25,20 +25,32 @@ import org.wso2.andes.kernel.OnflightMessageTracker;
 
 import java.util.UUID;
 
-import static org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent.StateEvent.CHANNEL_CLOSE_EVENT;
-import static org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent.StateEvent.CHANNEL_OPEN_EVENT;
-
 /**
  * Andes channel related events are published to Disruptor as InboundAndesChannelEvent
  */
 public class InboundAndesChannelEvent implements AndesInboundStateEvent {
 
     private static Log log = LogFactory.getLog(InboundAndesChannelEvent.class);
-    
+
+    /**
+     * Supported state events
+     */
+    public enum EventType {
+        /**
+         * Specific client channel close event
+         */
+        CHANNEL_CLOSE_EVENT,
+
+        /**
+         * New client connected and client channel is opened event
+         */
+        CHANNEL_OPEN_EVENT
+    }
+
     /**
      * Channel event type handle by the event object 
      */
-    private StateEvent eventType;
+    private EventType eventType;
 
     /**
      * Channel ID 
@@ -65,21 +77,21 @@ public class InboundAndesChannelEvent implements AndesInboundStateEvent {
     }
 
     @Override
-    public StateEvent getEventType() {
-        return eventType;
+    public String eventInfo() {
+        return eventType.toString();
     }
 
     /**
      * Update event to a channel open event 
      */
     public void prepareForChannelOpen() {
-        eventType = CHANNEL_OPEN_EVENT;
+        eventType = EventType.CHANNEL_OPEN_EVENT;
     }
 
     /**
      * Update event to a channel close event 
      */
     public void prepareForChannelClose() {
-        eventType = CHANNEL_CLOSE_EVENT;
+        eventType = EventType.CHANNEL_CLOSE_EVENT;
     }
 }

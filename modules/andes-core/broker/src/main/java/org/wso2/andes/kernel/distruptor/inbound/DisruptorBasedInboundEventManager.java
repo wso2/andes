@@ -30,8 +30,6 @@ import org.wso2.andes.matrics.DataAccessMatrixManager;
 import org.wso2.andes.matrics.MatrixConstants;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.carbon.metrics.manager.Gauge;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -40,17 +38,17 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.wso2.andes.configuration.enums.AndesConfiguration.*;
-import static org.wso2.andes.kernel.distruptor.inbound.InboundEvent.Type.*;
+import static org.wso2.andes.kernel.distruptor.inbound.InboundEventContainer.Type.*;
 
 /**
  * Disruptor based inbound event handling class.
- * Inbound events are represent within the buffer as InboundEvent objects. Four types of event processors goes through
+ * Inbound events are represent within the buffer as InboundEventContainer objects. Four types of event processors goes through
  * the ring buffer processing events.
  */
 public class DisruptorBasedInboundEventManager implements InboundEventManager {
 
     private static Log log = LogFactory.getLog(DisruptorBasedInboundEventManager.class);
-    private final RingBuffer<InboundEvent> ringBuffer;
+    private final RingBuffer<InboundEventContainer> ringBuffer;
     private AtomicInteger ackedMessageCount = new AtomicInteger();
 
     public DisruptorBasedInboundEventManager(SubscriptionStore subscriptionStore,
@@ -71,8 +69,8 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
                                     .setNameFormat("Disruptor Inbound Event Thread %d").build();
         ExecutorService executorPool = Executors.newCachedThreadPool(namedThreadFactory);
 
-        Disruptor<InboundEvent> disruptor;
-        disruptor = new Disruptor<InboundEvent>(InboundEvent.getFactory(), 
+        Disruptor<InboundEventContainer> disruptor;
+        disruptor = new Disruptor<InboundEventContainer>(InboundEventContainer.getFactory(),
                 bufferSize, 
                 executorPool,
                 ProducerType.MULTI,
@@ -121,7 +119,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
     public void messageReceived(AndesMessage message, AndesChannel andesChannel) {
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
-        InboundEvent event = ringBuffer.get(sequence);
+        InboundEventContainer event = ringBuffer.get(sequence);
 
         event.setEventType(MESSAGE_EVENT);
         event.messageList.add(message);
@@ -144,7 +142,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
         
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
-        InboundEvent event = ringBuffer.get(sequence);
+        InboundEventContainer event = ringBuffer.get(sequence);
 
         event.setEventType(ACKNOWLEDGEMENT_EVENT);
         event.ackData = ackData;
@@ -176,7 +174,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
 
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
-        InboundEvent event = ringBuffer.get(sequence);
+        InboundEventContainer event = ringBuffer.get(sequence);
         try {
             event.setEventType(STATE_CHANGE_EVENT);
             event.setStateEvent(stateEvent);
@@ -184,7 +182,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
             // make the event available to EventProcessors
             ringBuffer.publish(sequence);
             if (log.isDebugEnabled()) {
-                log.debug("[ Sequence: " + sequence + " ] State change event '" + stateEvent.getEventType() +
+                log.debug("[ Sequence: " + sequence + " ] State change event '" + stateEvent.eventInfo() +
                         "' published to Disruptor");
             }
         }
@@ -199,7 +197,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
     public void updateSlotDeletionSafeZone() {
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
-        InboundEvent event = ringBuffer.get(sequence);
+        InboundEventContainer event = ringBuffer.get(sequence);
         try {
             event.setEventType(SAFE_ZONE_DECLARE_EVENT);
         } finally {

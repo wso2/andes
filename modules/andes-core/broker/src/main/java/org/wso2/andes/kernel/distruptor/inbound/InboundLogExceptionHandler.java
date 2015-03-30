@@ -33,11 +33,11 @@ public class InboundLogExceptionHandler implements ExceptionHandler {
 
     @Override
     public void handleEventException(Throwable throwable, long sequence, Object object) {
-        InboundEvent event = (InboundEvent) object;
+        InboundEventContainer event = (InboundEventContainer) object;
 
         // NOTE: Event type will be set to IGNORE event type if the exception is coming from StateEventHandler
         String eventType;
-        if (event.getEventType() == InboundEvent.Type.IGNORE_EVENT) {
+        if (event.getEventType() == InboundEventContainer.Type.IGNORE_EVENT) {
             eventType = "";
         } else {
             eventType = "Event type: " + event.getEventType().toString();

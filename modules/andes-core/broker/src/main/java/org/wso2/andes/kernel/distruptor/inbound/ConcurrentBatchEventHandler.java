@@ -33,7 +33,7 @@ import java.util.List;
  * NOTE: Writing a custom batch processor is avoided since it related to implementing disruptor internals related
  * logic which might lead to difficulty in upgrading disruptor versions and getting bug fixes on batch processors 
  */
-public class ConcurrentBatchEventHandler implements EventHandler<InboundEvent> {
+public class ConcurrentBatchEventHandler implements EventHandler<InboundEventContainer> {
 
     private static Log log = LogFactory.getLog(ConcurrentBatchEventHandler.class);
 
@@ -61,12 +61,12 @@ public class ConcurrentBatchEventHandler implements EventHandler<InboundEvent> {
     /**
      * Type of event to do batching
      */
-    private final InboundEvent.Type eventType;
+    private final InboundEventContainer.Type eventType;
 
     /**
      * Events are batched using this until the event handler is called
      */
-    private final List<InboundEvent> eventList;
+    private final List<InboundEventContainer> eventList;
 
     /**
      * Creates an event handler that can be used with a batch processor to do custom batching of inbound
@@ -80,7 +80,7 @@ public class ConcurrentBatchEventHandler implements EventHandler<InboundEvent> {
      * @param eventHandler event handler that does the actual per event, event handling
      */
     public ConcurrentBatchEventHandler(long turn, int groupCount, int batchSize,
-                                       InboundEvent.Type eventType, BatchEventHandler eventHandler) {
+                                       InboundEventContainer.Type eventType, BatchEventHandler eventHandler) {
         
         if (turn >= groupCount) {
             throw new IllegalArgumentException("Turn should be less than groupCount");
@@ -91,7 +91,7 @@ public class ConcurrentBatchEventHandler implements EventHandler<InboundEvent> {
         this.batchSize = batchSize;
         this.eventType = eventType;
         this.eventHandler = eventHandler;
-        eventList = new ArrayList<InboundEvent>(this.batchSize);
+        eventList = new ArrayList<InboundEventContainer>(this.batchSize);
 
     }
 
@@ -101,7 +101,7 @@ public class ConcurrentBatchEventHandler implements EventHandler<InboundEvent> {
      * {@inheritDoc} 
      */
     @Override
-    public void onEvent(InboundEvent event, long sequence, boolean endOfBatch) throws Exception {
+    public void onEvent(InboundEventContainer event, long sequence, boolean endOfBatch) throws Exception {
         long currentTurn;
         
         

@@ -24,20 +24,24 @@ import org.wso2.andes.kernel.AndesContextInformationManager;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesExchange;
 
-import static org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent.StateEvent.CREATE_EXCHANGE_EVENT;
-import static org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent.StateEvent.DELETE_EXCHANGE_EVENT;
-
 /**
  * Exchange related inbound event 
  */
 public class InboundExchangeEvent extends AndesExchange implements AndesInboundStateEvent {
 
     private static Log log = LogFactory.getLog(InboundExchangeEvent.class);
-    
+
+    private enum EventType {
+
+        CREATE_EXCHANGE_EVENT,
+
+        DELETE_EXCHANGE_EVENT
+    }
+
     /**
      * Event type this event
      */
-    private StateEvent eventType;
+    private EventType eventType;
 
     /**
      * Reference to AndesContextInformationManager to update create/ remove queue state
@@ -80,8 +84,8 @@ public class InboundExchangeEvent extends AndesExchange implements AndesInboundS
     }
 
     @Override
-    public StateEvent getEventType() {
-        return eventType;
+    public String eventInfo() {
+        return eventType.toString();
     }
 
     /**
@@ -89,7 +93,7 @@ public class InboundExchangeEvent extends AndesExchange implements AndesInboundS
      * @param contextInformationManager AndesContextInformationManager
      */
     public void prepareForCreateExchange(AndesContextInformationManager contextInformationManager) {
-        eventType = CREATE_EXCHANGE_EVENT;
+        eventType = EventType.CREATE_EXCHANGE_EVENT;
         this.contextInformationManager = contextInformationManager;
     }
 
@@ -98,7 +102,7 @@ public class InboundExchangeEvent extends AndesExchange implements AndesInboundS
      * @param contextInformationManager AndesContextInformationManager
      */
     public void prepareForDeleteExchange(AndesContextInformationManager contextInformationManager) {
-        eventType = DELETE_EXCHANGE_EVENT;
+        eventType = EventType.DELETE_EXCHANGE_EVENT;
         this.contextInformationManager = contextInformationManager;
     }
 }

@@ -26,19 +26,26 @@ import org.wso2.andes.kernel.MessagingEngine;
 
 import java.util.List;
 
-import static org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent.StateEvent.DELETE_MESSAGES_EVENT;
-
 /**
  * Class to hold information about deleting messages event
  */
 public class InboundDeleteMessagesEvent implements AndesInboundStateEvent {
 
     private static Log log = LogFactory.getLog(InboundDeleteMessagesEvent.class);
-    
+
+    /**
+     * Supported state events
+     */
+    private enum EventType {
+
+        /** Delete messages event related event type*/
+        DELETE_MESSAGES_EVENT,
+
+    }
     /**
      * Type of this event
      */
-    private StateEvent eventType;
+    private EventType eventType;
     
     /**
      * List of messages to remove
@@ -66,6 +73,9 @@ public class InboundDeleteMessagesEvent implements AndesInboundStateEvent {
         this.moveToDLC = moveToDLC;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void updateState() throws AndesException {
         switch (eventType) {
@@ -79,16 +89,19 @@ public class InboundDeleteMessagesEvent implements AndesInboundStateEvent {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String eventInfo() {
+        return eventType.toString();
+    }
+
+    /**
      * Prepare to update Andes state with a delete messages event
      * @param messagingEngine MessagingEngine to be used for this event
      */
     public void prepareForDelete(MessagingEngine messagingEngine) {
-        eventType = DELETE_MESSAGES_EVENT;
+        eventType = EventType.DELETE_MESSAGES_EVENT;
         this.messagingEngine = messagingEngine;
-    }
-
-    @Override
-    public StateEvent getEventType() {
-        return eventType;
     }
 }

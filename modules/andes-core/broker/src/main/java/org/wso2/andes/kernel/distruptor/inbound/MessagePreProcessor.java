@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel.distruptor.inbound;
 
 import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.Sequence;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
@@ -32,13 +31,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.wso2.andes.kernel.distruptor.inbound.InboundEvent.Type.MESSAGE_EVENT;
-
 /**
  * This event processor goes through the ring buffer first and update AndesMessage data event objects.
  * NOTE: Only one instance of this processor should process events from the ring buffer
  */
-public class MessagePreProcessor implements EventHandler<InboundEvent> {
+public class MessagePreProcessor implements EventHandler<InboundEventContainer> {
 
     private static final Log log = LogFactory.getLog(MessagePreProcessor.class);
     private final SubscriptionStore subscriptionStore;
@@ -50,7 +47,7 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
     }
 
     @Override
-    public void onEvent(InboundEvent inboundEvent, long sequence, boolean endOfBatch ) throws Exception {
+    public void onEvent(InboundEventContainer inboundEvent, long sequence, boolean endOfBatch ) throws Exception {
         switch (inboundEvent.getEventType()) {
             case MESSAGE_EVENT:
                 updateRoutingInformation(inboundEvent, sequence);
@@ -64,9 +61,9 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
     /**
      * Calculate the current safe zone for this node (using the last generated message ID)
      * @param event event
-     * @param sequence position of the event at the event ringbuffer
+     * @param sequence position of the event at the event ring buffer
      */
-    private void setSafeZoneLimit(InboundEvent event, long sequence) {
+    private void setSafeZoneLimit(InboundEventContainer event, long sequence) {
         long safeZoneLimit = idGenerator.getNextId();
         event.setSafeZoneLimit(safeZoneLimit);
         if(log.isDebugEnabled()){
@@ -79,9 +76,9 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
      * evaluated here. This will duplicate message for each "subscription destination (not message destination)" at
      * different nodes
      *
-     * @param event InboundEvent containing the message list
+     * @param event InboundEventContainer containing the message list
      */
-    private void updateRoutingInformation(InboundEvent event, long sequence) {
+    private void updateRoutingInformation(InboundEventContainer event, long sequence) {
 
         // NOTE: This is the MESSAGE_EVENT and this is the first processing event for this message published to ring
         // Therefore there should be exactly one message in the list.
@@ -109,7 +106,7 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
         }
     }
 
-    private void handleTopicRoutine(InboundEvent event, AndesMessage message, AndesChannel andesChannel) {
+    private void handleTopicRoutine(InboundEventContainer event, AndesMessage message, AndesChannel andesChannel) {
         String messageRoutingKey = message.getMetadata().getDestination();
         //get all topic subscriptions in the cluster matching to routing key
         //including hierarchical topic case
@@ -169,7 +166,7 @@ public class MessagePreProcessor implements EventHandler<InboundEvent> {
                         "cluster. Ignoring Message id " + message.getMetadata().getMessageID());
 
                 // Only one message in list. Clear it and set to ignore the message by message writers
-                event.setEventType(InboundEvent.Type.IGNORE_EVENT);
+                event.setEventType(InboundEventContainer.Type.IGNORE_EVENT);
                 event.messageList.clear();
             }
         } catch (AndesException e) {

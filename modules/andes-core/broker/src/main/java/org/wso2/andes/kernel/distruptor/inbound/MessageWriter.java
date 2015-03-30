@@ -48,10 +48,10 @@ public class MessageWriter implements BatchEventHandler {
     }
 
     @Override
-    public void onEvent(final List<InboundEvent> eventList) throws Exception {
+    public void onEvent(final List<InboundEventContainer> eventList) throws Exception {
 
         // For topics there may be multiple messages in one event.
-        for (InboundEvent event : eventList) {
+        for (InboundEventContainer event : eventList) {
             messageList.addAll(event.messageList);
         }
 
