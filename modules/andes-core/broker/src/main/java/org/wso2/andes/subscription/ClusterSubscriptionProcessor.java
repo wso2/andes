@@ -136,7 +136,7 @@ public class ClusterSubscriptionProcessor {
 
         for (Map.Entry<SubscriptionType, ClusterSubscriptionHandler> entry : subscriptionHandlers.entrySet()) {
             for (AndesSubscription subscription : entry.getValue().getAllWildCardSubscriptions()) {
-                if (subscription.getSubscribedNode().equals(nodeID)) {
+                if (subscription.getSubscribedNode().equals(nodeID) && subscription.hasExternalSubscriptions()) {
                     subscriptions.add(subscription);
                 }
             }

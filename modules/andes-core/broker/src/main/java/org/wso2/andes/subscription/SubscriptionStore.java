@@ -173,7 +173,14 @@ public class SubscriptionStore {
         if (localSubscriptionMap != null) {
             list = getLocalSubscriptionMap(destination, isTopic);
         }
-        return list;
+
+        Set<LocalSubscription> activeLocalSubscriptionList = new HashSet<LocalSubscription>();
+        for (LocalSubscription localSubscription : list) {
+            if (localSubscription.hasExternalSubscriptions()) {
+                activeLocalSubscriptionList.add(localSubscription);
+            }
+        }
+        return activeLocalSubscriptionList;
     }
 
     /**
@@ -188,6 +195,17 @@ public class SubscriptionStore {
             AndesException {
         Set<LocalSubscription> allSubscriptions = getActiveLocalSubscribers(destination, false);
         allSubscriptions.addAll(getActiveLocalSubscribers(destination, true));
+
+        Iterator<LocalSubscription> subscriptionIterator = allSubscriptions.iterator();
+
+        while (subscriptionIterator.hasNext()) {
+            LocalSubscription subscription = subscriptionIterator.next();
+
+            if (!subscription.hasExternalSubscriptions()) {
+                subscriptionIterator.remove();
+            }
+        }
+
         return allSubscriptions;
     }
 
@@ -216,7 +234,7 @@ public class SubscriptionStore {
         for (String destination : clusterSubscriptionMap.keySet()) {
             Set<AndesSubscription> subList = clusterSubscriptionMap.get(destination);
             for (AndesSubscription sub : subList) {
-                if (sub.getSubscribedNode().equals(nodeID)) {
+                if (sub.getSubscribedNode().equals(nodeID) && sub.hasExternalSubscriptions()) {
                     activeQueueSubscriptions.add(sub);
                 }
             }
@@ -243,6 +261,15 @@ public class SubscriptionStore {
         for (String destination : localSubscriptionMap.keySet()) {
             Set<LocalSubscription> subscriptionSet = localSubscriptionMap.get(destination);
             activeQueueSubscriptions.addAll(subscriptionSet);
+        }
+
+        Iterator<LocalSubscription> subscriptionIterator = activeQueueSubscriptions.iterator();
+
+        while (subscriptionIterator.hasNext()) {
+            LocalSubscription subscription = subscriptionIterator.next();
+            if (!subscription.hasExternalSubscriptions()) {
+                subscriptionIterator.remove();
+            }
         }
 
         return activeQueueSubscriptions;
@@ -489,7 +516,7 @@ public class SubscriptionStore {
 
             // Check if an active durable subscription already in place. If so we should not accept the subscription
             // Scan all the destinations as the subscription can come for different topic
-            for (Entry<String, Set<AndesSubscription>> entry : clusterQueueSubscriptionMap.entrySet()) {
+            for (Entry<String, Set<AndesSubscription>> entry : clusterTopicSubscriptionMap.entrySet()) {
                 Set<AndesSubscription> existingSubscriptions = entry.getValue();
                 if (existingSubscriptions != null && !existingSubscriptions.isEmpty()) {
                     for (AndesSubscription sub : existingSubscriptions) {
@@ -550,6 +577,13 @@ public class SubscriptionStore {
                 Set<LocalSubscription> localSubscriptions = localQueueSubscriptionMap.get(destinationQueue);
                 if (null == localSubscriptions) {
                     localSubscriptions = Collections.newSetFromMap(new ConcurrentHashMap<LocalSubscription, Boolean>());
+                }
+
+                if (SubscriptionChange.DISCONNECTED == type) {
+                    // Remove the old subscription object if available before inserting the new object since
+                    // the properties that are not used for equals and hash_code method might have been changed
+                    // which can lead to leave the saved object unchanged
+                    localSubscriptions.remove(subscription);
                 }
                 localSubscriptions.add(subscription);
                 localQueueSubscriptionMap.put(destinationQueue, localSubscriptions);
