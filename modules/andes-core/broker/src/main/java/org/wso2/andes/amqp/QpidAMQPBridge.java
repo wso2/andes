@@ -333,14 +333,15 @@ public class QpidAMQPBridge {
      * Create queue in andes kernel
      *
      * @param queue qpid queue
+     * @param isExclusiveConsumer
      * @throws AMQException
      */
-    public void createQueue(AMQQueue queue) throws AMQException {
+    public void createQueue(AMQQueue queue, boolean isExclusiveConsumer) throws AMQException {
         if (log.isDebugEnabled()) {
             log.debug("AMQP BRIDGE: create queue: " + queue.getName());
         }
         try {
-            Andes.getInstance().createQueue(AMQPUtils.createAndesQueue(queue));
+            Andes.getInstance().createQueue(AMQPUtils.createAndesQueue(queue, isExclusiveConsumer));
         } catch (AndesException e) {
             log.error("error while creating queue", e);
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "error while creating queue", e);
@@ -358,7 +359,7 @@ public class QpidAMQPBridge {
             log.debug("AMQP BRIDGE:  delete queue : " + queue.getName());
         }
         try {
-            InboundQueueEvent queueEvent = AMQPUtils.createAndesQueue(queue);
+            InboundQueueEvent queueEvent = AMQPUtils.createAndesQueue(queue, false);
             Andes.getInstance().deleteQueue(queueEvent);
 
         } catch (AndesException e) {

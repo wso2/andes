@@ -109,7 +109,7 @@ public class DLCQueueUtils {
         AMQQueue queue = queueRegistry.getQueue(new AMQShortString(dlcQueueName));
 
         if (queue == null) { // Skip creating if already available
-            AndesQueue andesQueue = new AndesQueue(dlcQueueName, tenantOwner, false, true);
+            AndesQueue andesQueue = new AndesQueue(dlcQueueName, tenantOwner, false, true, false);
 
             AndesContext.getInstance().getAMQPConstructStore().addQueue(andesQueue, true);
             ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().queue(dlcQueueName, tenantOwner,

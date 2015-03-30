@@ -108,7 +108,7 @@ public class AddQueue
             try
             {
                 //create the new durable queue and bind it.
-                vhostManager.createNewQueue(queueName, null, true);
+                vhostManager.createNewQueue(queueName, null, true, false);
                 managedExchange.createNewBinding(queueName,queueName);
             }
             catch (Exception e)

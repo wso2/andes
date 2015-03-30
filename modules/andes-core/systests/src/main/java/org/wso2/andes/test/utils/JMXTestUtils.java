@@ -114,7 +114,7 @@ public class JMXTestUtils
     {
         ManagedBroker managedBroker = getManagedBroker(virtualHostName);
 
-        managedBroker.createNewQueue(name, owner, durable);
+        managedBroker.createNewQueue(name, owner, durable, false);
     }
     
     /**

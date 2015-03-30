@@ -40,7 +40,6 @@ import org.wso2.andes.server.store.DurableConfigurationStore;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 
 import java.util.Collections;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.wso2.andes.amqp.AMQPUtils.generateQueueName;
@@ -112,7 +111,7 @@ public class QueueDeclareHandler implements StateAwareMethodListener<QueueDeclar
                         store.createQueue(queue, body.getArguments());
 
                         //Tell Andes kernel to create queue
-                        QpidAMQPBridge.getInstance().createQueue(queue);
+                        QpidAMQPBridge.getInstance().createQueue(queue, false);
                     }
                     if(body.getAutoDelete())
                     {
