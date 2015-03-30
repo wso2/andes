@@ -579,12 +579,10 @@ public class SubscriptionStore {
                     localSubscriptions = Collections.newSetFromMap(new ConcurrentHashMap<LocalSubscription, Boolean>());
                 }
 
-                if (SubscriptionChange.DISCONNECTED == type) {
-                    // Remove the old subscription object if available before inserting the new object since
-                    // the properties that are not used for equals and hash_code method might have been changed
-                    // which can lead to leave the saved object unchanged
-                    localSubscriptions.remove(subscription);
-                }
+                // Remove the old subscription object if available before inserting the new object since
+                // the properties that are not used for equals and hash_code method might have been changed
+                // which can lead to leave the saved object unchanged
+                localSubscriptions.remove(subscription);
                 localSubscriptions.add(subscription);
                 localQueueSubscriptionMap.put(destinationQueue, localSubscriptions);
 
