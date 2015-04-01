@@ -438,6 +438,29 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    @Override
+    /**
+     * {@inheritDoc}
+     */
+    public void updateExclusiveConsumerForQueue(String queueName, boolean isExclusiveConsumer) throws AndesException {
+
+        List<AndesQueue> allQueues = getAllQueuesStored();
+        String queueData = "";
+
+        for(AndesQueue andesQueue: allQueues){
+
+            //change to the new exclusive Consumer value
+            if(queueName.equals(andesQueue.queueName)) {
+                andesQueue.isExclusiveConsumer = isExclusiveConsumer;
+
+                queueData = andesQueue.encodeAsString();
+                break;
+            }
+        }
+        //store the queue with the new value
+        storeQueueInformation(queueName, queueData);
+    }
+
     /**
      * {@inheritDoc}
      */
