@@ -18,6 +18,8 @@
 
 package org.wso2.andes.kernel;
 
+import org.wso2.andes.subscription.SubscriptionStore;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
