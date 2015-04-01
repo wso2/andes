@@ -26,6 +26,7 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesQueue;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.AndesSubscription.SubscriptionType;
 import org.wso2.andes.kernel.LocalSubscription;
@@ -33,11 +34,21 @@ import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
 import org.wso2.andes.mqtt.MQTTUtils;
 
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SubscriptionStore {
     private static final String TOPIC_PREFIX = "topic.";
@@ -69,20 +80,11 @@ public class SubscriptionStore {
 
     private ClusterSubscriptionProcessor clusterSubscriptionProcessor;
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
     // To store active exclusive consumer for each queue
     private Map<String, LocalSubscription> activeExclusiveConsumersForQueue = new HashMap<String, LocalSubscription>();
 
-    // TreeSet<LocalSubscription> allExclusiveSubscribersForAQueue = new TreeSet<LocalSubscription>(new SubscriptionComparator());
-
-    // To store all the subscribers subscribed for exclusive consumer feature enabled queues
+    // To store all the subscribers, subscribed for exclusive consumer feature enabled queues
     private Map<String, TreeSet<LocalSubscription>> allExclusiveSubscribers = new HashMap<String, TreeSet<LocalSubscription>>();
-
-    private ArrayList<LocalSubscription> subscribers = new ArrayList<LocalSubscription>();
-
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
     class SubscriptionComparator implements Comparator<LocalSubscription> {
@@ -160,8 +162,8 @@ public class SubscriptionStore {
      * get all (ACTIVE/INACTIVE) CLUSTER subscription entries subscribed for a queue/topic
      * hierarchical topic subscription mapping also happens here
      *
-     * @param destination queue/topic name
-     * @param isTopic     TRUE if checking topics
+     * @param destination      queue/topic name
+     * @param isTopic          TRUE if checking topics
      * @param subscriptionType Type of the subscriptions
      * @return Set of andes subscriptions
      * @throws AndesException
@@ -224,8 +226,7 @@ public class SubscriptionStore {
      */
     public Collection<LocalSubscription> getSubscriptionsForDeliver(String destination, boolean isTopic) throws AndesException {
 
-
-        if (null != activeExclusiveConsumersForQueue.get(destination)) {
+        if (null != activeExclusiveConsumersForQueue.get(destination) && !isTopic) {
             LocalSubscription exclusiveSubscriber = activeExclusiveConsumersForQueue.get(destination);
             ArrayList<LocalSubscription> subscribers = new ArrayList<LocalSubscription>();
             subscribers.add(exclusiveSubscriber);
@@ -233,110 +234,24 @@ public class SubscriptionStore {
         } else {
             return this.getActiveLocalSubscribers(destination, isTopic);
         }
-
-
-
-
-/*
-        if (!isTopic) {
-
-            log.info("activeExclusiveConsumersForQueue.get(destination)" + activeExclusiveConsumersForQueue.get(destination));
-            //if (null != activeExclusiveConsumersForQueue.get(destination)) {
-
-            if ( null !=activeExclusiveConsumersForQueue.get(destination)) {
-
-                // TODO : Use AndesSubscription. Ask Asitha.
-                LocalSubscription exclusiveSubscriber = activeExclusiveConsumersForQueue.get(destination);
-               // if (exclusiveSubscriber.isActive()) {
-                   //LocalSubscription exclusiveSubscriber = activeExclusiveConsumersForQueue.get(destination);
-                    //activeExclusiveConsumersForQueue.put(destination, exclusiveSubscriber);
-                    subscribers.add(exclusiveSubscriber);
-               *//* } else {
-
-                    activeExclusiveConsumersForQueue.remove(destination);
-                    if (allExclusiveSubscribers.containsKey(destination) && null != allExclusiveSubscribers.get(destination)) {
-                        TreeSet<LocalSubscription> allSubsucribers = allExclusiveSubscribers.get(destination);
-                        LocalSubscription nextExclusiveConsumer = allSubsucribers.pollFirst();
-                        allExclusiveSubscribers.put(destination, allSubsucribers);
-                        activeExclusiveConsumersForQueue.put(destination, nextExclusiveConsumer);
-                        subscribers.add(activeExclusiveConsumersForQueue.get(destination));
-
-                    }
-                }*//*
-                return subscribers;
-            } else if (null == activeExclusiveConsumersForQueue.get(destination) && null != allExclusiveSubscribers.get(destination)) {
-                TreeSet<LocalSubscription> allSubsucribers = allExclusiveSubscribers.get(destination);
-                LocalSubscription nextExclusiveConsumer = allSubsucribers.pollFirst();
-                allExclusiveSubscribers.put(destination, allSubsucribers);
-                activeExclusiveConsumersForQueue.put(destination, nextExclusiveConsumer);
-                subscribers.add(activeExclusiveConsumersForQueue.get(destination));
-
-                return subscribers;
-
-            } else {
-                return this.getActiveLocalSubscribers(destination, isTopic);
-            }
-        } else {
-            return this.getActiveLocalSubscribers(destination, isTopic);
-        }*/
     }
 
-
-       /*if (!isTopic) {
-            log.info("activeExclusiveConsumersForQueue.get(destination)"+ activeExclusiveConsumersForQueue.get(destination));
-            if (null != activeExclusiveConsumersForQueue.get(destination)) {
-
-                LocalSubscription exclusiveSubscriber = activeExclusiveConsumersForQueue.get(destination);
-                ArrayList<LocalSubscription> subscribers = new ArrayList<LocalSubscription>();
-                subscribers.add(exclusiveSubscriber);
-                //remove the current exclusiveSubscriber and add next subscriber to the in the allExclusiveSubscribers map
-                activeExclusiveConsumersForQueue.remove(destination);
-                if (null != allExclusiveSubscribers.get(destination)) {
-                    TreeSet<LocalSubscription> allSubsucribers = allExclusiveSubscribers.get(destination);
-                    LocalSubscription nextExclusiveConsumer = allSubsucribers.pollFirst();
-                    allExclusiveSubscribers.put(destination,allSubsucribers);
-                    activeExclusiveConsumersForQueue.put(destination,nextExclusiveConsumer);
-                   // activeExclusiveConsumersForQueue.put(destination, allExclusiveSubscribers.get(destination).first());
-                   // allExclusiveSubscribers.get(destination).remove(allExclusiveSubscribers.get(destination).first());
-                }
-                return subscribers;
-            } else {
-                return this.getActiveLocalSubscribers(destination, isTopic);
-            }
-        } else {
-            return this.getActiveLocalSubscribers(destination, isTopic);
-        }
-    }*/
-
-/*
+    /**
+     * Remove the mapping for the queue name (exclusive enabled), when the queue get deleted and if there are no subscribers for that queue
+     *
+     * @param destination queue name
+     * @param isTopic FALSE if the destination is queue
+     */
+    public void deleteQueueMapping(String destination, boolean isTopic) {
         if (!isTopic) {
-            log.info("activeExclusiveConsumersForQueue.get(destination)"+ activeExclusiveConsumersForQueue.get(destination));
-            if (null != activeExclusiveConsumersForQueue.get(destination)) {
-
-                LocalSubscription exclusiveSubscriber = activeExclusiveConsumersForQueue.get(destination);
-                ArrayList<LocalSubscription> subscribers = new ArrayList<LocalSubscription>();
-                subscribers.add(exclusiveSubscriber);
-                //remove the current exclusiveSubscriber and add next subscriber to the in the allExclusiveSubscribers map
-                activeExclusiveConsumersForQueue.remove(destination);
-                if (null != allExclusiveSubscribers.get(destination)) {
-                    TreeSet<LocalSubscription> allSubsucribers = allExclusiveSubscribers.get(destination);
-                    LocalSubscription nextExclusiveConsumer = allSubsucribers.pollFirst();
-                    allExclusiveSubscribers.put(destination,allSubsucribers);
-                    activeExclusiveConsumersForQueue.put(destination,nextExclusiveConsumer);
-                    // activeExclusiveConsumersForQueue.put(destination, allExclusiveSubscribers.get(destination).first());
-                    // allExclusiveSubscribers.get(destination).remove(allExclusiveSubscribers.get(destination).first());
+            if (activeExclusiveConsumersForQueue.containsKey(destination)) {
+                if (null == activeExclusiveConsumersForQueue.get(destination) && null == allExclusiveSubscribers.get(destination)) {
+                    activeExclusiveConsumersForQueue.remove(destination);
+                    allExclusiveSubscribers.remove(destination);
                 }
-                return subscribers;
-            } else {
-                return this.getActiveLocalSubscribers(destination, isTopic);
             }
-        } else {
-            return this.getActiveLocalSubscribers(destination, isTopic);
         }
-    }*/
-
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
 
 
     /**
@@ -766,10 +681,8 @@ public class SubscriptionStore {
         }
 
 
-        // TODO : Try using AndesContextInformationManager
         List<AndesQueue> allQueuesStored = andesContextStore.getAllQueuesStored();
         for (AndesQueue andesQueue : allQueuesStored) {
-            // TODO : Check whether this is correct
             if (subscription.isDurable() && !subscription.isBoundToTopic() && andesQueue.isExclusiveConsumer && andesQueue.queueName.equalsIgnoreCase(subscription.getTargetQueue())) {
                 if (SubscriptionChange.ADDED == type) {
                     if (!activeExclusiveConsumersForQueue.containsKey(subscription.getTargetQueue())) {
@@ -786,8 +699,7 @@ public class SubscriptionStore {
                     }
                 } else if (SubscriptionChange.DELETED == type) {
 
-                    // Remove subscription from the "allExclusiveSubscribers"
-
+                    // Remove subscription from the allExclusiveSubscribers map
                     TreeSet<LocalSubscription> subscribersList = allExclusiveSubscribers.get(subscription.getTargetQueue());
                     for (AndesSubscription sub : subscribersList) {
                         if (sub.getSubscriptionID().equals(subscription.getSubscriptionID())) {
@@ -796,21 +708,20 @@ public class SubscriptionStore {
                         }
                     }
 
-                    // if the deleted subscriber is the exclusive subscriber, remove it from "activeExclusiveConsumersForQueue".
+                    // If deleted subscriber was the exclusive consumer, remove it from activeExclusiveConsumersForQueue map
                     if (activeExclusiveConsumersForQueue.get(subscription.getTargetQueue()).getSubscriptionID().equals(subscription.getSubscriptionID())) {
-                        //activeExclusiveConsumersForQueue.remove(subscription.getTargetQueue());
                         if (null != allExclusiveSubscribers.get(subscription.getTargetQueue())) {
                             TreeSet<LocalSubscription> andesSubscriptions = allExclusiveSubscribers.get(subscription.getTargetQueue());
                             // Updating to the next subscriber
-                            activeExclusiveConsumersForQueue.put(subscription.getTargetQueue(), andesSubscriptions.first());
+                            if (!andesSubscriptions.isEmpty()) {
+                                activeExclusiveConsumersForQueue.put(subscription.getTargetQueue(), andesSubscriptions.first());
+                            }
                         }
-
                     }
-
                 }
+                break;
             }
         }
-
     }
 
     /**

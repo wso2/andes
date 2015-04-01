@@ -40,7 +40,7 @@ public class AndesQueue {
      * @param queueOwner  owner of the queue (virtual host)
      * @param isExclusive is queue exclusive
      * @param isDurable   is queue durable
-     * @param isExclusiveConsumer
+     * @param isExclusiveConsumer is queue exclusive consumer enabled
      */
     public AndesQueue(String queueName, String queueOwner, boolean isExclusive, boolean isDurable, boolean isExclusiveConsumer) {
         this.queueName = queueName;

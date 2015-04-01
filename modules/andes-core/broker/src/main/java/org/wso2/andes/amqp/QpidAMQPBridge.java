@@ -333,7 +333,7 @@ public class QpidAMQPBridge {
      * Create queue in andes kernel
      *
      * @param queue qpid queue
-     * @param isExclusiveConsumer
+     * @param isExclusiveConsumer is queue exclusive consumer enabled
      * @throws AMQException
      */
     public void createQueue(AMQQueue queue, boolean isExclusiveConsumer) throws AMQException {
