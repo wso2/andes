@@ -195,9 +195,9 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
                     throw new AndesException(error, ex);
                 }
 
-                //We will indicate the ack to the kernal at this stage
-                //For MQTT QOS 0 we do not get ack from subscriber, hence will be implicitely creating an ack
-                if (0 == getSubscriberQOS()) {
+                //We will indicate the ack to the kernel at this stage
+                //For MQTT QOS 0 we do not get ack from subscriber, hence will be implicitly creating an ack
+                if (0 == getSubscriberQOS() || 0 == messageMetadata.getQosLevel()) {
                     mqqtServerChannel.implicitAck(getSubscribedDestination(), messageMetadata.getMessageID(),
                             this.getStorageQueueName(), getChannelID());
                 }
