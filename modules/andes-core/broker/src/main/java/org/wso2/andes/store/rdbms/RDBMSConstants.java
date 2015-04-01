@@ -305,6 +305,16 @@ public class RDBMSConstants {
                     " SET " + MESSAGE_COUNT + "= 0" +
                     " WHERE " + QUEUE_NAME + "=?";
 
+    protected static final String PS_GET_QUEUE_DATA =
+            "SELECT "+QUEUE_DATA+
+                    " FROM "+ QUEUE_INFO_TABLE +
+                    " WHERE " + QUEUE_NAME + "=?";
+
+    protected static final String PS_UPDATE_EXCLUSIVE_CONSUMER =
+            "UPDATE "+ QUEUE_INFO_TABLE +
+                    " SET "+ QUEUE_DATA + "=?"+
+            " WHERE "+ QUEUE_NAME +"=?";
+
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";
     protected static final String TASK_DELETING_MESSAGE_PARTS = "deleting message parts.";
@@ -367,6 +377,7 @@ public class RDBMSConstants {
     protected static final String TASK_DELETING_QUEUE_COUNTER = "deleting queue counter";
     protected static final String TASK_INCREMENTING_QUEUE_COUNT = "incrementing queue count";
     protected static final String TASK_DECREMENTING_QUEUE_COUNT = "decrementing queue count";
+    protected static final String TASK_RETRIEVING_AND_UPDATING_QUEUE_DATA = "Retrieving and updating queue details";
 
     /**
      * Only public static constants are in this class. No need to instantiate.
