@@ -222,6 +222,16 @@ public interface AndesContextStore {
      */
     public void deleteBindingInformation(String exchangeName, String boundQueueName) throws AndesException;
 
+
+    /**
+     * updating the exclusiveConsumer Value of a stored queue
+     * @param queueName name of the queue
+     * @param isExclusiveConsumer exclusive Consumer Value of the queue
+     * @throws AndesException
+     */
+
+    public void updateExclusiveConsumerForQueue(String queueName, boolean isExclusiveConsumer) throws AndesException;
+
     /**
      * Close the context store
      */

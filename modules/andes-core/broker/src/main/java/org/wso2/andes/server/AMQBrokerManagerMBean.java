@@ -30,8 +30,7 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.logging.LogMessage;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.management.common.mbeans.ManagedBroker;
@@ -67,6 +66,9 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
     private final DurableConfigurationStore _durableConfig;
 
     private final VirtualHostImpl.VirtualHostMBean _virtualHostMBean;
+
+    private static AndesContextStore contextStore;
+    public static boolean exclusiveConsumer;
 
     @MBeanConstructor("Creates the Broker Manager MBean")
     public AMQBrokerManagerMBean(VirtualHostImpl.VirtualHostMBean virtualHostMBean) throws JMException
@@ -431,5 +433,37 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
     public boolean isStatisticsEnabled()
     {
         return getVirtualHost().isStatisticsEnabled();
+    }
+
+    /** Updating exclusive Consumer Value     *
+     * @param queueName name of the queue
+     * @param isExclusiveConsumer exclusive consumer value of the queue
+     * @throws IOException
+     * @throws JMException
+     */
+    @Override
+    public void updateExclusiveConsumerValue(String queueName, boolean isExclusiveConsumer) throws IOException,
+            JMException {
+
+        List<AndesQueue> queueList = null;
+        try {
+            queueList = AndesContext.getInstance().getAndesContextStore().getAllQueuesStored();
+
+            if (queueList != null) {
+                for (AndesQueue andesQueue : queueList) {
+
+                    if (andesQueue.queueName.equals(queueName)) {
+                        andesQueue.isExclusiveConsumer = isExclusiveConsumer;
+
+                        //updating the database
+                        AndesContext.getInstance().getAndesContextStore().updateExclusiveConsumerForQueue(queueName,
+                                isExclusiveConsumer);
+                       }
+                    }
+                }
+
+            }catch (AndesException e) {
+            e.printStackTrace();
+        }
     }
 }
