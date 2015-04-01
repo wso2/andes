@@ -532,4 +532,41 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
             throw new AndesException("Error occurred while " + task, e);
         }
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateExclusiveConsumerForQueue(String queueName, boolean isExclusiveConsumer) throws AndesException {
+
+        //retrieving queue information
+        Statement statement1 = QueryBuilder.select().
+                column(QUEUE_EXCHANGE_NODE_DETAIL).
+                from(config.getKeyspace(), QUEUE_EXCHANGE_NODE_TABLE).
+                where(eq(QUEUE_NAME, queueName)).
+                setConsistencyLevel(config.getReadConsistencyLevel());
+
+        ResultSet resultSet = execute(statement1, "retrieve data of the queue :"+queueName);
+
+        String queueData = resultSet.toString();
+        String[] detailsOfQueue = queueData.split("=");
+
+        //change the last value of the array with new exclusive consumer value
+        detailsOfQueue[detailsOfQueue.length-1] = String.valueOf(isExclusiveConsumer);
+
+        StringBuilder builder = new StringBuilder();
+        for(String s : detailsOfQueue) {
+            builder.append(s);
+        }
+        queueData = builder.toString();
+
+        Statement statement2 = QueryBuilder.update(config.getKeyspace(), QUEUE_EXCHANGE_NODE_TABLE).
+                with(set(QUEUE_EXCHANGE_NODE_DETAIL, queueData)).
+                where(eq(QUEUE_NAME, queueName)).
+                setConsistencyLevel(config.getWriteConsistencyLevel());
+
+        execute(statement2, "Updating details of queue : " + queueName + " by Changing exclusiveConsumer value as "
+                + isExclusiveConsumer);
+    }
+
 }
