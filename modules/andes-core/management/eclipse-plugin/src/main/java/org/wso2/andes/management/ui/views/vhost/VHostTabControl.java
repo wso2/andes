@@ -548,7 +548,7 @@ public class VHostTabControl extends TabControl
                 
                 try
                 {
-                    _vhmb.createNewQueue(name, owner, durable, true);
+                    _vhmb.createNewQueue(name, owner, durable, false);
                     
                     ViewUtility.operationResultFeedback(null, "Created Queue", null);
                     try
