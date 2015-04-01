@@ -18,6 +18,8 @@
 
 package org.wso2.andes.kernel;
 
+import org.wso2.andes.subscription.SubscriptionStore;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -125,13 +127,14 @@ public class AMQPConstructStore {
      * @param isLocal   is this a local change
      * @throws AndesException
      */
-    public void removeQueue(String queueName, boolean isLocal) throws AndesException {
+    public void removeQueue(String queueName, boolean isLocal, boolean isTopic) throws AndesException {
         if (isLocal) {
             andesContextStore.deleteQueueInformation(queueName);
             //create the space created to keep message counter on this queue
             messageStore.removeQueue(queueName);
         }
         andesQueues.remove(queueName);
+        AndesContext.getInstance().getSubscriptionStore().deleteQueueMapping(queueName, isTopic);
     }
 
     /**

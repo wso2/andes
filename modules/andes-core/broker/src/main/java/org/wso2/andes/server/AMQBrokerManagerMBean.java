@@ -64,7 +64,6 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
 
     private final VirtualHostImpl.VirtualHostMBean _virtualHostMBean;
 
-
     @MBeanConstructor("Creates the Broker Manager MBean")
     public AMQBrokerManagerMBean(VirtualHostImpl.VirtualHostMBean virtualHostMBean) throws JMException
     {
@@ -243,7 +242,6 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
     public void createNewQueue(String queueName, String owner, boolean durable, boolean isExclusiveConsumer) throws JMException, MBeanException
     {
         AMQQueue queue = _queueRegistry.getQueue(new AMQShortString(queueName));
-
         try
         {
             if (queue != null)

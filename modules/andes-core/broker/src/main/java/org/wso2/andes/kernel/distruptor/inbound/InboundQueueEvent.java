@@ -81,7 +81,7 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
      * @param queueOwner  owner of the queue (virtual host)
      * @param isExclusive is queue exclusive
      * @param isDurable   is queue durable
-     * @param isExclusiveConsumer
+     * @param isExclusiveConsumer is queue exclusive consumer enabled
      */
     public InboundQueueEvent(String queueName, String queueOwner, boolean isExclusive, boolean isDurable, boolean isExclusiveConsumer) {
         super(queueName, queueOwner, isExclusive, isDurable, isExclusiveConsumer);
@@ -108,7 +108,7 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
                 contextInformationManager.createQueue(this);
                 break;
             case DELETE_QUEUE_EVENT:
-                contextInformationManager.deleteQueue(queueName);
+                contextInformationManager.deleteQueue(queueName, isTopic);
                 break;
             case QUEUE_PURGE_EVENT:
                 handlePurgeEvent();

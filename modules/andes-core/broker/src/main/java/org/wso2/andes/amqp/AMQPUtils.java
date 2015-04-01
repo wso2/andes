@@ -370,7 +370,7 @@ public class AMQPUtils {
      * convert qpid queue to Andes queue
      *
      * @param amqQueue qpid queue
-     * @param isExclusiveConsumer
+     * @param isExclusiveConsumer is amqQueue exclusive consumer enabled
      * @return andes queue
      */
     public static InboundQueueEvent createAndesQueue(AMQQueue amqQueue, boolean isExclusiveConsumer) {
