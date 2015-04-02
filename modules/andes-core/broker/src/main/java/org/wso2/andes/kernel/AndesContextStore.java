@@ -224,7 +224,7 @@ public interface AndesContextStore {
 
 
     /**
-     * updating the exclusiveConsumer Value of a stored queue
+     * Updating the exclusiveConsumer Value of a stored queue
      * @param queueName name of the queue
      * @param isExclusiveConsumer exclusive Consumer Value of the queue
      * @throws AndesException
