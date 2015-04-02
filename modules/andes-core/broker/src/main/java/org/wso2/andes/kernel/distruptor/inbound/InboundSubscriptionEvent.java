@@ -29,9 +29,6 @@ import org.wso2.andes.subscription.BasicSubscription;
 
 import java.util.concurrent.ExecutionException;
 
-import static org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent.StateEvent.CLOSE_SUBSCRIPTION_EVENT;
-import static org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent.StateEvent.OPEN_SUBSCRIPTION_EVENT;
-
 /**
  * Class to hold information relevant to open and close subscription
  */
@@ -40,9 +37,26 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
     private static Log log = LogFactory.getLog(InboundSubscriptionEvent.class);
 
     /**
+     * Supported state events
+     */
+    public enum EventType {
+
+        /**
+         * New local subscription created event
+         */
+        OPEN_SUBSCRIPTION_EVENT,
+
+        /**
+         * Close a local subscription event
+         */
+        CLOSE_SUBSCRIPTION_EVENT,
+
+    }
+
+    /**
      * Type of subscription event
      */
-    private StateEvent eventType;
+    private EventType eventType;
 
     /**
      * Reference to subscription manager to update subscription event 
@@ -119,12 +133,12 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
     }
 
     public void prepareForNewSubscription(AndesSubscriptionManager subscriptionManager) {
-        eventType = OPEN_SUBSCRIPTION_EVENT;
+        eventType = EventType.OPEN_SUBSCRIPTION_EVENT;
         this.subscriptionManager = subscriptionManager;
     }
     
     public void prepareForCloseSubscription(AndesSubscriptionManager subscriptionManager) {
-        eventType = CLOSE_SUBSCRIPTION_EVENT;
+        eventType = EventType.CLOSE_SUBSCRIPTION_EVENT;
         this.subscriptionManager = subscriptionManager;
     }
     
@@ -145,8 +159,11 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
         return false;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public StateEvent getEventType() {
-        return eventType;
+    public String eventInfo() {
+        return eventType.toString();
     }
 }

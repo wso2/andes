@@ -28,8 +28,6 @@ import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 
-import static org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent.StateEvent.*;
-
 /**
  * Handles events related to basic kernel operations.
  * Starting and shutting down tasks etc 
@@ -37,11 +35,29 @@ import static org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent.St
 public class InboundKernelOpsEvent implements AndesInboundStateEvent {
 
     private static Log log = LogFactory.getLog(InboundKernelOpsEvent.class);
-    
+
+    public enum EventType {
+
+        /** Stop message delivery in Andes core */
+        STOP_MESSAGE_DELIVERY_EVENT,
+
+        /** Start message delivery in Andes core event */
+        START_MESSAGE_DELIVERY_EVENT,
+
+        /** Shutdown andes broker messaging engine event*/
+        SHUTDOWN_MESSAGING_ENGINE_EVENT,
+
+        /** Start expired message deleting task, notification event */
+        START_EXPIRATION_WORKER_EVENT,
+
+        /** Stop expired message deleting task, notification event */
+        STOP_EXPIRATION_WORKER_EVENT
+    }
+
     /**
      * Kernel operation event handled by InboundKernelOpsEvent
      */
-    private StateEvent eventType;
+    private EventType eventType;
 
     /**
      * Reference to MessagingEngine to process kernel events
@@ -70,6 +86,11 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
                 log.error("Event type not set properly " + eventType);
                 break;
         }
+    }
+
+    @Override
+    public String eventInfo() {
+        return eventType.toString();
     }
 
     /**
@@ -124,7 +145,7 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
      * @param messagingEngine MessagingEngine
      */
     public void prepareForStartMessageDelivery(MessagingEngine messagingEngine) {
-        eventType = START_MESSAGE_DELIVERY_EVENT;
+        eventType = EventType.START_MESSAGE_DELIVERY_EVENT;
         this.messagingEngine = messagingEngine;
     }
 
@@ -133,7 +154,7 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
      * @param messagingEngine MessagingEngine
      */
     public void prepareForStopMessageDelivery(MessagingEngine messagingEngine) {
-        eventType = STOP_MESSAGE_DELIVERY_EVENT;
+        eventType = EventType.STOP_MESSAGE_DELIVERY_EVENT;
         this.messagingEngine = messagingEngine;
     }
 
@@ -142,7 +163,7 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
      * @param messagingEngine MessagingEngine
      */
     public void prepareForStartMessageExpirationWorker(MessagingEngine messagingEngine) {
-        eventType = START_EXPIRATION_WORKER_EVENT;
+        eventType = EventType.START_EXPIRATION_WORKER_EVENT;
         this.messagingEngine = messagingEngine;
     }
 
@@ -151,7 +172,7 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
      * @param messagingEngine MessagingEngine
      */
     public void prepareForStopMessageExpirationWorker(MessagingEngine messagingEngine) {
-        eventType = STOP_EXPIRATION_WORKER_EVENT;
+        eventType = EventType.STOP_EXPIRATION_WORKER_EVENT;
         this.messagingEngine = messagingEngine;
     }
 
@@ -160,13 +181,8 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
      * @param messagingEngine MessagingEngine
      */
     public void prepareForShutdownMessagingEngine(MessagingEngine messagingEngine) {
-        eventType = SHUTDOWN_MESSAGING_ENGINE_EVENT;
+        eventType = EventType.SHUTDOWN_MESSAGING_ENGINE_EVENT;
         this.messagingEngine = messagingEngine;
-    }
-
-    @Override
-    public StateEvent getEventType() {
-        return eventType;
     }
 
     private void gracefulShutdown() throws AndesException {

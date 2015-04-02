@@ -21,16 +21,17 @@ package org.wso2.andes.kernel.distruptor.inbound;
 import com.lmax.disruptor.EventFactory;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * All inbound events are published to disruptor ring buffer as an inboundEvent object
+ * All inbound events are published to disruptor ring buffer as an InboundEventContainer object
  * This class specifies the event type and any data that is relevant to that event.
  */
-public class InboundEvent {
+public class InboundEventContainer {
 
     private AndesChannel channel;
 
@@ -77,7 +78,7 @@ public class InboundEvent {
     }
 
     /**
-     * Specific event type of relevant to this InboundEvent
+     * Specific event type of relevant to this InboundEventContainer
      */
     private Type eventType;
 
@@ -96,10 +97,10 @@ public class InboundEvent {
      */
     public AndesAckData ackData;
 
-    public InboundEvent() {
+    public InboundEventContainer() {
         messageList = new ArrayList<AndesMessage>();
         eventType = Type.IGNORE_EVENT;
-        safeZoneLimit = Long.MAX_VALUE;
+        safeZoneLimit = Long.MIN_VALUE;
 
     }
 
@@ -111,8 +112,8 @@ public class InboundEvent {
         this.eventType = eventType;
     }
 
-    public AndesInboundStateEvent getStateEvent() {
-        return stateEvent;
+    public void updateState() throws AndesException {
+        stateEvent.updateState();
     }
 
     public void setStateEvent(AndesInboundStateEvent stateEvent) {
@@ -131,15 +132,27 @@ public class InboundEvent {
     /**
      * Disruptor uses this factory to populate the ring with inboundEvent objects
      */
-    public static class InboundEventFactory implements EventFactory<InboundEvent> {
+    public static class InboundEventFactory implements EventFactory<InboundEventContainer> {
         @Override
-        public InboundEvent newInstance() {
-            return new InboundEvent() {
+        public InboundEventContainer newInstance() {
+            return new InboundEventContainer() {
             };
         }
     }
 
-    public static EventFactory<InboundEvent> getFactory() {
+    /**
+     * Human readable information of the event
+     * @return brief description of the event
+     */
+    public String eventInfo() {
+        if(eventType == Type.STATE_CHANGE_EVENT) {
+            return stateEvent.eventInfo();
+        } else {
+            return eventType.toString();
+        }
+    }
+
+    public static EventFactory<InboundEventContainer> getFactory() {
         return new InboundEventFactory();
     }
 }

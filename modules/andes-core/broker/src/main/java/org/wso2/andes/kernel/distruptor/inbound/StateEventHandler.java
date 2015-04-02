@@ -31,7 +31,7 @@ import java.util.List;
 /**
  * State changes related to Andes for inbound events are handled through this handler
  */
-public class StateEventHandler implements EventHandler<InboundEvent> {
+public class StateEventHandler implements EventHandler<InboundEventContainer> {
 
     private static Log log = LogFactory.getLog(StateEventHandler.class);
 
@@ -45,12 +45,12 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
     }
 
     @Override
-    public void onEvent(InboundEvent event, long sequence, boolean endOfBatch) throws Exception {
+    public void onEvent(InboundEventContainer event, long sequence, boolean endOfBatch) throws Exception {
 
 
         if (log.isDebugEnabled()) {
             log.debug("[ sequence " + sequence + " ] Event received from disruptor. Event type: "
-                    + event.getEventType() + " " + this);
+                    + event.eventInfo());
         }
         
         try {
@@ -60,7 +60,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
                     event.getChannel().recordRemovalFromBuffer(getProcessedAmount(event.messageList));
                     break;
                 case STATE_CHANGE_EVENT:
-                    event.getStateEvent().updateState();
+                    event.updateState();
                     break;
                 case SAFE_ZONE_DECLARE_EVENT:
                     updateSlotDeleteSafeZone(event);
@@ -79,7 +79,7 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
      * Communicate this node's safe zone to the coordinator for evaluation.
      * @param event event
      */
-    private void updateSlotDeleteSafeZone(InboundEvent event) {
+    private void updateSlotDeleteSafeZone(InboundEventContainer event) {
 
         long currentSafeZoneVal = event.getSafeZoneLimit();
         SlotMessageCounter.getInstance().updateSafeZoneForNode(currentSafeZoneVal);
@@ -87,8 +87,8 @@ public class StateEventHandler implements EventHandler<InboundEvent> {
 
     /**
      * Get list of messages that were processed through writing events.
-     * @param messages
-     * @return
+     * @param messages AndesMessage list
+     * @return Processed message chunks
      */
     private int getProcessedAmount(List<AndesMessage> messages) {
         int count = 0;

@@ -25,15 +25,24 @@ import org.wso2.andes.kernel.AndesContextInformationManager;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesQueue;
 
-import static org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent.StateEvent.ADD_BINDING_EVENT;
-import static org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent.StateEvent.REMOVE_BINDING_EVENT;
-
 /**
  * Binding related inbound event 
  */
 public class InboundBindingEvent extends AndesBinding implements AndesInboundStateEvent {
 
     private static Log log = LogFactory.getLog(InboundBindingEvent.class);
+
+    /**
+     * Supported state events
+     */
+    private enum EventType {
+
+        /** Create a binding in Andes related event type */
+        ADD_BINDING_EVENT,
+
+        /** Delete a binding in Andes related event type */
+        REMOVE_BINDING_EVENT,
+    }
 
     /**
      * Reference to AndesContextInformationManager for add/remove binding
@@ -43,12 +52,16 @@ public class InboundBindingEvent extends AndesBinding implements AndesInboundSta
     /**
      * Andes binding related event type of this event 
      */
-    private StateEvent eventType;
+    private EventType eventType;
     
     public InboundBindingEvent(String boundExchangeName, AndesQueue boundQueue, String routingKey) {
         super(boundExchangeName, boundQueue, routingKey);
     }
 
+    /**
+     * {@inheritDoc}
+     * @throws AndesException
+     */
     @Override
     public void updateState() throws AndesException {
         switch (eventType) {
@@ -64,9 +77,12 @@ public class InboundBindingEvent extends AndesBinding implements AndesInboundSta
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public StateEvent getEventType() {
-        return eventType;
+    public String eventInfo() {
+        return eventType.toString();
     }
 
     /**
@@ -75,7 +91,7 @@ public class InboundBindingEvent extends AndesBinding implements AndesInboundSta
      */
     public void prepareForAddBindingEvent(AndesContextInformationManager contextInformationManager) {
         this.contextInformationManager = contextInformationManager;
-        eventType = ADD_BINDING_EVENT;
+        eventType = EventType.ADD_BINDING_EVENT;
     }
 
     /**
@@ -84,6 +100,6 @@ public class InboundBindingEvent extends AndesBinding implements AndesInboundSta
      */
     public void prepareForRemoveBinding(AndesContextInformationManager contextInformationManager) {
         this.contextInformationManager = contextInformationManager;
-        eventType = REMOVE_BINDING_EVENT;
+        eventType = EventType.REMOVE_BINDING_EVENT;
     }
 }

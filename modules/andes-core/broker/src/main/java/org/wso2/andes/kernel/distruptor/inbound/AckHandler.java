@@ -42,10 +42,10 @@ public class AckHandler implements BatchEventHandler {
     }
 
     @Override
-    public void onEvent(final List<InboundEvent> eventList) throws Exception {
+    public void onEvent(final List<InboundEventContainer> eventList) throws Exception {
         if (log.isTraceEnabled()) {
             StringBuilder messageIDsString = new StringBuilder();
-            for (InboundEvent inboundEvent : eventList) {
+            for (InboundEventContainer inboundEvent : eventList) {
                 messageIDsString.append(inboundEvent.ackData.getMessageID()).append(" , ");
             }
             log.trace(eventList.size() + " messages received : " + messageIDsString);
@@ -67,9 +67,9 @@ public class AckHandler implements BatchEventHandler {
      * all the clients acknowledges)
      * @param eventList inboundEvent list
      */
-    public void ackReceived(final List<InboundEvent> eventList) throws AndesException {
+    public void ackReceived(final List<InboundEventContainer> eventList) throws AndesException {
         List<AndesRemovableMetadata> removableMetadata = new ArrayList<AndesRemovableMetadata>();
-        for (InboundEvent event : eventList) {
+        for (InboundEventContainer event : eventList) {
 
             AndesAckData ack = event.ackData;
             // For topics message is shared. If all acknowledgements are received only we should remove message

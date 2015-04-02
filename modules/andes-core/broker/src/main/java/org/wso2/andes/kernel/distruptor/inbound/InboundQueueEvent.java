@@ -30,11 +30,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent.StateEvent.CREATE_QUEUE_EVENT;
-import static org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent.StateEvent.DELETE_QUEUE_EVENT;
-import static org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent.StateEvent.IS_QUEUE_DELETABLE_EVENT;
-import static org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent.StateEvent.QUEUE_PURGE_EVENT;
-
 /**
  * Queue related inbound events are handled through this method
  */
@@ -43,9 +38,35 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
     private static Log log = LogFactory.getLog(InboundQueueEvent.class);
 
     /**
+     * Supported state events
+     */
+    private enum EventType {
+
+        /**
+         * Queue purging event related event type
+         */
+        QUEUE_PURGE_EVENT,
+
+        /**
+         * Is queue deletable check related event type
+         */
+        IS_QUEUE_DELETABLE_EVENT,
+
+        /**
+         * Delete the queue from DB related event type
+         */
+        DELETE_QUEUE_EVENT,
+
+        /**
+         * Create a queue in Andes related event type
+         */
+        CREATE_QUEUE_EVENT,
+    }
+
+    /**
      * Event type this event
      */
-    private StateEvent eventType;
+    private EventType eventType;
 
     /**
      * Reference to AndesContextInformationManager to update create/ remove queue state
@@ -122,6 +143,11 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
         }
     }
 
+    @Override
+    public String eventInfo() {
+        return eventType.toString();
+    }
+
     private void handleIsQueueDeletableEvent() {
         boolean queueDeletable = false;
         try {
@@ -147,19 +173,13 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
         }
     }
 
-
-    @Override
-    public StateEvent getEventType() {
-        return eventType;
-    }
-
     /**
      * Update the event to a create Queue event
      *
      * @param contextInformationManager AndesContextInformationManager
      */
     public void prepareForCreateQueue(AndesContextInformationManager contextInformationManager) {
-        eventType = CREATE_QUEUE_EVENT;
+        eventType = EventType.CREATE_QUEUE_EVENT;
         this.contextInformationManager = contextInformationManager;
     }
 
@@ -169,7 +189,7 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
      * @param contextInformationManager AndesContextInformationManager
      */
     public void prepareForDeleteQueue(AndesContextInformationManager contextInformationManager) {
-        eventType = DELETE_QUEUE_EVENT;
+        eventType = EventType.DELETE_QUEUE_EVENT;
         this.contextInformationManager = contextInformationManager;
     }
 
@@ -180,7 +200,7 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
      * @param isTopic         is the queue is used to store topic messages
      */
     public void purgeQueue(MessagingEngine messagingEngine, boolean isTopic) {
-        eventType = QUEUE_PURGE_EVENT;
+        eventType = EventType.QUEUE_PURGE_EVENT;
         this.isTopic = isTopic;
         this.messagingEngine = messagingEngine;
     }
@@ -210,7 +230,7 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
      * @param contextInformationManager AndesContextInformationManager
      */
     public void prepareForCheckIfQueueDeletable(AndesContextInformationManager contextInformationManager) {
-        eventType = IS_QUEUE_DELETABLE_EVENT;
+        eventType = EventType.IS_QUEUE_DELETABLE_EVENT;
         this.contextInformationManager = contextInformationManager;
     }
 

@@ -25,5 +25,5 @@ import java.util.List;
  */
 public interface BatchEventHandler {
 
-    void onEvent(final List<InboundEvent> eventList) throws Exception;
+    void onEvent(final List<InboundEventContainer> eventList) throws Exception;
 }
