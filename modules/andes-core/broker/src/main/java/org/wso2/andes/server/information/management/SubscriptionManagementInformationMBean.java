@@ -160,7 +160,8 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
                     .getTargetQueueBoundExchangeName() +
                     "|" + subscription.getTargetQueue() + "|" + subscription.isDurable() + "|" +
                     subscription.hasExternalSubscriptions() +
-                    "|" + pendingMessageCount + "|" + subscription.getSubscribedNode();
+                    "|" + pendingMessageCount + "|" + subscription.getSubscribedNode()+"|" +
+                    subscription.getSubscribedDestination();
         } else {
             throw new AndesException("Invalid format in Subscriber Node ID : " + subscription
                     .getSubscribedNode() + ". Delimiter should be /.");
