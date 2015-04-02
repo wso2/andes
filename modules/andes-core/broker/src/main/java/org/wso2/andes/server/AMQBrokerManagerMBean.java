@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import javax.management.JMException;
 import javax.management.MBeanException;
 import javax.management.MalformedObjectNameException;
@@ -30,7 +32,11 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.AndesContextStore;
+import org.wso2.andes.kernel.AndesQueue;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.logging.LogMessage;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.management.common.mbeans.ManagedBroker;
@@ -60,6 +66,8 @@ import org.wso2.andes.server.logging.actors.ManagementActor;
 @MBeanDescription("This MBean exposes the broker level management features")
 public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBroker
 {
+    private static Log log = LogFactory.getLog(AMQBrokerManagerMBean.class);
+
     private final QueueRegistry _queueRegistry;
     private final ExchangeRegistry _exchangeRegistry;
     private final ExchangeFactory _exchangeFactory;
@@ -67,8 +75,8 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
 
     private final VirtualHostImpl.VirtualHostMBean _virtualHostMBean;
 
+    //ContextStore object to do the database calls
     private static AndesContextStore contextStore;
-    public static boolean exclusiveConsumer;
 
     @MBeanConstructor("Creates the Broker Manager MBean")
     public AMQBrokerManagerMBean(VirtualHostImpl.VirtualHostMBean virtualHostMBean) throws JMException
@@ -244,7 +252,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
      * @throws JMException
      * @throws MBeanException
      */
-    public void createNewQueue(String queueName, String owner, boolean durable) throws JMException, MBeanException
+    public void createNewQueue(String queueName, String owner, boolean durable, boolean exclusiveConsumer) throws JMException, MBeanException
     {
         AMQQueue queue = _queueRegistry.getQueue(new AMQShortString(queueName));
         try
@@ -268,7 +276,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                 _durableConfig.createQueue(queue);
 
                 //tell Andes kernel to create queue
-                QpidAMQPBridge.getInstance().createQueue(queue);
+                QpidAMQPBridge.getInstance().createQueue(queue,exclusiveConsumer );
             }
 
         }
@@ -435,15 +443,17 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
         return getVirtualHost().isStatisticsEnabled();
     }
 
-    /** Updating exclusive Consumer Value     *
+    /**
+     * Updating exclusive Consumer Value
      * @param queueName name of the queue
-     * @param isExclusiveConsumer exclusive consumer value of the queue
+     * @param isExclusiveConsumer   exclusive consumer value of the queue
      * @throws IOException
      * @throws JMException
+     * @throws AndesException
      */
     @Override
     public void updateExclusiveConsumerValue(String queueName, boolean isExclusiveConsumer) throws IOException,
-            JMException {
+            JMException, AndesException {
 
         List<AndesQueue> queueList = null;
         try {
@@ -456,14 +466,13 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                         andesQueue.isExclusiveConsumer = isExclusiveConsumer;
 
                         //updating the database
-                        AndesContext.getInstance().getAndesContextStore().updateExclusiveConsumerForQueue(queueName,
-                                isExclusiveConsumer);
-                       }
+                        AndesContext.getInstance().getAndesContextStore().updateExclusiveConsumerForQueue(queueName, isExclusiveConsumer);
                     }
                 }
-
-            }catch (AndesException e) {
-            e.printStackTrace();
+            }
+        } catch (AndesException e) {
+            log.error("Error in updating exclusive consumer value", e);
+            throw new AndesException("Error in updating exclusive consumer value.");
         }
     }
 }
