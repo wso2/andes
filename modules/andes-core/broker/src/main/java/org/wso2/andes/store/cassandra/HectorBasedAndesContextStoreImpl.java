@@ -438,10 +438,11 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
-    @Override
+
     /**
      * {@inheritDoc}
      */
+    @Override
     public void updateExclusiveConsumerForQueue(String queueName, boolean isExclusiveConsumer) throws AndesException {
 
         List<AndesQueue> allQueues = getAllQueuesStored();
