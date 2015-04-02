@@ -539,7 +539,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void updateExclusiveConsumerForQueue(String queueName, boolean isExclusiveConsumer) throws AndesException {
 
-        //retrieving queue information
+        //Retrieving queue information
         Statement statement1 = QueryBuilder.select().
                 column(QUEUE_EXCHANGE_NODE_DETAIL).
                 from(config.getKeyspace(), QUEUE_EXCHANGE_NODE_TABLE).
@@ -551,7 +551,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         String queueData = resultSet.toString();
         String[] detailsOfQueue = queueData.split("=");
 
-        //change the last value of the array with new exclusive consumer value
+        //Change the last value of the array with new exclusive consumer value
         detailsOfQueue[detailsOfQueue.length-1] = String.valueOf(isExclusiveConsumer);
 
         StringBuilder builder = new StringBuilder();
