@@ -181,7 +181,6 @@ public class AndesContextInformationManager {
         for (AndesQueue queue : queueList) {
             if (queue.queueName.equals(queueName)) {
                 queueToDelete = queue;
-
                 break;
             }
         }

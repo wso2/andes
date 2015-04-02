@@ -40,6 +40,7 @@ import org.wso2.andes.server.store.DurableConfigurationStore;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 
 import java.util.Collections;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.wso2.andes.amqp.AMQPUtils.generateQueueName;

@@ -105,17 +105,17 @@ public interface ManagedBroker
      * Create a new Queue on the Broker server.
      *
      * @param queueName
-     * @param owner
      * @param durable
+     * @param owner
      * @param isExclusiveConsumer
      * @throws IOException
      * @throws JMException
      * @throws MBeanException
      */
     @MBeanOperation(name="createNewQueue", description="Create a new Queue on the Broker server", impact= MBeanOperationInfo.ACTION)
-    void createNewQueue(@MBeanOperationParameter(name = "queue name", description = "Name of the new queue") String queueName,
-                        @MBeanOperationParameter(name = "owner", description = "Owner name") String owner,
-                        @MBeanOperationParameter(name = "durable", description = "true if the queue should be durable") boolean durable,
+    void createNewQueue(@MBeanOperationParameter(name="queue name", description="Name of the new queue")String queueName,
+                        @MBeanOperationParameter(name="owner", description="Owner name")String owner,
+                        @MBeanOperationParameter(name="durable", description = "true if the queue should be durable") boolean durable,
                         @MBeanOperationParameter(name="isExclusiveConsumer", description="true if the queue is exclusive consumer enabled")boolean isExclusiveConsumer)
             throws IOException, JMException, MBeanException;
 

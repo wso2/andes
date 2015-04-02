@@ -36,7 +36,8 @@ public class AndesQueue {
 
     /**
      * create an instance of andes queue
-     *  @param queueName   name of the queue
+     *
+     * @param queueName   name of the queue
      * @param queueOwner  owner of the queue (virtual host)
      * @param isExclusive is queue exclusive
      * @param isDurable   is queue durable

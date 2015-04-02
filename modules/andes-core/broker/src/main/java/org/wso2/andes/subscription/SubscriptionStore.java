@@ -34,21 +34,11 @@ import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
 import org.wso2.andes.mqtt.MQTTUtils;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+
+import java.util.Collections;
 
 public class SubscriptionStore {
     private static final String TOPIC_PREFIX = "topic.";
@@ -162,8 +152,8 @@ public class SubscriptionStore {
      * get all (ACTIVE/INACTIVE) CLUSTER subscription entries subscribed for a queue/topic
      * hierarchical topic subscription mapping also happens here
      *
-     * @param destination      queue/topic name
-     * @param isTopic          TRUE if checking topics
+     * @param destination queue/topic name
+     * @param isTopic     TRUE if checking topics
      * @param subscriptionType Type of the subscriptions
      * @return Set of andes subscriptions
      * @throws AndesException
