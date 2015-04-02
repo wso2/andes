@@ -831,7 +831,9 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             close(connection, RDBMSConstants.TASK_DELETING_BINDING);
         }
     }
-
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void updateExclusiveConsumerForQueue(String queueName, boolean isExclusiveConsumer) throws AndesException {
 
@@ -878,7 +880,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             close(connection, RDBMSConstants.TASK_RETRIEVING_AND_UPDATING_QUEUE_DATA );
         }
     }
-
     /**
      * {@inheritDoc}
      */
