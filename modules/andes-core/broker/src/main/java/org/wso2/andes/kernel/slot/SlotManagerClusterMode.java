@@ -378,9 +378,9 @@ public class SlotManagerClusterMode {
                         // Following means that we have a piece of the slot exceeding the earliest
                         // assigned slot. breaking that piece and adding it as a new,unassigned slot.
                         if (startMessageIdInTheSlot < overlappingSlots.first().getStartMessageId()) {
-                            Slot leftExtraSlot = new Slot(startMessageIdInTheSlot, overlappingSlots.first().
-                                    getStartMessageId() - 1, queueName);
                             if(log.isDebugEnabled()) {
+                                Slot leftExtraSlot = new Slot(startMessageIdInTheSlot, overlappingSlots.first().
+                                        getStartMessageId() - 1, queueName);
                                 log.debug("LeftExtra Slot in overlapping slots : " + leftExtraSlot);
                             }
                         }
@@ -388,9 +388,9 @@ public class SlotManagerClusterMode {
                         // This means that we have a piece of the slot exceeding the latest assigned slot.
                         // breaking that piece and adding it as a new,unassigned slot.
                         if (lastMessageIdInTheSlot > overlappingSlots.last().getEndMessageId()) {
-                            Slot rightExtraSlot = new Slot(overlappingSlots.last().getEndMessageId() + 1,
-                                    lastMessageIdInTheSlot, queueName);
                             if(log.isDebugEnabled()) {
+                                Slot rightExtraSlot = new Slot(overlappingSlots.last().getEndMessageId() + 1,
+                                        lastMessageIdInTheSlot, queueName);
                                 log.debug("RightExtra in overlapping slot : " + rightExtraSlot);
                             }
 
