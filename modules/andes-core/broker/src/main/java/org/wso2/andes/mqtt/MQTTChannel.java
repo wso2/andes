@@ -243,10 +243,10 @@ public class MQTTChannel {
                 //This will be similer to a durable subscription of AMQP
                 MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscribedTopic,
                         subscriptionChannelID, subscriptionChannelID,
-                        false, 0, subscriberChannel, queue_identifier, true, true);
+                        false, 0, subscriberChannel, queue_identifier, true, false);
                 MQTTLocalSubscription mqttQueueSubscriber = createSubscription(channel, queue_identifier,
                         subscriptionChannelID, subscriptionChannelID, false, 0, subscriberChannel, queue_identifier,
-                        false, true);
+                        false, false);
                 Andes.getInstance().closeLocalSubscription(mqttTopicSubscriber);
                 Andes.getInstance().closeLocalSubscription(mqttQueueSubscriber);
             }
