@@ -229,7 +229,6 @@ public interface AndesContextStore {
      * @param isExclusiveConsumer exclusive Consumer Value of the queue
      * @throws AndesException
      */
-
     public void updateExclusiveConsumerForQueue(String queueName, boolean isExclusiveConsumer) throws AndesException;
 
     /**
