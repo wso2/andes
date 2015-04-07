@@ -685,8 +685,11 @@ public class OnflightMessageTracker {
      * @return number of un acknowledged messages
      */
     public int getNotAckedMessageCount(UUID channelID) {
-        // NOTE channelID should be in map. ChannelID added to map at channel creation
-        return unAckedMsgCountMap.get(channelID).get();
+        if (unAckedMsgCountMap.get(channelID) != null) {
+            return unAckedMsgCountMap.get(channelID).get();
+        }else{
+          return -1;
+        }
     }
 
     /**

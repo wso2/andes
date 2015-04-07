@@ -325,6 +325,12 @@ public class MessageFlusher {
 
         //Here we ignore messages that has been scheduled but not executed,
         // so it might send few messages than maxNumberOfUnAckedMessages
+        if(notAckedMsgCount < 0){
+            if(log.isDebugEnabled()){
+                log.debug("Invalid local subscription selected to send messages");
+            }
+            return false;
+        }
         if (notAckedMsgCount < maxNumberOfUnAckedMessages) {
             return true;
         } else {
