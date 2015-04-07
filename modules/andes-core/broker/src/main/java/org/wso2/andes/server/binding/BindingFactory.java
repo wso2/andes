@@ -23,13 +23,13 @@ import org.wso2.andes.AMQInternalException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAMQPBridge;
-import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.configuration.qpid.BindingConfig;
 import org.wso2.andes.configuration.qpid.BindingConfigType;
 import org.wso2.andes.configuration.qpid.ConfigStore;
 import org.wso2.andes.configuration.qpid.ConfiguredObject;
+import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.framing.FieldTable;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.server.logging.messages.BindingMessages;
@@ -144,21 +144,22 @@ public class BindingFactory {
             arguments = Collections.emptyMap();
         }
 
-        //Perform ACLs
-        if (!getVirtualHost().getSecurityManager().authoriseBind(exchange, queue, new AMQShortString(bindingKey))) {
-            throw new AMQSecurityException("Permission denied: binding " + bindingKey);
-        }
-
         /**
          * We should check cluster-wide if the queue has a binding with a key A and now it is going to bind with a different key
          * (say B) we should not allow it. It is enough to check with local bindings as whenever we create a binding in cluster
-         * it is syned and created locally
+         * it is syned and created locally. We test it before binding authorization to avoid
+         * creating registry entries.
          */
         if (exchange.getName().equalsIgnoreCase("amq.topic") && queue.isDurable()) {
             if (checkIfQueueHasBoundToDifferentTopic(bindingKey, queue)) {
                 throw new AMQInternalException("An Exclusive Bindings already exists for different topic. Not permitted.");
             }
         }
+        //Perform ACLs
+        if (!getVirtualHost().getSecurityManager().authoriseBind(exchange, queue, new AMQShortString(bindingKey))) {
+            throw new AMQSecurityException("Permission denied: binding " + bindingKey);
+        }
+
 
         BindingImpl binding = new BindingImpl(bindingKey, queue, exchange, arguments);
         BindingImpl existingMapping = _bindings.putIfAbsent(binding, binding);
