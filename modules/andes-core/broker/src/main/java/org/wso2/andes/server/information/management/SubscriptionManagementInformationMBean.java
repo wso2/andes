@@ -92,13 +92,8 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
             for (String topic : allTopics) {
 
                 Set<AndesSubscription> subscriptions;
-                if (!isDurableTopic) {
-                    subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination
-                            (topic, true, AndesSubscription.SubscriptionType.AMQP);
-                } else {
-                    subscriptions = AndesContext.getInstance().getSubscriptionStore()
-                            .getAllSubscribersForDestination(topic, false, AndesSubscription.SubscriptionType.AMQP);
-                }
+                subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination
+                        (topic, true, AndesSubscription.SubscriptionType.AMQP);
 
                 for (AndesSubscription s : subscriptions) {
 
