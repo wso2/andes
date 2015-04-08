@@ -124,6 +124,7 @@ public class MQTTUtils {
         messageHeader.setMessageContentLength(messageContentLength);
         messageHeader.setStorageQueueName(topic);
         messageHeader.setMetaDataType(MessageMetaDataType.META_DATA_MQTT);
+        messageHeader.setQosLevel(qosLevel);
         // message arrival time set to mb node's system time.
         messageHeader.setArrivalTime(receivedTime);
         if (log.isDebugEnabled()) {
@@ -164,11 +165,16 @@ public class MQTTUtils {
      * For each topic there will only be one subscriber connection cluster wide locally there can be multiple chnnels
      * bound. This method will generate a unique id for the subscription created per topic
      *
+     * @param clientId The MQTT client Id
+     * @param topic The topic subscribed to
+     * @param qos The Quality of Service level subscribed to
+     * @param cleanSession Clean session value of the client
+     *
      * @return the unique identifier
      */
-    public static String generateTopicSpecficClientID() {
+    public static String generateTopicSpecficClientID(String clientId, String topic, int qos, boolean cleanSession) {
         final String mqttSubscriptionID = "MQTTAndesSubscriber:";
-        return mqttSubscriptionID + String.valueOf(MessagingEngine.getInstance().generateUniqueId());
+        return mqttSubscriptionID + clientId + topic + qos + cleanSession;
     }
 
     /**
@@ -218,5 +224,20 @@ public class MQTTUtils {
         }
 
         return isWildCard;
+    }
+
+    /**
+     * Generate a unique UUID for a given client who has subscribed to a given topic with given qos and given clean
+     * session.
+     *
+     * @param clientId The MQTT client Id
+     * @param topic The topic subscribed to
+     * @param qos The Quality of Service level subscribed to
+     * @param cleanSession Clean session value of the client
+     *
+     * @return A unique UUID for the given arguments
+     */
+    public static UUID generateSubscriptionChannelID(String clientId, String topic, int qos, boolean cleanSession) {
+        return UUID.nameUUIDFromBytes((clientId + topic + qos + cleanSession).getBytes());
     }
 }

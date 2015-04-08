@@ -130,6 +130,15 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
             Set<String> alreadyStoredQueueNames = new HashSet<String>();
             for (AndesSubscription subscription : subscriptionList) {
                 if (!alreadyStoredQueueNames.contains(subscription.getStorageQueueName())) {
+
+                    // Avoid adding QOS 0 MQTT messages to clean session = false subscribers if disconnected
+                    if (AndesSubscription.SubscriptionType.MQTT == subscriptionType
+                            && subscription.isDurable()
+                            && !subscription.hasExternalSubscriptions()
+                            && 0 == message.getMetadata().getQosLevel()) {
+                        continue;
+                    }
+
                     AndesMessage clonedMessage = cloneAndesMessageMetadataAndContent(message);
 
                     //Message should be written to storage queue name. This is
