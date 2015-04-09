@@ -23,22 +23,26 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesKernelBoot;
+import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.kernel.slot.SlotState;
+import org.wso2.andes.kernel.slot.SlotUtils;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
-import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper
-        .HashmapStringTreeSetWrapper;
-import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetSlotWrapper;
-
+import org.wso2.andes.server.cluster.coordination.SlotAgent;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.HashmapStringTreeSetWrapper;
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetLongWrapper;
+import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetSlotWrapper;
 
 
 import java.util.*;
 
+
 /**
  * This is a singleton class, which contains all Hazelcast related operations.
  */
-public class HazelcastAgent {
+public class HazelcastAgent implements SlotAgent {
     private static Log log = LogFactory.getLog(HazelcastAgent.class);
 
     /**
@@ -506,4 +510,511 @@ public class HazelcastAgent {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void createSlot(long startMessageId, long endMessageId, String storageQueueName, String assignedNodeId)
+            throws AndesException {
+        //createSlot() method in Hazelcast agent does not need to perform anything
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteSlot(String nodeId, String queueName, long startMessageId, long endMessageId) throws AndesException {
+        try {
+            HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
+            HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.get(nodeId);
+            if (null != wrapper) {
+                queueToSlotMap = wrapper.getStringListHashMap();
+            }
+            if (queueToSlotMap != null) {
+                TreeSet<Slot> currentSlotList = queueToSlotMap.get(queueName);
+                if (currentSlotList != null) {
+                    // com.google.gson.Gson gson = new GsonBuilder().create();
+                    //get the actual reference of the slot to be removed
+                    Slot slotInAssignmentMap = null; //currentSlotList.ceiling(emptySlot);
+                    for (Slot slot : currentSlotList) {
+                        if (slot.getStartMessageId() == startMessageId) {
+                            slotInAssignmentMap = slot;
+                        }
+                    }
+                    if (null != slotInAssignmentMap) {
+                        if (slotInAssignmentMap.addState(SlotState.DELETED)) {
+                            currentSlotList.remove(slotInAssignmentMap);
+                            queueToSlotMap.put(queueName, currentSlotList);
+                            wrapper.setStringListHashMap(queueToSlotMap);
+                            slotAssignmentMap.set(nodeId, wrapper);
+                        }
+                    }
+                }
+            }
+        } catch (HazelcastInstanceNotActiveException ex) {
+            if (AndesKernelBoot.isKernelShuttingDown()) {
+                throw new AndesException("Failed to delete slot for queue : " +
+                        queueName + " from node " + nodeId, ex);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteSlotAssignmentByQueueName(String nodeId, String queueName) throws AndesException {
+        try {
+            TreeSet<Slot> assignedSlotList = null;
+            //Get assigned slots from Hazelcast, delete all belonging to queue
+            //and set back
+            HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.get(nodeId);
+            HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
+            if (null != wrapper) {
+                queueToSlotMap = wrapper.getStringListHashMap();
+            }
+            if (queueToSlotMap != null) {
+                assignedSlotList = queueToSlotMap.remove(queueName);
+                wrapper.setStringListHashMap(queueToSlotMap);
+                this.slotAssignmentMap.set(nodeId, wrapper);
+            }
+
+            //Get overlapped slots from Hazelcast, delete all belonging to queue and
+            //set back
+            HashmapStringTreeSetWrapper overlappedSlotWrapper = this.overLappedSlotMap.get(nodeId);
+            HashMap<String, TreeSet<Slot>> queueToOverlappedSlotMap = null;
+            if (null != overlappedSlotWrapper) {
+                queueToOverlappedSlotMap = overlappedSlotWrapper.getStringListHashMap();
+            }
+            if (queueToOverlappedSlotMap != null) {
+                assignedSlotList = queueToOverlappedSlotMap.remove(queueName);
+                overlappedSlotWrapper.setStringListHashMap(queueToOverlappedSlotMap);
+                this.overLappedSlotMap.set(nodeId, overlappedSlotWrapper);
+            }
+
+            //add the deleted slots to un-assigned slot map, so that they can be assigned again.
+            if (assignedSlotList != null && !assignedSlotList.isEmpty()) {
+                TreeSetSlotWrapper treeSetStringWrapper = unAssignedSlotMap.get(queueName);
+                TreeSet<Slot> unAssignedSlotSet = new TreeSet<Slot>();
+                if (null != treeSetStringWrapper) {
+                    unAssignedSlotSet = treeSetStringWrapper.getSlotTreeSet();
+                } else {
+                    treeSetStringWrapper = new TreeSetSlotWrapper();
+                }
+                if (unAssignedSlotSet == null) {
+                    unAssignedSlotSet = new TreeSet<Slot>();
+                }
+                for (Slot slotToBeReAssigned : assignedSlotList) {
+                    //Reassign only if the slot is not empty
+                    if (!SlotUtils.checkSlotEmptyFromMessageStore(slotToBeReAssigned)) {
+                        if (slotToBeReAssigned.addState(SlotState.RETURNED)) {
+                            unAssignedSlotSet.add(slotToBeReAssigned);
+                        }
+                    }
+                    treeSetStringWrapper.setSlotTreeSet(unAssignedSlotSet);
+                    unAssignedSlotMap.set(queueName, treeSetStringWrapper);
+                }
+            }
+        } catch (HazelcastInstanceNotActiveException ex) {
+            if (AndesKernelBoot.isKernelShuttingDown()) {
+                throw new AndesException("Failed to delete slot assignment for queue : " +
+                        queueName + " from node " + nodeId, ex);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Slot getUnAssignedSlot(String queueName) throws AndesException {
+        Slot slotToBeAssigned = null;
+        try {
+            TreeSetSlotWrapper unAssignedSlotWrapper = unAssignedSlotMap.get(queueName);
+            if (null != unAssignedSlotWrapper) {
+                TreeSet<Slot> slotsFromUnassignedSlotMap = unAssignedSlotWrapper.getSlotTreeSet();
+                if (slotsFromUnassignedSlotMap != null && !slotsFromUnassignedSlotMap.isEmpty()) {
+                    //Get and remove slot and update hazelcast map
+                    slotToBeAssigned = slotsFromUnassignedSlotMap.pollFirst();
+                    unAssignedSlotWrapper.setSlotTreeSet(slotsFromUnassignedSlotMap);
+                    unAssignedSlotMap.set(queueName, unAssignedSlotWrapper);
+                }
+            }
+        } catch (HazelcastInstanceNotActiveException ex) {
+            if (AndesKernelBoot.isKernelShuttingDown()) {
+                throw new AndesException("Failed to get unassigned slot for queue : " +
+                        queueName, ex);
+            }
+        }
+        return slotToBeAssigned;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateSlotAssignment(String nodeId, String queueName, Slot allocatedSlot) throws AndesException {
+        TreeSet<Slot> currentSlotList;
+        HashMap<String, TreeSet<Slot>> queueToSlotMap;
+
+        try {
+            HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.get(nodeId);
+            if (wrapper == null) {
+                wrapper = new HashmapStringTreeSetWrapper();
+                queueToSlotMap = new HashMap<String, TreeSet<Slot>>();
+                wrapper.setStringListHashMap(queueToSlotMap);
+                this.slotAssignmentMap.putIfAbsent(nodeId, wrapper);
+            }
+            wrapper = this.slotAssignmentMap.get(nodeId);
+            queueToSlotMap = wrapper.getStringListHashMap();
+            currentSlotList = queueToSlotMap.get(queueName);
+            if (currentSlotList == null) {
+                currentSlotList = new TreeSet<Slot>();
+            }
+
+            //update slot state
+            if (allocatedSlot.addState(SlotState.ASSIGNED)) {
+                //remove any similar slot from hazelcast and add the updated one
+                currentSlotList.remove(allocatedSlot);
+                currentSlotList.add(allocatedSlot);
+                queueToSlotMap.put(queueName, currentSlotList);
+                wrapper.setStringListHashMap(queueToSlotMap);
+                this.slotAssignmentMap.set(nodeId, wrapper);
+            }
+        } catch (HazelcastInstanceNotActiveException ex) {
+            if (AndesKernelBoot.isKernelShuttingDown()) {
+                throw new AndesException("Failed to update slot assignment for queue : " +
+                        queueName + " from node " + nodeId, ex);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getQueueToLastAssignedId(String queueName) throws AndesException {
+        long lastAssignedId = this.lastAssignedIDMap.get(queueName) != null ?
+                this.lastAssignedIDMap.get(queueName) : 0L;
+        return lastAssignedId;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setQueueToLastAssignedId(String queueName, long lastAssignedId) throws AndesException {
+        this.lastAssignedIDMap.set(queueName, lastAssignedId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Long getNodeToLastPublishedId(String nodeId) throws AndesException {
+        return this.lastPublishedIDMap.get(nodeId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setNodeToLastPublishedId(String nodeId, long lastPublishedId) throws AndesException {
+        this.lastPublishedIDMap.set(nodeId, lastPublishedId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TreeSet<String> getMessagePublishedNodes() throws AndesException {
+        TreeSet<String> messagePublishedNodes = new TreeSet<String>();
+        messagePublishedNodes.addAll(this.lastPublishedIDMap.keySet());
+        return messagePublishedNodes;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setSlotState(long startMessageId, long endMessageId, SlotState slotState) throws AndesException {
+
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Slot getOverlappedSlot(String nodeId, String queueName) throws AndesException {
+        Slot slotToBeAssigned = null;
+        TreeSet<Slot> currentSlotList;
+        HashMap<String, TreeSet<Slot>> queueToSlotMap;
+        try {
+            HashmapStringTreeSetWrapper wrapper = this.overLappedSlotMap.get(nodeId);
+            if (null != wrapper) {
+                queueToSlotMap = wrapper.getStringListHashMap();
+                currentSlotList = queueToSlotMap.get(queueName);
+                if (null != currentSlotList && !currentSlotList.isEmpty()) {
+                    //get and remove slot
+                    slotToBeAssigned = currentSlotList.pollFirst();
+                    queueToSlotMap.put(queueName, currentSlotList);
+                    //update hazelcast map
+                    wrapper.setStringListHashMap(queueToSlotMap);
+                    this.overLappedSlotMap.set(nodeId, wrapper);
+                }
+            }
+        } catch (HazelcastInstanceNotActiveException ex) {
+            if (AndesKernelBoot.isKernelShuttingDown()) {
+                throw new AndesException("Failed to getOverlappedSlot for queue : " +
+                        queueName + " from node " + nodeId, ex);
+            }
+        }
+        return slotToBeAssigned;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addMessageId(String queueName, long messageId) throws AndesException {
+        try {
+            TreeSet<Long> messageIdSet = this.getMessageIds(queueName);
+            TreeSetLongWrapper wrapper = this.slotIdMap.get(queueName);
+            messageIdSet.add(messageId);
+            wrapper.setLongTreeSet(messageIdSet);
+            this.slotIdMap.set(queueName, wrapper);
+        }  catch (HazelcastInstanceNotActiveException ex) {
+            if (AndesKernelBoot.isKernelShuttingDown()) {
+                throw new AndesException("Failed to addMessageId for queue : " +
+                        queueName, ex);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TreeSet<Long> getMessageIds(String queueName) throws AndesException {
+        TreeSetLongWrapper wrapper = null;
+        try {
+            wrapper = this.slotIdMap.get(queueName);
+            if (wrapper == null) {
+                wrapper = new TreeSetLongWrapper();
+                this.slotIdMap.putIfAbsent(queueName, wrapper);
+            }
+        }  catch (HazelcastInstanceNotActiveException ex) {
+            if (AndesKernelBoot.isKernelShuttingDown()) {
+                throw new AndesException("Failed to getMessageIds for queue : " +
+                        queueName, ex);
+            }
+        }
+        return wrapper.getLongTreeSet();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteMessageId(String queueName, long messageId) throws AndesException {
+        try {
+            TreeSetLongWrapper wrapper = this.slotIdMap.get(queueName);
+            TreeSet<Long> messageIDSet;
+            messageIDSet = wrapper.getLongTreeSet();
+            if (messageIDSet != null && !messageIDSet.isEmpty()) {
+                messageIDSet.pollFirst();
+                //set modified published ID map to hazelcast
+                wrapper.setLongTreeSet(messageIDSet);
+                this.slotIdMap.set(queueName, wrapper);
+            }
+        }  catch (HazelcastInstanceNotActiveException ex) {
+            if (AndesKernelBoot.isKernelShuttingDown()) {
+                throw new AndesException("Failed to deleteMessageId for queue : " +
+                        queueName, ex);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteSlotsByQueueName(String queueName) throws AndesException {
+        try {
+            if (null != this.unAssignedSlotMap) {
+                this.unAssignedSlotMap.remove(queueName);
+            }
+
+            // Clear slots assigned to the queue along with overlapped slots
+            String nodeId = HazelcastAgent.getInstance().getNodeId();
+
+            // The requirement here is to clear slot associations for the queue on all nodes.
+            List<String> nodeIDs = HazelcastAgent.getInstance().getMembersNodeIDs();
+
+            for (String nodeID : nodeIDs) {
+                HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
+                HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
+                if (null != wrapper) {
+                    queueToSlotMap = wrapper.getStringListHashMap();
+                }
+                if (queueToSlotMap != null) {
+                    queueToSlotMap.remove(queueName);
+                    wrapper.setStringListHashMap(queueToSlotMap);
+                    slotAssignmentMap.set(nodeId, wrapper);
+                }
+
+                //clear overlapped slot map
+                HashmapStringTreeSetWrapper overlappedSlotsWrapper = overLappedSlotMap.get(nodeId);
+                if (null != overlappedSlotsWrapper) {
+                    HashMap<String, TreeSet<Slot>> queueToOverlappedSlotMap = null;
+                    if (null != wrapper) {
+                        queueToOverlappedSlotMap = overlappedSlotsWrapper.getStringListHashMap();
+                    }
+                    if (queueToSlotMap != null) {
+                        queueToOverlappedSlotMap.remove(queueName);
+                        overlappedSlotsWrapper.setStringListHashMap(queueToOverlappedSlotMap);
+                        overLappedSlotMap.set(nodeId, overlappedSlotsWrapper);
+                    }
+                }
+            }
+        } catch (HazelcastInstanceNotActiveException ex) {
+            if (AndesKernelBoot.isKernelShuttingDown()) {
+                throw new AndesException("Failed to deleteSlotsByQueueName for queue : " +
+                        queueName, ex);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteMessageIdsByQueueName(String queueName) throws AndesException {
+        if (null != this.slotIdMap) {
+            this.slotIdMap.remove(queueName);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TreeSet<Slot> getAssignedSlotsByNodeId(String nodeId) throws AndesException {
+        TreeSet<Slot> resultSet = null;
+        try {
+            HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.remove(nodeId);
+            HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
+            if (null != wrapper) {
+                queueToSlotMap = wrapper.getStringListHashMap();
+            }
+            if (queueToSlotMap != null) {
+                for (Map.Entry<String, TreeSet<Slot>> entry : queueToSlotMap.entrySet()) {
+                    TreeSet<Slot> slotsToBeReAssigned = entry.getValue();
+                    resultSet.addAll(slotsToBeReAssigned);
+                }
+            }
+        } catch (HazelcastInstanceNotActiveException ex) {
+            if (AndesKernelBoot.isKernelShuttingDown()) {
+                throw new AndesException("Failed to deleteSlotsByQueueName for node : " +
+                        nodeId, ex);
+            }
+        }
+        return resultSet;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TreeSet<Slot> getAllSlotsByQueueName(String nodeId, String queueName) throws AndesException {
+        // Sweep all assigned slots to find overlaps using slotAssignmentMap,
+        // cos its optimized for node,queue-wise iteration.
+        // The requirement here is to clear slot associations for the queue on all nodes.
+
+        TreeSet<Slot> resultSet = new TreeSet<Slot>();
+        HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
+        if (!overLappedSlotMap.containsKey(nodeId)) {
+            overLappedSlotMap.put(nodeId, new HashmapStringTreeSetWrapper());
+        }
+        HashmapStringTreeSetWrapper olWrapper = overLappedSlotMap.get(nodeId);
+        HashMap<String, TreeSet<Slot>> olSlotMap = olWrapper.getStringListHashMap();
+        if (!olSlotMap.containsKey(queueName)) {
+            olSlotMap.put(queueName, new TreeSet<Slot>());
+            olWrapper.setStringListHashMap(olSlotMap);
+            overLappedSlotMap.set(nodeId, olWrapper);
+        }
+        if (null != wrapper) {
+            HashMap<String, TreeSet<Slot>> queueToSlotMap = wrapper.getStringListHashMap();
+            if (queueToSlotMap != null) {
+                TreeSet<Slot> slotListForQueueOnNode = queueToSlotMap.get(queueName);
+                resultSet.addAll(slotListForQueueOnNode);
+            }
+        }
+        return resultSet;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void reAssignSlot(Slot slotToBeReAssigned) throws AndesException {
+        try {
+            TreeSet<Slot> freeSlotTreeSet = new TreeSet<Slot>();
+            TreeSetSlotWrapper treeSetStringWrapper = new TreeSetSlotWrapper();
+
+            treeSetStringWrapper.setSlotTreeSet(freeSlotTreeSet);
+
+            this.unAssignedSlotMap.putIfAbsent(slotToBeReAssigned.getStorageQueueName(),
+                    treeSetStringWrapper);
+
+            if (slotToBeReAssigned.addState(SlotState.RETURNED)) {
+                treeSetStringWrapper = this.unAssignedSlotMap.get(slotToBeReAssigned.getStorageQueueName());
+                freeSlotTreeSet = treeSetStringWrapper.getSlotTreeSet();
+                freeSlotTreeSet.add(slotToBeReAssigned);
+                treeSetStringWrapper.setSlotTreeSet(freeSlotTreeSet);
+                this.unAssignedSlotMap.set(slotToBeReAssigned.getStorageQueueName(), treeSetStringWrapper);
+            }
+        } catch (HazelcastInstanceNotActiveException ex) {
+            if (AndesKernelBoot.isKernelShuttingDown()) {
+                throw new AndesException("Failed to reAssignSlot", ex);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteOverlappedSlots(String nodeId) throws AndesException {
+        this.overLappedSlotMap.remove(nodeId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateOverlappedSlots(String nodeId, String queueName, TreeSet<Slot> overlappedSlots) throws AndesException {
+        HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
+        HashMap<String, TreeSet<Slot>> queueToSlotMap = wrapper.getStringListHashMap();
+        HashmapStringTreeSetWrapper olWrapper = overLappedSlotMap.get(nodeId);
+        HashMap<String, TreeSet<Slot>> olSlotMap = olWrapper.getStringListHashMap();
+        for(Slot slot : overlappedSlots) {
+            //Add to global overlappedSlotMap
+            olSlotMap.get(queueName).remove(slot);
+            olSlotMap.get(queueName).add(slot);
+        }
+        wrapper.setStringListHashMap(queueToSlotMap);
+        slotAssignmentMap.set(nodeId, wrapper);
+        // Add all marked slots collected into the olSlot to global overlappedSlotsMap.
+        olWrapper.setStringListHashMap(olSlotMap);
+        overLappedSlotMap.set(nodeId, olWrapper);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Set<String> getAllQueues() throws AndesException{
+        return this.slotIdMap.keySet();
+    }
 }

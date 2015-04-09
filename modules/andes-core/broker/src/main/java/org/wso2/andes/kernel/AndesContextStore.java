@@ -18,11 +18,17 @@
 
 package org.wso2.andes.kernel;
 
+import org.apache.tools.ant.taskdefs.condition.And;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.store.HealthAwareStore;
 
+import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.kernel.slot.SlotState;
+
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * AndesContextStore is an abstraction of underlying data base to store information related to
@@ -37,7 +43,7 @@ public interface AndesContextStore extends HealthAwareStore{
      * @throws AndesException
      */
     public DurableStoreConnection init(ConfigurationProperties connectionProperties) throws
-                                                                               AndesException;
+                                                                                     AndesException;
 
     /**
      * Get all durable encoded subscriptions as strings
@@ -223,6 +229,180 @@ public interface AndesContextStore extends HealthAwareStore{
      * @throws AndesException
      */
     public void deleteBindingInformation(String exchangeName, String boundQueueName) throws AndesException;
+
+    /**
+     * Create a new slot in store
+
+     * @param startMessageId start message id of slot
+     * @param endMessageId end message id of slot
+     * @param storageQueueName name of storage queue name
+     * @param assignedNodeId
+     * @throws AndesException
+     */
+    public void createSlot(long startMessageId, long endMessageId,
+                           String storageQueueName, String assignedNodeId) throws AndesException;
+
+    /**
+     * Delete a slot from store
+     * @param startMessageId start message id of slot
+     * @param endMessageId end message id of slot
+     * @throws AndesException
+     */
+    public void deleteSlot(long startMessageId, long endMessageId) throws AndesException;
+
+    /**
+     * Delete all slots by queue name
+     * @param queueName name of queue
+     * @throws AndesException
+     */
+    public void deleteSlotsByQueueName(String queueName) throws AndesException;
+
+    /**
+     * Delete message ids by queue name
+     * @param queueName name of queue
+     * @throws AndesException
+     */
+    public void deleteMessageIdsByQueueName(String queueName) throws AndesException;
+
+    /**
+     * Unassign and return slot
+     * @param startMessageId start message id of slot
+     * @param endMessageId end message id of slot
+     * @throws AndesException
+     */
+    public void deleteSlotAssignment(long startMessageId, long endMessageId) throws AndesException;
+
+    /**
+     * Unassign slots by queue name
+     * @param nodeId id of node
+     * @param queueName name of queue
+     * @throws AndesException
+     */
+    public void deleteSlotAssignmentByQueueName(String nodeId, String queueName)
+            throws AndesException;
+
+    /**
+     * Update assignment information in slot store
+     * @param nodeId id of node
+     * @param queueName name of queue
+     * @param startMsgId start message id of slot
+     * @param endMsgId end message id of slot
+     * @throws AndesException
+     */
+    public void createSlotAssignment(String nodeId, String queueName, long startMsgId,
+                                     long endMsgId)
+            throws AndesException;
+
+    /**
+     * Select unassigned slots for a given queue name
+     * @param queueName name of queue
+     * @return unassigned slot object if found
+     * @throws AndesException
+     */
+    public Slot selectUnAssignedSlot(String queueName) throws AndesException;
+
+    /**
+     * Get last assigned id for a queue
+     * @param queueName name of queue
+     * @return last assigned id of queue
+     * @throws AndesException
+     */
+    public long getQueueToLastAssignedId(String queueName) throws AndesException;
+
+    /**
+     * Set last assigned id for a given queue
+     * @param queueName name of queue
+     * @param messageId id of message
+     * @throws AndesException
+     */
+    public void setQueueToLastAssignedId(String queueName, long messageId) throws AndesException;
+
+    /**
+     * Get last published id for a given node
+     * @param nodeId id of node
+     * @return last published if of node
+     * @throws AndesException
+     */
+    public long getNodeToLastPublishedId(String nodeId) throws AndesException;
+
+    /**
+     * Set last published id for a given node
+     * @param nodeId id of node
+     * @param messageId id of message
+     * @throws AndesException
+     */
+    public void setNodeToLastPublishedId(String nodeId, long messageId) throws AndesException;
+
+    /**
+     * Get all message published nodes
+     * @return set of published nodes
+     * @throws AndesException
+     */
+    public TreeSet<String> getMessagePublishedNodes() throws AndesException;
+
+    /**
+     * Set slots states
+     * @param startMessageId start message id of slot
+     * @param endMessageId end message id of slot
+     * @param slotState state of slot
+     * @throws AndesException
+     */
+    public void setSlotState(long startMessageId, long endMessageId, SlotState slotState)
+            throws AndesException;
+
+    /**
+     * Get overlapped slots for a given queue
+     * @param queueName name of queue
+     * @return overlapped slot object
+     * @throws AndesException
+     */
+    public Slot getOverlappedSlot(String queueName) throws AndesException;
+
+    /**
+     * Add message ids to store
+     * @param queueName name of queue
+     * @param messageId id of message
+     * @throws AndesException
+     */
+    public void addMessageId(String queueName, long messageId) throws AndesException;
+
+    /**
+     * Get message ids for a given queue
+     * @param queueName name of queue
+     * @return set of message ids
+     * @throws AndesException
+     */
+    public TreeSet<Long> getMessageIds(String queueName) throws AndesException;
+
+    /**
+     * Delete a message id
+     * @param messageId id of message
+     * @throws AndesException
+     */
+    public void deleteMessageId(long messageId) throws AndesException;
+
+    /**
+     * Get all assigned slots for give node
+     * @param nodeId id of node
+     * @return set of assigned slot objects
+     * @throws AndesException
+     */
+    public TreeSet<Slot> getAssignedSlotsByNodeId(String nodeId) throws AndesException;
+
+    /**
+     * Get all slots for a give queue
+     * @param queueName name of queue
+     * @return set of slot object for queue
+     * @throws AndesException
+     */
+    public TreeSet<Slot> getAllSlotsByQueueName(String queueName) throws AndesException;
+
+    /**
+     * Get all active queue names
+     * @return set of queue names
+     * @throws AndesException
+     */
+    public Set<String> getAllQueues() throws AndesException;
 
     /**
      * Close the context store

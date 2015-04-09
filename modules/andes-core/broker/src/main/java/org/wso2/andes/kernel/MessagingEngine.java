@@ -745,7 +745,7 @@ public class MessagingEngine {
      * @param queueName name of destination queue
      * @return last assign message id
      */
-    public long getLastAssignedSlotMessageId(String queueName) {
+    public long getLastAssignedSlotMessageId(String queueName) throws AndesException{
         long lastMessageId = 0;
         long messageIdDifference = 1024 * 256 * 5000;
         Long lastAssignedSlotMessageId;

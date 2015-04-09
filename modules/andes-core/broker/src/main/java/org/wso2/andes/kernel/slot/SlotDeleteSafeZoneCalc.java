@@ -20,6 +20,7 @@ package org.wso2.andes.kernel.slot;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesException;
 
 import java.util.Map;
 import java.util.Set;
@@ -63,7 +64,14 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
         }
         while (running) {
             if (isLive) {
-                Set<String> nodesWithPublishedMessages = SlotManagerClusterMode.getInstance().getMessagePublishedNodes();
+                Set<String> nodesWithPublishedMessages;
+                try {
+                    nodesWithPublishedMessages = SlotManagerClusterMode.getInstance().getMessagePublishedNodes();
+                } catch (AndesException e) {
+                    log.error("SlotDeleteSafeZoneCalc stopped due to failing to get message published nodes.");
+                    this.setLive(false);
+                    continue;
+                }
                 Map<String, Long> nodeInformedSafeZones =
                         SlotManagerClusterMode.getInstance().getNodeInformedSlotDeletionSafeZones();
 
@@ -76,8 +84,16 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                     long safeZoneValue = Long.MAX_VALUE;
 
                     //get the maximum message id published by node so far
-                    Long safeZoneByPublishedMessages = SlotManagerClusterMode.getInstance()
-                            .getLastPublishedIDByNode(nodeID);
+                    Long safeZoneByPublishedMessages = null;
+                    try {
+                        safeZoneByPublishedMessages = SlotManagerClusterMode.getInstance()
+                                .getLastPublishedIDByNode(nodeID);
+                    } catch (AndesException e) {
+                        log.error("SlotDeleteSafeZoneCalc stopped due to failing to get last published id for node:" +
+                                nodeID);
+                        this.setLive(false);
+                        continue;
+                    }
 
                     if (null != safeZoneByPublishedMessages) {
                         safeZoneValue = safeZoneByPublishedMessages;

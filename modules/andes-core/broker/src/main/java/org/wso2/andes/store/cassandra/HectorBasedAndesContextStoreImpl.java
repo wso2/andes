@@ -23,13 +23,14 @@ import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.beans.ColumnSlice;
 import me.prettyprint.hector.api.beans.HColumn;
 
+import org.apache.tools.ant.taskdefs.condition.Not;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.kernel.slot.SlotState;
+import org.apache.commons.lang.NotImplementedException;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.wso2.andes.store.cassandra.HectorConstants.*;
 
@@ -465,8 +466,184 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
+    public void createSlot(long startMessageId, long endMessageId,
+                           String storageQueueName, String assignedNodeId) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void createSlotAssignment(String nodeId, String queueId, long startMsgId,
+                                               long endMsgId)
+            throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Slot selectUnAssignedSlot(String queueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getQueueToLastAssignedId(String queueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setQueueToLastAssignedId(String queueName, long messageId)
+            throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getNodeToLastPublishedId(String nodeId) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setNodeToLastPublishedId(String nodeId, long messageId)
+            throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TreeSet<String> getMessagePublishedNodes() throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteSlotAssignment(long startMessageId, long endMessageId)
+            throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteSlotAssignmentByQueueName(String nodeId, String queueName)
+            throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setSlotState(long startMessageId, long endMessageId, SlotState slotState)
+            throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Slot getOverlappedSlot(String queueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addMessageId(String queueName, long messageId) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TreeSet<Long> getMessageIds(String queueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteMessageId(long messageId) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteSlot(long startMessageId, long endMessageId) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteSlotsByQueueName(String queueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteMessageIdsByQueueName(String queueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TreeSet<Slot> getAssignedSlotsByNodeId(String nodeId) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TreeSet<Slot> getAllSlotsByQueueName(String queueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void close() {
         hectorConnection.close();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Set<String> getAllQueues() throws AndesException {
+        throw new NotImplementedException();
     }
 
     /**

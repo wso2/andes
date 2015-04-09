@@ -79,7 +79,7 @@ public class Slot implements Serializable, Comparable<Slot> {
     public Slot() {
         isSlotActive = true;
         isAnOverlappingSlot = false;
-        this.slotStates = new ArrayList<>();
+        this.slotStates = new ArrayList<SlotState>();
         addState(SlotState.CREATED);
     }
 

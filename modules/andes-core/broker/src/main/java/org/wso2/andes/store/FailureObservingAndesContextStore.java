@@ -20,6 +20,8 @@ package org.wso2.andes.store;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ScheduledFuture;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
@@ -28,6 +30,8 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesExchange;
 import org.wso2.andes.kernel.AndesQueue;
 import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.kernel.slot.SlotState;
 
 /**
  * Implementation of {@link AndesContextStore} which observes failures such is
@@ -415,6 +419,361 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
             FailureObservingStoreManager.notifyStoreNonOperational(e, wrappedInstance);
             storeHealthDetectingFuture = FailureObservingStoreManager.scheduleHealthCheckTask(this);
 
+        }
+    }
+
+
+    /**
+     * Create a new slot in store
+     *
+     * @param startMessageId   start message id of slot
+     * @param endMessageId     end message id of slot
+     * @param storageQueueName name of storage queue name
+     * @param assignedNodeId
+     * @throws AndesException
+     */
+    @Override
+    public void createSlot(long startMessageId, long endMessageId, String storageQueueName, String assignedNodeId) throws AndesException {
+        try {
+            wrappedInstance.createSlot(startMessageId, endMessageId, storageQueueName, assignedNodeId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Delete a slot from store
+     *
+     * @param startMessageId start message id of slot
+     * @param endMessageId   end message id of slot
+     * @throws AndesException
+     */
+    @Override
+    public void deleteSlot(long startMessageId, long endMessageId) throws AndesException {
+        try {
+            wrappedInstance.deleteSlot(startMessageId, endMessageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Delete all slots by queue name
+     *
+     * @param queueName name of queue
+     * @throws AndesException
+     */
+    @Override
+    public void deleteSlotsByQueueName(String queueName) throws AndesException {
+        try {
+            wrappedInstance.deleteSlotsByQueueName(queueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Delete message ids by queue name
+     *
+     * @param queueName name of queue
+     * @throws AndesException
+     */
+    @Override
+    public void deleteMessageIdsByQueueName(String queueName) throws AndesException {
+        try {
+            wrappedInstance.deleteMessageIdsByQueueName(queueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Unassign and return slot
+     *
+     * @param startMessageId start message id of slot
+     * @param endMessageId   end message id of slot
+     * @throws AndesException
+     */
+    @Override
+    public void deleteSlotAssignment(long startMessageId, long endMessageId) throws AndesException {
+        try {
+            wrappedInstance.deleteSlotAssignment(startMessageId, endMessageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Unassign slots by queue name
+     *
+     * @param nodeId    id of node
+     * @param queueName name of queue
+     * @throws AndesException
+     */
+    @Override
+    public void deleteSlotAssignmentByQueueName(String nodeId, String queueName) throws AndesException {
+        try {
+            wrappedInstance.deleteSlotAssignmentByQueueName(nodeId, queueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Update assignment information in slot store
+     *
+     * @param nodeId     id of node
+     * @param queueName  name of queue
+     * @param startMsgId start message id of slot
+     * @param endMsgId   end message id of slot
+     * @throws AndesException
+     */
+    @Override
+    public void createSlotAssignment(String nodeId, String queueName, long startMsgId, long endMsgId) throws AndesException {
+        try {
+            wrappedInstance.createSlotAssignment(nodeId, queueName, startMsgId, endMsgId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Select unassigned slots for a given queue name
+     *
+     * @param queueName name of queue
+     * @return unassigned slot object if found
+     * @throws AndesException
+     */
+    @Override
+    public Slot selectUnAssignedSlot(String queueName) throws AndesException {
+        try {
+            return wrappedInstance.selectUnAssignedSlot(queueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Get last assigned id for a queue
+     *
+     * @param queueName name of queue
+     * @return last assigned id of queue
+     * @throws AndesException
+     */
+    @Override
+    public long getQueueToLastAssignedId(String queueName) throws AndesException {
+        try {
+            return wrappedInstance.getQueueToLastAssignedId(queueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Set last assigned id for a given queue
+     *
+     * @param queueName name of queue
+     * @param messageId id of message
+     * @throws AndesException
+     */
+    @Override
+    public void setQueueToLastAssignedId(String queueName, long messageId) throws AndesException {
+        try {
+            wrappedInstance.setQueueToLastAssignedId(queueName, messageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Get last published id for a given node
+     *
+     * @param nodeId id of node
+     * @return last published if of node
+     * @throws AndesException
+     */
+    @Override
+    public long getNodeToLastPublishedId(String nodeId) throws AndesException {
+        try {
+            return wrappedInstance.getNodeToLastPublishedId(nodeId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Set last published id for a given node
+     *
+     * @param nodeId    id of node
+     * @param messageId id of message
+     * @throws AndesException
+     */
+    @Override
+    public void setNodeToLastPublishedId(String nodeId, long messageId) throws AndesException {
+        try {
+            wrappedInstance.setNodeToLastPublishedId(nodeId, messageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Get all message published nodes
+     *
+     * @return set of published nodes
+     * @throws AndesException
+     */
+    @Override
+    public TreeSet<String> getMessagePublishedNodes() throws AndesException {
+        try {
+            return wrappedInstance.getMessagePublishedNodes();
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Set slots states
+     *
+     * @param startMessageId start message id of slot
+     * @param endMessageId   end message id of slot
+     * @param slotState      state of slot
+     * @throws AndesException
+     */
+    @Override
+    public void setSlotState(long startMessageId, long endMessageId, SlotState slotState) throws AndesException {
+        try {
+            wrappedInstance.setSlotState(startMessageId, endMessageId, slotState);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Get overlapped slots for a given queue
+     *
+     * @param queueName name of queue
+     * @return overlapped slot object
+     * @throws AndesException
+     */
+    @Override
+    public Slot getOverlappedSlot(String queueName) throws AndesException {
+        try {
+            return wrappedInstance.getOverlappedSlot(queueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Add message ids to store
+     *
+     * @param queueName name of queue
+     * @param messageId id of message
+     * @throws AndesException
+     */
+    @Override
+    public void addMessageId(String queueName, long messageId) throws AndesException {
+        try {
+            wrappedInstance.addMessageId(queueName, messageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Get message ids for a given queue
+     *
+     * @param queueName name of queue
+     * @return set of message ids
+     * @throws AndesException
+     */
+    @Override
+    public TreeSet<Long> getMessageIds(String queueName) throws AndesException {
+        try {
+            return wrappedInstance.getMessageIds(queueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Delete a message id
+     *
+     * @param messageId id of message
+     * @throws AndesException
+     */
+    @Override
+    public void deleteMessageId(long messageId) throws AndesException {
+        try {
+            wrappedInstance.deleteMessageId(messageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Get all assigned slots for give node
+     *
+     * @param nodeId id of node
+     * @return set of assigned slot objects
+     * @throws AndesException
+     */
+    @Override
+    public TreeSet<Slot> getAssignedSlotsByNodeId(String nodeId) throws AndesException {
+        try {
+            return wrappedInstance.getAssignedSlotsByNodeId(nodeId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * Get all slots for a give queue
+     *
+     * @param queueName name of queue
+     * @return set of slot object for queue
+     * @throws AndesException
+     */
+    @Override
+    public TreeSet<Slot> getAllSlotsByQueueName(String queueName) throws AndesException {
+        try {
+            return wrappedInstance.getAllSlotsByQueueName(queueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Set<String> getAllQueues() throws AndesException {
+        try {
+            return wrappedInstance.getAllQueues();
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
         }
     }
 
