@@ -564,6 +564,13 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         //Commented since its usage is not applicable here
         //TODO need to define actions when the subscriber fails to send the PUBCOMP back to the server
       //  m_storageService.cleanInFlight(publishKey);
+
+        // Send an acknowledgement to Andes stating that the message has been received from the client
+        try {
+            AndesMQTTBridge.getBridgeInstance().onAckReceived(clientID, messageID);
+        } catch (MQTTException e) {
+            log.error("Error while processing ack from the client " + clientID + " for message" + messageID, e);
+        }
     }
 
     void processDisconnect(ServerChannel session, String clientID, boolean cleanSession) throws InterruptedException {
