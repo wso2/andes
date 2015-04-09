@@ -139,7 +139,8 @@ public class MQTTopicManager {
         MQTTopic topic = topics.get(topicName);
         String subscriptionID = null;
         //Will generate a uniqe identier for the subscription
-        final UUID subscriptionChannelID = UUID.randomUUID();
+        final UUID subscriptionChannelID = MQTTUtils.generateSubscriptionChannelID(mqttClientChannelID, topicName,
+                qos, isCleanSession);
         //If the topic has not being created before
         if (null == topic) {
             //First the topic should be registered in the cluster
@@ -205,6 +206,9 @@ public class MQTTopicManager {
                                 "from topic " + topic;
                         log.debug(message);
                     }
+
+                    // Remove the topic mapping
+                    subscriberTopicCorrelate.remove(mqttClientChannelID);
                 } catch (MQTTException ex) {
                     //Should re state the connection of the subscriber back to the map
                     mqttTopic.addSubscriber(mqttClientChannelID, subscriber);
@@ -222,7 +226,8 @@ public class MQTTopicManager {
             //If the connection is publisher based
             UUID publisherID = publisherTopicCorrelate.remove(mqttClientChannelID);
             if (null == publisherID) {
-                log.warn("Connection with id " + mqttClientChannelID + " lost, the connection info cannot be found.");
+                log.warn("A subscriber or a publisher with Connection with id " + mqttClientChannelID + " cannot be " +
+                        "found to disconnect.");
             }
         }
     }
@@ -320,7 +325,8 @@ public class MQTTopicManager {
             throws MQTTException {
         //Will generate a unique id for the client
         //Per topic only one subscription will be created across the cluster
-        String topicSpecificClientID = MQTTUtils.generateTopicSpecficClientID();
+        String topicSpecificClientID = MQTTUtils.generateTopicSpecficClientID(mqttClientID, topicName, qos,
+                isCleanSession);
         if (log.isDebugEnabled()) {
             log.debug("Cluster wide topic connection was created with id " + topicSpecificClientID + " for topic " +
                     topicName + " with clean session " + isCleanSession);
