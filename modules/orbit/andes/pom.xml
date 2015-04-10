@@ -16,7 +16,8 @@
   ~ specific language governing permissions and limitations
   ~ under the License.
   -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
     <parent>
         <groupId>org.wso2.andes</groupId>
@@ -66,13 +67,11 @@
         <dependency>
             <groupId>commons-configuration.wso2</groupId>
             <artifactId>commons-configuration</artifactId>
-            <version>${commons-configuration.version}.wso2v1</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.apache.geronimo.specs.wso2</groupId>
             <artifactId>geronimo-jms_1.1_spec</artifactId>
-            <version>${geronimo-jms_1.1_spec.version}.wso2v1</version>
             <optional>true</optional>
         </dependency>
         <dependency>
@@ -98,13 +97,13 @@
         <dependency>
             <groupId>org.eclipse.osgi</groupId>
             <artifactId>org.eclipse.osgi</artifactId>
-            <version>3.5.0.v20090520</version>
+            <version>${org.eclipse.osgi.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.eclipse.osgi</groupId>
             <artifactId>org.eclipse.osgi.services</artifactId>
-            <version>3.2.0.v20090520-1800</version>
+            <version>${org.eclipse.osgi.services.version}</version>
             <optional>true</optional>
         </dependency>
         <!--MQTT Dependencies -->
@@ -180,16 +179,5 @@
             </plugin>
         </plugins>
     </build>
-
-    <properties>
-        <commons-cli.version>1.2.0</commons-cli.version>
-        <commons-configuration.version>1.6.0</commons-configuration.version>
-        <commons-lang.version>2.3.0</commons-lang.version>
-        <geronimo-jms_1.1_spec.version>1.1.0</geronimo-jms_1.1_spec.version>
-        <mina-core.version>1.1.7</mina-core.version>
-        <mina-filter-ssl.version>1.1.7</mina-filter-ssl.version>
-        <derby.version>10.4.2.0</derby.version>
-        <version.commons.logging>1.1.1</version.commons.logging>
-    </properties>
 
 </project>
