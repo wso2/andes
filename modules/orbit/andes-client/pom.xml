@@ -16,7 +16,8 @@
   ~ specific language governing permissions and limitations
   ~ under the License.
   -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
     <parent>
         <groupId>org.wso2.andes</groupId>
@@ -24,7 +25,6 @@
         <version>3.0.0-SNAPSHOT</version>
         <relativePath>../../../pom.xml</relativePath>
     </parent>
-
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.wso2.andes.wso2</groupId>
@@ -105,13 +105,5 @@
             </plugin>
         </plugins>
     </build>
-
-    <properties>
-        <commons-cli.version>1.2.0</commons-cli.version>
-        <commons-configuration.version>1.6.0</commons-configuration.version>
-        <commons-lang.version>2.3.0</commons-lang.version>
-        <geronimo-jms_1.1_spec.version>1.1.0</geronimo-jms_1.1_spec.version>
-        <mina.core.version>1.1.7</mina.core.version>
-    </properties>
 
 </project>
