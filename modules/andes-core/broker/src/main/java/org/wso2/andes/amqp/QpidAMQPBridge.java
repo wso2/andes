@@ -31,6 +31,7 @@ import org.wso2.andes.kernel.distruptor.inbound.InboundBindingEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
+import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.binding.Binding;
@@ -59,6 +60,11 @@ public class QpidAMQPBridge {
     private static long last10kMessageReceivedTimestamp = System.currentTimeMillis();
 
     /**
+     * Ignore pub acknowledgements in AMQP. AMQP doesn't have pub acks
+     */
+    private PubAckHandler pubAckHandler;
+
+    /**
      * get QpidAMQPBridge instance
      *
      * @return QpidAMQPBridge instance
@@ -71,7 +77,7 @@ public class QpidAMQPBridge {
     }
 
     private QpidAMQPBridge() {
-
+        pubAckHandler = new DisablePubAckImpl();
     }
 
     /**
@@ -118,7 +124,7 @@ public class QpidAMQPBridge {
             }
 
             // Handover message to Andes
-            Andes.getInstance().messageReceived(andesMessage, andesChannel);
+            Andes.getInstance().messageReceived(andesMessage, andesChannel, pubAckHandler);
 
             if(log.isDebugEnabled()) {
                 PerformanceCounter.recordMessageReceived(queue, incomingMessage.getReceivedChunkCount());
@@ -506,4 +512,5 @@ public class QpidAMQPBridge {
     public void channelIsClosing(UUID channelID) {
         Andes.getInstance().clientConnectionClosed(channelID);
     }
+
 }

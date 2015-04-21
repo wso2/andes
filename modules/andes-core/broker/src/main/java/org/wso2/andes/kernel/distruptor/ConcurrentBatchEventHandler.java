@@ -16,11 +16,12 @@
  * under the License.
  */
 
-package org.wso2.andes.kernel.distruptor.inbound;
+package org.wso2.andes.kernel.distruptor;
 
 import com.lmax.disruptor.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.distruptor.inbound.InboundEventContainer;
 
 import java.util.ArrayList;
 import java.util.List;

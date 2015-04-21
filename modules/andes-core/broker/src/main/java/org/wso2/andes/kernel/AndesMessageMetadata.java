@@ -30,6 +30,8 @@ import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
@@ -100,11 +102,19 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      */
     private MessageMetaDataType metaDataType;
 
+    /**
+     * Properties that are not directly relevant to Andes but to protocols can be stored
+     * in this map. But non of the data is persisted
+     */
+    private Map<String, Object> propertyMap;
+
     public AndesMessageMetadata() {
+        propertyMap = new HashMap<String, Object>();
     }
 
     public AndesMessageMetadata(long messageID, byte[] metadata, boolean parse) {
         super();
+        propertyMap = new HashMap<String, Object>();
         this.messageID = messageID;
         this.metadata = metadata;
         if (parse) {
@@ -222,6 +232,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         clone.slot = slot;
         clone.arrivalTime = arrivalTime;
         clone.metaDataType = metaDataType;
+        clone.propertyMap = propertyMap;
         return clone;
     }
 
@@ -372,5 +383,24 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
     public void setMetaDataType(MessageMetaDataType metaDataType) {
         this.metaDataType = metaDataType;
+    }
+
+    /**
+     * Add a property that is not directly relevant to Andes. The properties are not persistent. Lost when the object is
+     * deleted
+     * @param key String Key
+     * @param value Object. Value of the property
+     */
+    public void addProperty(String key, Object value) {
+        propertyMap.put(key, value);
+    }
+
+    /**
+     * Returns the property for the given
+     * @param key String
+     * @return value of the property. Null if not found
+     */
+    public Object getProperty(String key) {
+        return propertyMap.get(key);
     }
 }

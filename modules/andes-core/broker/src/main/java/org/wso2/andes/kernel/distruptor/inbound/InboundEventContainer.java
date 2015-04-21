@@ -40,6 +40,31 @@ public class InboundEventContainer {
      */
     private long safeZoneLimit;
 
+    /**
+     * Specific event type of relevant to this InboundEventContainer
+     */
+    private Type eventType;
+
+    /**
+     * Andes state change related event
+     */
+    private AndesInboundStateEvent stateEvent;
+
+    /**
+     * For topic we may need to duplicate content. Message Pre processor will do that
+     */
+    public List<AndesMessage> messageList;
+
+    /**
+     * Acknowledgments received to disruptor
+     */
+    public AndesAckData ackData;
+
+    /**
+     * Publisher acknowledgements are handled by this ack handler
+     */
+    public PubAckHandler pubAckHandler;
+
     public AndesChannel getChannel() {
         return channel;
     }
@@ -55,7 +80,6 @@ public class InboundEventContainer {
     public long getSafeZoneLimit() {
         return safeZoneLimit;
     }
-
     /**
      * Inbound event type is specified by this enum
      */
@@ -69,33 +93,14 @@ public class InboundEventContainer {
 
         /** Andes state change related event type */
         STATE_CHANGE_EVENT,
-        
+
         /** Ignore the event and skip processing */
         IGNORE_EVENT,
 
         /** slot deletion safe zone update event */
         SAFE_ZONE_DECLARE_EVENT
+
     }
-
-    /**
-     * Specific event type of relevant to this InboundEventContainer
-     */
-    private Type eventType;
-
-    /**
-     * Andes state change related event 
-     */
-    private AndesInboundStateEvent stateEvent;
-
-    /**
-     * For topic we may need to duplicate content. Message Pre processor will do that
-     */
-    public List<AndesMessage> messageList;
-
-    /**
-     * Acknowledgments received to disruptor
-     */
-    public AndesAckData ackData;
 
     public InboundEventContainer() {
         messageList = new ArrayList<AndesMessage>();
@@ -128,6 +133,7 @@ public class InboundEventContainer {
         ackData = null;
         stateEvent = null;
         eventType = Type.IGNORE_EVENT;
+        pubAckHandler = null;
     }
     /**
      * Disruptor uses this factory to populate the ring with inboundEvent objects

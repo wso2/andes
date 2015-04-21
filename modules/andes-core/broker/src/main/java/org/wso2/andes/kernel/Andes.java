@@ -28,6 +28,7 @@ import org.wso2.andes.kernel.distruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundKernelOpsEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
+import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.List;
@@ -138,17 +139,15 @@ public class Andes {
 
     }
 
-
-
-
     /**
      * When a message is received from a transport it should be converted to an AndesMessage and handed over to Andes
      * for delivery through this method.
      * @param message AndesMessage
      * @param andesChannel AndesChannel
+     * @param pubAckHandler PubAckHandler
      */
-    public void messageReceived(AndesMessage message, AndesChannel andesChannel) {
-        inboundEventManager.messageReceived(message, andesChannel);
+    public void messageReceived(AndesMessage message, AndesChannel andesChannel, PubAckHandler pubAckHandler) {
+        inboundEventManager.messageReceived(message, andesChannel, pubAckHandler);
     }
 
     /**

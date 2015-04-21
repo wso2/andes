@@ -18,6 +18,7 @@
 package org.wso2.andes.mqtt;
 
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
@@ -28,7 +29,7 @@ import java.util.UUID;
  */
 public interface MQTTConnector {
     /**
-     * The acked messages will be informed to the kernal
+     * The acked messages will be informed to the kernel
      *
      * @param messageID   the identifier of the message
      * @param topicName   the name of the topic the message was published
@@ -39,22 +40,24 @@ public interface MQTTConnector {
             throws AndesException;
 
     /**
-     * Will add the message content which will be recived
+     * Will add the message content which will be received
      *
      * @param message            the content of the message which was published
      * @param topic              the name of the topic which the message was published
      * @param qosLevel           the level of the qos the message was published
      * @param mqttLocalMessageID the channel id the subscriber is bound to
      * @param retain             whether the message requires to be persisted
-     * @param publisherID        the id which will uniquely identify the publisher
-     * @throws MQTTException occurs if there was an errro while adding the message content
+     * @param publisherID        the id which will identify the publisher
+     * @param pubAckHandler      interface with publisher acknowledgement handling
+     * @throws MQTTException occurs if there was an error while adding the message content
      */
     public void addMessage(ByteBuffer message, String topic, int qosLevel,
-                           int mqttLocalMessageID, boolean retain, UUID publisherID) throws MQTTException;
+                           int mqttLocalMessageID, boolean retain,
+                           String publisherID, PubAckHandler pubAckHandler) throws MQTTException;
 
 
     /**
-     * Will add and indicate the subscription to the kernal the bridge will be provided as the channel
+     * Will add and indicate the subscription to the kernel the bridge will be provided as the channel
      * since per topic we will only be creating one channel with andes
      *
      * @param channel               the bridge connection as the channel
@@ -63,7 +66,7 @@ public interface MQTTConnector {
      * @param mqttClientID          the subscription id which is local to the subscriber
      * @param isCleanSesion         should the connection be durable
      * @param qos                   the subscriber specific qos this can be either 0,1 or 2
-     * @param subscriptionChannelID will hold the unique idenfier of the subscription
+     * @param subscriptionChannelID will hold the unique identifier of the subscription
      * @throws MQTTException
      */
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
@@ -82,4 +85,11 @@ public interface MQTTConnector {
     public void removeSubscriber(MQTTopicManager channel, String subscribedTopic, String subscriptionChannelID,
                                  UUID subscriberChannel, boolean isCleanSession, String mqttClientID)
             throws MQTTException;
+
+    /**
+     * Removes the publisher
+     * @param mqttClientChannelID publisher id (local id) of the publisher to be removed
+     * @return UUID of the publisher. Unique id for the publisher in the cluster
+     */
+    public UUID removePublisher(String mqttClientChannelID);
 }

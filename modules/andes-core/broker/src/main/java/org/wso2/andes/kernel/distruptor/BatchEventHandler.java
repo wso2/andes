@@ -16,7 +16,9 @@
  * under the License.
  */
 
-package org.wso2.andes.kernel.distruptor.inbound;
+package org.wso2.andes.kernel.distruptor;
+
+import org.wso2.andes.kernel.distruptor.inbound.InboundEventContainer;
 
 import java.util.List;
 

@@ -1,5 +1,6 @@
 package org.dna.mqtt.moquette.messaging.spi.impl;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.IgnoreExceptionHandler;
@@ -24,6 +25,7 @@ import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
@@ -59,7 +61,9 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
     public void init(Properties configProps) {
         subscriptions = new SubscriptionsStore();
-        ExecutorService executor = Executors.newFixedThreadPool(1);
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+                .setNameFormat("Disruptor MQTT Simple Messaging Thread %d").build();
+        ExecutorService executor = Executors.newCachedThreadPool(namedThreadFactory);
         Integer ringBufferSize = AndesConfigurationManager.readValue(
                 AndesConfiguration.TRANSPORTS_MQTT_INBOUND_BUFFER_SIZE);
 

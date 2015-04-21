@@ -52,6 +52,12 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     private final String PURGE_QUEUE_ERROR = "Error in purging queue : ";
 
     /**
+     * Publisher Acknowledgements are disabled for this MBean
+     * hence using DisablePubAckImpl to drop any pub ack request by Andes
+     */
+    private final DisablePubAckImpl disablePubAck;
+
+    /**
      * The message restore flowcontrol blocking state.
      * If true message restore will be interrupted from dead letter channel.
      */
@@ -84,6 +90,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         VirtualHost virtualHost = vHostMBean.getVirtualHost();
 
         queueRegistry = virtualHost.getQueueRegistry();
+        disablePubAck = new DisablePubAckImpl();
     }
 
     public String getObjectInstanceName() {
@@ -247,7 +254,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 }
 
                 // Handover message to Andes
-                Andes.getInstance().messageReceived(andesMessage, andesChannel);
+                Andes.getInstance().messageReceived(andesMessage, andesChannel, disablePubAck);
             }
 
             // Delete old messages
@@ -318,7 +325,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 }
 
                 // Handover message to Andes
-                Andes.getInstance().messageReceived(andesMessage, andesChannel);
+                Andes.getInstance().messageReceived(andesMessage, andesChannel, disablePubAck);
             }
 
             // Delete old messages

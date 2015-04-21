@@ -16,20 +16,21 @@
  * under the License.
  */
 
-package org.wso2.andes.kernel.distruptor.inbound;
+package org.wso2.andes.kernel.distruptor;
 
 import com.lmax.disruptor.ExceptionHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.distruptor.inbound.InboundEventContainer;
 
 /**
  * Disruptor Inbound event related logging exception handler
  * This exception handler will log exceptions that were not handled by event handlers and keep disruptor
  * working.
  */
-public class InboundLogExceptionHandler implements ExceptionHandler {
+public class LogExceptionHandler implements ExceptionHandler {
 
-    private static Log log = LogFactory.getLog(InboundLogExceptionHandler.class);
+    private static Log log = LogFactory.getLog(LogExceptionHandler.class);
 
     @Override
     public void handleEventException(Throwable throwable, long sequence, Object object) {

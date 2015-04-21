@@ -21,6 +21,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -46,9 +47,6 @@ public class MQTTopicManager {
     //The map will be used when subscriber disconnection is called where the corresponding topic needs to be identified
     //The key of the map will be the client id and the value will be the topic
     private Map<String, String> subscriberTopicCorrelate = new HashMap<String, String>();
-    //Will maintain the relation between the publisher client identifiers vs the id generated cluster wide
-    //Key of the map would be the mqtt specific client id and the value would be the cluser uuid
-    private Map<String, UUID> publisherTopicCorrelate = new HashMap<String, UUID>();
     //The channel reference which will be used to interact with the Andes Kernal
     private MQTTConnector distributedStore = new DistributedStoreConnector();
 
@@ -95,28 +93,24 @@ public class MQTTopicManager {
      * @param retain             whether the message should retain
      * @param mqttLocalMessageID the channel in which the message was published
      * @param publisherID        identify of the publisher which is unique across the cluser
-     * @throws MQTTException at a time where the message content doen't get registered
+     * @param pubAckHandler      publisher acknowledgments are handled by this handler
+     * @throws MQTTException at a time where the message content doesn't get registered
      */
     public void addTopicMessage(String topic, int qosLevel, ByteBuffer message, boolean retain,
-                                int mqttLocalMessageID, String publisherID) throws MQTTException {
+                                int mqttLocalMessageID, String publisherID,
+                                PubAckHandler pubAckHandler) throws MQTTException {
 
         if (log.isDebugEnabled()) {
             log.debug("Incoming message received with id : " + mqttLocalMessageID + ", QOS level : " + qosLevel
                     + ", for topic :" + topic + ", with retain :" + retain);
         }
 
-        UUID publisherClusterID = publisherTopicCorrelate.get(publisherID);
-        if (null == publisherClusterID) {
-            //We need to generate a uuid
-            publisherClusterID = UUID.randomUUID();
-            publisherTopicCorrelate.put(publisherID, publisherClusterID);
-        }
         //Will add the topic message to the cluster for distribution
         try {
-            distributedStore.addMessage(message, topic, qosLevel, mqttLocalMessageID, retain, publisherClusterID);
+            distributedStore.addMessage(message, topic, qosLevel, mqttLocalMessageID,
+                    retain, publisherID, pubAckHandler);
         } catch (MQTTException e) {
             //Will need to rollback the state
-            publisherTopicCorrelate.remove(publisherID);
             final String error = "Error occured while publishing the message";
             log.error(error, e);
             throw e;
@@ -224,7 +218,7 @@ public class MQTTopicManager {
 
         } else {
             //If the connection is publisher based
-            UUID publisherID = publisherTopicCorrelate.remove(mqttClientChannelID);
+            UUID publisherID = distributedStore.removePublisher(mqttClientChannelID);
             if (null == publisherID) {
                 log.warn("A subscriber or a publisher with Connection with id " + mqttClientChannelID + " cannot be " +
                         "found to disconnect.");
