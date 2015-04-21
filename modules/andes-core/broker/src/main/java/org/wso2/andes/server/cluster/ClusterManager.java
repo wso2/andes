@@ -118,6 +118,12 @@ public class ClusterManager {
             }
         }
 
+        // Deactivate durable subscriptions belonging to the node
+        ClusterResourceHolder.getInstance().getSubscriptionManager().
+                deactivateClusterDurableSubscriptionsForNodeID(AndesContext.getInstance().getClusteringAgent()
+                                .isCoordinator(),
+                        hazelcastAgent.getIdOfNode(node));
+
         //update thrift coordinator server details
         //  setThriftCoordinatorServerDetails();
     }
@@ -196,8 +202,7 @@ public class ClusterManager {
 
             log.info("Initializing Standalone Mode. Current Node ID:" + this.nodeId);
 
-            andesContextStore.storeNodeDetails(nodeId, (String) AndesConfigurationManager.readValue
-                    (AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
+            andesContextStore.storeNodeDetails(nodeId, (String) AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
         } catch (UnknownHostException e) {
             throw new AndesException("Unable to get the localhost address.", e);
         }
