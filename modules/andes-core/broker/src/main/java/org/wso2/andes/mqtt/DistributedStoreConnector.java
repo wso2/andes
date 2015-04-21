@@ -27,20 +27,20 @@ import java.nio.ByteBuffer;
 import java.util.UUID;
 
 /**
- * This class mainly focusses on negotiating the connections and exchanging data
+ * This class mainly focusses on negotiating the connections and exchanging data with the message store
  * The class will interface with the Andes kernal and will ensure that the information thats received from the bridge
  * is conforming to the data structure expected by the kernal, The basic operations done through this class will be
  * conbverting between the meta data and message content, indicate subscriptions and disconnections
  */
 
-public class MQTTChannel {
+public class DistributedStoreConnector implements MQTTConnector {
 
-    private static Log log = LogFactory.getLog(MQTTChannel.class);
+    private static Log log = LogFactory.getLog(DistributedStoreConnector.class);
     private static final String MQTT_TOPIC_DESTINATION = "destination";
     private static final String MQTT_QUEUE_IDENTIFIER = "targetQueue";
     private AndesChannel andesChannel;
 
-    public MQTTChannel() {
+    public DistributedStoreConnector() {
         andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {
             @Override
             public void block() {
@@ -55,12 +55,7 @@ public class MQTTChannel {
     }
 
     /**
-     * The acked messages will be informed to the kernal
-     *
-     * @param messageID   the identifier of the message
-     * @param topicName   the name of the topic the message was published
-     * @param storageName the storage name representation of the topic
-     * @throws AndesException if the ack was not processed properly
+     * {@inheritDoc}
      */
     public void messageAck(long messageID, String topicName, String storageName, UUID subChannelID)
             throws AndesException {
@@ -70,15 +65,7 @@ public class MQTTChannel {
     }
 
     /**
-     * Will add the message content which will be recived
-     *
-     * @param message            the content of the message which was published
-     * @param topic              the name of the topic which the message was published
-     * @param qosLevel           the level of the qos the message was published
-     * @param mqttLocalMessageID the channel id the subscriber is bound to
-     * @param retain             whether the message requires to be persisted
-     * @param publisherID        the id which will uniquely identify the publisher
-     * @throws MQTTException occurs if there was an errro while adding the message content
+     * {@inheritDoc}
      */
     public void addMessage(ByteBuffer message, String topic, int qosLevel,
                            int mqttLocalMessageID, boolean retain, UUID publisherID) throws MQTTException {
@@ -96,7 +83,7 @@ public class MQTTChannel {
             andesMessage.addMessagePart(messagePart);
             // TODO: Need to handle Flow control in MQTT properly
             Andes.getInstance().messageReceived(andesMessage, andesChannel);
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug(" Message added with message id " + mqttLocalMessageID);
             }
 
@@ -106,65 +93,7 @@ public class MQTTChannel {
     }
 
     /**
-     * Will create subscriptions out of the provided list of information, this will be used when creating durable,
-     * non durable subscriptions. As well as creating the subscription object for removal
-     *
-     * @param channel               the chanel the data communication should be done at
-     * @param topic                 the name of the destination
-     * @param clientID              the identifier which is unique across the cluster
-     * @param mqttClientID          the id of the client which is provided by the protocol
-     * @param isCleanSesion         should this be treated as a durable subscription
-     * @param qos                   the level in which the messages would be excahnged this will be either 0,1 or 2
-     * @param subscriptionChannelID the id of the channel that would be unique accross the cluser
-     * @param queueIdentifier       the identifier which will represent the queue will be applicable only when durable
-     * @param isTopicBound          should the representation of the object a queue or a topic
-     * @param isActive              is the subscription active it will be inactive during removal
-     * @return the andes specific object that will be registered in the cluster
-     * @throws MQTTException
-     */
-    private MQTTLocalSubscription createSubscription(MQTTopicManager channel, String topic, String clientID,
-                                                     String mqttClientID, boolean isCleanSesion, int qos,
-                                                     UUID subscriptionChannelID, String queueIdentifier,
-                                                     boolean isTopicBound, boolean isActive) throws MQTTException {
-        //Will create a new local subscription object
-        final String isBoundToTopic = "isBoundToTopic";
-        final String subscribedNode = "subscribedNode";
-        final String isDurable = "isDurable";
-
-        final String myNodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
-        MQTTLocalSubscription localTopicSubscription = new MQTTLocalSubscription(MQTT_TOPIC_DESTINATION + "=" + topic
-                + "," + MQTT_QUEUE_IDENTIFIER + "=" + queueIdentifier + "," + isBoundToTopic + "=" + isTopicBound + "," +
-                subscribedNode + "=" + myNodeID + "," + isDurable + "=" + !isCleanSesion);
-        localTopicSubscription.setIsTopic(isTopicBound);
-        if (isTopicBound) {
-            localTopicSubscription.setTargetBoundExchange(AMQPUtils.TOPIC_EXCHANGE_NAME);
-        } else {
-            localTopicSubscription.setTargetBoundExchange(AMQPUtils.DIRECT_EXCHANGE_NAME);
-        }
-        localTopicSubscription.setMqqtServerChannel(channel);
-        localTopicSubscription.setChannelID(subscriptionChannelID);
-        localTopicSubscription.setTopic(topic);
-        localTopicSubscription.setSubscriptionID(clientID);
-        localTopicSubscription.setMqttSubscriptionID(mqttClientID);
-        localTopicSubscription.setSubscriberQOS(qos);
-        localTopicSubscription.setIsActive(isActive);
-
-        return localTopicSubscription;
-
-    }
-
-    /**
-     * Will add and indicate the subscription to the kernal the bridge will be provided as the channel
-     * since per topic we will only be creating one channel with andes
-     *
-     * @param channel               the bridge connection as the channel
-     * @param topic                 the name of the topic which has subscriber/s
-     * @param clientID              the id which will distinguish the topic channel
-     * @param mqttClientID          the subscription id which is local to the subscriber
-     * @param isCleanSesion         should the connection be durable
-     * @param qos                   the subscriber specific qos this can be either 0,1 or 2
-     * @param subscriptionChannelID will hold the unique idenfier of the subscription
-     * @throws MQTTException
+     * {@inheritDoc}
      */
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
                               boolean isCleanSesion, int qos, UUID subscriptionChannelID) throws MQTTException {
@@ -219,13 +148,7 @@ public class MQTTChannel {
     }
 
     /**
-     * Will trigger when subscriber disconnets from the session
-     *
-     * @param channel               the connection refference to the bridge
-     * @param subscribedTopic       the topic the subscription disconnection should be made
-     * @param subscriptionChannelID the channel id of the diconnection client
-     * @param subscriberChannel     the cluster wide unique idenfication of the subscription
-     * @param isCleanSession        Durability of the subscription
+     * {@inheritDoc}
      */
     public void removeSubscriber(MQTTopicManager channel, String subscribedTopic, String subscriptionChannelID,
                                  UUID subscriberChannel, boolean isCleanSession, String mqttClientID)
@@ -263,5 +186,52 @@ public class MQTTChannel {
         }
     }
 
+    /**
+     * Will create subscriptions out of the provided list of information, this will be used when creating durable,
+     * non durable subscriptions. As well as creating the subscription object for removal
+     *
+     * @param channel               the chanel the data communication should be done at
+     * @param topic                 the name of the destination
+     * @param clientID              the identifier which is unique across the cluster
+     * @param mqttClientID          the id of the client which is provided by the protocol
+     * @param isCleanSesion         should this be treated as a durable subscription
+     * @param qos                   the level in which the messages would be excahnged this will be either 0,1 or 2
+     * @param subscriptionChannelID the id of the channel that would be unique accross the cluser
+     * @param queueIdentifier       the identifier which will represent the queue will be applicable only when durable
+     * @param isTopicBound          should the representation of the object a queue or a topic
+     * @param isActive              is the subscription active it will be inactive during removal
+     * @return the andes specific object that will be registered in the cluster
+     * @throws MQTTException
+     */
+    private MQTTLocalSubscription createSubscription(MQTTopicManager channel, String topic, String clientID,
+                                                     String mqttClientID, boolean isCleanSesion, int qos,
+                                                     UUID subscriptionChannelID, String queueIdentifier,
+                                                     boolean isTopicBound, boolean isActive) throws MQTTException {
+        //Will create a new local subscription object
+        final String isBoundToTopic = "isBoundToTopic";
+        final String subscribedNode = "subscribedNode";
+        final String isDurable = "isDurable";
+
+        final String myNodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        MQTTLocalSubscription localTopicSubscription = new MQTTLocalSubscription(MQTT_TOPIC_DESTINATION + "=" + topic
+                + "," + MQTT_QUEUE_IDENTIFIER + "=" + queueIdentifier + "," + isBoundToTopic + "=" + isTopicBound + "," +
+                subscribedNode + "=" + myNodeID + "," + isDurable + "=" + !isCleanSesion);
+        localTopicSubscription.setIsTopic(isTopicBound);
+        if (isTopicBound) {
+            localTopicSubscription.setTargetBoundExchange(AMQPUtils.TOPIC_EXCHANGE_NAME);
+        } else {
+            localTopicSubscription.setTargetBoundExchange(AMQPUtils.DIRECT_EXCHANGE_NAME);
+        }
+        localTopicSubscription.setMqqtServerChannel(channel);
+        localTopicSubscription.setChannelID(subscriptionChannelID);
+        localTopicSubscription.setTopic(topic);
+        localTopicSubscription.setSubscriptionID(clientID);
+        localTopicSubscription.setMqttSubscriptionID(mqttClientID);
+        localTopicSubscription.setSubscriberQOS(qos);
+        localTopicSubscription.setIsActive(isActive);
+
+        return localTopicSubscription;
+
+    }
 
 }

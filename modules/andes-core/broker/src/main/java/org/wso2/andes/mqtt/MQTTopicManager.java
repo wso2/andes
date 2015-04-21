@@ -50,7 +50,7 @@ public class MQTTopicManager {
     //Key of the map would be the mqtt specific client id and the value would be the cluser uuid
     private Map<String, UUID> publisherTopicCorrelate = new HashMap<String, UUID>();
     //The channel reference which will be used to interact with the Andes Kernal
-    private MQTTChannel mqttChannel = new MQTTChannel();
+    private MQTTConnector distributedStore = new DistributedStoreConnector();
 
 
     /**
@@ -113,7 +113,7 @@ public class MQTTopicManager {
         }
         //Will add the topic message to the cluster for distribution
         try {
-            mqttChannel.addMessage(message, topic, qosLevel, mqttLocalMessageID, retain, publisherClusterID);
+            distributedStore.addMessage(message, topic, qosLevel, mqttLocalMessageID, retain, publisherClusterID);
         } catch (MQTTException e) {
             //Will need to rollback the state
             publisherTopicCorrelate.remove(publisherID);
@@ -165,7 +165,7 @@ public class MQTTopicManager {
             subscriberTopicCorrelate.put(mqttClientChannelID, topicName);
         } catch (MQTTException ex) {
             //In case if an error occurs we need to rollback the subscription created cluster wide
-            mqttChannel.removeSubscriber(this, topicName, subscriptionID, subscriptionChannelID,
+            distributedStore.removeSubscriber(this, topicName, subscriptionID, subscriptionChannelID,
                     isCleanSession, mqttClientChannelID);
             final String message = "Error while adding the subscriber to the cluser";
             log.error(message, ex);
@@ -199,7 +199,7 @@ public class MQTTopicManager {
                 //Will remove the subscriber clusterwide
                 try {
                     //Will indicate the disconnection of the topic
-                    mqttChannel.removeSubscriber(this, topic, subscriberChannelID, subscriberChannel,
+                    distributedStore.removeSubscriber(this, topic, subscriberChannelID, subscriberChannel,
                             isCleanSession, mqttClientChannelID);
                     if (log.isDebugEnabled()) {
                         final String message = "Subscription with cluster id " + subscriberChannelID + " disconnected " +
@@ -333,7 +333,7 @@ public class MQTTopicManager {
         }
 
         //Will register the topic cluster wide
-        mqttChannel.addSubscriber(this, topicName, topicSpecificClientID, mqttClientID, isCleanSession,
+        distributedStore.addSubscriber(this, topicName, topicSpecificClientID, mqttClientID, isCleanSession,
                 qos, subscriptionChannelID);
 
         return topicSpecificClientID;
@@ -349,7 +349,7 @@ public class MQTTopicManager {
      */
     private void messageAck(String topic, long messageID, String storageName, UUID subChannelID) throws MQTTException {
         try {
-            mqttChannel.messageAck(messageID, topic, storageName, subChannelID);
+            distributedStore.messageAck(messageID, topic, storageName, subChannelID);
         } catch (AndesException ex) {
             final String message = "Error occurred while cleaning up the acked message";
             log.error(message, ex);
