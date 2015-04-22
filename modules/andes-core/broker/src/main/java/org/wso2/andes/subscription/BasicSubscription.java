@@ -293,7 +293,7 @@ public class BasicSubscription implements AndesSubscription {
      */
     @Override
     public void setHasExternalSubscriptions(boolean hasExternalSubscription) {
-        hasExternalSubscriptions = hasExternalSubscription;
+        this.hasExternalSubscriptions = hasExternalSubscription;
     }
 
     /**
