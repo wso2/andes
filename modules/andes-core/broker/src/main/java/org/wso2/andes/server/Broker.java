@@ -126,7 +126,7 @@ public class Broker
      */
     private void startAMQPListener(ApplicationRegistry config, BrokerOptions options, ServerConfiguration serverConfig) throws AndesException, JMException, UnknownHostException {
 
-        if (AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_ENABLED)) {
+        if (AndesConfigurationManager.<Boolean>readValue(AndesConfiguration.TRANSPORTS_AMQP_ENABLED)) {
             ConfigurationManagementMBean configMBean = new ConfigurationManagementMBean();
             configMBean.register();
 
