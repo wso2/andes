@@ -140,7 +140,10 @@ public class ClusterCoordinationHandler implements QueueListener, ExchangeListen
         if (AndesContext.getInstance().isClusteringEnabled()) {
             ClusterNotification clusterNotification = new ClusterNotification(subscription.encodeAsStr(),
                     changeType.toString(), "Subscription Notification Message : " + changeType.toString());
-            hazelcastAgent.notifySubscriptionsChanged(clusterNotification);
+            //check hazelcast instance active because hazelcast bundle get deactivated before notification send
+            if(hazelcastAgent.isActive()) {
+                hazelcastAgent.notifySubscriptionsChanged(clusterNotification);
+            }
         }
         //if running in standalone mode short-circuit cluster notification
         else {
