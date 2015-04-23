@@ -370,12 +370,14 @@ public class AMQPUtils {
      * convert qpid queue to Andes queue
      *
      * @param amqQueue qpid queue
+     * @param isExclusiveConsumer is amqQueue exclusive consumer enabled
      * @return andes queue
      */
-    public static InboundQueueEvent createAndesQueue(AMQQueue amqQueue) {
+    public static InboundQueueEvent createAndesQueue(AMQQueue amqQueue, boolean isExclusiveConsumer) {
         return new InboundQueueEvent(amqQueue.getName(),
                 (amqQueue.getOwner() != null) ? amqQueue.getOwner().toString() : "null",
-                amqQueue.isExclusive(), amqQueue.isDurable());
+                amqQueue.isExclusive(), amqQueue.isDurable(),
+                isExclusiveConsumer);
     }
 
     /**
@@ -409,7 +411,7 @@ public class AMQPUtils {
         } else if (exchange.getType().equals(TopicExchange.TYPE)) {
             exchangeName = TopicExchange.TYPE.getDefaultExchangeName().toString();
         }
-        return new InboundBindingEvent(exchangeName, AMQPUtils.createAndesQueue(queue), routingKey.toString());
+        return new InboundBindingEvent(exchangeName, AMQPUtils.createAndesQueue(queue, false), routingKey.toString());
     }
 
     public static String generateQueueName() {

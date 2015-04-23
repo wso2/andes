@@ -239,10 +239,11 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
      * @param queueName
      * @param durable
      * @param owner
+     * @param isExclusiveConsumer
      * @throws JMException
      * @throws MBeanException
      */
-    public void createNewQueue(String queueName, String owner, boolean durable) throws JMException, MBeanException
+    public void createNewQueue(String queueName, String owner, boolean durable, boolean isExclusiveConsumer) throws JMException, MBeanException
     {
         AMQQueue queue = _queueRegistry.getQueue(new AMQShortString(queueName));
         try
@@ -266,7 +267,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                 _durableConfig.createQueue(queue);
 
                 //tell Andes kernel to create queue
-                QpidAMQPBridge.getInstance().createQueue(queue);
+                QpidAMQPBridge.getInstance().createQueue(queue, isExclusiveConsumer);
             }
 
         }

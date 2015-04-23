@@ -699,8 +699,8 @@ public class RDBMSAndesContextStoreImplTest {
     @Test
     public void testGetAllQueuesStored() throws Exception {
 
-        AndesQueue andesQueue1 = new AndesQueue("queue1", "owner1", true, false);
-        AndesQueue andesQueue2 = new AndesQueue("queue2", "owner2", true, false);
+        AndesQueue andesQueue1 = new AndesQueue("queue1", "owner1", true, false, false);
+        AndesQueue andesQueue2 = new AndesQueue("queue2", "owner2", true, false, false);
         int queueCount = 2;
 
         // insert
@@ -744,8 +744,8 @@ public class RDBMSAndesContextStoreImplTest {
      */
     @Test
     public void testDeleteQueueInformation() throws Exception {
-        AndesQueue andesQueue1 = new AndesQueue("queue1", "owner1", true, false);
-        AndesQueue andesQueue2 = new AndesQueue("queue2", "owner2", true, false);
+        AndesQueue andesQueue1 = new AndesQueue("queue1", "owner1", true, false, false);
+        AndesQueue andesQueue2 = new AndesQueue("queue2", "owner2", true, false, false);
 
         // insert
         String insert = "INSERT INTO " + RDBMSConstants.QUEUE_INFO_TABLE + " (" +
@@ -793,7 +793,7 @@ public class RDBMSAndesContextStoreImplTest {
         String routingKey1 = "routingKey1";
 
         // store queue and exchange information accordingly in db before storing binging.
-        AndesQueue andesQueue1 = new AndesQueue(boundQueue1, "owner1", true, false);
+        AndesQueue andesQueue1 = new AndesQueue(boundQueue1, "owner1", true, false, false);
 
         // setup database with queue information
         String insert = "INSERT INTO " + RDBMSConstants.QUEUE_INFO_TABLE + " (" +

@@ -159,7 +159,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             // state of qpid is updated. This method also validates the request owner and throws
             // an exception if permission is denied.
 
-            InboundQueueEvent andesQueue = AMQPUtils.createAndesQueue(queue);
+            InboundQueueEvent andesQueue = AMQPUtils.createAndesQueue(queue, false);
             int purgedMessageCount = Andes.getInstance().purgeQueue(andesQueue, false);
             log.info("Total message count purged for queue (from store) : " + queueName + " : " +
                     purgedMessageCount + ". All in memory messages received before the purge call" +

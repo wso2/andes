@@ -121,7 +121,7 @@ public class VirtualHostConfigSynchronizer implements
         try {
             log.info("Queue removal request received queue= " + queue.queueName);
             removeQueue(queue.queueName);
-            AndesContext.getInstance().getAMQPConstructStore().removeQueue(queue.queueName, false);
+            AndesContext.getInstance().getAMQPConstructStore().removeQueue(queue.queueName, false, true);
         } catch (Exception e) {
             log.error("could not remove cluster queue", e);
             throw new AndesException("could not remove cluster queue : " + queue.toString(), e);
@@ -136,7 +136,7 @@ public class VirtualHostConfigSynchronizer implements
      */
     public boolean checkIfQueueDeletable(AMQQueue queue) throws AMQException{
         try {
-            return Andes.getInstance().checkIfQueueDeletable(AMQPUtils.createAndesQueue(queue));
+            return Andes.getInstance().checkIfQueueDeletable(AMQPUtils.createAndesQueue(queue, false));
         } catch (AndesException e) {
             log.error("error while checking if queue is deletable", e);
             throw new AMQException("error while checking if queue is deletable : " + queue, e);

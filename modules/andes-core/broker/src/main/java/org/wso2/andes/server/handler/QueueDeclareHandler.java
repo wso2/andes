@@ -112,7 +112,7 @@ public class QueueDeclareHandler implements StateAwareMethodListener<QueueDeclar
                         store.createQueue(queue, body.getArguments());
 
                         //Tell Andes kernel to create queue
-                        QpidAMQPBridge.getInstance().createQueue(queue);
+                        QpidAMQPBridge.getInstance().createQueue(queue, false);
                     }
                     if(body.getAutoDelete())
                     {

@@ -26,6 +26,7 @@ public class AndesQueue {
     public boolean isExclusive;
     public boolean isDurable;
     public int subscriptionCount;
+    public boolean isExclusiveConsumer;
 
     /**
      * Added to infer the state of the queue during concurrent message delivery.
@@ -40,14 +41,16 @@ public class AndesQueue {
      * @param queueOwner  owner of the queue (virtual host)
      * @param isExclusive is queue exclusive
      * @param isDurable   is queue durable
+     * @param isExclusiveConsumer is queue exclusive consumer enabled
      */
-    public AndesQueue(String queueName, String queueOwner, boolean isExclusive, boolean isDurable) {
+    public AndesQueue(String queueName, String queueOwner, boolean isExclusive, boolean isDurable, boolean isExclusiveConsumer) {
         this.queueName = queueName;
         this.queueOwner = queueOwner;
         this.isExclusive = isExclusive;
         this.isDurable = isDurable;
         this.subscriptionCount = 1;
         this.lastPurgedTimestamp = 0L;
+        this.isExclusiveConsumer = isExclusiveConsumer;
     }
 
     public Long getLastPurgedTimestamp() {
@@ -77,6 +80,8 @@ public class AndesQueue {
                 this.isDurable = Boolean.parseBoolean(tokens[1]);
             } else if ("lastPurgedTimestamp".equals(tokens[0])) {
                 this.lastPurgedTimestamp = Long.parseLong(tokens[1]);
+            } else if ("isExclusiveConsumer".equals(tokens[0])) {
+                this.isExclusiveConsumer = Boolean.parseBoolean(tokens[1]);
             }
         }
     }
@@ -86,7 +91,8 @@ public class AndesQueue {
                 "OW=" + queueOwner +
                 "/X=" + isExclusive +
                 "/D" + isDurable +
-                "/LPT" + lastPurgedTimestamp;
+                "/LPT" + lastPurgedTimestamp +
+                "/EX" + isExclusiveConsumer;
     }
 
     public String encodeAsString() {
@@ -94,7 +100,8 @@ public class AndesQueue {
                 ",queueOwner=" + queueOwner +
                 ",isExclusive=" + isExclusive +
                 ",isDurable=" + isDurable +
-                ",lastPurgedTimestamp=" + lastPurgedTimestamp;
+                ",lastPurgedTimestamp=" + lastPurgedTimestamp +
+                ",isExclusiveConsumer=" + isExclusiveConsumer;
     }
 
     public boolean equals(Object o) {

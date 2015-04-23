@@ -376,7 +376,7 @@ public class MessageFlusher {
                  * bound to unique queue based on subscription id
                  */
                 Collection<LocalSubscription> subscriptions4Queue =
-                        subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
+                        subscriptionStore.getSubscriptionsForDeliver(destination, message.isTopic());
 
                 //If this is a topic message, we remove all durable topic subscriptions here.
                 //Because durable topic subscriptions will get messages via queue path.

@@ -330,7 +330,7 @@ public class MessagingEngine {
         if(!isTopic) {
             // The queueOwner here is passed as null since its not used from the notification object.
             // The user permissions are validated at the andes feature component level.
-            AndesQueue purgedQueue = new AndesQueue(destination, ownerName, false, true);
+            AndesQueue purgedQueue = new AndesQueue(destination, ownerName, false, true, false);
             purgedQueue.setLastPurgedTimestamp(purgedTimestamp);
 
             queueListener.handleLocalQueuesChanged(purgedQueue, QueueListener.QueueEvent.PURGED);

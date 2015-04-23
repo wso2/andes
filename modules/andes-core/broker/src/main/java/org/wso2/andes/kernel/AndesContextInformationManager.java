@@ -171,9 +171,10 @@ public class AndesContextInformationManager {
      * delete cluster-wide
      *
      * @param queueName name of the queue
+     * @param isTopic
      * @throws AndesException
      */
-    public void deleteQueue(String queueName) throws AndesException {
+    public void deleteQueue(String queueName, boolean isTopic) throws AndesException {
         //identify queue to delete
         AndesQueue queueToDelete = null;
         List<AndesQueue> queueList = contextStore.getAllQueuesStored();
@@ -188,7 +189,7 @@ public class AndesContextInformationManager {
         MessagingEngine.getInstance().purgeMessages(queueName, null, false,null);
 
         // delete queue from construct store
-        constructStore.removeQueue(queueName, true);
+        constructStore.removeQueue(queueName, true,isTopic);
 
         //Notify cluster to delete queue
         notifyQueueListeners(queueToDelete, QueueListener.QueueEvent.DELETED);
