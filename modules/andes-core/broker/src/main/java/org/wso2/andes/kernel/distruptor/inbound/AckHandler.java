@@ -25,6 +25,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.OnflightMessageTracker;
+import org.wso2.andes.kernel.distruptor.BatchEventHandler;
 import org.wso2.andes.server.stats.PerformanceCounter;
 
 /**

@@ -1,5 +1,6 @@
 package org.dna.mqtt.moquette.messaging.spi.impl;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.IgnoreExceptionHandler;
@@ -13,7 +14,6 @@ import org.dna.mqtt.moquette.messaging.spi.IMatchingCondition;
 import org.dna.mqtt.moquette.messaging.spi.IStorageService;
 import org.dna.mqtt.moquette.messaging.spi.impl.events.MessagingEvent;
 import org.dna.mqtt.moquette.messaging.spi.impl.events.OutputMessagingEvent;
-import org.dna.mqtt.moquette.messaging.spi.impl.events.PubAckEvent;
 import org.dna.mqtt.moquette.messaging.spi.impl.events.PublishEvent;
 import org.dna.mqtt.moquette.messaging.spi.impl.subscriptions.Subscription;
 import org.dna.mqtt.moquette.messaging.spi.impl.subscriptions.SubscriptionsStore;
@@ -25,7 +25,10 @@ import org.dna.mqtt.moquette.server.ServerChannel;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.MQTTUserAuthenticationScheme;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTException;
+import org.wso2.andes.mqtt.MQTTUtils;
 
 import java.nio.ByteBuffer;
 import java.util.Collection;
@@ -34,11 +37,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 import static org.wso2.andes.configuration.enums.AndesConfiguration.TRANSPORTS_MQTT_DELIVERY_BUFFER_SIZE;
 import static org.wso2.andes.configuration.enums.AndesConfiguration.TRANSPORTS_MQTT_USER_ATHENTICATION;
 
-public class ProtocolProcessor implements EventHandler<ValueEvent> {
+public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandler {
 
     private static Log log = LogFactory.getLog(ProtocolProcessor.class);
 
@@ -77,7 +81,9 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         Integer RingBufferSize = AndesConfigurationManager.readValue(TRANSPORTS_MQTT_DELIVERY_BUFFER_SIZE);
         
         // Init the output Disruptor
-        ExecutorService executor = Executors.newFixedThreadPool(1);
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+                .setNameFormat("Disruptor MQTT Protocol Processor thread %d").build();
+        ExecutorService executor = Executors.newCachedThreadPool(namedThreadFactory);
 
         Disruptor<ValueEvent> disruptor = new Disruptor<ValueEvent>(
                 ValueEvent.EVENT_FACTORY,
@@ -270,48 +276,20 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         final ByteBuffer message = evt.getMessage();
         boolean retain = evt.isRetain();
         //Added to maintain the state of the publishing clients
-        String mqttPublisherClient = evt.getClientID();
-        
-     /*   log.info("Publish recieved from clientID <{}> on topic <{}> with QoS {}",
-                evt.getClientID(), evt.getTopic(), evt.getQos());*/
+        String clientID = evt.getClientID();
 
-        String publishKey = null;
-        if (qos == AbstractMessage.QOSType.LEAST_ONE) {
-            //store the temporary message
-            //TODO commented, need to review and remove the store
-          /*  publishKey = String.format("%s%d", evt.getClientID(), evt.getMessageID());
-            m_storageService.addInFlight(evt, publishKey);*/
-        } else if (qos == AbstractMessage.QOSType.EXACTLY_ONCE) {
+        String publishKey;
+
+        // For QOS 2 send publisher received
+        if (qos == AbstractMessage.QOSType.EXACTLY_ONCE) {
             publishKey = String.format("%s%d", evt.getClientID(), evt.getMessageID());
             //store the message in temp store
             m_storageService.persistQoS2Message(publishKey, evt);
             sendPubRec(evt.getClientID(), evt.getMessageID());
         }
 
-        //NB publish 2 subscribers for QoS 2 happen upon PUBREL from publsher
-        if (qos != AbstractMessage.QOSType.EXACTLY_ONCE) {
-            //Andes Specific Commented
-            //publish2Subscribers(topic, qos, message, retain, evt.getMessageID());
-            //Will connect with andes
-            //Chanage By Pamod
-            AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), message, retain, evt.getMessageID(),
-                    mqttPublisherClient);
-        }
-
-        // AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), message, retain, evt.getMessageID());
-
-        if (qos == AbstractMessage.QOSType.LEAST_ONE) {
-            //TODO we need to validate this stage with the cassandra message store
-        /*    if (publishKey == null) {
-                throw new RuntimeException("Found a publish key null for QoS " + qos + " for message " + evt);
-            }*/
-            //TODO commented the store need to review and remove this
-            //m_storageService.cleanInFlight(publishKey);
-            sendPubAck(new PubAckEvent(evt.getMessageID(), evt.getClientID()));
-            if (log.isDebugEnabled()) {
-                log.debug("replying with PUBACC to message id " + evt.getMessageID());
-            }
-        }
+        AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), message, retain,
+                evt.getMessageID(), clientID, this);
 
         if (retain) {
             //TODO call the cluster specifc store here
@@ -471,15 +449,13 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         disruptorPublish(new OutputMessagingEvent(m_clientIDs.get(clientID).getSession(), pubRecMessage));
     }
 
-    private void sendPubAck(PubAckEvent evt) {
+    private void sendPubAck(String clientId, int messageID) {
         if (log.isTraceEnabled()) {
             log.trace("sendPubAck invoked");
         }
 
-        String clientId = evt.getClientID();
-
         PubAckMessage pubAckMessage = new PubAckMessage();
-        pubAckMessage.setMessageID(evt.getMessageId());
+        pubAckMessage.setMessageID(messageID);
 
         try {
             if (m_clientIDs == null) {
@@ -514,10 +490,6 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
 
         final String topic = evt.getTopic();
         final AbstractMessage.QOSType qos = evt.getQos();
-        //publish2Subscribers(topic, qos, evt.getMessage(), evt.isRetain(), evt.getMessageID());
-        //For QOS 2 we will add the message upone the pub rel
-        AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), evt.getMessage(), evt.isRetain(),
-                evt.getMessageID(), evt.getClientID());
 
         m_storageService.removeQoS2Message(publishKey);
 
@@ -525,8 +497,6 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
             //TODO call the cluster specifc store here
             //m_storageService.storeRetained(topic, evt.getMessage(), qos);
         }
-
-        sendPubComp(clientID, messageID);
     }
 
     private void sendPubComp(String clientID, int messageID) {
@@ -718,4 +688,21 @@ public class ProtocolProcessor implements EventHandler<ValueEvent> {
         outEvent.getChannel().write(outEvent.getMessage());
     }
 
+    @Override
+    public void ack(AndesMessageMetadata metadata) {
+        int qos = (Integer)metadata.getProperty(MQTTUtils.QOSLEVEL);
+        String clientID = (String)metadata.getProperty(MQTTUtils.CLIENT_ID);
+        int messageID = (Integer) metadata.getProperty(MQTTUtils.MESSAGE_ID);
+
+        if(qos == AbstractMessage.QOSType.EXACTLY_ONCE.ordinal()) {
+            sendPubComp(clientID, messageID);
+        } else if (qos == AbstractMessage.QOSType.LEAST_ONE.ordinal()) {
+            sendPubAck(clientID, messageID);
+        }
+    }
+
+    @Override
+    public void nack(AndesMessageMetadata metadata) {
+
+    }
 }

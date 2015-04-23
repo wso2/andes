@@ -19,6 +19,7 @@
 package org.wso2.andes.kernel;
 
 import org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent;
+import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 
 import java.util.List;
 
@@ -33,8 +34,9 @@ public interface InboundEventManager {
      * inbound event manager. (e.g: through a disruptor ring buffer) Eventually the message will be stored
      * @param message AndesMessage
      * @param andesChannel AndesChannel
+     * @param pubAckHandler PubAckHandler
      */
-    public void messageReceived(AndesMessage message, AndesChannel andesChannel);
+    public void messageReceived(AndesMessage message, AndesChannel andesChannel, PubAckHandler pubAckHandler);
 
     /**
      * Acknowledgement received from clients for sent messages will be handled through this method

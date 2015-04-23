@@ -34,12 +34,12 @@ import java.util.UUID;
 public class MQTTUtils {
 
     private static Log log = LogFactory.getLog(MQTTUtils.class);
-    private static final String MESSAGE_ID = "MessageID";
+    public static final String MESSAGE_ID = "MessageID";
     private static final String TOPIC = "Topic";
     private static final String DESTINATION = "Destination";
     private static final String PERSISTENCE = "Persistant";
     private static final String MESSAGE_CONTENT_LENGTH = "MessageContentLength";
-    private static final String QOSLEVEL = "QOSLevel";
+    public static final String QOSLEVEL = "QOSLevel";
     //This will be required to be at the initial byte stream the meta data will have since when the message is proccessed
     //back from andes since the message relevency is checked ex :- whether its amqp, mqtt etc
     public static final String MQTT_META_INFO = "\u0002MQTT Protocol v3.1";
@@ -47,6 +47,10 @@ public class MQTTUtils {
     public static final String SINGLE_LEVEL_WILDCARD = "+";
     public static final String MULTI_LEVEL_WILDCARD = "#";
 
+    /**
+     * MQTT Publisher ID
+     */
+    public static final String CLIENT_ID = "clientID";
 
     /**
      * The pulished messages will be taken in as a byte stream, the mesage will be transformed into AndesMessagePart as

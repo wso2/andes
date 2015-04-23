@@ -26,6 +26,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.distruptor.ConcurrentBatchEventHandler;
+import org.wso2.andes.kernel.distruptor.LogExceptionHandler;
 import org.wso2.andes.matrics.DataAccessMatrixManager;
 import org.wso2.andes.matrics.MatrixConstants;
 import org.wso2.andes.subscription.SubscriptionStore;
@@ -76,7 +78,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
                 ProducerType.MULTI,
                 new BlockingWaitStrategy());
 
-        disruptor.handleExceptionsWith(new InboundLogExceptionHandler());
+        disruptor.handleExceptionsWith(new LogExceptionHandler());
 
         ConcurrentBatchEventHandler[] concurrentBatchEventHandlers =
                 new ConcurrentBatchEventHandler[writeHandlerCount + ackHandlerCount];
@@ -116,13 +118,14 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
      * @inheritDoc
      */
     @Override
-    public void messageReceived(AndesMessage message, AndesChannel andesChannel) {
+    public void messageReceived(AndesMessage message, AndesChannel andesChannel, PubAckHandler pubAckHandler) {
         // Publishers claim events in sequence
         long sequence = ringBuffer.next();
         InboundEventContainer event = ringBuffer.get(sequence);
 
         event.setEventType(MESSAGE_EVENT);
         event.messageList.add(message);
+        event.pubAckHandler = pubAckHandler;
         event.setChannel(andesChannel);
         // make the event available to EventProcessors
         ringBuffer.publish(sequence);

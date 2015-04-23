@@ -21,6 +21,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.impl.ProtocolProcessor;
 import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
+import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTException;
 import org.wso2.andes.mqtt.MQTTUtils;
 import org.wso2.andes.mqtt.MQTTopicManager;
@@ -105,12 +106,13 @@ public final class AndesMQTTBridge {
      * @param retain             should this message be persisted
      * @param mqttLocalMessageID the message uniq identifier
      * @param publisherID        the id of the publisher provided by mqtt protocol
+     * @param pubAckHandler      publisher acknowledgements are handled by this handler
      */
     public static void onMessagePublished(String topic, int qosLevel, ByteBuffer message, boolean retain,
-                                          int mqttLocalMessageID, String publisherID) {
+                                          int mqttLocalMessageID, String publisherID, PubAckHandler pubAckHandler) {
         try {
-            MQTTopicManager.getInstance().addTopicMessage(topic, qosLevel, message, retain, mqttLocalMessageID,
-                    publisherID);
+            MQTTopicManager.getInstance().addTopicMessage(
+                    topic, qosLevel, message, retain, mqttLocalMessageID, publisherID, pubAckHandler);
         } catch (MQTTException e) {
             //Will capture the message here and will not throw it further to mqtt protocol
             final String error = "Error occured while adding the message content for message id : "

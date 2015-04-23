@@ -56,8 +56,9 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
         try {
             switch (event.getEventType()) {
                 case MESSAGE_EVENT:
-                    updateSlotsAndQueueCounts(event.messageList);
+                    updateSlotsAndQueueCounts(event);
                     event.getChannel().recordRemovalFromBuffer(getProcessedAmount(event.messageList));
+
                     break;
                 case STATE_CHANGE_EVENT:
                     event.updateState();
@@ -101,20 +102,20 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
     /**
      * Update slot message counters and queue counters
      *
-     * @param messageList AndesMessage List
+     * @param eventContainer InboundEventContainer
      */
-    public void updateSlotsAndQueueCounts(List<AndesMessage> messageList) {
+    public void updateSlotsAndQueueCounts(InboundEventContainer eventContainer) {
 
+        List<AndesMessage> messageList = eventContainer.messageList;
         // update last message ID in slot message counter. When the slot is filled the last message
         // ID of the slot will be submitted to the slot manager by SlotMessageCounter
-       // if (AndesContext.getInstance().isClusteringEnabled()) {
-            SlotMessageCounter.getInstance().recordMetaDataCountInSlot(messageList);
-       // }
+        SlotMessageCounter.getInstance().recordMetaDataCountInSlot(messageList);
 
         for (AndesMessage message : messageList) {
             // For each message increment by 1. Underlying messaging engine will handle the increment destination
             // wise.
             messagingEngine.incrementQueueCount(message.getMetadata().getDestination(), 1);
+            eventContainer.pubAckHandler.ack(message.getMetadata());
         }
 
         //record the successfully written message count
