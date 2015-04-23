@@ -28,7 +28,7 @@ public class Server {
     SimpleMessaging messaging;
 
     public void startServer(int port) throws IOException {
-        if (AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_ENABLED)) {
+        if (AndesConfigurationManager.<Boolean>readValue(AndesConfiguration.TRANSPORTS_MQTT_ENABLED)) {
             Properties configProps = loadConfigurations();
             configProps.put("port",Integer.toString(port));
             serverInit(configProps);
