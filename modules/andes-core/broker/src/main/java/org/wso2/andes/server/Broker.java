@@ -52,6 +52,7 @@ import org.wso2.andes.transport.network.IncomingNetworkTransport;
 import org.wso2.andes.transport.network.Transport;
 import org.wso2.andes.transport.network.mina.MinaNetworkTransport;
 
+import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.NotificationEmitter;
 import javax.management.NotificationFilter;
@@ -65,6 +66,7 @@ import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.util.*;
 
 import static org.wso2.andes.transport.ConnectionSettings.WILDCARD_ADDRESS;
@@ -113,54 +115,18 @@ public class Broker
         }
     }
 
-    private void startupImpl(final BrokerOptions options) throws Exception
-    {
-        final String qpidHome = options.getQpidHome();
-        File configFile = null;
+    /**
+     * Starts the TCP listener for handling AMQP messages.
+     * @param config
+     * @param options
+     * @param serverConfig
+     * @throws AndesException
+     * @throws JMException
+     * @throws UnknownHostException
+     */
+    private void startAMQPListener(ApplicationRegistry config, BrokerOptions options, ServerConfiguration serverConfig) throws AndesException, JMException, UnknownHostException {
 
-        configFile = getConfigFile(options.getConfigFile(),
-                                BrokerOptions.DEFAULT_ANDES_CONFIG_FILE, qpidHome, true);
-
-        log.info("Starting Qpid using configuration : " + configFile.getAbsolutePath());
-
-        /*File logConfigFile = getConfigFile(options.getLogConfigFile(),
-                                    BrokerOptions.DEFAULT_LOG_CONFIG_FILE, qpidHome, false);
-
-        configureLogging(logConfigFile, options.getLogWatchFrequency());*/
-
-        ConfigurationFileApplicationRegistry config = new ConfigurationFileApplicationRegistry(configFile);
-        ServerConfiguration serverConfig = config.getConfiguration();
-        updateManagementPort(serverConfig, options.getJmxPort());
-
-         /* Registering the memory threshold ratio configured in the qpid-config.xml */
-        Double memoryThresholdRatio = AndesConfigurationManager.readValue
-                (AndesConfiguration.FLOW_CONTROL_MEMORY_BASED_GLOBAL_MEMORY_THRESHOLD_RATIO);
-        this.registerFlowControlMemoryThreshold(memoryThresholdRatio);
-
-        /* Registering the memory monitor */
-        Double recoveryThresholdRatio = AndesConfigurationManager.readValue
-                (AndesConfiguration.FLOW_CONTROL_MEMORY_BASED_GLOBAL_MEMORY_RECOVERY_THRESHOLD_RATIO);
-        Long memoryCheckInterval = AndesConfigurationManager.readValue
-                (AndesConfiguration.FLOW_CONTROL_MEMORY_BASED_MEMORY_CHECK_INTERVAL);
-        this.registerMemoryMonitor(recoveryThresholdRatio, memoryCheckInterval);
-
-        ApplicationRegistry.initialise(config);
-
-        // We have already loaded the BrokerMessages class by this point so we
-        // need to refresh the locale setting incase we had a different value in
-        // the configuration.
-        BrokerMessages.reload();
-
-        // AR.initialise() sets and removes its own actor so we now need to set the actor
-        // for the remainder of the startup, and the default actor if the stack is empty
-        CurrentActor.set(new BrokerActor(config.getCompositeStartupMessageLogger()));
-        CurrentActor.setDefault(new BrokerActor(config.getRootMessageLogger()));
-        GenericActor.setDefaultMessageLogger(config.getRootMessageLogger());
-
-        try
-        {
-        // configureLoggingManagementMBean(logConfigFile, options.getLogWatchFrequency());
-
+        if (AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_ENABLED)) {
             ConfigurationManagementMBean configMBean = new ConfigurationManagementMBean();
             configMBean.register();
 
@@ -245,11 +211,11 @@ public class Broker
                     }
 
                     NetworkTransportConfiguration settings =
-                        new ServerNetworkTransportConfiguration(serverConfig, port, bindAddress.getHostName(), Transport.TCP);
+                            new ServerNetworkTransportConfiguration(serverConfig, port, bindAddress.getHostName(), Transport.TCP);
 
                     IncomingNetworkTransport transport = Transport.getIncomingTransportInstance();
                     MultiVersionProtocolEngineFactory protocolEngineFactory =
-                        new MultiVersionProtocolEngineFactory(hostName, supported);
+                            new MultiVersionProtocolEngineFactory(hostName, supported);
 
                     transport.accept(settings, protocolEngineFactory, null);
                     ApplicationRegistry.getInstance().addAcceptor(new InetSocketAddress(bindAddress, port),
@@ -265,12 +231,12 @@ public class Broker
                 String keystorePassword = serverConfig.getKeystorePassword();
                 String certType = serverConfig.getCertType();
                 SSLContextFactory sslFactory =
-                    new SSLContextFactory(keystorePath, keystorePassword, certType);
+                        new SSLContextFactory(keystorePath, keystorePassword, certType);
 
                 for(int sslPort : sslPorts)
                 {
                     NetworkTransportConfiguration settings =
-                        new ServerNetworkTransportConfiguration(serverConfig, sslPort, bindAddress.getHostName(), Transport.TCP);
+                            new ServerNetworkTransportConfiguration(serverConfig, sslPort, bindAddress.getHostName(), Transport.TCP);
 
                     IncomingNetworkTransport transport = new MinaNetworkTransport();
 
@@ -283,6 +249,59 @@ public class Broker
             }
 
             CurrentActor.get().message(BrokerMessages.READY());
+        } else {
+            log.warn("AMQP Transport is disabled as per configuration.");
+        }
+    }
+
+    private void startupImpl(final BrokerOptions options) throws Exception
+    {
+        final String qpidHome = options.getQpidHome();
+        File configFile = null;
+
+        configFile = getConfigFile(options.getConfigFile(),
+                                BrokerOptions.DEFAULT_ANDES_CONFIG_FILE, qpidHome, true);
+
+        log.info("Starting Qpid using configuration : " + configFile.getAbsolutePath());
+
+        /*File logConfigFile = getConfigFile(options.getLogConfigFile(),
+                                    BrokerOptions.DEFAULT_LOG_CONFIG_FILE, qpidHome, false);
+
+        configureLogging(logConfigFile, options.getLogWatchFrequency());*/
+
+        ConfigurationFileApplicationRegistry config = new ConfigurationFileApplicationRegistry(configFile);
+        ServerConfiguration serverConfig = config.getConfiguration();
+        updateManagementPort(serverConfig, options.getJmxPort());
+
+         /* Registering the memory threshold ratio configured in the qpid-config.xml */
+        Double memoryThresholdRatio = AndesConfigurationManager.readValue
+                (AndesConfiguration.FLOW_CONTROL_MEMORY_BASED_GLOBAL_MEMORY_THRESHOLD_RATIO);
+        this.registerFlowControlMemoryThreshold(memoryThresholdRatio);
+
+        /* Registering the memory monitor */
+        Double recoveryThresholdRatio = AndesConfigurationManager.readValue
+                (AndesConfiguration.FLOW_CONTROL_MEMORY_BASED_GLOBAL_MEMORY_RECOVERY_THRESHOLD_RATIO);
+        Long memoryCheckInterval = AndesConfigurationManager.readValue
+                (AndesConfiguration.FLOW_CONTROL_MEMORY_BASED_MEMORY_CHECK_INTERVAL);
+        this.registerMemoryMonitor(recoveryThresholdRatio, memoryCheckInterval);
+
+        ApplicationRegistry.initialise(config);
+
+        // We have already loaded the BrokerMessages class by this point so we
+        // need to refresh the locale setting incase we had a different value in
+        // the configuration.
+        BrokerMessages.reload();
+
+        // AR.initialise() sets and removes its own actor so we now need to set the actor
+        // for the remainder of the startup, and the default actor if the stack is empty
+        CurrentActor.set(new BrokerActor(config.getCompositeStartupMessageLogger()));
+        CurrentActor.setDefault(new BrokerActor(config.getRootMessageLogger()));
+        GenericActor.setDefaultMessageLogger(config.getRootMessageLogger());
+
+        try
+        {
+
+            startAMQPListener(config,options,serverConfig);
 
             /**
              * Boot andes kernel
@@ -364,7 +383,7 @@ public class Broker
         }
     }
 
-    private byte[] parseIP(String address) throws Exception
+    private byte[] parseIP(String address) throws AndesException
     {
         char[] literalBuffer = address.toCharArray();
         int byteCount = 0;
@@ -387,7 +406,7 @@ public class Broker
 
         if (byteCount != 4)
         {
-            throw new Exception("Invalid IP address: " + address);
+            throw new AndesException("Invalid IP address: " + address);
         }
         return ip;
     }
