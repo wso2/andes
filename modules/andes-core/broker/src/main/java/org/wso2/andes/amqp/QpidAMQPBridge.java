@@ -64,18 +64,21 @@ public class QpidAMQPBridge {
      */
     private PubAckHandler pubAckHandler;
 
+    static {
+        qpidAMQPBridge = new QpidAMQPBridge();
+    }
     /**
      * get QpidAMQPBridge instance
      *
      * @return QpidAMQPBridge instance
      */
-    public static synchronized QpidAMQPBridge getInstance() {
-        if (qpidAMQPBridge == null) {
-            qpidAMQPBridge = new QpidAMQPBridge();
-        }
+    public static QpidAMQPBridge getInstance() {
         return qpidAMQPBridge;
     }
 
+    /**
+     * Create a QpidAMQPBridge instance with disabled publisher ack implementation
+     */
     private QpidAMQPBridge() {
         pubAckHandler = new DisablePubAckImpl();
     }
