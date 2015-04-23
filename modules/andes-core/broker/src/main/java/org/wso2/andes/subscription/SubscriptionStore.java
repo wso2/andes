@@ -33,11 +33,17 @@ import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
 import org.wso2.andes.mqtt.MQTTUtils;
 
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SubscriptionStore {
     private static final String TOPIC_PREFIX = "topic.";
@@ -83,7 +89,9 @@ public class SubscriptionStore {
      * @return list of andes subscriptions
      * @throws AndesException
      */
-    public Set<AndesSubscription> getAllSubscribersForDestination(String destination, boolean isTopic, AndesSubscription.SubscriptionType subscriptionType) throws AndesException {
+    public Set<AndesSubscription> getAllSubscribersForDestination(String destination, boolean isTopic,
+                                                                  AndesSubscription.SubscriptionType
+                                                                          subscriptionType) throws AndesException {
         // Returning empty set if requested map is empty
         Set<AndesSubscription> subscriptions = new HashSet<AndesSubscription>();
         if (isTopic) {
@@ -657,8 +665,7 @@ public class SubscriptionStore {
             }
         }
         if (null != subscriptionToRemove) {
-            String destinationIdentifier = new StringBuffer().append((subscriptionToRemove.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX))
-                    .append(destination).toString();
+            String destinationIdentifier = (subscriptionToRemove.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destination;
             andesContextStore.removeDurableSubscription(destinationIdentifier, subscription.getSubscribedNode() + "_" + subscriptionID);
             if (log.isDebugEnabled())
                 log.debug("Subscription Removed Locally for  " + destination + "@" + subscriptionID + " " + subscriptionToRemove);
@@ -669,11 +676,12 @@ public class SubscriptionStore {
     }
 
     /**
+     * Gets a list of ACTIVE and INACTIVE topics in cluster
+     *
      * @return list of ACTIVE and INACTIVE topics in cluster
      */
-    public List<String> getTopics(boolean isDurable) {
+    public List<String> getTopics() {
         return new ArrayList<String>(clusterTopicSubscriptionMap.keySet());
-
     }
 
     /**
@@ -691,4 +699,47 @@ public class SubscriptionStore {
         }
     }
 
+    /**
+     * Marks all the durable subscriptions for a specific node with "has external" false. Meaning
+     * that the subscription is marked disconnected. The "has external" refers that the subscription
+     * is active or not.
+     *
+     * @param isCoordinator True if current node is the coordinator, false otherwise.
+     * @param nodeID The current node ID.
+     * @throws AndesException Throw when updating the context store.
+     */
+    public void deactivateClusterDurableSubscriptionsForNodeID(boolean isCoordinator, String nodeID)
+            throws AndesException {
+        for (Set<AndesSubscription> andesSubscriptions : clusterTopicSubscriptionMap.values()) {
+            for (AndesSubscription subscription : andesSubscriptions) {
+                if (subscription.isDurable() && subscription.isBoundToTopic() && nodeID.equals
+                        (subscription.getSubscribedNode()) && subscription.hasExternalSubscriptions()) {
+
+                    // Marking the subscription as false
+                    subscription.setHasExternalSubscriptions(false);
+
+                    if (log.isDebugEnabled()) {
+                        log.debug("Updating cluster map with subscription ID : " + subscription.getSubscriptionID() +
+                                  " with has external as false.");
+                    }
+
+                    // Updating the context store by the coordinator
+                    if (isCoordinator) {
+                        String destinationQueue = getDestination(subscription);
+                        String destinationIdentifier = (subscription.isBoundToTopic() ?
+                                                        TOPIC_PREFIX : QUEUE_PREFIX) +
+                                                       destinationQueue;
+                        String subscriptionID = subscription.getSubscribedNode() + "_" +
+                                                subscription.getSubscriptionID();
+                        andesContextStore.updateDurableSubscription(destinationIdentifier,
+                                subscriptionID, subscription.encodeAsStr());
+                        if (log.isDebugEnabled()) {
+                            log.debug("Updating context store with subscription ID : " + subscription
+                                    .getSubscriptionID() + " with has external as false.");
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

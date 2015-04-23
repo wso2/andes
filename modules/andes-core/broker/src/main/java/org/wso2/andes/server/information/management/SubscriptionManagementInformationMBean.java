@@ -31,19 +31,32 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Class to Handle data for all subscription related UIs
+ * Class to handle data for all subscription related UI functions.
  */
 public class SubscriptionManagementInformationMBean extends AMQManagedObject implements SubscriptionManagementInformation {
 
+    private static final String ALL_WILDCARD = "*";
+
+    /**
+     * Instantiates the MBeans related to subscriptions.
+     *
+     * @throws NotCompliantMBeanException
+     */
     public SubscriptionManagementInformationMBean() throws NotCompliantMBeanException {
         super(SubscriptionManagementInformation.class, SubscriptionManagementInformation.TYPE);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getObjectInstanceName() {
         return SubscriptionManagementInformation.TYPE;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String[] getAllQueueSubscriptions( String isDurable, String isActive) {
         try {
@@ -58,10 +71,10 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
                 for (AndesSubscription s : subscriptions) {
                     Long pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(queue);
 
-                    if (!isDurable.equals("*") && (Boolean.parseBoolean(isDurable) != s.isDurable())) {
+                    if (!isDurable.equals(ALL_WILDCARD) && (Boolean.parseBoolean(isDurable) != s.isDurable())) {
                         continue;
                     }
-                    if (!isActive.equals("*") && (Boolean.parseBoolean(isActive) != s.hasExternalSubscriptions())) {
+                    if (!isActive.equals(ALL_WILDCARD) && (Boolean.parseBoolean(isActive) != s.hasExternalSubscriptions())) {
                         continue;
                     }
 
@@ -75,19 +88,15 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String[] getAllTopicSubscriptions(String isDurable, String isActive) {
         try {
-            boolean isDurableTopic;
-            if("false".equals(isDurable)){
-                isDurableTopic = false;
-            } else {
-                isDurableTopic = true;
-            }
             List<String> allSubscriptionsForTopics = new ArrayList<String>();
 
-            List<String> allTopics = AndesContext.getInstance().getSubscriptionStore().getTopics
-                    (isDurableTopic);
+            List<String> allTopics = AndesContext.getInstance().getSubscriptionStore().getTopics();
 
             for (String topic : allTopics) {
 
@@ -99,10 +108,10 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
                     Long pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(s.getTargetQueue());
 
-                    if (!isDurable.equals("*") && (Boolean.parseBoolean(isDurable) != s.isDurable())) {
+                    if (!isDurable.equals(ALL_WILDCARD) && (Boolean.parseBoolean(isDurable) != s.isDurable())) {
                         continue;
                     }
-                    if (!isActive.equals("*") && (Boolean.parseBoolean(isActive) != s.hasExternalSubscriptions())) {
+                    if (!isActive.equals(ALL_WILDCARD) && (Boolean.parseBoolean(isActive) != s.hasExternalSubscriptions())) {
                         continue;
                     } if(!s.isBoundToTopic()){
                         continue;
@@ -118,6 +127,9 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int getMessageCount(String subscribedNode, String msgPattern ,String destinationName) {
         try {

@@ -30,7 +30,6 @@ import org.wso2.andes.subscription.BasicSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -100,8 +99,7 @@ public class AndesSubscriptionManager {
     }
 
     /**
-     * Using cluster subscriptions find the local subscriptions of an node
-     * and close all of them
+     * Closing all subscription in the cluster except for durable subscriptions.
      *
      * @param nodeID id of the node
      * @throws AndesException
@@ -113,13 +111,16 @@ public class AndesSubscriptionManager {
 
         if (!activeSubscriptions.isEmpty()) {
             for (AndesSubscription sub : activeSubscriptions) {
-                //close and notify
-                subscriptionStore.createDisconnectOrRemoveClusterSubscription(sub, SubscriptionListener.SubscriptionChange.DELETED);
-                //this is like closing local subscribers of that node thus we need to notify to cluster
-                notifyClusterSubscriptionHasChanged(sub, SubscriptionListener.SubscriptionChange.DELETED);
+                if (!(sub.isDurable() && sub.isBoundToTopic())) {
+                    //close and notify
+                    subscriptionStore.createDisconnectOrRemoveClusterSubscription(sub, SubscriptionListener
+                            .SubscriptionChange.DELETED);
+                    //this is like closing local subscribers of that node thus we need to notify
+                    // to cluster
+                    notifyClusterSubscriptionHasChanged(sub, SubscriptionListener.SubscriptionChange.DELETED);
+                }
             }
         }
-
     }
 
 
@@ -298,5 +299,16 @@ public class AndesSubscriptionManager {
         }
     }
 
-
+    /**
+     * The durable subscriptions for the removed mb node are still marked as active when it
+     * comes to fail-over. These subscriptions needs to be marked as disconnected.
+     *
+     * @param isCoordinator Whether the current node is the coordinator.
+     * @param nodeID        The removed node ID.
+     * @throws AndesException
+     */
+    public void deactivateClusterDurableSubscriptionsForNodeID(boolean isCoordinator, String nodeID)
+                                                                            throws AndesException {
+        subscriptionStore.deactivateClusterDurableSubscriptionsForNodeID(isCoordinator, nodeID);
+    }
 }

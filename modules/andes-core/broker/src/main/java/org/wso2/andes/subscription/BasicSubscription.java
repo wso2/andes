@@ -158,6 +158,7 @@ public class BasicSubscription implements AndesSubscription {
     /**
      * {@inheritDoc}
      */
+    @Override
     public void setSubscriptionType(SubscriptionType subscriptionType) {
         this.subscriptionType = subscriptionType;
     }
@@ -165,10 +166,14 @@ public class BasicSubscription implements AndesSubscription {
     /**
      * {@inheritDoc}
      */
+    @Override
     public SubscriptionType getSubscriptionType() {
         return subscriptionType;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getSubscriptionID() {
         return subscriptionID;
@@ -179,88 +184,143 @@ public class BasicSubscription implements AndesSubscription {
         return destination;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isBoundToTopic() {
         return isBoundToTopic;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isDurable() {
         return isDurable;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getSubscribedNode() {
         return subscribedNode;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public long getSubscribeTime() {
         return subscribeTime;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean isExclusive() {
         return isExclusive;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void setExclusive(boolean isExclusive) {
         this.isExclusive = isExclusive;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public String getTargetQueue() {
         return targetQueue;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public String getStorageQueueName() {
         return storageQueueName;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getTargetQueueOwner() {
         return targetQueueOwner;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getTargetQueueBoundExchangeName() {
         return targetQueueBoundExchange;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getTargetQueueBoundExchangeType() {
         return targetQueueBoundExchangeType;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Short ifTargetQueueBoundExchangeAutoDeletable() {
         return isTargetQueueBoundExchangeAutoDeletable;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean hasExternalSubscriptions() {
         return hasExternalSubscriptions;
     }
 
-
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public String toString() {
-        StringBuffer buf = new StringBuffer();
-        buf.append("[").append(destination)
-                .append("]ID=").append(subscriptionID)
-                .append("@").append(subscribedNode)
-                .append("/T=").append(subscribeTime)
-                .append("/D=").append(isDurable)
-                .append("/X=").append(isExclusive)
-                .append("/O=").append(targetQueueOwner)
-                .append("/E=").append(targetQueueBoundExchange)
-                .append("/ET=").append(targetQueueBoundExchangeType)
-                .append("/EUD=").append(isTargetQueueBoundExchangeAutoDeletable)
-                .append("/S=").append(hasExternalSubscriptions);
-        return buf.toString();
+    public void setHasExternalSubscriptions(boolean hasExternalSubscription) {
+        this.hasExternalSubscriptions = hasExternalSubscription;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString() {
+        return "[" + destination +
+               "]ID=" + subscriptionID +
+               "@" + subscribedNode +
+               "/T=" + subscribeTime +
+               "/D=" + isDurable +
+               "/X=" + isExclusive +
+               "/O=" + targetQueueOwner
+               + "/E=" + targetQueueBoundExchange +
+               "/ET=" + targetQueueBoundExchangeType +
+               "/EUD=" + isTargetQueueBoundExchangeAutoDeletable +
+               "/S=" + hasExternalSubscriptions;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String encodeAsStr() {
-        StringBuffer buf = new StringBuffer();
-        buf.append("subscriptionID=").append(subscriptionID)
+        StringBuilder builder = new StringBuilder();
+        builder.append("subscriptionID=").append(subscriptionID)
                 .append(",destination=").append(destination)
                 .append(",isBoundToTopic=").append(isBoundToTopic)
                 .append(",isExclusive=").append(isExclusive)
@@ -275,12 +335,15 @@ public class BasicSubscription implements AndesSubscription {
                 .append(",hasExternalSubscriptions=").append(hasExternalSubscriptions);
 
         if (subscriptionType != null) {
-            buf.append(",subscriptionType=").append(subscriptionType);
+            builder.append(",subscriptionType=").append(subscriptionType);
         }
 
-        return buf.toString();
+        return builder.toString();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public boolean equals(Object o) {
         if (o instanceof BasicSubscription) {
             BasicSubscription c = (BasicSubscription) o;
@@ -294,6 +357,9 @@ public class BasicSubscription implements AndesSubscription {
         return false;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public int hashCode() {
         return new HashCodeBuilder(17, 31).
                 append(subscriptionID).
@@ -309,11 +375,10 @@ public class BasicSubscription implements AndesSubscription {
     private void setStorageQueueName() {
         if (isBoundToTopic && !isDurable) {  // for normal topic subscriptions
             storageQueueName = AndesUtils.getStorageQueueForDestination(destination, subscribedNode, true);
-        } else if (isBoundToTopic && isDurable) {  //for durable topic subscriptions
+        } else if (isBoundToTopic) {  //for durable topic subscriptions
             storageQueueName = AndesUtils.getStorageQueueForDestination(targetQueue, subscribedNode, false);
         } else { //For queue subscriptions. This is a must. Otherwise queue will not be shared among nodes
             storageQueueName = AndesUtils.getStorageQueueForDestination(targetQueue, subscribedNode, false);
         }
     }
-
 }

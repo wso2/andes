@@ -114,6 +114,12 @@ public interface AndesSubscription {
     public boolean hasExternalSubscriptions();
 
     /**
+     * Sets whether the subscriptions is active or not.
+     * @param hasExternalSubscription true if subscription is active, false otherwise.
+     */
+    public void setHasExternalSubscriptions(boolean hasExternalSubscription);
+
+    /**
      * Set the subscription type to indicate to which protocol this subscription belongs to.
      * @param subscriptionType The subscription type
      */
