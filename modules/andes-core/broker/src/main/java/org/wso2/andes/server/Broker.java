@@ -92,7 +92,7 @@ public class Broker
         }
     }
 
-    public void shutdown()
+    public void shutdown() throws AndesException
     {
         Andes.getInstance().shutDown();
     }
