@@ -18,6 +18,7 @@
 
 package org.wso2.andes.kernel.distruptor.inbound;
 
+import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
@@ -27,6 +28,8 @@ import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.registry.ApplicationRegistry;
+
+import java.util.concurrent.ExecutionException;
 
 /**
  * Handles events related to basic kernel operations.
@@ -63,28 +66,50 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
      * Reference to MessagingEngine to process kernel events
      */
     private MessagingEngine messagingEngine;
+
+    /**
+     * Future to wait till the task is completed by Disruptor. This is used to make the
+     * method calls blocking.
+     */
+    private SettableFuture<Boolean> taskStatus;
     
     @Override
     public void updateState() throws AndesException {
-        switch (eventType) {
-            case STOP_MESSAGE_DELIVERY_EVENT:
-                stopMessageDelivery();
-                break;
-            case START_MESSAGE_DELIVERY_EVENT:
-                startMessageDelivery();
-                break;
-            case START_EXPIRATION_WORKER_EVENT:
-                startMessageExpirationWorker();
-                break;
-            case STOP_EXPIRATION_WORKER_EVENT:
-                stopMessageExpirationWorker();
-                break;
-            case SHUTDOWN_MESSAGING_ENGINE_EVENT:
-                gracefulShutdown();
-                break;
-            default:
-                log.error("Event type not set properly " + eventType);
-                break;
+        Boolean taskComplete =false;
+
+        try {
+
+            switch (eventType) {
+                case STOP_MESSAGE_DELIVERY_EVENT:
+                    stopMessageDelivery();
+                    taskComplete = true;
+                    break;
+                case START_MESSAGE_DELIVERY_EVENT:
+                    startMessageDelivery();
+                    taskComplete = true;
+                    break;
+                case START_EXPIRATION_WORKER_EVENT:
+                    startMessageExpirationWorker();
+                    taskComplete = true;
+                    break;
+                case STOP_EXPIRATION_WORKER_EVENT:
+                    stopMessageExpirationWorker();
+                    taskComplete = true;
+                    break;
+                case SHUTDOWN_MESSAGING_ENGINE_EVENT:
+                    gracefulShutdown();
+                    taskComplete = true;
+                    break;
+                default:
+                    log.error("Event type not set properly " + eventType);
+                    break;
+            }
+        } catch (Throwable t) {
+            // In any type of exception we need to set it so caller waiting on future can be released
+            taskStatus.setException(t);
+            throw new AndesException("Exception occurred while processing " + eventType, t);
+        } finally {
+            taskStatus.set(taskComplete);
         }
     }
 
@@ -147,6 +172,7 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
     public void prepareForStartMessageDelivery(MessagingEngine messagingEngine) {
         eventType = EventType.START_MESSAGE_DELIVERY_EVENT;
         this.messagingEngine = messagingEngine;
+        taskStatus = SettableFuture.create();
     }
 
     /**
@@ -156,6 +182,7 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
     public void prepareForStopMessageDelivery(MessagingEngine messagingEngine) {
         eventType = EventType.STOP_MESSAGE_DELIVERY_EVENT;
         this.messagingEngine = messagingEngine;
+        taskStatus = SettableFuture.create();
     }
 
     /**
@@ -165,6 +192,7 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
     public void prepareForStartMessageExpirationWorker(MessagingEngine messagingEngine) {
         eventType = EventType.START_EXPIRATION_WORKER_EVENT;
         this.messagingEngine = messagingEngine;
+        taskStatus = SettableFuture.create();
     }
 
     /**
@@ -174,6 +202,7 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
     public void prepareForStopMessageExpirationWorker(MessagingEngine messagingEngine) {
         eventType = EventType.STOP_EXPIRATION_WORKER_EVENT;
         this.messagingEngine = messagingEngine;
+        taskStatus = SettableFuture.create();
     }
 
     /**
@@ -183,6 +212,7 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
     public void prepareForShutdownMessagingEngine(MessagingEngine messagingEngine) {
         eventType = EventType.SHUTDOWN_MESSAGING_ENGINE_EVENT;
         this.messagingEngine = messagingEngine;
+        taskStatus = SettableFuture.create();
     }
 
     private void gracefulShutdown() throws AndesException {
@@ -214,5 +244,16 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
 
         // We need this until ApplicationRegistry is done.
         AndesContext.getInstance().getAndesContextStore().close();
+    }
+
+    public Boolean waitForTaskCompletion() throws AndesException {
+        try {
+            return taskStatus.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException e) {
+            throw new AndesException("Error occurred while processing event " + eventType, e);
+        }
+        return false;
     }
 }

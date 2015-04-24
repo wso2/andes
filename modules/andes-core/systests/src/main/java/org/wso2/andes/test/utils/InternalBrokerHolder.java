@@ -21,6 +21,7 @@
 package org.wso2.andes.test.utils;
 
 import org.apache.log4j.Logger;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.Broker;
 
 public class InternalBrokerHolder implements BrokerHolder
@@ -42,8 +43,12 @@ public class InternalBrokerHolder implements BrokerHolder
     {
         LOGGER.info("Shutting down Broker instance");
 
-        _broker.shutdown();
-        
+        try {
+            _broker.shutdown();
+        } catch (AndesException e) {
+            LOGGER.error("Error occurred while shutting down", e);
+        }
+
         LOGGER.info("Broker instance shutdown");
     }
 
