@@ -70,17 +70,6 @@ public class MQTTUtils {
     }
 
     /**
-     * Will generate a unique message idneitfier, this id will be unique cluster wide     *
-     *
-     * @return the unique message identifier
-     */
-    public static long generateMessageID() {
-        //Message ids will not be directly generated from the kernal since in future if there's a MQTT specific
-        //id generation mechanism
-        return Andes.getInstance().generateNewMessageId();
-    }
-
-    /**
      * The data about the message (meta information) will be constructed at this phase Andes requires the meta data as a
      * byte stream, The method basically collects all the relevant information neccessary to construct the bytes stream
      * and will convert the message into a bytes object
@@ -170,15 +159,11 @@ public class MQTTUtils {
      * bound. This method will generate a unique id for the subscription created per topic
      *
      * @param clientId The MQTT client Id
-     * @param topic The topic subscribed to
-     * @param qos The Quality of Service level subscribed to
-     * @param cleanSession Clean session value of the client
-     *
      * @return the unique identifier
      */
-    public static String generateTopicSpecficClientID(String clientId, String topic, int qos, boolean cleanSession) {
-        final String mqttSubscriptionID = "MQTTAndesSubscriber:";
-        return mqttSubscriptionID + clientId + topic + qos + cleanSession;
+    public static String generateTopicSpecficClientID(String clientId) {
+        final String mqttSubscriptionID = "carbon:";
+        return mqttSubscriptionID + clientId;
     }
 
     /**
@@ -234,11 +219,10 @@ public class MQTTUtils {
      * Generate a unique UUID for a given client who has subscribed to a given topic with given qos and given clean
      * session.
      *
-     * @param clientId The MQTT client Id
-     * @param topic The topic subscribed to
-     * @param qos The Quality of Service level subscribed to
+     * @param clientId     The MQTT client Id
+     * @param topic        The topic subscribed to
+     * @param qos          The Quality of Service level subscribed to
      * @param cleanSession Clean session value of the client
-     *
      * @return A unique UUID for the given arguments
      */
     public static UUID generateSubscriptionChannelID(String clientId, String topic, int qos, boolean cleanSession) {
