@@ -43,6 +43,13 @@ service SlotManagementService {
     /* This is used by nodes to communicate their current generated message ID, so that the coordinator can decide the minimal message ID 
     *  to derive the safe zone for deleting slots.
     */
-    i64 updateCurrentMessageIdForSafeZone(1: i64 messageId)
+    i64 updateCurrentMessageIdForSafeZone(1: i64 messageId, 2: string nodeId),
+
+    /**
+     * Delete all in-memory slot associations with a given queue. This is required to handle a queue purge event.
+     *
+     * @param queueName name of destination queue
+     */
+    void clearAllActiveSlotRelationsToQueue(1: string queueName)
 
 }

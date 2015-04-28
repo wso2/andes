@@ -21,6 +21,7 @@ package org.wso2.andes.kernel;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.slot.ConnectionException;
 import org.wso2.andes.kernel.slot.SlotCoordinator;
 import org.wso2.andes.kernel.slot.SlotCoordinatorCluster;
 import org.wso2.andes.kernel.slot.SlotCoordinatorStandalone;
@@ -318,18 +319,24 @@ public class MessagingEngine {
         String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         String storageQueueName = AndesUtils.getStorageQueueForDestination(destination, nodeID, isTopic);
 
-        // Clear all slots assigned to the Queue. This should ideally stop any messages being buffered during the purge.
-        // This call clears all slot associations for the queue in all nodes. (could take time)
-        //Slot relations should be cleared through the storage queue name
-        slotCoordinator.clearAllActiveSlotRelationsToQueue(storageQueueName);
+        try {
+            // Clear all slots assigned to the Queue. This should ideally stop any messages being buffered during the
+            // purge.
+            // This call clears all slot associations for the queue in all nodes. (could take time)
+            //Slot relations should be cleared through the storage queue name
+            slotCoordinator.clearAllActiveSlotRelationsToQueue(storageQueueName);
+        } catch (ConnectionException e) {
+            String message = "Error while establishing a connection with the thrift server to delete active slots " +
+                    "assigned for the purged queue : " + destination;
+            log.error(message);
+            throw new AndesException(message, e);
+        }
 
         // Clear in memory messages of self (node)
         clearMessagesFromQueueInMemory(destination, purgedTimestamp);
 
         //Notify the cluster if queues
         if(!isTopic) {
-            // The queueOwner here is passed as null since its not used from the notification object.
-            // The user permissions are validated at the andes feature component level.
             AndesQueue purgedQueue = new AndesQueue(destination, ownerName, false, true);
             purgedQueue.setLastPurgedTimestamp(purgedTimestamp);
 
