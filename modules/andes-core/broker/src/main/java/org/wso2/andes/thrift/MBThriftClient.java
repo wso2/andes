@@ -180,6 +180,12 @@ public class MBThriftClient {
         }
     }
 
+    /**
+     * Delete all in-memory slot associations with a given queue. This is required to handle a queue purge event.
+     *
+     * @param queueName name of destination queue
+     * @throws ConnectionException
+     */
     public static synchronized void clearAllActiveSlotRelationsToQueue(String queueName) throws ConnectionException {
 
         try {
