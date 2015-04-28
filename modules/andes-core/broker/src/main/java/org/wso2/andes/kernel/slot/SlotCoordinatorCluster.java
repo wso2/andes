@@ -85,7 +85,7 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
      * {@inheritDoc}
      */
     @Override
-    public void clearAllActiveSlotRelationsToQueue(String queueName) {
-        SlotManagerClusterMode.getInstance().clearAllActiveSlotRelationsToQueue(queueName);
+    public void clearAllActiveSlotRelationsToQueue(String queueName) throws ConnectionException {
+        MBThriftClient.clearAllActiveSlotRelationsToQueue(queueName);
     }
 }

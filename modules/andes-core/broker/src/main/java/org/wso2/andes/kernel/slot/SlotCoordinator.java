@@ -67,5 +67,5 @@ public interface SlotCoordinator {
      * Delete all slot associations with a given queue. This is required to handle a queue purge event.
      * @param queueName Name of the queue
      */
-    public void clearAllActiveSlotRelationsToQueue(String queueName);
+    public void clearAllActiveSlotRelationsToQueue(String queueName) throws ConnectionException;
 }

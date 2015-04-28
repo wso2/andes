@@ -92,4 +92,13 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
         return slotDeletionSafeZone;
     }
 
+    @Override
+    public void clearAllActiveSlotRelationsToQueue(String queueName) throws TException {
+        if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
+            slotManager.clearAllActiveSlotRelationsToQueue(queueName);
+        } else {
+            throw new TException("This node is not the slot coordinator right now");
+        }
+    }
+
 }

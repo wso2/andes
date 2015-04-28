@@ -180,6 +180,23 @@ public class MBThriftClient {
         }
     }
 
+    public static synchronized void clearAllActiveSlotRelationsToQueue(String queueName) throws ConnectionException {
+
+        try {
+            client = getServiceClient();
+            client.clearAllActiveSlotRelationsToQueue(queueName);
+        } catch (TException e) {
+            try {
+                //retry to do the operation once
+                reConnectToServer();
+                client.clearAllActiveSlotRelationsToQueue(queueName);
+            } catch (TException e1) {
+                handleCoordinatorChanges();
+                throw new ConnectionException("Coordinator has changed", e);
+            }
+        }
+    }
+
     /**
      * Returns an instance of Slot Management service client which is used to communicate to the
      * thrift server. If it does not succeed in connecting to the server, it throws a  TTransportException
