@@ -22,7 +22,7 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInternalException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.configuration.qpid.BindingConfig;
 import org.wso2.andes.configuration.qpid.BindingConfigType;
 import org.wso2.andes.configuration.qpid.ConfigStore;
@@ -176,7 +176,7 @@ public class BindingFactory {
 
                 if(isLocal) {
                     //tell Andes kernel to create binding
-                    QpidAMQPBridge.createBinding(exchange, new AMQShortString(bindingKey), queue);
+                    QpidAndesBridge.createBinding(exchange, new AMQShortString(bindingKey), queue);
                 }
             }
 
@@ -245,7 +245,7 @@ public class BindingFactory {
                 if (binding.isDurable()) {
                     if(isLocal) {
                         //inform andes kernel to remove binding.
-                        QpidAMQPBridge.removeBinding(binding);
+                        QpidAndesBridge.removeBinding(binding);
                     }
                     _configSource.getDurableConfigurationStore().unbindQueue(exchange,
                             new AMQShortString(bindingKey),

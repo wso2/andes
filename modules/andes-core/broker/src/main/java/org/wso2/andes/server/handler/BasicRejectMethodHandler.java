@@ -18,7 +18,7 @@
 package org.wso2.andes.server.handler;
 
 import org.wso2.andes.AMQException;
-import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.BasicRejectBody;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.MessagingEngine;
@@ -110,7 +110,7 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
                  * Inform kernel that message has been rejected by AMQP transport
                  */
                 try {
-                    QpidAMQPBridge.rejectMessage((AMQMessage) message.getMessage(), channel);
+                    QpidAndesBridge.rejectMessage((AMQMessage) message.getMessage(), channel);
                 } catch (AMQException e) {
                     _logger.error("Error while rejecting message by kernel" , e);
                     throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while rejecting message by kernel", e);

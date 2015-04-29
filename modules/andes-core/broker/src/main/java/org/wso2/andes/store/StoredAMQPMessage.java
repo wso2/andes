@@ -21,7 +21,7 @@ package org.wso2.andes.store;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
-import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.server.store.StorableMessageMetaData;
@@ -57,7 +57,7 @@ public class StoredAMQPMessage implements StoredMessage {
     public StorableMessageMetaData getMetaData() {
         if (metaData == null) {
             try {
-                QpidAMQPBridge.getMessageMetaData(_messageId);
+                QpidAndesBridge.getMessageMetaData(_messageId);
             } catch (AMQException e) {
                 log.error("Error while getting message metaData for message ID " + _messageId);
             }
@@ -91,7 +91,7 @@ public class StoredAMQPMessage implements StoredMessage {
 //     */
 //    private void addContentInPersistentMode(final int offsetInMessage, ByteBuffer src) {
 //
-//        QpidAMQPBridge.getInstance().messageContentChunkReceived(_messageId,offsetInMessage,src);
+//        QpidAndesBridge.getInstance().messageContentChunkReceived(_messageId,offsetInMessage,src);
 //    }
 
     @Override
@@ -101,7 +101,7 @@ public class StoredAMQPMessage implements StoredMessage {
     public int getContent(int offsetInMessage, ByteBuffer dst) {
         int c = 0;
         try {
-            c = QpidAMQPBridge.getMessageContentChunk(_messageId, offsetInMessage, dst);
+            c = QpidAndesBridge.getMessageContentChunk(_messageId, offsetInMessage, dst);
         } catch (AMQException e) {
            log.error("Error while getting message content chunk messageID=" + _messageId + " offset=" + offsetInMessage,e);
         }

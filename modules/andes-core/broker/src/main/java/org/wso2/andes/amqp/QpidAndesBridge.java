@@ -51,9 +51,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * Class is not instantiable from outside. This is a used as a bridge between Qpid and
  * Andes. And the class doesn't store any state information hence the methods are made static
  */
-public class QpidAMQPBridge {
+public class QpidAndesBridge {
 
-    private static Log log = LogFactory.getLog(QpidAMQPBridge.class);
+    private static Log log = LogFactory.getLog(QpidAndesBridge.class);
 
     /**
      * Following used by a performance counter
@@ -74,7 +74,7 @@ public class QpidAMQPBridge {
      * Class is not instantiable from outside. This is a used as a bridge between Qpid and
      * Andes. And the class doesn't store any state information
      */
-    private QpidAMQPBridge() {
+    private QpidAndesBridge() {
     }
 
     /**

@@ -21,7 +21,7 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.configuration.qpid.ConfigStore;
 import org.wso2.andes.configuration.qpid.ConfiguredObject;
 import org.wso2.andes.configuration.qpid.ConnectionConfig;
@@ -419,7 +419,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                      * adding metadata and message to global queue
                      * happen here
                      */
-                     QpidAMQPBridge.messageReceived(incomingMessage, getId(), andesChannel, andesTransactionEvent);
+                     QpidAndesBridge.messageReceived(incomingMessage, getId(), andesChannel);
 
                 } catch (Throwable e) {
                     _logger.error("Error processing completed messages, Close the session " + getSessionName(), e);
@@ -530,7 +530,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         try {
             //tell Andes Kernel to register a subscription
             queue.registerSubscription(subscription, exclusive);
-            QpidAMQPBridge.createAMQPSubscription(subscription, queue);
+            QpidAndesBridge.createAMQPSubscription(subscription, queue);
         } catch (AMQException e) {
             _tag2SubscriptionMap.remove(tag);
             throw e;
@@ -625,7 +625,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
         forgetMessages4Channel();
 
-        QpidAMQPBridge.channelIsClosing(this.getId());
+        QpidAndesBridge.channelIsClosing(this.getId());
         Andes.getInstance().deleteChannel(andesChannel);
 
         if (_managedObject != null) {
@@ -931,7 +931,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                                                                .getExchange()
                                                                .equals(AMQPUtils
                                                                                .TOPIC_EXCHANGE_NAME);
-            QpidAMQPBridge.ackReceived(this.getId(), entry.getMessage().getMessageNumber(),
+            QpidAndesBridge.ackReceived(this.getId(), entry.getMessage().getMessageNumber(),
                     entry.getMessage().getRoutingKey(),
                     isTopic);
         }

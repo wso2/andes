@@ -27,13 +27,9 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
 import org.wso2.andes.AMQException;
-import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.server.logging.LogMessage;
-import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.management.common.mbeans.ManagedBroker;
 import org.wso2.andes.management.common.mbeans.ManagedQueue;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanConstructor;
@@ -182,7 +178,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                         _durableConfig.createExchange(exchange);
 
                         //tell Andes kernel to create Exchange
-                        QpidAMQPBridge.createExchange(exchange);
+                        QpidAndesBridge.createExchange(exchange);
                     }
                 }
                 else
@@ -266,7 +262,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                 _durableConfig.createQueue(queue);
 
                 //tell Andes kernel to create queue
-                QpidAMQPBridge.createQueue(queue);
+                QpidAndesBridge.createQueue(queue);
             }
 
         }
@@ -313,7 +309,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                 }
 
                 //tell Andes kernel to remove queue
-                QpidAMQPBridge.deleteQueue(queue);
+                QpidAndesBridge.deleteQueue(queue);
             } else {
                 _logActor.message( new LogMessage()
                 {

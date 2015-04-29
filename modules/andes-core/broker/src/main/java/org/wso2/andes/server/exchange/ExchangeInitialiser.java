@@ -18,7 +18,7 @@
 package org.wso2.andes.server.exchange;
 
 import org.wso2.andes.AMQException;
-import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.server.store.DurableConfigurationStore;
@@ -48,7 +48,7 @@ public class ExchangeInitialiser
                 store.createExchange(exchange);
 
                 //tell Andes kernel to create Exchange
-                QpidAMQPBridge.createExchange(exchange);
+                QpidAndesBridge.createExchange(exchange);
             }
         }
     }
