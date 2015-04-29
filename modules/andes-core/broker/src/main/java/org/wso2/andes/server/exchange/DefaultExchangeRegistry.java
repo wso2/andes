@@ -102,7 +102,7 @@ public class DefaultExchangeRegistry implements ExchangeRegistry
                 getDurableConfigurationStore().removeExchange(e);
 
                 //tell Andes Kernel to remove exchange
-                QpidAMQPBridge.getInstance().deleteExchange(e);
+                QpidAMQPBridge.deleteExchange(e);
             }
             e.close();
         }

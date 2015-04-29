@@ -57,7 +57,7 @@ public class StoredAMQPMessage implements StoredMessage {
     public StorableMessageMetaData getMetaData() {
         if (metaData == null) {
             try {
-                QpidAMQPBridge.getInstance().getMessageMetaData(_messageId);
+                QpidAMQPBridge.getMessageMetaData(_messageId);
             } catch (AMQException e) {
                 log.error("Error while getting message metaData for message ID " + _messageId);
             }
@@ -101,7 +101,7 @@ public class StoredAMQPMessage implements StoredMessage {
     public int getContent(int offsetInMessage, ByteBuffer dst) {
         int c = 0;
         try {
-            c = QpidAMQPBridge.getInstance().getMessageContentChunk(_messageId, offsetInMessage, dst);
+            c = QpidAMQPBridge.getMessageContentChunk(_messageId, offsetInMessage, dst);
         } catch (AMQException e) {
            log.error("Error while getting message content chunk messageID=" + _messageId + " offset=" + offsetInMessage,e);
         }

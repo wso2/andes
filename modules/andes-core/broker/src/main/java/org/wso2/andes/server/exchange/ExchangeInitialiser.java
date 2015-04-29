@@ -48,7 +48,7 @@ public class ExchangeInitialiser
                 store.createExchange(exchange);
 
                 //tell Andes kernel to create Exchange
-                QpidAMQPBridge.getInstance().createExchange(exchange);
+                QpidAMQPBridge.createExchange(exchange);
             }
         }
     }

@@ -411,7 +411,7 @@ public class VirtualHostImpl implements VirtualHost {
                 durableConfigurationStore.createExchange(newExchange);
 
                 //tell Andes kernel to create Exchange
-                QpidAMQPBridge.getInstance().createExchange(newExchange);
+                QpidAMQPBridge.createExchange(newExchange);
             }
         }
     }
@@ -423,7 +423,7 @@ public class VirtualHostImpl implements VirtualHost {
             getDurableConfigurationStore().createQueue(queue);
 
             //tell Andes kernel to create queue
-            QpidAMQPBridge.getInstance().createQueue(queue);
+            QpidAMQPBridge.createQueue(queue);
         }
 
         String exchangeName = queueConfiguration.getExchange();

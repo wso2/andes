@@ -125,7 +125,7 @@ public class QueueDeleteHandler implements StateAwareMethodListener<QueueDeleteB
                         store.removeQueue(queue);
 
                         //tell Andes Kernel to remove queue
-                        QpidAMQPBridge.getInstance().deleteQueue(queue);
+                        QpidAMQPBridge.deleteQueue(queue);
 
                     }
 

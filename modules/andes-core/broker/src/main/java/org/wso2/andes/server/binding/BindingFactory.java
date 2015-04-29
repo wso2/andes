@@ -176,7 +176,7 @@ public class BindingFactory {
 
                 if(isLocal) {
                     //tell Andes kernel to create binding
-                    QpidAMQPBridge.getInstance().createBinding(exchange, new AMQShortString(bindingKey), queue, FieldTable.convertToFieldTable(arguments));
+                    QpidAMQPBridge.createBinding(exchange, new AMQShortString(bindingKey), queue);
                 }
             }
 
@@ -245,7 +245,7 @@ public class BindingFactory {
                 if (binding.isDurable()) {
                     if(isLocal) {
                         //inform andes kernel to remove binding.
-                        QpidAMQPBridge.getInstance().removeBinding(binding, getVirtualHost());
+                        QpidAMQPBridge.removeBinding(binding);
                     }
                     _configSource.getDurableConfigurationStore().unbindQueue(exchange,
                             new AMQShortString(bindingKey),

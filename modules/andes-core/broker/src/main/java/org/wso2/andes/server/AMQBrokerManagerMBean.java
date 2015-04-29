@@ -182,7 +182,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                         _durableConfig.createExchange(exchange);
 
                         //tell Andes kernel to create Exchange
-                        QpidAMQPBridge.getInstance().createExchange(exchange);
+                        QpidAMQPBridge.createExchange(exchange);
                     }
                 }
                 else
@@ -266,7 +266,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                 _durableConfig.createQueue(queue);
 
                 //tell Andes kernel to create queue
-                QpidAMQPBridge.getInstance().createQueue(queue);
+                QpidAMQPBridge.createQueue(queue);
             }
 
         }
@@ -313,7 +313,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                 }
 
                 //tell Andes kernel to remove queue
-                QpidAMQPBridge.getInstance().deleteQueue(queue);
+                QpidAMQPBridge.deleteQueue(queue);
             } else {
                 _logActor.message( new LogMessage()
                 {

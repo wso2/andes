@@ -86,7 +86,7 @@ public class ExchangeDeclareHandler implements StateAwareMethodListener<Exchange
                             virtualHost.getDurableConfigurationStore().createExchange(exchange);
 
                             //tell Andes kernel to create Exchange
-                            QpidAMQPBridge.getInstance().createExchange(exchange);
+                            QpidAMQPBridge.createExchange(exchange);
                         }
                     }
                     catch(AMQUnknownExchangeType e)

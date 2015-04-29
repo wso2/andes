@@ -982,7 +982,7 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
                 if (newState == Subscription.State.CLOSED) {
 
                     //Tell Andes Kernel to close the subscription
-                    QpidAMQPBridge.getInstance().closeAMQPSubscription(sub.getQueue(), sub);
+                    QpidAMQPBridge.closeAMQPSubscription(sub.getQueue(), sub);
                 }
 
             } catch (AndesException e) {

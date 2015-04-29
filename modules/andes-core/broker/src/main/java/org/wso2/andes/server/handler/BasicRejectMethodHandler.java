@@ -110,7 +110,7 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
                  * Inform kernel that message has been rejected by AMQP transport
                  */
                 try {
-                    QpidAMQPBridge.getInstance().rejectMessage((AMQMessage) message.getMessage(), channel);
+                    QpidAMQPBridge.rejectMessage((AMQMessage) message.getMessage(), channel);
                 } catch (AMQException e) {
                     _logger.error("Error while rejecting message by kernel" , e);
                     throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while rejecting message by kernel", e);

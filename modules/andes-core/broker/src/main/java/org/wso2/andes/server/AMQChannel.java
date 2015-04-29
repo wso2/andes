@@ -419,11 +419,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                      * adding metadata and message to global queue
                      * happen here
                      */
-
-                    QpidAMQPBridge.getInstance().messageReceived(incomingMessage, this.getId(), andesChannel);
+                     QpidAMQPBridge.messageReceived(incomingMessage, getId(), andesChannel, andesTransactionEvent);
 
                 } catch (Throwable e) {
-                    _logger.error("Error processing completed messages, we will close this session", e);
+                    _logger.error("Error processing completed messages, Close the session " + getSessionName(), e);
                     // We mark the session as closed due to error
                     if (_session instanceof AMQProtocolEngine) {
                         ((AMQProtocolEngine) _session).closeProtocolSession();
@@ -531,7 +530,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         try {
             //tell Andes Kernel to register a subscription
             queue.registerSubscription(subscription, exclusive);
-            QpidAMQPBridge.getInstance().createAMQPSubscription(subscription, queue);
+            QpidAMQPBridge.createAMQPSubscription(subscription, queue);
         } catch (AMQException e) {
             _tag2SubscriptionMap.remove(tag);
             throw e;
@@ -626,7 +625,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
         forgetMessages4Channel();
 
-        QpidAMQPBridge.getInstance().channelIsClosing(this.getId());
+        QpidAMQPBridge.channelIsClosing(this.getId());
         Andes.getInstance().deleteChannel(andesChannel);
 
         if (_managedObject != null) {
@@ -932,10 +931,9 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                                                                .getExchange()
                                                                .equals(AMQPUtils
                                                                                .TOPIC_EXCHANGE_NAME);
-            QpidAMQPBridge.getInstance()
-                          .ackReceived(this.getId(), entry.getMessage().getMessageNumber(),
-                                       entry.getMessage().getRoutingKey(),
-                                       isTopic);
+            QpidAMQPBridge.ackReceived(this.getId(), entry.getMessage().getMessageNumber(),
+                    entry.getMessage().getRoutingKey(),
+                    isTopic);
         }
 
         updateTransactionalActivity();

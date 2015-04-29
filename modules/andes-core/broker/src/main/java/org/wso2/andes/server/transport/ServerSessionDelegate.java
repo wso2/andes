@@ -453,7 +453,7 @@ public class ServerSessionDelegate extends SessionDelegate
                         store.createExchange(exchange);
 
                         //tell Andes kernel to create Exchange
-                        QpidAMQPBridge.getInstance().createExchange(exchange);
+                        QpidAMQPBridge.createExchange(exchange);
                     }
 
                     exchangeRegistry.registerExchange(exchange);
@@ -568,7 +568,7 @@ public class ServerSessionDelegate extends SessionDelegate
                     store.removeExchange(exchange);
 
                     //tell Andes Kernel to remove exchange
-                    QpidAMQPBridge.getInstance().deleteExchange(exchange);
+                    QpidAMQPBridge.deleteExchange(exchange);
                 }
             }
         }
@@ -915,14 +915,14 @@ public class ServerSessionDelegate extends SessionDelegate
                                 store.createQueue(queue, ftArgs);
 
                                 //Tell Andes kernel to create queue
-                                QpidAMQPBridge.getInstance().createQueue(queue);
+                                QpidAMQPBridge.createQueue(queue);
                             }
                             else
                             {
                                 store.createQueue(queue);
 
                                 //tell andes kernel to create queue
-                                QpidAMQPBridge.getInstance().createQueue(queue);
+                                QpidAMQPBridge.createQueue(queue);
 
                             }
                         }
@@ -1080,7 +1080,7 @@ public class ServerSessionDelegate extends SessionDelegate
                                 store.removeQueue(queue);
 
                                 //tell Andes Kernel to remove queue
-                                QpidAMQPBridge.getInstance().deleteQueue(queue);
+                                QpidAMQPBridge.deleteQueue(queue);
 
                             }
                         }  else {
