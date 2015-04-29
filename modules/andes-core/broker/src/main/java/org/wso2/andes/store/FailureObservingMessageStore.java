@@ -484,6 +484,14 @@ public class FailureObservingMessageStore implements MessageStore {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public AndesTransaction newTransaction() throws AndesException {
+        return wrappedInstance.newTransaction();
+    }
+
+    /**
      * {@inheritDoc}.
      * <p>
      * Alters the behavior where

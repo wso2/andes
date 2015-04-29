@@ -19,6 +19,7 @@
 package org.wso2.andes.kernel;
 
 import org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent;
+import org.wso2.andes.kernel.distruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 
 import java.util.List;
@@ -90,4 +91,23 @@ public interface InboundEventManager {
      * Stop disruptor. This wait until disruptor process pending events in ring buffer.
      */
     public void stop();
+
+    /**
+     * Schedule adding a transaction message after pre processing. This doesn't commit the message to DB
+     *
+     * @param transactionEvent InboundTransactionEvent that is relevant to the message
+     * @param message AndesMessage to be added to the transaction
+     * @param channel AndesChannel
+     */
+    public void processTransactionEnqueue(InboundTransactionEvent transactionEvent, AndesMessage message,
+                                          AndesChannel channel);
+
+    /**
+     * Schedule transaction commit or rollback. Calling this InboundTransactionEvent internal state
+     * should be updated to appropriate event (commit, rollback, close)
+     *
+     * @param transactionEvent InboundTransactionEvent that needs to be committed
+     */
+    public void requestTransactionOperation(InboundTransactionEvent transactionEvent);
+
 }

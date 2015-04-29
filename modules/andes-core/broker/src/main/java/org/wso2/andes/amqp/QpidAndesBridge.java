@@ -48,7 +48,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Class is not instantiable from outside. This is a used as a bridge between Qpid and
+ * Class is not instantiable from outside. This is used as a bridge between Qpid and
  * Andes. And the class doesn't store any state information hence the methods are made static
  */
 public class QpidAndesBridge {

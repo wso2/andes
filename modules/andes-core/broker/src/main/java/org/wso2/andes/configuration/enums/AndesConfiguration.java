@@ -333,6 +333,19 @@ public enum AndesConfiguration implements ConfigurationProperty {
             ("performanceTuning/messageCounter/countUpdateBatchSize", "100", Integer.class),
 
     /**
+     * Number of connections reserved at a given time for transactional DB tasks. Transaction will hold on to
+     * a DB connection until a transaction is committed, rolled back or closed.
+     */
+    DB_CONNECTION_POOL_SIZE_FOR_TRANSACTIONS
+            ("transaction/dbConnectionPoolSize", "10", Integer.class),
+
+    /**
+     * Maximum batch size (Messages) for a transaction. Exceeding this limit will result in a failure in the subsequent
+     * commit request. Default is set to 10MB. Limit is calculated considering the payload of messages
+     */
+    MAX_TRANSACTION_BATCH_SIZE ("transaction/maxBatchSizeInBytes", "10000000", Integer.class),
+
+    /**
      * The number of messages to be handled in a single operation related to browser subscriptions.
      */
     MANAGEMENT_CONSOLE_MESSAGE_BATCH_SIZE_FOR_BROWSER_SUBSCRIPTIONS("managementConsole" +

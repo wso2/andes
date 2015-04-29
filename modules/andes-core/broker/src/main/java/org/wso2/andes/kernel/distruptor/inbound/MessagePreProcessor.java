@@ -52,10 +52,29 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
             case MESSAGE_EVENT:
                 updateRoutingInformation(inboundEvent, sequence);
                 break;
+            case TRANSACTION_ENQUEUE_EVENT:
+                preProcessTransaction(inboundEvent, sequence);
+                break;
             case SAFE_ZONE_DECLARE_EVENT:
                 setSafeZoneLimit(inboundEvent, sequence);
                 break;
         }
+    }
+
+    /**
+     * Pre process transaction related messages. This is
+     * @param eventContainer InboundEventContainer
+     * @param sequence Disruptor ring sequence number.
+     * @throws AndesException
+     */
+    private void preProcessTransaction(InboundEventContainer eventContainer, long sequence) throws AndesException {
+        updateRoutingInformation(eventContainer, sequence);
+        int count = 0;
+        for(AndesMessage message: eventContainer.messageList) {
+            eventContainer.transactionEvent.enqueuePreProcessedMessage(message);
+            count = count + message.getContentChunkList().size();
+        }
+        eventContainer.getChannel().recordRemovalFromBuffer(count);
     }
 
     /**

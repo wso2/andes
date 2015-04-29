@@ -65,6 +65,11 @@ public class InboundEventContainer {
      */
     public PubAckHandler pubAckHandler;
 
+    /**
+     * Andes Transaction related event. Used to handle Andes transactions
+     */
+    public InboundTransactionEvent transactionEvent;
+
     public AndesChannel getChannel() {
         return channel;
     }
@@ -80,6 +85,7 @@ public class InboundEventContainer {
     public long getSafeZoneLimit() {
         return safeZoneLimit;
     }
+
     /**
      * For storing retained messages for topic
      */
@@ -92,6 +98,13 @@ public class InboundEventContainer {
 
         /** Message receive event */
         MESSAGE_EVENT,
+
+        /** Adding a message to transaction event.
+         * This represents batching messages before committing */
+        TRANSACTION_ENQUEUE_EVENT,
+
+        /** Event related to a transaction object */
+        TRANSACTION_EVENT,
 
         /** Message acknowledgement receive event */
         ACKNOWLEDGEMENT_EVENT,
@@ -123,7 +136,16 @@ public class InboundEventContainer {
     }
 
     public void updateState() throws AndesException {
-        stateEvent.updateState();
+        switch (eventType) {
+            case STATE_CHANGE_EVENT:
+                stateEvent.updateState();
+                break;
+            case TRANSACTION_EVENT:
+                transactionEvent.updateState();
+                break;
+            default:
+                break;
+        }
     }
 
     public void setStateEvent(AndesInboundStateEvent stateEvent) {
@@ -140,7 +162,9 @@ public class InboundEventContainer {
         stateEvent = null;
         eventType = Type.IGNORE_EVENT;
         pubAckHandler = null;
+        transactionEvent = null;
     }
+
     /**
      * Disruptor uses this factory to populate the ring with inboundEvent objects
      */

@@ -34,6 +34,18 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.log4j.Logger;
+import com.datastax.driver.core.BatchStatement;
+import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+import com.datastax.driver.core.Statement;
+import com.datastax.driver.core.exceptions.NoHostAvailableException;
+import com.datastax.driver.core.exceptions.QueryExecutionException;
+import com.datastax.driver.core.querybuilder.QueryBuilder;
+import com.datastax.driver.core.schemabuilder.SchemaBuilder;
+import org.apache.commons.lang.NotImplementedException;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -47,18 +59,6 @@ import org.wso2.andes.matrics.DataAccessMatrixManager;
 import org.wso2.andes.matrics.MatrixConstants;
 import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.carbon.metrics.manager.Timer.Context;
-
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.exceptions.NoHostAvailableException;
-import com.datastax.driver.core.exceptions.QueryExecutionException;
-import com.datastax.driver.core.querybuilder.QueryBuilder;
-import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 
 /**
  * CQL 3 based Cassandra MessageStore implementation. This is intended to support Cassandra 2.xx series upwards.
@@ -222,7 +222,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         } finally {
             context.stop();
         }
-
     }
 
     /**
@@ -263,7 +262,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         } finally {
             context.stop();
         }
-
     }
 
     /**
@@ -301,8 +299,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             context.stop();
 
         }
-
-
     }
 
     /**
@@ -361,8 +357,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         } finally {
             context.stop();
         }
-
-
     }
 
     /**
@@ -385,7 +379,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         } finally {
             context.stop();
         }
-
     }
 
     /**
@@ -490,7 +483,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
         addMetaDataToQueue(targetQueueName, metadataList.get(0));
         deleteMessageMetadataFromQueue(currentQueueName, removableMetadataList);
-
     }
 
     /**
@@ -520,7 +512,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         } finally {
             context.stop();
         }
-
     }
 
     /**
@@ -557,8 +548,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         } finally {
             context.stop();
         }
-
-
     }
 
     /**
@@ -592,8 +581,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         } finally {
             context.stop();
         }
-
-
     }
 
     /**
@@ -627,8 +614,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         } finally {
             context.stop();
         }
-
-
     }
 
     /**
@@ -669,7 +654,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         } finally {
             context.stop();
         }
-
     }
 
     /**
@@ -754,7 +738,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                 removableMetadataList.clear();
             }
         }
-
         return removedMessageCount;
     }
 
@@ -832,6 +815,11 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public void close() {
         cqlConnection.close();
+    }
+
+    @Override
+    public AndesTransaction newTransaction() throws AndesException {
+        throw new NotImplementedException("Transactions not supported by " + this.getClass());
     }
 
     /**
@@ -920,7 +908,4 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                                                                   " retain feature will be implemented " +
                                                                   "in next iteration");
     }
-
-
-
 }

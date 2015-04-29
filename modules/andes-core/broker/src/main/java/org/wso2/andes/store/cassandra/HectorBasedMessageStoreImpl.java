@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -23,6 +23,7 @@ import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.factory.HFactory;
 import me.prettyprint.hector.api.mutation.Mutator;
+import org.apache.commons.lang.NotImplementedException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -717,6 +718,14 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     @Override
     public void close() {
         hectorConnection.close();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public AndesTransaction newTransaction() throws AndesException {
+        throw new NotImplementedException("Transactions not supported with Hector API");
     }
 
     /**

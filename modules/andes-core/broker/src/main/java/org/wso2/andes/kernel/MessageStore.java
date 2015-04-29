@@ -33,6 +33,39 @@ import java.util.Map;
 public interface MessageStore extends HealthAwareStore{
 
     /**
+     * Message store transaction related class. This class should be used only for a single transaction
+     */
+    public interface AndesTransaction {
+
+        /**
+         * Add message to the transaction object. Need to specifically commit to publish the message.
+         * @param message AndesMessage
+         * @throws AndesException
+         */
+        public void enqueue(AndesMessage message) throws AndesException;
+
+        /**
+         * Commit all enqueued messages. Calling this will publish the messages and persist them in DB.
+         * After this, committed messages will be delivered to subscribers
+         * @throws AndesException
+         */
+        public void commit() throws AndesException;
+
+        /**
+         * All the enqueued messages will be cleared and won't be persisted. All the resources tied to
+         * the transaction object will be released.
+         * @throws AndesException
+         */
+        public void rollback() throws AndesException;
+
+        /**
+         * releases all resources tied to the transaction object.
+         * @throws AndesException
+         */
+        void close() throws AndesException;
+    }
+
+    /**
      * Initialise the MessageStore and returns the DurableStoreConnection used by store
      * @param connectionProperties ConfigurationProperties to be used to create the connection
      * @return DurableStoreConnection object created to make the connection to store
@@ -329,5 +362,11 @@ public interface MessageStore extends HealthAwareStore{
      * close the message store
      */
     public void close();
+
+    /**
+     * For a new Transaction this new transaction object need to be created.
+     * AndesTransaction is then used to do transactional storage of items
+     */
+    public AndesTransaction newTransaction() throws AndesException;
 
 }

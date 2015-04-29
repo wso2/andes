@@ -117,20 +117,28 @@ public class SlotMessageCounter {
     public void recordMetaDataCountInSlot(List<AndesMessage> messageList) {
         //If metadata list is null this method is called from time out thread
         for (AndesMessage message : messageList) {
-            String storageQueueName = message.getMetadata().getStorageQueueName();
-            //If this is the first message to that queue
-            Slot currentSlot;
-            currentSlot = updateQueueToSlotMap(message.getMetadata());
-            if (currentSlot.getMessageCount() >= slotWindowSize) {
-                try {
-                    submitSlot(storageQueueName);
-                } catch (AndesException e) {
+            recordMetadataCountInSlot(message.getMetadata());
+        }
+    }
+
+    /**
+     * Add a new message to the count for the current slot related to a particular queue
+     * @param metadata AndesMessageMetadata
+     */
+    public void recordMetadataCountInSlot(AndesMessageMetadata metadata) {
+        String storageQueueName = metadata.getStorageQueueName();
+        //If this is the first message to that queue
+        Slot currentSlot;
+        currentSlot = updateQueueToSlotMap(metadata);
+        if (currentSlot.getMessageCount() >= slotWindowSize) {
+            try {
+                submitSlot(storageQueueName);
+            } catch (AndesException e) {
                     /*
                     We do not do anything here since this operation will be run by timeout thread also
                      */
-                    log.error("Error occurred while connecting to the thrift coordinator " + e
-                            .getMessage(), e);
-                }
+                log.error("Error occurred while connecting to the thrift coordinator " + e
+                        .getMessage(), e);
             }
         }
     }

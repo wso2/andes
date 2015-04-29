@@ -141,7 +141,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
      */
     @Override
     public void ackReceived(AndesAckData ackData) {
-        //For matrics
+        //For metrics
         ackedMessageCount.getAndIncrement();
         
         // Publishers claim events in sequence
@@ -209,6 +209,50 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
             ringBuffer.publish(sequence);
             if (log.isDebugEnabled()) {
                 log.debug("[ Sequence: " + sequence + " ] " + event.getEventType() + "' published to Disruptor");
+            }
+        }
+    }
+
+    /**
+     * Adds the Message and the transaction object to the Disruptor ring buffer. Message will be preprocessed
+     * and then be added to the transaction object through Disruptor event handlers
+     *
+     * @param transactionEvent InboundTransactionEvent that is relevant to the message
+     * @param message AndesMessage to be added to the transaction
+     */
+    @Override
+    public void processTransactionEnqueue(InboundTransactionEvent transactionEvent, AndesMessage message,
+                                          AndesChannel channel) {
+        long sequence = ringBuffer.next();
+        InboundEventContainer eventContainer = ringBuffer.get(sequence);
+        try {
+            eventContainer.setEventType(TRANSACTION_ENQUEUE_EVENT);
+            eventContainer.transactionEvent = transactionEvent;
+            eventContainer.messageList.add(message);
+            eventContainer.setChannel(channel);
+        } finally {
+            ringBuffer.publish(sequence);
+            if (log.isDebugEnabled()) {
+                log.debug("[ Sequence: " + sequence + " ] " + eventContainer.getEventType() + "' published to Disruptor");
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void requestTransactionOperation(InboundTransactionEvent transactionEvent) {
+        long sequence = ringBuffer.next();
+        InboundEventContainer eventContainer = ringBuffer.get(sequence);
+
+        try {
+            eventContainer.setEventType(TRANSACTION_EVENT);
+            eventContainer.transactionEvent = transactionEvent;
+        } finally {
+            ringBuffer.publish(sequence);
+            if (log.isDebugEnabled()) {
+                log.debug("[ Sequence: " + sequence + " ] " + eventContainer.getEventType() + "' published to Disruptor");
             }
         }
     }
