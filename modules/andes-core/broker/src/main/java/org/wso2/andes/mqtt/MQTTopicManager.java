@@ -21,12 +21,15 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+
+import static org.dna.mqtt.wso2.AndesMQTTBridge.*;
 
 /**
  * Will manage and hold topic informaton,
@@ -157,6 +160,10 @@ public class MQTTopicManager {
             topic.addSubscriber(mqttClientChannelID, qos, isCleanSession, subscriptionID, subscriptionChannelID);
             //Finally will register the the topic subscription for the topic
             subscriberTopicCorrelate.put(mqttClientChannelID, topicName);
+        } catch (SubscriptionAlreadyExistsException ignore) {
+            //We do not throw this any further, the process should not stop due to this
+            final String message = "Error while adding the subscriber to the cluser";
+            log.error(message, ignore);
         } catch (MQTTException ex) {
             //In case if an error occurs we need to rollback the subscription created cluster wide
             distributedStore.removeSubscriber(this, topicName, subscriptionID, subscriptionChannelID,
@@ -168,15 +175,15 @@ public class MQTTopicManager {
     }
 
     /**
-     * Will be called during the event where the subscriber disconnection is triggered
+     * Will be called during the event where the subscriber disconnection or un-subscription is triggered
      *
      * @param mqttClientChannelID the id of the channel which the subscriber is bound to
+     * @param action              describes whether its a disconnection or an un-subscription
      * @throws MQTTException occurs if the subscriber was not disconnected properly
      */
-    public void removeTopicSubscription(String mqttClientChannelID) throws MQTTException {
+    public void removeOrDisconnectTopicSubscription(String mqttClientChannelID, SubscriptionEvent action)
+            throws MQTTException {
         //First the topic name will be taken from the subscriber channel
-        //TODO what if the node crashes at this point the state will be lost before disconnection
-        //TODO check if there're pending messages that are awaiting for acks
         String topic = subscriberTopicCorrelate.get(mqttClientChannelID);
         //If the topic has correlators
         if (null != topic) {
@@ -193,8 +200,14 @@ public class MQTTopicManager {
                 //Will remove the subscriber clusterwide
                 try {
                     //Will indicate the disconnection of the topic
-                    distributedStore.removeSubscriber(this, topic, subscriberChannelID, subscriberChannel,
-                            isCleanSession, mqttClientChannelID);
+                    if (action == SubscriptionEvent.DISCONNECT) {
+                        distributedStore.disconnectSubscriber(this, topic, subscriberChannelID, subscriberChannel,
+                                isCleanSession, mqttClientChannelID);
+                    } else {
+                        //If un-subscribed we need to remove the subscription off
+                        distributedStore.removeSubscriber(this, topic, subscriberChannelID, subscriberChannel,
+                                isCleanSession, mqttClientChannelID);
+                    }
                     if (log.isDebugEnabled()) {
                         final String message = "Subscription with cluster id " + subscriberChannelID + " disconnected " +
                                 "from topic " + topic;
@@ -260,14 +273,14 @@ public class MQTTopicManager {
                 mqttSubscriber.setStorageIdentifier(storageName);
                 //Subscriber state will not be handled for the case of QoS 0, hence if the subscription has disconnected it
                 // will be handled from the protocol engine
-                AndesMQTTBridge.getBridgeInstance().distributeMessageToSubscriptions(topic, publishedQOS, message,
+                getBridgeInstance().distributeMessageToSubscriptions(topic, publishedQOS, message,
                         shouldRetain, mqttLocalMessageID, channelID);
             } else {
                 throw new MQTTException("The subscriber with id " + channelID +
                         " has diconnected hence message will not be published to " + messageID);
             }
         } else {
-            AndesMQTTBridge.getBridgeInstance().distributeMessageToSubscriptions(topic, publishedQOS, message,
+            getBridgeInstance().distributeMessageToSubscriptions(topic, publishedQOS, message,
                     shouldRetain, mqttLocalMessageID, channelID);
         }
     }
@@ -316,11 +329,10 @@ public class MQTTopicManager {
      */
     private String registerTopicSubscriptionInCluster(String topicName, String mqttClientID, boolean isCleanSession,
                                                       int qos, UUID subscriptionChannelID)
-            throws MQTTException {
+            throws MQTTException, SubscriptionAlreadyExistsException {
         //Will generate a unique id for the client
         //Per topic only one subscription will be created across the cluster
-        String topicSpecificClientID = MQTTUtils.generateTopicSpecficClientID(mqttClientID, topicName, qos,
-                isCleanSession);
+        String topicSpecificClientID = MQTTUtils.generateTopicSpecficClientID(mqttClientID);
         if (log.isDebugEnabled()) {
             log.debug("Cluster wide topic connection was created with id " + topicSpecificClientID + " for topic " +
                     topicName + " with clean session " + isCleanSession);

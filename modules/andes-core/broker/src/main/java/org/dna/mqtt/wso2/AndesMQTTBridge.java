@@ -46,6 +46,10 @@ public final class AndesMQTTBridge {
     //The Andes bridge instance
     private static AndesMQTTBridge instance = new AndesMQTTBridge();
 
+    //Will define the different states the connection could have
+    public enum SubscriptionEvent{
+        DISCONNECT,UNSUBSCRIBE
+    }
 
     /**
      * The class will be delcared as singleton since only one instance of this should be created on the JVM
@@ -86,9 +90,9 @@ public final class AndesMQTTBridge {
      *
      * @param mqttClientChannelID the id of the client(subscriber) who requires disconnection
      */
-    public void onSubscriberDisconnection(String mqttClientChannelID) {
+    public void onSubscriberDisconnection(String mqttClientChannelID,SubscriptionEvent event) {
         try {
-            MQTTopicManager.getInstance().removeTopicSubscription(mqttClientChannelID);
+            MQTTopicManager.getInstance().removeOrDisconnectTopicSubscription(mqttClientChannelID,event);
         } catch (MQTTException e) {
             //Will capture the exception here and will not throw it any further
             final String message = "Error while disconnecting the subscription with the id " + mqttClientChannelID;

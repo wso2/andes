@@ -556,7 +556,8 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         subscriptions.deactivate(clientID);
 
         try {
-            AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID);
+            AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID,
+                    AndesMQTTBridge.SubscriptionEvent.DISCONNECT);
             log.info("Disconnected client " + clientID + " with clean session " + cleanSession);
         } catch (MQTTException e) {
             log.error("Error occurred when attempting to disconnect subscriber", e);
@@ -573,7 +574,8 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             //Andes change
             //Need to handle disconnection
             try {
-                AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID);
+                AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID,
+                        AndesMQTTBridge.SubscriptionEvent.DISCONNECT);
             } catch (MQTTException e) {
                 final String message = "Error occured when attempting to diconnect subscriber ";
                 log.error(message + e.getMessage(), e);
@@ -595,7 +597,8 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             subscriptions.removeSubscription(topic, clientID);
             //also will unsubscribe from the kernal
             try {
-                AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID);
+                AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID,
+                        AndesMQTTBridge.SubscriptionEvent.UNSUBSCRIBE);
             } catch (Exception e) {
                 final String message = "Error occured when disconneting the subscriber ";
                 log.error(message + e.getMessage());

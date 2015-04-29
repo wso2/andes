@@ -21,6 +21,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.server.ClusterResourceHolder;
 
@@ -106,7 +107,7 @@ public class DistributedStoreConnector implements MQTTConnector {
             andesMessage.addMessagePart(messagePart);
             // TODO: Need to handle Flow control in MQTT properly
             Andes.getInstance().messageReceived(andesMessage, andesChannel, pubAckHandler);
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug(" Message added with message id " + mqttLocalMessageID);
             }
 
@@ -119,55 +120,38 @@ public class DistributedStoreConnector implements MQTTConnector {
      * {@inheritDoc}
      */
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
-                              boolean isCleanSesion, int qos, UUID subscriptionChannelID) throws MQTTException {
+                              boolean isCleanSesion, int qos, UUID subscriptionChannelID) throws MQTTException,
+            SubscriptionAlreadyExistsException {
 
-        String queue_identifier = topic + mqttClientID;
+        MQTTLocalSubscription mqttTopicSubscriber;
+
         if (isCleanSesion) {
-            MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
-                    true, qos, subscriptionChannelID, topic, true, true);
-            //Should indicate the record in the cluster
-            try {
-                Andes.getInstance().openLocalSubscription(mqttTopicSubscriber);
-                //First will register the subscription as a queue
-                if (log.isDebugEnabled()) {
-                    log.debug("Subscription registered to the " + topic + " with channel id " + clientID);
-                }
-            } catch (SubscriptionAlreadyExistsException e) {
-                final String message = "Error occurred while creating the topic subscription in the kernel";
-                log.error(message, e);
-                throw new MQTTException(message, e);
-            } catch (AndesException e) {
-                log.error("Error occurred while opening subscription ", e);
-            }
+            mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
+                    true, qos, subscriptionChannelID, topic, true, true, false);
         } else {
-            //This will be similar to a durable subscription of AMQP
-            MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
-                    true, qos, subscriptionChannelID, queue_identifier, true, true);
-            MQTTLocalSubscription mqttQueueSubscriber = createSubscription(channel, queue_identifier, clientID,
-                    mqttClientID, false, qos, subscriptionChannelID, queue_identifier, false, true);
-
-            //Should indicate the record in the cluster
-            try {
-                //Will record the subscription as a topic
-                Andes.getInstance().openLocalSubscription(mqttTopicSubscriber);
-                //Will record the subscription as a queue
-                Andes.getInstance().openLocalSubscription(mqttQueueSubscriber);
-                //First will register the subscription as a queue
-                if (log.isDebugEnabled()) {
-                    log.debug("Subscription registered to the " + topic + " with channel id " + clientID);
-                }
-            } catch (SubscriptionAlreadyExistsException e) {
-                final String message = "Error occurred while creating the topic subscription in the kernel";
-                log.error(message, e);
-                throw new MQTTException(message, e);
-            } catch (AndesException e) {
-                log.error("Error occurred while opening subscription", e);
+            //For clean session topics we need to provide the queue name for the queue identifier
+            mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
+                    false, qos, subscriptionChannelID, clientID, true, true, false);
+        }
+        //Should indicate the record in the cluster
+        try {
+            Andes.getInstance().openLocalSubscription(mqttTopicSubscriber);
+            //First will register the subscription as a queue
+            if (log.isDebugEnabled()) {
+                log.debug("Subscription registered to the " + topic + " with channel id " + clientID);
             }
-
+            //Finally will notify on the client connection
+            Andes.getInstance().clientConnectionCreated(subscriptionChannelID);
+        } catch (SubscriptionAlreadyExistsException e) {
+            final String message = "Error occurred while creating the topic subscription in the kernel";
+            log.error(message, e);
+            throw e;
+        } catch (AndesException e) {
+            String message = "Error occurred while opening subscription ";
+            log.error(message, e);
+            throw new MQTTException(message, e);
         }
 
-        //Finally will notify on the client connection
-        Andes.getInstance().clientConnectionCreated(subscriptionChannelID);
     }
 
     /**
@@ -178,23 +162,59 @@ public class DistributedStoreConnector implements MQTTConnector {
             throws MQTTException {
         try {
 
-            String queue_identifier = subscribedTopic + mqttClientID;
+
+            String queue_identifier = MQTTUtils.generateTopicSpecficClientID(mqttClientID);
+            String queue_user = "admin";
+
             if (isCleanSession) {
                 //Here we hard code the QoS level since for subscription removal that doesn't matter
                 MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscribedTopic,
                         subscriptionChannelID, subscriptionChannelID,
-                        true, 0, subscriberChannel, subscribedTopic, true, false);
+                        true, 0, subscriberChannel, subscribedTopic, true, false, false);
                 Andes.getInstance().closeLocalSubscription(mqttTopicSubscriber);
             } else {
                 //This will be similar to a durable subscription of AMQP
+                //There could be two types of events one is the disconnection due to the lost of the connection
+                //The other is un-subscription, if is the case of un-subscription the subscription should be removed
+                InboundQueueEvent queueChange = new InboundQueueEvent(queue_identifier, queue_user, false, true);
+                Andes.getInstance().deleteQueue(queueChange);
+            }
+            //Will indicate the closure of the subscription connection
+            Andes.getInstance().clientConnectionClosed(subscriberChannel);
+            if (log.isDebugEnabled()) {
+                log.debug("Disconnected subscriber from topic " + subscribedTopic);
+            }
+
+        } catch (AndesException e) {
+            final String message = "Error occured while removing the subscriber ";
+            log.error(message, e);
+            throw new MQTTException(message, e);
+        }
+    }
+
+    /**
+     * @{inheritDoc}
+     */
+    public void disconnectSubscriber(MQTTopicManager channel, String subscribedTopic, String subscriptionChannelID,
+                                     UUID subscriberChannel, boolean isCleanSession, String mqttClientID)
+            throws MQTTException {
+        try {
+
+            String queue_identifier = MQTTUtils.generateTopicSpecficClientID(mqttClientID);
+            if (isCleanSession) {
+                //Here we hard code the QoS level since for subscription removal that doesn't matter
                 MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscribedTopic,
                         subscriptionChannelID, subscriptionChannelID,
-                        false, 0, subscriberChannel, queue_identifier, true, false);
-                MQTTLocalSubscription mqttQueueSubscriber = createSubscription(channel, queue_identifier,
-                        subscriptionChannelID, subscriptionChannelID, false, 0, subscriberChannel, queue_identifier,
-                        false, false);
+                        true, 0, subscriberChannel, subscribedTopic, true, false, false);
                 Andes.getInstance().closeLocalSubscription(mqttTopicSubscriber);
-                Andes.getInstance().closeLocalSubscription(mqttQueueSubscriber);
+            } else {
+                //This will be similar to a durable subscription of AMQP
+                //There could be two types of events one is the disconnection due to the lost of the connection
+                MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscribedTopic,
+                        subscriptionChannelID, subscriptionChannelID,
+                        false, 0, subscriberChannel, queue_identifier, true, false, false);
+                Andes.getInstance().closeLocalSubscription(mqttTopicSubscriber);
+
             }
             //Will indicate the closure of the subscription connection
             Andes.getInstance().clientConnectionClosed(subscriberChannel);
@@ -235,21 +255,25 @@ public class DistributedStoreConnector implements MQTTConnector {
     private MQTTLocalSubscription createSubscription(MQTTopicManager channel, String topic, String clientID,
                                                      String mqttClientID, boolean isCleanSesion, int qos,
                                                      UUID subscriptionChannelID, String queueIdentifier,
-                                                     boolean isTopicBound, boolean isActive) throws MQTTException {
+                                                     boolean isTopicBound, boolean isActive, boolean hasExternal)
+            throws MQTTException {
         //Will create a new local subscription object
         final String isBoundToTopic = "isBoundToTopic";
         final String subscribedNode = "subscribedNode";
         final String isDurable = "isDurable";
+        final String hasExternalSubscription = "hasExternalSubscriptions";
 
         final String myNodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         MQTTLocalSubscription localTopicSubscription = new MQTTLocalSubscription(MQTT_TOPIC_DESTINATION + "=" + topic
                 + "," + MQTT_QUEUE_IDENTIFIER + "=" + queueIdentifier + "," + isBoundToTopic + "=" + isTopicBound + "," +
-                subscribedNode + "=" + myNodeID + "," + isDurable + "=" + !isCleanSesion);
+                subscribedNode + "=" + myNodeID + "," + isDurable + "=" + !isCleanSesion + "," + hasExternalSubscription + "="
+                + hasExternal);
         localTopicSubscription.setIsTopic(isTopicBound);
-        if (isTopicBound) {
-            localTopicSubscription.setTargetBoundExchange(AMQPUtils.TOPIC_EXCHANGE_NAME);
-        } else {
+        if (!isCleanSesion) {
+            //For subscriptions with clean session = false we need to make a queue in andes
             localTopicSubscription.setTargetBoundExchange(AMQPUtils.DIRECT_EXCHANGE_NAME);
+        } else {
+            localTopicSubscription.setTargetBoundExchange(AMQPUtils.TOPIC_EXCHANGE_NAME);
         }
         localTopicSubscription.setMqqtServerChannel(channel);
         localTopicSubscription.setChannelID(subscriptionChannelID);

@@ -18,6 +18,7 @@
 package org.wso2.andes.mqtt;
 
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 
 import java.nio.ByteBuffer;
@@ -70,20 +71,38 @@ public interface MQTTConnector {
      * @throws MQTTException
      */
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
-                              boolean isCleanSesion, int qos, UUID subscriptionChannelID) throws MQTTException;
+                              boolean isCleanSesion, int qos, UUID subscriptionChannelID) throws MQTTException,
+            SubscriptionAlreadyExistsException;
 
 
     /**
-     * Will trigger when subscriber disconnets from the session
+     * Will trigger when subscriber sends a un subscription message
      *
      * @param channel               the connection refference to the bridge
      * @param subscribedTopic       the topic the subscription disconnection should be made
      * @param subscriptionChannelID the channel id of the diconnection client
      * @param subscriberChannel     the cluster wide unique idenfication of the subscription
-     * @param isCleanSession        Durability of the subscription
+     * @param isCleanSession        durability of the subscription
+     * @param mqttClientID          the id of the client who subscribed to the topic
+     * @throws MQTTException
      */
     public void removeSubscriber(MQTTopicManager channel, String subscribedTopic, String subscriptionChannelID,
                                  UUID subscriberChannel, boolean isCleanSession, String mqttClientID)
+            throws MQTTException;
+
+    /**
+     * Will trigger the subscription disconnect event
+     *
+     * @param channel               the connection refference to the bridge
+     * @param subscribedTopic       the topic the subscription disconnection should be made
+     * @param subscriptionChannelID the channel id of the diconnection client
+     * @param subscriberChannel     the cluster wide unique idenfication of the subscription
+     * @param isCleanSession        durability of the subscription
+     * @param mqttClientID          the id of the client who subscribed to the topic
+     * @throws MQTTException
+     */
+    public void disconnectSubscriber(MQTTopicManager channel, String subscribedTopic, String subscriptionChannelID,
+                                     UUID subscriberChannel, boolean isCleanSession, String mqttClientID)
             throws MQTTException;
 
     /**
