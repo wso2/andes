@@ -78,10 +78,10 @@ public interface MQTTConnector {
     /**
      * Will trigger when subscriber sends a un subscription message
      *
-     * @param channel               the connection refference to the bridge
+     * @param channel               the connection reference to the bridge
      * @param subscribedTopic       the topic the subscription disconnection should be made
-     * @param subscriptionChannelID the channel id of the diconnection client
-     * @param subscriberChannel     the cluster wide unique idenfication of the subscription
+     * @param subscriptionChannelID the channel id of the disconnected client
+     * @param subscriberChannel     the cluster wide unique identification of the subscription
      * @param isCleanSession        durability of the subscription
      * @param mqttClientID          the id of the client who subscribed to the topic
      * @throws MQTTException
@@ -93,10 +93,10 @@ public interface MQTTConnector {
     /**
      * Will trigger the subscription disconnect event
      *
-     * @param channel               the connection refference to the bridge
+     * @param channel               the connection reference to the bridge
      * @param subscribedTopic       the topic the subscription disconnection should be made
-     * @param subscriptionChannelID the channel id of the diconnection client
-     * @param subscriberChannel     the cluster wide unique idenfication of the subscription
+     * @param subscriptionChannelID the channel id of the disconnected client
+     * @param subscriberChannel     the cluster wide unique identification of the subscription
      * @param isCleanSession        durability of the subscription
      * @param mqttClientID          the id of the client who subscribed to the topic
      * @throws MQTTException

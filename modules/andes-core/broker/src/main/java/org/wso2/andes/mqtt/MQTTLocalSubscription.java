@@ -33,14 +33,14 @@ import java.nio.ByteBuffer;
 import java.util.UUID;
 
 /**
- * Cluster wide subscriptions relavent per topic will be maintained through this class
- * Per topic there will be only one subscripion just on indicate that the subcription relys on the spcific node
+ * Cluster wide subscriptions relevant per topic will be maintained through this class
+ * Per topic there will be only one subscription just on indicate that the subscription rely on the specific node
  * Each time a message is published to a specific node the Andes kernal will call this subscription object
- * The subscriber will contain a reference to the relavent bridge connection where the bridge will notify the protocol
- * engine to inform the relavant subscriptions which are channel bound
+ * The subscriber will contain a reference to the relevant bridge connection where the bridge will notify the protocol
+ * engine to inform the relevant subscriptions which are channel bound
  */
 public class MQTTLocalSubscription extends InboundSubscriptionEvent {
-    //Will log the flows in relevent for this class
+    //Will log the flows in relevant for this class
     private static Log log = LogFactory.getLog(MQTTLocalSubscription.class);
     //The reference to the bridge object
     private MQTTopicManager mqqtServerChannel;
@@ -53,7 +53,7 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
     private int subscriberQOS;
 
     /**
-     * Will allow retrival of the qos the subscription is bound to
+     * Will allow retrieval of the qos the subscription is bound to
      *
      * @return the level of qos the subscription is bound to
      */
@@ -72,9 +72,9 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
 
 
     /**
-     * Sets a channel identifyer which is unique for each subscription, this will be used to tack delivery of message
+     * Sets a channel identifier which is unique for each subscription, this will be used to tack delivery of message
      *
-     * @param channelID the unique identifyer of a channel speciifc to a subscription
+     * @param channelID the unique identifier of a channel specific to a subscription
      */
     public void setChannelID(UUID channelID) {
         this.channelID = channelID;
@@ -99,7 +99,7 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
     }
 
     /**
-     * The relavant subscritption will be registered
+     * The relevant subscription will be registered
      *
      * @param mqttTopicSubscription the name of the topic the subscription will be bound to
      */
@@ -148,14 +148,14 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
 
     /**
      * In MQTT all the messages will be exchanged through topics
-     * So will overide the is bound to always have the value true
+     * So will override the is bound to always have the value true
      */
     public void setIsTopic(boolean isTopic) {
         this.isBoundToTopic = isTopic;
     }
 
     /**
-     * Should inform the purticuler node the subcriber is bound to, This mehod would set the node id to the current
+     * Should inform the particular node the subscriber is bound to, This method would set the node id to the current
      */
     public void setNodeInfo() {
         this.subscribedNode = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();

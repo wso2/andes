@@ -42,10 +42,10 @@ public class MQTTSubscriber {
     private UUID subscriptionChannel;
     //The map maintains the relation between the cluster ids to the local ids, MQTT ids will be the type int
     //Each subscription object will maintain the ids of the messages that were sent out for delivery
-    //Upon recieving of an ack the message element will be removed
+    //Upon relieving of an ack the message element will be removed
     //Cluster message id to local messages the key will be the local id of the map and the value will be cluster id
-    //We use a concurrent hashmap since this map is accessible by multiple threads. Accessed by both andes kernal for
-    //put oprations and remove is done when the ack arrives
+    //We use a concurrent hash-map since this map is accessible by multiple threads. Accessed by both andes kernal for
+    //put operations and remove is done when the ack arrives
     private Map<Integer, Long> clusterMessageToLocalMessage = new ConcurrentHashMap<Integer, Long>();
     //Will hold the message id which was last processed
     //Will generate a unique id
@@ -63,7 +63,7 @@ public class MQTTSubscriber {
         lastGeneratedMessageID = lastGeneratedMessageID + 1;
         if (lastGeneratedMessageID == Short.MAX_VALUE) {
             //Then we need to reduce
-            log.warn("The message ids will be refreshed since it exceeded the maximum limit ");
+            log.info("The message ids will be refreshed since it exceeded the maximum limit ");
             lastGeneratedMessageID = 1;
 
         }
@@ -73,7 +73,7 @@ public class MQTTSubscriber {
     }
 
     /**
-     * Will be called apon receving an ack for a message
+     * Will be called upon receiving an ack for a message
      *
      * @param localMessageID the id of the message the ack was received
      * @return the cluster specific message if of the message which received the ack
@@ -84,7 +84,7 @@ public class MQTTSubscriber {
     }
 
     /**
-     * The channel a purticuler subscription is bound to
+     * The channel a particular subscription is bound to
      *
      * @return the uuid of the channel
      */
@@ -115,16 +115,16 @@ public class MQTTSubscriber {
     }
 
     /**
-     * The storage representation of the subscritpion
+     * The storage representation of the subscription
      *
-     * @param storageIdentifier the identifcation of the storage representation
+     * @param storageIdentifier the identification of the storage representation
      */
     public void setStorageIdentifier(String storageIdentifier) {
         this.storageIdentifier = storageIdentifier;
     }
 
     /**
-     * Will allow retrival of the unique identifyer of the subscriber
+     * Will allow retrieval of the unique identifier of the subscriber
      *
      * @return the identifier of the subscriber
      */
@@ -151,7 +151,7 @@ public class MQTTSubscriber {
     }
 
     /**
-     * Will set the lvel of QOS the subscriber is bound to
+     * Will set the level of QOS the subscriber is bound to
      *
      * @param QOS_Level the QOS level, this can either be 1,2 or 3
      */
