@@ -30,11 +30,11 @@ import java.nio.ByteBuffer;
 
 
 /**
- * The class will be resposible to mediate between the MQTT library and the Andes kernal.
+ * The class will be responsible to mediate between the MQTT library and the Andes kernal.
  * When writing methods all the connecting logic between the MQTT protocol engine and kernal
  * should go through this class
  * This way a clear abstraction could be maintained between MQTT protocol class and the logic
- * Each function in the class should represent a state, ex :- register subscriber, publish message, unsubscribe
+ * Each function in the class should represent a state, ex :- register subscriber, publish message, un-subscribe
  */
 
 public final class AndesMQTTBridge {
@@ -52,14 +52,14 @@ public final class AndesMQTTBridge {
     }
 
     /**
-     * The class will be delcared as singleton since only one instance of this should be created on the JVM
+     * The class will be declared as singleton since only one instance of this should be created on the JVM
      * We cannot define multiple bridge instances since all the state between the topics will be maintained here
      */
     private AndesMQTTBridge() {
     }
 
     /**
-     * Will handle processing the protocol specifc details on MQTT
+     * Will handle processing the protocol specific details on MQTT
      *
      * @param mqttProtocolProcessor the reference to the protocol processing object
      */
@@ -108,7 +108,7 @@ public final class AndesMQTTBridge {
      * @param qosLevel           the level of qos expected through the subscribers
      * @param message            the content of the message
      * @param retain             should this message be persisted
-     * @param mqttLocalMessageID the message uniq identifier
+     * @param mqttLocalMessageID the message unique identifier
      * @param publisherID        the id of the publisher provided by mqtt protocol
      * @param pubAckHandler      publisher acknowledgements are handled by this handler
      */
@@ -119,17 +119,17 @@ public final class AndesMQTTBridge {
                     topic, qosLevel, message, retain, mqttLocalMessageID, publisherID, pubAckHandler);
         } catch (MQTTException e) {
             //Will capture the message here and will not throw it further to mqtt protocol
-            final String error = "Error occured while adding the message content for message id : "
+            final String error = "Error occurred while adding the message content for message id : "
                     + mqttLocalMessageID;
             log.error(error, e);
         }
     }
 
     /**
-     * This will be triggered each time a subscirber subscribes to a topic, when connecting with Andes
+     * This will be triggered each time a subscriber subscribes to a topic, when connecting with Andes
      * only one subscription will be indicated per node
      * just to ensure that cluster wide the subscriptions are visible.
-     * The message delivery to the subscibers will be managed through the respective channel
+     * The message delivery to the subscribers will be managed through the respective channel
      *
      * @param topic               the name of the topic the subscribed to
      * @param mqttClientChannelID the client identification maintained by the MQTT protocol lib
@@ -142,8 +142,8 @@ public final class AndesMQTTBridge {
             MQTTopicManager.getInstance().addTopicSubscription(topic,
                     mqttClientChannelID, MQTTUtils.convertMQTTProtocolTypeToInteger(qos), isCleanSession);
         } catch (MQTTException e) {
-            //Will not thow the exception further since the bridge will handle the exceptions in both the relams
-            final String message = "Error occured while subscription is initiated for topic : " + topic +
+            //Will not throw the exception further since the bridge will handle the exceptions in both the realm
+            final String message = "Error occurred while subscription is initiated for topic : " + topic +
                     " and session id :" + mqttClientChannelID;
             log.error(message, e);
         }
@@ -163,8 +163,8 @@ public final class AndesMQTTBridge {
         try {
             MQTTopicManager.getInstance().onMessageAck(mqttClientChannelID, messageID);
         } catch (MQTTException e) {
-            final String message = "Error occured while the subscription ack was received for channel "
-                    + mqttClientChannelID + " and for messsage " + messageID;
+            final String message = "Error occurred while the subscription ack was received for channel "
+                    + mqttClientChannelID + " and for message " + messageID;
             log.error(message, e);
             throw e;
         }
@@ -183,10 +183,10 @@ public final class AndesMQTTBridge {
                                                  int messageID, String channelID) {
 
         if (null != mqttProtocolHandlingEngine) {
-            //Need to set do a re possition of bytes for writing to the buffer
+            //Need to set do a re position of bytes for writing to the buffer
             //Since the buffer needs to be initialized for reading before sending out
-            final int bytesPossition = 0;
-            message.position(bytesPossition);
+            final int bytesPosition = 0;
+            message.position(bytesPosition);
             AbstractMessage.QOSType qosType = MQTTUtils.getMQTTQOSTypeFromInteger(qos);
             // mqttProtocolHandlingEngine.publish2Subscribers(topic, qosType, message, retain, andesMessageID);
             mqttProtocolHandlingEngine.publishToSubscriber(topic, qosType, message, retain, messageID, channelID);
@@ -198,7 +198,7 @@ public final class AndesMQTTBridge {
         } else {
             //Will capture the exception here and will not throw it any further
             final String error = "The reference to the MQTT protocol has not being initialized, " +
-                    "an attmpt was made to deliver message ";
+                    "an attempt was made to deliver message ";
             log.error(error + messageID);
         }
     }

@@ -186,7 +186,7 @@ public class DistributedStoreConnector implements MQTTConnector {
             }
 
         } catch (AndesException e) {
-            final String message = "Error occured while removing the subscriber ";
+            final String message = "Error occurred while removing the subscriber ";
             log.error(message, e);
             throw new MQTTException(message, e);
         }
@@ -223,7 +223,7 @@ public class DistributedStoreConnector implements MQTTConnector {
             }
 
         } catch (AndesException e) {
-            final String message = "Error occured while removing the subscriber ";
+            final String message = "Error occurred while removing the subscriber ";
             log.error(message, e);
             throw new MQTTException(message, e);
         }
@@ -243,9 +243,9 @@ public class DistributedStoreConnector implements MQTTConnector {
      * @param topic                 the name of the destination
      * @param clientID              the identifier which is unique across the cluster
      * @param mqttClientID          the id of the client which is provided by the protocol
-     * @param isCleanSesion         should this be treated as a durable subscription
-     * @param qos                   the level in which the messages would be excahnged this will be either 0,1 or 2
-     * @param subscriptionChannelID the id of the channel that would be unique accross the cluser
+     * @param isCleanSession         should this be treated as a durable subscription
+     * @param qos                   the level in which the messages would be exchanged this will be either 0,1 or 2
+     * @param subscriptionChannelID the id of the channel that would be unique across the cluster
      * @param queueIdentifier       the identifier which will represent the queue will be applicable only when durable
      * @param isTopicBound          should the representation of the object a queue or a topic
      * @param isActive              is the subscription active it will be inactive during removal
@@ -253,7 +253,7 @@ public class DistributedStoreConnector implements MQTTConnector {
      * @throws MQTTException
      */
     private MQTTLocalSubscription createSubscription(MQTTopicManager channel, String topic, String clientID,
-                                                     String mqttClientID, boolean isCleanSesion, int qos,
+                                                     String mqttClientID, boolean isCleanSession, int qos,
                                                      UUID subscriptionChannelID, String queueIdentifier,
                                                      boolean isTopicBound, boolean isActive, boolean hasExternal)
             throws MQTTException {
@@ -266,10 +266,10 @@ public class DistributedStoreConnector implements MQTTConnector {
         final String myNodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         MQTTLocalSubscription localTopicSubscription = new MQTTLocalSubscription(MQTT_TOPIC_DESTINATION + "=" + topic
                 + "," + MQTT_QUEUE_IDENTIFIER + "=" + queueIdentifier + "," + isBoundToTopic + "=" + isTopicBound + "," +
-                subscribedNode + "=" + myNodeID + "," + isDurable + "=" + !isCleanSesion + "," + hasExternalSubscription + "="
+                subscribedNode + "=" + myNodeID + "," + isDurable + "=" + !isCleanSession + "," + hasExternalSubscription + "="
                 + hasExternal);
         localTopicSubscription.setIsTopic(isTopicBound);
-        if (!isCleanSesion) {
+        if (!isCleanSession) {
             //For subscriptions with clean session = false we need to make a queue in andes
             localTopicSubscription.setTargetBoundExchange(AMQPUtils.DIRECT_EXCHANGE_NAME);
         } else {
