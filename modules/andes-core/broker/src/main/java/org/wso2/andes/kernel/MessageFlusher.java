@@ -550,5 +550,7 @@ public class MessageFlusher {
         return messageFlusher;
     }
 
-
+    public DisruptorBasedFlusher getFlusherExecutor() {
+        return flusherExecutor;
+    }
 }

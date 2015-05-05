@@ -18,6 +18,7 @@
 
 package org.wso2.andes.kernel.slot;
 
+import com.hazelcast.core.HazelcastInstanceNotActiveException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.MessagingEngine;
@@ -85,6 +86,10 @@ public class SlotDeletionScheduler {
                         (slotToDelete.getStorageQueueName(), slotToDelete);
             } catch (ConnectionException e) {
                 log.error("Error while trying to delete the slot " + slotToDelete + " Thrift connection failed. Rescheduling delete.");
+            } catch (HazelcastInstanceNotActiveException ignore) {
+                //This exception occurred in situation like gracefully shutting down i.e. Hazelcast instance already
+                // deactivated and schedule task trying to delete slot after that.
+                //Therefore silently ignore exception
             }
             if (deleteSuccess) {
                 //Terminate the timer thread. Clear local tracking of slot

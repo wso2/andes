@@ -44,6 +44,11 @@ public enum AndesConfiguration implements ConfigurationProperty {
             ("coordination/thriftServerPort", "7611", Integer.class),
 
     /**
+     * Thrift server reconnect timeout. Value specified in SECONDS
+     */
+    COORDINATOR_THRIFT_RECONNECT_TIMEOUT("coordination/thriftServerReconnectTimeout", "5", Long.class),
+
+    /**
      * Node ID is the unique identifier of a node within a cluster. By default, its generated using the IP of the node.
      * However, with this property, the Node ID can be explicitly set.
      */
@@ -390,6 +395,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     FLOW_CONTROL_CONNECTION_BASED_PER_CONNECTION_MESSAGE_THRESHOLD("flowControl/connectionBased" +
             "/perConnectionMessageThreshold", "1000", Integer.class);
+
 
 
 

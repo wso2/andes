@@ -438,7 +438,7 @@ public class AndesKernelBoot {
     /**
      * Stop the thrift server
      */
-    private static void stopThriftServer(){
+    public static void stopThriftServer(){
         MBThriftServer.getInstance().stop();
     }
 

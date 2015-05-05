@@ -372,23 +372,25 @@ public class OnflightMessageTracker {
         MsgData trackingData = getTrackingData(messageID);
 
         //decrement delivery count
-        trackingData.decrementDeliveryCount(channel);
+        if (trackingData != null) {
+            trackingData.decrementDeliveryCount(channel);
 
-        trackingData.addMessageStatus(MessageStatus.ACKED);
+            trackingData.addMessageStatus(MessageStatus.ACKED);
 
-        //we consider ack is received if all acks came for channels message was sent
-        if (trackingData.allAcksReceived() && getNumberOfScheduledDeliveries(messageID) == 0) {
-            trackingData.addMessageStatus(MessageStatus.ACKED_BY_ALL);
-            //record how much time took between delivery and ack receive
-            long timeTook = (System.currentTimeMillis() - trackingData.timestamp);
-            if (log.isDebugEnabled()) {
-                PerformanceCounter.recordAckReceived(trackingData.destination, (int) timeTook);
-            }
-            decrementMessageCountInSlotAndCheckToResend(trackingData.slot);
+            //we consider ack is received if all acks came for channels message was sent
+            if (trackingData.allAcksReceived() && getNumberOfScheduledDeliveries(messageID) == 0) {
+                trackingData.addMessageStatus(MessageStatus.ACKED_BY_ALL);
+                //record how much time took between delivery and ack receive
+                long timeTook = (System.currentTimeMillis() - trackingData.timestamp);
+                if (log.isDebugEnabled()) {
+                    PerformanceCounter.recordAckReceived(trackingData.destination, (int) timeTook);
+                }
+                decrementMessageCountInSlotAndCheckToResend(trackingData.slot);
 
-            isOKToDeleteMessage = true;
-            if (log.isDebugEnabled()) {
-                log.debug("OK to remove message from store as all acks are received id= " + messageID);
+                isOKToDeleteMessage = true;
+                if (log.isDebugEnabled()) {
+                    log.debug("OK to remove message from store as all acks are received id= " + messageID);
+                }
             }
         }
 
@@ -649,17 +651,22 @@ public class OnflightMessageTracker {
         MsgData trackingData = messagesSentByChannel.get(messageID);
         if (trackingData == null) {
             trackingData = msgId2MsgData.get(messageID);
-            messagesSentByChannel.put(messageID, trackingData);
+            if (trackingData != null) {
+                messagesSentByChannel.put(messageID, trackingData);
+            }
         }
         // increase delivery count
-        int numOfCurrentDeliveries = trackingData.incrementDeliveryCount(channelID);
+        int numOfCurrentDeliveries = 0;
+        if (trackingData != null) {
+            numOfCurrentDeliveries = trackingData.incrementDeliveryCount(channelID);
+        }
 
         if (log.isDebugEnabled()) {
             log.debug("Number of current deliveries for message id= " + messageID + " to Channel " + channelID + " is " + numOfCurrentDeliveries);
         }
 
         //check if this is a redelivered message
-        return trackingData.isRedelivered(channelID);
+        return trackingData != null && trackingData.isRedelivered(channelID);
     }
 
     /**
