@@ -52,6 +52,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
     private static Log log = LogFactory.getLog(DisruptorBasedInboundEventManager.class);
     private final RingBuffer<InboundEventContainer> ringBuffer;
     private AtomicInteger ackedMessageCount = new AtomicInteger();
+    private Disruptor<InboundEventContainer> disruptor;
 
     public DisruptorBasedInboundEventManager(SubscriptionStore subscriptionStore,
                                              MessagingEngine messagingEngine) {
@@ -71,7 +72,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
                                     .setNameFormat("Disruptor Inbound Event Thread %d").build();
         ExecutorService executorPool = Executors.newCachedThreadPool(namedThreadFactory);
 
-        Disruptor<InboundEventContainer> disruptor;
+
         disruptor = new Disruptor<InboundEventContainer>(InboundEventContainer.getFactory(),
                 bufferSize, 
                 executorPool,
@@ -210,6 +211,14 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
                 log.debug("[ Sequence: " + sequence + " ] " + event.getEventType() + "' published to Disruptor");
             }
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void stop() {
+        disruptor.shutdown();
     }
 
     /**

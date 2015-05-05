@@ -86,5 +86,8 @@ public interface InboundEventManager {
      */
     public void updateSlotDeletionSafeZone();
 
-
+    /**
+     * Stop disruptor. This wait until disruptor process pending events in ring buffer.
+     */
+    public void stop();
 }

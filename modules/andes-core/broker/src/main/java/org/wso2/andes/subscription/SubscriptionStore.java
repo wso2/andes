@@ -670,7 +670,7 @@ public class SubscriptionStore {
             if (log.isDebugEnabled())
                 log.debug("Subscription Removed Locally for  " + destination + "@" + subscriptionID + " " + subscriptionToRemove);
         } else {
-            throw new AndesException("Could not find an subscription ID " + subscriptionID + " under destination " + destination);
+            log.warn("Could not find an subscription ID " + subscriptionID + " under destination " + destination);
         }
         return subscriptionToRemove;
     }

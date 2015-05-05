@@ -21,10 +21,7 @@ package org.wso2.andes.kernel.distruptor.inbound;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesKernelBoot;
-import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.registry.ApplicationRegistry;
@@ -94,10 +91,6 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
                     break;
                 case STOP_EXPIRATION_WORKER_EVENT:
                     stopMessageExpirationWorker();
-                    taskComplete = true;
-                    break;
-                case SHUTDOWN_MESSAGING_ENGINE_EVENT:
-                    gracefulShutdown();
                     taskComplete = true;
                     break;
                 default:
@@ -206,44 +199,53 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
     }
 
     /**
-     * Update event to shutdown messaging engine event 
-     * @param messagingEngine MessagingEngine
+     * Sequentially shutting down all andes dependency task when graceful shutdown hook triggered.
+     *
+     * @param messagingEngine MessageEngine
+     * @throws AndesException
      */
-    public void prepareForShutdownMessagingEngine(MessagingEngine messagingEngine) {
-        eventType = EventType.SHUTDOWN_MESSAGING_ENGINE_EVENT;
+    public void gracefulShutdown(MessagingEngine messagingEngine) throws AndesException {
+
+        Boolean taskComplete =false;
         this.messagingEngine = messagingEngine;
         taskStatus = SettableFuture.create();
-    }
 
-    private void gracefulShutdown() throws AndesException {
-        // Close subscriptions
-        ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllLocalSubscriptionsOfNode();
+        try {
+            // Stop SlotDeliveryWorkers
+            // Stop Thrift Service
+            // Stop SlotMessageCounter
+            stopMessageDelivery();
 
-        // Stop SlotDeliveryWorkers
-        // Stop Thrift Service
-        // Stop SlotMessageCounter
-        stopMessageDelivery();
+            // Close subscriptions
+            ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllLocalSubscriptionsOfNode();
 
-        // notify cluster this MB node is shutting down. For other nodes to do recovery tasks
-        ClusterResourceHolder.getInstance().getClusterManager().shutDownMyNode();
+            // notify cluster this MB node is shutting down. For other nodes to do recovery tasks
+            ClusterResourceHolder.getInstance().getClusterManager().shutDownMyNode();
 
-        //Stop Recovery threads
-        AndesKernelBoot.stopHouseKeepingThreads();
+            //Stop Recovery threads
+            AndesKernelBoot.stopHouseKeepingThreads();
 
-        // Shut down Store writing tasks - (after waiting for completion)
-        // Shut down message store
-        completePendingMessageStoringOperations();
+            // Shut down Store writing tasks - (after waiting for completion)
+            // Shut down message store
+            completePendingMessageStoringOperations();
 
-        //Stop Slot manager in coordinator
-        if (AndesContext.getInstance().isClusteringEnabled() && AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
-            SlotManagerClusterMode.getInstance().shutDownSlotManager();
+            //Stop Slot manager in coordinator
+            if (AndesContext.getInstance().isClusteringEnabled() && AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
+                SlotManagerClusterMode.getInstance().shutDownSlotManager();
+            }
+
+            // Removes the MinaNetworkHandler, Authentication Handlers, etc. Refer ApplicationRegistry.close()
+            ApplicationRegistry.remove();
+
+            // We need this until ApplicationRegistry is done.
+            AndesContext.getInstance().getAndesContextStore().close();
+
+            taskComplete = true;
+
+        } finally {
+            taskStatus.set(taskComplete);
         }
 
-        // Removes the MinaNetworkHandler, Authentication Handlers, etc. Refer ApplicationRegistry.close()
-        ApplicationRegistry.remove();
-
-        // We need this until ApplicationRegistry is done.
-        AndesContext.getInstance().getAndesContextStore().close();
     }
 
     public Boolean waitForTaskCompletion() throws AndesException {
