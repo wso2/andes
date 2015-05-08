@@ -108,8 +108,45 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      */
     private Map<String, Object> propertyMap;
 
+    /**
+     * MQTT Retain
+     * Topic message should be retained if true.
+     *
+     * If the RETAIN flag is set to 1, in a PUBLISH Packet sent by a Client to a Server, the Server must store the
+     * Application Message and its QoS, so that it can be delivered to future subscribers whose subscriptions match
+     * its topic name.
+     * When a new subscription is established, the last retained message, if any, on each matching topic name must
+     * be sent to the subscriber. If the Server receives a QoS 0 message with the RETAIN flag set to 1 it must
+     * discard any message previously retained for that topic.
+     * It should store the new QoS 0 message as the new retained message for that topic, but may choose to discard
+     * it at any time if this happens there will be no retained message for that topic.
+     *
+     * When sending a PUBLISH Packet to a Client the Server must set the RETAIN flag to 1 if a message is sent as a
+     * result of a new subscription being made by a Client. It must set the RETAIN flag to 0 when a PUBLISH Packet
+     * is sent to a Client because it matches an established subscription regardless of how the flag was set in the
+     * message it received.
+     *
+     * A PUBLISH Packet with a RETAIN flag set to 1 and a payload containing zero bytes will be processed as normal
+     * by the Server and sent to Clients with a subscription matching the topic name. Additionally any existing
+     * retained message with the same topic name must be removed and any future subscribers for the topic will not
+     * receive a retained message. “As normal” means that the RETAIN flag is not set in the message received by
+     * existing Clients. A zero byte retained message must not be stored as a retained message on the Server.
+     *
+     */
+    private boolean retain;
+
     public AndesMessageMetadata() {
         propertyMap = new HashMap<String, Object>();
+        this.retain = false;
+    }
+
+    /**
+     * Set retain flag for current message
+     *
+     * @param retain boolean retain flag
+     */
+    public void setRetain(boolean retain) {
+        this.retain = retain;
     }
 
     public AndesMessageMetadata(long messageID, byte[] metadata, boolean parse) {
@@ -125,6 +162,15 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
     public long getMessageID() {
         return messageID;
+    }
+
+    /**
+     * Return retained status of the current message
+     *
+     * @return True if this message should be retained
+     */
+    public boolean isRetain() {
+        return retain;
     }
 
     public void setMessageID(long messageID) {
@@ -222,6 +268,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     public AndesMessageMetadata shallowCopy(long messageId) {
         AndesMessageMetadata clone = new AndesMessageMetadata();
         clone.messageID = messageId;
+        clone.retain = retain;
         clone.metadata = metadata;
         clone.channelId = channelId;
         clone.expirationTime = expirationTime;

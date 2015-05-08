@@ -81,6 +81,11 @@ public class InboundEventContainer {
         return safeZoneLimit;
     }
     /**
+     * For storing retained messages for topic
+     */
+    public AndesMessage retainMessage;
+
+    /**
      * Inbound event type is specified by this enum
      */
     public enum Type {
@@ -130,6 +135,7 @@ public class InboundEventContainer {
      */
     public void clear() {
         messageList.clear();
+        retainMessage = null;
         ackData = null;
         stateEvent = null;
         eventType = Type.IGNORE_EVENT;

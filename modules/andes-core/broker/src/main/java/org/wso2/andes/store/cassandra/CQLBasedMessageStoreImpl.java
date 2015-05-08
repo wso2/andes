@@ -32,6 +32,7 @@ import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
@@ -853,4 +854,43 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             throw new AndesException("Error occurred while " + task, e);
         }
     }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException {
+        // TODO: implement this method
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<String> getAllRetainedTopics() throws AndesException {
+        // TODO: implement this method
+        return  null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public AndesMessageMetadata getRetainedMetaData(String destination) throws AndesException {
+        // TODO: implement this method
+        return  null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<Integer, AndesMessagePart> getRetainedContentParts(long messageID) throws AndesException {
+        // TODO: implement this method
+        return  null;
+    }
+
+
+
 }

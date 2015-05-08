@@ -159,6 +159,9 @@ public class MQTTopicManager {
         //Will add the subscription to the topic
         //The status will be false if the subscriber with the same channel id exists
         try {
+            // Register the the topic subscription for the topic
+            subscriberTopicCorrelate.put(mqttClientChannelID, topicName);
+
             //First the topic should be registered in the cluster
             subscriptionID = registerTopicSubscriptionInCluster(topicName, mqttClientChannelID, isCleanSession,
                     qos, subscriptionChannelID);

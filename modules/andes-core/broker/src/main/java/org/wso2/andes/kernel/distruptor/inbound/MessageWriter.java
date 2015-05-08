@@ -36,6 +36,11 @@ public class MessageWriter implements BatchEventHandler {
     private final List<AndesMessage> messageList;
 
     /**
+     * Temporary storage for retain messages
+     */
+    private final List<AndesMessage> retainList;
+
+    /**
      * Reference to messaging engine. This is used to store messages
      */
     private final MessagingEngine messagingEngine;
@@ -45,6 +50,7 @@ public class MessageWriter implements BatchEventHandler {
         // For topics the size may be more than messageBatchSize since inbound event might contain more than one message
         // But this is valid for queues.
         messageList = new ArrayList<AndesMessage>(messageBatchSize);
+        retainList = new ArrayList<AndesMessage>(messageBatchSize);
 
     }
 
@@ -54,9 +60,16 @@ public class MessageWriter implements BatchEventHandler {
         // For topics there may be multiple messages in one event.
         for (InboundEventContainer event : eventList) {
             messageList.addAll(event.messageList);
+
+            if (null != event.retainMessage) {
+                retainList.add(event.retainMessage);
+            }
         }
 
         messagingEngine.messagesReceived(messageList);
+        if (!retainList.isEmpty()) {
+            messagingEngine.storeRetainedMessages(retainList);
+        }
 
         if(log.isDebugEnabled()) {
             log.debug(messageList.size() + " messages received from disruptor.");
@@ -72,5 +85,6 @@ public class MessageWriter implements BatchEventHandler {
 
         // clear the messages
         messageList.clear();
+        retainList.clear();
     }
 }

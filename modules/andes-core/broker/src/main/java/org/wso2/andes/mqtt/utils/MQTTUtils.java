@@ -113,6 +113,7 @@ public class MQTTUtils {
         messageHeader.setTopic(true);
         messageHeader.setDestination(topic);
         messageHeader.setPersistent(true);
+        messageHeader.setRetain(retain);
         messageHeader.setChannelId(publisherID);
         messageHeader.setMessageContentLength(messageContentLength);
         messageHeader.setStorageQueueName(topic);
@@ -141,6 +142,7 @@ public class MQTTUtils {
     public static ByteBuffer getContentFromMetaInformation(AndesContent content)
             throws AndesException {
         ByteBuffer message = ByteBuffer.allocate(content.getContentLength());
+
         try {
             //offset value will always be set to 0 since mqtt doesn't support chunking the messages, always the message
             //will be in the first chunk but in AMQP there will be chunks
