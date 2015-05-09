@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import javax.management.JMException;
 import javax.management.MBeanException;
 import javax.management.MalformedObjectNameException;
@@ -32,6 +34,9 @@ import org.wso2.andes.amqp.QpidAMQPBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.AndesContextStore;
+import org.wso2.andes.kernel.AndesQueue;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.logging.LogMessage;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.management.common.mbeans.ManagedBroker;
@@ -61,12 +66,17 @@ import org.wso2.andes.server.logging.actors.ManagementActor;
 @MBeanDescription("This MBean exposes the broker level management features")
 public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBroker
 {
+    private static Log log = LogFactory.getLog(AMQBrokerManagerMBean.class);
+
     private final QueueRegistry _queueRegistry;
     private final ExchangeRegistry _exchangeRegistry;
     private final ExchangeFactory _exchangeFactory;
     private final DurableConfigurationStore _durableConfig;
 
     private final VirtualHostImpl.VirtualHostMBean _virtualHostMBean;
+
+    //ContextStore object to do the database calls
+    private static AndesContextStore contextStore;
 
     @MBeanConstructor("Creates the Broker Manager MBean")
     public AMQBrokerManagerMBean(VirtualHostImpl.VirtualHostMBean virtualHostMBean) throws JMException
@@ -242,7 +252,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
      * @throws JMException
      * @throws MBeanException
      */
-    public void createNewQueue(String queueName, String owner, boolean durable) throws JMException, MBeanException
+    public void createNewQueue(String queueName, String owner, boolean durable, boolean exclusiveConsumer) throws JMException, MBeanException
     {
         AMQQueue queue = _queueRegistry.getQueue(new AMQShortString(queueName));
         try
@@ -266,7 +276,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                 _durableConfig.createQueue(queue);
 
                 //tell Andes kernel to create queue
-                QpidAMQPBridge.getInstance().createQueue(queue);
+                QpidAMQPBridge.getInstance().createQueue(queue,exclusiveConsumer );
             }
 
         }
@@ -431,5 +441,38 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
     public boolean isStatisticsEnabled()
     {
         return getVirtualHost().isStatisticsEnabled();
+    }
+
+    /**
+     * Updating exclusive Consumer Value
+     * @param queueName name of the queue
+     * @param isExclusiveConsumer   exclusive consumer value of the queue
+     * @throws IOException
+     * @throws JMException
+     * @throws AndesException
+     */
+    @Override
+    public void updateExclusiveConsumerValue(String queueName, boolean isExclusiveConsumer) throws IOException,
+            JMException, AndesException {
+
+        List<AndesQueue> queueList = null;
+        try {
+            queueList = AndesContext.getInstance().getAndesContextStore().getAllQueuesStored();
+
+            if (queueList != null) {
+                for (AndesQueue andesQueue : queueList) {
+
+                    if (andesQueue.queueName.equals(queueName)) {
+                        andesQueue.isExclusiveConsumer = isExclusiveConsumer;
+
+                        //updating the database
+                        AndesContext.getInstance().getAndesContextStore().updateExclusiveConsumerForQueue(queueName, isExclusiveConsumer);
+                    }
+                }
+            }
+        } catch (AndesException e) {
+            log.error("Error in updating exclusive consumer value", e);
+            throw new AndesException("Error in updating exclusive consumer value.");
+        }
     }
 }

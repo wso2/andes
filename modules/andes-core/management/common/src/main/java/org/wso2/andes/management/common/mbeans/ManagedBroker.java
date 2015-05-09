@@ -114,7 +114,9 @@ public interface ManagedBroker
     @MBeanOperation(name="createNewQueue", description="Create a new Queue on the Broker server", impact= MBeanOperationInfo.ACTION)
     void createNewQueue(@MBeanOperationParameter(name="queue name", description="Name of the new queue")String queueName,
                         @MBeanOperationParameter(name="owner", description="Owner name")String owner,
-                        @MBeanOperationParameter(name="durable", description="true if the queue should be durable")boolean durable)
+                        @MBeanOperationParameter(name="durable", description="true if the queue should be durable")boolean durable,
+                        @MBeanOperationParameter(name="isExclusiveConsumerEnabled",
+                                description="true if the queue is exclusive consumer enabled")boolean isExclusiveConsumerEnabled)
             throws IOException, JMException, MBeanException;
 
     /**
@@ -245,4 +247,17 @@ public interface ManagedBroker
      */
     @MBeanAttribute(name="StatisticsEnabled", description=TYPE + " Statistics Enabled")
     boolean isStatisticsEnabled();
+
+    /**
+     * Updating Exclusive Consumer Value
+     * @param queueName name of the queue
+     * @param isExclusiveConsumer   exclusive consumer value of the queue
+     * @throws IOException
+     * @throws JMException
+     * @throws MBeanException
+     */
+    @MBeanOperation(name="updateExclusiveConsumerValue", description="Update ExclusiveConsumerValue of the queue", impact= MBeanOperationInfo.ACTION)
+    void updateExclusiveConsumerValue(@MBeanOperationParameter(name="queue name", description="Name of the queue")String queueName,
+                              @MBeanOperationParameter(name="isExclusiveConsumer", description="Exclusive Consumer Value")boolean isExclusiveConsumer)
+            throws IOException, JMException, MBeanException;
 }
