@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -23,6 +23,7 @@ import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.factory.HFactory;
 import me.prettyprint.hector.api.mutation.Mutator;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
@@ -36,6 +37,7 @@ import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.matrics.DataAccessMatrixManager;
 import org.wso2.andes.matrics.MatrixConstants;
 import org.wso2.andes.server.stats.PerformanceCounter;
+import org.wso2.andes.store.StoreHealthListener;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -77,7 +79,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public DurableStoreConnection initializeMessageStore(AndesContextStore contextStore,
-            ConfigurationProperties connectionProperties) throws AndesException {
+                                                         ConfigurationProperties connectionProperties) throws AndesException {
         // create connection object
         //todo remove this if after testing
         if (hectorConnection == null) {
@@ -758,4 +760,12 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                 CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY, keyspace,
                 cluster, CassandraConstants.UTF8_TYPE, gcGraceSeconds);
     }
+    
+   /**
+    * {@inheritDoc}
+    */
+    public boolean isOperational(String testString, long testTime){
+        return true;
+    }
+       
 }

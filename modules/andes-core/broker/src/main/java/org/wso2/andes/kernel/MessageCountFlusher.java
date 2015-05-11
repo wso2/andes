@@ -18,20 +18,30 @@
 
 package org.wso2.andes.kernel;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.store.FailureObservingStoreManager;
+import org.wso2.andes.store.HealthAwareStore;
+import org.wso2.andes.store.StoreHealthListener;
 
 /**
  * Updates message count in batches. Can be used as a scheduled task as well to update message counts
  */
-public class MessageCountFlusher implements Runnable {
+public class MessageCountFlusher implements Runnable, StoreHealthListener {
 
     private static Log log = LogFactory.getLog(MessageCountFlusher.class);
 
+    
+    /**
+     * A boolean flag to keep track of weather message stores are operational (or not)
+     */
+    private AtomicBoolean messageStoresOperational;
+    
     /**
      * Map to keep message count difference not flushed to disk of each queue
      */
@@ -55,7 +65,9 @@ public class MessageCountFlusher implements Runnable {
     public MessageCountFlusher(MessageStore messageStore, int messageCountFlushNumberGap) {
         this.messageStore = messageStore;
         this.messageCountFlushNumberGap = messageCountFlushNumberGap;
-        messageCountDifferenceMap = new ConcurrentHashMap<String, AtomicInteger>();
+        this.messageCountDifferenceMap = new ConcurrentHashMap<String, AtomicInteger>();
+        this.messageStoresOperational = new AtomicBoolean(true); // we could do messageStore.isOperational As well.
+        FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
     /**
@@ -127,6 +139,13 @@ public class MessageCountFlusher implements Runnable {
      * @param difference count is updated by this value in store
      */
     private void flushToStore(String queueName, AtomicInteger difference) {
+        
+        if (messageStoresOperational.compareAndSet(false, false)) {
+            // Check if the message store is not available we will not going to
+            // interact with it.
+            return;
+        }        
+        
         int count = 0;
         try {
             // Get the current count and make decisions from that value.
@@ -152,7 +171,23 @@ public class MessageCountFlusher implements Runnable {
             // On error add back the count. Since the operation didn't run correctly. Next call to this method might
             // get the chance to update the value properly.
             difference.addAndGet(count);
+            messageStoresOperational.set(false);
+            
             log.error("Error while updating message counts for queue " + queueName, e);
         }
+    }
+
+    @Override
+    public void storeInoperational(HealthAwareStore store, Exception ex) {
+        log.info("Message store became inoperational. Message counts will not be updated until message stores become available");
+        this.messageStoresOperational.set(false);
+        
+    }
+
+    @Override
+    public void storeOperational(HealthAwareStore store) {
+        log.info("Message store became operational. message counts will be updated again.");
+        this.messageStoresOperational.set(true);
+        
     }
 }
