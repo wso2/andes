@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -37,12 +37,15 @@ import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.thrift.MBThriftClient;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -153,7 +156,10 @@ public class MessagingEngine {
         // And each scheduled tasks run with fixed delay. Hence at a given time
         // maximum needed threads would be 2.
         int threadPoolCount = 2;
-        asyncStoreTasksScheduler = Executors.newScheduledThreadPool(threadPoolCount);
+        ThreadFactory namedThreadFactory =
+                new ThreadFactoryBuilder().setNameFormat("MessagingEngine-AsyncStoreTasksSchedulerPool")
+                                          .build();
+        asyncStoreTasksScheduler = Executors.newScheduledThreadPool(threadPoolCount , namedThreadFactory);
 
         //this task will periodically remove message contents from store
         messageContentRemoverTask = new MessageContentRemoverTask(messageStore);
@@ -415,60 +421,61 @@ public class MessagingEngine {
     }
 
     /**
+     * A utility class to hold a list of {@link AndesMessageMetadata} and mesage counts.
+     * With use of this class implementation of {@link #deleteMessages} was made simple.
+     */
+    private class AndesRemovableMetadataDTO{
+        
+        public AndesRemovableMetadataDTO(){
+            messagesToRemove = new ArrayList<AndesRemovableMetadata>();
+        }
+        List<AndesRemovableMetadata> messagesToRemove;
+        int msgCount;
+    }
+    
+    
+    /**
      * Delete messages from store. Optionally move to dead letter channel
      *
      * @param messagesToRemove        List of messages to remove
      * @param moveToDeadLetterChannel if to move to DLC
      * @throws AndesException
      */
-    public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, boolean moveToDeadLetterChannel) throws AndesException {
+    public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove, 
+                               boolean moveToDeadLetterChannel) throws AndesException {
         List<Long> idsOfMessagesToRemove = new ArrayList<Long>(messagesToRemove.size());
-        Map<String, List<AndesRemovableMetadata>> storageQueueSeparatedRemoveMessages
-                = new HashMap<String, List<AndesRemovableMetadata>>(messagesToRemove.size());
-        Map<String, Integer> destinationSeparatedMsgCounts = new HashMap<String, Integer>(messagesToRemove.size());
-
+        Map<String, AndesRemovableMetadataDTO> storageSeperatedAndesRemovableMetadataDTOs = 
+                                new HashMap<String, MessagingEngine.AndesRemovableMetadataDTO>(messagesToRemove.size());
+        
         for (AndesRemovableMetadata message : messagesToRemove) {
             idsOfMessagesToRemove.add(message.getMessageID());
-
-            //update <storageQueue, metadata> map
-            List<AndesRemovableMetadata> messages = storageQueueSeparatedRemoveMessages
-                    .get(message.getStorageDestination());
-            if (messages == null) {
-                messages = new ArrayList<AndesRemovableMetadata>();
+            //update <storageQueue, dtos> map
+            AndesRemovableMetadataDTO dto = storageSeperatedAndesRemovableMetadataDTOs.get(message.getStorageDestination());
+            if (dto == null ){
+                dto = new AndesRemovableMetadataDTO();
+                storageSeperatedAndesRemovableMetadataDTOs.put(message.getStorageDestination(), dto);
             }
-            messages.add(message);
-            storageQueueSeparatedRemoveMessages.put(message.getStorageDestination(), messages);
-
-            //update <destination, Msgcount> map
-            Integer count = destinationSeparatedMsgCounts.get(message.getMessageDestination());
-            if(count == null) {
-                count = 0;
-            }
-            count = count + 1;
-            destinationSeparatedMsgCounts.put(message.getMessageDestination(), count);
-
-            //if to move, move to DLC. This is costy. Involves per message read and writes
+            
+            dto.messagesToRemove.add(message);
+            dto.msgCount = dto.msgCount + 1;
+            //if to move, move to DLC. This is costly. Involves per message read and writes
             if (moveToDeadLetterChannel) {
-                AndesMessageMetadata metadata = messageStore.getMetaData(message.getMessageID());
-                String dlcQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(message
-                                .getMessageDestination());
-                messageStore.addMetaDataToQueue(dlcQueueName, metadata);
-
-                // Increment queue count of DLC
-                // Cannot increment whole count at once since there are separate DLC queues for each tenant
-                incrementQueueCount(dlcQueueName, 1);
+                    AndesMessageMetadata metadata = messageStore.getMetaData(message.getMessageID());
+                    String dlcQueueName =
+                                          DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(message.getMessageDestination());
+                    messageStore.addMetaDataToQueue(dlcQueueName, metadata);
+                    // Increment queue count of DLC
+                    // Cannot increment whole count at once since there are separate DLC queues for each tenant
+                    incrementQueueCount(dlcQueueName, 1);
             }
         }
-
-        //remove metadata
-        for (Map.Entry<String, List<AndesRemovableMetadata>> entry : storageQueueSeparatedRemoveMessages.entrySet()) {
-            messageStore.deleteMessageMetadataFromQueue(entry.getKey(), entry.getValue());
+        
+        for (Map.Entry<String, AndesRemovableMetadataDTO> entry : storageSeperatedAndesRemovableMetadataDTOs.entrySet()) {
+            
+            messageStore.deleteMessageMetadataFromQueue(entry.getKey(), entry.getValue().messagesToRemove);
+            decrementQueueCount(entry.getKey(), entry.getValue().msgCount);
         }
-        //decrement message counts
-        for(Map.Entry<String, Integer> entry: destinationSeparatedMsgCounts.entrySet()) {
-            decrementQueueCount(entry.getKey(), entry.getValue());
-        }
-
+        
         if (!moveToDeadLetterChannel) {
             //remove content
             //TODO: - hasitha if a topic message be careful as it is shared

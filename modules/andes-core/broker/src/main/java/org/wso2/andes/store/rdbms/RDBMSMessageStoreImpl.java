@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -18,6 +18,25 @@
 
 package org.wso2.andes.store.rdbms;
 
+import static org.wso2.andes.store.rdbms.RDBMSConstants.CONTENT_TABLE;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_CONTENT;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_ID;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
+
+import java.sql.BatchUpdateException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -29,20 +48,8 @@ import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.matrics.DataAccessMatrixManager;
 import org.wso2.andes.matrics.MatrixConstants;
+import org.wso2.andes.store.StoreHealthListener;
 import org.wso2.carbon.metrics.manager.Timer.Context;
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static org.wso2.andes.store.rdbms.RDBMSConstants.*;
 
 /**
  * ANSI SQL based message store implementation. Message persistence related methods are implemented
@@ -62,11 +69,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     private final Map<String, Integer> queueMap;
 
-    /**
-     * Connection pooled data source
-     */
-    private DataSource datasource;
 
+    private RDBMSConnection rdbmsConnection;
 
     /**
      * Partially created prepared statement to retrieve content of multiple messages using IN operator
@@ -90,12 +94,13 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                                                          ConfigurationProperties connectionProperties)
             throws AndesException {
 
-        RDBMSConnection RDBMSConnection = new RDBMSConnection();
+        this.rdbmsConnection = new RDBMSConnection();
         // read data source name from config and use
-        RDBMSConnection.initialize(connectionProperties);
-        datasource = RDBMSConnection.getDataSource();
+        this.rdbmsConnection.initialize(connectionProperties);
+         
+        
         log.info("Message Store initialised");
-        return RDBMSConnection;
+        return rdbmsConnection;
     }
 
     /**
@@ -121,8 +126,21 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             }
             preparedStatement.executeBatch();
             connection.commit();
-        } catch (SQLException e) {
+        } catch (BatchUpdateException bue) {
+           int[] updateCountsOfFailedBatch = bue.getUpdateCounts();
+           
+           for ( int i = 0;  i < updateCountsOfFailedBatch.length ; i ++){
+               if ( Statement.EXECUTE_FAILED == updateCountsOfFailedBatch[i]){
+                   AndesMessagePart msgPart = partList.get(i);
+                    log.error(String.format("couldn't save the content chunk : message id: %d, offset : %d, data length: %d",
+                                            msgPart.getMessageID(), msgPart.getOffSet(), msgPart.getDataLength()));
+               }
+           }
+           
+            
+        }catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_STORING_MESSAGE_PARTS);
+            
             throw new AndesException("Error occurred while adding message content to DB ", e);
         } finally {
 
@@ -191,10 +209,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             }
         } catch (SQLException e) {
             throw new AndesException("Error occurred while retrieving message content from DB" +
-                    " [msg_id=" + messageId + "]", e);
+                    " [msg_id=" + messageId + "]", e);            
         } finally {
             context.stop();
-
             close(results, RDBMSConstants.TASK_RETRIEVING_MESSAGE_PARTS);
             close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_MESSAGE_PARTS);
             close(connection, RDBMSConstants.TASK_RETRIEVING_MESSAGE_PARTS);
@@ -351,7 +368,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
             throw new AndesException("Error occurred while inserting message metadata to queue ", e);
         } finally {
-
+            
             context.stop();
 
             close(preparedStatement, RDBMSConstants.TASK_ADDING_METADATA);
@@ -388,9 +405,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             throw new AndesException(
                     "Error occurred while inserting message metadata to queue " + queueName, e);
         } finally {
-
+            
             context.stop();
-
+            
             close(preparedStatement, RDBMSConstants.TASK_ADDING_METADATA_TO_QUEUE + queueName);
             close(connection, RDBMSConstants.TASK_ADDING_METADATA_TO_QUEUE + queueName);
         }
@@ -1013,10 +1030,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @throws SQLException
      */
     protected Connection getConnection() throws SQLException {
-        return datasource.getConnection();
+        return rdbmsConnection.getDataSource().getConnection();
     }
 
-    /**
+     /**
      * Closes the provided connection. on failure log the error;
      *
      * @param connection Connection
@@ -1025,6 +1042,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     protected void close(Connection connection, String task) {
         if (connection != null) {
             try {
+                connection.setAutoCommit(true);
                 connection.close();
             } catch (SQLException e) {
                 log.error("Failed to close connection after " + task, e);
@@ -1318,7 +1336,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             }
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
-            throw new AndesException("Error occurred while deleting message metadata from queue :" + storageQueueName, e);
+            throw new AndesException("Error occurred while deleting message metadata from queue :" + storageQueueName,e);
         } finally {
             String task = RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName;
             close(preparedStatement, task);
@@ -1328,4 +1346,145 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         return messageCountInDLCForQueue;
     }
 
+    /**
+     * {@inheritDoc} Check if data can be inserted, read and finally deleted
+     * from the database.
+     */
+    public boolean isOperational(String testString, long testTime) {
+
+        // Here oder is important
+        return testInsert(testString, testTime) && testRead(testString, testTime) && testDelete(testString, testTime);
+    }
+    
+    /**
+     * Inserts a test record
+     * 
+     * @param testString
+     *            a string value
+     * @param testTime
+     *            a time value
+     * @return true if the test was successful.
+     */
+    private boolean testInsert(String testString, long testTime) {
+
+        boolean canInsert = false;
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+            connection = getConnection();
+            connection.setAutoCommit(false);
+
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_TEST_MSG_STORE_INSERT);
+
+            preparedStatement.setString(1, testString);
+            preparedStatement.setLong(2, testTime);
+
+            preparedStatement.executeUpdate();
+            connection.commit();
+            canInsert = true;
+        } catch (SQLException e) {
+            rollback(connection,
+                     RDBMSConstants.TASK_TEST_MESSAGE_STORE_OPERATIONAL_INSERT +
+                             String.format("test data : [%s, %d]", testString, testTime));
+
+        } finally {
+            String msg =
+                         RDBMSConstants.TASK_TEST_MESSAGE_STORE_OPERATIONAL_INSERT +
+                                 String.format("test data : [%s, %d]", testString, testTime);
+            close(preparedStatement, msg);
+            close(connection, msg);
+        }
+
+        return canInsert;
+    }
+    
+    /**
+     * Reads a test record 
+     * @param testString a string value
+     * @param testTime a time value 
+     * @return true if the test was successful. 
+     */
+    private boolean testRead(String testString, long testTime) {
+
+        boolean canRead = false;
+        Connection connection = null;
+        PreparedStatement selectPreparedStatement = null;
+
+        ResultSet results = null;
+
+        try {
+            connection = getConnection();
+
+            selectPreparedStatement = connection.prepareStatement(RDBMSConstants.PS_TEST_MSG_STORE_SELECT);
+            selectPreparedStatement.setString(1, testString);
+            selectPreparedStatement.setLong(2, testTime);
+
+            results = selectPreparedStatement.executeQuery();
+
+            if (results.next()) {
+                canRead = true;
+            }
+
+        } catch (SQLException e) {
+            log.error(RDBMSConstants.TASK_TEST_MESSAGE_STORE_OPERATIONAL_READ +
+                              String.format("test data : [%s, %d]", testString, testTime), e);
+
+        } finally {
+            String msg =
+                         RDBMSConstants.TASK_TEST_MESSAGE_STORE_OPERATIONAL_READ +
+                                 String.format("test data : [%s, %d]", testString, testTime);
+
+            close(results, msg);
+            close(selectPreparedStatement, msg);
+            close(connection, msg);
+        }
+
+        return canRead;
+    }
+  
+    /**
+     * Delete a test record
+     * 
+     * @param testString
+     *            a string value
+     * @param testTime
+     *            a time value
+     * @return true if the test was successful.
+     */
+    private boolean testDelete(String testString, long testTime) {
+
+        boolean canDelete = false;
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        ResultSet results = null;
+
+        try {
+            connection = getConnection();
+            connection.setAutoCommit(false);
+
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_TEST_MSG_STORE_DELETE);
+            preparedStatement.setString(1, testString);
+            preparedStatement.setLong(2, testTime);
+            preparedStatement.executeUpdate();
+            connection.commit();
+            canDelete = true;
+        } catch (SQLException e) {
+            rollback(connection,
+                     RDBMSConstants.TASK_TEST_MESSAGE_STORE_OPERATIONAL_DELETE +
+                             String.format("test data : [%s, %d]", testString, testTime));
+        } finally {
+
+            String msg =
+                         RDBMSConstants.TASK_TEST_MESSAGE_STORE_OPERATIONAL_DELETE +
+                                 String.format("test data : [%s, %d]", testString, testTime);
+            close(results, msg);
+            close(preparedStatement, msg);
+            close(connection, msg);
+        }
+
+        return canDelete;
+    }
+    
 }
