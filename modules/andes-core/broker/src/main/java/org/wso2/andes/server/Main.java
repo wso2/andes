@@ -228,7 +228,7 @@ public class Main {
     protected void shutdown(final int status) {
         ApplicationRegistry.remove();
         System.exit(status);
-        //todo need to add the abuility to gracefully shutdown the MQTT server
+        //todo need to add the ability to gracefully shutdown the MQTT server
     }
 
     private static void parsePortArray(final BrokerOptions options, final Object[] ports,

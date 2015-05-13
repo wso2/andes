@@ -140,7 +140,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * This behavior is subject to change in mqtt specification v 3.1.1
      */
     TRANSPORTS_MQTT_USER_ATHENTICATION("transports/mqtt/security/authentication", "OPTIONAL", MQTTUserAuthenticationScheme.class),
-                                                                                      
+
+    /**
+     * The mode in which the exchanges should happen
+     *  1. DistributedStoreConnector - Which supports all three levels of QoS, uses andes-core for distribution
+     *  2. InMemoryConnector         - Performance oriented mode, effective only for standalone deployments
+     */
+    TRANSPORTS_MQTT_EXECUTION_MODE("transports/mqtt/connector","org.wso2.andes.mqtt.connectors.DistributedStoreConnector"
+                                   ,String.class),
 
     /**
      * The class that is used to access an external RDBMS database to operate on messages.

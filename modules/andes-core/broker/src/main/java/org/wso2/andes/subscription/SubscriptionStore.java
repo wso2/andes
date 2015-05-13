@@ -31,7 +31,7 @@ import org.wso2.andes.kernel.AndesSubscription.SubscriptionType;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
-import org.wso2.andes.mqtt.MQTTUtils;
+import org.wso2.andes.mqtt.utils.MQTTUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;

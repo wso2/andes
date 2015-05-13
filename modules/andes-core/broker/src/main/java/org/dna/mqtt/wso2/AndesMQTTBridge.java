@@ -23,7 +23,7 @@ import org.dna.mqtt.moquette.messaging.spi.impl.ProtocolProcessor;
 import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTException;
-import org.wso2.andes.mqtt.MQTTUtils;
+import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.mqtt.MQTTopicManager;
 
 import java.nio.ByteBuffer;
@@ -177,6 +177,7 @@ public final class AndesMQTTBridge {
      * @param qos       the level of QOS the message was subscribed to
      * @param message   the content of the message
      * @param retain    should this message be persisted
+     * @param channelID the unique id of the subscription created by the protocol
      * @param messageID the identity of the message
      */
     public void distributeMessageToSubscriptions(String topic, int qos, ByteBuffer message, boolean retain,

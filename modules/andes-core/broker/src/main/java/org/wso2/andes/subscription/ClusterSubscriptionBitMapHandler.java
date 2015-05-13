@@ -25,7 +25,7 @@ import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.AndesSubscription.SubscriptionType;
-import org.wso2.andes.mqtt.MQTTUtils;
+import org.wso2.andes.mqtt.utils.MQTTUtils;
 
 import java.util.ArrayList;
 import java.util.BitSet;

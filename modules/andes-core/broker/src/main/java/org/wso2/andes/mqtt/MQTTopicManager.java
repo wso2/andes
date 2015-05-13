@@ -20,9 +20,13 @@ package org.wso2.andes.mqtt;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
+import org.wso2.andes.mqtt.connectors.MQTTConnector;
+import org.wso2.andes.mqtt.utils.MQTTUtils;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -51,13 +55,29 @@ public class MQTTopicManager {
     //The key of the map will be the client id and the value will be the topic
     private Map<String, String> subscriberTopicCorrelate = new HashMap<String, String>();
     //The channel reference which will be used to interact with the Andes Kernal
-    private MQTTConnector distributedStore = new DistributedStoreConnector();
+    // private MQTTConnector connector = new DistributedStoreConnector();
+    // private MQTTConnector connector = new InMemoryConnector();
+    private MQTTConnector connector;
 
 
     /**
      * The class will be declared as singleton since the state will be centralized
      */
     private MQTTopicManager() {
+      String connectorClassName = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_EXECUTION_MODE);
+
+        Class<? extends MQTTConnector> connectorClass = null;
+        try {
+            connectorClass = Class.forName(connectorClassName).asSubclass(MQTTConnector.class);
+            connector = connectorClass.newInstance();
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("unable to find the class authenticator: " +  connectorClassName, e);
+        }catch (InstantiationException e) {
+            throw new RuntimeException("unable to create an instance of :" + connectorClassName,e);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException("unable to create an instance of :", e);
+        }
+
     }
 
     /**
@@ -110,7 +130,7 @@ public class MQTTopicManager {
 
         //Will add the topic message to the cluster for distribution
         try {
-            distributedStore.addMessage(message, topic, qosLevel, mqttLocalMessageID,
+            connector.addMessage(message, topic, qosLevel, mqttLocalMessageID,
                     retain, publisherID, pubAckHandler);
         } catch (MQTTException e) {
             //Will need to rollback the state
@@ -166,7 +186,7 @@ public class MQTTopicManager {
             log.error(message, ignore);
         } catch (MQTTException ex) {
             //In case if an error occurs we need to rollback the subscription created cluster wide
-            distributedStore.removeSubscriber(this, topicName, subscriptionID, subscriptionChannelID,
+            connector.removeSubscriber(this, topicName, subscriptionID, subscriptionChannelID,
                     isCleanSession, mqttClientChannelID);
             final String message = "Error while adding the subscriber to the cluster";
             log.error(message, ex);
@@ -201,11 +221,11 @@ public class MQTTopicManager {
                 try {
                     //Will indicate the disconnection of the topic
                     if (action == SubscriptionEvent.DISCONNECT) {
-                        distributedStore.disconnectSubscriber(this, topic, subscriberChannelID, subscriberChannel,
+                        connector.disconnectSubscriber(this, topic, subscriberChannelID, subscriberChannel,
                                 isCleanSession, mqttClientChannelID);
                     } else {
                         //If un-subscribed we need to remove the subscription off
-                        distributedStore.removeSubscriber(this, topic, subscriberChannelID, subscriberChannel,
+                        connector.removeSubscriber(this, topic, subscriberChannelID, subscriberChannel,
                                 isCleanSession, mqttClientChannelID);
                     }
                     if (log.isDebugEnabled()) {
@@ -231,7 +251,7 @@ public class MQTTopicManager {
 
         } else {
             //If the connection is publisher based
-            UUID publisherID = distributedStore.removePublisher(mqttClientChannelID);
+            UUID publisherID = connector.removePublisher(mqttClientChannelID);
             if (null == publisherID) {
                 log.warn("A subscriber or a publisher with Connection with id " + mqttClientChannelID + " cannot be " +
                         "found to disconnect.");
@@ -339,7 +359,7 @@ public class MQTTopicManager {
         }
 
         //Will register the topic cluster wide
-        distributedStore.addSubscriber(this, topicName, topicSpecificClientID, mqttClientID, isCleanSession,
+        connector.addSubscriber(this, topicName, topicSpecificClientID, mqttClientID, isCleanSession,
                 qos, subscriptionChannelID);
 
         return topicSpecificClientID;
@@ -355,7 +375,7 @@ public class MQTTopicManager {
      */
     private void messageAck(String topic, long messageID, String storageName, UUID subChannelID) throws MQTTException {
         try {
-            distributedStore.messageAck(messageID, topic, storageName, subChannelID);
+            connector.messageAck(messageID, topic, storageName, subChannelID);
         } catch (AndesException ex) {
             final String message = "Error occurred while cleaning up the acked message";
             log.error(message, ex);
