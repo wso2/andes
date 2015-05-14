@@ -141,7 +141,7 @@ public class DistributedStoreConnector implements MQTTConnector {
                 Andes.getInstance().createQueue(createQueueEvent);
             }
 
-            //Finally will notify on the client connection
+            //Will notify the creation of the client connection
             Andes.getInstance().clientConnectionCreated(subscriptionChannelID);
             //Once the connection is created we register subscription
             Andes.getInstance().openLocalSubscription(mqttTopicSubscriber);
