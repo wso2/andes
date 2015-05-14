@@ -141,13 +141,15 @@ public class DistributedStoreConnector implements MQTTConnector {
                 Andes.getInstance().createQueue(createQueueEvent);
             }
 
+            //Finally will notify on the client connection
+            Andes.getInstance().clientConnectionCreated(subscriptionChannelID);
+            //Once the connection is created we register subscription
             Andes.getInstance().openLocalSubscription(mqttTopicSubscriber);
             //First will register the subscription as a queue
             if (log.isDebugEnabled()) {
                 log.debug("Subscription registered to the " + topic + " with channel id " + clientID);
             }
-            //Finally will notify on the client connection
-            Andes.getInstance().clientConnectionCreated(subscriptionChannelID);
+
         } catch (SubscriptionAlreadyExistsException e) {
             final String message = "Error occurred while creating the topic subscription in the kernel";
             log.error(message, e);
@@ -186,6 +188,7 @@ public class DistributedStoreConnector implements MQTTConnector {
                 Andes.getInstance().deleteQueue(queueChange);
             }
             //Will indicate the closure of the subscription connection
+            //TODO we need to check whether to close the connection before closing the subscription
             Andes.getInstance().clientConnectionClosed(subscriberChannel);
             if (log.isDebugEnabled()) {
                 log.debug("Disconnected subscriber from topic " + subscribedTopic);

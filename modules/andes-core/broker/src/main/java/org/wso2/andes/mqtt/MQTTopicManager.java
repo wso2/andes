@@ -20,11 +20,10 @@ package org.wso2.andes.mqtt;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
+import org.wso2.andes.mqtt.connectors.DistributedStoreConnector;
 import org.wso2.andes.mqtt.connectors.MQTTConnector;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 
@@ -57,27 +56,13 @@ public class MQTTopicManager {
     //The channel reference which will be used to interact with the Andes Kernal
     // private MQTTConnector connector = new DistributedStoreConnector();
     // private MQTTConnector connector = new InMemoryConnector();
-    private MQTTConnector connector;
+    private MQTTConnector connector = new DistributedStoreConnector();
 
 
     /**
      * The class will be declared as singleton since the state will be centralized
      */
     private MQTTopicManager() {
-      String connectorClassName = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_EXECUTION_MODE);
-
-        Class<? extends MQTTConnector> connectorClass = null;
-        try {
-            connectorClass = Class.forName(connectorClassName).asSubclass(MQTTConnector.class);
-            connector = connectorClass.newInstance();
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException("unable to find the class authenticator: " +  connectorClassName, e);
-        }catch (InstantiationException e) {
-            throw new RuntimeException("unable to create an instance of :" + connectorClassName,e);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException("unable to create an instance of :", e);
-        }
-
     }
 
     /**
