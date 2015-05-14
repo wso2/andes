@@ -140,7 +140,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * This behavior is subject to change in mqtt specification v 3.1.1
      */
     TRANSPORTS_MQTT_USER_ATHENTICATION("transports/mqtt/security/authentication", "OPTIONAL", MQTTUserAuthenticationScheme.class),
-                                                                                      
 
     /**
      * The class that is used to access an external RDBMS database to operate on messages.

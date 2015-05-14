@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.wso2.andes.mqtt;
+package org.wso2.andes.mqtt.utils;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -62,7 +62,7 @@ public class MQTTUtils {
      */
     public static AndesMessagePart convertToAndesMessage(byte[] message, long messagID) {
         AndesMessagePart messageBody = new AndesMessagePart();
-        messageBody.setOffSet(0);
+        messageBody.setOffSet(0); //Here we set the offset to 0, but it will be a problem when large messages are sent
         messageBody.setData(message);
         messageBody.setMessageID(messagID);
         messageBody.setDataLength(message.length);

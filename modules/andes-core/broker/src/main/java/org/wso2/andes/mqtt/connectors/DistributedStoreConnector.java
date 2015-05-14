@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.wso2.andes.mqtt;
+package org.wso2.andes.mqtt.connectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -23,6 +23,8 @@ import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
+import org.wso2.andes.mqtt.*;
+import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.nio.ByteBuffer;
@@ -125,23 +127,29 @@ public class DistributedStoreConnector implements MQTTConnector {
 
         MQTTLocalSubscription mqttTopicSubscriber;
 
-        if (isCleanSesion) {
-            mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
-                    true, qos, subscriptionChannelID, topic, true, true, false);
-        } else {
-            //For clean session topics we need to provide the queue name for the queue identifier
-            mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
-                    false, qos, subscriptionChannelID, clientID, true, true, false);
-        }
         //Should indicate the record in the cluster
         try {
+            if (isCleanSesion) {
+                mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
+                        true, qos, subscriptionChannelID, topic, true, true, false);
+            } else {
+                //For clean session topics we need to provide the queue name for the queue identifier
+                mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
+                        false, qos, subscriptionChannelID, clientID, true, true, false);
+                //We need to create a queue in-order to preserve messages relevant for the durable subscription
+                InboundQueueEvent createQueueEvent = new InboundQueueEvent(clientID, "admin", false, true);
+                Andes.getInstance().createQueue(createQueueEvent);
+            }
+
+            //Will notify the creation of the client connection
+            Andes.getInstance().clientConnectionCreated(subscriptionChannelID);
+            //Once the connection is created we register subscription
             Andes.getInstance().openLocalSubscription(mqttTopicSubscriber);
             //First will register the subscription as a queue
             if (log.isDebugEnabled()) {
                 log.debug("Subscription registered to the " + topic + " with channel id " + clientID);
             }
-            //Finally will notify on the client connection
-            Andes.getInstance().clientConnectionCreated(subscriptionChannelID);
+
         } catch (SubscriptionAlreadyExistsException e) {
             final String message = "Error occurred while creating the topic subscription in the kernel";
             log.error(message, e);
@@ -163,8 +171,8 @@ public class DistributedStoreConnector implements MQTTConnector {
         try {
 
 
-            String queue_identifier = MQTTUtils.generateTopicSpecficClientID(mqttClientID);
-            String queue_user = "admin";
+            String queueIdentifier = MQTTUtils.generateTopicSpecficClientID(mqttClientID);
+            String queueUser = "admin";
 
             if (isCleanSession) {
                 //Here we hard code the QoS level since for subscription removal that doesn't matter
@@ -176,10 +184,11 @@ public class DistributedStoreConnector implements MQTTConnector {
                 //This will be similar to a durable subscription of AMQP
                 //There could be two types of events one is the disconnection due to the lost of the connection
                 //The other is un-subscription, if is the case of un-subscription the subscription should be removed
-                InboundQueueEvent queueChange = new InboundQueueEvent(queue_identifier, queue_user, false, true);
+                InboundQueueEvent queueChange = new InboundQueueEvent(queueIdentifier, queueUser, false, true);
                 Andes.getInstance().deleteQueue(queueChange);
             }
             //Will indicate the closure of the subscription connection
+            //TODO we need to check whether to close the connection before closing the subscription
             Andes.getInstance().clientConnectionClosed(subscriberChannel);
             if (log.isDebugEnabled()) {
                 log.debug("Disconnected subscriber from topic " + subscribedTopic);
@@ -200,7 +209,8 @@ public class DistributedStoreConnector implements MQTTConnector {
             throws MQTTException {
         try {
 
-            String queue_identifier = MQTTUtils.generateTopicSpecficClientID(mqttClientID);
+            String queueIdentifier = MQTTUtils.generateTopicSpecficClientID(mqttClientID);
+            String queueUser = "admin";
             if (isCleanSession) {
                 //Here we hard code the QoS level since for subscription removal that doesn't matter
                 MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscribedTopic,
@@ -212,7 +222,13 @@ public class DistributedStoreConnector implements MQTTConnector {
                 //There could be two types of events one is the disconnection due to the lost of the connection
                 MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscribedTopic,
                         subscriptionChannelID, subscriptionChannelID,
-                        false, 0, subscriberChannel, queue_identifier, true, false, false);
+                        false, 0, subscriberChannel, queueIdentifier, true, false, false);
+                //This will be similar to a durable subscription of AMQP
+                //There could be two types of events one is the disconnection due to the lost of the connection
+                //The other is un-subscription, if is the case of un-subscription the subscription should be removed
+                //Will need to delete the relevant queue mapping out
+                InboundQueueEvent queueChange = new InboundQueueEvent(queueIdentifier, queueUser, false, true);
+                Andes.getInstance().deleteQueue(queueChange);
                 Andes.getInstance().closeLocalSubscription(mqttTopicSubscriber);
 
             }

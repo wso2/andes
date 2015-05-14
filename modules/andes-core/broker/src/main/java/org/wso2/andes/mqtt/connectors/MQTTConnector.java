@@ -15,11 +15,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.wso2.andes.mqtt;
+package org.wso2.andes.mqtt.connectors;
 
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
+import org.wso2.andes.mqtt.MQTTException;
+import org.wso2.andes.mqtt.MQTTopicManager;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
@@ -50,7 +52,7 @@ public interface MQTTConnector {
      * @param retain             whether the message requires to be persisted
      * @param publisherID        the id which will identify the publisher
      * @param pubAckHandler      interface with publisher acknowledgement handling
-     * @throws MQTTException occurs if there was an error while adding the message content
+     * @throws org.wso2.andes.mqtt.MQTTException occurs if there was an error while adding the message content
      */
     public void addMessage(ByteBuffer message, String topic, int qosLevel,
                            int mqttLocalMessageID, boolean retain,
