@@ -110,27 +110,20 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
     /**
      * MQTT Retain
-     * Topic message should be retained if true.
+     * Topic message should retained if true.
      *
-     * If the RETAIN flag is set to 1, in a PUBLISH Packet sent by a Client to a Server, the Server must store the
-     * Application Message and its QoS, so that it can be delivered to future subscribers whose subscriptions match
-     * its topic name.
-     * When a new subscription is established, the last retained message, if any, on each matching topic name must
-     * be sent to the subscriber. If the Server receives a QoS 0 message with the RETAIN flag set to 1 it must
-     * discard any message previously retained for that topic.
-     * It should store the new QoS 0 message as the new retained message for that topic, but may choose to discard
-     * it at any time if this happens there will be no retained message for that topic.
+     * By setting the retain flag, the message is held onto by the broker, so when the late arrivals
+     * connect to the broker or clients create a new subscription they get all the relevant retained
+     * messages based on subscribed topic.
      *
-     * When sending a PUBLISH Packet to a Client the Server must set the RETAIN flag to 1 if a message is sent as a
-     * result of a new subscription being made by a Client. It must set the RETAIN flag to 0 when a PUBLISH Packet
-     * is sent to a Client because it matches an established subscription regardless of how the flag was set in the
-     * message it received.
+     * When MQTT message received it's header will be converted to AndesMessageMetadata header. This
+     * boolean state holds retain state of given andes message.
+     * @see org.wso2.andes.mqtt.utils.MQTTUtils#convertToAndesHeader(
+     *                                          long, String, int, int, boolean, java.util.UUID)
      *
-     * A PUBLISH Packet with a RETAIN flag set to 1 and a payload containing zero bytes will be processed as normal
-     * by the Server and sent to Clients with a subscription matching the topic name. Additionally any existing
-     * retained message with the same topic name must be removed and any future subscribers for the topic will not
-     * receive a retained message. “As normal” means that the RETAIN flag is not set in the message received by
-     * existing Clients. A zero byte retained message must not be stored as a retained message on the Server.
+     * This boolean state will be checked each time andes message received in MessagePreProcessor.
+     * @see org.wso2.andes.kernel.distruptor.inbound.MessagePreProcessor#handleTopicRoutine(
+     * org.wso2.andes.kernel.distruptor.inbound.InboundEventContainer, AndesMessage, AndesChannel)
      *
      */
     private boolean retain;
@@ -143,6 +136,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     /**
      * Set retain flag for current message
      *
+     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
      * @param retain boolean retain flag
      */
     public void setRetain(boolean retain) {
@@ -165,9 +159,10 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     }
 
     /**
-     * Return retained status of the current message
+     * Return retained status of the current message.
      *
-     * @return True if this message should be retained
+     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
+     * @return boolean retain flag for the current message
      */
     public boolean isRetain() {
         return retain;

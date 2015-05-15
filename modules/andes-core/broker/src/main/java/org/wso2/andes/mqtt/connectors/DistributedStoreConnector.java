@@ -38,7 +38,6 @@ import java.util.UUID;
  * is conforming to the data structure expected by the kernel, The basic operations done through this class will be
  * converting between the meta data and message content, indicate subscriptions and disconnections
  */
-
 public class DistributedStoreConnector implements MQTTConnector {
 
     private static Log log = LogFactory.getLog(DistributedStoreConnector.class);
@@ -128,18 +127,6 @@ public class DistributedStoreConnector implements MQTTConnector {
 
         MQTTLocalSubscription mqttTopicSubscriber;
 
-        //First, notify on the client connection
-        Andes.getInstance().clientConnectionCreated(subscriptionChannelID);
-
-        String queue_identifier = topic + mqttClientID;
-        if (isCleanSesion) {
-            mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
-                    true, qos, subscriptionChannelID, topic, true, true, false);
-        } else {
-            //For clean session topics we need to provide the queue name for the queue identifier
-            mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
-                    false, qos, subscriptionChannelID, clientID, true, true, false);
-        }
         //Should indicate the record in the cluster
         try {
             if (isCleanSesion) {
@@ -173,8 +160,6 @@ public class DistributedStoreConnector implements MQTTConnector {
             throw new MQTTException(message, e);
         }
 
-//        //Finally will notify on the client connection
-//        Andes.getInstance().clientConnectionCreated(subscriptionChannelID);
     }
 
     /**

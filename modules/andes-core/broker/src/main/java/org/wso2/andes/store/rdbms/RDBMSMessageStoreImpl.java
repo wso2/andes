@@ -64,17 +64,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     private final Map<String, Integer> queueMap;
 
-    /**
-     * Cache used for Retained metadata rows
-     */
-    private final Map<String,RetainedItemData> retainedMsgCache = new LinkedHashMap<String,RetainedItemData>()
-    {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String,RetainedItemData> me)
-        {
-            return size() > 1024;
-        }
-    };
 
     /**
      * Connection pooled data source
@@ -1347,47 +1336,50 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException {
+
         Connection connection = null;
+
         PreparedStatement updateMetadataPreparedStatement = null;
         PreparedStatement deleteContentPreparedStatement = null;
         PreparedStatement insertContentPreparedStatement = null;
+
         boolean batchEmpty = true;
 
         try {
             connection = getConnection();
             connection.setAutoCommit(false);
 
-            updateMetadataPreparedStatement = connection.prepareStatement(RDBMSConstants.PS_UPDATE_RETAINED_METADATA);
-            deleteContentPreparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_RETAIN_MESSAGE_PARTS);
-            insertContentPreparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_RETAIN_MESSAGE_PART);
+            updateMetadataPreparedStatement = connection.prepareStatement(
+                                                         RDBMSConstants.PS_UPDATE_RETAINED_METADATA);
+            deleteContentPreparedStatement = connection.prepareStatement(
+                                                         RDBMSConstants.PS_DELETE_RETAIN_MESSAGE_PARTS);
+            insertContentPreparedStatement = connection.prepareStatement(
+                                                         RDBMSConstants.PS_INSERT_RETAIN_MESSAGE_PART);
 
             for (AndesMessage message : retainList) {
+
                 AndesMessageMetadata metadata = message.getMetadata();
                 String destination = metadata.getDestination();
-                RetainedItemData retainedItemData = retainedMsgCache.get(destination);
+                RetainedItemData retainedItemData = getRetainedTopicID(connection, destination);
 
                 if (null != retainedItemData) {
+
                     if (batchEmpty) {
                         batchEmpty = false;
                     }
-                    addRetainedMessageToUpdateBatch(updateMetadataPreparedStatement, deleteContentPreparedStatement,
+
+                    addRetainedMessageToUpdateBatch(updateMetadataPreparedStatement,
+                                                    deleteContentPreparedStatement,
                                                     insertContentPreparedStatement,
                                                     message, metadata, retainedItemData);
                     retainedItemData.messageID = metadata.getMessageID();
-                } else {
-                    retainedItemData = getRetainedTopicID(connection, destination);
 
-                    if (null == retainedItemData) {
-                        retainedMsgCache.put(destination, createRetainedEntry(connection, message));
-                    } else {
-                        addRetainedMessageToUpdateBatch(updateMetadataPreparedStatement, deleteContentPreparedStatement,
-                                                        insertContentPreparedStatement,
-                                                        message, metadata, retainedItemData);
-                        retainedItemData.messageID = metadata.getMessageID();
-                        retainedMsgCache.put(destination, retainedItemData);
-                    }
+                } else {
+
+                    createRetainedEntry(connection, message);
 
                 }
+
             }
 
             if (!batchEmpty) {
@@ -1396,9 +1388,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 insertContentPreparedStatement.executeBatch();
                 connection.commit();
             }
+
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
             throw new AndesException("Error occurred while adding retained message content to DB ", e);
+
         } finally {
             close(updateMetadataPreparedStatement, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
             close(deleteContentPreparedStatement, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
@@ -1449,7 +1443,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                                                  PreparedStatement deleteContentPreparedStatement,
                                                  PreparedStatement insertContentPreparedStatement,
                                                  AndesMessage message,
-                                                 AndesMessageMetadata metadata, RetainedItemData retainedItemData)
+                                                 AndesMessageMetadata metadata,
+                                                 RetainedItemData retainedItemData)
             throws SQLException {
         // update metadata
         updateMetadataPreparedStatement.setLong(1, metadata.getMessageID());
@@ -1522,7 +1517,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         try {
             // create metadata entry
-            preparedStatementForMetadata = connection.prepareStatement(RDBMSConstants.PS_INSERT_RETAINED_METADATA);
+            preparedStatementForMetadata = connection.prepareStatement(
+                                                      RDBMSConstants.PS_INSERT_RETAINED_METADATA);
             preparedStatementForMetadata.setInt(1, topicID);
             preparedStatementForMetadata.setString(2, destination);
             preparedStatementForMetadata.setLong(3, messageID);
@@ -1530,7 +1526,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatementForMetadata.addBatch();
 
             // create content
-            preparedStatementForContent = connection.prepareStatement(RDBMSConstants.PS_INSERT_RETAIN_MESSAGE_PART);
+            preparedStatementForContent = connection.prepareStatement(
+                                                     RDBMSConstants.PS_INSERT_RETAIN_MESSAGE_PART);
             for (AndesMessagePart messagePart : message.getContentChunkList()) {
                 preparedStatementForContent.setLong(1, messageID);
                 preparedStatementForContent.setInt(2, messagePart.getOffSet());
@@ -1592,16 +1589,18 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
 
-        RetainedItemData retainedItemData = retainedMsgCache.get(destination);
-        if (null == retainedItemData) {
-            throw new AndesException("Retained data for topic is not available in cache.");
-        }
 
         try {
+
             connection = getConnection();
+
+            RetainedItemData retainedItemData = getRetainedTopicID(connection, destination);
+
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_RETAINED_METADATA);
             preparedStatement.setLong(1, retainedItemData.topicID);
+
             results = preparedStatement.executeQuery();
+
             if (results.next()) {
                 byte[] b = results.getBytes(RDBMSConstants.METADATA);
                 long messageId = results.getLong(RDBMSConstants.MESSAGE_ID);
@@ -1624,13 +1623,17 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public Map<Integer, AndesMessagePart> getRetainedContentParts(long messageID) throws AndesException {
+
         Connection connection = null;
+
         PreparedStatement preparedStatement = null;
+
         ResultSet results = null;
         Map<Integer, AndesMessagePart> contentParts = new HashMap<Integer, AndesMessagePart>();
 
         try {
             connection = getConnection();
+
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_RETRIEVE_RETAIN_MESSAGE_PART);
             preparedStatement.setLong(1, messageID);
             results = preparedStatement.executeQuery();
@@ -1638,7 +1641,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             while (results.next()) {
                 byte[] b = results.getBytes(RDBMSConstants.MESSAGE_CONTENT);
                 int offset = results.getInt(RDBMSConstants.MSG_OFFSET);
+
                 AndesMessagePart messagePart = new AndesMessagePart();
+
                 messagePart.setMessageID(messageID);
                 messagePart.setData(b);
                 messagePart.setDataLength(b.length);

@@ -708,8 +708,9 @@ public class MessagingEngine {
     }
 
     /**
-     * Store retained messages in the message store
+     * Store retained messages in the message store.
      *
+     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
      * @param retainList
      *         Retained message list
      */
@@ -727,7 +728,7 @@ public class MessagingEngine {
      * @return AndesMessageMetadata
      * @throws AndesException
      */
-    public List<AndesMessageMetadata> getRetainedMessageForTopic(String subscriptionTopicName) throws AndesException {
+    public List<AndesMessageMetadata> getRetainedMessageByTopic(String subscriptionTopicName) throws AndesException {
         List<AndesMessageMetadata> retainMessageList = new ArrayList<AndesMessageMetadata>();
         List<String> topicList = messageStore.getAllRetainedTopics();
 

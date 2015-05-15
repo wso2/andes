@@ -371,7 +371,8 @@ public class OnflightMessageTracker {
     }
 
     /**
-     * Track acknowledgement for message
+     * Track acknowledgement for message. When acknowledgement received this method will remove the
+     * tracking information from tracking lists.
      *
      * @param channel   channel of the ack
      * @param messageID id of the message ack is for
@@ -379,14 +380,13 @@ public class OnflightMessageTracker {
      * @throws AndesException
      */
     public boolean handleAckReceived(UUID channel, long messageID) throws AndesException {
+
         if (log.isDebugEnabled()) {
             log.debug("Ack Received message id= " + messageID + " channel id= " + channel);
         }
 
-        if (retainedMessageList.contains(messageID)) {
-            retainedMessageList.remove(messageID);
-            return false;
-        }
+        // Remove if received acknowledgment message id contains in retained message list.
+        retainedMessageList.remove(messageID);
 
         boolean isOKToDeleteMessage = false;
 
@@ -956,8 +956,8 @@ public class OnflightMessageTracker {
         }
 
         /**
-         * Removes the first occurrence of the specified element from this list, if it is present. If this list does not
-         * contain the element, it is unchanged.
+         * Removes the first occurrence of the specified element from this list, if it is present.
+         * If this list does not contain the element, it is unchanged.
          *
          * @param item
          *         Item to be removed from this list, if present

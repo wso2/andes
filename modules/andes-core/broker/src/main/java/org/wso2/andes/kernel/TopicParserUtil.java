@@ -64,15 +64,15 @@ public class TopicParserUtil {
         try {
             List<Token> msgTokens = splitTopic(topicName);
             List<Token> subscriptionTokens = splitTopic(subscriptionTopicName);
-            int i = 0;
+            int token = 0;
             Token subToken = null;
-            for (; i < subscriptionTokens.size(); i++) {
-                subToken = subscriptionTokens.get(i);
+            for (; token < subscriptionTokens.size(); token++) {
+                subToken = subscriptionTokens.get(token);
                 if (subToken != Token.MULTI && subToken != Token.SINGLE) {
-                    if (i >= msgTokens.size()) {
+                    if (token >= msgTokens.size()) {
                         return false;
                     }
-                    Token msgToken = msgTokens.get(i);
+                    Token msgToken = msgTokens.get(token);
                     if (!msgToken.equals(subToken)) {
                         return false;
                     }
@@ -85,10 +85,10 @@ public class TopicParserUtil {
                 }
             }
             //if last token was a SINGLE then treat it as an empty
-            if (subToken == Token.SINGLE && (i - msgTokens.size() == 1)) {
-                i--;
+            if (subToken == Token.SINGLE && (token - msgTokens.size() == 1)) {
+                token--;
             }
-            return i == msgTokens.size();
+            return token == msgTokens.size();
         } catch (ParseException ex) {
             log.error("Topic format is incorrect", ex);
             throw new AndesException(ex);

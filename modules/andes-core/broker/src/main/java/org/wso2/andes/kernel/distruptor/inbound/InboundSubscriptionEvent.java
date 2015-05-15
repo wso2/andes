@@ -126,8 +126,11 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
 
         // Send retained message if available
         try {
+
+            // Before checking for retain message for given subscription event, have to
+            // verify if the given subscription bound to a topic and is not durable.
             if (!this.isDurable() && this.isBoundToTopic()) {
-                List<AndesMessageMetadata> metadataList = MessagingEngine.getInstance().getRetainedMessageForTopic(
+                List<AndesMessageMetadata> metadataList = MessagingEngine.getInstance().getRetainedMessageByTopic(
                         this.getSubscribedDestination());
 
                 for (AndesMessageMetadata metadata : metadataList) {

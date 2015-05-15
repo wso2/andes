@@ -862,6 +862,9 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException {
         // TODO: implement this method
+        throw new org.apache.commons.lang.NotImplementedException("CQL base message store methods for" +
+                                                                  " retain feature will be implemented " +
+                                                                  "in next iteration");
     }
 
     /**
@@ -870,7 +873,9 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public List<String> getAllRetainedTopics() throws AndesException {
         // TODO: implement this method
-        return  null;
+        throw new org.apache.commons.lang.NotImplementedException("CQL base message store methods for" +
+                                                                  " retain feature will be implemented " +
+                                                                  "in next iteration");
     }
 
     /**
@@ -879,7 +884,9 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public AndesMessageMetadata getRetainedMetaData(String destination) throws AndesException {
         // TODO: implement this method
-        return  null;
+        throw new org.apache.commons.lang.NotImplementedException("CQL base message store methods for" +
+                                                                  " retain feature will be implemented " +
+                                                                  "in next iteration");
     }
 
     /**
@@ -888,7 +895,9 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public Map<Integer, AndesMessagePart> getRetainedContentParts(long messageID) throws AndesException {
         // TODO: implement this method
-        return  null;
+        throw new org.apache.commons.lang.NotImplementedException("CQL base message store methods for" +
+                                                                  " retain feature will be implemented " +
+                                                                  "in next iteration");
     }
 
 

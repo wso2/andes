@@ -291,10 +291,6 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), message, retain,
                 evt.getMessageID(), clientID, this);
 
-        if (retain) {
-            //TODO call the cluster specifc store here
-            // m_storageService.storeRetained(topic, message, qos);
-        }
     }
 
     /**
