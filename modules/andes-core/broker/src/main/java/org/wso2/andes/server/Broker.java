@@ -149,79 +149,63 @@ public class Broker
                 sysInfoMBean.register();
 
                 Set<Integer> ports = new HashSet<Integer>(options.getPorts());
-                if(ports.isEmpty())
-                {
+                if (ports.isEmpty()) {
                     parsePortList(ports, serverConfig.getPorts());
                 }
 
                 Set<Integer> sslPorts = new HashSet<Integer>(options.getSSLPorts());
-                if(sslPorts.isEmpty())
-                {
+                if (sslPorts.isEmpty()) {
                     parsePortList(sslPorts, serverConfig.getSSLPorts());
                 }
 
                 Set<Integer> exclude_0_10 = new HashSet<Integer>(options.getExcludedPorts(ProtocolExclusion.v0_10));
-                if(exclude_0_10.isEmpty())
-                {
+                if (exclude_0_10.isEmpty()) {
                     parsePortList(exclude_0_10, serverConfig.getPortExclude010());
                 }
 
                 Set<Integer> exclude_0_9_1 = new HashSet<Integer>(options.getExcludedPorts(ProtocolExclusion.v0_9_1));
-                if(exclude_0_9_1.isEmpty())
-                {
+                if (exclude_0_9_1.isEmpty()) {
                     parsePortList(exclude_0_9_1, serverConfig.getPortExclude091());
                 }
 
                 Set<Integer> exclude_0_9 = new HashSet<Integer>(options.getExcludedPorts(ProtocolExclusion.v0_9));
-                if(exclude_0_9.isEmpty())
-                {
+                if (exclude_0_9.isEmpty()) {
                     parsePortList(exclude_0_9, serverConfig.getPortExclude09());
                 }
 
                 Set<Integer> exclude_0_8 = new HashSet<Integer>(options.getExcludedPorts(ProtocolExclusion.v0_8));
-                if(exclude_0_8.isEmpty())
-                {
+                if (exclude_0_8.isEmpty()) {
                     parsePortList(exclude_0_8, serverConfig.getPortExclude08());
                 }
 
                 String bindAddressFromBrokerOptions = options.getBind();
-                if (null == bindAddressFromBrokerOptions)
-                {
+                if (null == bindAddressFromBrokerOptions) {
                     bindAddressFromBrokerOptions = serverConfig.getBind();
                 }
 
                 InetAddress bindAddressForHostname;
-                if (WILDCARD_ADDRESS.equals(bindAddressFromBrokerOptions))
-                {
+                if (WILDCARD_ADDRESS.equals(bindAddressFromBrokerOptions)) {
                     bindAddressForHostname = new InetSocketAddress(0).getAddress();
-                }
-                else
-                {
+                } else {
                     bindAddressForHostname = InetAddress.getByName(bindAddressFromBrokerOptions);
                 }
                 String hostName = bindAddressForHostname.getCanonicalHostName();
 
-                if (!serverConfig.getSSLOnly())
-                {
-                    for(int port : ports)
-                    {
+                if (!serverConfig.getSSLOnly()) {
+                    for (int port : ports) {
                         Set<AmqpProtocolVersion> supported = EnumSet.allOf(AmqpProtocolVersion.class);
 
-                        if(exclude_0_10.contains(port))
-                        {
+                        if (exclude_0_10.contains(port)) {
                             supported.remove(AmqpProtocolVersion.v0_10);
                         }
 
-                        if(exclude_0_9_1.contains(port))
-                        {
+                        if (exclude_0_9_1.contains(port)) {
                             supported.remove(AmqpProtocolVersion.v0_9_1);
                         }
-                        if(exclude_0_9.contains(port))
-                        {
+                        if (exclude_0_9.contains(port)) {
                             supported.remove(AmqpProtocolVersion.v0_9);
                         }
-                        if(exclude_0_8.contains(port))
-                        {
+                        if (exclude_0_8.contains(port)) {
                             supported.remove(AmqpProtocolVersion.v0_8);
                         }
 
@@ -241,8 +225,7 @@ public class Broker
                     }
                 }
 
-                if (serverConfig.getEnableSSL())
-                {
+                if (serverConfig.getEnableSSL()) {
                     String keystorePath = serverConfig.getKeystorePath();
                     String keystorePassword = serverConfig.getKeystorePassword();
                     String certType = serverConfig.getCertType();
@@ -260,7 +243,7 @@ public class Broker
                         transport.accept(settings, new AMQProtocolEngineFactory(), sslFactory);
 
                         ApplicationRegistry.getInstance().addAcceptor(new InetSocketAddress(bindAddressForHostname, sslPort),
-                                new QpidAcceptor(transport,"TCP"));
+                                                                                    new QpidAcceptor(transport,"TCP"));
                         CurrentActor.get().message(BrokerMessages.LISTENING("TCP/SSL", sslPort));
                     }
                 }
