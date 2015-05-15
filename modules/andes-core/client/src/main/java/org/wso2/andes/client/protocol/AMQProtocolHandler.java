@@ -59,6 +59,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * AMQProtocolHandler is the client side protocol handler for AMQP, it handles all protocol events received from the
@@ -170,6 +171,9 @@ public class AMQProtocolHandler implements ProtocolEngine
     private NetworkConnection _network;
     private Sender<ByteBuffer> _sender;
 
+    //failover flag to avoid lock and wait between failover and flow control
+    private AtomicBoolean isFailoverStart;
+
     /**
      * Creates a new protocol handler, associated with the specified client connection instance.
      *
@@ -200,6 +204,7 @@ public class AMQProtocolHandler implements ProtocolEngine
         _writeJob = new Job(_poolReference, Job.MAX_JOB_EVENTS, false);
         _poolReference.acquireExecutorService();
         _failoverHandler = new FailoverHandler(this);
+        isFailoverStart = new AtomicBoolean(false);
     }
 
     /**
@@ -231,8 +236,6 @@ public class AMQProtocolHandler implements ProtocolEngine
                 if (_failoverState == FailoverState.NOT_STARTED)
                 {
                     _failoverState = FailoverState.IN_PROGRESS;
-                    _logger.debug("Disabling flow control");
-                    _connection.disableFlowControl();
                     startFailoverThread();
                 }
                 else
@@ -855,4 +858,12 @@ public class AMQProtocolHandler implements ProtocolEngine
         return _suggestedProtocolVersion;
     }
 
+    /**
+     * Failover start flag return to caller
+     *
+     * @return isFailoverStart
+     */
+    public AtomicBoolean getIsFailoverStart() {
+        return isFailoverStart;
+    }
 }

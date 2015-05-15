@@ -96,6 +96,12 @@ public class FlowControlManager  implements StoreHealthListener {
      */
     private ScheduledFuture<?> scheduledBufferBasedFlowControlTimeoutFuture;
 
+    /**
+     * Flag set to true when shutdown hook triggered and use this flog to avoid
+     * unblocking flow control while shutting down
+     */
+    private boolean shutDownTriggered;
+
     public FlowControlManager() {
         // Read configured limits
         globalLowLimit = (Integer) AndesConfigurationManager
@@ -214,7 +220,7 @@ public class FlowControlManager  implements StoreHealthListener {
      * Notify all the channels to disable buffer based flow control
      */
     private synchronized void unblockListenersOnBufferBasedFlowControl() {
-        if (globalBufferBasedFlowControlEnabled) {
+        if (globalBufferBasedFlowControlEnabled && !shutDownTriggered) {
             scheduledBufferBasedFlowControlTimeoutFuture.cancel(false);
             globalBufferBasedFlowControlEnabled = false;
 
@@ -281,6 +287,24 @@ public class FlowControlManager  implements StoreHealthListener {
             if (globalBufferBasedFlowControlEnabled && (messagesOnGlobalBuffer.get() <= globalLowLimit)) {
                 unblockListenersOnBufferBasedFlowControl();
             }
+        }
+    }
+
+    /**
+     * Notify all channels to enable flow control when shutdown hook triggered to avoid message loss in publishers
+     */
+    public synchronized void prepareChannelsForShutdown () {
+        if (!globalErrorBasedFlowControlEnabled) {
+            globalErrorBasedFlowControlEnabled = true;
+            shutDownTriggered = true;
+
+            log.info("Prepare channels for shutdown.");
+
+            for (AndesChannel channel : channels) {
+                channel.notifyGlobalBufferBasedFlowControlActivation();
+            }
+
+            scheduledBufferBasedFlowControlTimeoutFuture = executor.schedule(flowControlTimeoutTask, 1, TimeUnit.MINUTES);
         }
     }
 

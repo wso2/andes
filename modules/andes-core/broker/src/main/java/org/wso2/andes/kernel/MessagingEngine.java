@@ -645,13 +645,13 @@ public class MessagingEngine {
         log.info("Stopping SlotDelivery Worker.");
         //Stop all slotDeliveryWorkers
         SlotDeliveryWorkerManager.getInstance().stopSlotDeliveryWorkers();
-        //Stop delivery disruptor
-        MessageFlusher.getInstance().getFlusherExecutor().stop();
         //Stop thrift reconnecting thread if started
         if (MBThriftClient.isReconnectingStarted()) {
             MBThriftClient.setReconnectingFlag(false);
         }
         SlotMessageCounter.getInstance().stop();
+        //Stop delivery disruptor
+        MessageFlusher.getInstance().getFlusherExecutor().stop();
     }
 
     /**

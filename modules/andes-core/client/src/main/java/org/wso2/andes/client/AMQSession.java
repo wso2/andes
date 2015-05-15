@@ -3112,7 +3112,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
 
     }
 
-    public void checkFlowControl() throws InterruptedException, JMSException
+    public boolean checkFlowControl() throws InterruptedException, JMSException
     {
         long expiryTime = 0L;
         synchronized (flowControlIndicator)
@@ -3121,7 +3121,12 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                    (expiryTime == 0L ? (expiryTime = System.currentTimeMillis() + FLOW_CONTROL_WAIT_FAILURE)
                                      : expiryTime) >= System.currentTimeMillis() )
             {
-
+                //Check if failover already started, if true, then return
+                //otherwise this cause timeout of publisher because failover thread waiting on lock
+                //which acquired by flow control thread
+                if(getAMQConnection()._protocolHandler.getIsFailoverStart().get()) {
+                    return false;
+                }
                 flowControlIndicator.wait(FLOW_CONTROL_WAIT_PERIOD);
                 log.info("Message send delayed by " + (System.currentTimeMillis() +
                         FLOW_CONTROL_WAIT_FAILURE - expiryTime) / 1000 + "s due to broker enforced flow control");
@@ -3134,7 +3139,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                 throw new JMSException(errorMessage);
             }
         }
-
+        return true;
     }
 
     public interface Dispatchable
