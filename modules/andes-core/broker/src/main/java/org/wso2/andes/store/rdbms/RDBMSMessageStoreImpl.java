@@ -22,6 +22,7 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
@@ -38,6 +39,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -61,6 +63,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * Cache queue name to queue_id mapping to avoid extra sql queries
      */
     private final Map<String, Integer> queueMap;
+
 
     /**
      * Connection pooled data source
@@ -1327,5 +1330,342 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         return messageCountInDLCForQueue;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException {
+
+        Connection connection = null;
+
+        PreparedStatement updateMetadataPreparedStatement = null;
+        PreparedStatement deleteContentPreparedStatement = null;
+        PreparedStatement insertContentPreparedStatement = null;
+
+        boolean batchEmpty = true;
+
+        try {
+            connection = getConnection();
+            connection.setAutoCommit(false);
+
+            updateMetadataPreparedStatement = connection.prepareStatement(
+                                                         RDBMSConstants.PS_UPDATE_RETAINED_METADATA);
+            deleteContentPreparedStatement = connection.prepareStatement(
+                                                         RDBMSConstants.PS_DELETE_RETAIN_MESSAGE_PARTS);
+            insertContentPreparedStatement = connection.prepareStatement(
+                                                         RDBMSConstants.PS_INSERT_RETAIN_MESSAGE_PART);
+
+            for (AndesMessage message : retainList) {
+
+                AndesMessageMetadata metadata = message.getMetadata();
+                String destination = metadata.getDestination();
+                RetainedItemData retainedItemData = getRetainedTopicID(connection, destination);
+
+                if (null != retainedItemData) {
+
+                    if (batchEmpty) {
+                        batchEmpty = false;
+                    }
+
+                    addRetainedMessageToUpdateBatch(updateMetadataPreparedStatement,
+                                                    deleteContentPreparedStatement,
+                                                    insertContentPreparedStatement,
+                                                    message, metadata, retainedItemData);
+                    retainedItemData.messageID = metadata.getMessageID();
+
+                } else {
+
+                    createRetainedEntry(connection, message);
+
+                }
+
+            }
+
+            if (!batchEmpty) {
+                deleteContentPreparedStatement.executeBatch();
+                updateMetadataPreparedStatement.executeBatch();
+                insertContentPreparedStatement.executeBatch();
+                connection.commit();
+            }
+
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
+            throw new AndesException("Error occurred while adding retained message content to DB ", e);
+
+        } finally {
+            close(updateMetadataPreparedStatement, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
+            close(deleteContentPreparedStatement, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
+            close(insertContentPreparedStatement, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
+            close(connection, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
+        }
+    }
+
+
+    /**
+     * Used to store details about a retained item entry
+     */
+    private static class RetainedItemData {
+        /**
+         * Topic id of the DB entry
+         */
+        public int topicID;
+
+        /**
+         * Retained message ID for the topic
+         */
+        public long messageID;
+
+        private RetainedItemData(Integer topicID, long messageID) {
+            this.topicID = topicID;
+            this.messageID = messageID;
+        }
+    }
+
+    /**
+     * Update batching prepared statements with current message
+     *
+     * @param updateMetadataPreparedStatement
+     *         update prepared statement
+     * @param deleteContentPreparedStatement
+     *         delete prepared statement
+     * @param insertContentPreparedStatement
+     *         insert prepared statement
+     * @param message
+     *         current message
+     * @param metadata
+     *         current message metadata
+     * @param retainedItemData
+     *         retained item data
+     * @throws SQLException
+     */
+    private void addRetainedMessageToUpdateBatch(PreparedStatement updateMetadataPreparedStatement,
+                                                 PreparedStatement deleteContentPreparedStatement,
+                                                 PreparedStatement insertContentPreparedStatement,
+                                                 AndesMessage message,
+                                                 AndesMessageMetadata metadata,
+                                                 RetainedItemData retainedItemData)
+            throws SQLException {
+        // update metadata
+        updateMetadataPreparedStatement.setLong(1, metadata.getMessageID());
+        updateMetadataPreparedStatement.setBytes(2, metadata.getMetadata());
+        updateMetadataPreparedStatement.setInt(3, retainedItemData.topicID);
+        updateMetadataPreparedStatement.addBatch();
+
+        // update content
+        deleteContentPreparedStatement.setLong(1, retainedItemData.messageID);
+        deleteContentPreparedStatement.addBatch();
+        for (AndesMessagePart messagePart : message.getContentChunkList()) {
+            insertContentPreparedStatement.setLong(1, metadata.getMessageID());
+            insertContentPreparedStatement.setInt(2, messagePart.getOffSet());
+            insertContentPreparedStatement.setBytes(3, messagePart.getData());
+            insertContentPreparedStatement.addBatch();
+        }
+    }
+
+    /**
+     * Get retained topic ID for destination
+     *
+     * @param connection
+     *         database connection to used
+     * @param destination
+     *         destination name
+     * @return Retained item data
+     * @throws SQLException
+     */
+    private RetainedItemData getRetainedTopicID(Connection connection, String destination)
+            throws SQLException {
+        PreparedStatement preparedStatementForMetadataSelect = null;
+        RetainedItemData itemData = null;
+
+        try {
+            preparedStatementForMetadataSelect = connection
+                    .prepareStatement(RDBMSConstants.PS_SELECT_RETAINED_MESSAGE_ID);
+            preparedStatementForMetadataSelect.setString(1, destination);
+            ResultSet results = preparedStatementForMetadataSelect.executeQuery();
+
+            if (results.next()) {
+                int topicID = results.getInt(RDBMSConstants.TOPIC_ID);
+                long messageID = results.getLong(RDBMSConstants.MESSAGE_ID);
+                itemData = new RetainedItemData(topicID, messageID);
+            }
+        } finally {
+            close(preparedStatementForMetadataSelect, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
+        }
+
+        return itemData;
+    }
+
+    /**
+     * Create a new entry for retained message
+     *
+     * @param connection
+     *         database connection
+     * @param message
+     *         retained message
+     * @return Retained item data
+     * @throws SQLException
+     */
+    private RetainedItemData createRetainedEntry(Connection connection, AndesMessage message) throws SQLException {
+        PreparedStatement preparedStatementForContent = null;
+        PreparedStatement preparedStatementForMetadata = null;
+
+        AndesMessageMetadata metadata = message.getMetadata();
+        String destination = metadata.getDestination();
+        Integer topicID = destination.hashCode();
+        long messageID = metadata.getMessageID();
+
+        try {
+            // create metadata entry
+            preparedStatementForMetadata = connection.prepareStatement(
+                                                      RDBMSConstants.PS_INSERT_RETAINED_METADATA);
+            preparedStatementForMetadata.setInt(1, topicID);
+            preparedStatementForMetadata.setString(2, destination);
+            preparedStatementForMetadata.setLong(3, messageID);
+            preparedStatementForMetadata.setBytes(4, metadata.getMetadata());
+            preparedStatementForMetadata.addBatch();
+
+            // create content
+            preparedStatementForContent = connection.prepareStatement(
+                                                     RDBMSConstants.PS_INSERT_RETAIN_MESSAGE_PART);
+            for (AndesMessagePart messagePart : message.getContentChunkList()) {
+                preparedStatementForContent.setLong(1, messageID);
+                preparedStatementForContent.setInt(2, messagePart.getOffSet());
+                preparedStatementForContent.setBytes(3, messagePart.getData());
+                preparedStatementForContent.addBatch();
+            }
+
+            preparedStatementForMetadata.executeBatch();
+            preparedStatementForContent.executeBatch();
+            connection.commit();
+
+            return new RetainedItemData(topicID, messageID);
+        } finally {
+            close(preparedStatementForContent, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
+            close(preparedStatementForMetadata, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
+        }
+    }
+
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<String> getAllRetainedTopics() throws AndesException{
+        Connection connection = null;
+        PreparedStatement preparedStatementForTopicSelect = null;
+        List<String> topicList = new ArrayList<String>();
+
+        try {
+            connection = getConnection();
+            connection.setAutoCommit(false);
+
+            preparedStatementForTopicSelect = connection.prepareStatement(RDBMSConstants.PS_SELECT_ALL_RETAINED_TOPICS);
+            ResultSet results = preparedStatementForTopicSelect.executeQuery();
+
+            while (results.next()){
+                topicList.add(results.getString(RDBMSConstants.TOPIC_NAME));
+            }
+
+        }  catch (SQLException e) {
+            rollback(connection, "reading all retained topics");
+            throw new AndesException("Error occurred while reading retained topics ", e);
+        } finally {
+            close(preparedStatementForTopicSelect, "reading all retained topics");
+        }
+
+        return topicList;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public AndesMessageMetadata getRetainedMetaData(String destination) throws AndesException {
+        AndesMessageMetadata metadata = null;
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet results = null;
+
+
+        try {
+
+            connection = getConnection();
+
+            RetainedItemData retainedItemData = getRetainedTopicID(connection, destination);
+
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_RETAINED_METADATA);
+            preparedStatement.setLong(1, retainedItemData.topicID);
+
+            results = preparedStatement.executeQuery();
+
+            if (results.next()) {
+                byte[] b = results.getBytes(RDBMSConstants.METADATA);
+                long messageId = results.getLong(RDBMSConstants.MESSAGE_ID);
+                metadata = new AndesMessageMetadata(messageId, b, true);
+            }
+        } catch (SQLException e) {
+            throw new AndesException("error occurred while retrieving retained message " +
+                                     "for destination:" + destination, e);
+        } finally {
+            String task = "Retrieve retained message for destination";
+            close(results, task);
+            close(preparedStatement, task);
+            close(connection, task);
+        }
+        return metadata;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<Integer, AndesMessagePart> getRetainedContentParts(long messageID) throws AndesException {
+
+        Connection connection = null;
+
+        PreparedStatement preparedStatement = null;
+
+        ResultSet results = null;
+        Map<Integer, AndesMessagePart> contentParts = new HashMap<Integer, AndesMessagePart>();
+
+        try {
+            connection = getConnection();
+
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_RETRIEVE_RETAIN_MESSAGE_PART);
+            preparedStatement.setLong(1, messageID);
+            results = preparedStatement.executeQuery();
+
+            while (results.next()) {
+                byte[] b = results.getBytes(RDBMSConstants.MESSAGE_CONTENT);
+                int offset = results.getInt(RDBMSConstants.MSG_OFFSET);
+
+                AndesMessagePart messagePart = new AndesMessagePart();
+
+                messagePart.setMessageID(messageID);
+                messagePart.setData(b);
+                messagePart.setDataLength(b.length);
+                messagePart.setOffSet(offset);
+                contentParts.put(offset, messagePart);
+            }
+        } catch (SQLException e) {
+            throw new AndesException("Error occurred while retrieving retained message content from DB" +
+                                     " [msg_id=" + messageID + "]", e);
+        } finally {
+            close(results, RDBMSConstants.TASK_RETRIEVING_RETAINED_MESSAGE_PARTS);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_RETAINED_MESSAGE_PARTS);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_RETAINED_MESSAGE_PARTS);
+        }
+        return contentParts;
+    }
+
+
+
+
+
+
+
 
 }

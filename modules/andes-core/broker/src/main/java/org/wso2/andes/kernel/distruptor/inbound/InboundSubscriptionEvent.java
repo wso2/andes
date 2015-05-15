@@ -21,12 +21,17 @@ package org.wso2.andes.kernel.distruptor.inbound;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesSubscriptionManager;
 import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.subscription.BasicSubscription;
 
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -117,6 +122,27 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
 
     private void handleOpenSubscriptionEvent() {
         boolean isComplete = false;
+
+
+        // Send retained message if available
+        try {
+
+            // Before checking for retain message for given subscription event, have to
+            // verify if the given subscription bound to a topic and is not durable.
+            if (!this.isDurable() && this.isBoundToTopic()) {
+                List<AndesMessageMetadata> metadataList = MessagingEngine.getInstance().getRetainedMessageByTopic(
+                        this.getSubscribedDestination());
+
+                for (AndesMessageMetadata metadata : metadataList) {
+                    AndesContent content = MessagingEngine.getInstance().getRetainedMessageContent(metadata);
+                    OnflightMessageTracker.getInstance().recordRetainedMessage(metadata.getMessageID());
+                    this.sendMessageToSubscriber(metadata, content);
+                }
+            }
+        } catch (AndesException e) {
+            log.error("Error occurred while sending retained messages to new subscription.", e);
+        }
+
         try {
             subscriptionManager.addSubscription(this);
             isComplete = true;

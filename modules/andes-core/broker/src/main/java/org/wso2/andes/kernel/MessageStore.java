@@ -282,6 +282,44 @@ public interface MessageStore {
      */
     public void decrementMessageCountForQueue(String storageQueueName, long decrementBy) throws AndesException;
 
+    /**
+     * Store retained message list in the message store.
+     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
+     *
+     * @param retainList Retained messages
+     */
+    public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException;
+
+    /**
+     * Return all topic names with retained messages in the database
+     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
+     *
+     * @return Topic list with retained messages
+     * @throws AndesException
+     */
+    public List<String> getAllRetainedTopics() throws AndesException;
+
+    /**
+     * Get all content parts for the given message ID. The message ID should belong to a
+     * existing retained message.
+     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
+     *
+     * @param messageID Message ID of the message
+     * @return List of content parts
+     * @throws AndesException
+     */
+    public Map<Integer, AndesMessagePart> getRetainedContentParts(long messageID) throws AndesException;
+
+    /**
+     * Return retained message metadata for the given destination. Null is returned if
+     * no retained message is available for a destination.
+     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
+     *
+     * @param destination Destination/Topic name
+     * @return AndesMessageMetadata
+     * @throws AndesException
+     */
+    public AndesMessageMetadata getRetainedMetaData(String destination) throws AndesException;
 
     /**
      * close the message store

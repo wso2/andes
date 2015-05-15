@@ -108,6 +108,12 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
 
     private void handleTopicRoutine(InboundEventContainer event, AndesMessage message, AndesChannel andesChannel) {
         String messageRoutingKey = message.getMetadata().getDestination();
+        boolean isMessageRouted = false;
+
+        if (message.getMetadata().isRetain()) {
+            event.retainMessage = message;
+            isMessageRouted = true;
+        }
         //get all topic subscriptions in the cluster matching to routing key
         //including hierarchical topic case
         Set<AndesSubscription> subscriptionList;
@@ -126,7 +132,6 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
 
             // current message is removed from list and updated cloned messages added later
             event.messageList.clear();
-            boolean isMessageRouted = false;
             Set<String> alreadyStoredQueueNames = new HashSet<String>();
             for (AndesSubscription subscription : subscriptionList) {
                 if (!alreadyStoredQueueNames.contains(subscription.getStorageQueueName())) {

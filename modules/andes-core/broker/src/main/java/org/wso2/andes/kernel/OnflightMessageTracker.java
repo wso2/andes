@@ -38,6 +38,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class will track message delivery by broker
@@ -57,6 +58,11 @@ public class OnflightMessageTracker {
             log.error("Error occurred when reading configurations : ", e);
         }
     }
+
+    /**
+     * Track messages sent as retained messages
+     */
+    private ConcurrentTrackingList<Long> retainedMessageList;
 
     public static OnflightMessageTracker getInstance() {
         return instance;
@@ -240,6 +246,7 @@ public class OnflightMessageTracker {
         // MessageFlusher access this. To be on the safe side set to 6.
         msgId2MsgData = new ConcurrentHashMap<Long, MsgData>(16, 0.75f, 6);
 
+        retainedMessageList = new ConcurrentTrackingList<Long>();
     }
 
     /**
@@ -352,8 +359,20 @@ public class OnflightMessageTracker {
         pendingMessageCount.incrementAndGet();
     }
 
+
     /**
-     * Track acknowledgement for message
+     * Record the given message ID as a retained message in the trcker.
+     *
+     * @param messageID
+     *         Message ID of the retained message
+     */
+    public void recordRetainedMessage(long messageID) {
+        retainedMessageList.add(messageID);
+    }
+
+    /**
+     * Track acknowledgement for message. When acknowledgement received this method will remove the
+     * tracking information from tracking lists.
      *
      * @param channel   channel of the ack
      * @param messageID id of the message ack is for
@@ -361,9 +380,13 @@ public class OnflightMessageTracker {
      * @throws AndesException
      */
     public boolean handleAckReceived(UUID channel, long messageID) throws AndesException {
+
         if (log.isDebugEnabled()) {
             log.debug("Ack Received message id= " + messageID + " channel id= " + channel);
         }
+
+        // Remove if received acknowledgment message id contains in retained message list.
+        retainedMessageList.remove(messageID);
 
         boolean isOKToDeleteMessage = false;
 
@@ -640,6 +663,11 @@ public class OnflightMessageTracker {
      * @return if message is redelivered
      */
     public boolean addMessageToSendingTracker(UUID channelID, long messageID) {
+
+        if (retainedMessageList.contains(messageID)) {
+            return false;
+        }
+
         if (log.isDebugEnabled()) {
             log.debug("Adding message to sending tracker channel id = " + channelID + " message id = " +
                     messageID);
@@ -875,6 +903,72 @@ public class OnflightMessageTracker {
         } catch (IOException e) {
             log.error("Error while dumping message status to file", e);
             throw new AndesException("Error while dumping message status to file", e);
+        }
+    }
+
+    /**
+     * Concurrent List like implementation.
+     * This implementation will create thread safe LinkedList.
+     * Two threads won't be able to execute same operation simultaneously
+     * with this LinkedList.
+     *
+     * @param <T> Type of list items
+     *
+     */
+    private static class ConcurrentTrackingList<T> {
+        private final LinkedList<T> dataList;
+        private final ReentrantReadWriteLock lock;
+
+        private ConcurrentTrackingList() {
+            dataList = new LinkedList<T>();
+            lock = new ReentrantReadWriteLock();
+        }
+
+        /**
+         * Returns true if this list contains the specified element.
+         *
+         * @param item
+         *         Ite, whose presence in this list is to be tested
+         * @return true if this list contains the specified element
+         */
+        private boolean contains(T item) {
+            try {
+                lock.readLock().lock();
+                return dataList.contains(item);
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+
+        /**
+         * Appends the specified element to the end of this list.
+         *
+         * @param item
+         *         Item to be appended to this list
+         */
+        private void add(T item) {
+            try {
+                lock.writeLock().lock();
+                dataList.add(item);
+            } finally {
+                lock.writeLock().unlock();
+            }
+        }
+
+        /**
+         * Removes the first occurrence of the specified element from this list, if it is present.
+         * If this list does not contain the element, it is unchanged.
+         *
+         * @param item
+         *         Item to be removed from this list, if present
+         */
+        private void remove(T item) {
+            try {
+                lock.writeLock().lock();
+                dataList.remove(item);
+            } finally {
+                lock.writeLock().unlock();
+            }
         }
     }
 

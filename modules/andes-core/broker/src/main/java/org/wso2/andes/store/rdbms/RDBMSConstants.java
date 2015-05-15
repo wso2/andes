@@ -35,6 +35,8 @@ public class RDBMSConstants {
     protected static final String METADATA_TABLE = "MB_METADATA";
     protected static final String QUEUES_TABLE = "MB_QUEUE_MAPPING";
     protected static final String EXPIRATION_TABLE = "MB_EXPIRATION_DATA";
+    protected static final String RETAINED_METADATA_TABLE = "MB_RETAINED_METADATA";
+    protected static final String RETAINED_CONTENT_TABLE = "MB_RETAINED_CONTENT";
 
     // Message Store table columns
     protected static final String MESSAGE_ID = "MESSAGE_ID";
@@ -45,6 +47,8 @@ public class RDBMSConstants {
     protected static final String MESSAGE_CONTENT = "MESSAGE_CONTENT";
     protected static final String EXPIRATION_TIME = "EXPIRATION_TIME";
     protected static final String DESTINATION_QUEUE = "MESSAGE_DESTINATION";
+    protected static final String TOPIC_NAME = "TOPIC_NAME";
+    protected static final String TOPIC_ID = "TOPIC_ID";
 
     // Andes Context Store tables
     protected static final String DURABLE_SUB_TABLE = "MB_DURABLE_SUBSCRIPTION";
@@ -305,6 +309,74 @@ public class RDBMSConstants {
                     " SET " + MESSAGE_COUNT + "= 0" +
                     " WHERE " + QUEUE_NAME + "=?";
 
+    /**
+     * Prepared statement to update retained metadata
+     */
+    protected static final String PS_UPDATE_RETAINED_METADATA =
+            "UPDATE " + RETAINED_METADATA_TABLE +
+            " SET " + MESSAGE_ID + " = ?, " + METADATA + " = ?" +
+            " WHERE " + TOPIC_ID + " = ?";
+
+    /**
+     * Prepared statement to delete messages from retained content
+     */
+    protected static final String PS_DELETE_RETAIN_MESSAGE_PARTS =
+            "DELETE" +
+            " FROM " + RETAINED_CONTENT_TABLE +
+            " WHERE " + MESSAGE_ID + "=?";
+
+    /**
+     * Prepared statement to insert messages to retained content
+     */
+    protected static final String PS_INSERT_RETAIN_MESSAGE_PART =
+            "INSERT INTO " + RETAINED_CONTENT_TABLE + "(" +
+            MESSAGE_ID + "," +
+            MSG_OFFSET + "," +
+            MESSAGE_CONTENT + ") " +
+            "VALUES (?, ?, ?)";
+
+    /**
+     * Prepared statement to select all retained topics from retained metadata
+     */
+    protected static final String PS_SELECT_ALL_RETAINED_TOPICS =
+            "SELECT " + TOPIC_NAME +
+            " FROM " + RETAINED_METADATA_TABLE;
+
+    /**
+     * Prepared statement to select retained message metadata for a given topic id
+     */
+    protected static final String PS_SELECT_RETAINED_METADATA =
+            "SELECT " + MESSAGE_ID + ", " + METADATA +
+            " FROM " + RETAINED_METADATA_TABLE +
+            " WHERE " + TOPIC_ID + "=?";
+
+    /**
+     * Prepared statement to select retained message content for given message id
+     */
+    protected static final String PS_RETRIEVE_RETAIN_MESSAGE_PART =
+            "SELECT " + MSG_OFFSET + ", " + MESSAGE_CONTENT +
+            " FROM " + RETAINED_CONTENT_TABLE +
+            " WHERE " + MESSAGE_ID + "=?";
+
+    /**
+     * Prepared statement to select retained metadata for given topic name
+     */
+    protected static final String PS_SELECT_RETAINED_MESSAGE_ID =
+            "SELECT " + TOPIC_ID + ", " + MESSAGE_ID +
+            " FROM " + RETAINED_METADATA_TABLE +
+            " WHERE " + TOPIC_NAME + "=?";
+
+    /**
+     * Prepared statement to insert retained metadata
+     */
+    protected static final String PS_INSERT_RETAINED_METADATA =
+            "INSERT INTO " + RETAINED_METADATA_TABLE + " (" +
+            TOPIC_ID + "," +
+            TOPIC_NAME + "," +
+            MESSAGE_ID + "," +
+            METADATA + ")" +
+            " VALUES ( ?,?,?,? )";
+
     // Message Store related jdbc tasks executed
     protected static final String TASK_STORING_MESSAGE_PARTS = "storing message parts.";
     protected static final String TASK_DELETING_MESSAGE_PARTS = "deleting message parts.";
@@ -333,6 +405,12 @@ public class RDBMSConstants {
     protected static final String TASK_RETRIEVING_EXPIRED_MESSAGES = "retrieving expired messages.";
     protected static final String TASK_RETRIEVING_QUEUE_ID = "retrieving queue id for queue. ";
     protected static final String TASK_CREATING_QUEUE = "creating queue. ";
+
+    // Message Store related retained message jdbc tasks executed
+    protected static final String TASK_STORING_RETAINED_MESSAGE_PARTS = "storing retained messages.";
+    protected static final String TASK_RETRIEVING_RETAINED_MESSAGE_PARTS = "retrieving retained message parts.";
+
+
 
     // Andes Context Store related jdbc tasks executed
     protected static final String TASK_STORING_DURABLE_SUBSCRIPTION = "storing durable subscription";

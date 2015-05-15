@@ -19,6 +19,7 @@
 package org.wso2.andes.kernel;
 
 import org.apache.log4j.Logger;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.slot.ConnectionException;
@@ -705,4 +706,56 @@ public class MessagingEngine {
     public SlotCoordinator getSlotCoordinator() {
         return slotCoordinator;
     }
+
+    /**
+     * Store retained messages in the message store.
+     *
+     * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
+     * @param retainList
+     *         Retained message list
+     */
+    public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException {
+        messageStore.storeRetainedMessages(retainList);
+    }
+
+
+    /**
+     * Return matching retained message metadata for the given subscription topic name. An empty list is returned if no
+     * match is found.
+     *
+     * @param subscriptionTopicName
+     *         Destination string provided by the subscriber
+     * @return AndesMessageMetadata
+     * @throws AndesException
+     */
+    public List<AndesMessageMetadata> getRetainedMessageByTopic(String subscriptionTopicName) throws AndesException {
+        List<AndesMessageMetadata> retainMessageList = new ArrayList<AndesMessageMetadata>();
+        List<String> topicList = messageStore.getAllRetainedTopics();
+
+        for (String topicName : topicList) {
+            if (TopicParserUtil.isMatching(topicName, subscriptionTopicName)) {
+                retainMessageList.add(messageStore.getRetainedMetaData(topicName));
+            }
+        }
+
+        return retainMessageList;
+    }
+
+    /**
+     * Return message content for the given retained message metadata.
+     *
+     * @param metadata
+     *         Message metadata
+     * @return AndesContent
+     * @throws AndesException
+     */
+    public AndesContent getRetainedMessageContent(AndesMessageMetadata metadata) throws AndesException {
+        long messageID = metadata.getMessageID();
+        int contentSize = AMQPUtils.convertAndesMetadataToAMQMetadata(metadata).getContentSize();
+
+        Map<Integer, AndesMessagePart> retainedContentParts = messageStore.getRetainedContentParts(messageID);
+
+        return new RetainedContent(retainedContentParts, contentSize, messageID);
+    }
+
 }
