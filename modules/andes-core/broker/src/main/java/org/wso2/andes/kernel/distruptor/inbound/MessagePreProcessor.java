@@ -179,9 +179,11 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                 log.info("Message routing key: " + message.getMetadata().getDestination() + " No routes in " +
                         "cluster. Ignoring Message id " + message.getMetadata().getMessageID());
 
+                // Even though we drop the message pub ack needs to be sent
+                event.pubAckHandler.ack(message.getMetadata());
+
                 // Only one message in list. Clear it and set to ignore the message by message writers
-                event.setEventType(InboundEventContainer.Type.IGNORE_EVENT);
-                event.messageList.clear();
+                event.clear();
             }
         } catch (AndesException e) {
             log.error("Error occurred while processing routing information fot topic message. Routing Key " +

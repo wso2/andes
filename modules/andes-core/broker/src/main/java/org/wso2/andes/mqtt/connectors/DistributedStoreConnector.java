@@ -174,19 +174,17 @@ public class DistributedStoreConnector implements MQTTConnector {
             String queueIdentifier = MQTTUtils.generateTopicSpecficClientID(mqttClientID);
             String queueUser = "admin";
 
-            if (isCleanSession) {
-                //Here we hard code the QoS level since for subscription removal that doesn't matter
-                MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscribedTopic,
-                        subscriptionChannelID, subscriptionChannelID,
-                        true, 0, subscriberChannel, subscribedTopic, true, false, false);
-                Andes.getInstance().closeLocalSubscription(mqttTopicSubscriber);
-            } else {
-                //This will be similar to a durable subscription of AMQP
-                //There could be two types of events one is the disconnection due to the lost of the connection
-                //The other is un-subscription, if is the case of un-subscription the subscription should be removed
-                InboundQueueEvent queueChange = new InboundQueueEvent(queueIdentifier, queueUser, false, true);
-                Andes.getInstance().deleteQueue(queueChange);
-            }
+            //Here we hard code the QoS level since for subscription removal that doesn't matter
+            MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscribedTopic,
+                    subscriptionChannelID, subscriptionChannelID,
+                    true, 0, subscriberChannel, subscribedTopic, true, false, false);
+
+            //This will be similar to a durable subscription of AMQP
+            //There could be two types of events one is the disconnection due to the lost of the connection
+            //The other is un-subscription, if is the case of un-subscription the subscription should be removed
+            InboundQueueEvent queueChange = new InboundQueueEvent(queueIdentifier, queueUser, false, true);
+            Andes.getInstance().deleteQueue(queueChange);
+            Andes.getInstance().closeLocalSubscription(mqttTopicSubscriber);
             //Will indicate the closure of the subscription connection
             //TODO we need to check whether to close the connection before closing the subscription
             Andes.getInstance().clientConnectionClosed(subscriberChannel);
