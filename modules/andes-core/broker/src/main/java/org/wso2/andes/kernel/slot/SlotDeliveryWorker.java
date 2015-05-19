@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2014-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -18,22 +18,34 @@
 
 package org.wso2.andes.kernel.slot;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.*;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.subscription.SubscriptionStore;
-
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ExecutionException;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.kernel.MessageFlusher;
+import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.store.FailureObservingStoreManager;
+import org.wso2.andes.store.HealthAwareStore;
+import org.wso2.andes.store.StoreHealthListener;
+import org.wso2.andes.subscription.SubscriptionStore;
+
+import com.google.common.util.concurrent.SettableFuture;
 
 /**
  * SlotDelivery worker is responsible of distributing messages to subscribers. Messages will be
  * taken from a slot.
  */
-public class SlotDeliveryWorker extends Thread {
+public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
+
 
     /**
      * keeps storage queue name vs actual destination it represent
@@ -51,8 +63,22 @@ public class SlotDeliveryWorker extends Thread {
     private SlotDeletionScheduler slotDeletionScheduler;
     private SlotCoordinator slotCoordinator;
 
+    /**
+     * Indicates and provides a barrier if messages stores become offline.
+     * marked as volatile since this value could be set from a different thread
+     * (other than those of disrupter)
+     */
+    private volatile SettableFuture<Boolean> messageStoresUnavailable;
+
+    
     private static final long SLOT_DELETION_SCHEDULE_INTERVAL = 15 * 1000;
 
+    /**
+     * Maximum number to retries retrieve metadata list for a given storage
+     * queue ( in the errors occur in message stores)
+     */
+    private static final int MAX_META_DATA_RETRIEVAL_COUNT = 5;
+    
     public SlotDeliveryWorker() {
         messageFlusher = MessageFlusher.getInstance();
         this.storageQueueNameToDestinationMap = new ConcurrentSkipListMap<String, String>();
@@ -64,6 +90,9 @@ public class SlotDeliveryWorker extends Thread {
          */
 
         slotCoordinator = MessagingEngine.getInstance().getSlotCoordinator();
+        
+        messageStoresUnavailable = null;
+        FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
     @Override
@@ -87,17 +116,12 @@ public class SlotDeliveryWorker extends Thread {
                         //Check in memory buffer in MessageFlusher has room
                         if (messageFlusher.getMessageDeliveryInfo(destinationOfMessagesInQueue)
                                 .isMessageBufferFull()) {
-
-                            long startTime = System.currentTimeMillis();
-                            Slot currentSlot = slotCoordinator.getSlot(storageQueueName);
+                            
+                            //get a slot from coordinator.
+                            Slot currentSlot = requestSlot(storageQueueName);
                             currentSlot.setDestinationOfMessagesInSlot(destinationOfMessagesInQueue);
-                            long endTime = System.currentTimeMillis();
-
-                            if (log.isDebugEnabled()) {
-                                log.debug(
-                                        (endTime - startTime) + " milliSec took to get a slot" +
-                                                " from slot manager");
-                            }
+                            
+                            
                             /**
                              * If the slot is empty
                              */
@@ -133,20 +157,11 @@ public class SlotDeliveryWorker extends Thread {
                                             " - " + currentSlot.getEndMessageId() +
                                             "Thread Id:" + Thread.currentThread().getId());
                                 }
-                                long firstMsgId = currentSlot.getStartMessageId();
-                                long lastMsgId = currentSlot.getEndMessageId();
-                                //Read messages in the slot
                                 List<AndesMessageMetadata> messagesRead =
-                                        MessagingEngine.getInstance().getMetaDataList(
-                                                storageQueueName, firstMsgId, lastMsgId);
+                                                                          getMetaDataListBySlot(storageQueueName,
+                                                                                                currentSlot);
 
-                                if (log.isDebugEnabled()) {
-                                    StringBuilder messageIDString = new StringBuilder();
-                                    for (AndesMessageMetadata metadata : messagesRead) {
-                                        messageIDString.append(metadata.getMessageID()).append(" , ");
-                                    }
-                                    log.debug("Messages Read: " + messageIDString);
-                                }
+
                                 if (messagesRead != null &&
                                         !messagesRead.isEmpty()) {
                                     if (log.isDebugEnabled()) {
@@ -202,6 +217,102 @@ public class SlotDeliveryWorker extends Thread {
             }
         }
 
+    }
+
+    /**
+     * Returns a list of {@link AndesMessageMetadata} in specified slot
+     * @param storageQueueName name of the storage queue which this slot belongs to
+     * @param slot the slot which messages are retrieved.
+     * @return a list of {@link AndesMessageMetadata}
+     * @throws AndesException an exception if there are errors at message store level.
+     */
+    private List<AndesMessageMetadata> getMetaDataListBySlot(String storageQueueName, 
+                                                             Slot slot) throws AndesException {
+        return getMetaDataListBySlot(storageQueueName, slot, 0);
+    }
+
+    /**
+     * Returns a list of {@link AndesMessageMetadata} in specified slot. This method is recursive.
+     * @param storageQueueName
+     * @param slot
+     * @param numberOfRetriesBefore
+     * @return
+     * @throws AndesException
+     */
+    private List<AndesMessageMetadata> getMetaDataListBySlot(String storageQueueName, 
+                                                             Slot slot, int numberOfRetriesBefore) throws AndesException {
+        List<AndesMessageMetadata> messagesRead = Collections.emptyList();
+               
+        if ( messageStoresUnavailable != null){
+            try {
+                
+                log.info("Message store has become unavailable therefore waiting until store becomes available. thread id: " + this.getId());
+                messageStoresUnavailable.get();
+                messageStoresUnavailable = null; // we are passing the blockade (therefore clear it).
+                log.info("Message store became available. resuming work. thread id: " + this.getId());
+                
+            } catch (InterruptedException e) {
+                throw new AndesException("Thread interrupted while waiting for message stores to come online", e);
+            } catch (ExecutionException e){
+                throw new AndesException("Error occured while waiting for message stores to come online", e);
+            }
+        }
+        
+        try{
+            
+            long firstMsgId = slot.getStartMessageId();
+            long lastMsgId = slot.getEndMessageId();
+            //Read messages in the slot
+            messagesRead =
+                    MessagingEngine.getInstance().getMetaDataList(
+                            storageQueueName, firstMsgId, lastMsgId);
+            
+            if (log.isDebugEnabled()) {
+                StringBuilder messageIDString = new StringBuilder();
+                for (AndesMessageMetadata metadata : messagesRead) {
+                    messageIDString.append(metadata.getMessageID()).append(" , ");
+                }
+                log.debug("Messages Read: " + messageIDString);
+            }
+            
+        }catch (AndesException aex){
+
+            if (numberOfRetriesBefore <= MAX_META_DATA_RETRIEVAL_COUNT) {
+                log.error(String.format("error occurred while trying to get metadata list for slot : %s, retry count = %d",
+                                        slot.toString(), numberOfRetriesBefore), aex);
+                messagesRead = getMetaDataListBySlot(storageQueueName, slot, numberOfRetriesBefore + 1);
+            } else {
+                String errorMsg =
+                                  String.format("error occurred while trying to get metadata list for slot : %s, in final attempt = %d. "
+                                                        + "this slot will not be delivered and become stale in massage store",
+                                                slot.toString(), numberOfRetriesBefore);
+                throw new AndesException(errorMsg, aex);
+            }
+            
+        }
+        
+        return messagesRead;
+
+    }
+    
+    
+    /** 
+     * Get a slot from the Slot to deliver ( from the coordinator if the MB is clustered)
+     * @param storageQueueName the storage queue name for from which a slot should be returned.
+     * @return a {@link Slot}
+     * @throws ConnectionException if connectivity to coordinator is lost.
+     */
+    private Slot requestSlot(String storageQueueName) throws ConnectionException {
+        long startTime = System.currentTimeMillis();
+        Slot currentSlot = slotCoordinator.getSlot(storageQueueName);
+        long endTime = System.currentTimeMillis();
+
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    (endTime - startTime) + " milliSec took to get a slot" +
+                            " from slot manager");
+        }
+        return currentSlot;
     }
 
 
@@ -260,6 +371,29 @@ public class SlotDeliveryWorker extends Thread {
     public void deleteSlot(Slot slot) {
         String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         slotDeletionScheduler.scheduleSlotDeletion(slot, nodeID);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p> Creates a {@link SettableFuture} indicating message store became offline.
+     */
+    @Override
+    public void storeInoperational(HealthAwareStore store, Exception ex) {
+      
+        log.info("message stores became inoperational therefore waiting");
+        messageStoresUnavailable = SettableFuture.create();
+ 
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p> Sets a value for {@link SettableFuture} indicating message store became online.
+     */
+    @Override
+    public void storeOperational(HealthAwareStore store) {
+        log.info("message stores became operational therefore resuming work");
+        messageStoresUnavailable.set(false);
+        
     }
 }
 

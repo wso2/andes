@@ -19,6 +19,8 @@
 package org.wso2.andes.kernel;
 
 import org.wso2.andes.configuration.util.ConfigurationProperties;
+import org.wso2.andes.store.HealthAwareStore;
+
 import java.util.List;
 import java.util.Map;
 
@@ -26,7 +28,7 @@ import java.util.Map;
  * AndesContextStore is an abstraction of underlying data base to store information related to
  * exchanges, queues, bindings, durable subscriptions and queue message counts.
  */
-public interface AndesContextStore {
+public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Initialize the storage and makes a connection to the data base

@@ -186,6 +186,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
             ".coordination.TimeStampBasedMessageIdGenerator", String.class),
 
     /**
+     * This is the Task interval (in SECONDS) to check weather communication
+     * is healthy between message store (/Database) and this server instance.
+     */
+    PERSISTENCE_STORE_HEALTH_CHECK_INTERVAL("persistence/storeHealthCheckInterval", "10", Integer.class),
+            
+    /**
      * Maximum time interval until which a slot can be retained in memory before updating to the cluster.
      * NOTE : specified in milliseconds.
      */

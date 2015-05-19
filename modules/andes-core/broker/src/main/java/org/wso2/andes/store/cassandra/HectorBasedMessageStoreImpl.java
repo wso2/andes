@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2005-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -23,6 +23,7 @@ import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.factory.HFactory;
 import me.prettyprint.hector.api.mutation.Mutator;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
@@ -37,6 +38,7 @@ import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.matrics.DataAccessMatrixManager;
 import org.wso2.andes.matrics.MatrixConstants;
 import org.wso2.andes.server.stats.PerformanceCounter;
+import org.wso2.andes.store.StoreHealthListener;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -78,7 +80,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public DurableStoreConnection initializeMessageStore(AndesContextStore contextStore,
-            ConfigurationProperties connectionProperties) throws AndesException {
+                                                         ConfigurationProperties connectionProperties) throws AndesException {
         // create connection object
         //todo remove this if after testing
         if (hectorConnection == null) {
@@ -100,13 +102,13 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_MESSAGE_PART, this).start();
         try {
             Mutator<String> mutator = HFactory.createMutator(keyspace,
-                    CassandraConstants.stringSerializer);
+                    HectorConstants.stringSerializer);
 
             for (AndesMessagePart part : partList) {
                 final String rowKey = MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX
                         + part.getMessageID();
 
-                HectorDataAccessHelper.addMessageToQueue(CassandraConstants
+                HectorDataAccessHelper.addMessageToQueue(HectorConstants
                                 .MESSAGE_CONTENT_COLUMN_FAMILY,
                         rowKey, part.getOffSet(),
                         part.getData(), mutator, false);
@@ -134,7 +136,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         try {
 
             Mutator<String> mutator = HFactory.createMutator(keyspace,
-                    CassandraConstants.stringSerializer);
+                    HectorConstants.stringSerializer);
 
             List<String> rows2Remove = new ArrayList<String>();
             for (long messageId : messageIdList) {
@@ -145,7 +147,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             //remove content
             if (!rows2Remove.isEmpty()) {
                 HectorDataAccessHelper.deleteIntegerRowListFromColumnFamily(
-                        CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY, rows2Remove,
+                        HectorConstants.MESSAGE_CONTENT_COLUMN_FAMILY, rows2Remove,
                         mutator, false);
             }
 
@@ -167,7 +169,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         try {
             String rowKey = MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX + messageId;
             return HectorDataAccessHelper.getMessageContent(rowKey,
-                    CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY, keyspace, messageId,
+                    HectorConstants.MESSAGE_CONTENT_COLUMN_FAMILY, keyspace, messageId,
                     offsetValue);
 
         } catch (Exception e) {
@@ -188,7 +190,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         try {
 
             return HectorDataAccessHelper.getMessageContentBatch(
-                    CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY, keyspace, messageIdList);
+                    HectorConstants.MESSAGE_CONTENT_COLUMN_FAMILY, keyspace, messageIdList);
 
         } catch (Exception e) {
             throw new AndesException(
@@ -208,11 +210,11 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         try {
 
             Mutator<String> mutator = HFactory.createMutator(keyspace,
-                    CassandraConstants.stringSerializer);
+                    HectorConstants.stringSerializer);
 
             for (AndesMessageMetadata metadata : metadataList) {
                 HectorDataAccessHelper.addMessageToQueue(
-                        CassandraConstants.META_DATA_COLUMN_FAMILY,
+                        HectorConstants.META_DATA_COLUMN_FAMILY,
                         metadata.getStorageQueueName(),
                         metadata.getMessageID(),
                         metadata.getMetadata(), mutator, false);
@@ -251,10 +253,10 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_META_DATA, this).start();
         try {
             Mutator<String> mutator = HFactory.createMutator(keyspace,
-                    CassandraConstants.stringSerializer);
+                    HectorConstants.stringSerializer);
 
             HectorDataAccessHelper.addMessageToQueue(
-                    CassandraConstants
+                    HectorConstants
                             .META_DATA_COLUMN_FAMILY,
                     metadata.getStorageQueueName(),
                     metadata.getMessageID(),
@@ -276,9 +278,9 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_META_DATA_TO_QUEUE, this).start();
         try {
             Mutator<String> mutator = HFactory.createMutator(keyspace,
-                    CassandraConstants.stringSerializer);
+                    HectorConstants.stringSerializer);
 
-            HectorDataAccessHelper.addMessageToQueue(CassandraConstants
+            HectorDataAccessHelper.addMessageToQueue(HectorConstants
                             .META_DATA_COLUMN_FAMILY,
                     queueName,
                     metadata.getMessageID(),
@@ -302,11 +304,11 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         try {
 
             Mutator<String> mutator = HFactory.createMutator(keyspace,
-                    CassandraConstants.stringSerializer);
+                    HectorConstants.stringSerializer);
 
             for (AndesMessageMetadata metadata : metadataList) {
                 HectorDataAccessHelper.addMessageToQueue(
-                        CassandraConstants
+                        HectorConstants
                                 .META_DATA_COLUMN_FAMILY,
                         queueName,
                         metadata.getMessageID(),
@@ -353,13 +355,13 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.UPDATE_META_DATA_INFORMATION, this).start();
         try {
             Mutator<String> insertMutator = HFactory.createMutator(keyspace,
-                    CassandraConstants.stringSerializer);
+                    HectorConstants.stringSerializer);
             Mutator<String> deleteMutator = HFactory.createMutator(keyspace,
-                    CassandraConstants.stringSerializer);
+                    HectorConstants.stringSerializer);
 
             // Step 1 - Insert the new meta data
             for (AndesMessageMetadata metadata : metadataList) {
-                HectorDataAccessHelper.addMessageToQueue(CassandraConstants
+                HectorDataAccessHelper.addMessageToQueue(HectorConstants
                         .META_DATA_COLUMN_FAMILY,
                         metadata.getStorageQueueName(),
                         metadata.getMessageID(),
@@ -382,7 +384,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             // losing messages
             for (AndesMessageMetadata metadata : metadataList) {
                 HectorDataAccessHelper
-                        .deleteLongColumnFromRaw(CassandraConstants.META_DATA_COLUMN_FAMILY,
+                        .deleteLongColumnFromRaw(HectorConstants.META_DATA_COLUMN_FAMILY,
                                 currentQueueName, metadata.getMessageID(), deleteMutator, false);
             }
 
@@ -405,7 +407,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         try {
 
             byte[] value = HectorDataAccessHelper
-                    .getMessageMetaDataOfMessage(CassandraConstants.META_DATA_COLUMN_FAMILY,
+                    .getMessageMetaDataOfMessage(HectorConstants.META_DATA_COLUMN_FAMILY,
                             keyspace, messageId);
             return new AndesMessageMetadata(messageId, value, true);
 
@@ -432,7 +434,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             List<AndesMessageMetadata> allMetadataList = new ArrayList<AndesMessageMetadata>();
             //Get first set of metadata list between firstMsgId and lastMsgID
             List<AndesMessageMetadata> metadataList = HectorDataAccessHelper.getMessagesFromQueue
-                    (queueName, CassandraConstants.META_DATA_COLUMN_FAMILY, keyspace, firstMsgId,
+                    (queueName, HectorConstants.META_DATA_COLUMN_FAMILY, keyspace, firstMsgId,
                             lastMsgID, HectorDataAccessHelper.STANDARD_PAGE_SIZE, true);
             allMetadataList.addAll(metadataList);
             int metadataCount = metadataList.size();
@@ -445,7 +447,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                     break;
                 }
                 metadataList = HectorDataAccessHelper.getMessagesFromQueue
-                        (queueName, CassandraConstants.META_DATA_COLUMN_FAMILY, keyspace, nextFirstMsgId,
+                        (queueName, HectorConstants.META_DATA_COLUMN_FAMILY, keyspace, nextFirstMsgId,
                                 lastMsgID, HectorDataAccessHelper.STANDARD_PAGE_SIZE, true);
                 allMetadataList.addAll(metadataList);
                 metadataCount = metadataList.size();
@@ -471,7 +473,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         try {
             return HectorDataAccessHelper
                     .getMessagesFromQueue(queueName,
-                            CassandraConstants.META_DATA_COLUMN_FAMILY,
+                            HectorConstants.META_DATA_COLUMN_FAMILY,
                             keyspace, firstMsgId, Long.MAX_VALUE,
                             Integer.MAX_VALUE, true);
 
@@ -500,12 +502,12 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                 log.trace(messagesToRemove.size() + " messages removed : " + messageIDsString);
             }
             Mutator<String> mutator = HFactory.createMutator(keyspace,
-                    CassandraConstants.stringSerializer);
+                    HectorConstants.stringSerializer);
 
             for (AndesRemovableMetadata message : messagesToRemove) {
                 HectorDataAccessHelper
                         .deleteLongColumnFromRaw(
-                                CassandraConstants.META_DATA_COLUMN_FAMILY,
+                                HectorConstants.META_DATA_COLUMN_FAMILY,
                                 queueName, message.getMessageID(), mutator, false);
             }
 
@@ -551,7 +553,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
 
         Mutator<String> mutator = HFactory.createMutator(keyspace, StringSerializer.get());
 
-        mutator.addDeletion(storageQueueName,CassandraConstants.META_DATA_COLUMN_FAMILY);
+        mutator.addDeletion(storageQueueName,HectorConstants.META_DATA_COLUMN_FAMILY);
 
         mutator.execute();
     }
@@ -580,7 +582,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
 
                 List<AndesMessageMetadata> metadataList = HectorDataAccessHelper
                         .getMessagesFromQueue(DLCQueueName,
-                                CassandraConstants.META_DATA_COLUMN_FAMILY,
+                                HectorConstants.META_DATA_COLUMN_FAMILY,
                                 keyspace, lastProcessedID,
                                 Long.MAX_VALUE, pageSize, true);
 
@@ -590,7 +592,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                 } else {
                     for (AndesMessageMetadata amm : metadataList) {
                         if (amm.getDestination().equals(storageQueueName)) {
-                            mutator.addDeletion(DLCQueueName, CassandraConstants.META_DATA_COLUMN_FAMILY, amm.getMessageID());
+                            mutator.addDeletion(DLCQueueName, HectorConstants.META_DATA_COLUMN_FAMILY, amm.getMessageID());
                         }
                     }
 
@@ -637,7 +639,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         while (!allRecordsRetrieved) {
             try {
                 List<Long> currentPage = HectorDataAccessHelper.getNumericColumnKeysOfRow
-                        (keyspace, CassandraConstants.META_DATA_COLUMN_FAMILY, storageQueueName, pageSize,
+                        (keyspace, HectorConstants.META_DATA_COLUMN_FAMILY, storageQueueName, pageSize,
                                 lastProcessedID);
 
                 if (currentPage.size() == 0) {
@@ -743,21 +745,28 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                                       String keyspace) throws CassandraDataAccessException {
 
         int gcGraceSeconds = connection.getGcGraceSeconds();
-        HectorDataAccessHelper.createColumnFamily(CassandraConstants.MESSAGE_CONTENT_COLUMN_FAMILY,
+        HectorDataAccessHelper.createColumnFamily(HectorConstants.MESSAGE_CONTENT_COLUMN_FAMILY,
                 keyspace, cluster,
-                CassandraConstants.INTEGER_TYPE,
+                HectorConstants.INTEGER_TYPE,
                 gcGraceSeconds);
-        HectorDataAccessHelper.createColumnFamily(CassandraConstants.META_DATA_COLUMN_FAMILY,
+        HectorDataAccessHelper.createColumnFamily(HectorConstants.META_DATA_COLUMN_FAMILY,
                 keyspace, cluster,
-                CassandraConstants.LONG_TYPE,
+                HectorConstants.LONG_TYPE,
                 gcGraceSeconds);
         HectorDataAccessHelper
-                .createCounterColumnFamily(CassandraConstants.MESSAGE_COUNTERS_COLUMN_FAMILY,
+                .createCounterColumnFamily(HectorConstants.MESSAGE_COUNTERS_COLUMN_FAMILY,
                         keyspace, cluster,
                         gcGraceSeconds);
         HectorDataAccessHelper.createMessageExpiryColumnFamily(
-                CassandraConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY, keyspace,
-                cluster, CassandraConstants.UTF8_TYPE, gcGraceSeconds);
+                HectorConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY, keyspace,
+                cluster, HectorConstants.UTF8_TYPE, gcGraceSeconds);
+    }
+    
+   /**
+    * {@inheritDoc}
+    */
+    public boolean isOperational(String testString, long testTime){
+        return true;
     }
 
 

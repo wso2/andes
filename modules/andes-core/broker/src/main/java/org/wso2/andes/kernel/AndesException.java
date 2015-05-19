@@ -24,6 +24,11 @@ package org.wso2.andes.kernel;
  */
 public class AndesException extends Exception{
 
+    /**
+     * Default Serialization UID
+     */
+    private static final long serialVersionUID = 1L;
+
     /***
      * The most frequent exception happening here is due to message content being miscollected or not being there.
      * we cannot throw this exception and interrupt other delivery tasks. The message content can be unavailable only if :

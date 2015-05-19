@@ -24,6 +24,7 @@ import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.store.StoreHealthListener;
 import org.wso2.andes.store.rdbms.RDBMSConnection;
 import org.wso2.andes.store.rdbms.RDBMSMessageStoreImpl;
 

@@ -19,16 +19,19 @@
 package org.wso2.andes.store.cassandra;
 
 import com.datastax.driver.core.exceptions.UnavailableException;
+
 import me.prettyprint.cassandra.model.ConfigurableConsistencyLevel;
 import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.HConsistencyLevel;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.exceptions.HectorException;
+
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.store.StoreHealthListener;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -36,7 +39,7 @@ import javax.naming.NamingException;
 /**
  * Hector based connection to Cassandra
  */
-public class HectorConnection implements DurableStoreConnection {
+public class HectorConnection extends DurableStoreConnection {
 
     private static final Logger log = Logger.getLogger(HectorConnection.class);
 
@@ -65,42 +68,45 @@ public class HectorConnection implements DurableStoreConnection {
      */
     @Override
     public void initialize(ConfigurationProperties connectionProperties) throws AndesException {
+        
+        super.initialize(connectionProperties);
+        
         String jndiLookupName = "";
         try {
 
-            jndiLookupName = connectionProperties.getProperty(CassandraConstants
+            jndiLookupName = connectionProperties.getProperty(HectorConstants
                     .PROP_JNDI_LOOKUP_NAME);
 
-            String replicationFactor = connectionProperties.getProperty(CassandraConstants
+            String replicationFactor = connectionProperties.getProperty(HectorConstants
                     .PROP_REPLICATION_FACTOR);
 
             if (replicationFactor.isEmpty()) {
-                replicationFactor = CassandraConstants.DEFAULT_REPLICATION_FACTOR;
+                replicationFactor = HectorConstants.DEFAULT_REPLICATION_FACTOR;
             }
 
-            String strategyClass = connectionProperties.getProperty(CassandraConstants
+            String strategyClass = connectionProperties.getProperty(HectorConstants
                     .PROP_STRATEGY_CLASS);
 
             if (strategyClass.isEmpty()) {
-                strategyClass = CassandraConstants.DEFAULT_STRATEGY_CLASS;
+                strategyClass = HectorConstants.DEFAULT_STRATEGY_CLASS;
             }
 
-	        String readConsistencyLevel = connectionProperties.getProperty(CassandraConstants
+	        String readConsistencyLevel = connectionProperties.getProperty(HectorConstants
 			                                                                       .PROP_READ_CONSISTENCY);
 	        if (readConsistencyLevel.isEmpty()) {
-		        readConsistencyLevel = CassandraConstants.DEFAULT_READ_CONSISTENCY;
+		        readConsistencyLevel = HectorConstants.DEFAULT_READ_CONSISTENCY;
 	        }
 
-	        String writeConsistencyLevel = connectionProperties.getProperty(CassandraConstants
+	        String writeConsistencyLevel = connectionProperties.getProperty(HectorConstants
 			                                                                        .PROP_WRITE_CONSISTENCY);
 	        if (writeConsistencyLevel.isEmpty()) {
-		        writeConsistencyLevel = CassandraConstants.DEFAULT_WRITE_CONSISTENCY;
+		        writeConsistencyLevel = HectorConstants.DEFAULT_WRITE_CONSISTENCY;
 	        }
 
-            String gcGraceSeconds = connectionProperties.getProperty(CassandraConstants.PROP_GC_GRACE_SECONDS);
+            String gcGraceSeconds = connectionProperties.getProperty(HectorConstants.PROP_GC_GRACE_SECONDS);
 
             if (gcGraceSeconds.isEmpty()) {
-                gcGraceSeconds = CassandraConstants.DEFAULT_GC_GRACE_SECONDS;
+                gcGraceSeconds = HectorConstants.DEFAULT_GC_GRACE_SECONDS;
             }
 
             setGcGraceSeconds(Integer.parseInt(gcGraceSeconds));
@@ -209,7 +215,7 @@ public class HectorConnection implements DurableStoreConnection {
                                 ConfigurableConsistencyLevel consistencyLevel) throws AndesException {
         try{
             this.keyspace = HectorDataAccessHelper.createKeySpace(cluster,
-                    CassandraConstants.DEFAULT_KEYSPACE,
+                    HectorConstants.DEFAULT_KEYSPACE,
                     replicationFactor, strategyClass,consistencyLevel);
         }catch(UnavailableException e){
             throw new AndesException("Not enough nodes for replication" + e);

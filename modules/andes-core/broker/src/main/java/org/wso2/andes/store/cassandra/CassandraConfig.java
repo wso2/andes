@@ -21,7 +21,7 @@ package org.wso2.andes.store.cassandra;
 import com.datastax.driver.core.ConsistencyLevel;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 
-import static org.wso2.andes.store.cassandra.CassandraConstants.*;
+import static org.wso2.andes.store.cassandra.HectorConstants.*;
 
 /**
  * Configurations related to Cassandra are parsed through this class.

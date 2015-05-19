@@ -29,6 +29,7 @@ public class MatrixConstants {
      * Add message content to the message store
      */
     public static final String ADD_MESSAGE_PART = "db_store_message_part";
+    
     /**
      * Add message meta data list to the database
      */
@@ -37,6 +38,7 @@ public class MatrixConstants {
      * Add message meta data to database
      */
     public static final String ADD_META_DATA = "db_store_mata_data_list";
+    
     /**
      * Add meta data to queue list
      */
