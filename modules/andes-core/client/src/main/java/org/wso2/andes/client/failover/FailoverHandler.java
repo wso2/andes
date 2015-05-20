@@ -119,6 +119,11 @@ public class FailoverHandler implements Runnable
         // has completed before retrying the operation.
         _amqProtocolHandler.notifyFailoverStarting();
 
+        //Set failover flag to true before acquire lock because by this time flow controlling
+        //thread acquire same lock and running in while loop. We need to return from while loop of
+        //flow control thread and continue with failover
+        _amqProtocolHandler.getIsFailoverStart().getAndSet(true);
+
         // Since failover impacts several structures we protect them all with a single mutex. These structures
         // are also in child objects of the connection. This allows us to manipulate them without affecting
         // client code which runs in a separate thread.
@@ -225,6 +230,10 @@ public class FailoverHandler implements Runnable
 
                     _amqProtocolHandler.getConnection().fireFailoverComplete();
                     _amqProtocolHandler.setFailoverState(FailoverState.NOT_STARTED);
+                    //set flag to false since failover complete
+                    _amqProtocolHandler.getIsFailoverStart().getAndSet(false);
+                    //disable flow control and allow publisher to send messages
+                    _amqProtocolHandler.getConnection().disableFlowControl();
                     _logger.info("Connection failover completed successfully");
                 }
                 catch (Exception e)

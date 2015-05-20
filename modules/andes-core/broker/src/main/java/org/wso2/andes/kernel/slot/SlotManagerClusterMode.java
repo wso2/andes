@@ -18,7 +18,6 @@
 
 package org.wso2.andes.kernel.slot;
 
-import com.hazelcast.core.HazelcastInstanceNotActiveException;
 import com.hazelcast.core.IMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -179,7 +178,6 @@ public class SlotManagerClusterMode {
     private Slot getFreshSlot(String queueName) {
         Slot slotToBeAssigned = null;
         TreeSet<Long> messageIDSet;
-        try {
             TreeSetLongWrapper wrapper = slotIDMap.get(queueName);
             if (null != wrapper) {
                 messageIDSet = wrapper.getLongTreeSet();
@@ -215,14 +213,6 @@ public class SlotManagerClusterMode {
                     }
                 }
             }
-        } catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                if (log.isDebugEnabled()) {
-                    log.debug(HAZELCAST_INACTIVE_DURING_SHUTDOWN + "getFreshSlot for queue : " + queueName);
-                }
-            }
-            log.error(HAZELCAST_INACTIVE_WARNING + "getFreshSlot for queue : " + queueName);
-        }
         return slotToBeAssigned;
 
     }
@@ -235,7 +225,6 @@ public class SlotManagerClusterMode {
      */
     private Slot getUnassignedSlot(String queueName) {
         Slot slotToBeAssigned = null;
-        try {
 
             String lockKey = queueName + SlotManagerClusterMode.class;
 
@@ -258,14 +247,6 @@ public class SlotManagerClusterMode {
                     }
                 }
             }
-        } catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                if (log.isDebugEnabled()) {
-                    log.debug(HAZELCAST_INACTIVE_DURING_SHUTDOWN + "getUnassignedSlot for queue : " + queueName);
-                }
-            }
-            log.error(HAZELCAST_INACTIVE_WARNING + "getUnassignedSlot for queue : " + queueName);
-        }
         return slotToBeAssigned;
     }
 
@@ -281,7 +262,6 @@ public class SlotManagerClusterMode {
         Slot slotToBeAssigned = null;
         TreeSet<Slot> currentSlotList;
         HashMap<String, TreeSet<Slot>> queueToSlotMap;
-        try {
             HashmapStringTreeSetWrapper wrapper = overLappedSlotMap.get(nodeId);
 
             String lockKey = nodeId + SlotManagerClusterMode.class;
@@ -303,14 +283,6 @@ public class SlotManagerClusterMode {
                     }
                 }
             }
-        } catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                if (log.isDebugEnabled()) {
-                    log.debug(HAZELCAST_INACTIVE_DURING_SHUTDOWN + "getOverlappedSlot for queue : " + queueName + " from node " + nodeId);
-                }
-            }
-            log.error(HAZELCAST_INACTIVE_WARNING + "getOverlappedSlot for queue : " + queueName + " from node " + nodeId);
-        }
         return slotToBeAssigned;
     }
 
@@ -368,7 +340,6 @@ public class SlotManagerClusterMode {
      */
     public void updateMessageID(String queueName, String nodeId, long startMessageIdInTheSlot, long lastMessageIdInTheSlot) {
 
-        try {
             // Read message Id set for slots from hazelcast
             TreeSet<Long> messageIdSet;
             TreeSetLongWrapper wrapper = slotIDMap.get(queueName);
@@ -456,14 +427,6 @@ public class SlotManagerClusterMode {
                     nodeToLastPublishedIDMap.set(nodeId, lastMessageIdInTheSlot);
                 }
             }
-        } catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                if (log.isDebugEnabled()) {
-                    log.debug(HAZELCAST_INACTIVE_DURING_SHUTDOWN + "updateMessageID for queue : " + queueName + " from node " + nodeId);
-                }
-            }
-            log.error(HAZELCAST_INACTIVE_WARNING + "updateMessageID for queue : " + queueName + " from node " + nodeId);
-        }
     }
 
     /**
@@ -532,7 +495,6 @@ public class SlotManagerClusterMode {
      */
     public boolean deleteSlot(String queueName, Slot emptySlot, String nodeId) {
 
-        try {
 
             long startMsgId = emptySlot.getStartMessageId();
             long endMsgId = emptySlot.getEndMessageId();
@@ -585,14 +547,6 @@ public class SlotManagerClusterMode {
                             " safeZone= " + slotDeleteSafeZone + " endMsgId= " + endMsgId + " slotToDelete= " + emptySlot);
                 }
             }
-        } catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                if (log.isDebugEnabled()) {
-                    log.debug(HAZELCAST_INACTIVE_DURING_SHUTDOWN + "deleteSlot" + emptySlot + " for queue : " + queueName + " from node " + nodeId);
-                }
-            }
-            log.error(HAZELCAST_INACTIVE_WARNING + "deleteSlot" + emptySlot + " for queue : " + queueName + " from node " + nodeId);
-        }
 
         return false;
     }
@@ -606,7 +560,6 @@ public class SlotManagerClusterMode {
     public void reAssignSlotWhenNoSubscribers(String nodeId, String queueName) {
 
         // Hazelcast could be shut down before hitting this method in case of a server shutdown event. Therefore the check.
-        try {
             TreeSet<Slot> assignedSlotList = null;
             String lockKeyForNodeId = nodeId + SlotManagerClusterMode.class;
             synchronized (lockKeyForNodeId.intern()) {
@@ -680,14 +633,6 @@ public class SlotManagerClusterMode {
                     unAssignedSlotMap.set(queueName, treeSetStringWrapper);
                 }
             }
-        } catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                if (log.isDebugEnabled()) {
-                    log.debug(HAZELCAST_INACTIVE_DURING_SHUTDOWN + "reAssignSlotWhenNoSubscribers for queue : " + queueName + " from node " + nodeId);
-                }
-            }
-            log.error(HAZELCAST_INACTIVE_WARNING + "reAssignSlotWhenNoSubscribers for queue : " + queueName + " from node " + nodeId);
-        }
     }
 
     protected Map<String, Long> getNodeInformedSlotDeletionSafeZones() {
@@ -729,7 +674,6 @@ public class SlotManagerClusterMode {
      * @param queueName name of destination queue
      */
     public void clearAllActiveSlotRelationsToQueue(String queueName) {
-        try {
             if(log.isDebugEnabled()) {
                 log.debug("Clearing all slots for queue " + queueName);
             }
@@ -781,14 +725,6 @@ public class SlotManagerClusterMode {
                     }
                 }
             }
-        } catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                if (log.isDebugEnabled()) {
-                    log.debug(HAZELCAST_INACTIVE_DURING_SHUTDOWN + "clearAllActiveSlotRelationsToQueue for queue : " + queueName);
-                }
-            }
-            log.error(HAZELCAST_INACTIVE_WARNING + "clearAllActiveSlotRelationsToQueue for queue : " + queueName);
-        }
 
     }
 

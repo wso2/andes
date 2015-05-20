@@ -204,22 +204,29 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
      * @param messagingEngine MessageEngine
      * @throws AndesException
      */
-    public void gracefulShutdown(MessagingEngine messagingEngine) throws AndesException {
+    public void gracefulShutdown(MessagingEngine messagingEngine, InboundEventManager inboundEventManager,
+                                 FlowControlManager flowControlManager) throws AndesException {
 
-        Boolean taskComplete =false;
+        Boolean taskComplete = false;
         this.messagingEngine = messagingEngine;
         taskStatus = SettableFuture.create();
 
         try {
+            // Block publisher sending messages
+            flowControlManager.prepareChannelsForShutdown();
+
             // Stop SlotDeliveryWorkers
-            // Stop Thrift Service
             // Stop SlotMessageCounter
             stopMessageDelivery();
 
             // Close subscriptions
-            ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllLocalSubscriptionsOfNode();
+            // Removes the MinaNetworkHandler, Authentication Handlers, etc. Refer ApplicationRegistry.close()
+            ApplicationRegistry.remove();
 
-            // notify cluster this MB node is shutting down. For other nodes to do recovery tasks
+            // Shutdown inbound disruptor
+            inboundEventManager.stop();
+
+            // Notify cluster this MB node is shutting down. For other nodes to do recovery tasks
             ClusterResourceHolder.getInstance().getClusterManager().shutDownMyNode();
 
             //Stop Recovery threads
@@ -233,9 +240,6 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
             if (AndesContext.getInstance().isClusteringEnabled() && AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
                 SlotManagerClusterMode.getInstance().shutDownSlotManager();
             }
-
-            // Removes the MinaNetworkHandler, Authentication Handlers, etc. Refer ApplicationRegistry.close()
-            ApplicationRegistry.remove();
 
             // We need this until ApplicationRegistry is done.
             AndesContext.getInstance().getAndesContextStore().close();

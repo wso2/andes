@@ -116,14 +116,16 @@ public class OrphanedSlotHandler implements SubscriptionListener {
             try {
                 MessagingEngine.getInstance().getSlotCoordinator()
                         .reAssignSlotWhenNoSubscribers(queueName);
-                //remove tracking when orphan slot situation
-                ConcurrentMap<String, Set<Slot>> subscriptionSlotTracker = OnflightMessageTracker.getInstance()
-                        .getSubscriptionSlotTracker();
-                Set<Slot> slotsToRemoveTrackingIfOrphaned = subscriptionSlotTracker
-                        .get(queueName);
-                if (slotsToRemoveTrackingIfOrphaned != null) {
-                    for (Slot slot : slotsToRemoveTrackingIfOrphaned) {
-                        OnflightMessageTracker.getInstance().clearAllTrackingWhenSlotOrphaned(slot);
+                //remove tracking when orphan slot situation only when node up and running
+                if (!AndesKernelBoot.isKernelShuttingDown()) {
+                    ConcurrentMap<String, Set<Slot>> subscriptionSlotTracker = OnflightMessageTracker.getInstance()
+                            .getSubscriptionSlotTracker();
+                    Set<Slot> slotsToRemoveTrackingIfOrphaned = subscriptionSlotTracker
+                            .get(queueName);
+                    if (slotsToRemoveTrackingIfOrphaned != null) {
+                        for (Slot slot : slotsToRemoveTrackingIfOrphaned) {
+                            OnflightMessageTracker.getInstance().clearAllTrackingWhenSlotOrphaned(slot);
+                        }
                     }
                 }
                 timer.cancel();

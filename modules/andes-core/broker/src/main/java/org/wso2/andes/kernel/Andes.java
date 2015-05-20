@@ -29,6 +29,7 @@ import org.wso2.andes.kernel.distruptor.inbound.InboundKernelOpsEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
+import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.List;
@@ -232,8 +233,7 @@ public class Andes {
      */
     public void shutDown() throws AndesException{
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
-        kernelOpsEvent.gracefulShutdown(messagingEngine);
-        inboundEventManager.stop();
+        kernelOpsEvent.gracefulShutdown(messagingEngine, inboundEventManager, flowControlManager);
         kernelOpsEvent.waitForTaskCompletion();
     }
 
