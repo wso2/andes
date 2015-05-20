@@ -76,23 +76,25 @@ public class AndesKernelBoot {
     /**
      * This will boot up all the components in Andes kernel and bring the server to working state
      */
-    public static void bootAndesKernel() throws AndesException, UnknownHostException, JMException {
+    public static void bootAndesKernel() throws AndesException {
+        try {
+            isKernelShuttingDown = false;
+            //loadConfigurations - done from outside
+            //startAndesStores - done from outside
+            int threadPoolCount = 1;
+            andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
+            startAndesComponents();
+            startHouseKeepingThreads();
+            syncNodeWithClusterState();
+            registerMBeans();
+            startThriftServer();
+            startMessaging();
+            createSuperTenantDLC();
 
-        isKernelShuttingDown = false;
-        //loadConfigurations - done from outside
-        //startAndesStores - done from outside
-        int threadPoolCount = 1;
-        andesRecoveryTaskScheduler = Executors.newScheduledThreadPool(threadPoolCount);
-        startAndesComponents();
-        startHouseKeepingThreads();
-        syncNodeWithClusterState();
-        registerMBeans();
-        startThriftServer();
-        startMessaging();
-        createSuperTenantDLC();
-
-        Andes.getInstance().startSafeZoneAnalysisWorker();
-
+            Andes.getInstance().startSafeZoneAnalysisWorker();
+        } catch (JMException e) {
+            throw new AndesException("Unable to register Andes MBeans", e);
+        }
     }
 
     /**
@@ -364,9 +366,9 @@ public class AndesKernelBoot {
     }
 
     /**
-     * register andes MBeans
+     * Register andes MBeans
      *
-     * @throws Exception
+     * @throws JMException
      */
     public static void registerMBeans() throws JMException {
 
@@ -385,11 +387,11 @@ public class AndesKernelBoot {
     }
 
     /**
-     * start andes components
+     * Start andes components
      *
-     * @throws Exception
+     * @throws AndesException
      */
-    public static void startAndesComponents() throws AndesException, UnknownHostException {
+    public static void startAndesComponents() throws AndesException {
 
         /**
          * initialize cluster manager for managing nodes in MB cluster
