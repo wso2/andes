@@ -27,7 +27,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.distruptor.BatchEventHandler;
-import org.wso2.andes.store.AndesBatchInsertionException;
+import org.wso2.andes.store.AndesBatchUpdateException;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
@@ -46,6 +46,11 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
      */
     private final List<AndesMessage> currentMessageList;
 
+    /**
+     * If the message store became non-operational ( due to errors) when persisting bunch of messages 
+     * (held in {@link MessageWriter}{@link #currentMessageList} ) those will be move to this list.
+     * Once message store becomes operational we will save these messages before saving new message arrived 
+     */
     private final List<AndesMessage> previouslyFailedMessageList;
     
     /**
@@ -68,8 +73,11 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
 
     public MessageWriter(MessagingEngine messagingEngine, int messageBatchSize) {
         this.messagingEngine = messagingEngine;
-        // For topics the size may be more than messageBatchSize since inbound event might contain more than one message
-        // But this is valid for queues.
+        /*
+         * For topics the size may be more than messageBatchSize since inbound
+         * event might contain more than one message
+         * But this is valid for queues.
+         */
         currentMessageList = new ArrayList<AndesMessage>(messageBatchSize);
         previouslyFailedMessageList = new ArrayList<AndesMessage>(messageBatchSize); // init in the same capacity
         retainList = new ArrayList<AndesMessage>(messageBatchSize);
@@ -130,12 +138,12 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
             // clear the messages
             currentMessageList.clear();
 
-        } catch (AndesBatchInsertionException batchInsertEx){
+        } catch (AndesBatchUpdateException batchInsertEx){
             
             log.error(String.format("unable to store messages, probably due to errors in message stores."
                                             + "success inserts: %d, failed inserts: %d",
-                                    batchInsertEx.getSuccessfullInserts().size(),
-                                    batchInsertEx.getFailedInserts().size()), batchInsertEx);
+                                    batchInsertEx.getSuccessfullBatches().size(),
+                                    batchInsertEx.getFailedBatches().size()), batchInsertEx);
             // This happens when message store becomes unavailable and came back online after a while.
             // Previous message insert batch was successful in Database but connection was dropped before
             // client (= MB) got to know about it ( aka. commit worked).
@@ -145,18 +153,21 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
             previouslyFailedMessageList.addAll(currentMessageList);
             currentMessageList.clear();
         } catch (Exception ex) {
-            log.warn("unable to store messages, probably due to errors in message stores. messages count : " + currentMessageList.size());
+            log.warn("unable to store messages, probably due to errors in message stores. messages count : " + 
+                     currentMessageList.size());
             throw ex;
         }
     }
 
     /**
      * {@inheritDoc}
+     * TODO: Name Change
      * <p> Creates a {@link SettableFuture} indicating message store became offline.
      */
     @Override
-    public void storeInoperational(HealthAwareStore store, Exception ex) {
-        log.info(String.format("messagestore became inoperational. messages to store : %d",currentMessageList.size()));
+    public void storeNonOperational(HealthAwareStore store, Exception ex) {
+        log.info(String.format("messagestore became inoperational. messages to store : %d",
+                               currentMessageList.size()));
         messageStoresUnavailable = SettableFuture.create();
     }
 

@@ -19,7 +19,7 @@
 package org.wso2.andes.kernel;
 
 import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.store.AndesBatchInsertionException;
+import org.wso2.andes.store.AndesBatchUpdateException;
 import org.wso2.andes.store.HealthAwareStore;
 
 import java.util.Collection;
@@ -82,7 +82,7 @@ public interface MessageStore extends HealthAwareStore{
      * @param partList message content chunk list
      * @throws AndesException
      */
-    public void storeMessagePart(List<AndesMessagePart> partList) throws AndesBatchInsertionException, AndesException;
+    public void storeMessagePart(List<AndesMessagePart> partList) throws AndesBatchUpdateException, AndesException;
 
     
     /**

@@ -111,7 +111,8 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                 String destinationOfMessagesInQueue = storageQueueNameToDestinationMap.get(storageQueueName);
                 Collection<LocalSubscription> subscriptions4Queue;
                 try {
-                    subscriptions4Queue = subscriptionStore.getActiveLocalSubscribersForQueuesAndTopics(destinationOfMessagesInQueue);
+                    subscriptions4Queue = 
+                            subscriptionStore.getActiveLocalSubscribersForQueuesAndTopics(destinationOfMessagesInQueue);
                     if (subscriptions4Queue != null && !subscriptions4Queue.isEmpty()) {
                         //Check in memory buffer in MessageFlusher has room
                         if (messageFlusher.getMessageDeliveryInfo(destinationOfMessagesInQueue)
@@ -239,14 +240,17 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      * @return
      * @throws AndesException
      */
-    private List<AndesMessageMetadata> getMetaDataListBySlot(String storageQueueName, 
-                                                             Slot slot, int numberOfRetriesBefore) throws AndesException {
+    private List<AndesMessageMetadata> getMetaDataListBySlot(String storageQueueName,
+                                                             Slot slot,
+                                                             int numberOfRetriesBefore) throws AndesException {
+
         List<AndesMessageMetadata> messagesRead = Collections.emptyList();
                
         if ( messageStoresUnavailable != null){
             try {
                 
-                log.info("Message store has become unavailable therefore waiting until store becomes available. thread id: " + this.getId());
+                log.info("Message store has become unavailable therefore "+ 
+                          "waiting until store becomes available. thread id: " + this.getId());
                 messageStoresUnavailable.get();
                 messageStoresUnavailable = null; // we are passing the blockade (therefore clear it).
                 log.info("Message store became available. resuming work. thread id: " + this.getId());
@@ -278,14 +282,17 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
         }catch (AndesException aex){
 
             if (numberOfRetriesBefore <= MAX_META_DATA_RETRIEVAL_COUNT) {
-                log.error(String.format("error occurred while trying to get metadata list for slot : %s, retry count = %d",
-                                        slot.toString(), numberOfRetriesBefore), aex);
+                String errorMsg =
+                                  String.format("error occurred retrieving metadata list for slot :"
+                                                + " %s, retry count = %d",
+                                                slot.toString(), numberOfRetriesBefore);
+                log.error(errorMsg, aex);
                 messagesRead = getMetaDataListBySlot(storageQueueName, slot, numberOfRetriesBefore + 1);
             } else {
                 String errorMsg =
-                                  String.format("error occurred while trying to get metadata list for slot : %s, in final attempt = %d. "
-                                                        + "this slot will not be delivered and become stale in massage store",
-                                                slot.toString(), numberOfRetriesBefore);
+                         String.format("error occurred retrieving metadata list for slot : %s, in final attempt = %d. "
+                                       + "this slot will not be delivered and become stale in message store",
+                                       slot.toString(), numberOfRetriesBefore);
                 throw new AndesException(errorMsg, aex);
             }
             
@@ -378,7 +385,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      * <p> Creates a {@link SettableFuture} indicating message store became offline.
      */
     @Override
-    public void storeInoperational(HealthAwareStore store, Exception ex) {
+    public void storeNonOperational(HealthAwareStore store, Exception ex) {
       
         log.info("message stores became inoperational therefore waiting");
         messageStoresUnavailable = SettableFuture.create();

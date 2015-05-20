@@ -18,8 +18,14 @@
 
 package org.wso2.andes.store;
 
+import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.MessageStore;
 
+/**
+ * If a {@link MessageStore} or a {@link AndesContextStore} becomes
+ * non-operational this exception will be thrown.
+ */
 public class AndesStoreUnavailableException extends AndesException {
 
     /**

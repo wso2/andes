@@ -1032,6 +1032,9 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isOperational(String testString, long testTime) {
         try {

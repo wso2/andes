@@ -119,7 +119,8 @@ public class AndesChannel {
      *            the time of this channel is created.
      */
     public AndesChannel(FlowControlManager flowControlManager, FlowControlListener listener,
-                        boolean globalBufferBasedFlowControlEnabled, boolean globalErrBasedFlowControlEnabled) {
+                        boolean globalBufferBasedFlowControlEnabled, 
+                        boolean globalErrBasedFlowControlEnabled) {
         this.flowControlManager = flowControlManager;
         this.listener = listener;
         // Used the same executor used by the flow control manager

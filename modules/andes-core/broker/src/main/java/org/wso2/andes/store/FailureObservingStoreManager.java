@@ -37,24 +37,24 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 /**
  * 
  * This class keeps track of all the {@link StoreListener}s and notifies when
- * store becomes (in-)operational.
+ * store becomes (non-)operational.
  * 
  */
 public class FailureObservingStoreManager {
 
 
     /**
-     * All the {@link StoreHealthListener} implementations registed to recieve
+     * All the {@link StoreHealthListener} implementations registered to receive
      * callbacks.
      */
     private static Collection<StoreHealthListener> healthListeners =
-                                                                     Collections.synchronizedCollection(new ArrayList<StoreHealthListener>());
+                                              Collections.synchronizedCollection(new ArrayList<StoreHealthListener>());
 
     /**
      * A named thread factory build executor.
      */
     private final static ThreadFactory namedThreadFactory =
-                                                            new ThreadFactoryBuilder().setNameFormat("FailureObservingStores-HealthCheckPool")
+                                  new ThreadFactoryBuilder().setNameFormat("FailureObservingStores-HealthCheckPool")
                                                                                       .build();
     /**
      * Executor used for health checking
@@ -77,14 +77,15 @@ public class FailureObservingStoreManager {
     }
     
     /**
-     * Schedules a health check task for a in-operational for a {@link HealthAwareStore}
+     * Schedules a health check task for a non-operational for a {@link HealthAwareStore}
      * Note: visibility is at package level which is intentional.
      * @param store which became in-operational
      * @return a future referring to the periodic health check task.
      */
     static ScheduledFuture<?> scheduleHealthCheckTask(HealthAwareStore store) {
         
-        int taskDelay = (Integer) AndesConfigurationManager.readValue(AndesConfiguration.PERSISTENCE_STORE_HEALTH_CHECK_INTERVAL);
+        int taskDelay = (Integer) AndesConfigurationManager.readValue(
+                                    AndesConfiguration.PERSISTENCE_STORE_HEALTH_CHECK_INTERVAL);
         //initial delay and period interval is set to same for the sake of simplicity
         StoreHealthCheckTask healthCheckTask = new StoreHealthCheckTask(store, healthListeners);
         return executor.scheduleWithFixedDelay(healthCheckTask, taskDelay,
@@ -92,25 +93,23 @@ public class FailureObservingStoreManager {
    }
 
     /**
-     * A utility method to broadcast that a store became in-operational.
-     * 
+     * A utility method to broadcast that a store became non-operational.
+     *  TODO: Name Change
      * @param e
      *            error occurred
      * @param healthAwareStore
      *            in-operational store
      */
-    synchronized static void notifyStoreInoperational(AndesStoreUnavailableException e, HealthAwareStore healthAwareStore) {
+    synchronized static void notifyStoreNonOperational(AndesStoreUnavailableException e, 
+                                                      HealthAwareStore healthAwareStore) {
             // this is the first failure
             for (StoreHealthListener listener : healthListeners) {
-                listener.storeInoperational(healthAwareStore, e);
+                listener.storeNonOperational(healthAwareStore, e);
             }
     }
 
     /**
      * A utility method to broadcast that a store became operational.
-     * 
-     * @param e
-     *            error occurred
      * @param healthAwareStore
      *            the store which became operational.
      */

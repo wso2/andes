@@ -50,7 +50,7 @@ public class MessageContentRemoverTask implements Runnable, StoreHealthListener 
     /**
      * Indicates that message store operational
      */
-    private AtomicBoolean storeOperational;
+    private volatile AtomicBoolean storeOperational;
 
     /**
      * Setup the content deletion task with the reference to MessageStore and
@@ -66,8 +66,12 @@ public class MessageContentRemoverTask implements Runnable, StoreHealthListener 
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
+    /**
+     * {@inheritDoc}
+     * If the message/context stores are 
+     */
     public void run() {
-        if (storeOperational.get() && (!messageIdToDeleteQueue.isEmpty())) {
+        if (storeOperational.compareAndSet(true, true) && (!messageIdToDeleteQueue.isEmpty())) {
 
             int queueCount = messageIdToDeleteQueue.size();
             List<Long> idList = new ArrayList<Long>(queueCount);
@@ -92,7 +96,6 @@ public class MessageContentRemoverTask implements Runnable, StoreHealthListener 
                  * parts we will try those in next turn.
                  */
                 messageIdToDeleteQueue.addAll(idList);
-                storeOperational.set(false);
             }
 
         }
@@ -117,7 +120,7 @@ public class MessageContentRemoverTask implements Runnable, StoreHealthListener 
      * 
      */
     @Override
-    public void storeInoperational(HealthAwareStore store, Exception ex) {
+    public void storeNonOperational(HealthAwareStore store, Exception ex) {
         log.info(String.format("Message store became inoperational. Number of message-contents to be deleted: %d",
                                messageIdToDeleteQueue.size()));
         storeOperational.set(false);
