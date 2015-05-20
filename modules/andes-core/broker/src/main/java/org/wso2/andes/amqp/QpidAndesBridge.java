@@ -24,13 +24,13 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQInternalException;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.framing.abstraction.ContentChunk;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.distruptor.inbound.InboundBindingEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
+import org.wso2.andes.kernel.distruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
@@ -39,20 +39,22 @@ import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.IncomingMessage;
-import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
-import org.wso2.andes.server.virtualhost.VirtualHost;
 
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class QpidAMQPBridge {
+/**
+ * Class is not instantiable from outside. This is used as a bridge between Qpid and
+ * Andes. And the class doesn't store any state information hence the methods are made static
+ */
+public class QpidAndesBridge {
 
-    private static Log log = LogFactory.getLog(QpidAMQPBridge.class);
-    private static QpidAMQPBridge qpidAMQPBridge = null;
+    private static Log log = LogFactory.getLog(QpidAndesBridge.class);
+
     /**
      * Following used by a performance counter
      */
@@ -62,37 +64,31 @@ public class QpidAMQPBridge {
     /**
      * Ignore pub acknowledgements in AMQP. AMQP doesn't have pub acks
      */
-    private PubAckHandler pubAckHandler;
+    private static PubAckHandler pubAckHandler;
 
     static {
-        qpidAMQPBridge = new QpidAMQPBridge();
-    }
-    /**
-     * get QpidAMQPBridge instance
-     *
-     * @return QpidAMQPBridge instance
-     */
-    public static QpidAMQPBridge getInstance() {
-        return qpidAMQPBridge;
+        pubAckHandler = new DisablePubAckImpl();
     }
 
     /**
-     * Create a QpidAMQPBridge instance with disabled publisher ack implementation
+     * Class is not instantiable from outside. This is a used as a bridge between Qpid and
+     * Andes. And the class doesn't store any state information
      */
-    private QpidAMQPBridge() {
-        pubAckHandler = new DisablePubAckImpl();
+    private QpidAndesBridge() {
     }
 
     /**
      * message metadata received from AMQP transport.
      * This should happen after all content chunks are received
      *
-     * @param incomingMessage message coming in
-     * @param channelID       id of the channel
-     * @param andesChannel    AndesChannel
+     * @param incomingMessage  message coming in
+     * @param channelID        id of the channel
+     * @param andesChannel     AndesChannel
+     * @param transactionEvent not null if this is a message in a transaction, null otherwise
      * @throws AMQException
      */
-    public void messageReceived(IncomingMessage incomingMessage, UUID channelID, AndesChannel andesChannel) throws AMQException {
+    public static void messageReceived(IncomingMessage incomingMessage, UUID channelID,
+                                AndesChannel andesChannel, InboundTransactionEvent transactionEvent) throws AMQException {
 
         long receivedTime = System.currentTimeMillis();
         try {
@@ -127,11 +123,12 @@ public class QpidAMQPBridge {
             }
 
             // Handover message to Andes
-            Andes.getInstance().messageReceived(andesMessage, andesChannel, pubAckHandler);
-
-            if(log.isDebugEnabled()) {
-                PerformanceCounter.recordMessageReceived(queue, incomingMessage.getReceivedChunkCount());
+            if(null == transactionEvent) { // not a transaction
+                Andes.getInstance().messageReceived(andesMessage, andesChannel, pubAckHandler);
+            } else { // transaction event
+                transactionEvent.enqueue(andesMessage, andesChannel);
             }
+
         } catch (AndesException e) {
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while storing incoming message metadata", e);
         }
@@ -153,7 +150,7 @@ public class QpidAMQPBridge {
      * @return StorableMessageMetaData
      * @throws AMQException
      */
-    public StorableMessageMetaData getMessageMetaData(long messageID) throws AMQException {
+    public static StorableMessageMetaData getMessageMetaData(long messageID) throws AMQException {
         StorableMessageMetaData metaData;
         try {
             metaData = AMQPUtils.convertAndesMetadataToAMQMetadata
@@ -172,7 +169,7 @@ public class QpidAMQPBridge {
      * @param offsetInMessage chunk offset
      * @param src             Bytebuffer with content bytes
      */
-    public AndesMessagePart messageContentChunkReceived(long messageID, int offsetInMessage, ByteBuffer src) {
+    public static AndesMessagePart messageContentChunkReceived(long messageID, int offsetInMessage, ByteBuffer src) {
 
         if (log.isDebugEnabled()) {
             log.debug("Content Part Received id " + messageID + ", offset " + offsetInMessage);
@@ -199,7 +196,7 @@ public class QpidAMQPBridge {
      * @return written content length
      * @throws AMQException
      */
-    public int getMessageContentChunk(long messageID, int offsetInMessage, ByteBuffer dst) throws AMQException {
+    public static int getMessageContentChunk(long messageID, int offsetInMessage, ByteBuffer dst) throws AMQException {
         int contentLenWritten;
         try {
             contentLenWritten = AMQPUtils.getMessageContentChunkConvertedCorrectly(messageID, offsetInMessage, dst);
@@ -210,7 +207,7 @@ public class QpidAMQPBridge {
         return contentLenWritten;
     }
 
-    public void ackReceived(UUID channelID, long messageID, String routingKey, boolean isTopic)
+    public static void ackReceived(UUID channelID, long messageID, String routingKey, boolean isTopic)
             throws AMQException {
         try {
             if (log.isDebugEnabled()) {
@@ -237,7 +234,7 @@ public class QpidAMQPBridge {
         }
     }
 
-    public void rejectMessage(AMQMessage message, AMQChannel channel) throws AMQException {
+    public static void rejectMessage(AMQMessage message, AMQChannel channel) throws AMQException {
         try {
             AndesMessageMetadata rejectedMessage = AMQPUtils.convertAMQMessageToAndesMetadata(message, channel.getId());
             log.debug("AMQP BRIDGE: rejected message id= " + rejectedMessage.getMessageID() + " channel = " + rejectedMessage.getChannelId());
@@ -255,7 +252,7 @@ public class QpidAMQPBridge {
      * @param queue        qpid queue
      * @throws AMQException
      */
-    public void createAMQPSubscription(Subscription subscription, AMQQueue queue) throws AMQException {
+    public static void createAMQPSubscription(Subscription subscription, AMQQueue queue) throws AMQException {
         try {
             if (log.isDebugEnabled()) {
                 log.debug("AMQP BRIDGE: create AMQP Subscription subID " + subscription.getSubscriptionID() + " from queue "
@@ -289,7 +286,7 @@ public class QpidAMQPBridge {
      * @param subscription qpid subscription
      * @throws AndesException
      */
-    public void closeAMQPSubscription(AMQQueue queue, Subscription subscription) throws AndesException {
+    public static void closeAMQPSubscription(AMQQueue queue, Subscription subscription) throws AndesException {
         if (log.isDebugEnabled()) {
             log.debug("AMQP BRIDGE: close AMQP Subscription subID " + subscription.getSubscriptionID() + " from queue " +
                     queue.getName());
@@ -307,7 +304,7 @@ public class QpidAMQPBridge {
      * @param exchange qpid exchange
      * @throws AMQException
      */
-    public void createExchange(Exchange exchange) throws AMQException {
+    public static void createExchange(Exchange exchange) throws AMQException {
         if (log.isDebugEnabled()) {
             log.debug("AMQP BRIDGE: create Exchange" + exchange.getName());
         }
@@ -326,7 +323,7 @@ public class QpidAMQPBridge {
      * @param exchange qpid exchange
      * @throws AMQException
      */
-    public void deleteExchange(Exchange exchange) throws AMQException {
+    public static void deleteExchange(Exchange exchange) throws AMQException {
         if (log.isDebugEnabled()) {
             log.debug("AMQP BRIDGE: delete Exchange " + exchange.getName());
         }
@@ -344,7 +341,7 @@ public class QpidAMQPBridge {
      * @param queue qpid queue
      * @throws AMQException
      */
-    public void createQueue(AMQQueue queue) throws AMQException {
+    public static void createQueue(AMQQueue queue) throws AMQException {
         if (log.isDebugEnabled()) {
             log.debug("AMQP BRIDGE: create queue: " + queue.getName());
         }
@@ -362,7 +359,7 @@ public class QpidAMQPBridge {
      * @param queue qpid queue
      * @throws AMQException
      */
-    public void deleteQueue(AMQQueue queue) throws AMQException {
+    public static void deleteQueue(AMQQueue queue) throws AMQException {
         if (log.isDebugEnabled()) {
             log.debug("AMQP BRIDGE:  delete queue : " + queue.getName());
         }
@@ -382,11 +379,10 @@ public class QpidAMQPBridge {
      * @param exchange   qpid exchange
      * @param routingKey routing key
      * @param queue      qpid queue
-     * @param args       qpid queue arguments
      * @throws AMQInternalException
      */
-    public void createBinding(Exchange exchange, AMQShortString routingKey,
-                              AMQQueue queue, FieldTable args) throws AMQInternalException {
+    public static void createBinding(Exchange exchange, AMQShortString routingKey,
+                              AMQQueue queue) throws AMQInternalException {
 
         // We ignore default exchange events. Andes doesn't honor creation of AMQ default exchange bindings
         if (exchange.getNameShortString().equals(ExchangeDefaults.DEFAULT_EXCHANGE_NAME)) {
@@ -416,10 +412,9 @@ public class QpidAMQPBridge {
      * remove binding from andes kernel
      *
      * @param binding           qpid binding
-     * @param virtualHost virtualhost binding belongs
      * @throws AndesException
      */
-    public void removeBinding(Binding binding, VirtualHost virtualHost) throws AndesException {
+    public static void removeBinding(Binding binding) throws AndesException {
 
         Exchange exchange = binding.getExchange();
 
@@ -447,7 +442,7 @@ public class QpidAMQPBridge {
      * @param subscription subscription
      * @throws AndesException
      */
-    private void addLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) throws AndesException, SubscriptionAlreadyExistsException {
+    private static void addLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) throws AndesException, SubscriptionAlreadyExistsException {
 
         List<Binding> bindingList = queue.getBindings();
         if (bindingList != null && !bindingList.isEmpty()) {
@@ -486,7 +481,7 @@ public class QpidAMQPBridge {
      * @param subscription subscription to remove
      * @throws AndesException
      */
-    private void closeLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) throws AndesException {
+    private static void closeLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) throws AndesException {
         List<Binding> bindingList = queue.getBindings();
         if (bindingList != null && !bindingList.isEmpty()) {
             Set<AndesBinding> uniqueBindings = new HashSet<AndesBinding>();
@@ -512,7 +507,7 @@ public class QpidAMQPBridge {
      *
      * @param channelID id of the closed channel
      */
-    public void channelIsClosing(UUID channelID) {
+    public static void channelIsClosing(UUID channelID) {
         Andes.getInstance().clientConnectionClosed(channelID);
     }
 

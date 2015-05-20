@@ -21,7 +21,7 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.configuration.qpid.ConfigStore;
 import org.wso2.andes.configuration.qpid.ConfiguredObject;
 import org.wso2.andes.configuration.qpid.ConnectionConfig;
@@ -41,6 +41,7 @@ import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.FlowControlListener;
+import org.wso2.andes.kernel.distruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.BaseQueue;
 import org.wso2.andes.server.queue.DLCQueueUtils;
@@ -124,7 +125,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      */
     private AtomicLong _deliveryTag = new AtomicLong(0);
 
-    /** A channel has a default queue (the last declared) that is used when no queue name is explictily set */
+    /** A channel has a default queue (the last declared) that is used when no queue name is explicitly set */
     private AMQQueue _defaultQueue;
 
     /** This tag is unique per subscription to a queue. The server returns this in response to a basic.consume request. */
@@ -150,6 +151,17 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     private final AtomicBoolean _suspended = new AtomicBoolean(false);
 
     private ServerTransaction _transaction;
+
+    /**
+     * This transaction object handles incoming transactional messages (not acknowledgments)
+     * to Andes core
+     */
+    private InboundTransactionEvent andesTransactionEvent;
+
+    /**
+     * This specifies the beginning of a transaction initiated by a select command
+     */
+    private boolean beginTransaction;
 
     private final AtomicLong _txnStarts = new AtomicLong(0);
     private final AtomicLong _txnCommits = new AtomicLong(0);
@@ -197,6 +209,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
         // message tracking related to this channel is initialised
         Andes.getInstance().clientConnectionCreated(_id);
+        beginTransaction = false;
         andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {
             @Override
             public void block() {
@@ -227,10 +240,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     }
 
     /** Sets this channel to be part of a local transaction */
-    public void setLocalTransactional()
-    {
+    public void setLocalTransactional() throws AMQException {
         _transaction = new LocalTransaction(_messageStore);
         _txnStarts.incrementAndGet();
+        beginTransaction = true;
     }
 
     public boolean isTransactional()
@@ -339,19 +352,6 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
             routeCurrentMessage();
 
-            _transaction.addPostTransactionAction(new ServerTransaction.Action()
-            {
-
-                public void postCommit()
-                {
-                }
-
-                public void onRollback()
-                {
-                    handle.remove();
-                }
-            });
-
             deliverCurrentMessageIfComplete();
         }
     }
@@ -412,18 +412,21 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                 final IncomingMessage incomingMessage = _currentMessage;
 
                 try {
-                    /**
+                    /*
                      * All we have to do is to write content, metadata,
                      * and add the message id to the global queue
                      * Content are already added to the same work queue
                      * adding metadata and message to global queue
                      * happen here
                      */
-
-                    QpidAMQPBridge.getInstance().messageReceived(incomingMessage, this.getId(), andesChannel);
+                    if (beginTransaction) {
+                        andesTransactionEvent = Andes.getInstance().newTransaction();
+                        beginTransaction = false;
+                    }
+                    QpidAndesBridge.messageReceived(incomingMessage, getId(), andesChannel, andesTransactionEvent);
 
                 } catch (Throwable e) {
-                    _logger.error("Error processing completed messages, we will close this session", e);
+                    _logger.error("Error processing completed messages, Close the session " + getSessionName(), e);
                     // We mark the session as closed due to error
                     if (_session instanceof AMQProtocolEngine) {
                         ((AMQProtocolEngine) _session).closeProtocolSession();
@@ -531,7 +534,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         try {
             //tell Andes Kernel to register a subscription
             queue.registerSubscription(subscription, exclusive);
-            QpidAMQPBridge.getInstance().createAMQPSubscription(subscription, queue);
+            QpidAndesBridge.createAMQPSubscription(subscription, queue);
         } catch (AMQException e) {
             _tag2SubscriptionMap.remove(tag);
             throw e;
@@ -602,36 +605,42 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
      */
     public void close() throws AMQException
     {
-        if(!_closing.compareAndSet(false, true))
-        {
+        if(!_closing.compareAndSet(false, true)) {
             //Channel is already closing
+            _logger.debug("Channel " + _channelId + " is already closing. Hence dropping close request.");
             return;
         }
 
-        CurrentActor.get().message(_logSubject, ChannelMessages.CLOSE());
+        try {
+            CurrentActor.get().message(_logSubject, ChannelMessages.CLOSE());
 
-        unsubscribeAllConsumers();
-        _transaction.rollback();
+            unsubscribeAllConsumers();
+            _transaction.rollback();
 
-        try
-        {
-            requeue();
+
+            if (null != andesTransactionEvent) {
+                andesTransactionEvent.close();
+            }
+
+            try {
+                requeue();
+            } catch (AMQException e) {
+                _logger.error("Caught AMQException whilst attempting to reque:" + e);
+            }
+
+            getConfigStore().removeConfiguredObject(this);
+
+            forgetMessages4Channel();
+            if (_managedObject != null) {
+                _managedObject.unregister();
+            }
+        } catch (AndesException e) {
+            throw new AMQException("Exception occurred while closing channel " + _channelId, e);
+        } finally {
+            QpidAndesBridge.channelIsClosing(this.getId());
+            Andes.getInstance().deleteChannel(andesChannel);
         }
-        catch (AMQException e)
-        {
-            _logger.error("Caught AMQException whilst attempting to reque:" + e);
-        }
 
-        getConfigStore().removeConfiguredObject(this);
-
-        forgetMessages4Channel();
-
-        QpidAMQPBridge.getInstance().channelIsClosing(this.getId());
-        Andes.getInstance().deleteChannel(andesChannel);
-
-        if (_managedObject != null) {
-            _managedObject.unregister();
-        }
     }
 
     private void unsubscribeAllConsumers() throws AMQException
@@ -932,10 +941,9 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                                                                .getExchange()
                                                                .equals(AMQPUtils
                                                                                .TOPIC_EXCHANGE_NAME);
-            QpidAMQPBridge.getInstance()
-                          .ackReceived(this.getId(), entry.getMessage().getMessageNumber(),
-                                       entry.getMessage().getRoutingKey(),
-                                       isTopic);
+            QpidAndesBridge.ackReceived(this.getId(), entry.getMessage().getMessageNumber(),
+                    entry.getMessage().getRoutingKey(),
+                    isTopic);
         }
 
         updateTransactionalActivity();
@@ -1045,7 +1053,14 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         }
 
         _transaction.commit();
-
+        if(null != andesTransactionEvent) {
+            try {
+                andesTransactionEvent.commit();
+            } catch (AndesException e) {
+                throw new AMQException(AMQConstant.INTERNAL_ERROR,
+                        "Error occurred while committing transaction.", e);
+            }
+        }
         _txnCommits.incrementAndGet();
         _txnStarts.incrementAndGet();
         decrementOutstandingTxnsIfNecessary();
@@ -1072,6 +1087,14 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
         {
             sub.getSendLock();
             sub.releaseSendLock();
+        }
+
+        if(null != andesTransactionEvent) {
+            try {
+                andesTransactionEvent.rollback();
+            } catch (AndesException e) {
+                throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error occurred while rollback ", e);
+            }
         }
 
         try

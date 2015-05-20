@@ -28,6 +28,7 @@ import org.wso2.andes.kernel.distruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundKernelOpsEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
+import org.wso2.andes.kernel.distruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.subscription.SubscriptionStore;
@@ -119,9 +120,9 @@ public class Andes {
         this.contextInformationManager = contextInformationManager;
         this.messagingEngine = messagingEngine;
         this.subscriptionManager = subscriptionManager;
-        
+
         inboundEventManager = InboundEventManagerFactory.createEventManager(subscriptionStore, messagingEngine);
-        
+
         log.info("Andes API initialised.");
     }
 
@@ -534,6 +535,17 @@ public class Andes {
         inboundEventManager.publishStateEvent(queueEvent);
         
         return queueEvent.IsQueueDeletable();
+    }
+
+    /**
+     * Get a new transaction object. This object handles the lifecycle of transactional message publishing.
+     * Once the transactional session is closed this object needs to be closed as well.
+     *
+     * @return InboundTransactionEvent
+     * @throws AndesException
+     */
+    public InboundTransactionEvent newTransaction() throws AndesException {
+        return new InboundTransactionEvent(messagingEngine.newTransaction(), inboundEventManager);
     }
 
 }

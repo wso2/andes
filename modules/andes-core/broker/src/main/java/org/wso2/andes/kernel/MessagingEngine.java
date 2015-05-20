@@ -765,4 +765,21 @@ public class MessagingEngine {
         return new RetainedContent(retainedContentParts, contentSize, messageID);
     }
 
+
+    /**
+     * For transaction based message publishing AndesTransaction should be used
+     *
+     * For each transaction a new Transaction object need to be created and then
+     * publish messages through that
+     *
+     * To persist the messages need to specifically commit the published messages
+     * using the AndesTransaction#commit method. There is also the option to rollback
+     * changes as well using AndesTransaction#rollback
+     *
+     * @return AndesTransaction
+     * @throws AndesException
+     */
+    public MessageStore.AndesTransaction newTransaction() throws AndesException {
+        return messageStore.newTransaction();
+    }
 }

@@ -19,7 +19,7 @@ package org.wso2.andes.server.transport;
 
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQUnknownExchangeType;
-import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -453,7 +453,7 @@ public class ServerSessionDelegate extends SessionDelegate
                         store.createExchange(exchange);
 
                         //tell Andes kernel to create Exchange
-                        QpidAMQPBridge.getInstance().createExchange(exchange);
+                        QpidAndesBridge.createExchange(exchange);
                     }
 
                     exchangeRegistry.registerExchange(exchange);
@@ -568,7 +568,7 @@ public class ServerSessionDelegate extends SessionDelegate
                     store.removeExchange(exchange);
 
                     //tell Andes Kernel to remove exchange
-                    QpidAMQPBridge.getInstance().deleteExchange(exchange);
+                    QpidAndesBridge.deleteExchange(exchange);
                 }
             }
         }
@@ -915,14 +915,14 @@ public class ServerSessionDelegate extends SessionDelegate
                                 store.createQueue(queue, ftArgs);
 
                                 //Tell Andes kernel to create queue
-                                QpidAMQPBridge.getInstance().createQueue(queue);
+                                QpidAndesBridge.createQueue(queue);
                             }
                             else
                             {
                                 store.createQueue(queue);
 
                                 //tell andes kernel to create queue
-                                QpidAMQPBridge.getInstance().createQueue(queue);
+                                QpidAndesBridge.createQueue(queue);
 
                             }
                         }
@@ -1080,7 +1080,7 @@ public class ServerSessionDelegate extends SessionDelegate
                                 store.removeQueue(queue);
 
                                 //tell Andes Kernel to remove queue
-                                QpidAMQPBridge.getInstance().deleteQueue(queue);
+                                QpidAndesBridge.deleteQueue(queue);
 
                             }
                         }  else {

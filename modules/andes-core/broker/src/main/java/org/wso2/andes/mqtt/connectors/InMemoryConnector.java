@@ -17,6 +17,7 @@
  */
 package org.wso2.andes.mqtt.connectors;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
@@ -26,7 +27,6 @@ import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTException;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.mqtt.MQTTopicManager;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.nio.ByteBuffer;
 import java.util.*;

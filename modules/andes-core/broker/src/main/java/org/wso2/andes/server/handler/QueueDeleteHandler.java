@@ -20,7 +20,7 @@ package org.wso2.andes.server.handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQException;
-import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.MethodRegistry;
 import org.wso2.andes.framing.QueueDeleteBody;
 import org.wso2.andes.framing.QueueDeleteOkBody;
@@ -125,7 +125,7 @@ public class QueueDeleteHandler implements StateAwareMethodListener<QueueDeleteB
                         store.removeQueue(queue);
 
                         //tell Andes Kernel to remove queue
-                        QpidAMQPBridge.getInstance().deleteQueue(queue);
+                        QpidAndesBridge.deleteQueue(queue);
 
                     }
 

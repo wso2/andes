@@ -21,7 +21,7 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQConnectionException;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQUnknownExchangeType;
-import org.wso2.andes.amqp.QpidAMQPBridge;
+import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.AMQMethodBody;
 import org.wso2.andes.framing.ExchangeDeclareBody;
 import org.wso2.andes.framing.MethodRegistry;
@@ -86,7 +86,7 @@ public class ExchangeDeclareHandler implements StateAwareMethodListener<Exchange
                             virtualHost.getDurableConfigurationStore().createExchange(exchange);
 
                             //tell Andes kernel to create Exchange
-                            QpidAMQPBridge.getInstance().createExchange(exchange);
+                            QpidAndesBridge.createExchange(exchange);
                         }
                     }
                     catch(AMQUnknownExchangeType e)

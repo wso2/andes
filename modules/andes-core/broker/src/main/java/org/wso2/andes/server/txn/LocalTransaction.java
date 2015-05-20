@@ -296,7 +296,7 @@ public class LocalTransaction implements ServerTransaction
     private void resetDetails()
     {
         _transaction = null;
-	_postTransactionActions.clear();
+        _postTransactionActions.clear();
         _txnStartTime = 0L;
     }
 }

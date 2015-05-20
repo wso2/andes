@@ -21,6 +21,7 @@ package org.wso2.andes.kernel.distruptor.inbound;
 import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
@@ -57,10 +58,12 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
             switch (event.getEventType()) {
                 case MESSAGE_EVENT:
                     updateSlotsAndQueueCounts(event);
-                    event.getChannel().recordRemovalFromBuffer(getProcessedAmount(event.messageList));
-
+                    event.getChannel().recordRemovalFromBuffer(AndesChannel.getTotalChunkCount(event.messageList));
                     break;
                 case STATE_CHANGE_EVENT:
+                    event.updateState();
+                    break;
+                case TRANSACTION_EVENT:
                     event.updateState();
                     break;
                 case SAFE_ZONE_DECLARE_EVENT:
@@ -84,19 +87,6 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
 
         long currentSafeZoneVal = event.getSafeZoneLimit();
         SlotMessageCounter.getInstance().updateSafeZoneForNode(currentSafeZoneVal);
-    }
-
-    /**
-     * Get list of messages that were processed through writing events.
-     * @param messages AndesMessage list
-     * @return Processed message chunks
-     */
-    private int getProcessedAmount(List<AndesMessage> messages) {
-        int count = 0;
-        for (AndesMessage message : messages) {
-            count = count + message.getContentChunkList().size();
-        }
-        return count;
     }
 
     /**
