@@ -58,4 +58,9 @@ public class AndesMessage {
     public void addMessagePart(AndesMessagePart messagePart) {
         contentChunkList.add(messagePart);
     }
+
+    public boolean isDelivarable(AndesSubscription subscription)
+    {
+        return true;
+    }
 }

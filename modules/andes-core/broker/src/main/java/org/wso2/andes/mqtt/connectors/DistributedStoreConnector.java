@@ -105,7 +105,7 @@ public class DistributedStoreConnector implements MQTTConnector {
             messageHeader.addProperty(MQTTUtils.QOSLEVEL, qosLevel);
 
             // Publish to Andes core
-            AndesMessage andesMessage = new AndesMessage(messageHeader);
+            AndesMessage andesMessage = new MQTTMessage(messageHeader);
             andesMessage.addMessagePart(messagePart);
             // TODO: Need to handle Flow control in MQTT properly
             Andes.getInstance().messageReceived(andesMessage, andesChannel, pubAckHandler);
