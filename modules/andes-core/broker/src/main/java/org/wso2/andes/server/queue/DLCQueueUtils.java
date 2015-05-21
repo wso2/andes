@@ -70,13 +70,13 @@ public class DLCQueueUtils {
      */
     public static boolean isDeadLetterQueue(String queueName) {
         boolean isDeadLetterQueue = false;
-        if (queueName.contains("/")) {
+        if (queueName.contains(AndesConstants.TENANT_SEPARATOR)) {
             //The Queue is in the tenant realm
-            if (queueName.split("/", 2)[1].contains(AndesConstants.DEAD_LETTER_QUEUE_SUFFIX)) {
+            if (AndesConstants.DEAD_LETTER_QUEUE_SUFFIX.equals(queueName.split(AndesConstants.TENANT_SEPARATOR, 2)[1])) {
                 isDeadLetterQueue = true;
             }
         } else {
-            if (queueName.equals(AndesConstants.DEAD_LETTER_QUEUE_SUFFIX)) {
+            if (AndesConstants.DEAD_LETTER_QUEUE_SUFFIX.equals(queueName)) {
                 isDeadLetterQueue = true;
             }
         }
