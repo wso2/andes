@@ -91,6 +91,10 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
         // For topics there may be multiple messages in one event.
         for (InboundEventContainer event : eventList) {
             currentMessageList.addAll(event.messageList);
+
+            if (null != event.retainMessage) {
+                retainList.add(event.retainMessage);
+            }
         }
 
         if ( messageStoresUnavailable != null){

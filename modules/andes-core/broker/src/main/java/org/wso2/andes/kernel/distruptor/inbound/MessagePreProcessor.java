@@ -128,10 +128,6 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
         String messageRoutingKey = message.getMetadata().getDestination();
         boolean isMessageRouted = false;
 
-        if (message.getMetadata().isRetain()) {
-            event.retainMessage = message;
-            isMessageRouted = true;
-        }
         //get all topic subscriptions in the cluster matching to routing key
         //including hierarchical topic case
         Set<AndesSubscription> subscriptionList;
@@ -190,17 +186,32 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                 }
             }
 
+            // If retain enabled, need to store the retained message. Set the retained message
+            // so the message writer will persist the retained message
+            if(message.getMetadata().isRetain()) {
+                event.retainMessage = message;
+            }
+
             // If there is no matching subscriber at the moment there is no point of storing the message
             if (!isMessageRouted) {
-                log.info("Message routing key: " + message.getMetadata().getDestination() + " No routes in " +
-                        "cluster. Ignoring Message id " + message.getMetadata().getMessageID());
 
                 // Even though we drop the message pub ack needs to be sent
                 event.pubAckHandler.ack(message.getMetadata());
 
-                // Only one message in list. Clear it and set to ignore the message by message writers
-                event.clear();
+                if (message.getMetadata().isRetain()) {
+                    // Since there are no subscribers we don't need to store the original message.
+                    // Only the retained message need to be stored
+                    event.messageList.clear();
+                } else {
+                    // Since no matching subscribers and not a retained enabled message, Event can be
+                    // cleared and set to ignore the message by message writers
+                    event.clear();
+                    log.info("Message routing key: " + message.getMetadata().getDestination() + " No routes in " +
+                             "cluster. Ignoring Message id " + message.getMetadata().getMessageID());
+                }
+
             }
+
         } catch (AndesException e) {
             log.error("Error occurred while processing routing information fot topic message. Routing Key " +
                     messageRoutingKey + ", Message ID " + message.getMetadata().getMessageID());

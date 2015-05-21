@@ -34,12 +34,17 @@ public class CQLConstants {
     /** Message Store tables */
     protected static final String CONTENT_TABLE = "MB_CONTENT";
     protected static final String METADATA_TABLE = "MB_METADATA";
+    protected static final String RETAINED_CONTENT_TABLE = "MB_RETAINED_CONTENT";
+    protected static final String RETAINED_METADATA_TABLE = "MB_RETAINED_METADATA";
+
     
     protected static final String MSG_STORE_STATUS_TABLE = "MB_MSG_STORE_STATUS";
   
     /** Message Store table columns */
     protected static final String MESSAGE_ID = "MESSAGE_ID";
 
+    protected static final String TOPIC_NAME = "TOPIC_NAME";
+    protected static final String TOPIC_ID = "TOPIC_ID";
     protected static final String QUEUE_NAME = "QUEUE_NAME";
     protected static final String METADATA = "MESSAGE_METADATA";
     protected static final String MESSAGE_OFFSET = "CONTENT_OFFSET";
