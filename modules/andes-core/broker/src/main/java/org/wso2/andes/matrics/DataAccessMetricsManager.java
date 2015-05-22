@@ -28,49 +28,49 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Will be responsible in managing between the carbon matrix manager
+ * Will be responsible in managing between the carbon metrics manager
  * Includes adding of timers and guages
  */
-public class DataAccessMatrixManager {
+public class DataAccessMetricsManager {
 
 
     /*
-     *Holds the timers which will periodically trigger the matrix info
+     *Holds the timers which will periodically trigger the metrics info
      *Key - Timer definition, Value - timer object which will record info against the defined operation
      *Map will be concurrently accessed during multiple db operations during run time.
      * */
     private static Map<String, Timer> timers = new ConcurrentHashMap<String, Timer>();
 
-    /*Sets the level in which the matrix should be handled the levels could be INFO, WARN, DEBUG, TRACE*/
+    /*Sets the level in which the metrics should be handled the levels could be INFO, WARN, DEBUG, TRACE*/
     private static final Level level = Level.INFO;
 
 
     /**
      * Will create and register a timer if already not being created
      *
-     * @param definition the definition of the operation the matrix to be created
-     * @param source     the source class which the matrix data should be tabulated
-     * @return the timer object which will be used for matrix calculation
+     * @param definition the definition of the operation the metrics to be created
+     * @param source     the source class which the metrics data should be tabulated
+     * @return the timer object which will be used for metrics calculation
      */
     public static Timer addAndGetTimer(String definition, MessageStore source) {
 
-        Timer matrixTimer = timers.get(definition);
-        //If matrix has not being defined before
-        if (null == matrixTimer) {
-            matrixTimer = MetricManager.timer(level, MetricManager.name(source.getClass(), definition));
+        Timer metricTimer = timers.get(definition);
+        //If metrics has not being defined before
+        if (null == metricTimer) {
+            metricTimer = MetricManager.timer(level, MetricManager.name(source.getClass(), definition));
             //Will create the timer
-            timers.put(definition, matrixTimer);
+            timers.put(definition, metricTimer);
         }
 
-        return matrixTimer;
+        return metricTimer;
     }
 
     /**
      * Will prepare a guage for tabulating value events
      *
      * @param definition the name guage should be registered
-     * @param source     the source class which the matrix data should be tabulated
-     * @param guage      the guage defined in the class for matrix calculation
+     * @param source     the source class which the metrics data should be tabulated
+     * @param guage      the guage defined in the class for metrics calculation
      */
     public static void addGuage(String definition, Class<?> source, Gauge<?> guage) {
         MetricManager.gauge(Level.INFO, MetricManager.name(source,

@@ -21,7 +21,7 @@ package org.wso2.andes.matrics;
 /**
  * Will maintain the list of matrices
  */
-public class MatrixConstants {
+public class MetricsConstants {
 
     /*DB OPERATIONS*/
 
