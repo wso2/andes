@@ -19,7 +19,7 @@
 package org.wso2.andes.matrics;
 
 /**
- * Will maintain the list of matrices
+ * Will maintain the list of metrics
  */
 public class MetricsConstants {
 
