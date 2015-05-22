@@ -41,18 +41,25 @@ import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 
 
 /**
- * Contains utility methods required for both {@link CQLBasedMessageStoreImpl} and {@link CQLBasedAndesContextStoreImpl}
+ * Contains utility methods required for both {@link CQLBasedMessageStoreImpl}
+ * and {@link CQLBasedAndesContextStoreImpl}
  */
 public class CQLUtils {
 
     private static final Logger log = Logger.getLogger(CQLUtils.class);
     
     /**
-     * Tests whether data can be inserted to cluster with specified write consistency level. 
-     * @param cqlConnection connection to be used.
-     * @param config cassandra configuration
-     * @param testString test data
-     * @param testTime test data (long value
+     * Tests whether data can be inserted to cluster with specified write
+     * consistency level.
+     * 
+     * @param cqlConnection
+     *            connection to be used.
+     * @param config
+     *            cassandra configuration
+     * @param testString
+     *            test data
+     * @param testTime
+     *            test data (long value
      * @return true if data can be written.
      */
     boolean testInsert(CQLConnection cqlConnection, CassandraConfig config, String testString, long testTime) {
@@ -61,8 +68,10 @@ public class CQLUtils {
 
         try {
             Statement statement =
-                                  QueryBuilder.insertInto(config.getKeyspace(), CQLConstants.MSG_STORE_STATUS_TABLE).ifNotExists()
-                                              .value(CQLConstants.NODE_ID, testString).value(CQLConstants.TIME_STAMP, testTime)
+                                  QueryBuilder.insertInto(config.getKeyspace(), CQLConstants.MSG_STORE_STATUS_TABLE)
+                                              .ifNotExists()
+                                              .value(CQLConstants.NODE_ID, testString)
+                                              .value(CQLConstants.TIME_STAMP, testTime)
                                               .setConsistencyLevel(config.getWriteConsistencyLevel());
             execute(cqlConnection, statement,
                     "testing data insertion with write consistency level : " + config.getWriteConsistencyLevel());
@@ -75,11 +84,17 @@ public class CQLUtils {
     }
 
     /**
-     * Tests whether data can be read from the cluster with specified (in configuration) read consistency level.
-     * @param cqlConnection connection to be used.
-     * @param config cassandra configuration.
-     * @param testString test data
-     * @param testTime test data( long value)
+     * Tests whether data can be read from the cluster with specified (in
+     * configuration) read consistency level.
+     * 
+     * @param cqlConnection
+     *            connection to be used.
+     * @param config
+     *            cassandra configuration.
+     * @param testString
+     *            test data
+     * @param testTime
+     *            test data( long value)
      * @return true of data can be read from cluster.
      */
     boolean testRead(CQLConnection cqlConnection, CassandraConfig config, String testString, long testTime) {
@@ -92,7 +107,8 @@ public class CQLUtils {
                                               .from(config.getKeyspace(), CQLConstants.MSG_STORE_STATUS_TABLE)
                                               .setConsistencyLevel(config.getReadConsistencyLevel());
 
-            execute(cqlConnection, statement, "testing data read with read consistency level: " + config.getReadConsistencyLevel());
+            execute(cqlConnection, statement,
+                    "testing data read with read consistency level: " + config.getReadConsistencyLevel());
             readSucess = true;
         } catch (AndesException ignore) {
 
@@ -102,11 +118,17 @@ public class CQLUtils {
     }
 
     /**
-     *  Tests whether data can be deleted from the cluster with specified (in configuration) write consistency level.
-     * @param cqlConnection connection to be used.
-     * @param config Cassandra configuration 
-     * @param testString test data
-     * @param testTime test data (long)
+     * Tests whether data can be deleted from the cluster with specified (in
+     * configuration) write consistency level.
+     * 
+     * @param cqlConnection
+     *            connection to be used.
+     * @param config
+     *            Cassandra configuration
+     * @param testString
+     *            test data
+     * @param testTime
+     *            test data (long)
      * @return
      */
     boolean testDelete(CQLConnection cqlConnection, CassandraConfig config, String testString, long testTime) {
@@ -117,10 +139,12 @@ public class CQLUtils {
 
             Statement statement =
                                   QueryBuilder.delete().from(config.getKeyspace(), CQLConstants.MSG_STORE_STATUS_TABLE)
-                                              .where(eq(CQLConstants.NODE_ID, testString)).and(eq(CQLConstants.TIME_STAMP, testTime))
+                                              .where(eq(CQLConstants.NODE_ID, testString))
+                                              .and(eq(CQLConstants.TIME_STAMP, testTime))
                                               .setConsistencyLevel(config.getWriteConsistencyLevel());
 
-            execute(cqlConnection, statement, "testing data deletes with write consistency level: " + config.getWriteConsistencyLevel());
+            execute(cqlConnection, statement,
+                    "testing data deletes with write consistency level: " + config.getWriteConsistencyLevel());
             deleteSucess = true;
         } catch (AndesException ignore) {
 
@@ -136,8 +160,8 @@ public class CQLUtils {
      *            connection to be used.
      * @return true if {@link Metadata} can be retrieved for the cluster.
      */
-    boolean isReachable(CQLConnection cqlConnection){
-        
+    boolean isReachable(CQLConnection cqlConnection) {
+
         boolean isReachable = false;
         try {
             // this will check the connectivity to cassandra cluster.
@@ -153,10 +177,10 @@ public class CQLUtils {
             // errors.
             log.info("error occurred while checking the operation status of cassandra server(s)", driverEx);
         }
-        
+
         return isReachable;
     }
-    
+
     /**
      * Create the table required for testing for Cassandra availability.
      * Known usages at {@link CQLBasedMessageStoreImpl} and
@@ -167,49 +191,57 @@ public class CQLUtils {
      * @param config
      *            Cassandra configuration
      */
-    void createSchema(CQLConnection cqlConnection, CassandraConfig config){
-        
-        Statement statement = SchemaBuilder.createTable(config.getKeyspace(), CQLConstants.MSG_STORE_STATUS_TABLE).ifNotExists().
-                addPartitionKey(CQLConstants.NODE_ID, DataType.text()).
-                addClusteringColumn(CQLConstants.TIME_STAMP, DataType.bigint()).
-                withOptions().clusteringOrder(CQLConstants.TIME_STAMP, SchemaBuilder.Direction.ASC).
-                gcGraceSeconds(config.getGcGraceSeconds()).
-                setConsistencyLevel(config.getWriteConsistencyLevel());
-        
+    void createSchema(CQLConnection cqlConnection, CassandraConfig config) {
+
+        Statement statement =
+                              SchemaBuilder.createTable(config.getKeyspace(),
+                                                        CQLConstants.MSG_STORE_STATUS_TABLE).ifNotExists().
+                                           addPartitionKey(CQLConstants.NODE_ID, DataType.text()).
+                                           addClusteringColumn(CQLConstants.TIME_STAMP, DataType.bigint()).
+                                           withOptions()
+                                           .clusteringOrder(CQLConstants.TIME_STAMP, SchemaBuilder.Direction.ASC).
+                                           gcGraceSeconds(config.getGcGraceSeconds()).
+                                           setConsistencyLevel(config.getWriteConsistencyLevel());
+
         cqlConnection.getSession().execute(statement);
     }
-    
-    
-    
+
     /**
      * Executes the statement using the given session and returns the resultSet.
-     * Additionally this catches any NoHostAvailableException or QueryExecutionException thrown by CQL driver and
-     * rethrows an AndesException
+     * Additionally this catches any NoHostAvailableException or
+     * QueryExecutionException thrown by CQL driver and
+     * re-throws an AndesException
      *
-     * @param cqlConnection CQL connection to be used.
-     * @param statement statement to be executed
-     * @param task description of the task that is done by the statement
+     * @param cqlConnection
+     *            CQL connection to be used.
+     * @param statement
+     *            statement to be executed
+     * @param task
+     *            description of the task that is done by the statement
      * @return ResultSet
      * @throws AndesException
      */
-    private ResultSet execute(CQLConnection cqlConnection, Statement statement, String task) throws AndesStoreUnavailableException {
+    private ResultSet execute(CQLConnection cqlConnection, Statement statement, String task)
+                                                                                throws AndesStoreUnavailableException {
         try {
             return cqlConnection.getSession().execute(statement);
         } catch (NoHostAvailableException e) {
-            
+
             log.error("Unable to connect to cassandra cluster for " + task, e);
-            
-            Map<InetSocketAddress,Throwable> errors = e.getErrors();
-            for ( Entry<InetSocketAddress, Throwable> err: errors.entrySet()){
-                log.error("Error occured while connecting to cassandra server: " + err.getKey() + " error: ", err.getValue());
+
+            Map<InetSocketAddress, Throwable> errors = e.getErrors();
+            for (Entry<InetSocketAddress, Throwable> err : errors.entrySet()) {
+                log.error("Error occured while connecting to cassandra server: " + err.getKey() + " error: ",
+                          err.getValue());
             }
-            
-            throw new AndesStoreUnavailableException("error occured while trying to connect to cassandra server(s) for " + task, e);
-            
+
+            throw new AndesStoreUnavailableException(
+                                                     "error occured while connecting to cassandra server(s) for " +
+                                                             task, e);
+
         } catch (QueryExecutionException e) {
             throw new AndesStoreUnavailableException("Error occurred while " + task, e);
         }
     }
-    
     
 }

@@ -528,7 +528,7 @@ public class FailureObservingMessageStore implements MessageStore {
         
         if (storeHealthDetectingFuture == null) {
             // this is the first failure 
-            FailureObservingStoreManager.notifyStoreInoperational(e, wrappedInstance);
+            FailureObservingStoreManager.notifyStoreNonOperational(e, wrappedInstance);
             storeHealthDetectingFuture = FailureObservingStoreManager.scheduleHealthCheckTask(this);
             
         }

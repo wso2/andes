@@ -316,7 +316,7 @@ public class FlowControlManager  implements StoreHealthListener {
      * 
      */
     @Override
-    public void storeInoperational(HealthAwareStore store, Exception ex) {
+    public void storeNonOperational(HealthAwareStore store, Exception ex) {
         blockListenersOnErrorBasedFlowControl(store);
     }
 

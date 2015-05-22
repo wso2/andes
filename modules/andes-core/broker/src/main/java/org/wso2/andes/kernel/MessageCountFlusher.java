@@ -48,7 +48,7 @@ public class MessageCountFlusher implements Runnable, StoreHealthListener {
     private Map<String, AtomicInteger> messageCountDifferenceMap;
 
     /**
-     * message count will be flushed to DB when count difference reach this val
+     * Message count will be flushed to DB when count difference reach this value
      */
     private int messageCountFlushNumberGap;
 
@@ -82,7 +82,7 @@ public class MessageCountFlusher implements Runnable, StoreHealthListener {
     }
 
     /**
-     * increment message count of queue. Flush if difference is in tab
+     * Increment message count of queue. Flush if difference is in tab
      *
      * @param queueName   name of the queue to increment count
      * @param incrementBy increment count by this value
@@ -171,19 +171,25 @@ public class MessageCountFlusher implements Runnable, StoreHealthListener {
             // On error add back the count. Since the operation didn't run correctly. Next call to this method might
             // get the chance to update the value properly.
             difference.addAndGet(count);
-            messageStoresOperational.set(false);
             
             log.error("Error while updating message counts for queue " + queueName, e);
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void storeInoperational(HealthAwareStore store, Exception ex) {
-        log.info("Message store became inoperational. Message counts will not be updated until message stores become available");
+    public void storeNonOperational(HealthAwareStore store, Exception ex) {
+        log.info("Message store became inoperational. "
+                 + "Message counts will not be updated until message stores become available");
         this.messageStoresOperational.set(false);
-        
+
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void storeOperational(HealthAwareStore store) {
         log.info("Message store became operational. message counts will be updated again.");

@@ -28,11 +28,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.log4j.Logger;
-import org.wso2.andes.store.AndesBatchInsertionException;
+import org.wso2.andes.store.AndesBatchUpdateException;
 
 
 /**
- * Contains utilility methods required for both {@link RDBMSMessageStoreImpl} and {@link RDBMSAndesContextStoreImpl}
+ * Contains utilility methods required for both {@link RDBMSMessageStoreImpl}
+ * and {@link RDBMSAndesContextStoreImpl}
  */
 public class RDBMSStoreUtils {
 
@@ -85,7 +86,9 @@ public class RDBMSStoreUtils {
      * @param testTime a time value 
      * @return true if the test was successful. 
      */
-    public boolean testRead(Connection connection, String testString, long testTime) throws SQLException{
+    public boolean testRead(Connection connection, 
+                            String testString, 
+                            long testTime) throws SQLException{
 
         boolean canRead = false;
         
@@ -94,7 +97,8 @@ public class RDBMSStoreUtils {
         ResultSet results = null;
 
         try {
-            selectPreparedStatement = connection.prepareStatement(RDBMSConstants.PS_TEST_MSG_STORE_SELECT);
+            selectPreparedStatement = connection.prepareStatement(
+                                       RDBMSConstants.PS_TEST_MSG_STORE_SELECT);
             selectPreparedStatement.setString(1, testString);
             selectPreparedStatement.setLong(2, testTime);
 
@@ -230,9 +234,25 @@ public class RDBMSStoreUtils {
         }
     }
     
-    
-    public <T> void raiseBatchUpdateException(List<T> dataList, Connection connection, BatchUpdateException bue,
-                                             String task) throws AndesBatchInsertionException {
+    /**
+     * Throws an {@link AndesBatchUpdateException} with specified
+     * information. and rollback the tried batch operation.
+     * 
+     * @param dataList
+     *            data objects will was used for batch operation.
+     * @param connection
+     *            SQL connection used.
+     * @param bue
+     *            the original SQL batch update exception.
+     * @param task
+     *            the string indicating the task tried out (in failed batch
+     *            update operation)
+     * @throws AndesBatchUpdateException
+     *             the error.
+     */
+    public <T> void raiseBatchUpdateException(List<T> dataList, Connection connection,
+                                              BatchUpdateException bue,
+                                              String task) throws AndesBatchUpdateException {
 
         int[] updateCountsOfFailedBatch = bue.getUpdateCounts();
         List<T> failed = new ArrayList<T>();
@@ -247,13 +267,12 @@ public class RDBMSStoreUtils {
             }
         }
 
-        rollback(connection, task);
+        rollback(connection, task); // try to rollback the batch operation.
 
-        AndesBatchInsertionException insertEx =
-                                                new AndesBatchInsertionException(task + " failed", bue.getSQLState(),
+        AndesBatchUpdateException insertEx =
+                                                new AndesBatchUpdateException(task + " failed", bue.getSQLState(),
                                                                                  bue, failed, succeded);
         throw insertEx;
     }
-    
 
 }

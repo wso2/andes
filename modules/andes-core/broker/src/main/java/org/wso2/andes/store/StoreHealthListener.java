@@ -21,19 +21,18 @@ package org.wso2.andes.store;
 /**
  * Defines contractual obligations for any party interested in knowing
  * when a {@link HealthAwareStore} becomes operational or offline.
- *
  */
 public interface StoreHealthListener {
 
     /**
-     * Invoked when specified store becomes in-operational
+     * Invoked when specified store becomes non-operational
      * 
      * @param store
      *            the store which went offline.
      * @param ex
      *            exception occurred.
      */
-    public void storeInoperational(HealthAwareStore store, Exception ex);
+    public void storeNonOperational(HealthAwareStore store, Exception ex);
 
     /**
      * Invoked when specified store becomes operational

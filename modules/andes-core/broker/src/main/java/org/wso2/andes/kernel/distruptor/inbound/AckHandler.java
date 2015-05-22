@@ -88,9 +88,12 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
     }
 
     /**
-     * Updates the state of Andes and deletes relevant messages. (For topics message deletion will happen only when
+     * Updates the state of Andes and deletes relevant messages. (For topics
+     * message deletion will happen only when
      * all the clients acknowledges)
-     * @param eventList inboundEvent list
+     * 
+     * @param eventList
+     *            inboundEvent list
      */
     public void ackReceived(final List<InboundEventContainer> eventList) throws AndesException {
         
@@ -145,8 +148,9 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
             }
             removableMetadata.clear();
         } catch (AndesException ex){             
-            log.warn(String.format("unable to delete messages, probably due to errors in message stores. messages count : %d",
-                                   removableMetadata.size()));
+            log.warn(
+              String.format("unable to delete messages, probably due to errors in message stores. messages count : %d",
+              removableMetadata.size()));
            throw ex;
         }
     }
@@ -157,8 +161,9 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
      * <p> Creates a {@link SettableFuture} indicating message store became offline.
      */
     @Override
-    public void storeInoperational(HealthAwareStore store, Exception ex) {
-        log.info(String.format("messagestore became inoperational. messages to delete : %d", removableMetadata.size()));
+    public void storeNonOperational(HealthAwareStore store, Exception ex) {
+        log.info(String.format("messagestore became inoperational. messages to delete : %d", 
+                               removableMetadata.size()));
         messageStoresUnavailable = SettableFuture.create();
     }
 
@@ -168,7 +173,8 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
      */
     @Override
     public void storeOperational(HealthAwareStore store) {
-        log.info(String.format("messagestore became operational. messages to delete : %d", removableMetadata.size()));
+        log.info(String.format("messagestore became operational. messages to delete : %d", 
+                                removableMetadata.size()));
         messageStoresUnavailable.set(false);
    }
 }
