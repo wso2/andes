@@ -43,6 +43,7 @@ import org.wso2.andes.store.StoreHealthListener;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -783,10 +784,10 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException {
+
         // TODO: implement this method
-        throw new org.apache.commons.lang.NotImplementedException("Hector base message store methods for" +
-                                                                  " retain feature will be implemented " +
-                                                                  "in next iteration");
+        log.warn("Hector base message store methods for retain feature will be implemented " +
+                 "in next iteration");
     }
 
     /**
@@ -794,10 +795,9 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public List<String> getAllRetainedTopics() throws AndesException {
+
         // TODO: implement this method
-        throw new org.apache.commons.lang.NotImplementedException("Hector base message store methods for" +
-                                                                  " retain feature will be implemented " +
-                                                                  "in next iteration");
+        return Collections.emptyList();
     }
 
     /**
@@ -805,10 +805,13 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public AndesMessageMetadata getRetainedMetaData(String destination) throws AndesException {
+
         // TODO: implement this method
-        throw new org.apache.commons.lang.NotImplementedException("Hector base message store methods for" +
-                                                                  " retain feature will be implemented " +
-                                                                  "in next iteration");
+        AndesMessageMetadata messageMetadata = null;
+        log.warn("Hector base message store methods for retain feature will be implemented " +
+                 "in next iteration");
+        return messageMetadata;
+
     }
 
     /**
@@ -816,10 +819,12 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public Map<Integer, AndesMessagePart> getRetainedContentParts(long messageID) throws AndesException {
+
         // TODO: implement this method
-        throw new org.apache.commons.lang.NotImplementedException("Hector base message store methods for" +
-                                                                  " retain feature will be implemented " +
-                                                                  "in next iteration");
+        Map<Integer, AndesMessagePart> retainContentPartMap = Collections.emptyMap();
+        log.warn("Hector base message store methods for retain feature will be implemented " +
+                 "in next iteration");
+        return retainContentPartMap;
     }
 
 
