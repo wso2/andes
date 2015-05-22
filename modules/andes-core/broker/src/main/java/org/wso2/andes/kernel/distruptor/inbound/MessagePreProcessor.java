@@ -21,17 +21,11 @@ package org.wso2.andes.kernel.distruptor.inbound;
 import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.amqp.AMQPMessage;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.mqtt.MQTTMessage;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.subscription.SubscriptionStore;
-import org.wso2.carbon.metrics.manager.Counter;
-import org.wso2.carbon.metrics.manager.Level;
-import org.wso2.carbon.metrics.manager.MetricManager;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -109,8 +103,6 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
         // NO NEED TO CHECK FOR LIST SIZE
         AndesMessage message = event.messageList.get(0);
 
-        log.info(message.getClass());
-
         AndesChannel andesChannel = event.getChannel();
 
         // Messages are processed in the order they arrive at ring buffer By this processor.
@@ -163,6 +155,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
             for (AndesSubscription subscription : subscriptionList) {
                 if (!alreadyStoredQueueNames.contains(subscription.getStorageQueueName())) {
 
+                    //Check protocol specific rules for validate delivery to given subscription
                     if(!message.isDelivarable(subscription)){
                         continue;
                     }
