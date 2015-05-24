@@ -479,11 +479,16 @@ public class SlotManagementService {
         super("getSlotInfo");
       }
 
-      protected getSlotInfo_args getEmptyArgsInstance() {
+      public getSlotInfo_args getEmptyArgsInstance() {
         return new getSlotInfo_args();
       }
 
-      protected getSlotInfo_result getResult(I iface, getSlotInfo_args args) throws org.apache.thrift.TException {
+        @Override
+        protected boolean isOneway() {
+            return false;
+        }
+
+        public getSlotInfo_result getResult(I iface, getSlotInfo_args args) throws org.apache.thrift.TException {
         getSlotInfo_result result = new getSlotInfo_result();
         result.success = iface.getSlotInfo(args.queueName, args.nodeId);
         return result;
@@ -495,11 +500,16 @@ public class SlotManagementService {
         super("updateMessageId");
       }
 
-      protected updateMessageId_args getEmptyArgsInstance() {
+      public updateMessageId_args getEmptyArgsInstance() {
         return new updateMessageId_args();
       }
 
-      protected updateMessageId_result getResult(I iface, updateMessageId_args args) throws org.apache.thrift.TException {
+        @Override
+        protected boolean isOneway() {
+            return false;
+        }
+
+        public updateMessageId_result getResult(I iface, updateMessageId_args args) throws org.apache.thrift.TException {
         updateMessageId_result result = new updateMessageId_result();
         iface.updateMessageId(args.queueName, args.nodeId, args.startMessageId, args.endMessageId);
         return result;
@@ -511,11 +521,16 @@ public class SlotManagementService {
         super("deleteSlot");
       }
 
-      protected deleteSlot_args getEmptyArgsInstance() {
+      public deleteSlot_args getEmptyArgsInstance() {
         return new deleteSlot_args();
       }
 
-      protected deleteSlot_result getResult(I iface, deleteSlot_args args) throws org.apache.thrift.TException {
+        @Override
+        protected boolean isOneway() {
+            return false;
+        }
+
+        public deleteSlot_result getResult(I iface, deleteSlot_args args) throws org.apache.thrift.TException {
         deleteSlot_result result = new deleteSlot_result();
         result.success = iface.deleteSlot(args.queueName, args.slotInfo, args.nodeId);
         result.setSuccessIsSet(true);
@@ -528,11 +543,16 @@ public class SlotManagementService {
         super("reAssignSlotWhenNoSubscribers");
       }
 
-      protected reAssignSlotWhenNoSubscribers_args getEmptyArgsInstance() {
+      public reAssignSlotWhenNoSubscribers_args getEmptyArgsInstance() {
         return new reAssignSlotWhenNoSubscribers_args();
       }
 
-      protected reAssignSlotWhenNoSubscribers_result getResult(I iface, reAssignSlotWhenNoSubscribers_args args) throws org.apache.thrift.TException {
+        @Override
+        protected boolean isOneway() {
+            return false;
+        }
+
+        public reAssignSlotWhenNoSubscribers_result getResult(I iface, reAssignSlotWhenNoSubscribers_args args) throws org.apache.thrift.TException {
         reAssignSlotWhenNoSubscribers_result result = new reAssignSlotWhenNoSubscribers_result();
         iface.reAssignSlotWhenNoSubscribers(args.nodeId, args.queueName);
         return result;
@@ -544,11 +564,16 @@ public class SlotManagementService {
         super("updateCurrentMessageIdForSafeZone");
       }
 
-      protected updateCurrentMessageIdForSafeZone_args getEmptyArgsInstance() {
+      public updateCurrentMessageIdForSafeZone_args getEmptyArgsInstance() {
         return new updateCurrentMessageIdForSafeZone_args();
       }
 
-      protected updateCurrentMessageIdForSafeZone_result getResult(I iface, updateCurrentMessageIdForSafeZone_args args) throws org.apache.thrift.TException {
+        @Override
+        protected boolean isOneway() {
+            return false;
+        }
+
+        public updateCurrentMessageIdForSafeZone_result getResult(I iface, updateCurrentMessageIdForSafeZone_args args) throws org.apache.thrift.TException {
         updateCurrentMessageIdForSafeZone_result result = new updateCurrentMessageIdForSafeZone_result();
         result.success = iface.updateCurrentMessageIdForSafeZone(args.messageId, args.nodeId);
         result.setSuccessIsSet(true);
@@ -561,11 +586,16 @@ public class SlotManagementService {
         super("clearAllActiveSlotRelationsToQueue");
       }
 
-      protected clearAllActiveSlotRelationsToQueue_args getEmptyArgsInstance() {
+      public clearAllActiveSlotRelationsToQueue_args getEmptyArgsInstance() {
         return new clearAllActiveSlotRelationsToQueue_args();
       }
 
-      protected clearAllActiveSlotRelationsToQueue_result getResult(I iface, clearAllActiveSlotRelationsToQueue_args args) throws org.apache.thrift.TException {
+        @Override
+        protected boolean isOneway() {
+            return false;
+        }
+
+        public clearAllActiveSlotRelationsToQueue_result getResult(I iface, clearAllActiveSlotRelationsToQueue_args args) throws org.apache.thrift.TException {
         clearAllActiveSlotRelationsToQueue_result result = new clearAllActiveSlotRelationsToQueue_result();
         iface.clearAllActiveSlotRelationsToQueue(args.queueName);
         return result;

@@ -91,15 +91,17 @@
                     <instructions>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
                         <Bundle-Name>${project.artifactId}</Bundle-Name>
-                        <!--<Private-Package>org.apache.qpid.wso2.internal.*</Private-Package>-->
                         <Export-Package>
                             org.wso2.andes.*;-split-package:=merge-last,
                             org.apache.mina.*;-split-package:=merge-last
                         </Export-Package>
                         <Import-Package>
-                            !org.wso2.andes.*,
+                            org.slf4j.*;version="1.6.1",
+                            org.apache.commons.logging.*,
+                            org.ietf.jgss*,
+                            javax.*,
+                            com.google.common.util.concurrent;version="[14.0,15)"
                         </Import-Package>
-                        <DynamicImport-Package>*</DynamicImport-Package>
                     </instructions>
                 </configuration>
             </plugin>

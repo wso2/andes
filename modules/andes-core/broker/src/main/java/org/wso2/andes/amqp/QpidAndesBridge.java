@@ -134,11 +134,13 @@ public class QpidAndesBridge {
         }
 
         //Following code is only a performance counter
-        Long localCount = receivedMessageCounter.incrementAndGet();
-        if (localCount % 10000 == 0) {
-            long timetook = System.currentTimeMillis() - last10kMessageReceivedTimestamp;
-            log.info("Received " + localCount + ", throughput = " + (10000 * 1000 / timetook) + " msg/sec, " + timetook);
-            last10kMessageReceivedTimestamp = System.currentTimeMillis();
+        if(log.isDebugEnabled()) {
+            Long localCount = receivedMessageCounter.incrementAndGet();
+            if (localCount % 10000 == 0) {
+                long timetook = System.currentTimeMillis() - last10kMessageReceivedTimestamp;
+                log.debug("Received " + localCount + ", throughput = " + (10000 * 1000 / timetook) + " msg/sec, " + timetook);
+                last10kMessageReceivedTimestamp = System.currentTimeMillis();
+            }
         }
 
     }

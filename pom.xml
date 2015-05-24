@@ -451,6 +451,16 @@
                 <artifactId>gson</artifactId>
                 <version>${gson.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.eclipse.osgi</groupId>
+                <artifactId>org.eclipse.osgi</artifactId>
+                <version>${org.eclipse.osgi.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.osgi</groupId>
+                <artifactId>org.eclipse.osgi.services</artifactId>
+                <version>${org.eclipse.osgi.services.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -469,8 +479,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>2.3.2</version>
                 <configuration>
-                    <source>1.6</source>
-                    <target>1.6</target>
+                    <source>1.7</source>
+                    <target>1.7</target>
                 </configuration>
             </plugin>
             <!-- surefire plugin configuration -->
@@ -531,7 +541,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <carbon.kernel.version>4.3.0</carbon.kernel.version>
+        <carbon.kernel.version>4.4.0</carbon.kernel.version>
         <project.scm.id>my-scm-server</project.scm.id>
         <andes.version>2.5.0</andes.version>
         <commons-cli.version>1.0</commons-cli.version>
@@ -543,8 +553,8 @@
         <derby.version>10.4.2.0</derby.version>
         <version.commons.logging>1.1.1</version.commons.logging>
         <mina.core.version>1.1.7</mina.core.version>
-        <org.eclipse.osgi.version>3.5.0.v20090520</org.eclipse.osgi.version>
-        <org.eclipse.osgi.services.version>3.2.0.v20090520-1800</org.eclipse.osgi.services.version>
+        <org.eclipse.osgi.version>3.9.1.v20140110-1610</org.eclipse.osgi.version>
+        <org.eclipse.osgi.services.version>3.3.100.v20130513-1956</org.eclipse.osgi.services.version>
         <jython-standalone.version>2.5.2</jython-standalone.version>
         <bnd.version>0.0.384</bnd.version>
         <icu4j.version>3.8</icu4j.version>
@@ -557,7 +567,7 @@
         <commons-logging-api.version>1.1</commons-logging-api.version>
         <commons-pool.version>1.5.3</commons-pool.version>
         <FastInfoset.version>1.2.12</FastInfoset.version>
-        <hector-core.version>1.1-0</hector-core.version>
+        <hector-core.version>2.0-0</hector-core.version>
         <high-scale-lib.version>1.1.2</high-scale-lib.version>
         <javacc.version>3.2</javacc.version>
         <org.mortbay.jetty.version>5.1.12</org.mortbay.jetty.version>
@@ -569,7 +579,7 @@
         <log4j.version>1.2.16</log4j.version>
         <maven-ant-tasks.version>2.1.1</maven-ant-tasks.version>
         <disruptor.version>3.3.0.wso2v1</disruptor.version>
-        <cassandra-driver-core.version>2.1.3</cassandra-driver-core.version>
+        <cassandra-driver-core.version>2.1.5</cassandra-driver-core.version>
         <org.eclipse.core.commands.version>3.5.0.I20090525-2000</org.eclipse.core.commands.version>
         <org.eclipse.core.contenttype.version>3.4.100.v20100505-1235</org.eclipse.core.contenttype.version>
         <beans.version>1.0.0-I20070606-0010</beans.version>
@@ -606,7 +616,7 @@
         <hawtbuf.version>1.9</hawtbuf.version>
         <hazelcast.version>3.2.6.wso2v2</hazelcast.version>
         <org.wso2.carbon.metrics.manager.version>1.0.0</org.wso2.carbon.metrics.manager.version>
-        <libthrift.version>0.7.0.wso2v2</libthrift.version>
+        <libthrift.version>0.9.2.wso2v1</libthrift.version>
         <h2.version>1.2.140</h2.version>
         <naming-factory.version>5.5.15</naming-factory.version>
         <naming-resources.version>5.5.15</naming-resources.version>
@@ -651,16 +661,6 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>2.8</version>
-            </plugin>
-            <!-- emma code coverage plugin -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>emma-maven-plugin</artifactId>
-                <version>1.0-alpha-3</version>
-                <configuration>
-                    <merge>true</merge>
-                </configuration>
-                <!--<inherited>true</inherited>-->
             </plugin>
         </plugins>
     </reporting>

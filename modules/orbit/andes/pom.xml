@@ -97,13 +97,11 @@
         <dependency>
             <groupId>org.eclipse.osgi</groupId>
             <artifactId>org.eclipse.osgi</artifactId>
-            <version>${org.eclipse.osgi.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.eclipse.osgi</groupId>
             <artifactId>org.eclipse.osgi.services</artifactId>
-            <version>${org.eclipse.osgi.services.version}</version>
             <optional>true</optional>
         </dependency>
         <!--MQTT Dependencies -->
@@ -124,8 +122,8 @@
             <artifactId>commons-jxpath</artifactId>
         </dependency>
         <dependency>
-             <groupId>libthrift.wso2</groupId>
-             <artifactId>libthrift</artifactId>
+            <groupId>libthrift.wso2</groupId>
+            <artifactId>libthrift</artifactId>
         </dependency>
     </dependencies>
 
@@ -145,10 +143,11 @@
                             !org.wso2.andes.wso2.internal.*,
                             !org.apache.log4j.xml.*,
                             org.wso2.andes.wso2.service.*,
-                            org.apache.mina.transport.vmpipe;-split-package:=merge-last,
                             org.apache.derby.jdbc,
                             org.apache.commons.configuration.*,
                             org.apache.commons.jxpath.*,
+                            org.fusesource.hawtbuf.*,
+                            org.fusesource.hawtdb*,
                             org.wso2.andes.*;-split-package:=merge-last,
                             org.apache.mina.*;-split-package:=merge-last,
                             org.dna.mqtt.*;-split-package:=merge-last
@@ -156,21 +155,16 @@
                         <Import-Package>
                             !org.wso2.andes.*,
                             !org.apache.derby.*,
-                            !org.apache.thrift.*;version="[0.7.0,1.0.0)",
+                            org.apache.thrift.*;version="[0.9.wso2v1,1.0)",
                             org.apache.commons.cli.*;version="1.2",
-                            org.apache.commons.configuration.*;version="1.6",
-                            org.apache.commons.jxpath.*;version="1.3",
                             org.apache.commons.lang.*;version="2.3",
                             org.apache.commons.logging.*,
-                            com.datastax.cassandra.*;version="2.1.3",
+                            com.datastax.driver.core.*;version="2.1.5",
                             com.google.common.util.concurrent;version="[14.0,15)",
                             org.wso2.carbon.andes.authentication.andes,
-                            me.prettyprint.hector.api.*;version="(1.1.4,2.0]",
+                            me.prettyprint.hector.api.*;version="2.0-0",
                             *;resolution:=optional
                         </Import-Package>
-                        <Embed-Dependency>
-                            mina-core|derby|hawtdb|hawtbuf|libthrift;scope=compile|runtime;inline=false;
-                        </Embed-Dependency>
                         <Include-Resource>src/main/resources</Include-Resource>
                         <Bundle-Activator>org.wso2.andes.wso2.internal.QpidBundleActivator
                         </Bundle-Activator>
