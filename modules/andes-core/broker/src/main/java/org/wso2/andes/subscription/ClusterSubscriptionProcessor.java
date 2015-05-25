@@ -48,7 +48,8 @@ public class ClusterSubscriptionProcessor {
     /**
      * Keeps all the bitmap handlers for each subscription type.
      */
-    private Map<SubscriptionType, ClusterSubscriptionHandler> subscriptionHandlers = new HashMap<SubscriptionType, ClusterSubscriptionHandler>();
+    private Map<SubscriptionType, ClusterSubscriptionHandler> subscriptionHandlers = new HashMap<SubscriptionType,
+            ClusterSubscriptionHandler>();
 
     /**
      * Add a processor for a given subscription type.
@@ -56,18 +57,20 @@ public class ClusterSubscriptionProcessor {
      * @param subscriptionType The subscription processor to handle the given subscription type
      * @throws AndesException
      */
-    protected void addSubscriptionType(SubscriptionType subscriptionType, ClusterSubscriptionHandler subscriptionHandler) throws AndesException {
+    protected void addSubscriptionType(SubscriptionType subscriptionType,
+                                       ClusterSubscriptionHandler subscriptionHandler) throws AndesException {
         subscriptionHandlers.put(subscriptionType, subscriptionHandler);
     }
 
     /**
-     * Always retrieve the correct bitmap handler through this method so validations can happen and can avoid
+     * Always retrieve the correct subscription handler through this method so validations can happen and can avoid
      * unnecessary null pointers in case the subscription type is not found.
      *
      * @param subscriptionType The subscription type of the bitmap handler
      * @return The bitmap handler
      */
-    private ClusterSubscriptionHandler getBitMapHandler(SubscriptionType subscriptionType) throws AndesException {
+    private ClusterSubscriptionHandler getClusterSubscriptionHandler(SubscriptionType subscriptionType) throws
+            AndesException {
         ClusterSubscriptionHandler subscriptionHandler = subscriptionHandlers.get(subscriptionType);
 
         if (null == subscriptionHandler) {
@@ -84,7 +87,7 @@ public class ClusterSubscriptionProcessor {
      * @throws AndesException
      */
     public void addWildCardSubscription(AndesSubscription subscription) throws AndesException {
-        ClusterSubscriptionHandler bitMapHandler = getBitMapHandler(subscription.getSubscriptionType());
+        ClusterSubscriptionHandler bitMapHandler = getClusterSubscriptionHandler(subscription.getSubscriptionType());
         bitMapHandler.addWildCardSubscription(subscription);
     }
 
@@ -96,7 +99,7 @@ public class ClusterSubscriptionProcessor {
      * @throws AndesException
      */
     public boolean isSubscriptionAvailable(AndesSubscription subscription) throws AndesException  {
-        ClusterSubscriptionHandler bitMapHandler = getBitMapHandler(subscription.getSubscriptionType());
+        ClusterSubscriptionHandler bitMapHandler = getClusterSubscriptionHandler(subscription.getSubscriptionType());
         return bitMapHandler.isSubscriptionAvailable(subscription);
     }
 
@@ -107,7 +110,7 @@ public class ClusterSubscriptionProcessor {
      * @throws AndesException
      */
     public void removeWildCardSubscription(AndesSubscription subscription) throws AndesException  {
-        ClusterSubscriptionHandler bitMapHandler = getBitMapHandler(subscription.getSubscriptionType());
+        ClusterSubscriptionHandler bitMapHandler = getClusterSubscriptionHandler(subscription.getSubscriptionType());
         bitMapHandler.removeWildCardSubscription(subscription);
     }
 
@@ -121,7 +124,7 @@ public class ClusterSubscriptionProcessor {
      */
     public Set<AndesSubscription> getMatchingSubscriptions(String destination, SubscriptionType subscriptionType)
             throws AndesException {
-        ClusterSubscriptionHandler bitMapHandler = getBitMapHandler(subscriptionType);
+        ClusterSubscriptionHandler bitMapHandler = getClusterSubscriptionHandler(subscriptionType);
         return bitMapHandler.getMatchingWildCardSubscriptions(destination);
     }
 
