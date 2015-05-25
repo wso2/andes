@@ -431,8 +431,10 @@ public class OnflightMessageTracker {
             log.debug("stamping message as rejected id = " + messageID);
         }
         MsgData trackingData = getTrackingData(messageID);
-        trackingData.timestamp = System.currentTimeMillis();
-        trackingData.addMessageStatus(MessageStatus.REJECTED_AND_BUFFERED);
+        if (trackingData != null) {
+            trackingData.timestamp = System.currentTimeMillis();
+            trackingData.addMessageStatus(MessageStatus.REJECTED_AND_BUFFERED);
+        }
         //release delivery tracing
         releaseMessageDeliveryFromTracking(channel, messageID);
     }
