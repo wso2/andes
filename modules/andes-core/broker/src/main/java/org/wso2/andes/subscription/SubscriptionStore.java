@@ -150,7 +150,13 @@ public class SubscriptionStore {
             Set<AndesSubscription> clusterSubscriptions = clusterTopicSubscriptionMap.get(destination);
 
             if (null != clusterSubscriptions) {
-                subscriptions.addAll(clusterSubscriptions);
+                //If there're cluster subscriptions we need to add them to the iterator
+                Iterator<AndesSubscription> subscriptionIterator = clusterSubscriptions.iterator();
+                //We use an iterator here, we need to ensure that there will not be any ConccurentModifaction issues
+                //Due to the subscribers being added to the cluster while retrieving them
+                while (subscriptionIterator.hasNext()) {
+                    subscriptions.add(subscriptionIterator.next());
+                }
             }
 
             // Get wildcard subscriptions
