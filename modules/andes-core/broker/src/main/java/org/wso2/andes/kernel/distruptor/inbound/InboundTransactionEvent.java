@@ -25,6 +25,7 @@ import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.InboundEventManager;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
@@ -32,6 +33,7 @@ import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This is the Andes transaction event related class. This event object handles
@@ -46,6 +48,33 @@ public class InboundTransactionEvent {
     private EventType eventType;
     private SettableFuture<Boolean> taskCompleted;
     private final List<AndesMessageMetadata> metadataList;
+
+    /**
+     * Maximum batch size for a transaction. Limit is set for content size of the batch.
+     * Exceeding this limit will lead to a failure in the subsequent commit request.
+     */
+    private final int maxBatchSize;
+
+    /**
+     * maximum connections reserved for transactional  tasks
+     */
+    private final int maxConnections;
+
+    /**
+     * content batch cached size at a given point in time.
+     */
+    private int currentBatchSize;
+
+    /**
+     * Total number of active transactions at a given time (That is transactions that have
+     * started enqueue messages but not yet committed or rollback)
+     */
+    private static AtomicInteger currentConnectionCount;
+
+    /**
+     * Reference to the channel of the publisher
+     */
+    private final AndesChannel channel;
 
     /**
      * Supported state events
@@ -70,11 +99,15 @@ public class InboundTransactionEvent {
      * @param transaction AndesTransaction
      * @param eventManager InboundEventManager
      */
-    public InboundTransactionEvent(MessageStore.AndesTransaction transaction, InboundEventManager eventManager) {
+    public InboundTransactionEvent(MessageStore.AndesTransaction transaction, InboundEventManager eventManager,
+                                   int maxBatchSize, int maxConnections, AndesChannel channel ) {
         this.transaction = transaction;
         this.eventManager = eventManager;
         metadataList = new ArrayList<AndesMessageMetadata>();
         taskCompleted = SettableFuture.create();
+        this.maxBatchSize = maxBatchSize;
+        this.maxConnections = maxConnections;
+        this.channel = channel;
     }
 
     /**
@@ -85,8 +118,15 @@ public class InboundTransactionEvent {
      * @throws AndesException
      */
     public void commit() throws AndesException {
+
+        if(currentBatchSize > maxBatchSize) {
+            currentBatchSize = 0;
+            throw new AndesException("Current enqueued batch size exceeds maximum transactional batch size of " +
+            maxBatchSize + " bytes." );
+        }
+
         if (log.isDebugEnabled()) {
-            log.debug("Prepare for commit");
+            log.debug("Prepare for commit. Channel id: " + channel.getId());
         }
 
         eventType = EventType.TX_COMMIT_EVENT;
@@ -96,6 +136,7 @@ public class InboundTransactionEvent {
         eventManager.requestTransactionOperation(this);
         // Make the call blocking
         waitForCompletion();
+        currentBatchSize = 0;
     }
 
     /**
@@ -106,7 +147,7 @@ public class InboundTransactionEvent {
      */
     public void rollback() throws AndesException {
         if (log.isDebugEnabled()) {
-            log.debug("Prepare for rollback");
+            log.debug("Prepare for rollback. Channel: " + channel.getId());
         }
 
         eventType = EventType.TX_ROLLBACK_EVENT;
@@ -116,6 +157,7 @@ public class InboundTransactionEvent {
         eventManager.requestTransactionOperation(this);
         // Make the call blocking
         waitForCompletion();
+        currentBatchSize = 0;
     }
 
     /**
@@ -185,10 +227,19 @@ public class InboundTransactionEvent {
      * @throws AndesException
      */
     void enqueuePreProcessedMessage(AndesMessage message) throws AndesException {
-        transaction.enqueue(message);
         metadataList.add(message.getMetadata());
-        if (log.isDebugEnabled()) {
-            log.debug("Enqueue message with message id " + message.getMetadata().getMessageID() + " for transaction ");
+        for (AndesMessagePart messagePart: message.getContentChunkList()) {
+            currentBatchSize = currentBatchSize + messagePart.getDataLength();
+        }
+
+        if (currentBatchSize > maxBatchSize) {
+            closeTransactionFromDB();
+        } else {
+            transaction.enqueue(message);
+
+            if (log.isDebugEnabled()) {
+                log.debug("Enqueue message with message id " + message.getMetadata().getMessageID() + " for transaction ");
+            }
         }
     }
 

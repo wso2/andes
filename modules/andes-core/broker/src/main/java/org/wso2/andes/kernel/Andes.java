@@ -21,6 +21,7 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.distruptor.inbound.InboundAndesChannelEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundBindingEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundDeleteMessagesEvent;
@@ -30,7 +31,6 @@ import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
-import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.List;
@@ -93,6 +93,17 @@ public class Andes {
     private static final int safeZoneUpdateTriggerInterval = 3000;
 
     /**
+     * Maximum batch size for a transaction. Limit is set for content size of the batch.
+     * Exceeding this limit will lead to a failure in the subsequent commit request.
+     */
+    private final int MAX_TX_BATCH_SIZE;
+
+    /**
+     * maximum connections reserved for transactional  tasks
+     */
+    private final int MAX_TX_CONNECTIONS_COUNT;
+
+    /**
      * Instance of AndesAPI returned
      *
      * @return AndesAPI
@@ -107,6 +118,11 @@ public class Andes {
     private Andes() {
         PURGE_TIMEOUT_SECONDS = (Integer) AndesConfigurationManager.readValue(PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT);
         this.flowControlManager = new FlowControlManager();
+        MAX_TX_BATCH_SIZE = (Integer) AndesConfigurationManager.
+                readValue(AndesConfiguration.MAX_TRANSACTION_BATCH_SIZE);
+        MAX_TX_CONNECTIONS_COUNT = (Integer) AndesConfigurationManager.
+                readValue(AndesConfiguration.DB_CONNECTION_POOL_SIZE_FOR_TRANSACTIONS);
+
     }
 
     /**
@@ -544,8 +560,10 @@ public class Andes {
      * @return InboundTransactionEvent
      * @throws AndesException
      */
-    public InboundTransactionEvent newTransaction() throws AndesException {
-        return new InboundTransactionEvent(messagingEngine.newTransaction(), inboundEventManager);
+    public InboundTransactionEvent newTransaction(AndesChannel channel) throws AndesException {
+        return new InboundTransactionEvent(
+                messagingEngine.newTransaction(), inboundEventManager,
+                MAX_TX_BATCH_SIZE, MAX_TX_CONNECTIONS_COUNT, channel);
     }
 
 }

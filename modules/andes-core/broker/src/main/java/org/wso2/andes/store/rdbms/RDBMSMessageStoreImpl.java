@@ -39,8 +39,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import javax.sql.DataSource;
-
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
@@ -95,12 +93,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     private final int MAX_TX_CONNECTIONS_COUNT;
 
     /**
-     * Maximum batch size for a transaction. Limit is set for content size of the batch
-     * Exceeding this limit will lead to a failure in the subsequent commit request.
-     */
-    private final int MAX_TX_BATCH_SIZE;
-
-    /**
      * Partially created prepared statement to retrieve content of multiple messages using IN operator
      * this will be completed on the fly when the request comes
      */
@@ -115,8 +107,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         queueMap = new ConcurrentHashMap<String, Integer>();
         MAX_TX_CONNECTIONS_COUNT = (Integer) AndesConfigurationManager.
                 readValue(AndesConfiguration.DB_CONNECTION_POOL_SIZE_FOR_TRANSACTIONS);
-        MAX_TX_BATCH_SIZE = (Integer) AndesConfigurationManager.
-                readValue(AndesConfiguration.MAX_TRANSACTION_BATCH_SIZE);
         txConnectionsCount = new AtomicInteger(0);
         rdbmsStoreUtils = new RDBMSStoreUtils();
     }
@@ -1743,7 +1733,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public List<String> getAllRetainedTopics() throws AndesException {
-        Connection connection = null;
+        Connection connection;
         PreparedStatement preparedStatementForTopicSelect = null;
         List<String> topicList = new ArrayList<String>();
 
@@ -1889,14 +1879,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         private PreparedStatement storeMetadataPS;
         private PreparedStatement storeContentPS;
         private boolean connectionClosed;
-        private int currentBatchSize;
 
         /**
          * Create a transaction object
          */
         RDBMSAndesTransactionImpl() throws SQLException {
             connectionClosed = true;
-            currentBatchSize = 0;
         }
 
         /**
@@ -1915,12 +1903,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
                 for (AndesMessagePart messagePart : message.getContentChunkList()) {
                     addContentToBatch(storeContentPS, messagePart);
-                    currentBatchSize = currentBatchSize + messagePart.getDataLength();
-                }
-
-                // We have limited the number of messages that can be stored in memory before commit
-                if (currentBatchSize > MAX_TX_BATCH_SIZE) {
-                    close(); // close current connection and invalidate the transaction. subsequent commit will fail.
                 }
             } catch (SQLException e) {
                 throw new AndesException("Error occurred while batching messages for transaction", e);
@@ -1933,10 +1915,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         @Override
         public void commit() throws AndesException {
             try {
-                if (currentBatchSize > MAX_TX_BATCH_SIZE) {
-                    currentBatchSize = 0;
-                    throw new AndesException("Transaction batch size [" + MAX_TX_BATCH_SIZE + " bytes ] exceeded");
-                }
 
                 if (!connectionClosed) {
                     storeContentPS.executeBatch();
@@ -1944,7 +1922,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     connection.commit();
                 }
 
-                currentBatchSize = 0;
             } catch (SQLException e) {
                 throw new AndesException("Exception occurred while committing transaction", e);
             } finally {
@@ -1961,7 +1938,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 if (!connectionClosed) {
                     connection.rollback();
                 }
-                currentBatchSize = 0;
             } catch (SQLException e) {
                 throw new AndesException("Exception occurred while rolling back", e);
             } finally {
