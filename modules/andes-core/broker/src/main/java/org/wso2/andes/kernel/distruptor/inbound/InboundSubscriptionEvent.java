@@ -123,11 +123,24 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
     private void handleOpenSubscriptionEvent() {
         boolean isComplete = false;
 
+        try {
+            subscriptionManager.addSubscription(this);
+            isComplete = true;
+        } catch (AndesException e) {
+            future.setException(e);
+            log.error("Error occurred while adding subscription. Subscription id "
+                    + getSubscriptionID(), e);
+        } catch (SubscriptionAlreadyExistsException e) {
+            // exception will be handled by receiver
+            future.setException(e);
+        } finally {
+            future.set(isComplete);
+        }
 
         // Send retained message if available
         try {
 
-            // Before checking for retain message for given subscription event, have to
+            // Before sending a retain message for given subscription event, have to
             // verify if the given subscription bound to a topic and is not durable.
             if (!this.isDurable() && this.isBoundToTopic()) {
                 List<AndesMessageMetadata> metadataList = MessagingEngine.getInstance().getRetainedMessageByTopic(
@@ -143,19 +156,6 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
             log.error("Error occurred while sending retained messages to new subscription.", e);
         }
 
-        try {
-            subscriptionManager.addSubscription(this);
-            isComplete = true;
-        } catch (AndesException e) {
-            future.setException(e);
-            log.error("Error occurred while adding subscription. Subscription id "
-                    + getSubscriptionID(), e);
-        } catch (SubscriptionAlreadyExistsException e) {
-            // exception will be handled by receiver
-            future.setException(e);
-        } finally {
-            future.set(isComplete);
-        }
     }
 
     public void prepareForNewSubscription(AndesSubscriptionManager subscriptionManager) {

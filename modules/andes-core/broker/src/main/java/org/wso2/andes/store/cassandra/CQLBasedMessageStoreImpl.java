@@ -120,11 +120,38 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                     " WHERE " + CQLConstants.QUEUE_NAME + "=? AND " +
                     CQLConstants.MESSAGE_ID + "=?";
 
+
+    /**
+     * CQL prepared statement to update retain metadata
+     */
+    private static final String PS_UPDATE_RETAIN_METADATA =
+            "UPDATE " + CQLConstants.RETAINED_METADATA_TABLE + " SET " + CQLConstants.MESSAGE_ID +
+            "=?, " + CQLConstants.METADATA + "=?" + " WHERE " + CQLConstants.TOPIC_ID + "=? AND " +
+            CQLConstants.TOPIC_NAME + "=?";
+
+    /**
+     * CQL prepared statement to delete retain content part
+     */
+    private static final String PS_DELETE_RETAIN_MESSAGE_PART =
+            "DELETE FROM "+ CQLConstants.RETAINED_CONTENT_TABLE + " WHERE " +
+            CQLConstants.MESSAGE_ID + "=?";
+
+    /**
+     * CQL prepared statement to insert retain content part
+     */
+    private static final String PS_INSERT_RETAIN_MESSAGE_PART =
+            "INSERT INTO " + CQLConstants.RETAINED_CONTENT_TABLE +
+            " ( " + CQLConstants.MESSAGE_ID + "," + CQLConstants.MESSAGE_OFFSET + "," +
+            CQLConstants.MESSAGE_CONTENT + ") " + " VALUES (?,?,?);";
+
     // Prepared Statements bound to session
     private PreparedStatement psInsertMessagePart;
     private PreparedStatement psDeleteMessagePart;
     private PreparedStatement psInsertMetadata;
     private PreparedStatement psDeleteMetadata;
+    private PreparedStatement psUpdateRetainMetadata;
+    private PreparedStatement psDeleteRetainMessagePart;
+    private PreparedStatement psInsertRetainMessagePart;
 
     public CQLBasedMessageStoreImpl() {
         config = new CassandraConfig();
@@ -153,6 +180,9 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         psDeleteMessagePart = session.prepare(PS_DELETE_MESSAGE_CONTENT);
         psInsertMetadata = session.prepare(PS_INSERT_METADATA);
         psDeleteMetadata = session.prepare(PS_DELETE_METADATA);
+        psUpdateRetainMetadata    = session.prepare(PS_UPDATE_RETAIN_METADATA);
+        psDeleteRetainMessagePart = session.prepare(PS_DELETE_RETAIN_MESSAGE_PART);
+        psInsertRetainMessagePart = session.prepare(PS_INSERT_RETAIN_MESSAGE_PART);
 
         return cqlConnection;
     }
@@ -182,6 +212,25 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                 gcGraceSeconds(config.getGcGraceSeconds()).
                 setConsistencyLevel(config.getWriteConsistencyLevel());
         session.execute(statement);
+
+        statement = SchemaBuilder.createTable(config.getKeyspace(), CQLConstants.RETAINED_CONTENT_TABLE).ifNotExists().
+                addPartitionKey(CQLConstants.MESSAGE_ID, DataType.bigint()).
+                addClusteringColumn(CQLConstants.MESSAGE_OFFSET, DataType.cint()).
+                addColumn(CQLConstants.MESSAGE_CONTENT, DataType.blob()).
+                withOptions().gcGraceSeconds(config.getGcGraceSeconds()).
+                setConsistencyLevel(config.getWriteConsistencyLevel());
+        session.execute(statement);
+
+        statement = SchemaBuilder.createTable(config.getKeyspace(), CQLConstants.RETAINED_METADATA_TABLE).ifNotExists().
+                addPartitionKey(CQLConstants.TOPIC_NAME, DataType.text()).
+                addClusteringColumn(CQLConstants.TOPIC_ID, DataType.bigint()).
+                addColumn(CQLConstants.MESSAGE_ID, DataType.bigint()).
+                addColumn(CQLConstants.METADATA, DataType.blob()).
+                withOptions().clusteringOrder(CQLConstants.TOPIC_ID, SchemaBuilder.Direction.ASC).
+                gcGraceSeconds(config.getGcGraceSeconds()).
+                setConsistencyLevel(config.getWriteConsistencyLevel());
+        session.execute(statement);
+
 
         cqlUtils.createSchema(connection, config);        
 
@@ -882,49 +931,246 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     
    
     /**
+     * Store retain message list in database
+     *
      * {@inheritDoc}
      */
     @Override
     public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException {
-        // TODO: implement this method
-        log.warn("CQL base message store methods for retain feature will be implemented " +
-                 "in next iteration");
+
+
+        for (AndesMessage message : retainList) {
+
+            AndesMessageMetadata metadata = message.getMetadata();
+            String destination = metadata.getDestination();
+            RetainedItemData retainedItemData = getRetainedTopicID(destination);
+
+            if (null != retainedItemData) {
+
+                addRetainedMessageToUpdateBatch(message, metadata, retainedItemData);
+                retainedItemData.messageID = metadata.getMessageID();
+            } else {
+                createRetainedEntry(message);
+            }
+
+        }
+
     }
 
     /**
+     * Update already existing retain topic message
+     *
+     * @param message
+     * @param metadata
+     * @param retainedItemData
+     * @throws AndesException
+     */
+    private void addRetainedMessageToUpdateBatch(AndesMessage message,
+                                                 AndesMessageMetadata metadata,
+                                                 RetainedItemData retainedItemData)
+            throws AndesException {
+
+        BatchStatement batchStatement = new BatchStatement();
+
+        // update metadata
+        batchStatement.add(psUpdateRetainMetadata.bind(
+                metadata.getMessageID(),
+                ByteBuffer.wrap(metadata.getMetadata()),
+                retainedItemData.topicID,
+                metadata.getDestination()
+        ));
+
+        // update content
+        batchStatement.add(psDeleteRetainMessagePart.bind(
+                retainedItemData.messageID
+        ));
+        for (AndesMessagePart messagePart : message.getContentChunkList()) {
+            batchStatement.add(psInsertRetainMessagePart.bind(
+                    metadata.getMessageID(),
+                    messagePart.getOffSet(),
+                    ByteBuffer.wrap(messagePart.getData())
+            ));
+        }
+
+        execute(batchStatement, "update retain message content and metadata for topic " +
+                                metadata.getDestination());
+
+    }
+
+    /**
+     * Create new retain entry for given topic message
+     *
+     * @param message
+     * @throws AndesException
+     */
+    private void createRetainedEntry(AndesMessage message) throws AndesException {
+
+        AndesMessageMetadata metadata = message.getMetadata();
+        String destination = metadata.getDestination();
+        long topicID   = destination.hashCode();
+        long messageID = metadata.getMessageID();
+
+        // create metadata entry
+        Statement statement = QueryBuilder.insertInto(config.getKeyspace(),
+                                                      CQLConstants.RETAINED_METADATA_TABLE).
+                                                      ifNotExists().
+                value(CQLConstants.TOPIC_NAME, destination).
+                value(CQLConstants.MESSAGE_ID, messageID).
+                value(CQLConstants.TOPIC_ID, topicID).
+                value(CQLConstants.METADATA, ByteBuffer.wrap(metadata.getMetadata())).
+                setConsistencyLevel(config.getWriteConsistencyLevel());
+
+        execute(statement, "storing retain message metadata for topic " + destination);
+
+        // create content entries
+        for (AndesMessagePart messagePart : message.getContentChunkList()) {
+            statement = QueryBuilder.insertInto(config.getKeyspace(),
+                                                CQLConstants.RETAINED_CONTENT_TABLE).
+                                                ifNotExists().
+                    value(CQLConstants.MESSAGE_ID, messageID).
+                    value(CQLConstants.MESSAGE_OFFSET, messagePart.getOffSet()).
+                    value(CQLConstants.MESSAGE_CONTENT, ByteBuffer.wrap(messagePart.getData())).
+                    setConsistencyLevel(config.getWriteConsistencyLevel());
+
+            execute(statement, "storing retain message content offset " + messagePart.getOffSet() +
+                               " for topic " + destination);
+
+        }
+
+    }
+
+    /**
+     * Get retain topic name list
+     *
      * {@inheritDoc}
      */
     @Override
     public List<String> getAllRetainedTopics() throws AndesException {
-        // TODO: implement this method
-        return Collections.emptyList();
+
+        List<String> topicList = new ArrayList<>();
+        ResultSet resultSet;
+
+        Statement statement = QueryBuilder.select().column(CQLConstants.TOPIC_NAME).
+                from(config.getKeyspace(), CQLConstants.RETAINED_METADATA_TABLE).
+                setConsistencyLevel(config.getReadConsistencyLevel());
+
+        resultSet = execute(statement, "retrieving retained topic name list.");
+
+        for(Row result : resultSet.all()) {
+            topicList.add(result.getString(CQLConstants.TOPIC_NAME));
+        }
+
+        return topicList;
     }
 
     /**
+     * Get retain metadata for given topic destination
+     *
      * {@inheritDoc}
      */
     @Override
     public AndesMessageMetadata getRetainedMetaData(String destination) throws AndesException {
 
-        // TODO: implement this method
-        AndesMessageMetadata messageMetadata = null;
-        log.warn("CQL base message store methods for retain feature will be implemented " +
-                 "in next iteration");
-        return messageMetadata;
+        AndesMessageMetadata metadata = null;
+
+        RetainedItemData retainedItemData = getRetainedTopicID(destination);
+
+        Statement statement = QueryBuilder.select().column(CQLConstants.MESSAGE_ID).column(CQLConstants.METADATA).
+                from(config.getKeyspace(), CQLConstants.RETAINED_METADATA_TABLE).
+                where(eq(CQLConstants.TOPIC_ID, retainedItemData.topicID)).
+                limit(1).
+                allowFiltering().
+                setConsistencyLevel(config.getReadConsistencyLevel());
+
+        ResultSet results = execute(statement, "retrieving metadata for given destination " + destination);
+
+        for (Row result : results.all()) {
+            ByteBuffer buffer = result.getBytes(CQLConstants.METADATA);
+            byte[] bytes = new byte[buffer.remaining()];
+            buffer.get(bytes);
+            long messageId = result.getLong(CQLConstants.MESSAGE_ID);
+            metadata = new AndesMessageMetadata(messageId, bytes, true);
+        }
+
+        return metadata;
+
 
     }
 
+
+
     /**
+     * Get retained topic ID for destination
+     *
+     * @param destination
+     *         destination name
+     * @return Retained item data
+     */
+    private RetainedItemData getRetainedTopicID(String destination)
+            throws AndesException {
+
+        RetainedItemData itemData = null;
+        ResultSet results;
+
+        Statement statement = QueryBuilder.select().column(CQLConstants.MESSAGE_ID).
+                              column(CQLConstants.TOPIC_ID).from(config.getKeyspace(),
+                                                            CQLConstants.RETAINED_METADATA_TABLE).
+                                                            where(eq(CQLConstants.TOPIC_NAME, destination)).
+                              setConsistencyLevel(config.getReadConsistencyLevel());
+
+        results = execute(statement, "retrieving retained topic metadata for destination " + destination);
+
+        for (Row result : results.all()) {
+
+            long topicID = result.getLong(CQLConstants.TOPIC_ID);
+            long messageID = result.getLong(CQLConstants.MESSAGE_ID);
+
+            itemData = new RetainedItemData(topicID,messageID);
+
+        }
+
+        return itemData;
+    }
+
+
+
+    /**
+     * Get retained content parts for given message id
+     *
      * {@inheritDoc}
      */
     @Override
     public Map<Integer, AndesMessagePart> getRetainedContentParts(long messageID) throws AndesException {
 
-        // TODO: implement this method
-        Map<Integer, AndesMessagePart> retainContentPartMap = Collections.emptyMap();
+        Map<Integer, AndesMessagePart> retainContentPartMap = new HashMap<Integer, AndesMessagePart>();
+        ResultSet results;
 
-        log.warn("CQL base message store methods for retain feature will be implemented " +
-                 "in next iteration");
+        Statement statement =
+                QueryBuilder.select().column(CQLConstants.MESSAGE_OFFSET).column(CQLConstants.MESSAGE_CONTENT).
+                             from(config.getKeyspace(), CQLConstants.RETAINED_CONTENT_TABLE).
+                             where(eq(CQLConstants.MESSAGE_ID, messageID)).
+                setConsistencyLevel(config.getReadConsistencyLevel());
+
+        results = execute(statement, "retrieving retained topic message content for message id " + messageID);
+
+        for (Row result : results.all()) {
+            ByteBuffer buffer = result.getBytes(CQLConstants.MESSAGE_CONTENT);
+            byte[] bytes = new byte[buffer.remaining()];
+            buffer.get(bytes);
+
+            int offset = result.getInt(CQLConstants.MESSAGE_OFFSET);
+
+            AndesMessagePart messagePart = new AndesMessagePart();
+
+            messagePart.setMessageID(messageID);
+            messagePart.setData(bytes);
+            messagePart.setDataLength(bytes.length);
+            messagePart.setOffSet(offset);
+            retainContentPartMap.put(offset, messagePart);
+        }
+
+
+
 
         return retainContentPartMap;
     }
@@ -1015,4 +1261,32 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             rollbackList.clear();
         }
     }
+
+
+    /**
+     * Used to store details about a retained item entry
+     */
+    private static class RetainedItemData {
+        /**
+         * Topic id of the DB entry
+         */
+        public long topicID;
+
+        /**
+         * Retained message ID for the topic
+         */
+        public long messageID;
+
+        /**
+         * Retained item entry
+         *
+         * @param topicID
+         * @param messageID
+         */
+        private RetainedItemData(long topicID, long messageID) {
+            this.topicID = topicID;
+            this.messageID = messageID;
+        }
+    }
+
 }
