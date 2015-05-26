@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MQTTSubscriber {
     //TODO QOS level information should be accessed for use cases which will be implimented in future for in memory model
     //The level of QOS the subscriber is bound to
-    private int QOSLevel;
+    private int QOS_Level;
     //Specifies whether the subscription is durable or not
     private boolean isCleanSession;
     //Specifies the channel id of the subscriber
@@ -153,18 +153,10 @@ public class MQTTSubscriber {
     /**
      * Will set the level of QOS the subscriber is bound to
      *
-     * @param QOSLevel the QOS level, this can either be 1,2 or 3
+     * @param QOS_Level the QOS level, this can either be 1,2 or 3
      */
-    public void setQOSLevel(int QOSLevel) {
-        this.QOSLevel = QOSLevel;
-    }
-
-    /**
-     * Will return the level of QOS the subscriber is bound to
-     * @return QOS level
-     */
-    public int getQOSLevel() {
-        return this.QOSLevel;
+    public void setQOS_Level(int QOS_Level) {
+        this.QOS_Level = QOS_Level;
     }
 
 }
