@@ -125,7 +125,6 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
     }
 
     private void handleTopicRoutine(InboundEventContainer event, AndesMessage message, AndesChannel andesChannel) {
-
         String messageRoutingKey = message.getMetadata().getDestination();
         boolean isMessageRouted = false;
 
@@ -155,7 +154,8 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
             for (AndesSubscription subscription : subscriptionList) {
                 if (!alreadyStoredQueueNames.contains(subscription.getStorageQueueName())) {
 
-                    //Check protocol specific rules for validate delivery to given subscription
+                    //Check protocol specific rules for validate delivery to given subscription.
+                    //If there are no protocol specific delivery rules implemented, message will deliver by default.
                     if(!message.isDelivarable(subscription)){
                         continue;
                     }

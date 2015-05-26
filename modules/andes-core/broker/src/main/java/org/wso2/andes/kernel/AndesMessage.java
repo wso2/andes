@@ -75,6 +75,7 @@ public class AndesMessage {
      */
     public boolean isDelivarable(AndesSubscription subscription)
     {
+        //Messages should be deliverable by default if no rules have been implemented.
         return true;
     }
 }
