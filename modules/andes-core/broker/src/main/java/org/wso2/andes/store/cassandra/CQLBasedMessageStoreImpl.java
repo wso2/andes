@@ -46,7 +46,6 @@ import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.schemabuilder.SchemaBuilder;
-import org.apache.commons.lang.NotImplementedException;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -222,6 +221,22 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             execute(batchStatement, "adding message parts list. List size " + partList.size());
         } finally {
             context.stop();
+        }
+    }
+
+    /**
+     * Add the given content list to the {@link com.datastax.driver.core.BatchStatement}
+     * @param batchStatement {@link com.datastax.driver.core.BatchStatement } the content insertion query
+     *                       should added to
+     * @param partList Content list
+     */
+    private void addContentToBatch(BatchStatement batchStatement, List<AndesMessagePart> partList) {
+        for (AndesMessagePart andesMessagePart : partList) {
+            batchStatement.add(psInsertMessagePart.bind(
+                            andesMessagePart.getMessageID(),
+                            andesMessagePart.getOffSet(),
+                            ByteBuffer.wrap(andesMessagePart.getData()))
+            );
         }
     }
 
@@ -820,7 +835,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
     @Override
     public AndesTransaction newTransaction() throws AndesException {
-        throw new NotImplementedException("Transactions not supported by " + this.getClass());
+        return new CQLBasedTransactionImpl();
     }
 
     /**
@@ -912,5 +927,92 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                  "in next iteration");
 
         return retainContentPartMap;
+    }
+
+    /**
+     * CQL based message store transaction implementation
+     */
+    public class CQLBasedTransactionImpl implements AndesTransaction {
+
+        /**
+         * Messages to be committed is added to this message list
+         */
+        private final List<AndesMessage> messageList;
+
+        /**
+         * Following the commit in this class Andes state needs to be updated using
+         * {@link org.wso2.andes.kernel.distruptor.inbound.StateEventHandler}. But if a commit fails at state event
+         * handler we need to be able to rollback. For this purpose we need a list of last successful commit from
+         * this class.
+         */
+        private final List<AndesMessage> rollbackList;
+
+        /**
+         * Creates a CQL based transaction object
+         */
+        CQLBasedTransactionImpl() {
+            messageList = new ArrayList<AndesMessage>();
+            rollbackList = new ArrayList<AndesMessage>();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void enqueue(AndesMessage message) throws AndesException {
+            messageList.add(message);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void commit() throws AndesException {
+
+            rollbackList.addAll(messageList);
+            BatchStatement batchStatement = new BatchStatement();
+
+            for(AndesMessage message: messageList) {
+                addContentToBatch(batchStatement, message.getContentChunkList());
+                addMetadataToBatch(batchStatement, message.getMetadata(), message.getMetadata().getStorageQueueName());
+            }
+            execute(batchStatement, "Storing metadata for transaction. Batch size" + messageList.size());
+            messageList.clear();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void rollback() throws AndesException {
+            messageList.clear();
+            if (rollbackList.isEmpty()) {
+                return;
+            }
+
+            List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>();
+            List<Long> idList = new ArrayList<Long>();
+            for (AndesMessage message : rollbackList) {
+                AndesRemovableMetadata andesRemovableMetadata =
+                        new AndesRemovableMetadata(message.getMetadata().getMessageID(),
+                                message.getMetadata().getStorageQueueName(),
+                                message.getMetadata().getStorageQueueName());
+
+                removableMetadataList.add(andesRemovableMetadata);
+                idList.add(message.getMetadata().getMessageID());
+            }
+
+            deleteMessageMetadataFromQueue(rollbackList.get(0).getMetadata().getStorageQueueName(), removableMetadataList);
+            deleteMessageParts(idList);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void close() throws AndesException {
+            messageList.clear();
+            rollbackList.clear();
+        }
     }
 }

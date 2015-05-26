@@ -63,7 +63,7 @@ public class AndesChannel {
     private final FlowControlManager flowControlManager;
 
     /**
-     * Channel of the current channel
+     * Channel id of the current channel
      */
     private final long id;
 
@@ -137,7 +137,7 @@ public class AndesChannel {
         this.flowControlEnabled = false;
 
         if(log.isDebugEnabled()) {
-            log.debug("Channel created with ID: " + id);
+            log.debug("Channel created with ID: " + getId());
         }
     }
 
@@ -184,7 +184,7 @@ public class AndesChannel {
             flowControlEnabled = false;
             listener.unblock();
 
-            log.info("Flow control disabled for channel " + id + ".");
+            log.info("Flow control disabled for channel " + getId() + ".");
         }
     }
 
@@ -197,7 +197,7 @@ public class AndesChannel {
             listener.block();
             scheduledFlowControlTimeoutFuture = executor.schedule(flowControlTimeoutTask, 1, TimeUnit.MINUTES);
 
-            log.info("Flow control enabled for channel " + id + ".");
+            log.info("Flow control enabled for channel " + getId() + ".");
         }
     }
     
@@ -240,6 +240,13 @@ public class AndesChannel {
                                && (! globalErrorBasedFlowControlEnabled)) {
             unblockLocalChannel();
         }
+    }
+
+    /**
+     * Channel of the current channel
+     */
+    public long getId() {
+        return id;
     }
 
     /**

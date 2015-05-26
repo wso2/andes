@@ -420,7 +420,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                      * happen here
                      */
                     if (beginTransaction) {
-                        andesTransactionEvent = Andes.getInstance().newTransaction();
+                        andesTransactionEvent = Andes.getInstance().newTransaction(andesChannel);
                         beginTransaction = false;
                     }
                     QpidAndesBridge.messageReceived(incomingMessage, getId(), andesChannel, andesTransactionEvent);
