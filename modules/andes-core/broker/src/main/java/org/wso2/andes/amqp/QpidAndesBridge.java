@@ -109,7 +109,7 @@ public class QpidAndesBridge {
                 return;
             }
 
-            AndesMessage andesMessage = new AndesMessage(metadata);
+            AndesMessage andesMessage = new AMQPMessage(metadata);
 
             // Update Andes message with all the chunk details
             int contentChunks = incomingMessage.getBodyCount();

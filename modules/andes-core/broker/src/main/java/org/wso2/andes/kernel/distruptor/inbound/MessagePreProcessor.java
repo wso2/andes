@@ -26,7 +26,6 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.subscription.SubscriptionStore;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -155,11 +154,9 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
             for (AndesSubscription subscription : subscriptionList) {
                 if (!alreadyStoredQueueNames.contains(subscription.getStorageQueueName())) {
 
-                    // Avoid adding QOS 0 MQTT messages to clean session = false subscribers if disconnected
-                    if (AndesSubscription.SubscriptionType.MQTT == subscriptionType
-                            && subscription.isDurable()
-                            && !subscription.hasExternalSubscriptions()
-                            && 0 == message.getMetadata().getQosLevel()) {
+                    //Check protocol specific rules for validate delivery to given subscription.
+                    //If there are no protocol specific delivery rules implemented, message will deliver by default.
+                    if(!message.isDelivarable(subscription)){
                         continue;
                     }
 
@@ -266,8 +263,10 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
 
         /**
          * Out of 64 bits for long, we will use the range as follows
-         * [1 sign bit][45bits for time spent from reference time in milliseconds][8bit node id][10 bit offset for ID falls within the same timestamp]
-         * This assumes there will not be more than 1024 hits within a given millisecond. Range is sufficient for 6029925857 years.
+         * [1 sign bit][45bits for time spent from reference time in milliseconds][8bit node id][10 bit offset for ID
+         * falls within the same timestamp]
+         * This assumes there will not be more than 1024 hits within a given millisecond. Range is sufficient for
+         * 6029925857 years.
          *
          * @return Generated ID
          */

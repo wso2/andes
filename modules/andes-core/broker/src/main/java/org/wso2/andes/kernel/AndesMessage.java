@@ -43,19 +43,39 @@ public class AndesMessage {
     }
 
 
+    /**
+     * Get metadata of a message
+     */
     public AndesMessageMetadata getMetadata() {
         return metadata;
     }
 
+    /**
+     * Set metadata of a message
+     */
     public void setMetadata(AndesMessageMetadata metadata) {
         this.metadata = metadata;
     }
 
+    /**
+     * Get content chunk list
+     */
     public List<AndesMessagePart> getContentChunkList() {
         return contentChunkList;
     }
 
     public void addMessagePart(AndesMessagePart messagePart) {
         contentChunkList.add(messagePart);
+    }
+
+    /**
+     * Check whether message should be delivered to given subscriber
+     * @param subscription message receiver subscription information
+     * @return
+     */
+    public boolean isDelivarable(AndesSubscription subscription)
+    {
+        //Messages should be deliverable by default if no rules have been implemented.
+        return true;
     }
 }
