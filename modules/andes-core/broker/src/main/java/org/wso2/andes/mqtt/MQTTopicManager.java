@@ -208,7 +208,7 @@ public class MQTTopicManager {
                 //Will remove the subscriber cluster wide
                 try {
                     //Will indicate the disconnection of the topic
-                    if (action == SubscriptionEvent.DISCONNECT) {
+                    if (action == SubscriptionEvent.DISCONNECT && !(subscriber.getQOSLevel() == 0 && !subscriber.isCleanSession())) {
                         connector.disconnectSubscriber(this, topic, subscriberChannelID, subscriberChannel,
                                 isCleanSession, mqttClientChannelID);
                     } else {

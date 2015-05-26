@@ -76,7 +76,7 @@ public class MQTTopic {
         if (null == subscriber) {
             subscriber = new MQTTSubscriber();
             //Will set the level of QOS of the subscriber
-            subscriber.setQOS_Level(qos);
+            subscriber.setQOSLevel(qos);
             //Will specify the durablitiy of the session
             subscriber.setCleanSession(isCleanSession);
             //Will set the subscriber channel id
