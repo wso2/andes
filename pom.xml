@@ -542,7 +542,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <carbon.kernel.version>4.4.0</carbon.kernel.version>
         <project.scm.id>my-scm-server</project.scm.id>
-        <andes.version>2.5.0</andes.version>
+        <andes.version>2.6.0</andes.version>
         <commons-cli.version>1.0</commons-cli.version>
         <commons-configuration.version>1.6.0</commons-configuration.version>
         <commons-lang.version>2.6</commons-lang.version>

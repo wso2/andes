@@ -213,7 +213,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         Statement statement = QueryBuilder.update(config.getKeyspace(), DURABLE_SUB_TABLE).
                 with(set(DURABLE_SUB_DATA, subscriptionEncodeAsStr)).
                 where(eq(DESTINATION_IDENTIFIER, destinationIdentifier)).
-                and(eq(subscriptionID, subscriptionID)).
+                and(eq(DURABLE_SUB_ID, subscriptionID)).
                 setConsistencyLevel(config.getWriteConsistencyLevel());
 
         execute(statement, "Updating durable subscription for sub id " + subscriptionID + " and destination "
