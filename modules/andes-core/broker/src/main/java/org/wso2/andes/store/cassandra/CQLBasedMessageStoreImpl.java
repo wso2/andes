@@ -1272,6 +1272,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         @Override
         public void enqueue(AndesMessage message) throws AndesException {
             messageList.add(message);
+            rollbackList.add(message);
         }
 
         /**
@@ -1280,7 +1281,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         @Override
         public void commit() throws AndesException {
 
-            rollbackList.addAll(messageList);
             BatchStatement batchStatement = new BatchStatement();
 
             for(AndesMessage message: messageList) {
@@ -1289,6 +1289,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             }
             execute(batchStatement, "Storing metadata for transaction. Batch size" + messageList.size());
             messageList.clear();
+            rollbackList.clear();
         }
 
         /**
@@ -1313,8 +1314,12 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                 idList.add(message.getMetadata().getMessageID());
             }
 
-            deleteMessageMetadataFromQueue(rollbackList.get(0).getMetadata().getStorageQueueName(), removableMetadataList);
+            deleteMessageMetadataFromQueue(
+                    rollbackList.get(0).getMetadata().getStorageQueueName(),
+                    removableMetadataList);
+
             deleteMessageParts(idList);
+            rollbackList.clear();
         }
 
         /**

@@ -38,8 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.log4j.Logger;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -54,8 +52,6 @@ import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 import org.wso2.carbon.metrics.manager.Timer.Context;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * ANSI SQL based message store implementation. Message persistence related methods are implemented
@@ -76,20 +72,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     private final Map<String, Integer> queueMap;
 
     private RDBMSConnection rdbmsConnection;
-    /**
-     * Total number of transactional connections
-     */
-    private final AtomicInteger txConnectionsCount;
 
     /**
      * Contains utils methods related to connection health tests
      */
     private RDBMSStoreUtils rdbmsStoreUtils;
-
-    /**
-     * maximum connections reserved for transactional  tasks
-     */
-    private final int MAX_TX_CONNECTIONS_COUNT;
 
     /**
      * Partially created prepared statement to retrieve content of multiple messages using IN operator
@@ -100,13 +87,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     " FROM " + CONTENT_TABLE +
                     " WHERE " + MESSAGE_ID + " IN (";
 
-    private static final String TASK_CLOSING_TRANSACTION = "closing transaction";
+    private static final String TASK_COMMITTING_TRANSACTION = "committing transaction";
 
     public RDBMSMessageStoreImpl() {
         queueMap = new ConcurrentHashMap<String, Integer>();
-        MAX_TX_CONNECTIONS_COUNT = (Integer) AndesConfigurationManager.
-                readValue(AndesConfiguration.DB_CONNECTION_POOL_SIZE_FOR_TRANSACTIONS);
-        txConnectionsCount = new AtomicInteger(0);
         rdbmsStoreUtils = new RDBMSStoreUtils();
     }
 
@@ -269,7 +253,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     @Override
     public Map<Long, List<AndesMessagePart>> getContent(List<Long> messageIDList) throws AndesException {
 
-        Map<Long, List<AndesMessagePart>> contentList = new HashMap<Long, List<AndesMessagePart>>(messageIDList.size());
+        Map<Long, List<AndesMessagePart>> contentList = new HashMap<>(messageIDList.size());
 
         if (messageIDList.isEmpty()) {
             return contentList;
@@ -1919,16 +1903,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     public class RDBMSAndesTransactionImpl implements MessageStore.AndesTransaction {
 
-        private Connection connection;
-        private PreparedStatement storeMetadataPS;
-        private PreparedStatement storeContentPS;
-        private boolean connectionClosed;
-
+        private final List<AndesMessage> messageList;
         /**
          * Create a transaction object
          */
         RDBMSAndesTransactionImpl() throws SQLException {
-            connectionClosed = true;
+            messageList = new ArrayList<>();
         }
 
         /**
@@ -1936,21 +1916,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
          */
         @Override
         public void enqueue(AndesMessage message) throws AndesException {
-            try {
-                if (connectionClosed) {
-                    connection = getNewConnection();
-                }
-
-                addMetadataToBatch(storeMetadataPS,
-                        message.getMetadata(),
-                        message.getMetadata().getStorageQueueName());
-
-                for (AndesMessagePart messagePart : message.getContentChunkList()) {
-                    addContentToBatch(storeContentPS, messagePart);
-                }
-            } catch (SQLException e) {
-                throw new AndesException("Error occurred while batching messages for transaction", e);
-            }
+            messageList.add(message);
         }
 
         /**
@@ -1958,18 +1924,40 @@ public class RDBMSMessageStoreImpl implements MessageStore {
          */
         @Override
         public void commit() throws AndesException {
+
+            Connection connection = null;
+            PreparedStatement storeMetadataPS = null;
+            PreparedStatement storeContentPS = null;
+
             try {
 
-                if (!connectionClosed) {
-                    storeContentPS.executeBatch();
-                    storeMetadataPS.executeBatch();
-                    connection.commit();
+                connection = rdbmsConnection.getDataSource().getConnection();
+                connection.setAutoCommit(false);
+
+                storeMetadataPS = connection.prepareStatement(PS_INSERT_METADATA);
+                storeContentPS = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
+
+                for (AndesMessage message: messageList) {
+                    addMetadataToBatch(storeMetadataPS,
+                            message.getMetadata(),
+                            message.getMetadata().getStorageQueueName());
+
+                    for (AndesMessagePart messagePart : message.getContentChunkList()) {
+                        addContentToBatch(storeContentPS, messagePart);
+                    }
                 }
 
+                storeContentPS.executeBatch();
+                storeMetadataPS.executeBatch();
+                connection.commit();
+                messageList.clear();
             } catch (SQLException e) {
+                RDBMSMessageStoreImpl.this.rollback(connection, TASK_COMMITTING_TRANSACTION);
                 throw new AndesException("Exception occurred while committing transaction", e);
             } finally {
-                close();
+                RDBMSMessageStoreImpl.this.close(storeMetadataPS, TASK_COMMITTING_TRANSACTION);
+                RDBMSMessageStoreImpl.this.close(storeContentPS, TASK_COMMITTING_TRANSACTION);
+                RDBMSMessageStoreImpl.this.close(connection, TASK_COMMITTING_TRANSACTION);
             }
         }
 
@@ -1978,38 +1966,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
          */
         @Override
         public void rollback() throws AndesException {
-            try {
-                if (!connectionClosed) {
-                    connection.rollback();
-                }
-            } catch (SQLException e) {
-                throw new AndesException("Exception occurred while rolling back", e);
-            } finally {
-                close();
-            }
-        }
-
-        /**
-         * Get a new transactional DB connection
-         *
-         * @return Connection
-         * @throws SQLException
-         * @throws AndesException
-         */
-        private Connection getNewConnection() throws SQLException, AndesException {
-            // If max connection count reached throw an exception
-            if (txConnectionsCount.get() > MAX_TX_CONNECTIONS_COUNT) {
-                throw new AndesException("Max database connection count [" + MAX_TX_CONNECTIONS_COUNT +
-                        "] reached for transactions.");
-            }
-            Connection con = rdbmsConnection.getDataSource().getConnection();
-            con.setAutoCommit(false);
-            storeMetadataPS = con.prepareStatement(PS_INSERT_METADATA);
-            storeContentPS = con.prepareStatement(PS_INSERT_MESSAGE_PART);
-            connectionClosed = false;
-            txConnectionsCount.incrementAndGet();
-
-            return con;
+            messageList.clear();
         }
 
         /**
@@ -2017,11 +1974,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
          */
         @Override
         public void close() throws AndesException {
-            RDBMSMessageStoreImpl.this.close(storeContentPS, TASK_CLOSING_TRANSACTION);
-            RDBMSMessageStoreImpl.this.close(storeMetadataPS, TASK_CLOSING_TRANSACTION);
-            RDBMSMessageStoreImpl.this.close(connection, TASK_CLOSING_TRANSACTION);
-            txConnectionsCount.decrementAndGet();
-            connectionClosed = true;
+            messageList.clear();
         }
     }
 }
