@@ -1519,10 +1519,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
     /**
+     * Store retained messages in RDBMS message stores
+     *
      * {@inheritDoc}
      */
     @Override
-    public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException {
+    public void storeRetainedMessages(Map<String,AndesMessage> retainMap) throws AndesException {
 
         Connection connection = null;
 
@@ -1543,7 +1545,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             insertContentPreparedStatement = connection.prepareStatement(
                     RDBMSConstants.PS_INSERT_RETAIN_MESSAGE_PART);
 
-            for (AndesMessage message : retainList) {
+            for (AndesMessage message : retainMap.values()) {
 
                 AndesMessageMetadata metadata = message.getMetadata();
                 String destination = metadata.getDestination();

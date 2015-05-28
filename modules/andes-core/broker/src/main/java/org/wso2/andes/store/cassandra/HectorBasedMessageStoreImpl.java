@@ -783,7 +783,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     /**
      * {@inheritDoc}
      */
-    public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException {
+    public void storeRetainedMessages(Map<String,AndesMessage> retainMap) throws AndesException {
 
         // TODO: implement this method
         log.warn("Hector base message store methods for retain feature will be implemented " +
