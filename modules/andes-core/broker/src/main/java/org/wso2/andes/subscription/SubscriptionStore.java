@@ -31,11 +31,11 @@ import org.wso2.andes.kernel.AndesSubscription.SubscriptionType;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
-import org.wso2.andes.matrics.DataAccessMetricsManager;
 import org.wso2.andes.matrics.MetricsConstants;
 import org.wso2.carbon.metrics.manager.Gauge;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
-
+import org.wso2.carbon.metrics.manager.Level;
+import org.wso2.carbon.metrics.manager.MetricManager;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -83,11 +83,9 @@ public class SubscriptionStore {
         clusterSubscriptionProcessor = ClusterSubscriptionProcessorBuilder.getBitMapClusterSubscriptionProcessor();
 
         //Add subscribers gauge to metrics manager
-        DataAccessMetricsManager.addGauge(MetricsConstants.QUEUE_SUBSCRIBERS, this.getClass(),
-                new QueueSubscriberGauge());
+        MetricManager.gauge(Level.INFO, MetricsConstants.QUEUE_SUBSCRIBERS, new QueueSubscriberGauge());
         //Add topic gauge to metrics manager
-        DataAccessMetricsManager.addGauge(MetricsConstants.TOPIC_SUBSCRIBERS, this.getClass(),
-                new TopicSubscriberGauge());
+        MetricManager.gauge(Level.INFO, MetricsConstants.TOPIC_SUBSCRIBERS, new TopicSubscriberGauge());
     }
 
     /**

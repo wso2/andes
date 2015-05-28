@@ -24,7 +24,7 @@ package org.wso2.andes.matrics;
 public class MetricsConstants {
 
     /*DB OPERATIONS*/
-
+    //TODO use package structure
     /**
      * Time taken for database write operations
      */
@@ -56,11 +56,11 @@ public class MetricsConstants {
     /**
      * Add meta data to queue
      */
-    public static final String ADD_META_DATA_TO_QUEUE = "db_store_mata_data_queue";
+    public static final String ADD_META_DATA_TO_QUEUE = "db.store.meta.data.queue";
     /**
      * Add meta data as a batch
      */
-    public static final String ADD_META_DATA_TO_BATCH = "db_store_mata_data_batch";
+    public static final String ADD_META_DATA_TO_BATCH = "db_store_meta_data_batch";
     /**
      * Get message content as batch
      */

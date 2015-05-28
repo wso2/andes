@@ -21,9 +21,10 @@ package org.wso2.andes.store.rdbms;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.matrics.DataAccessMetricsManager;
 import org.wso2.andes.matrics.MetricsConstants;
 import org.wso2.andes.store.AndesStoreUnavailableException;
+import org.wso2.carbon.metrics.manager.Level;
+import org.wso2.carbon.metrics.manager.MetricManager;
 import org.wso2.carbon.metrics.manager.Timer.Context;
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -84,7 +85,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
         Map<String, List<String>> subscriberMap = new HashMap<String, List<String>>();
-        Context contextRead = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_READ, this.getClass()).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
 
@@ -133,7 +134,8 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
+        
         try {
 
             connection = getConnection();
@@ -173,7 +175,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     public void updateDurableSubscription(String destinationIdentifier, String subscriptionID, String subscriptionEncodeAsStr) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         try {
 
             connection = getConnection();
@@ -216,7 +218,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         PreparedStatement preparedStatement = null;
         String task = RDBMSConstants.TASK_REMOVING_DURABLE_SUBSCRIPTION + "destination: " +
                 destinationIdentifier + " sub id: " + subscriptionID;
-        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
 
@@ -256,7 +258,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         // task in progress that's logged on an exception
         String task = RDBMSConstants.TASK_STORING_NODE_INFORMATION + "node id: " + nodeID;
 
-        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
             // done as a transaction
@@ -292,7 +294,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
         Map<String, String> nodeInfoMap = new HashMap<String, String>();
-        Context contextRead = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_READ, this.getClass()).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
 
@@ -330,7 +332,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         String task = RDBMSConstants.TASK_REMOVING_NODE_INFORMATION + " node id: " + nodeID;
-        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
 
@@ -365,7 +367,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         try {
             connection = getConnection();
 
@@ -442,7 +444,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
-        Context contextRead = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_READ, this.getClass()).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
             connection = getConnection();
@@ -478,7 +480,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     public void resetMessageCounterForQueue(String storageQueueName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
             connection = getConnection();
@@ -516,7 +518,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     public void removeMessageCounterForQueue(String destinationQueueName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
             connection = getConnection();
@@ -551,7 +553,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
             connection = getConnection();
@@ -588,7 +590,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
             connection = getConnection();
@@ -625,7 +627,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         try {
 
             connection = getConnection();
@@ -703,7 +705,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
-        Context contextRead = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_READ, this.getClass()).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
             List<AndesExchange> exchangeList = new ArrayList<AndesExchange>();
 
@@ -742,7 +744,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     public void deleteExchangeInformation(String exchangeName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         try {
 
             connection = getConnection();
@@ -777,7 +779,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     public void storeQueueInformation(String queueName, String queueInfo) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
             connection = getConnection();
@@ -812,7 +814,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
-        Context contextRead = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_READ, this.getClass()).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_ALL_QUEUE_INFO);
@@ -850,7 +852,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     public void deleteQueueInformation(String queueName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
 
@@ -886,7 +888,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
 
@@ -928,7 +930,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
-        Context contextRead = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_READ, this.getClass()).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
             List<AndesBinding> bindingList = new ArrayList<AndesBinding>();
@@ -970,7 +972,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
-        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
             connection = getConnection();

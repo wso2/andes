@@ -30,7 +30,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.matrics.DataAccessMetricsManager;
 import org.wso2.andes.matrics.MetricsConstants;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
@@ -38,6 +37,8 @@ import org.wso2.andes.store.StoreHealthListener;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.wso2.carbon.metrics.manager.Gauge;
+import org.wso2.carbon.metrics.manager.Level;
+import org.wso2.carbon.metrics.manager.MetricManager;
 
 public class FlowControlManager  implements StoreHealthListener {
     /**
@@ -132,8 +133,7 @@ public class FlowControlManager  implements StoreHealthListener {
         executor = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
 
         //Will start the gauge
-        DataAccessMetricsManager.addGauge(MetricsConstants.ACTIVE_CHANNELS, this.getClass(),
-                new ChannelGuage());
+        MetricManager.gauge(Level.INFO, MetricsConstants.ACTIVE_CHANNELS, new ChannelGuage());
     }
 
     /**

@@ -36,10 +36,10 @@ import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
-import org.wso2.andes.matrics.DataAccessMetricsManager;
 import org.wso2.andes.matrics.MetricsConstants;
 import org.wso2.andes.server.stats.PerformanceCounter;
-import org.wso2.andes.store.StoreHealthListener;
+import org.wso2.carbon.metrics.manager.Level;
+import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -101,8 +101,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException {
-        Context context = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.ADD_MESSAGE_PART,
-                this.getClass()).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.ADD_MESSAGE_PART).start();
         try {
             Mutator<String> mutator = HFactory.createMutator(keyspace,
                     HectorConstants.stringSerializer);
@@ -135,8 +134,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public void deleteMessageParts(Collection<Long> messageIdList) throws AndesException {
-        Context context = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DELETE_MESSAGE_PART,
-                this.getClass()).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.DELETE_MESSAGE_PART).start();
         try {
 
             Mutator<String> mutator = HFactory.createMutator(keyspace,
@@ -169,7 +167,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
-        Context context = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.GET_CONTENT, this.getClass()).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_CONTENT).start();
         try {
             String rowKey = MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX + messageId;
             return HectorDataAccessHelper.getMessageContent(rowKey,
@@ -190,7 +188,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public Map<Long, List<AndesMessagePart>> getContent(List<Long> messageIdList) throws AndesException {
-        Context context = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.GET_CONTENT, this.getClass()).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_CONTENT).start();
         try {
 
             return HectorDataAccessHelper.getMessageContentBatch(
@@ -210,7 +208,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException {
-        Context context = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.ADD_META_DATA_LIST, this.getClass()).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.ADD_META_DATA_LIST).start();
         try {
 
             Mutator<String> mutator = HFactory.createMutator(keyspace,
@@ -254,7 +252,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public void addMetaData(AndesMessageMetadata metadata) throws AndesException {
-        Context context = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.ADD_META_DATA, this.getClass()).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.ADD_META_DATA).start();
         try {
             Mutator<String> mutator = HFactory.createMutator(keyspace,
                     HectorConstants.stringSerializer);
@@ -279,7 +277,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     @Override
     public void addMetaDataToQueue(String queueName, AndesMessageMetadata metadata)
             throws AndesException {
-        Context context = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.ADD_META_DATA_TO_QUEUE, this.getClass()).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.ADD_META_DATA_TO_QUEUE).start();
         try {
             Mutator<String> mutator = HFactory.createMutator(keyspace,
                     HectorConstants.stringSerializer);
@@ -304,7 +302,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     public void addMetadataToQueue(String queueName, List<AndesMessageMetadata> metadataList)
             throws AndesException {
 
-        Context context = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.ADD_META_DATA_TO_QUEUE_LIST, this.getClass()).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.ADD_META_DATA_TO_QUEUE_LIST).start();
         try {
 
             Mutator<String> mutator = HFactory.createMutator(keyspace,
@@ -356,7 +354,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata>
             metadataList) throws AndesException {
 
-        Context context = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.UPDATE_META_DATA_INFORMATION, this.getClass()).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.UPDATE_META_DATA_INFORMATION).start();
         try {
             Mutator<String> insertMutator = HFactory.createMutator(keyspace,
                     HectorConstants.stringSerializer);
@@ -407,7 +405,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public AndesMessageMetadata getMetaData(long messageId) throws AndesException {
-        Context context = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.GET_META_DATA, this.getClass()).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_META_DATA).start();
         try {
 
             byte[] value = HectorDataAccessHelper
@@ -432,7 +430,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     public List<AndesMessageMetadata> getMetaDataList(String queueName, long firstMsgId,
                                                       long lastMsgID) throws AndesException {
 
-        Context context = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.GET_META_DATA_LIST, this.getClass()).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_META_DATA_LIST).start();
         try {
             //Contains all metadata between firstMsgId and lastMsgID
             List<AndesMessageMetadata> allMetadataList = new ArrayList<AndesMessageMetadata>();
@@ -473,7 +471,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                                                                        long firstMsgId, int count)
             throws AndesException {
 
-        Context context = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.GET_NEXT_MESSAGE_METADATA_FROM_QUEUE, this.getClass()).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_NEXT_MESSAGE_METADATA_FROM_QUEUE).start();
         try {
             return HectorDataAccessHelper
                     .getMessagesFromQueue(queueName,
@@ -496,7 +494,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     public void deleteMessageMetadataFromQueue(String queueName, List<AndesRemovableMetadata>
             messagesToRemove) throws AndesException {
 
-        Context context = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DELETE_MESSAGE_META_DATA_FROM_QUEUE, this.getClass()).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.DELETE_MESSAGE_META_DATA_FROM_QUEUE).start();
         try {
             if (log.isTraceEnabled()) {
                 StringBuilder messageIDsString = new StringBuilder();

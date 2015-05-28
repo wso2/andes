@@ -28,10 +28,10 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
-import org.wso2.andes.matrics.DataAccessMetricsManager;
 import org.wso2.andes.matrics.MetricsConstants;
 import org.wso2.carbon.metrics.manager.Gauge;
-
+import org.wso2.carbon.metrics.manager.Level;
+import org.wso2.carbon.metrics.manager.MetricManager;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -101,8 +101,7 @@ public class DisruptorBasedFlusher {
         ringBuffer = disruptor.getRingBuffer();
 
         //Will add the guage listener to periodically calculate the outbound messages in the ring
-        DataAccessMetricsManager.addGauge(MetricsConstants.DISRUPTOR_OUTBOUND_RING, this.getClass(),
-                new OutBoundRingGuage());
+        MetricManager.gauge(Level.INFO, MetricsConstants.DISRUPTOR_OUTBOUND_RING, new OutBoundRingGuage());
     }
 
     /**
