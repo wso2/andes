@@ -590,7 +590,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                     setConsistencyLevel(config.getReadConsistencyLevel());
 
             ResultSet resultSet = execute(statement, "retrieving metadata list from queue " + queueName +
-                    "between msg id " + firstMsgId + " and " + lastMsgID);
+                                                     "between msg id " + firstMsgId + " and " + lastMsgID);
             List<AndesMessageMetadata> metadataList =
                     new ArrayList<AndesMessageMetadata>(resultSet.getAvailableWithoutFetching());
 
@@ -1258,6 +1258,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         @Override
         public void enqueue(AndesMessage message) throws AndesException {
             messageList.add(message);
+            rollbackList.add(message);
         }
 
         /**
@@ -1266,7 +1267,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         @Override
         public void commit() throws AndesException {
 
-            rollbackList.addAll(messageList);
             BatchStatement batchStatement = new BatchStatement();
 
             for(AndesMessage message: messageList) {
@@ -1275,6 +1275,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             }
             execute(batchStatement, "Storing metadata for transaction. Batch size" + messageList.size());
             messageList.clear();
+            rollbackList.clear();
         }
 
         /**
@@ -1292,7 +1293,12 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                 removableMetadataList.add(message.getMetadata().getMessageID());
             }
 
+            deleteMessageMetadataFromQueue(
+                    rollbackList.get(0).getMetadata().getStorageQueueName(),
+                    removableMetadataList);
+
             deleteMessages(rollbackList.get(0).getMetadata().getStorageQueueName(), removableMetadataList, false);
+            rollbackList.clear();
         }
 
         /**

@@ -122,13 +122,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                     HectorConstants.stringSerializer);
 
             for (AndesMessagePart part : partList) {
-                final String rowKey = MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX
-                        + part.getMessageID();
-
-                HectorDataAccessHelper.addMessageToQueue(HectorConstants
-                                .MESSAGE_CONTENT_COLUMN_FAMILY,
-                        rowKey, part.getOffSet(),
-                        part.getData(), mutator, false);
+                addMessagePartToBatch(part, mutator);
             }
 
             //batch execute
@@ -141,6 +135,25 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         } finally {
             context.stop();
         }
+    }
+
+    /**
+     * Add message part to the batch. By calling {@link me.prettyprint.hector.api.mutation.Mutator#execute()}
+     * added messages can be persisted to DB as a batch.
+     * @param part {@link org.wso2.andes.kernel.AndesMessagePart}
+     * @param mutator {@link me.prettyprint.hector.api.mutation.Mutator}
+     * @throws CassandraDataAccessException
+     */
+    private void addMessagePartToBatch(AndesMessagePart part, Mutator<String> mutator)
+            throws CassandraDataAccessException {
+
+        final String rowKey = MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX
+                + part.getMessageID();
+
+        HectorDataAccessHelper.addMessageToQueue(HectorConstants
+                        .MESSAGE_CONTENT_COLUMN_FAMILY,
+                rowKey, part.getOffSet(),
+                part.getData(), mutator, false);
     }
 
     /**
@@ -196,11 +209,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                     HectorConstants.stringSerializer);
 
             for (AndesMessageMetadata metadata : metadataList) {
-                HectorDataAccessHelper.addMessageToQueue(
-                        HectorConstants.META_DATA_COLUMN_FAMILY,
-                        metadata.getStorageQueueName(),
-                        metadata.getMessageID(),
-                        metadata.getMetadata(), mutator, false);
+                addMetadataToBatch(metadata, metadata.getStorageQueueName(), mutator);
             }
             long start = System.currentTimeMillis();
 
@@ -236,18 +245,31 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             Mutator<String> mutator = HFactory.createMutator(keyspace,
                     HectorConstants.stringSerializer);
 
-            HectorDataAccessHelper.addMessageToQueue(
-                    HectorConstants
-                            .META_DATA_COLUMN_FAMILY,
-                    metadata.getStorageQueueName(),
-                    metadata.getMessageID(),
-                    metadata.getMetadata(), mutator, true);
-
+            addMetadataToBatch(metadata, metadata.getStorageQueueName(), mutator);
+            mutator.execute();
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while writing incoming message to cassandra.", e);
         } finally {
             context.stop();
         }
+    }
+
+    /**
+     * Add message metadata to a batch. By calling {@link me.prettyprint.hector.api.mutation.Mutator#execute()}
+     * added messages can be persisted to DB as a batch.
+     * @param metadata {@link org.wso2.andes.kernel.AndesMessageMetadata}
+     * @param queueName name of the queue
+     * @param mutator {@link me.prettyprint.hector.api.mutation.Mutator}
+     * @throws CassandraDataAccessException
+     */
+    private void addMetadataToBatch(AndesMessageMetadata metadata, String queueName, Mutator<String> mutator)
+            throws CassandraDataAccessException {
+        HectorDataAccessHelper.addMessageToQueue(
+                HectorConstants
+                        .META_DATA_COLUMN_FAMILY,
+                metadata.getStorageQueueName(),
+                metadata.getMessageID(),
+                metadata.getMetadata(), mutator, false);
     }
 
     /**
@@ -261,12 +283,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             Mutator<String> mutator = HFactory.createMutator(keyspace,
                     HectorConstants.stringSerializer);
 
-            HectorDataAccessHelper.addMessageToQueue(HectorConstants
-                            .META_DATA_COLUMN_FAMILY,
-                    queueName,
-                    metadata.getMessageID(),
-                    metadata.getMetadata(), mutator, true);
-
+            addMetadataToBatch(metadata, queueName, mutator);
+            mutator.execute();
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while writing incoming message to cassandra.", e);
         } finally {
@@ -288,12 +306,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                     HectorConstants.stringSerializer);
 
             for (AndesMessageMetadata metadata : metadataList) {
-                HectorDataAccessHelper.addMessageToQueue(
-                        HectorConstants
-                                .META_DATA_COLUMN_FAMILY,
-                        queueName,
-                        metadata.getMessageID(),
-                        metadata.getMetadata(), mutator, false);
+                addMetadataToBatch(metadata, queueName, mutator);
             }
 
             //batch execute
@@ -341,12 +354,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
 
             // Step 1 - Insert the new meta data
             for (AndesMessageMetadata metadata : metadataList) {
-                HectorDataAccessHelper.addMessageToQueue(HectorConstants
-                        .META_DATA_COLUMN_FAMILY,
-                        metadata.getStorageQueueName(),
-                        metadata.getMessageID(),
-                        metadata.getMetadata(),
-                        insertMutator, false);
+                addMetadataToBatch(metadata, metadata.getStorageQueueName(), insertMutator);
             }
 
             long start = System.currentTimeMillis();
@@ -809,7 +817,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public AndesTransaction newTransaction() throws AndesException {
-        throw new NotImplementedException("Transactions not supported with Hector API");
+        return new HectorTransactionImpl();
     }
 
     /**
@@ -919,5 +927,90 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         return retainContentPartMap;
     }
 
+    /**
+     * Hector implementation of the {@link org.wso2.andes.kernel.MessageStore.AndesTransaction} interface
+     */
+    public class HectorTransactionImpl implements AndesTransaction {
 
+        private final List<AndesMessage> messageList;
+        private final List<AndesMessage> rollbackList;
+
+        /**
+         * Creates a Hector based transaction Object
+         */
+        private HectorTransactionImpl() {
+            messageList = new ArrayList<>();
+            rollbackList = new ArrayList<>();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void enqueue(AndesMessage message) throws AndesException {
+            messageList.add(message);
+            rollbackList.add(message);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void commit() throws AndesException {
+
+            try {
+                Mutator<String> mutator = HFactory.createMutator(keyspace, StringSerializer.get());
+                for (AndesMessage message : messageList) {
+                    addMetadataToBatch(message.getMetadata(), message.getMetadata().getStorageQueueName(), mutator);
+                    for (AndesMessagePart messagePart : message.getContentChunkList()) {
+                        addMessagePartToBatch(messagePart, mutator);
+                    }
+                }
+                mutator.execute();
+                messageList.clear();
+                rollbackList.clear();
+            } catch (CassandraDataAccessException e) {
+                throw new AndesException("Error occurred while transaction commit", e);
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void rollback() throws AndesException {
+            messageList.clear();
+            if (rollbackList.isEmpty()) {
+                return;
+            }
+
+            List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>();
+            List<Long> idList = new ArrayList<Long>();
+            for (AndesMessage message : rollbackList) {
+                AndesRemovableMetadata andesRemovableMetadata =
+                        new AndesRemovableMetadata(message.getMetadata().getMessageID(),
+                                message.getMetadata().getStorageQueueName(),
+                                message.getMetadata().getStorageQueueName());
+
+                removableMetadataList.add(andesRemovableMetadata);
+                idList.add(message.getMetadata().getMessageID());
+            }
+
+            deleteMessageMetadataFromQueue(
+                    rollbackList.get(0).getMetadata().getStorageQueueName(),
+                    removableMetadataList);
+
+            deleteMessageParts(idList);
+            rollbackList.clear();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void close() throws AndesException {
+            messageList.clear();
+            rollbackList.clear();
+        }
+    }
 }

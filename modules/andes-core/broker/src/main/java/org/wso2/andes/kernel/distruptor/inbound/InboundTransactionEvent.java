@@ -21,6 +21,7 @@ package org.wso2.andes.kernel.distruptor.inbound;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
@@ -227,14 +228,14 @@ public class InboundTransactionEvent {
      * @throws AndesException
      */
     void enqueuePreProcessedMessage(AndesMessage message) throws AndesException {
-        metadataList.add(message.getMetadata());
         for (AndesMessagePart messagePart: message.getContentChunkList()) {
             currentBatchSize = currentBatchSize + messagePart.getDataLength();
         }
 
         if (currentBatchSize > maxBatchSize) {
-            closeTransactionFromDB();
+            metadataList.clear(); // if max batch size exceeds invalidate commit.
         } else {
+            metadataList.add(message.getMetadata());
             transaction.enqueue(message);
 
             if (log.isDebugEnabled()) {
@@ -245,6 +246,11 @@ public class InboundTransactionEvent {
 
     private void commitTransactionToDB() {
         try {
+            if(currentBatchSize > maxBatchSize) {
+                throw new AndesException("Commit batch size exceeds maximum commit batch size of " +
+                        maxBatchSize + " bytes");
+            }
+
             transaction.commit();
 
             // update slot information for transaction related messages
