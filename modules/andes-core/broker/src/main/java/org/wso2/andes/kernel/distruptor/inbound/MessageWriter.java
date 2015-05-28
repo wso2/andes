@@ -119,7 +119,7 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
             
             previouslyFailedMessageList.clear();
         }
-        
+
         try {
             messagingEngine.messagesReceived(currentMessageList);
 
@@ -141,9 +141,11 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
 
             // clear the messages
             currentMessageList.clear();
+            // clear retained messages
+            retainList.clear();
 
         } catch (AndesBatchUpdateException batchInsertEx){
-            
+
             log.error(String.format("unable to store messages, probably due to errors in message stores."
                                             + "success inserts: %d, failed inserts: %d",
                                     batchInsertEx.getSuccessfullBatches().size(),
@@ -156,6 +158,7 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
             //currentMessageList.removeAll(batchInsertEx.getFailedInserts());
             previouslyFailedMessageList.addAll(currentMessageList);
             currentMessageList.clear();
+            retainList.clear();
         } catch (Exception ex) {
             log.warn("unable to store messages, probably due to errors in message stores. messages count : " + 
                      currentMessageList.size());
