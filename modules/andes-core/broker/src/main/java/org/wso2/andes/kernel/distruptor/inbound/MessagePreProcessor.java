@@ -23,9 +23,14 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.matrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.carbon.metrics.manager.Level;
+import org.wso2.carbon.metrics.manager.Meter;
+import org.wso2.carbon.metrics.manager.MetricManager;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -197,6 +202,11 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
 
                 // Even though we drop the message pub ack needs to be sent
                 event.pubAckHandler.ack(message.getMetadata());
+
+                //Adding metrics meter for ack rate
+                Meter ackMeter = MetricManager.meter(Level.INFO, this.getClass() + MetricsConstants.ACK_SENT_RATE);
+                ackMeter.mark();
+
 
                 if (message.getMetadata().isRetain()) {
                     // Since there are no subscribers we don't need to store the original message.

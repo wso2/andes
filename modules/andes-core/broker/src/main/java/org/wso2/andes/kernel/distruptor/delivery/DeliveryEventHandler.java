@@ -28,6 +28,10 @@ import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.MessageFlusher;
 import org.wso2.andes.kernel.OnflightMessageTracker;
+import org.wso2.andes.matrics.MetricsConstants;
+import org.wso2.carbon.metrics.manager.Level;
+import org.wso2.carbon.metrics.manager.Meter;
+import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -87,6 +91,11 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                 }
                 if (subscription.isActive()) {
                     subscription.sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
+
+                    //Adding metrics meter for ack rate
+                    Meter msgMeter = MetricManager.meter(Level.INFO, this.getClass() + MetricsConstants.MSG_SENT_RATE);
+                    msgMeter.mark();
+
                 } else {
                     //destination would be target queue if it is durable topic, otherwise it is queue or non durable topic
                     if(subscription.isBoundToTopic() && subscription.isDurable()){

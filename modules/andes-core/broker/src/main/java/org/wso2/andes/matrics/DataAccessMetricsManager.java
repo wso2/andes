@@ -52,12 +52,12 @@ public class DataAccessMetricsManager {
      * @param source     the source class which the metrics data should be tabulated
      * @return the timer object which will be used for metrics calculation
      */
-    public static Timer addAndGetTimer(String definition, MessageStore source) {
+    public static Timer addAndGetTimer(String definition, Class source) {
 
         Timer metricTimer = timers.get(definition);
         //If metrics has not being defined before
         if (null == metricTimer) {
-            metricTimer = MetricManager.timer(level, MetricManager.name(source.getClass(), definition));
+            metricTimer = MetricManager.timer(level, MetricManager.name(source.getName(), definition));
             //Will create the timer
             timers.put(definition, metricTimer);
         }
@@ -76,6 +76,5 @@ public class DataAccessMetricsManager {
         MetricManager.gauge(Level.INFO, MetricManager.name(source,
                 definition), guage);
     }
-
 
 }

@@ -21,10 +21,11 @@ package org.wso2.andes.store.rdbms;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.matrics.DataAccessMetricsManager;
+import org.wso2.andes.matrics.MetricsConstants;
 import org.wso2.andes.store.AndesStoreUnavailableException;
-
+import org.wso2.carbon.metrics.manager.Timer.Context;
 import javax.sql.DataSource;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -83,6 +84,8 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
         Map<String, List<String>> subscriberMap = new HashMap<String, List<String>>();
+        Context contextRead = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_READ, this.getClass()).start();
+
         try {
 
             connection = getConnection();
@@ -114,6 +117,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION, e);
         } finally {
+            contextRead.stop();
             close(resultSet, RDBMSConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
             close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
             close(connection, RDBMSConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
@@ -129,6 +133,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
+        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
         try {
 
             connection = getConnection();
@@ -155,6 +160,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throw new AndesException("Error occurred while storing durable subscription. sub id: "
                     + subscriptionID + " destination identifier: " + destinationIdentifier, e);
         } finally {
+            contextWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
             close(connection, RDBMSConstants.TASK_STORING_DURABLE_SUBSCRIPTION);
         }
@@ -167,6 +173,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     public void updateDurableSubscription(String destinationIdentifier, String subscriptionID, String subscriptionEncodeAsStr) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
+        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
         try {
 
             connection = getConnection();
@@ -193,6 +200,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throw new AndesException("Error occurred while updating durable subscription. sub id: "
                     + subscriptionID + " destination identifier: " + destinationIdentifier, e);
         } finally {
+            contextWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_UPDATING_DURABLE_SUBSCRIPTION);
             close(connection, RDBMSConstants.TASK_UPDATING_DURABLE_SUBSCRIPTION);
         }
@@ -208,6 +216,8 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         PreparedStatement preparedStatement = null;
         String task = RDBMSConstants.TASK_REMOVING_DURABLE_SUBSCRIPTION + "destination: " +
                 destinationIdentifier + " sub id: " + subscriptionID;
+        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+
         try {
 
             connection = getConnection();
@@ -229,7 +239,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             rollback(connection, task);
             throw new AndesException("error occurred while " + task, e);
         } finally {
-
+            contextWrite.stop();
             close(preparedStatement, task);
             close(connection, task);
         }
@@ -245,6 +255,9 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
         // task in progress that's logged on an exception
         String task = RDBMSConstants.TASK_STORING_NODE_INFORMATION + "node id: " + nodeID;
+
+        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+
         try {
             // done as a transaction
             connection = getConnection();
@@ -264,6 +277,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             rollback(connection, task);
             throw new AndesException("Error occurred while " + task, e);
         } finally {
+            contextWrite.stop();
             close(preparedStatement, task);
             close(connection, task);
         }
@@ -278,6 +292,8 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
         Map<String, String> nodeInfoMap = new HashMap<String, String>();
+        Context contextRead = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_READ, this.getClass()).start();
+
         try {
 
             connection = getConnection();
@@ -299,6 +315,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         } catch (SQLException e) {
             throw new AndesException("Error occurred while " + RDBMSConstants.TASK_RETRIEVING_ALL_NODE_DETAILS, e);
         } finally {
+            contextRead.stop();
             close(resultSet, RDBMSConstants.TASK_RETRIEVING_ALL_NODE_DETAILS);
             close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_ALL_NODE_DETAILS);
             close(connection, RDBMSConstants.TASK_RETRIEVING_ALL_NODE_DETAILS);
@@ -313,6 +330,8 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         String task = RDBMSConstants.TASK_REMOVING_NODE_INFORMATION + " node id: " + nodeID;
+        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
+
         try {
 
             connection = getConnection();
@@ -332,6 +351,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             rollback(connection, task);
             throw new AndesException("Error occurred while " + task, e);
         } finally {
+            contextWrite.stop();
             close(preparedStatement, task);
             close(connection, task);
         }
@@ -345,6 +365,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
+        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
         try {
             connection = getConnection();
 
@@ -374,6 +395,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_ADDING_QUEUE_COUNTER, e);
         } finally {
+            contextWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_ADDING_QUEUE_COUNTER);
             close(connection, RDBMSConstants.TASK_ADDING_QUEUE_COUNTER);
         }
@@ -420,6 +442,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
+        Context contextRead = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_READ, this.getClass()).start();
 
         try {
             connection = getConnection();
@@ -441,6 +464,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_RETRIEVING_QUEUE_COUNT, e);
         } finally {
+            contextRead.stop();
             close(resultSet, RDBMSConstants.TASK_RETRIEVING_QUEUE_COUNT);
             close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_QUEUE_COUNT);
             close(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_COUNT);
@@ -454,6 +478,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     public void resetMessageCounterForQueue(String storageQueueName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
+        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
 
         try {
             connection = getConnection();
@@ -477,6 +502,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throw new AndesException("error occurred while resetting message count for queue :" +
                     storageQueueName,e);
         } finally {
+            contextWrite.stop();
             String task = RDBMSConstants.TASK_RESETTING_MESSAGE_COUNTER + storageQueueName;
             close(preparedStatement, task);
             close(connection, task);
@@ -490,6 +516,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     public void removeMessageCounterForQueue(String destinationQueueName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
+        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
 
         try {
             connection = getConnection();
@@ -510,6 +537,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_DELETING_QUEUE_COUNTER + " queue: " + destinationQueueName, e);
         } finally {
+            contextWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_DELETING_QUEUE_COUNTER);
             close(connection, RDBMSConstants.TASK_DELETING_QUEUE_COUNTER);
         }
@@ -523,6 +551,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
+        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
 
         try {
             connection = getConnection();
@@ -544,6 +573,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_INCREMENTING_QUEUE_COUNT + " queue name: " + destinationQueueName, e);
         } finally {
+            contextWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_INCREMENTING_QUEUE_COUNT);
             close(connection, RDBMSConstants.TASK_INCREMENTING_QUEUE_COUNT);
         }
@@ -558,6 +588,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
+        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
 
         try {
             connection = getConnection();
@@ -579,6 +610,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_DECREMENTING_QUEUE_COUNT + " queue name: " + destinationQueueName, e);
         } finally {
+            contextWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_DECREMENTING_QUEUE_COUNT);
             close(connection, RDBMSConstants.TASK_DECREMENTING_QUEUE_COUNT);
         }
@@ -593,6 +625,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
+        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
         try {
 
             connection = getConnection();
@@ -624,6 +657,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_STORING_EXCHANGE_INFORMATION + " exchange: " + exchangeName, e);
         } finally {
+            contextWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_STORING_EXCHANGE_INFORMATION);
             close(connection, RDBMSConstants.TASK_STORING_EXCHANGE_INFORMATION);
         }
@@ -641,6 +675,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throws AndesException {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
+
         try {
             preparedStatement = connection.prepareStatement(RDBMSConstants
                     .PS_SELECT_EXCHANGE);
@@ -668,6 +703,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
+        Context contextRead = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_READ, this.getClass()).start();
         try {
             List<AndesExchange> exchangeList = new ArrayList<AndesExchange>();
 
@@ -692,6 +728,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throw new AndesException("Error occurred while " + RDBMSConstants
                     .TASK_RETRIEVING_ALL_EXCHANGE_INFO, e);
         } finally {
+            contextRead.stop();
             close(resultSet, RDBMSConstants.TASK_RETRIEVING_ALL_EXCHANGE_INFO);
             close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_ALL_EXCHANGE_INFO);
             close(connection, RDBMSConstants.TASK_RETRIEVING_ALL_EXCHANGE_INFO);
@@ -705,6 +742,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     public void deleteExchangeInformation(String exchangeName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
+        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
         try {
 
             connection = getConnection();
@@ -725,6 +763,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             rollback(connection, errMsg);
             throw new AndesException("Error occurred while " + errMsg, e);
         } finally {
+            contextWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_DELETING_EXCHANGE);
             close(connection, RDBMSConstants.TASK_DELETING_EXCHANGE);
         }
@@ -738,6 +777,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     public void storeQueueInformation(String queueName, String queueInfo) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
+        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
 
         try {
             connection = getConnection();
@@ -758,6 +798,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             rollback(connection, errMsg);
             throw new AndesException("Error occurred while " + errMsg, e);
         } finally {
+            contextWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_STORING_QUEUE_INFO);
             close(connection, RDBMSConstants.TASK_STORING_QUEUE_INFO);
         }
@@ -771,6 +812,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
+        Context contextRead = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_READ, this.getClass()).start();
         try {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_ALL_QUEUE_INFO);
@@ -794,6 +836,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throw new AndesException(
                     "Error occurred while " + RDBMSConstants.TASK_RETRIEVING_ALL_QUEUE_INFO, e);
         } finally {
+            contextRead.stop();
             close(resultSet, RDBMSConstants.TASK_RETRIEVING_ALL_QUEUE_INFO);
             close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_ALL_QUEUE_INFO);
             close(connection, RDBMSConstants.TASK_RETRIEVING_ALL_QUEUE_INFO);
@@ -807,6 +850,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     public void deleteQueueInformation(String queueName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
+        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
 
         try {
 
@@ -828,6 +872,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             rollback(connection, errMsg);
             throw new AndesException("Error occurred while " + errMsg, e);
         } finally {
+            contextWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_DELETING_QUEUE_INFO);
             close(connection, RDBMSConstants.TASK_DELETING_QUEUE_INFO);
         }
@@ -841,6 +886,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
+        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
 
         try {
 
@@ -867,6 +913,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             rollback(connection, errMsg);
             throw new AndesException("Error occurred while " + errMsg, e);
         } finally {
+            contextWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_STORING_BINDING);
             close(connection, RDBMSConstants.TASK_STORING_BINDING);
         }
@@ -881,6 +928,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
+        Context contextRead = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_READ, this.getClass()).start();
 
         try {
             List<AndesBinding> bindingList = new ArrayList<AndesBinding>();
@@ -907,6 +955,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
          throw new AndesException(
                     "Error occurred while " + RDBMSConstants.TASK_RETRIEVING_BINDING_INFO, e);
         } finally {
+            contextRead.stop();
             close(resultSet, RDBMSConstants.TASK_RETRIEVING_BINDING_INFO);
             close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_BINDING_INFO);
             close(connection, RDBMSConstants.TASK_RETRIEVING_BINDING_INFO);
@@ -921,6 +970,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
+        Context contextWrite = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_WRITE, this.getClass()).start();
 
         try {
             connection = getConnection();
@@ -945,6 +995,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             rollback(connection, errMsg);
             throw new AndesException("Error occurred while " + errMsg, e);
         } finally {
+            contextWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_DELETING_BINDING);
             close(connection, RDBMSConstants.TASK_DELETING_BINDING);
         }

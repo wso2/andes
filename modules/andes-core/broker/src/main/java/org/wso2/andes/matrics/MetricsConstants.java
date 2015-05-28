@@ -26,6 +26,16 @@ public class MetricsConstants {
     /*DB OPERATIONS*/
 
     /**
+     * Time taken for database write operations
+     */
+    public static final String DB_WRITE = "db_write";
+
+    /**
+     * Time taken for database read operations
+     */
+    public static final String DB_READ = "db_read";
+
+    /**
      * Add message content to the message store
      */
     public static final String ADD_MESSAGE_PART = "db_store_message_part";
@@ -99,5 +109,36 @@ public class MetricsConstants {
      */
     public static final String DISRUPTOR_OUTBOUND_RING = "buffer_out_bound_ring";
 
+    /**
+     * At a given time number of queue subscribers
+     */
+    public static final String QUEUE_SUBSCRIBERS = "queue_subscribers";
+    /**
+     * At a given time number of topic subscriber
+     */
+    public static final String TOPIC_SUBSCRIBERS = "topic_subscribers";
+
+    /**
+     * Number of messages received per second. This metric is calculated when a message reaches server.
+     */
+    public static final String MSG_RECEIVE_RATE = "message_receive_rate";
+    /**
+     * Number of acknowledgments recieved from publishers per second.
+     */
+    public static final String ACK_RECEIVE_RATE = "ack_receive_rate";
+    /**
+     * Number of messages received per second. This metric is calculated when a message reaches server.
+     */
+    public static final String MSG_SENT_RATE = "message_receive_rate";
+    /**
+     * Number of acknowledgments recieved from publishers per second.
+     */
+    public static final String ACK_SENT_RATE = "ack_receive_rate";
+
+
+    /**
+     * At a given time the number of active channels
+     */
+    public static final String ACTIVE_CHANNELS = "active_channels";
 
 }

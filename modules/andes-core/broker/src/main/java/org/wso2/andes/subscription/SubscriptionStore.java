@@ -31,6 +31,9 @@ import org.wso2.andes.kernel.AndesSubscription.SubscriptionType;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
+import org.wso2.andes.matrics.DataAccessMetricsManager;
+import org.wso2.andes.matrics.MetricsConstants;
+import org.wso2.carbon.metrics.manager.Gauge;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 
 import java.util.ArrayList;
@@ -78,6 +81,13 @@ public class SubscriptionStore {
     public SubscriptionStore() throws AndesException {
         andesContextStore = AndesContext.getInstance().getAndesContextStore();
         clusterSubscriptionProcessor = ClusterSubscriptionProcessorBuilder.getBitMapClusterSubscriptionProcessor();
+
+        //Add subscribers gauge to metrics manager
+        DataAccessMetricsManager.addGauge(MetricsConstants.QUEUE_SUBSCRIBERS, this.getClass(),
+                new QueueSubscriberGauge());
+        //Add topic gauge to metrics manager
+        DataAccessMetricsManager.addGauge(MetricsConstants.TOPIC_SUBSCRIBERS, this.getClass(),
+                new TopicSubscriberGauge());
     }
 
     /**
@@ -746,6 +756,20 @@ public class SubscriptionStore {
                     }
                 }
             }
+        }
+    }
+
+    private class QueueSubscriberGauge implements Gauge<Integer> {
+        @Override
+        public Integer getValue() {
+            return clusterQueueSubscriptionMap.size() + localQueueSubscriptionMap.size();
+        }
+    }
+
+    private class TopicSubscriberGauge implements org.wso2.carbon.metrics.manager.Gauge {
+        @Override
+        public Integer getValue() {
+            return clusterTopicSubscriptionMap.size() + localTopicSubscriptionMap.size();
         }
     }
 }

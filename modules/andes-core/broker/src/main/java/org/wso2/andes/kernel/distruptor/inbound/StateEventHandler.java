@@ -25,7 +25,11 @@ import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
+import org.wso2.andes.matrics.MetricsConstants;
 import org.wso2.andes.server.stats.PerformanceCounter;
+import org.wso2.carbon.metrics.manager.Level;
+import org.wso2.carbon.metrics.manager.Meter;
+import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.List;
 
@@ -106,6 +110,10 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
             // wise.
             messagingEngine.incrementQueueCount(message.getMetadata().getDestination(), 1);
             eventContainer.pubAckHandler.ack(message.getMetadata());
+
+            //Adding metrics meter for ack rate
+            Meter ackMeter = MetricManager.meter(Level.INFO, this.getClass() + MetricsConstants.ACK_SENT_RATE);
+            ackMeter.mark();
         }
 
         //record the successfully written message count
