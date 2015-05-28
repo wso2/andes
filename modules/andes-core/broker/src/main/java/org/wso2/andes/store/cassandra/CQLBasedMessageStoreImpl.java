@@ -936,10 +936,10 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException {
+    public void storeRetainedMessages(Map<String,AndesMessage> retainMap) throws AndesException {
 
 
-        for (AndesMessage message : retainList) {
+        for (AndesMessage message : retainMap.values()) {
 
             AndesMessageMetadata metadata = message.getMetadata();
             String destination = metadata.getDestination();

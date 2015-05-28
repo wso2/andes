@@ -425,9 +425,9 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException {
+    public void storeRetainedMessages(Map<String,AndesMessage> retainMap) throws AndesException {
         try {
-            wrappedInstance.storeRetainedMessages(retainList);
+            wrappedInstance.storeRetainedMessages(retainMap);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

@@ -718,11 +718,10 @@ public class MessagingEngine {
      * Store retained messages in the message store.
      *
      * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
-     * @param retainList
-     *         Retained message list
+     * @param retainMap Retained message Map
      */
-    public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException {
-        messageStore.storeRetainedMessages(retainList);
+    public void storeRetainedMessages(Map<String,AndesMessage> retainMap) throws AndesException {
+        messageStore.storeRetainedMessages(retainMap);
     }
 
 

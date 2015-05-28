@@ -323,9 +323,9 @@ public interface MessageStore extends HealthAwareStore{
      * Store retained message list in the message store.
      * @see org.wso2.andes.kernel.AndesMessageMetadata#retain
      *
-     * @param retainList Retained messages
+     * @param retainMap Retained messages map
      */
-    public void storeRetainedMessages(List<AndesMessage> retainList) throws AndesException;
+    public void storeRetainedMessages(Map<String,AndesMessage> retainMap) throws AndesException;
 
     /**
      * Return all topic names with retained messages in the database

@@ -19,11 +19,12 @@
 package org.wso2.andes.kernel.distruptor.inbound;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.distruptor.BatchEventHandler;
@@ -56,7 +57,7 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
     /**
      * Temporary storage for retain messages
      */
-    private final List<AndesMessage> retainList;
+    private final Map<String, AndesMessage> retainMap;
 
     /**
      * Indicates and provides a barrier if messages stores become offline.
@@ -80,7 +81,7 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
          */
         currentMessageList = new ArrayList<AndesMessage>(messageBatchSize);
         previouslyFailedMessageList = new ArrayList<AndesMessage>(messageBatchSize); // init in the same capacity
-        retainList = new ArrayList<AndesMessage>(messageBatchSize);
+        retainMap = new HashMap<>();
         messageStoresUnavailable = null;
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
@@ -93,7 +94,8 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
             currentMessageList.addAll(event.messageList);
 
             if (null != event.retainMessage) {
-                retainList.add(event.retainMessage);
+                retainMap.put(event.retainMessage.getMetadata().getDestination(),event.retainMessage);
+
             }
         }
 
@@ -119,12 +121,12 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
             
             previouslyFailedMessageList.clear();
         }
-        
+
         try {
             messagingEngine.messagesReceived(currentMessageList);
 
-            if (!retainList.isEmpty()) {
-                messagingEngine.storeRetainedMessages(retainList);
+            if (!retainMap.isEmpty()) {
+                messagingEngine.storeRetainedMessages(retainMap);
             }
 
             if (log.isDebugEnabled()) {
@@ -141,9 +143,11 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
 
             // clear the messages
             currentMessageList.clear();
+            // clear retained messages map
+            retainMap.clear();
 
         } catch (AndesBatchUpdateException batchInsertEx){
-            
+
             log.error(String.format("unable to store messages, probably due to errors in message stores."
                                             + "success inserts: %d, failed inserts: %d",
                                     batchInsertEx.getSuccessfullBatches().size(),
@@ -156,6 +160,7 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
             //currentMessageList.removeAll(batchInsertEx.getFailedInserts());
             previouslyFailedMessageList.addAll(currentMessageList);
             currentMessageList.clear();
+            retainMap.clear();
         } catch (Exception ex) {
             log.warn("unable to store messages, probably due to errors in message stores. messages count : " + 
                      currentMessageList.size());
