@@ -122,12 +122,9 @@ public class Broker
      * @throws AndesException
      */
     public void startup(BrokerOptions options) throws AndesException {
-        try {
-            CurrentActor.set(new BrokerActor(new SystemOutMessageLogger()));
-            startupImpl(options);
-        } finally {
-            CurrentActor.remove();
-        }
+        CurrentActor.set(new BrokerActor(new SystemOutMessageLogger()));
+        startupImpl(options);
+        CurrentActor.remove();
     }
 
     /**

@@ -22,6 +22,7 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.gte;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.in;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.lte;
+
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -343,7 +344,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_CONTENT).start();
 
-
         try {
             Statement statement = QueryBuilder.select().all().
                     from(config.getKeyspace(), CQLConstants.CONTENT_TABLE).
@@ -383,7 +383,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         try {
 
             //The content batch would hold the message id as the key and the content chunks as the value
-            Map<Long, List<AndesMessagePart>> messageContentBatch = new HashMap<Long, List<AndesMessagePart>>
+            Map<Long, List<AndesMessagePart>> messageContentBatch = new HashMap<>
                     (messageIdList.size());
 
             //First we need to convert the list into a Long [] since collections are not supported by CQL
@@ -411,7 +411,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
                 //If the message has not being added
                 if (null == partList) {
-                    partList = new ArrayList<AndesMessagePart>();
+                    partList = new ArrayList<>();
                     messageContentBatch.put(messageID, partList);
                 }
 
@@ -435,7 +435,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException {
+    public void addMetadata(List<AndesMessageMetadata> metadataList) throws AndesException {
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_META_DATA_LIST).start();
 
@@ -457,7 +457,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void addMetaData(AndesMessageMetadata metadata) throws AndesException {
+    public void addMetadata(AndesMessageMetadata metadata) throws AndesException {
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.ADD_META_DATA).start();
 
@@ -471,6 +471,20 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         } finally {
             context.stop();
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void storeMessages(List<AndesMessage> messageList) throws AndesException {
+        BatchStatement batchStatement = new BatchStatement();
+
+        for(AndesMessage message: messageList) {
+            addContentToBatch(batchStatement, message.getContentChunkList());
+            addMetadataToBatch(batchStatement, message.getMetadata(), message.getMetadata().getStorageQueueName());
+        }
+        execute(batchStatement, "storing metadata. Batch size" + messageList.size());
     }
 
     /**
@@ -496,7 +510,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void addMetaDataToQueue(String queueName,
+    public void addMetadataToQueue(String queueName,
                                    AndesMessageMetadata metadata) throws AndesException {
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.ADD_META_DATA_TO_QUEUE).start();
@@ -540,7 +554,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void moveMetaDataToQueue(long messageId,
+    public void moveMetadataToQueue(long messageId,
                                     String currentQueueName,
                                     String targetQueueName) throws AndesException {
         List<AndesMessageMetadata> metadataList = getNextNMessageMetadataFromQueue(currentQueueName, messageId, 1);
@@ -549,10 +563,10 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             throw new AndesException("Message MetaData not found to move the message to Dead Letter Channel");
         }
 
-        List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>(1);
+        List<AndesRemovableMetadata> removableMetadataList = new ArrayList<>(1);
         removableMetadataList.add(new AndesRemovableMetadata(messageId, currentQueueName, currentQueueName));
 
-        addMetaDataToQueue(targetQueueName, metadataList.get(0));
+        addMetadataToQueue(targetQueueName, metadataList.get(0));
         deleteMessageMetadataFromQueue(currentQueueName, removableMetadataList);
     }
 
@@ -560,18 +574,18 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void updateMetaDataInformation(String currentQueueName,
+    public void updateMetadataInformation(String currentQueueName,
                                           List<AndesMessageMetadata> metadataList) throws AndesException {
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.UPDATE_META_DATA_INFORMATION).start();
 
         try {
             // Step 1 add metadata to the new queue
-            addMetaData(metadataList);
+            addMetadata(metadataList);
 
             // Step 2 - Delete the old meta data when inserting new meta is complete to avoid
             // losing messages
-            List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>(metadataList.size());
+            List<AndesRemovableMetadata> removableMetadataList = new ArrayList<>(metadataList.size());
             for (AndesMessageMetadata metadata : metadataList) {
                 removableMetadataList.add(new AndesRemovableMetadata(metadata.getMessageID(),
                                 metadata.getDestination(),
@@ -594,7 +608,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * USE THIS WITH CAUTION! DON'T USE IN CRITICAL PATH
      */
     @Override
-    public AndesMessageMetadata getMetaData(long messageId) throws AndesException {
+    public AndesMessageMetadata getMetadata(long messageId) throws AndesException {
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_META_DATA)
                 .start();
 
@@ -624,7 +638,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesMessageMetadata> getMetaDataList(String queueName,
+    public List<AndesMessageMetadata> getMetadataList(String queueName,
                                                       long firstMsgId,
                                                       long lastMsgID) throws AndesException {
 
@@ -641,7 +655,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             ResultSet resultSet = execute(statement, "retrieving metadata list from queue " + queueName +
                     "between msg id " + firstMsgId + " and " + lastMsgID);
             List<AndesMessageMetadata> metadataList =
-                    new ArrayList<AndesMessageMetadata>(resultSet.getAvailableWithoutFetching());
+                    new ArrayList<>(resultSet.getAvailableWithoutFetching());
 
             for (Row row : resultSet) {
                 metadataList.add(getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID)));
@@ -687,7 +701,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             ResultSet resultSet = execute(statement, "retrieving metadata list from " + storageQueueName +
                     " with starting msg id " + firstMsgId + " and ending message id " + lastMsgId);
             List<AndesMessageMetadata> messageMetadata =
-                    new ArrayList<AndesMessageMetadata>(resultSet.getAvailableWithoutFetching());
+                    new ArrayList<>(resultSet.getAvailableWithoutFetching());
 
             for (Row row : resultSet) {
                 messageMetadata.add(getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID)));
@@ -792,7 +806,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException {
         // Message expiration feature moved to MB 3.1.0
-        return new ArrayList<AndesRemovableMetadata>();
+        return new ArrayList<>();
     }
 
     /**
@@ -845,7 +859,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         // using the same fetch size to iterate through the messages and delete from DLC
         int fetchSize = query.getFetchSize();
         int removedMessageCount = 0;
-        List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>(fetchSize);
+        List<AndesRemovableMetadata> removableMetadataList = new ArrayList<>(fetchSize);
         AndesMessageMetadata metadata;
 
         for (Row row : resultSet) {
@@ -883,7 +897,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                 setConsistencyLevel(config.getReadConsistencyLevel());
 
         ResultSet resultSet = execute(statement, "retrieving message ids addressed to " + storageQueueName);
-        List<Long> msgIDList = new ArrayList<Long>(resultSet.getAvailableWithoutFetching());
+        List<Long> msgIDList = new ArrayList<>(resultSet.getAvailableWithoutFetching());
 
         for (Row row : resultSet) {
             msgIDList.add(row.getLong(CQLConstants.MESSAGE_ID));
@@ -947,11 +961,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         cqlConnection.close();
     }
 
-    @Override
-    public AndesTransaction newTransaction() throws AndesException {
-        return new CQLBasedTransactionImpl();
-    }
-
     /**
      * Executes the statement using the given session and returns the resultSet.
      * Additionally this catches any NoHostAvailableException or QueryExecutionException thrown by CQL driver and
@@ -971,10 +980,10 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             
             Map<InetSocketAddress,Throwable> errors = e.getErrors();
             for ( Entry<InetSocketAddress, Throwable> err: errors.entrySet()){
-                log.error("Error occured while connecting to cassandra server: " + err.getKey() + " error: ", err.getValue());
+                log.error("Error occurred while connecting to cassandra server: " + err.getKey() + " error: ", err.getValue());
             }
             
-            throw new AndesStoreUnavailableException("error occured while trying to connect to cassandra server(s) for " + task, e);
+            throw new AndesStoreUnavailableException("error occurred while trying to connect to cassandra server(s) for " + task, e);
             
         } catch (QueryExecutionException e) {
             throw new AndesStoreUnavailableException("Error occurred while " + task, e);
@@ -993,8 +1002,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                cqlUtils.testDelete(cqlConnection, config, testString, testTime);  
         
     }    
-    
-   
+
     /**
      * Store retain message list in database
      *
@@ -1112,7 +1120,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public List<String> getAllRetainedTopics() throws AndesException {
 
-        List<String> topicList = new ArrayList<String>();
+        List<String> topicList = new ArrayList<>();
         ResultSet resultSet;
 
         Statement statement = QueryBuilder.select().column(CQLConstants.TOPIC_NAME).
@@ -1134,7 +1142,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public AndesMessageMetadata getRetainedMetaData(String destination) throws AndesException {
+    public AndesMessageMetadata getRetainedMetadata(String destination) throws AndesException {
 
         AndesMessageMetadata metadata = null;
 
@@ -1161,8 +1169,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
 
     }
-
-
 
     /**
      * Get retained topic ID for destination
@@ -1238,98 +1244,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
 
         return retainContentPartMap;
-    }
-
-    /**
-     * CQL based message store transaction implementation
-     */
-    public class CQLBasedTransactionImpl implements AndesTransaction {
-
-        /**
-         * Messages to be committed is added to this message list
-         */
-        private final List<AndesMessage> messageList;
-
-        /**
-         * Following the commit in this class Andes state needs to be updated using
-         * {@link org.wso2.andes.kernel.distruptor.inbound.StateEventHandler}. But if a commit fails at state event
-         * handler we need to be able to rollback. For this purpose we need a list of last successful commit from
-         * this class.
-         */
-        private final List<AndesMessage> rollbackList;
-
-        /**
-         * Creates a CQL based transaction object
-         */
-        CQLBasedTransactionImpl() {
-            messageList = new ArrayList<AndesMessage>();
-            rollbackList = new ArrayList<AndesMessage>();
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void enqueue(AndesMessage message) throws AndesException {
-            messageList.add(message);
-            rollbackList.add(message);
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void commit() throws AndesException {
-
-            BatchStatement batchStatement = new BatchStatement();
-
-            for(AndesMessage message: messageList) {
-                addContentToBatch(batchStatement, message.getContentChunkList());
-                addMetadataToBatch(batchStatement, message.getMetadata(), message.getMetadata().getStorageQueueName());
-            }
-            execute(batchStatement, "Storing metadata for transaction. Batch size" + messageList.size());
-            messageList.clear();
-            rollbackList.clear();
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void rollback() throws AndesException {
-            messageList.clear();
-            if (rollbackList.isEmpty()) {
-                return;
-            }
-
-            List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>();
-            List<Long> idList = new ArrayList<Long>();
-            for (AndesMessage message : rollbackList) {
-                AndesRemovableMetadata andesRemovableMetadata =
-                        new AndesRemovableMetadata(message.getMetadata().getMessageID(),
-                                message.getMetadata().getStorageQueueName(),
-                                message.getMetadata().getStorageQueueName());
-
-                removableMetadataList.add(andesRemovableMetadata);
-                idList.add(message.getMetadata().getMessageID());
-            }
-
-            deleteMessageMetadataFromQueue(
-                    rollbackList.get(0).getMetadata().getStorageQueueName(),
-                    removableMetadataList);
-
-            deleteMessageParts(idList);
-            rollbackList.clear();
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void close() throws AndesException {
-            messageList.clear();
-            rollbackList.clear();
-        }
     }
 
 

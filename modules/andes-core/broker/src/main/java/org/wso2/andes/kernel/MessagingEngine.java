@@ -209,18 +209,14 @@ public class MessagingEngine {
         
     }
 
+    /**
+     * Persist received messages. Implemented {@link org.wso2.andes.kernel.MessageStore} will be used to
+     * persist the messages
+     * @param messageList List of {@link org.wso2.andes.kernel.AndesMessage} to persist
+     * @throws AndesException
+     */
     public void messagesReceived(List<AndesMessage> messageList) throws AndesException{
-        List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>(messageList.size());
-        // parts can be more than message list size
-        List<AndesMessagePart> messageParts = new ArrayList<AndesMessagePart>(messageList.size());
-
-        for (AndesMessage message: messageList) {
-            metadataList.add(message.getMetadata());
-            messageParts.addAll(message.getContentChunkList());
-        }
-
-        messageStore.storeMessagePart(messageParts);
-        messageStore.addMetaData(metadataList);
+        messageStore.storeMessages(messageList);
     }
 
     /**
@@ -231,7 +227,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public AndesMessageMetadata getMessageMetaData(long messageID) throws AndesException {
-        return messageStore.getMetaData(messageID);
+        return messageStore.getMetadata(messageID);
     }
 
     /**
@@ -277,7 +273,7 @@ public class MessagingEngine {
         String deadLetterQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(destinationQueueName);
 
         long start = System.currentTimeMillis();
-        messageStore.moveMetaDataToQueue(messageId, destinationQueueName, deadLetterQueueName);
+        messageStore.moveMetadataToQueue(messageId, destinationQueueName, deadLetterQueueName);
         PerformanceCounter.warnIfTookMoreTime("Move Metadata ", start, 10);
 
         // Increment count by 1 in DLC and decrement by 1 in original queue
@@ -462,10 +458,10 @@ public class MessagingEngine {
             dto.msgCount = dto.msgCount + 1;
             //if to move, move to DLC. This is costly. Involves per message read and writes
             if (moveToDeadLetterChannel) {
-                    AndesMessageMetadata metadata = messageStore.getMetaData(message.getMessageID());
+                    AndesMessageMetadata metadata = messageStore.getMetadata(message.getMessageID());
                     String dlcQueueName =
                                           DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(message.getMessageDestination());
-                    messageStore.addMetaDataToQueue(dlcQueueName, metadata);
+                    messageStore.addMetadataToQueue(dlcQueueName, metadata);
                     // Increment queue count of DLC
                     // Cannot increment whole count at once since there are separate DLC queues for each tenant
                     incrementQueueCount(dlcQueueName, 1);
@@ -548,7 +544,7 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getMetaDataList(final String queueName, long firstMsgId, long lastMsgID) throws AndesException {
-        return messageStore.getMetaDataList(queueName, firstMsgId, lastMsgID);
+        return messageStore.getMetadataList(queueName, firstMsgId, lastMsgID);
     }
 
     /**
@@ -585,7 +581,7 @@ public class MessagingEngine {
      */
     public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
             AndesException {
-        messageStore.updateMetaDataInformation(currentQueueName, metadataList);
+        messageStore.updateMetadataInformation(currentQueueName, metadataList);
     }
 
     /**
@@ -740,7 +736,7 @@ public class MessagingEngine {
 
         for (String topicName : topicList) {
             if (TopicParserUtil.isMatching(topicName, subscriptionTopicName)) {
-                retainMessageList.add(messageStore.getRetainedMetaData(topicName));
+                retainMessageList.add(messageStore.getRetainedMetadata(topicName));
             }
         }
 
@@ -762,23 +758,5 @@ public class MessagingEngine {
         Map<Integer, AndesMessagePart> retainedContentParts = messageStore.getRetainedContentParts(messageID);
 
         return new RetainedContent(retainedContentParts, contentSize, messageID);
-    }
-
-
-    /**
-     * For transaction based message publishing AndesTransaction should be used
-     *
-     * For each transaction a new Transaction object need to be created and then
-     * publish messages through that
-     *
-     * To persist the messages need to specifically commit the published messages
-     * using the AndesTransaction#commit method. There is also the option to rollback
-     * changes as well using AndesTransaction#rollback
-     *
-     * @return AndesTransaction
-     * @throws AndesException
-     */
-    public MessageStore.AndesTransaction newTransaction() throws AndesException {
-        return messageStore.newTransaction();
     }
 }

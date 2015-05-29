@@ -25,7 +25,7 @@ import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
-import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.kernel.OnflightMessageTracker;

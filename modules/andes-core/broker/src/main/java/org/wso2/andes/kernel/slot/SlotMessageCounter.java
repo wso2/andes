@@ -127,7 +127,7 @@ public class SlotMessageCounter {
      *
      * @param messageList AndesMessage list to be record
      */
-    public void recordMetaDataCountInSlot(List<AndesMessage> messageList) {
+    public void recordMetadataCountInSlot(Collection<AndesMessage> messageList) {
         //If metadata list is null this method is called from time out thread
         for (AndesMessage message : messageList) {
             recordMetadataCountInSlot(message.getMetadata());

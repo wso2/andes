@@ -26,7 +26,7 @@ import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.MQTTUserAuthenticationScheme;
 import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
+import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTException;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 

@@ -274,6 +274,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
             Integer.class),
 
     /**
+     * Number of parallel writers used to write content to message store for transaction based publishing.
+     * Increasing this value will speedup commit duration for a transaction.
+     * But the load on the data store will increase.
+     */
+    PERFORMANCE_TUNING_PARALLEL_TRANSACTION_MESSAGE_WRITERS(
+            "performanceTuning/inboundEvents/transactionMessageWriters", "1", Integer.class),
+
+    /**
      * Size of the Disruptor ring buffer for inbound event handling. Buffer size should be a value of power of two
      * For publishing at higher rates increasing the buffer size may give some advantage to keep messages in memory and
      * write.
@@ -281,8 +289,8 @@ public enum AndesConfiguration implements ConfigurationProperty {
     PERFORMANCE_TUNING_PUBLISHING_BUFFER_SIZE("performanceTuning/inboundEvents/bufferSize", "65536", Integer.class),
 
     /**
-     * Average batch size of the batch write operation for inbound messages. Batch write of a message will vary around
-     * this number
+     * Maximum batch size of the batch write operation for inbound messages. Batch write of a message will vary around
+     * this number.
      */
     PERFORMANCE_TUNING_MESSAGE_WRITER_BATCH_SIZE
             ("performanceTuning/inboundEvents/messageWriterBatchSize", "70", Integer.class),
@@ -354,13 +362,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     PERFORMANCE_TUNING_MESSAGE_COUNTER_UPDATE_BATCH_SIZE
             ("performanceTuning/messageCounter/countUpdateBatchSize", "100", Integer.class),
-
-    /**
-     * Number of connections reserved at a given time for transactional DB tasks. Transaction will hold on to
-     * a DB connection until a transaction is committed, rolled back or closed.
-     */
-    DB_CONNECTION_POOL_SIZE_FOR_TRANSACTIONS
-            ("transaction/dbConnectionPoolSize", "10", Integer.class),
 
     /**
      * Maximum batch size (Messages) for a transaction. Exceeding this limit will result in a failure in the subsequent

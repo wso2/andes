@@ -41,7 +41,7 @@ import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.FlowControlListener;
-import org.wso2.andes.kernel.distruptor.inbound.InboundTransactionEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.BaseQueue;
 import org.wso2.andes.server.queue.DLCQueueUtils;
@@ -161,7 +161,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     /**
      * This specifies the beginning of a transaction initiated by a select command
      */
-    private boolean beginTransaction;
+    private boolean beginPublisherTransaction;
 
     private final AtomicLong _txnStarts = new AtomicLong(0);
     private final AtomicLong _txnCommits = new AtomicLong(0);
@@ -209,7 +209,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
         // message tracking related to this channel is initialised
         Andes.getInstance().clientConnectionCreated(_id);
-        beginTransaction = false;
+        beginPublisherTransaction = false;
         andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {
             @Override
             public void block() {
@@ -243,7 +243,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     public void setLocalTransactional() throws AMQException {
         _transaction = new LocalTransaction(_messageStore);
         _txnStarts.incrementAndGet();
-        beginTransaction = true;
+        beginPublisherTransaction = true;
     }
 
     public boolean isTransactional()
@@ -419,9 +419,9 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                      * adding metadata and message to global queue
                      * happen here
                      */
-                    if (beginTransaction) {
+                    if (beginPublisherTransaction) {
                         andesTransactionEvent = Andes.getInstance().newTransaction(andesChannel);
-                        beginTransaction = false;
+                        beginPublisherTransaction = false;
                     }
                     QpidAndesBridge.messageReceived(incomingMessage, getId(), andesChannel, andesTransactionEvent);
 
