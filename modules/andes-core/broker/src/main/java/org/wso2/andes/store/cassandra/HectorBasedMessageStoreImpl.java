@@ -145,7 +145,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * @throws CassandraDataAccessException
      */
     private void addMessagePartToBatch(AndesMessagePart part, Mutator<String> mutator)
-            throws CassandraDataAccessException {
+            throws CassandraDataAccessException, AndesStoreUnavailableException {
 
         final String rowKey = MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX
                 + part.getMessageID();
@@ -201,7 +201,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException {
+    public void addMetadata(List<AndesMessageMetadata> metadataList) throws AndesException {
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.ADD_META_DATA_LIST).start();
         try {
 
@@ -239,7 +239,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void addMetaData(AndesMessageMetadata metadata) throws AndesException {
+    public void addMetadata(AndesMessageMetadata metadata) throws AndesException {
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.ADD_META_DATA).start();
         try {
             Mutator<String> mutator = HFactory.createMutator(keyspace,
@@ -255,6 +255,26 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void storeMessages(List<AndesMessage> messageList) throws AndesException {
+        try {
+            Mutator<String> mutator = HFactory.createMutator(keyspace, StringSerializer.get());
+
+            for (AndesMessage message : messageList) {
+                addMetadataToBatch(message.getMetadata(), message.getMetadata().getStorageQueueName(), mutator);
+                for (AndesMessagePart messagePart : message.getContentChunkList()) {
+                    addMessagePartToBatch(messagePart, mutator);
+                }
+            }
+            mutator.execute();
+        } catch (CassandraDataAccessException e) {
+            throw new AndesException("Error occurred while storing messages", e);
+        }
+    }
+
+    /**
      * Add message metadata to a batch. By calling {@link me.prettyprint.hector.api.mutation.Mutator#execute()}
      * added messages can be persisted to DB as a batch.
      * @param metadata {@link org.wso2.andes.kernel.AndesMessageMetadata}
@@ -263,7 +283,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * @throws CassandraDataAccessException
      */
     private void addMetadataToBatch(AndesMessageMetadata metadata, String queueName, Mutator<String> mutator)
-            throws CassandraDataAccessException {
+            throws CassandraDataAccessException, AndesStoreUnavailableException {
         HectorDataAccessHelper.addMessageToQueue(
                 HectorConstants
                         .META_DATA_COLUMN_FAMILY,
@@ -276,7 +296,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void addMetaDataToQueue(String queueName, AndesMessageMetadata metadata)
+    public void addMetadataToQueue(String queueName, AndesMessageMetadata metadata)
             throws AndesException {
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.ADD_META_DATA_TO_QUEUE).start();
         try {
@@ -322,9 +342,9 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void moveMetaDataToQueue(long messageId, String currentQueueName,
+    public void moveMetadataToQueue(long messageId, String currentQueueName,
                                     String targetQueueName) throws AndesException {
-        List<AndesMessageMetadata> messageMetadataList = getMetaDataList(currentQueueName,
+        List<AndesMessageMetadata> messageMetadataList = getMetadataList(currentQueueName,
                 messageId, messageId);
 
         if (messageMetadataList == null || messageMetadataList.size() == 0) {
@@ -334,7 +354,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         ArrayList<Long> removableMetaDataList = new ArrayList<>();
         removableMetaDataList.add(messageId);
 
-        addMetaDataToQueue(targetQueueName, messageMetadataList.get(0));
+        addMetadataToQueue(targetQueueName, messageMetadataList.get(0));
         deleteMessageMetadataFromQueue(currentQueueName, removableMetaDataList);
     }
 
@@ -342,7 +362,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata>
+    public void updateMetadataInformation(String currentQueueName, List<AndesMessageMetadata>
             metadataList) throws AndesException {
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.UPDATE_META_DATA_INFORMATION).start();
@@ -390,7 +410,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public AndesMessageMetadata getMetaData(long messageId) throws AndesException {
+    public AndesMessageMetadata getMetadata(long messageId) throws AndesException {
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_META_DATA).start();
         try {
 
@@ -413,7 +433,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * In such case we need to get all metadata between firstMsgId and lastMsgID
      */
     @Override
-    public List<AndesMessageMetadata> getMetaDataList(String queueName, long firstMsgId,
+    public List<AndesMessageMetadata> getMetadataList(String queueName, long firstMsgId,
                                                       long lastMsgID) throws AndesException {
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_META_DATA_LIST).start();
@@ -813,14 +833,6 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     }
 
     /**
-     * {@inheritDoc}
-     */
-    @Override
-    public AndesTransaction newTransaction() throws AndesException {
-        return new HectorTransactionImpl();
-    }
-
-    /**
      * Initialize HectorBasedMessageStoreImpl
      *
      * @param hectorConnection hector based connection to Cassandra
@@ -904,7 +916,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public AndesMessageMetadata getRetainedMetaData(String destination) throws AndesException {
+    public AndesMessageMetadata getRetainedMetadata(String destination) throws AndesException {
 
         // TODO: implement this method
         AndesMessageMetadata messageMetadata = null;
@@ -927,90 +939,4 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         return retainContentPartMap;
     }
 
-    /**
-     * Hector implementation of the {@link org.wso2.andes.kernel.MessageStore.AndesTransaction} interface
-     */
-    public class HectorTransactionImpl implements AndesTransaction {
-
-        private final List<AndesMessage> messageList;
-        private final List<AndesMessage> rollbackList;
-
-        /**
-         * Creates a Hector based transaction Object
-         */
-        private HectorTransactionImpl() {
-            messageList = new ArrayList<>();
-            rollbackList = new ArrayList<>();
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void enqueue(AndesMessage message) throws AndesException {
-            messageList.add(message);
-            rollbackList.add(message);
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void commit() throws AndesException {
-
-            try {
-                Mutator<String> mutator = HFactory.createMutator(keyspace, StringSerializer.get());
-                for (AndesMessage message : messageList) {
-                    addMetadataToBatch(message.getMetadata(), message.getMetadata().getStorageQueueName(), mutator);
-                    for (AndesMessagePart messagePart : message.getContentChunkList()) {
-                        addMessagePartToBatch(messagePart, mutator);
-                    }
-                }
-                mutator.execute();
-                messageList.clear();
-                rollbackList.clear();
-            } catch (CassandraDataAccessException e) {
-                throw new AndesException("Error occurred while transaction commit", e);
-            }
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void rollback() throws AndesException {
-            messageList.clear();
-            if (rollbackList.isEmpty()) {
-                return;
-            }
-
-            List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>();
-            List<Long> idList = new ArrayList<Long>();
-            for (AndesMessage message : rollbackList) {
-                AndesRemovableMetadata andesRemovableMetadata =
-                        new AndesRemovableMetadata(message.getMetadata().getMessageID(),
-                                message.getMetadata().getStorageQueueName(),
-                                message.getMetadata().getStorageQueueName());
-
-                removableMetadataList.add(andesRemovableMetadata);
-                idList.add(message.getMetadata().getMessageID());
-            }
-
-            deleteMessageMetadataFromQueue(
-                    rollbackList.get(0).getMetadata().getStorageQueueName(),
-                    removableMetadataList);
-
-            deleteMessageParts(idList);
-            rollbackList.clear();
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void close() throws AndesException {
-            messageList.clear();
-            rollbackList.clear();
-        }
-    }
 }

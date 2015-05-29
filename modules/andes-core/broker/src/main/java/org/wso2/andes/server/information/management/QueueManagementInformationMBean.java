@@ -29,7 +29,7 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.BasicContentHeaderProperties;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
 import org.wso2.andes.server.ClusterResourceHolder;

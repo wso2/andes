@@ -26,12 +26,12 @@ import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.abstraction.ContentChunk;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.kernel.distruptor.inbound.InboundBindingEvent;
-import org.wso2.andes.kernel.distruptor.inbound.InboundExchangeEvent;
-import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
-import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
-import org.wso2.andes.kernel.distruptor.inbound.InboundTransactionEvent;
-import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
+import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
+import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.binding.Binding;
@@ -126,7 +126,7 @@ public class QpidAndesBridge {
             if(null == transactionEvent) { // not a transaction
                 Andes.getInstance().messageReceived(andesMessage, andesChannel, pubAckHandler);
             } else { // transaction event
-                transactionEvent.enqueue(andesMessage, andesChannel);
+                transactionEvent.enqueue(andesMessage);
             }
 
         } catch (AndesException e) {

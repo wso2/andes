@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel;
 
 import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.store.AndesBatchUpdateException;
 import org.wso2.andes.store.HealthAwareStore;
 
 import java.util.Collection;
@@ -31,39 +30,6 @@ import java.util.Map;
  * using this interface.
  */
 public interface MessageStore extends HealthAwareStore{
-
-    /**
-     * Message store transaction related class. This class should be used only for a single transaction
-     */
-    public interface AndesTransaction {
-
-        /**
-         * Add message to the transaction object. Need to specifically commit to publish the message.
-         * @param message AndesMessage
-         * @throws AndesException
-         */
-        public void enqueue(AndesMessage message) throws AndesException;
-
-        /**
-         * Commit all enqueued messages. Calling this will publish the messages and persist them in DB.
-         * After this, committed messages will be delivered to subscribers
-         * @throws AndesException
-         */
-        public void commit() throws AndesException;
-
-        /**
-         * All the enqueued messages will be cleared and won't be persisted. All the resources tied to
-         * the transaction object will be released.
-         * @throws AndesException
-         */
-        public void rollback() throws AndesException;
-
-        /**
-         * releases all resources tied to the transaction object.
-         * @throws AndesException
-         */
-        void close() throws AndesException;
-    }
 
     /**
      * Initialise the MessageStore and returns the DurableStoreConnection used by store
@@ -82,7 +48,7 @@ public interface MessageStore extends HealthAwareStore{
      * @param partList message content chunk list
      * @throws AndesException
      */
-    public void storeMessagePart(List<AndesMessagePart> partList) throws AndesBatchUpdateException, AndesException;
+    public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException;
 
     /**
      * read content chunk from store
@@ -109,7 +75,7 @@ public interface MessageStore extends HealthAwareStore{
      * @param metadataList metadata list to store
      * @throws AndesException
      */
-    public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException;
+    public void addMetadata(List<AndesMessageMetadata> metadataList) throws AndesException;
 
     /**
      * store metadata of a single message
@@ -117,7 +83,13 @@ public interface MessageStore extends HealthAwareStore{
      * @param metadata metadata to store
      * @throws AndesException
      */
-    public void addMetaData(AndesMessageMetadata metadata) throws AndesException;
+    public void addMetadata(AndesMessageMetadata metadata) throws AndesException;
+
+    /**
+     * Store messages into database.
+     * @param messageList messages to be stored
+     */
+    public void storeMessages(List<AndesMessage> messageList) throws AndesException;
 
     /**
      * store metadata specifically under a queue
@@ -126,7 +98,7 @@ public interface MessageStore extends HealthAwareStore{
      * @param metadata metadata to store
      * @throws AndesException
      */
-    public void addMetaDataToQueue(final String queueName, AndesMessageMetadata metadata)
+    public void addMetadataToQueue(final String queueName, AndesMessageMetadata metadata)
             throws AndesException;
 
     /**
@@ -147,7 +119,7 @@ public interface MessageStore extends HealthAwareStore{
      * @param targetQueueName  The target destination Queue name
      * @throws AndesException
      */
-    public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName) throws
+    public void moveMetadataToQueue(long messageId, String currentQueueName, String targetQueueName) throws
             AndesException;
 
     /**
@@ -158,7 +130,7 @@ public interface MessageStore extends HealthAwareStore{
      * @param metadataList     The updated meta data list.
      * @throws AndesException
      */
-    public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
+    public void updateMetadataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
             AndesException;
 
     /**
@@ -168,7 +140,7 @@ public interface MessageStore extends HealthAwareStore{
      * @return metadata of the message
      * @throws AndesException
      */
-    public AndesMessageMetadata getMetaData(long messageId) throws AndesException;
+    public AndesMessageMetadata getMetadata(long messageId) throws AndesException;
 
     /**
      * read a metadata list from store specifying a message id range
@@ -179,7 +151,7 @@ public interface MessageStore extends HealthAwareStore{
      * @return list of metadata
      * @throws AndesException
      */
-    public List<AndesMessageMetadata> getMetaDataList(final String storageQueueName, long firstMsgId,
+    public List<AndesMessageMetadata> getMetadataList(final String storageQueueName, long firstMsgId,
                                                       long lastMsgID) throws AndesException;
 
     /**
@@ -361,17 +333,11 @@ public interface MessageStore extends HealthAwareStore{
      * @return AndesMessageMetadata
      * @throws AndesException
      */
-    public AndesMessageMetadata getRetainedMetaData(String destination) throws AndesException;
+    public AndesMessageMetadata getRetainedMetadata(String destination) throws AndesException;
 
     /**
      * close the message store
      */
     public void close();
-
-    /**
-     * For a new Transaction this new transaction object need to be created.
-     * AndesTransaction is then used to do transactional storage of items
-     */
-    public AndesTransaction newTransaction() throws AndesException;
 
 }

@@ -22,6 +22,8 @@ import static org.wso2.andes.store.rdbms.RDBMSConstants.CONTENT_TABLE;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_CONTENT;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_ID;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_DELETE_MESSAGE_PARTS;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_DELETE_METADATA_FROM_QUEUE;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_MESSAGE_PART;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_METADATA;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
@@ -169,6 +171,18 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
     /**
+     * Add content to be removed to the prepared statement.
+     * @param preparedStatement {@link java.sql.PreparedStatement}
+     * @param messageId ID of the message to be removed
+     * @throws SQLException
+     */
+    private void addToDeleteContentBatch(PreparedStatement preparedStatement, long messageId)
+            throws SQLException {
+        preparedStatement.setLong(1, messageId);
+        preparedStatement.addBatch();
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -297,7 +311,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException {
+    public void addMetadata(List<AndesMessageMetadata> metadataList) throws AndesException {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -344,7 +358,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void addMetaData(AndesMessageMetadata metadata) throws AndesException {
+    public void addMetadata(AndesMessageMetadata metadata) throws AndesException {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -400,7 +414,51 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void addMetaDataToQueue(String queueName, AndesMessageMetadata metadata)
+    public void storeMessages(List<AndesMessage> messageList) throws AndesException {
+        Connection connection = null;
+        PreparedStatement storeMetadataPS = null;
+        PreparedStatement storeContentPS = null;
+
+        try {
+
+            connection = rdbmsConnection.getDataSource().getConnection();
+            connection.setAutoCommit(false);
+
+            storeMetadataPS = connection.prepareStatement(PS_INSERT_METADATA);
+            storeContentPS = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
+
+            for (AndesMessage message : messageList) {
+                addMetadataToBatch(storeMetadataPS,
+                        message.getMetadata(),
+                        message.getMetadata().getStorageQueueName());
+
+                for (AndesMessagePart messagePart : message.getContentChunkList()) {
+                    addContentToBatch(storeContentPS, messagePart);
+                }
+            }
+
+            storeContentPS.executeBatch();
+            storeMetadataPS.executeBatch();
+            connection.commit();
+        } catch (SQLNonTransientConnectionException sqlConEx) {
+            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
+            throw new AndesStoreUnavailableException("Error occurred while inserting messages to queue ",
+                    sqlConEx.getSQLState(), sqlConEx);
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
+            throw new AndesException("Error occurred while inserting messages to queue ", e);
+        } finally {
+            close(storeMetadataPS, RDBMSConstants.TASK_ADDING_MESSAGES);
+            close(storeContentPS, RDBMSConstants.TASK_ADDING_MESSAGES);
+            close(connection, RDBMSConstants.TASK_ADDING_MESSAGES);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addMetadataToQueue(String queueName, AndesMessageMetadata metadata)
             throws AndesException {
 
         Connection connection = null;
@@ -504,7 +562,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void moveMetaDataToQueue(long messageId, String currentQueueName, String targetQueueName)
+    public void moveMetadataToQueue(long messageId, String currentQueueName, String targetQueueName)
             throws AndesException {
 
         Connection connection = null;
@@ -542,7 +600,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void updateMetaDataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
+    public void updateMetadataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
             AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -685,7 +743,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public AndesMessageMetadata getMetaData(long messageId) throws AndesException {
+    public AndesMessageMetadata getMetadata(long messageId) throws AndesException {
         AndesMessageMetadata md = null;
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -724,7 +782,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesMessageMetadata> getMetaDataList(final String storageQueueName, long firstMsgId,
+    public List<AndesMessageMetadata> getMetadataList(final String storageQueueName, long firstMsgId,
                                                       long lastMsgID) throws AndesException {
 
         List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>();
@@ -886,6 +944,21 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
     /**
+     * Helper method to add message metadata, to be deleted, to the batch
+     * @param preparedStatement {@link java.sql.PreparedStatement} related to the batch
+     * @param queueId queue ID
+     * @param metadata metadata to be removed
+     * @throws SQLException
+     */
+    private void addtoDeleteMetadataBatch(PreparedStatement preparedStatement,
+                                          int queueId, AndesRemovableMetadata metadata) throws SQLException {
+
+        preparedStatement.setInt(1, queueId);
+        preparedStatement.setLong(2, metadata.getMessageID());
+        preparedStatement.addBatch();
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -1025,18 +1098,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     @Override
     public void close() {
 
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public AndesTransaction newTransaction() throws AndesException {
-        try {
-            return new RDBMSAndesTransactionImpl();
-        } catch (SQLException e) {
-            throw new AndesException("Exception occurred while creating new transaction object", e);
-        }
     }
 
     /**
@@ -1871,7 +1932,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public AndesMessageMetadata getRetainedMetaData(String destination) throws AndesException {
+    public AndesMessageMetadata getRetainedMetadata(String destination) throws AndesException {
         AndesMessageMetadata metadata = null;
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -1975,87 +2036,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     rdbmsStoreUtils.testDelete(getConnection(), testString, testTime);
         } catch (SQLException e) {
             return false;
-        }
-    }
-
-    /**
-     * Implementation of AndesTransaction class for RDBMS. This handles the transaction life cycle of a
-     * transactional session for message  publishing.
-     */
-    public class RDBMSAndesTransactionImpl implements MessageStore.AndesTransaction {
-
-        private final List<AndesMessage> messageList;
-        /**
-         * Create a transaction object
-         */
-        RDBMSAndesTransactionImpl() throws SQLException {
-            messageList = new ArrayList<>();
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void enqueue(AndesMessage message) throws AndesException {
-            messageList.add(message);
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void commit() throws AndesException {
-
-            Connection connection = null;
-            PreparedStatement storeMetadataPS = null;
-            PreparedStatement storeContentPS = null;
-
-            try {
-
-                connection = rdbmsConnection.getDataSource().getConnection();
-                connection.setAutoCommit(false);
-
-                storeMetadataPS = connection.prepareStatement(PS_INSERT_METADATA);
-                storeContentPS = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
-
-                for (AndesMessage message: messageList) {
-                    addMetadataToBatch(storeMetadataPS,
-                            message.getMetadata(),
-                            message.getMetadata().getStorageQueueName());
-
-                    for (AndesMessagePart messagePart : message.getContentChunkList()) {
-                        addContentToBatch(storeContentPS, messagePart);
-                    }
-                }
-
-                storeContentPS.executeBatch();
-                storeMetadataPS.executeBatch();
-                connection.commit();
-                messageList.clear();
-            } catch (SQLException e) {
-                RDBMSMessageStoreImpl.this.rollback(connection, TASK_COMMITTING_TRANSACTION);
-                throw new AndesException("Exception occurred while committing transaction", e);
-            } finally {
-                RDBMSMessageStoreImpl.this.close(storeMetadataPS, TASK_COMMITTING_TRANSACTION);
-                RDBMSMessageStoreImpl.this.close(storeContentPS, TASK_COMMITTING_TRANSACTION);
-                RDBMSMessageStoreImpl.this.close(connection, TASK_COMMITTING_TRANSACTION);
-            }
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void rollback() throws AndesException {
-            messageList.clear();
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void close() throws AndesException {
-            messageList.clear();
         }
     }
 }
