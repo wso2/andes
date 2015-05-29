@@ -454,9 +454,10 @@ public class MessagingEngine {
             AndesRemovableMetadataDTO dto = storageSeperatedAndesRemovableMetadataDTOs.get(message.getStorageDestination());
             if (dto == null ){
                 dto = new AndesRemovableMetadataDTO();
+            }
+            if (message.getStorageDestination() != null) {
                 storageSeperatedAndesRemovableMetadataDTOs.put(message.getStorageDestination(), dto);
             }
-            
             dto.messagesToRemove.add(message);
             dto.msgCount = dto.msgCount + 1;
             //if to move, move to DLC. This is costly. Involves per message read and writes
@@ -472,7 +473,6 @@ public class MessagingEngine {
         }
         
         for (Map.Entry<String, AndesRemovableMetadataDTO> entry : storageSeperatedAndesRemovableMetadataDTOs.entrySet()) {
-            
             messageStore.deleteMessageMetadataFromQueue(entry.getKey(), entry.getValue().messagesToRemove);
             decrementQueueCount(entry.getKey(), entry.getValue().msgCount);
         }
