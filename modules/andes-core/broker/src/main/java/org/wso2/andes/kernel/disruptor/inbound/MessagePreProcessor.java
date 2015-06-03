@@ -27,6 +27,7 @@ import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.Meter;
 import org.wso2.carbon.metrics.manager.MetricManager;
@@ -268,6 +269,10 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
      */
     private void setMessageID(AndesMessage message) {
         long messageId = idGenerator.getNextId();
+
+        //Tracing message
+        MessageTracer.trace(message, MessageTracer.MESSAGE_ID_MAPPED + " id: " + messageId);
+
         message.getMetadata().setMessageID(messageId);
 
         for (AndesMessagePart messagePart: message.getContentChunkList()) {

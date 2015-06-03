@@ -27,6 +27,7 @@ import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.stats.PerformanceCounter;
+import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.Meter;
 import org.wso2.carbon.metrics.manager.MetricManager;
@@ -106,6 +107,11 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
             // For each message increment by 1. Underlying messaging engine will handle the increment destination
             // wise.
             messagingEngine.incrementQueueCount(message.getMetadata().getDestination(), 1);
+
+            //Tracing Message
+            MessageTracer.trace(message, MessageTracer.SLOT_INFO_UPDATED);
+
+            eventContainer.pubAckHandler.ack(message.getMetadata());
 
             //Adding metrics meter for ack rate
             Meter ackMeter = MetricManager.meter(Level.INFO, this.getClass() + MetricsConstants.ACK_SENT_RATE);

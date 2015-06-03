@@ -34,6 +34,7 @@ import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
 
 import com.google.common.util.concurrent.SettableFuture;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 /**
  * Writes messages in Disruptor ring buffer to message store in batches.
@@ -134,6 +135,9 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
                 StringBuilder messageIDsString = new StringBuilder();
                 for (AndesMessage message : currentMessageList) {
                     messageIDsString.append(message.getMetadata().getMessageID()).append(" , ");
+
+                    //Tracing message
+                    MessageTracer.trace(message, MessageTracer.CONTENT_WRITTEN_TO_DB);
                 }
                 log.trace(currentMessageList.size() + " messages written : " + messageIDsString);
             }

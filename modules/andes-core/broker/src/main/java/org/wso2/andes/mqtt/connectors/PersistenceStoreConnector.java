@@ -121,7 +121,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
             }
 
         } else {
-            throw new MQTTException("Message content is not backed by an array, or the array is read-only .");
+            throw new MQTTException("Message content is not backed by an array, or the array is read-only.");
         }
     }
 

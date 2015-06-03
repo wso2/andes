@@ -50,6 +50,8 @@ import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.metrics.MetricsConstants;
+import org.wso2.andes.store.AndesStoreUnavailableException;
+import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 import org.wso2.carbon.metrics.manager.Timer.Context;
@@ -765,6 +767,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 );
                 md.setStorageQueueName(storageQueueName);
                 metadataList.add(md);
+                //Tracing message
+                MessageTracer.trace(md, MessageTracer.METADATA_READ_FROM_DB);
             }
             if (log.isDebugEnabled()) {
                 log.debug("request: metadata range (" + firstMsgId + " , " + lastMsgID +

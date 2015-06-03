@@ -24,6 +24,8 @@ import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.DisruptorCachedContent;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.server.store.StorableMessageMetaData;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.List;
 import java.util.Map;
@@ -86,6 +88,9 @@ public class ContentCacheCreator {
             if (log.isTraceEnabled()) {
                 log.trace("All content read for message " + messageID);
             }
+
+            //Tracing message
+            MessageTracer.trace(metadata, MessageTracer.CONTENT_READ);
         }
     }
 }
