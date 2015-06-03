@@ -165,9 +165,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             rollback(connection, RDBMSConstants.TASK_STORING_MESSAGE_PARTS);
             throw new AndesException("Error occurred while adding message content to DB ", e);
         } finally {
-
             context.stop();
-
+            contextDatabaseWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_STORING_MESSAGE_PARTS);
             close(connection, RDBMSConstants.TASK_STORING_MESSAGE_PARTS);
         }
@@ -220,6 +219,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             throw new AndesException("Error occurred while deleting messages from DB ", e);
         } finally {
             context.stop();
+            contextDatabaseWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_DELETING_MESSAGE_PARTS);
             close(connection, RDBMSConstants.TASK_DELETING_MESSAGE_PARTS);
         }
@@ -311,10 +311,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             throw new AndesException("Error occurred while retrieving message content from DB for " +
                     messageIDList.size() + " messages ", e);
         } finally {
-
             context.stop();
             contextRead.stop();
-
             close(connection, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
             close(preparedStatement, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
             close(resultSet, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
@@ -609,7 +607,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Context context = MetricManager.timer(Level.INFO, MetricsConstants.UPDATE_META_DATA_INFORMATION).start();
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
-
         try {
             connection = getConnection();
             connection.setAutoCommit(false);
@@ -795,7 +792,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Context context = MetricManager.timer(Level.INFO, MetricsConstants.GET_META_DATA_LIST).start();
         Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start(); 
 
-
         try {
             connection = getConnection();
             preparedStatement = connection
@@ -827,10 +823,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             throw new AndesException("Error occurred while retrieving messages between msg id " + firstMsgId + " and " +
                     lastMsgID + " from queue " + storageQueueName, e);
         } finally {
-
             context.stop();
             contextRead.stop();
-
             String task = RDBMSConstants.TASK_RETRIEVING_METADATA_RANGE_FROM_QUEUE + storageQueueName;
             close(resultSet, task);
             close(preparedStatement, task);
@@ -887,10 +881,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } catch (SQLException e) {
             throw new AndesException("error occurred while retrieving message metadata from queue ", e);
         } finally {
-
             context.stop();
             contextRead.stop();
-
             close(results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
             close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
             close(connection, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
@@ -941,10 +933,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             throw new AndesException("error occurred while deleting message metadata from queue ",
                     e);
         } finally {
-
             context.stop();
             contextWrite.stop();
-
             String task = RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName;
             close(preparedStatement, task);
             close(connection, task);
@@ -1479,7 +1469,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         int messageCountInDLCForQueue = 0;
-
 
         try {
 

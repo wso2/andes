@@ -100,8 +100,8 @@ public class DisruptorBasedFlusher {
         disruptor.start();
         ringBuffer = disruptor.getRingBuffer();
 
-        //Will add the guage listener to periodically calculate the outbound messages in the ring
-        MetricManager.gauge(Level.INFO, MetricsConstants.DISRUPTOR_OUTBOUND_RING, new OutBoundRingGuage());
+        //Will add the gauge listener to periodically calculate the outbound messages in the ring
+        MetricManager.gauge(Level.INFO, MetricsConstants.DISRUPTOR_OUTBOUND_RING, new OutBoundRingGauge());
     }
 
     /**
@@ -136,7 +136,7 @@ public class DisruptorBasedFlusher {
      * Utility class used to gauge ring size.
      *
      */
-    private class OutBoundRingGuage implements Gauge<Long> {
+    private class OutBoundRingGauge implements Gauge<Long> {
         @Override
         public Long getValue() {
             //The total ring size will be reduced from the remaining ring size

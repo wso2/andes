@@ -33,13 +33,11 @@ import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.carbon.metrics.manager.Gauge;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
-
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import static org.wso2.andes.configuration.enums.AndesConfiguration.*;
 import static org.wso2.andes.kernel.distruptor.inbound.InboundEventContainer.Type.*;
 
@@ -109,7 +107,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
 
         ringBuffer = disruptor.start();
 
-        //Will start the gauge
+        //Will add the gauge to metrics manager
         MetricManager.gauge(Level.INFO, MetricsConstants.DISRUPTOR_INBOUND_RING, new InBoundRingGauge());
         MetricManager.gauge(Level.INFO, MetricsConstants.DISRUPTOR_MESSAGE_ACK, new AckedMessageCountGauge());
     }
@@ -284,7 +282,7 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
 
         @Override
         public Integer getValue() {
-            //Acked message count at a given time
+            //Acknowledged message count at a given time
             return ackedMessageCount.getAndSet(0);
         }
     }
