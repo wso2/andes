@@ -133,7 +133,7 @@ public class FlowControlManager  implements StoreHealthListener {
         executor = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
 
         //Will start the gauge
-        MetricManager.gauge(Level.INFO, MetricsConstants.ACTIVE_CHANNELS, new ChannelGuage());
+        MetricManager.gauge(Level.INFO, MetricsConstants.ACTIVE_CHANNELS, new ChannelGauge());
     }
 
     /**
@@ -339,7 +339,7 @@ public class FlowControlManager  implements StoreHealthListener {
         unblockListenersOnErrorBasedFlowControl();
     }
 
-    private class ChannelGuage implements Gauge<Integer> {
+    private class ChannelGauge implements Gauge<Integer> {
         @Override
         public Integer getValue() {
             return channels.size();

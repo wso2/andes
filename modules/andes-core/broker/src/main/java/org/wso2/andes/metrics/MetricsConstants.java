@@ -48,63 +48,63 @@ public class MetricsConstants {
     /**
      * Add message meta data to database
      */
-    public static final String ADD_META_DATA = "store.metadata.add";
+    public static final String ADD_META_DATA = PREFIX + "store.metadata.add";
     
     /**
      * Add meta data to queue list
      */
-    public static final String ADD_META_DATA_TO_QUEUE_LIST = "store.metadataToQueueList.add";
+    public static final String ADD_META_DATA_TO_QUEUE_LIST = PREFIX + "store.metadataToQueueList.add";
     /**
      * Add meta data to queue
      */
-    public static final String ADD_META_DATA_TO_QUEUE = "store.metadataToQueue.add";
+    public static final String ADD_META_DATA_TO_QUEUE = PREFIX + "store.metadataToQueue.add";
     /**
      * Add meta data as a batch
      */
-    public static final String ADD_META_DATA_TO_BATCH = "store.metadataToBatch.add";
+    public static final String ADD_META_DATA_TO_BATCH = PREFIX + "store.metadataToBatch.add";
     /**
      * Get message content as batch
      */
-    public static final String GET_CONTENT_BATCH = "store.contentBatch.get";
+    public static final String GET_CONTENT_BATCH = PREFIX + "store.contentBatch.get";
     /**
      * Get message meta data
      */
-    public static final String GET_META_DATA = "store.metadata.get";
+    public static final String GET_META_DATA = PREFIX + "store.metadata.get";
     /**
      * Get message meta data list
      */
-    public static final String GET_META_DATA_LIST = "store.metadataList.get";
+    public static final String GET_META_DATA_LIST = PREFIX + "store.metadataList.get";
     /**
      * Get message content
      */
-    public static final String GET_CONTENT = "store.content.get";
+    public static final String GET_CONTENT = PREFIX + "store.content.get";
     /**
      * Get next message meta data from queue
      */
-    public static final String GET_NEXT_MESSAGE_METADATA_FROM_QUEUE = "store.nextMessageMetadataFromQueue.get";
+    public static final String GET_NEXT_MESSAGE_METADATA_FROM_QUEUE = PREFIX + "store.nextMessageMetadataFromQueue.get";
     /**
      * Delete message part
      */
-    public static final String DELETE_MESSAGE_PART = "store.messagePart.delete";
+    public static final String DELETE_MESSAGE_PART = PREFIX + "store.messagePart.delete";
     /**
      * Delete message meta data from queue
      */
-    public static final String DELETE_MESSAGE_META_DATA_FROM_QUEUE = "store.messageMetadataFromQueue.delete";
+    public static final String DELETE_MESSAGE_META_DATA_FROM_QUEUE = PREFIX + "store.messageMetadataFromQueue.delete";
     /**
      * Update meta data
      */
-    public static final String UPDATE_META_DATA_INFORMATION = "store.metadata.update";
+    public static final String UPDATE_META_DATA_INFORMATION = PREFIX + "store.metadata.update";
 
     /*Buffer Values*/
 
     /**
      * At a given time the number of messages in the inbound disruptor ring
      */
-    public static final String DISRUPTOR_INBOUND_RING = "inbound.disruptor.message.count";
+    public static final String DISRUPTOR_INBOUND_RING = PREFIX + "inbound.disruptor.message.count";
     /**
      * At a given time the number of messages which have being acknowledged in the inbound ring
      */
-    public static final String DISRUPTOR_MESSAGE_ACK = "inbound.disruptor.ack.count";
+    public static final String DISRUPTOR_MESSAGE_ACK = PREFIX + "inbound.disruptor.ack.count";
     /**
      * At a given time the number of messages in the outbound ring
      */
