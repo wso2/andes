@@ -289,7 +289,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         }
 
         AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), message, retain,
-                evt.getMessageID(), clientID, this);
+                evt.getMessageID(), clientID, this,evt.getSession().getSocketChannel());
 
     }
 
@@ -594,7 +594,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             //also will unsubscribe from the kernal
             try {
                 AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID,
-                        AndesMQTTBridge.SubscriptionEvent.UNSUBSCRIBE);
+                        AndesMQTTBridge.SubscriptionEvent.UN_SUBSCRIBE);
             } catch (Exception e) {
                 final String message = "Error occured when disconneting the subscriber ";
                 log.error(message + e.getMessage());

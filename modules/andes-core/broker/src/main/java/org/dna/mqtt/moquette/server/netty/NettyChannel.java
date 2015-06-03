@@ -1,5 +1,6 @@
 package org.dna.mqtt.moquette.server.netty;
 
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.Attribute;
@@ -57,6 +58,11 @@ public class NettyChannel implements ServerChannel {
         }
         m_channel.pipeline().addFirst("idleStateHandler", new IdleStateHandler(0, 0, idleTime));
         m_channel.pipeline().addAfter("idleStateHandler", "idleEventHandler", new MoquetteIdleTimoutHandler());
+    }
+
+    @Override
+    public Channel getSocketChannel() {
+        return m_channel.channel();
     }
 
     public void close(boolean immediately) {

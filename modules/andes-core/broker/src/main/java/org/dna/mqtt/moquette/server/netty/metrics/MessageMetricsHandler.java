@@ -5,12 +5,16 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class MessageMetricsHandler extends ChannelDuplexHandler {
 
     private static final AttributeKey<MessageMetrics> ATTR_KEY_METRICS = new AttributeKey<MessageMetrics>("MessageMetrics");
 
     private MessageMetricsCollector m_collector;
+
+    private static Log log = LogFactory.getLog(MessageMetricsHandler.class);
 
     public MessageMetricsHandler(MessageMetricsCollector collector) {
           m_collector = collector;
@@ -46,4 +50,12 @@ public class MessageMetricsHandler extends ChannelDuplexHandler {
         m_collector.addMetrics(metrics);
         super.close(ctx, promise);
     }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause){
+        // We log the error and close the connection at an event where and exception is caught
+        log.error(cause.getMessage(), cause);
+        ctx.close();
+    }
+
 }

@@ -60,8 +60,8 @@ public class NettyAcceptor implements ServerAcceptor {
              })
              .option(ChannelOption.SO_BACKLOG, 128)
              .option(ChannelOption.SO_REUSEADDR, true)
-             .childOption(ChannelOption.SO_KEEPALIVE, true); 
-        try {    
+             .childOption(ChannelOption.SO_KEEPALIVE, true);
+        try {
             // Bind and start to accept incoming connections.
 //            ChannelFuture f = b.bind(Constants.PORT);
             ChannelFuture f = b.bind(props.getProperty("host"), Integer.parseInt(props.getProperty("port")));

@@ -17,16 +17,19 @@
  */
 package org.dna.mqtt.wso2;
 
+import io.netty.channel.Channel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.impl.ProtocolProcessor;
 import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTException;
+import org.wso2.andes.mqtt.MQTTMessageContext;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.mqtt.MQTTopicManager;
 
 import java.nio.ByteBuffer;
+
 
 
 /**
@@ -46,9 +49,80 @@ public final class AndesMQTTBridge {
     //The Andes bridge instance
     private static AndesMQTTBridge instance = new AndesMQTTBridge();
 
-    //Will define the different states the connection could have
+    /**
+     * Will define the different states of subscription events
+     * */
     public enum SubscriptionEvent{
-        DISCONNECT,UNSUBSCRIBE
+        //The subscriber connection was lost
+        DISCONNECT,
+        //The subscriber specifies to be un-bound from a topic
+        UN_SUBSCRIBE
+    }
+
+    /**
+     * Defines the three levels of QoS the message delivery/distribution could be at
+     */
+    public enum QOSLevel {
+        /**
+         * The message will be delivered/distributed at its best performance effort, the level of QoS would be 0
+         * Note: There's a possibility of the message not getting delivered/distributed to its interested parties
+         */
+        AT_MOST_ONCE(0),
+        /**
+         * The message would be delivered at least once to the subscription, the level of QoS would be 1
+         * Note: Message duplication could occur when using this QoS
+         */
+        AT_LEAST_ONCE(1),
+        /**
+         * The message will be delivered to its best reliable efforts ensuring exactly once delivery,
+         * the level of QoS would be 2
+         * Note: This level of QoS the performance would be less in comparison to the other two.
+         */
+        EXACTLY_ONCE(2);
+
+        //Will hold the level of QoS i.e 0,1 or 2
+        private int qosValue;
+
+        private QOSLevel(int value){
+            this.qosValue = value;
+        }
+
+        public int getQosValue() {
+            return qosValue;
+        }
+
+        /**
+         * Returns the corresponding enum from its value
+         * @param qos the level of QoS
+         * @return the level of QoS as its enum representation
+         */
+        public static QOSLevel getQoSFromValue(int qos){
+           switch (qos){
+               case 0:
+                   return QOSLevel.AT_MOST_ONCE;
+               case 1:
+                   return QOSLevel.AT_LEAST_ONCE;
+               case 2:
+                   return QOSLevel.EXACTLY_ONCE;
+               default:
+                   return QOSLevel.AT_MOST_ONCE;
+           }
+        }
+
+    }
+
+    /**
+     * Specified whether TCP back-pressure should be applied based on the flow control state
+     */
+    public enum MQTTFlowControlState{
+        /**
+         * Specifies whether flow controlling should be enabled over the publishing client
+         */
+        ENABLE_FLOW_CONTROL,
+        /**
+         * Specifies whether the publisher should be released from being flow controlled
+         */
+        DISABLE_FLOW_CONTROL
     }
 
     /**
@@ -111,12 +185,17 @@ public final class AndesMQTTBridge {
      * @param mqttLocalMessageID the message unique identifier
      * @param publisherID        the id of the publisher provided by mqtt protocol
      * @param pubAckHandler      publisher acknowledgements are handled by this handler
+     * @param socket             will be provided for flow controlling purposes
      */
     public static void onMessagePublished(String topic, int qosLevel, ByteBuffer message, boolean retain,
-                                          int mqttLocalMessageID, String publisherID, PubAckHandler pubAckHandler) {
+                                          int mqttLocalMessageID, String publisherID, PubAckHandler pubAckHandler,
+                                          Channel socket) {
         try {
-            MQTTopicManager.getInstance().addTopicMessage(
-                    topic, qosLevel, message, retain, mqttLocalMessageID, publisherID, pubAckHandler);
+            //Will prepare the level of QoS, convert the integer to the corresponding enum
+            QOSLevel qos = QOSLevel.getQoSFromValue(qosLevel);
+            MQTTMessageContext messageContext = MQTTUtils.createMessageContext(topic, qos, message, retain,
+                    mqttLocalMessageID, publisherID, pubAckHandler,socket);
+            MQTTopicManager.getInstance().addTopicMessage(messageContext);
         } catch (MQTTException e) {
             //Will capture the message here and will not throw it further to mqtt protocol
             final String error = "Error occurred while adding the message content for message id : "
@@ -133,14 +212,15 @@ public final class AndesMQTTBridge {
      *
      * @param topic               the name of the topic the subscribed to
      * @param mqttClientChannelID the client identification maintained by the MQTT protocol lib
-     * @param qos                 the type of qos the subscription is connected to this can be either MOST_ONE,LEAST_ONE, EXACTLY_ONE
+     * @param qos                 the type of qos the subscription is connected to this can be either MOST_ONE,LEAST_ONE,
+     *                            EXACTLY_ONE
      * @param isCleanSession      whether the subscription is durable
      */
     public void onTopicSubscription(String topic, String mqttClientChannelID, AbstractMessage.QOSType qos,
                                     boolean isCleanSession) {
         try {
             MQTTopicManager.getInstance().addTopicSubscription(topic,
-                    mqttClientChannelID, MQTTUtils.convertMQTTProtocolTypeToInteger(qos), isCleanSession);
+                    mqttClientChannelID, QOSLevel.getQoSFromValue(qos.getValue()), isCleanSession);
         } catch (MQTTException e) {
             //Will not throw the exception further since the bridge will handle the exceptions in both the realm
             final String message = "Error occurred while subscription is initiated for topic : " + topic +

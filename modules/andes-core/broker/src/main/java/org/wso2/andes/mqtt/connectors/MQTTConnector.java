@@ -17,13 +17,13 @@
  */
 package org.wso2.andes.mqtt.connectors;
 
+import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
-import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTException;
+import org.wso2.andes.mqtt.MQTTMessageContext;
 import org.wso2.andes.mqtt.MQTTopicManager;
 
-import java.nio.ByteBuffer;
 import java.util.UUID;
 
 /**
@@ -43,20 +43,13 @@ public interface MQTTConnector {
             throws AndesException;
 
     /**
-     * Will add the message content which will be received
+     * Adds message to the connector to handle an incoming message
      *
-     * @param message            the content of the message which was published
-     * @param topic              the name of the topic which the message was published
-     * @param qosLevel           the level of the qos the message was published
-     * @param mqttLocalMessageID the channel id the subscriber is bound to
-     * @param retain             whether the message requires to be persisted
-     * @param publisherID        the id which will identify the publisher
-     * @param pubAckHandler      interface with publisher acknowledgement handling
-     * @throws org.wso2.andes.mqtt.MQTTException occurs if there was an error while adding the message content
+     * @param messageContext includes the message information to the relevant message connector
+     * @throws MQTTException
+     * @see org.wso2.andes.mqtt.MQTTMessageContext
      */
-    public void addMessage(ByteBuffer message, String topic, int qosLevel,
-                           int mqttLocalMessageID, boolean retain,
-                           String publisherID, PubAckHandler pubAckHandler) throws MQTTException;
+    public void addMessage(MQTTMessageContext messageContext) throws MQTTException;
 
 
     /**
@@ -73,8 +66,8 @@ public interface MQTTConnector {
      * @throws MQTTException
      */
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
-                              boolean isCleanSesion, int qos, UUID subscriptionChannelID) throws MQTTException,
-            SubscriptionAlreadyExistsException;
+                              boolean isCleanSesion, AndesMQTTBridge.QOSLevel qos, UUID subscriptionChannelID)
+            throws MQTTException, SubscriptionAlreadyExistsException;
 
 
     /**
@@ -109,6 +102,7 @@ public interface MQTTConnector {
 
     /**
      * Removes the publisher
+     *
      * @param mqttClientChannelID publisher id (local id) of the publisher to be removed
      * @return UUID of the publisher. Unique id for the publisher in the cluster
      */

@@ -20,6 +20,7 @@ package org.wso2.andes.mqtt;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.dna.mqtt.wso2.AndesMQTTBridge;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -68,7 +69,7 @@ public class MQTTopic {
      * @param subscripionChannel  will hold the unique cluser wide subscription identifier
      * @throws MQTTException if the subscriber with the same channel id exist
      */
-    public void addSubscriber(String mqttClientChannelID, int qos, boolean isCleanSession,
+    public void addSubscriber(String mqttClientChannelID, AndesMQTTBridge.QOSLevel qos, boolean isCleanSession,
                               String clusterSpecificID, UUID subscripionChannel)
     throws MQTTException {
         MQTTSubscriber subscriber = subscribers.get(mqttClientChannelID);

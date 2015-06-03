@@ -20,11 +20,13 @@ package org.wso2.andes.mqtt.connectors;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTException;
+import org.wso2.andes.mqtt.MQTTMessageContext;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.mqtt.MQTTopicManager;
 
@@ -57,11 +59,13 @@ public class InMemoryConnector implements MQTTConnector {
      * {@inheritDoc}
      */
     @Override
-    public void addMessage(ByteBuffer message, String topic, int qosLevel, int mqttLocalMessageID,
-                           boolean retain, String publisherID, PubAckHandler pubAckHandler) throws MQTTException {
-        broadcastMessages(topic, message, mqttLocalMessageID, qosLevel, retain, publisherID, pubAckHandler);
+    public void addMessage(MQTTMessageContext messageContext) throws MQTTException {
+        broadcastMessages(messageContext.getTopic(), messageContext.getMessage(), messageContext.getMqttLocalMessageID(),
+                messageContext.getQosLevel().getQosValue(), messageContext.isRetain(), messageContext.getPublisherID(),
+                messageContext.getPubAckHandler());
         if (log.isDebugEnabled()) {
-            log.debug("Message published to topic " + topic + " with publisher id " + mqttLocalMessageID);
+            log.debug("Message published to topic " + messageContext.getTopic() + " with publisher id " +
+                    messageContext.getMqttLocalMessageID());
         }
     }
 
@@ -70,8 +74,8 @@ public class InMemoryConnector implements MQTTConnector {
      */
     @Override
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
-                              boolean isCleanSession, int qos, UUID subscriptionChannelID) throws MQTTException,
-            SubscriptionAlreadyExistsException {
+                              boolean isCleanSesion, AndesMQTTBridge.QOSLevel qos, UUID subscriptionChannelID)
+            throws MQTTException, SubscriptionAlreadyExistsException {
 
         List<String> subscribers = messageSubscription.get(topic);
         //If this is the first subscriber

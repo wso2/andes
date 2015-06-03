@@ -17,12 +17,12 @@
  */
 package org.wso2.andes.mqtt;
 
+import io.netty.channel.ChannelConfig;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
-import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.connectors.DistributedStoreConnector;
 import org.wso2.andes.mqtt.connectors.MQTTConnector;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
@@ -41,23 +41,43 @@ import static org.dna.mqtt.wso2.AndesMQTTBridge.*;
  */
 public class MQTTopicManager {
 
-    //Will log the messages generated through the class
+    /*
+     * Will log the messages generated through the class
+     */
     private static Log log = LogFactory.getLog(MQTTopicManager.class);
-    //The instance which will be referred
+    /**
+     * The instance which will be referred
+     */
     private static MQTTopicManager instance = new MQTTopicManager();
-    //The topic name will be defined as the key and the value will hold the subscription information
+    /**
+     * The topic name will be defined as the key and the value will hold the subscription information
+     */
     private Map<String, MQTTopic> topics = new HashMap<String, MQTTopic>();
-    //Will keep the reference with the bridge
+    /**
+     * Will keep the reference with the bridge
+     */
     private static AndesMQTTBridge mqttAndesConnectingBridge = null;
-    //Will correlate between topic and subscribers
-    //The map will be used when subscriber disconnection is called where the corresponding topic needs to be identified
-    //The key of the map will be the client id and the value will be the topic
+    /**
+     * Will correlate between topic and subscribers
+     * The map will be used when subscriber disconnection is called where the corresponding topic needs to be identified
+     * The key of the map will be the client id and the value will be the topic
+     */
     private Map<String, String> subscriberTopicCorrelate = new HashMap<String, String>();
-    //The channel reference which will be used to interact with the Andes Kernal
-    // private MQTTConnector connector = new DistributedStoreConnector();
-    // private MQTTConnector connector = new InMemoryConnector();
+    /**
+     * The channel reference which will be used to interact with the Andes Kernal
+     */
     private MQTTConnector connector = new DistributedStoreConnector();
 
+    /**
+     * Will maintain the publisher connections, that will be used to enforce flow controlling
+     * The key = the unique channel id, value the configuration of the channel
+     */
+    private Map<String, ChannelConfig> publisherConnections = new HashMap<String, ChannelConfig>();
+    /**
+     * New publish connections should be blocked, if flow controlling is under blocked state
+     * @see org.dna.mqtt.wso2.AndesMQTTBridge.MQTTFlowControlState
+     */
+    private MQTTFlowControlState flowControlState = MQTTFlowControlState.DISABLE_FLOW_CONTROL;
 
     /**
      * The class will be declared as singleton since the state will be centralized
@@ -93,30 +113,38 @@ public class MQTTopicManager {
     }
 
     /**
-     * Will add the message to the cluster notifying all its subscribers
+     * Adds a topic message to the cluster
      *
-     * @param topic              the name of the topic the message was published
-     * @param qosLevel           the level of qos the message was sent this can be either 0,1 or 2
-     * @param message            the message content
-     * @param retain             whether the message should retain
-     * @param mqttLocalMessageID the channel in which the message was published
-     * @param publisherID        identify of the publisher which is unique across the cluster
-     * @param pubAckHandler      publisher acknowledgments are handled by this handler
-     * @throws MQTTException at a time where the message content doesn't get registered
+     * @param messageContext Which will hold message information
+     * @throws MQTTException
+     * @see org.wso2.andes.mqtt.MQTTMessageContext
      */
-    public void addTopicMessage(String topic, int qosLevel, ByteBuffer message, boolean retain,
-                                int mqttLocalMessageID, String publisherID,
-                                PubAckHandler pubAckHandler) throws MQTTException {
+    public void addTopicMessage(MQTTMessageContext messageContext) throws MQTTException {
 
         if (log.isDebugEnabled()) {
-            log.debug("Incoming message received with id : " + mqttLocalMessageID + ", QOS level : " + qosLevel
-                    + ", for topic :" + topic + ", with retain :" + retain);
+            log.debug("Incoming message received with id : " + messageContext.getMqttLocalMessageID() + ", QOS level : "
+                    + messageContext.getQosLevel() + ", for topic :" + messageContext.getTopic() + ", with retain :" +
+                    messageContext.isRetain());
         }
 
         //Will add the topic message to the cluster for distribution
         try {
-            connector.addMessage(message, topic, qosLevel, mqttLocalMessageID,
-                    retain, publisherID, pubAckHandler);
+            //Will check and register the channel
+            String socketLocalAddress = messageContext.getSocket().remoteAddress().toString();
+            //We need to add the connection only if its not being registered
+            //The reason would be with a single connection there could be multiple messages published
+            if (!publisherConnections.containsKey(socketLocalAddress)) {
+                ChannelConfig socketConfiguration = messageContext.getSocket().config();
+                publisherConnections.put(socketLocalAddress, socketConfiguration);
+                //If the state flow controlling state is blocked we need to close this new connection from reading
+                if(MQTTFlowControlState.ENABLE_FLOW_CONTROL.equals(this.flowControlState)){
+                    socketConfiguration.setAutoRead(false);
+                }
+                //Since we placed the connection to the flow controlling map when the flow controlling is disabled this
+                //the channel would be brought back to open state by enforceFlowControl() method
+                log.info("Adding Publisher Connection to Flow Control List " + socketLocalAddress);
+            }
+            connector.addMessage(messageContext);
         } catch (MQTTException e) {
             //Will need to rollback the state
             final String error = "Error occurred while publishing the message";
@@ -134,15 +162,16 @@ public class MQTTopicManager {
      * @param qos                 the level of QOS the message subscription was created the value can be wither 0,1 or 2
      * @param isCleanSession      indicates whether the subscription should be durable or not
      * @throws MQTTException if the subscriber addition was not successful
+     * @see org.dna.mqtt.wso2.AndesMQTTBridge.QOSLevel
      */
-    public void addTopicSubscription(String topicName, String mqttClientChannelID, int qos,
+    public void addTopicSubscription(String topicName, String mqttClientChannelID, QOSLevel qos,
                                      boolean isCleanSession) throws MQTTException {
         //Will extract out the topic information if the topic is created already
         MQTTopic topic = topics.get(topicName);
         String subscriptionID = null;
         //Will generate a unique identifier for the subscription
         final UUID subscriptionChannelID = MQTTUtils.generateSubscriptionChannelID(mqttClientChannelID, topicName,
-                qos, isCleanSession);
+                qos.getQosValue(), isCleanSession);
         //If the topic has not being created before
         if (null == topic) {
             //First the topic should be registered in the cluster
@@ -267,7 +296,7 @@ public class MQTTopicManager {
         //Should get the topic name from the channel id
         String topic = subscriberTopicCorrelate.get(channelID);
         //We need to keep track of the message if the QOS level is > 0
-        if (subscriberQOS > 0) {
+        if (subscriberQOS > QOSLevel.AT_MOST_ONCE.getQosValue()) {
             //We need to add the message information to maintain state, in-order to identify the messages
             // once the acks receive
             MQTTopic mqttopic = topics.get(topic);
@@ -336,7 +365,7 @@ public class MQTTopicManager {
      * @return topic subscription id which will represent the topic in the cluster
      */
     private String registerTopicSubscriptionInCluster(String topicName, String mqttClientID, boolean isCleanSession,
-                                                      int qos, UUID subscriptionChannelID)
+                                                      QOSLevel qos, UUID subscriptionChannelID)
             throws MQTTException, SubscriptionAlreadyExistsException {
         //Will generate a unique id for the client
         //Per topic only one subscription will be created across the cluster
@@ -368,6 +397,37 @@ public class MQTTopicManager {
             final String message = "Error occurred while cleaning up the acked message";
             log.error(message, ex);
             throw new MQTTException(message, ex);
+        }
+    }
+
+    /**
+     * Will enforce flow control over the publishers
+     *
+     * @param state whether to enable or disable flow controlling
+     * @see org.dna.mqtt.wso2.AndesMQTTBridge.MQTTFlowControlState
+     */
+    public void enforceFlowControl(MQTTFlowControlState state) {
+        //Will mark the state
+        this.flowControlState = state;
+
+        if (MQTTFlowControlState.ENABLE_FLOW_CONTROL.equals(state)) {
+            //Will enforce control
+            //Picks up the list of publishers and stop reading from those channels
+            for (ChannelConfig config : publisherConnections.values()) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Enforcing Flow Control Over Channel " + config.toString());
+                }
+                //Will apply TCP back-pressure, preventing the MQTT client channel from writing to the server socket
+                config.setAutoRead(false);
+            }
+        } else {
+            //Will retain reading from the clients once the flow control is released
+            for (ChannelConfig config : publisherConnections.values()) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Disable Flow Control Over Channel " + config.toString());
+                }
+                config.setAutoRead(true);
+            }
         }
     }
 
