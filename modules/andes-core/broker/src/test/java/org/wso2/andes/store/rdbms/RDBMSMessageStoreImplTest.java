@@ -180,36 +180,6 @@ public class RDBMSMessageStoreImplTest {
     }
 
     @Test
-    public void testDeleteMessageParts() throws Exception {
-
-        int firstMsgId = 10;
-        int lastMsgId = 20;
-        // store messages
-        List<AndesMessagePart> list = RDBMSTestHelper.getMessagePartList(firstMsgId, lastMsgId);
-        messageStore.storeMessagePart(list);
-
-        List<Long> longList = new ArrayList<Long>(lastMsgId - firstMsgId);
-        for (int i = firstMsgId; i < lastMsgId; i++) {
-            longList.add((long) i);
-        }
-
-        // Delete
-        messageStore.deleteMessageParts(longList);
-
-        // check for deletion
-        String sqlStr = "SELECT * " +
-                " FROM " + RDBMSConstants.CONTENT_TABLE +
-                " WHERE " + RDBMSConstants.MESSAGE_ID + "=?";
-        PreparedStatement preparedStatement = connection.prepareStatement(sqlStr);
-        for (int i = firstMsgId; i < lastMsgId; i++) {
-            preparedStatement.setLong(1, i);
-            preparedStatement.addBatch();
-        }
-        ResultSet resultSet = preparedStatement.executeQuery();
-        Assert.assertEquals(false, resultSet.next());
-    }
-
-    @Test
     public void testAckReceived() throws Exception {
 
 

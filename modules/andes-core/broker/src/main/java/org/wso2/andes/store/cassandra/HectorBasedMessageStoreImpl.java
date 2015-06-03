@@ -43,7 +43,6 @@ import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -139,40 +138,6 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             //TODO handle Cassandra failures
             //When a error happened, we should remember that and stop accepting messages
             throw new AndesException("Error while adding the message part to the store", e);
-        } finally {
-            context.stop();
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     * @param messageIdList
-     */
-    @Override
-    public void deleteMessageParts(Collection<Long> messageIdList) throws AndesException {
-        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.DELETE_MESSAGE_PART).start();
-        try {
-
-            Mutator<String> mutator = HFactory.createMutator(keyspace,
-                    HectorConstants.stringSerializer);
-
-            List<String> rows2Remove = new ArrayList<String>();
-            for (long messageId : messageIdList) {
-                rows2Remove.add(MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX +
-                        messageId);
-            }
-
-            //remove content
-            if (!rows2Remove.isEmpty()) {
-                HectorDataAccessHelper.deleteIntegerRowListFromColumnFamily(
-                        HectorConstants.MESSAGE_CONTENT_COLUMN_FAMILY, rows2Remove,
-                        mutator, false);
-            }
-
-            //batch execute
-            mutator.execute();
-        } catch (CassandraDataAccessException e) {
-            throw new AndesException("Error while deleting message contents", e);
         } finally {
             context.stop();
         }
@@ -353,9 +318,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             throw new AndesException(
                     "Message MetaData not found to move the message to Dead Letter Channel");
         }
-        ArrayList<AndesRemovableMetadata> removableMetaDataList = new
-                ArrayList<AndesRemovableMetadata>();
-        removableMetaDataList.add(new AndesRemovableMetadata(messageId, currentQueueName, currentQueueName));
+        ArrayList<Long> removableMetaDataList = new ArrayList<>();
+        removableMetaDataList.add(messageId);
 
         addMetaDataToQueue(targetQueueName, messageMetadataList.get(0));
         deleteMessageMetadataFromQueue(currentQueueName, removableMetaDataList);
@@ -554,26 +518,80 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessageMetadataFromQueue(String queueName, List<AndesRemovableMetadata>
+    public void deleteMessageMetadataFromQueue(String queueName, List<Long>
             messagesToRemove) throws AndesException {
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.DELETE_MESSAGE_META_DATA_FROM_QUEUE).start();
         try {
             if (log.isTraceEnabled()) {
                 StringBuilder messageIDsString = new StringBuilder();
-                for (AndesRemovableMetadata metadata : messagesToRemove) {
-                    messageIDsString.append(metadata.getMessageID()).append(" , ");
+                for (Long metadata : messagesToRemove) {
+                    messageIDsString.append(metadata.longValue()).append(" , ");
                 }
                 log.trace(messagesToRemove.size() + " messages removed : " + messageIDsString);
             }
             Mutator<String> mutator = HFactory.createMutator(keyspace,
                     HectorConstants.stringSerializer);
 
-            for (AndesRemovableMetadata message : messagesToRemove) {
+            for (Long message : messagesToRemove) {
                 HectorDataAccessHelper
                         .deleteLongColumnFromRaw(
                                 HectorConstants.META_DATA_COLUMN_FAMILY,
-                                queueName, message.getMessageID(), mutator, false);
+                                queueName, message.longValue(), mutator, false);
+            }
+
+            //batch execute
+            mutator.execute();
+
+        } catch (Exception e) {
+            throw new AndesException("Error while deleting messages", e);
+        } finally {
+            context.stop();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void deleteMessages(final String storageQueueName,
+                               List<Long> messagesToRemove, boolean deleteAllMeta)
+            throws AndesException {
+        Context context = MetricManager.timer(Level.INFO, MetricsConstants.DELETE_MESSAGE_META_DATA_AND_CONTENT)
+                .start();
+        try {
+            if (log.isTraceEnabled()) {
+                StringBuilder messageIDsString = new StringBuilder();
+                for (Long metadata : messagesToRemove) {
+                    messageIDsString.append(metadata.longValue()).append(" , ");
+                }
+                log.trace(messagesToRemove.size() + " messages removed : " + messageIDsString);
+            }
+            Mutator<String> mutator = HFactory.createMutator(keyspace,
+                    HectorConstants.stringSerializer);
+
+            List<String> rows2Remove = new ArrayList<String>();
+            //if all metadata is not be removed, add metadata and content of each message to delete
+            //else, add content of each message and all metadata for the queue to delete
+            if (!deleteAllMeta) {
+                for (Long message : messagesToRemove) {
+                    HectorDataAccessHelper
+                            .deleteLongColumnFromRaw(
+                                    HectorConstants.META_DATA_COLUMN_FAMILY,
+                                    storageQueueName, message.longValue(), mutator, false);
+                    rows2Remove.add(MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX +
+                            message.longValue());
+                }
+            } else {
+                mutator.addDeletion(storageQueueName, HectorConstants.META_DATA_COLUMN_FAMILY);
+                for (Long message : messagesToRemove) {
+                    rows2Remove.add(MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX +
+                            message.longValue());
+                }
+            }
+            if (!rows2Remove.isEmpty()) {
+                HectorDataAccessHelper.deleteIntegerRowListFromColumnFamily(
+                        HectorConstants.MESSAGE_CONTENT_COLUMN_FAMILY, rows2Remove,
+                        mutator, false);
             }
 
             //batch execute

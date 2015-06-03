@@ -84,15 +84,6 @@ public interface MessageStore extends HealthAwareStore{
      */
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesBatchUpdateException, AndesException;
 
-    
-    /**
-     * delete message contents of messages from store
-     *
-     * @param messageIdList ids of messages
-     * @throws AndesException
-     */
-    public void deleteMessageParts(Collection<Long> messageIdList) throws AndesException;
-
     /**
      * read content chunk from store
      *
@@ -212,7 +203,19 @@ public interface MessageStore extends HealthAwareStore{
      * @throws AndesException
      */
     public void deleteMessageMetadataFromQueue(final String storageQueueName,
-                                               List<AndesRemovableMetadata> messagesToRemove)
+                               List<Long> messagesToRemove)
+            throws AndesException;
+
+    /**
+     * delete message metadata from a queue and remove its content as well
+     *
+     * @param storageQueueName name of the queue
+     * @param messagesToRemove the list of messages to remove
+     * @param deleteAllMeta    whether to delete all metadata destined to the storageQueue
+     * @throws AndesException
+     */
+    public void deleteMessages(final String storageQueueName,
+                               List<Long> messagesToRemove, boolean deleteAllMeta)
             throws AndesException;
 
     /**
