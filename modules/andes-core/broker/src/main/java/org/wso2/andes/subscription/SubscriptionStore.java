@@ -31,7 +31,7 @@ import org.wso2.andes.kernel.AndesSubscription.SubscriptionType;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
-import org.wso2.andes.matrics.MetricsConstants;
+import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.carbon.metrics.manager.Gauge;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.carbon.metrics.manager.Level;

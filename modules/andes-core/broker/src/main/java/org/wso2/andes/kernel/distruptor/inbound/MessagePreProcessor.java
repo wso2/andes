@@ -23,7 +23,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.matrics.MetricsConstants;
+import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.subscription.SubscriptionStore;

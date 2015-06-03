@@ -28,7 +28,7 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.distruptor.ConcurrentBatchEventHandler;
 import org.wso2.andes.kernel.distruptor.LogExceptionHandler;
-import org.wso2.andes.matrics.MetricsConstants;
+import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.carbon.metrics.manager.Gauge;
 import org.wso2.carbon.metrics.manager.Level;

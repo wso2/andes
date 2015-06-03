@@ -31,7 +31,7 @@ import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
-import org.wso2.andes.matrics.MetricsConstants;
+import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.Meter;

@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package org.wso2.andes.matrics;
+package org.wso2.andes.metrics;
 
 /**
  * Will maintain the list of metrics

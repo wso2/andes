@@ -21,7 +21,7 @@ package org.wso2.andes.store.rdbms;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.matrics.MetricsConstants;
+import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
