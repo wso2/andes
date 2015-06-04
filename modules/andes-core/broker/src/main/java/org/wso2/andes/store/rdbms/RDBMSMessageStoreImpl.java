@@ -1676,7 +1676,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 itemData = new RetainedItemData(topicID, messageID);
             }
         } finally {
-            close(preparedStatementForMetadataSelect, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
+            close(preparedStatementForMetadataSelect, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPIC_ID);
         }
 
         return itemData;
@@ -1757,10 +1757,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } catch (SQLException e) {
             throw new AndesException("Error occurred while reading retained topics ", e);
         } finally {
-            String task = "reading all retained topics";
-            close(results, task);
-            close(preparedStatementForTopicSelect, task);
-            close(connection, task);
+            close(results, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPICS);
+            close(preparedStatementForTopicSelect, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPICS);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPICS);
         }
 
         return topicList;
