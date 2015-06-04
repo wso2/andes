@@ -1735,16 +1735,17 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public List<String> getAllRetainedTopics() throws AndesException {
-        Connection connection;
+        Connection connection = null;
         PreparedStatement preparedStatementForTopicSelect = null;
         List<String> topicList = new ArrayList<String>();
+        ResultSet results = null;
 
         try {
             connection = getConnection();
             connection.setAutoCommit(false);
 
             preparedStatementForTopicSelect = connection.prepareStatement(RDBMSConstants.PS_SELECT_ALL_RETAINED_TOPICS);
-            ResultSet results = preparedStatementForTopicSelect.executeQuery();
+            results = preparedStatementForTopicSelect.executeQuery();
 
             while (results.next()) {
                 topicList.add(results.getString(RDBMSConstants.TOPIC_NAME));
@@ -1756,7 +1757,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } catch (SQLException e) {
             throw new AndesException("Error occurred while reading retained topics ", e);
         } finally {
-            close(preparedStatementForTopicSelect, "reading all retained topics");
+            String task = "reading all retained topics";
+            close(results, task);
+            close(preparedStatementForTopicSelect, task);
+            close(connection, task);
         }
 
         return topicList;
