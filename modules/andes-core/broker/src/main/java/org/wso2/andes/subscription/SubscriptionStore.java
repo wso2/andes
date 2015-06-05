@@ -764,10 +764,11 @@ public class SubscriptionStore {
         @Override
         public Integer getValue() {
             int count = 0;
-            for(String destination : localQueueSubscriptionMap.keySet()) {
-                count += localQueueSubscriptionMap.get(destination).size();
+            for(Set subscriptionSet : localQueueSubscriptionMap.values()) {
+                count += subscriptionSet.size();
             }
             return count;
+
         }
     }
 
@@ -778,8 +779,8 @@ public class SubscriptionStore {
         @Override
         public Integer getValue() {
             int count = 0;
-            for(String destination : localTopicSubscriptionMap.keySet()) {
-                count += localTopicSubscriptionMap.get(destination).size();
+            for(Set subscriptionSet : localTopicSubscriptionMap.values()) {
+                count += subscriptionSet.size();
             }
             return count;
         }
