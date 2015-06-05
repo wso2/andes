@@ -757,17 +757,31 @@ public class SubscriptionStore {
         }
     }
 
+    /**
+     * Gauge will return total number of queue subscriptions for current node
+     */
     private class QueueSubscriberGauge implements Gauge<Integer> {
         @Override
         public Integer getValue() {
-            return clusterQueueSubscriptionMap.size() + localQueueSubscriptionMap.size();
+            int count = 0;
+            for(String destination : localQueueSubscriptionMap.keySet()) {
+                count += localQueueSubscriptionMap.get(destination).size();
+            }
+            return count;
         }
     }
 
+    /**
+     * Gauge will return total number of topic subscriptions current node
+     */
     private class TopicSubscriberGauge implements org.wso2.carbon.metrics.manager.Gauge {
         @Override
         public Integer getValue() {
-            return clusterTopicSubscriptionMap.size() + localTopicSubscriptionMap.size();
+            int count = 0;
+            for(String destination : localTopicSubscriptionMap.keySet()) {
+                count += localTopicSubscriptionMap.get(destination).size();
+            }
+            return count;
         }
     }
 }
