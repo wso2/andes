@@ -1676,7 +1676,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 itemData = new RetainedItemData(topicID, messageID);
             }
         } finally {
-            close(preparedStatementForMetadataSelect, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
+            close(preparedStatementForMetadataSelect, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPIC_ID);
         }
 
         return itemData;
@@ -1735,16 +1735,17 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public List<String> getAllRetainedTopics() throws AndesException {
-        Connection connection;
+        Connection connection = null;
         PreparedStatement preparedStatementForTopicSelect = null;
         List<String> topicList = new ArrayList<String>();
+        ResultSet results = null;
 
         try {
             connection = getConnection();
             connection.setAutoCommit(false);
 
             preparedStatementForTopicSelect = connection.prepareStatement(RDBMSConstants.PS_SELECT_ALL_RETAINED_TOPICS);
-            ResultSet results = preparedStatementForTopicSelect.executeQuery();
+            results = preparedStatementForTopicSelect.executeQuery();
 
             while (results.next()) {
                 topicList.add(results.getString(RDBMSConstants.TOPIC_NAME));
@@ -1756,7 +1757,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } catch (SQLException e) {
             throw new AndesException("Error occurred while reading retained topics ", e);
         } finally {
-            close(preparedStatementForTopicSelect, "reading all retained topics");
+            close(results, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPICS);
+            close(preparedStatementForTopicSelect, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPICS);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPICS);
         }
 
         return topicList;

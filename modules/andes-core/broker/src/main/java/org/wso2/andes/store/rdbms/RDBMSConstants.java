@@ -441,7 +441,11 @@ public class RDBMSConstants {
 
     // Message Store related retained message jdbc tasks executed
     protected static final String TASK_STORING_RETAINED_MESSAGE_PARTS = "storing retained messages.";
-    protected static final String TASK_RETRIEVING_RETAINED_MESSAGE_PARTS = "retrieving retained message parts.";
+    protected static final String TASK_RETRIEVING_RETAINED_MESSAGE_PARTS = "retrieving retained " +
+            "message parts.";
+    protected static final String TASK_RETRIEVING_RETAINED_TOPICS = "retrieving all retained topics";
+    protected static final String TASK_RETRIEVING_RETAINED_TOPIC_ID = "retrieving retained " +
+            " message id and topic id for given destination.";
 
 
 
