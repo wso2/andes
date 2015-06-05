@@ -76,16 +76,18 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
 
             Cluster cluster = hectorConnection.getCluster();
 
+            String keyspace = hectorConnection.getKeySpace().getKeyspaceName();
+
             //Create needed column families
-            HectorDataAccessHelper.createColumnFamily(SUBSCRIPTIONS_COLUMN_FAMILY, DEFAULT_KEYSPACE,
+            HectorDataAccessHelper.createColumnFamily(SUBSCRIPTIONS_COLUMN_FAMILY, keyspace,
                     cluster, HectorConstants.UTF8_TYPE, gcGraceSeconds);
-            HectorDataAccessHelper.createColumnFamily(EXCHANGE_COLUMN_FAMILY, DEFAULT_KEYSPACE, cluster,
+            HectorDataAccessHelper.createColumnFamily(EXCHANGE_COLUMN_FAMILY, keyspace, cluster,
                     HectorConstants.UTF8_TYPE, gcGraceSeconds);
-            HectorDataAccessHelper.createColumnFamily(QUEUE_COLUMN_FAMILY, DEFAULT_KEYSPACE, cluster,
+            HectorDataAccessHelper.createColumnFamily(QUEUE_COLUMN_FAMILY, keyspace, cluster,
                     HectorConstants.UTF8_TYPE, gcGraceSeconds);
-            HectorDataAccessHelper.createColumnFamily(BINDING_COLUMN_FAMILY, DEFAULT_KEYSPACE, cluster,
+            HectorDataAccessHelper.createColumnFamily(BINDING_COLUMN_FAMILY, keyspace, cluster,
                     HectorConstants.UTF8_TYPE, gcGraceSeconds);
-            HectorDataAccessHelper.createColumnFamily(NODE_DETAIL_COLUMN_FAMILY, DEFAULT_KEYSPACE, cluster,
+            HectorDataAccessHelper.createColumnFamily(NODE_DETAIL_COLUMN_FAMILY, keyspace, cluster,
                     HectorConstants.UTF8_TYPE, gcGraceSeconds);
 
             return hectorConnection;

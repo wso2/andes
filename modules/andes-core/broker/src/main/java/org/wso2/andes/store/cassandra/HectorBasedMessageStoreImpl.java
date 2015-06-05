@@ -477,7 +477,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                     .getMessagesFromQueue(queueName,
                             HectorConstants.META_DATA_COLUMN_FAMILY,
                             keyspace, firstMsgId, Long.MAX_VALUE,
-                            Integer.MAX_VALUE, true);
+                            count, true);
 
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while reading meta data list for message IDs " +

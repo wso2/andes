@@ -18,8 +18,9 @@
 
 package org.wso2.andes.kernel;
 
-import java.net.UnknownHostException;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -44,7 +45,6 @@ import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostConfigSynchronizer;
 import org.wso2.andes.store.FailureObservingAndesContextStore;
 import org.wso2.andes.store.FailureObservingMessageStore;
-import org.wso2.andes.store.StoreHealthListener;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.thrift.MBThriftServer;
 import org.wso2.carbon.context.CarbonContext;
@@ -57,6 +57,8 @@ public class AndesKernelBoot {
     private static Log log = LogFactory.getLog(AndesKernelBoot.class);
     private static VirtualHost virtualHost;
     private static MessageStore messageStore;
+    private static int restoreSlotMappingCounter;
+    private static int numberOfReadsFromDatabase;
 
     /**
      * Scheduled thread pool executor to run periodic andes recovery task
@@ -119,16 +121,18 @@ public class AndesKernelBoot {
                 if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
                     log.info("Restoring slot mapping in the cluster.");
 
-                   recoverMapsForEachQueue();
+                    recoverMapsForEachQueue();
 
                     hazelcastAgent.indicateSuccessfulInitilization();
                 }
             } finally {
                 hazelcastAgent.releaseInitializationLock();
             }
-        }else {
+        } else {
+            log.info("Restoring slot mapping in the node.");
             recoverMapsForEachQueue();
         }
+        log.info("Slot mapping restore completed.");
     }
 
     /**
@@ -164,6 +168,13 @@ public class AndesKernelBoot {
         List<AndesMessageMetadata> messageList = messageStore
                 .getNextNMessageMetadataFromQueue(queueName, 0, slotSize);
         int numberOfMessages = messageList.size();
+
+        //setting up timer to print restoring message count and database read count
+        numberOfReadsFromDatabase++;
+        restoreSlotMappingCounter = restoreSlotMappingCounter + messageList.size();
+        Timer timer = new Timer();
+        scheduleTimerToPrintCounter(timer);
+
         long lastMessageID;
         long firstMessageID;
 
@@ -183,7 +194,36 @@ public class AndesKernelBoot {
             // including the given starting ID.
             messageList = messageStore
                     .getNextNMessageMetadataFromQueue(queueName, lastMessageID + 1, slotSize);
+            numberOfReadsFromDatabase++;
+            restoreSlotMappingCounter = restoreSlotMappingCounter + messageList.size();
             numberOfMessages = messageList.size();
+        }
+        printCounter();
+        timer.cancel();
+    }
+
+    /**
+     * Message count and database read count prints in each 30 seconds until slot mapping restoration completes
+     *
+     * @param timer TimerUnit object
+     */
+    private static void scheduleTimerToPrintCounter(Timer timer) {
+        long printDelay = 30000;
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                printCounter();
+            }
+        }, 0, printDelay);
+    }
+
+    /**
+     * Print INFO log with slot mapping restore details
+     *
+     */
+    private static void printCounter() {
+        if (restoreSlotMappingCounter > 0) {
+            log.info(restoreSlotMappingCounter + " messages mapped in " + numberOfReadsFromDatabase + " database reads.");
         }
     }
 

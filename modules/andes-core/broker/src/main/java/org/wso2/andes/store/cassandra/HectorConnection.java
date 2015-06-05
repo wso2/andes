@@ -77,6 +77,12 @@ public class HectorConnection extends DurableStoreConnection {
             jndiLookupName = connectionProperties.getProperty(HectorConstants
                     .PROP_JNDI_LOOKUP_NAME);
 
+            String keyspace = connectionProperties.getProperty(HectorConstants.PROP_KEYSPACE);
+
+            if (keyspace.isEmpty()) {
+                keyspace = connectionProperties.getProperty(HectorConstants.DEFAULT_KEYSPACE);
+            }
+
             String replicationFactor = connectionProperties.getProperty(HectorConstants
                     .PROP_REPLICATION_FACTOR);
 
@@ -123,7 +129,7 @@ public class HectorConnection extends DurableStoreConnection {
 	        configurableConsistencyLevel.setDefaultWriteConsistencyLevel(HConsistencyLevel.valueOf(
 			        writeConsistencyLevel));
 	        //create keyspace with consistency levels
-	        createKeySpace(Integer.parseInt(replicationFactor), strategyClass,configurableConsistencyLevel);
+	        createKeySpace(keyspace, Integer.parseInt(replicationFactor), strategyClass,configurableConsistencyLevel);
 
 	        //start Cassandra connection live check
             isCassandraConnectionLive = true;
@@ -207,16 +213,17 @@ public class HectorConnection extends DurableStoreConnection {
     /**
      * Create a keyspace
      *
+     * @param keyspace cassandra keyspace name
      * @param replicationFactor replication factor to configured in keyspace
      * @param strategyClass Cassandra strategy class
      * @param consistencyLevel ConfigurableConsistencyLevel
      */
-    private void createKeySpace(int replicationFactor, String strategyClass,
+    private void createKeySpace(String keyspace, int replicationFactor, String strategyClass,
                                 ConfigurableConsistencyLevel consistencyLevel) throws AndesException {
         try{
             this.keyspace = HectorDataAccessHelper.createKeySpace(cluster,
-                    HectorConstants.DEFAULT_KEYSPACE,
-                    replicationFactor, strategyClass,consistencyLevel);
+                    keyspace,
+                    replicationFactor, strategyClass, consistencyLevel);
         }catch(UnavailableException e){
             throw new AndesException("Not enough nodes for replication" + e);
         }
