@@ -102,15 +102,23 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
     /**
      * The relevant subscription will be registered
      *
-     * @param mqttTopicSubscription the name of the topic the subscription will be bound to
+     * @param mqttTopicSubscriptionAsString the name of the topic the subscription will be bound to
      */
-    public MQTTLocalSubscription(String mqttTopicSubscription) {
-        super(mqttTopicSubscription);
+    public MQTTLocalSubscription(String mqttTopicSubscriptionAsString) {
+        super(mqttTopicSubscriptionAsString);
         setSubscriptionType(SubscriptionType.MQTT);
         //setTargetBoundExchange();
         setIsTopic(true);
         setNodeInfo();
         setIsActive(true);
+
+        String[] propertyToken = mqttTopicSubscriptionAsString.split(",");
+        for (String pt : propertyToken) {
+            String[] tokens = pt.split("=");
+            if (tokens[0].equals("qos")) {
+                this.subscriberQOS = Integer.parseInt(tokens[1]);
+            }
+        }
     }
 
     /**
@@ -211,35 +219,52 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isActive() {
         return true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public UUID getChannelID() {
         return channelID != null ? channelID : null;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LocalSubscription createQueueToListentoTopic() {
         //mqqtServerChannel.
         throw new NotImplementedException();
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean equals(Object o) {
         if (o instanceof MQTTLocalSubscription) {
             MQTTLocalSubscription c = (MQTTLocalSubscription) o;
             if (this.subscriptionID.equals(c.subscriptionID) &&
-                    this.getSubscribedNode().equals(c.getSubscribedNode()) &&
-                    this.targetQueue.equals(c.targetQueue) &&
-                    this.targetQueueBoundExchange.equals(c.targetQueueBoundExchange)) {
+                this.getSubscribedNode().equals(c.getSubscribedNode()) &&
+                this.targetQueue.equals(c.targetQueue) &&
+                this.targetQueueBoundExchange.equals(c.targetQueueBoundExchange)) {
                 return true;
             }
         }
         return false;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public int hashCode() {
         return new HashCodeBuilder(17, 31).
                 append(subscriptionID).
@@ -247,5 +272,22 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
                 append(targetQueue).
                 append(targetQueueBoundExchange).
                 toHashCode();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString() {
+        return super.toString() +
+               "/QOS=" + Integer.toString(subscriberQOS);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String encodeAsStr() {
+        return super.encodeAsStr() + ",qos=" + Integer.toString(subscriberQOS);
     }
 }
