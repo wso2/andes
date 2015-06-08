@@ -27,12 +27,13 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.FlowControlListener;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.mqtt.MQTTException;
 import org.wso2.andes.mqtt.MQTTLocalSubscription;
+import org.wso2.andes.mqtt.MQTTMessage;
 import org.wso2.andes.mqtt.MQTTMessageContext;
+import org.wso2.andes.mqtt.MQTTPublisherChannel;
 import org.wso2.andes.mqtt.MQTTopicManager;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -60,22 +61,32 @@ public class DistributedStoreConnector implements MQTTConnector {
      * Will maintain the relation between the publisher client identifiers vs the id generated cluster wide
      * Key of the map would be the mqtt specific client id and the value would be the cluster uuid
      */
-    private Map<String, UUID> publisherTopicCorrelate = new HashMap<String, UUID>();
+    private Map<String, MQTTPublisherChannel> publisherTopicCorrelate = new HashMap<String, MQTTPublisherChannel>();
 
     public DistributedStoreConnector() {
-        andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {
+   /*     andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {
             @Override
             public void block() {
                 log.info("Enforcing flow control over MQTT Channel");
-                MQTTopicManager.getInstance().enforceFlowControl(MQTTFlowControlState.ENABLE_FLOW_CONTROL);
+                try {
+                    MQTTopicManager.getInstance().enforceFlowControl(true);
+                } catch (MQTTException e) {
+                    String error = "Error occurred while enforcing flow control";
+                    log.error(error,e);
+                }
             }
 
             @Override
             public void unblock() {
                 log.info("Disabling flow control over MQTT Channel");
-                MQTTopicManager.getInstance().enforceFlowControl(MQTTFlowControlState.DISABLE_FLOW_CONTROL);
+                try {
+                    MQTTopicManager.getInstance().enforceFlowControl(false);
+                } catch (MQTTException e) {
+                    String error = "Error occurred while disabling flow control";
+                    log.error(error, e);
+                }
             }
-        });
+        });*/
     }
 
     /**
@@ -94,11 +105,14 @@ public class DistributedStoreConnector implements MQTTConnector {
     public void addMessage(MQTTMessageContext messageContext) throws MQTTException {
         if (messageContext.getMessage().hasArray()) {
 
-            UUID publisherClusterID = publisherTopicCorrelate.get(messageContext.getPublisherID());
-            if (null == publisherClusterID) {
-                //We need to generate a uuid
-                publisherClusterID = UUID.randomUUID();
-                publisherTopicCorrelate.put(messageContext.getPublisherID(), publisherClusterID);
+            MQTTPublisherChannel publisher = publisherTopicCorrelate.get(messageContext.getPublisherID());
+            if (null == publisher) {
+                //We need to create a new publisher
+                publisher = new MQTTPublisherChannel(messageContext.getSocket());
+                publisherTopicCorrelate.put(messageContext.getPublisherID(), publisher);
+                //Finally will register the publisher channel for flow controlling
+                AndesChannel publisherChannel = Andes.getInstance().createChannel(publisher);
+                publisher.setChannel(publisherChannel);
             }
 
             //Will get the bytes of the message
@@ -109,7 +123,7 @@ public class DistributedStoreConnector implements MQTTConnector {
             //Will Create the Andes Header
             AndesMessageMetadata messageHeader = MQTTUtils.convertToAndesHeader(messageID, messageContext.getTopic(),
                     messageContext.getQosLevel().getQosValue(), messageData.length, messageContext.isRetain(),
-                    publisherClusterID);
+                    publisher);
 
             // Add properties to be used for publisher acks
             messageHeader.addProperty(MQTTUtils.CLIENT_ID, messageContext.getPublisherID());
@@ -119,7 +133,7 @@ public class DistributedStoreConnector implements MQTTConnector {
             // Publish to Andes core
             AndesMessage andesMessage = new MQTTMessage(messageHeader);
             andesMessage.addMessagePart(messagePart);
-            Andes.getInstance().messageReceived(andesMessage, andesChannel, messageContext.getPubAckHandler());
+            Andes.getInstance().messageReceived(andesMessage, publisher.getChannel(), messageContext.getPubAckHandler());
             if (log.isDebugEnabled()) {
                 log.debug(" Message added with message id " + messageContext.getMqttLocalMessageID());
             }
@@ -137,7 +151,6 @@ public class DistributedStoreConnector implements MQTTConnector {
             throws MQTTException, SubscriptionAlreadyExistsException {
 
         MQTTLocalSubscription mqttTopicSubscriber;
-
         //Should indicate the record in the cluster
         try {
             if (isCleanSesion) {
@@ -258,7 +271,12 @@ public class DistributedStoreConnector implements MQTTConnector {
      * @{inheritDoc}
      */
     public UUID removePublisher(String mqttclientChannelId) {
-        return publisherTopicCorrelate.remove(mqttclientChannelId);
+        MQTTPublisherChannel publisher = publisherTopicCorrelate.remove(mqttclientChannelId);
+        UUID clusterID = null;
+        if (null != publisher) {
+            clusterID = publisher.getClusterID();
+        }
+        return clusterID;
     }
 
     /**

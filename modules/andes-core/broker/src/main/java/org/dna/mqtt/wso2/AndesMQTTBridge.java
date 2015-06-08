@@ -42,11 +42,20 @@ import java.nio.ByteBuffer;
 
 public final class AndesMQTTBridge {
 
-    //Will log the messages generated through the class
+    /**
+     *Will log the messages generated through the class
+     */
+
     private static Log log = LogFactory.getLog(AndesMQTTBridge.class);
-    //The connection between the MQTT library
+    /**
+     * The connection between the MQTT library
+     */
+
     private static ProtocolProcessor mqttProtocolHandlingEngine = null;
-    //The Andes bridge instance
+
+    /**
+     *  The Andes bridge instance
+     */
     private static AndesMQTTBridge instance = new AndesMQTTBridge();
 
     /**
@@ -109,20 +118,6 @@ public final class AndesMQTTBridge {
            }
         }
 
-    }
-
-    /**
-     * Specified whether TCP back-pressure should be applied based on the flow control state
-     */
-    public enum MQTTFlowControlState{
-        /**
-         * Specifies whether flow controlling should be enabled over the publishing client
-         */
-        ENABLE_FLOW_CONTROL,
-        /**
-         * Specifies whether the publisher should be released from being flow controlled
-         */
-        DISABLE_FLOW_CONTROL
     }
 
     /**
@@ -261,7 +256,7 @@ public final class AndesMQTTBridge {
      * @param messageID the identity of the message
      */
     public void distributeMessageToSubscriptions(String topic, int qos, ByteBuffer message, boolean retain,
-                                                 int messageID, String channelID) {
+                                                 int messageID, String channelID) throws MQTTException {
 
         if (null != mqttProtocolHandlingEngine) {
             //Need to set do a re position of bytes for writing to the buffer

@@ -20,11 +20,11 @@ package org.wso2.andes.mqtt;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.dna.mqtt.wso2.AndesMQTTBridge;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+
+import static org.dna.mqtt.wso2.AndesMQTTBridge.QOSLevel;
 
 /**
  * Each topic will have multiple relationships with its subscribers, the list of subscribers and the topics will be
@@ -32,14 +32,22 @@ import java.util.UUID;
  */
 public class MQTTopic {
 
-    //Will log the messages generated through the class
+    /**
+     * Will log the messages generated through the class
+     */
     private static Log log = LogFactory.getLog(MQTTopic.class);
-    //Holds the name of the topic that is of relevance
+
+    /**
+     * Holds the name of the topic that is of relevance
+     */
     private String topic;
-    //Will maintain the client id generated for the topic
-    //private String clusterSpecificClientID;
-    //Will map between the relationship of topics and subscribers key will be the channel id of the subscriber
-    //Value will be the properties associated with the subscriber
+
+    /**
+     * Will maintain the client id generated for the topic
+     * private String clusterSpecificClientID;
+     * Will map between the relationship of topics and subscribers key will be the channel id of the subscriber
+     * Value will be the properties associated with the subscriber
+     */
     private Map<String, MQTTSubscriber> subscribers = new HashMap<String, MQTTSubscriber>();
 
     /**
@@ -62,28 +70,28 @@ public class MQTTopic {
     /**
      * Will create a new subscriber for the topic
      *
-     * @param mqttClientChannelID the channel identitiy of the subscriber bound to the topic
+     * @param mqttClientChannelID the channel identity of the subscriber bound to the topic
      * @param qos                 the level of qos which can be of value 0,1 or 2
      * @param isCleanSession      the durability of the session
      * @param clusterSpecificID   the id generated for the subscriber which is unique across the cluster
-     * @param subscripionChannel  will hold the unique cluser wide subscription identifier
+     * @param subscriptionChannel  will hold the unique cluster wide subscription identifier
      * @throws MQTTException if the subscriber with the same channel id exist
      */
-    public void addSubscriber(String mqttClientChannelID, AndesMQTTBridge.QOSLevel qos, boolean isCleanSession,
-                              String clusterSpecificID, UUID subscripionChannel)
+    public void addSubscriber(String mqttClientChannelID, QOSLevel qos, boolean isCleanSession,
+                              String clusterSpecificID, UUID subscriptionChannel)
     throws MQTTException {
         MQTTSubscriber subscriber = subscribers.get(mqttClientChannelID);
-        //Will create a new subscriber if the susbscriber do not exist
+        //Will create a new subscriber if the subscriber do not exist
         if (null == subscriber) {
             subscriber = new MQTTSubscriber();
             //Will set the level of QOS of the subscriber
             subscriber.setQOSLevel(qos);
-            //Will specify the durablitiy of the session
+            //Will specify the durability of the session
             subscriber.setCleanSession(isCleanSession);
             //Will set the subscriber channel id
             subscriber.setSubscriberChannelID(clusterSpecificID);
             //Will set the subscription channel
-            subscriber.setSubscriptionChannel(subscripionChannel);
+            subscriber.setSubscriptionChannel(subscriptionChannel);
             //Will register the subscriber
             subscribers.put(mqttClientChannelID, subscriber);
             if (log.isDebugEnabled()) {
@@ -99,7 +107,7 @@ public class MQTTopic {
     }
 
     /**
-     * Will add the subcriber object directly to the topic, this method was designed to be called during callback
+     * Will add the subscriber object directly to the topic, this method was designed to be called during callback
      *
      * @param mqttchannelID the id of the channel of the subscriber
      * @param subscriber    the subscription

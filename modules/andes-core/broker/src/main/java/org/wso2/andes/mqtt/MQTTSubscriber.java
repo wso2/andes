@@ -24,33 +24,53 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.dna.mqtt.wso2.AndesMQTTBridge.QOSLevel;
+
 /**
  * All the subscriptions relation to a topic will be maintained though the following class, attributes such as QOS
  * levels will be maintained here
  */
 public class MQTTSubscriber {
-    //TODO QOS level information should be accessed for use cases which will be implimented in future for in memory model
-    //The level of QOS the subscriber is bound to
-    private int QOSLevel;
-    //Specifies whether the subscription is durable or not
+    /**
+     * The level of QOS the subscriber is bound to
+     */
+    private QOSLevel QOSLevel;
+    /**
+     * Specifies whether the subscription is durable or not
+     */
     private boolean isCleanSession;
-    //Specifies the channel id of the subscriber
+    /**
+     * Specifies the channel id of the subscriber
+     */
     private String subscriberChannelID;
-    //Specifies the storage identifier of the subscription
+    /**
+     * Specifies the storage identifier of the subscription
+     */
     private String storageIdentifier;
-    //Specifies the subscription channel
+    /**
+     * Specifies the subscription channel
+     */
     private UUID subscriptionChannel;
-    //The map maintains the relation between the cluster ids to the local ids, MQTT ids will be the type int
-    //Each subscription object will maintain the ids of the messages that were sent out for delivery
-    //Upon relieving of an ack the message element will be removed
-    //Cluster message id to local messages the key will be the local id of the map and the value will be cluster id
-    //We use a concurrent hash-map since this map is accessible by multiple threads. Accessed by both andes kernal for
-    //put operations and remove is done when the ack arrives
+
+    /**
+     * The map maintains the relation between the cluster ids to the local ids, MQTT ids will be the type int
+     * Each subscription object will maintain the ids of the messages that were sent out for delivery
+     * Upon relieving of an ack the message element will be removed
+     * Cluster message id to local messages the key will be the local id of the map and the value will be cluster id
+     * We use a concurrent hash-map since this map is accessible by multiple threads. Accessed by both andes kernal for
+     * put operations and remove is done when the ack arrives
+     */
     private Map<Integer, Long> clusterMessageToLocalMessage = new ConcurrentHashMap<Integer, Long>();
-    //Will hold the message id which was last processed
-    //Will generate a unique id
+
+    /**
+     * Will hold the message id which was last processed
+     * Will generate a unique id
+     */
     private int lastGeneratedMessageID = 0;
-    //Will log the events
+
+    /**
+     * Will log the events
+     */
     private static Log log = LogFactory.getLog(MQTTSubscriber.class);
 
     /**
@@ -155,7 +175,7 @@ public class MQTTSubscriber {
      *
      * @param QOSLevel the QOS level, this can either be 1,2 or 3
      */
-    public void setQOSLevel(int QOSLevel) {
+    public void setQOSLevel(QOSLevel QOSLevel) {
         this.QOSLevel = QOSLevel;
     }
 
@@ -163,7 +183,7 @@ public class MQTTSubscriber {
      * Will return the level of QOS the subscriber is bound to
      * @return QOS level
      */
-    public int getQOSLevel() {
+    public QOSLevel getQOSLevel() {
         return this.QOSLevel;
     }
 

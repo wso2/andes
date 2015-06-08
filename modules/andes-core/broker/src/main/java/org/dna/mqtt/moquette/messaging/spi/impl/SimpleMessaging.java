@@ -18,6 +18,7 @@ import org.dna.mqtt.moquette.proto.messages.*;
 import org.dna.mqtt.moquette.server.Constants;
 import org.dna.mqtt.moquette.server.IAuthenticator;
 import org.dna.mqtt.moquette.server.ServerChannel;
+import org.dna.mqtt.wso2.ClusterSubscriptionStore;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 
@@ -60,7 +61,10 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
     }
 
     public void init(Properties configProps) {
-        subscriptions = new SubscriptionsStore();
+        // subscriptions = new SubscriptionsStore();
+        //Modified by WSO2 in-order to extend the capability of the existing subscriptions store
+        //to be more suitable for the distribution architecture of Andes
+        subscriptions = new ClusterSubscriptionStore();
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("Disruptor MQTT Simple Messaging Thread %d").build();
         ExecutorService executor = Executors.newCachedThreadPool(namedThreadFactory);

@@ -17,7 +17,7 @@
  */
 package org.wso2.andes.mqtt;
 
-import io.netty.channel.ChannelConfig;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
@@ -51,6 +51,9 @@ public class MQTTopicManager {
     private static MQTTopicManager instance = new MQTTopicManager();
     /**
      * The topic name will be defined as the key and the value will hold the subscription information
+     * We could go with the hash map since we don't need immediate reflection of values being added during the runtime
+     * i.e subscription getting bound when a message is given out for distribution, for topics we only need to deliver
+     * messages to subscribers who were bound before the message was published to the broker
      */
     private Map<String, MQTTopic> topics = new HashMap<String, MQTTopic>();
     /**
@@ -60,24 +63,15 @@ public class MQTTopicManager {
     /**
      * Will correlate between topic and subscribers
      * The map will be used when subscriber disconnection is called where the corresponding topic needs to be identified
+     * the underlying protocol engine only provides the disconnected client id.
      * The key of the map will be the client id and the value will be the topic
+     * We use the Hash-map here since there cannot have an occurrence of subscriber binding and disconnecting in parallel
      */
     private Map<String, String> subscriberTopicCorrelate = new HashMap<String, String>();
     /**
      * The channel reference which will be used to interact with the Andes Kernal
      */
     private MQTTConnector connector = new DistributedStoreConnector();
-
-    /**
-     * Will maintain the publisher connections, that will be used to enforce flow controlling
-     * The key = the unique channel id, value the configuration of the channel
-     */
-    private Map<String, ChannelConfig> publisherConnections = new HashMap<String, ChannelConfig>();
-    /**
-     * New publish connections should be blocked, if flow controlling is under blocked state
-     * @see org.dna.mqtt.wso2.AndesMQTTBridge.MQTTFlowControlState
-     */
-    private MQTTFlowControlState flowControlState = MQTTFlowControlState.DISABLE_FLOW_CONTROL;
 
     /**
      * The class will be declared as singleton since the state will be centralized
@@ -126,24 +120,8 @@ public class MQTTopicManager {
                     + messageContext.getQosLevel() + ", for topic :" + messageContext.getTopic() + ", with retain :" +
                     messageContext.isRetain());
         }
-
         //Will add the topic message to the cluster for distribution
         try {
-            //Will check and register the channel
-            String socketLocalAddress = messageContext.getSocket().remoteAddress().toString();
-            //We need to add the connection only if its not being registered
-            //The reason would be with a single connection there could be multiple messages published
-            if (!publisherConnections.containsKey(socketLocalAddress)) {
-                ChannelConfig socketConfiguration = messageContext.getSocket().config();
-                publisherConnections.put(socketLocalAddress, socketConfiguration);
-                //If the state flow controlling state is blocked we need to close this new connection from reading
-                if(MQTTFlowControlState.ENABLE_FLOW_CONTROL.equals(this.flowControlState)){
-                    socketConfiguration.setAutoRead(false);
-                }
-                //Since we placed the connection to the flow controlling map when the flow controlling is disabled this
-                //the channel would be brought back to open state by enforceFlowControl() method
-                log.info("Adding Publisher Connection to Flow Control List " + socketLocalAddress);
-            }
             connector.addMessage(messageContext);
         } catch (MQTTException e) {
             //Will need to rollback the state
@@ -237,7 +215,8 @@ public class MQTTopicManager {
                 //Will remove the subscriber cluster wide
                 try {
                     //Will indicate the disconnection of the topic
-                    if (action == SubscriptionEvent.DISCONNECT && !(subscriber.getQOSLevel() == 0 && !subscriber.isCleanSession())) {
+                    if (action == SubscriptionEvent.DISCONNECT && !(subscriber.getQOSLevel() == QOSLevel.AT_MOST_ONCE
+                            && !subscriber.isCleanSession())) {
                         connector.disconnectSubscriber(this, topic, subscriberChannelID, subscriberChannel,
                                 isCleanSession, mqttClientChannelID);
                     } else {
@@ -397,37 +376,6 @@ public class MQTTopicManager {
             final String message = "Error occurred while cleaning up the acked message";
             log.error(message, ex);
             throw new MQTTException(message, ex);
-        }
-    }
-
-    /**
-     * Will enforce flow control over the publishers
-     *
-     * @param state whether to enable or disable flow controlling
-     * @see org.dna.mqtt.wso2.AndesMQTTBridge.MQTTFlowControlState
-     */
-    public void enforceFlowControl(MQTTFlowControlState state) {
-        //Will mark the state
-        this.flowControlState = state;
-
-        if (MQTTFlowControlState.ENABLE_FLOW_CONTROL.equals(state)) {
-            //Will enforce control
-            //Picks up the list of publishers and stop reading from those channels
-            for (ChannelConfig config : publisherConnections.values()) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Enforcing Flow Control Over Channel " + config.toString());
-                }
-                //Will apply TCP back-pressure, preventing the MQTT client channel from writing to the server socket
-                config.setAutoRead(false);
-            }
-        } else {
-            //Will retain reading from the clients once the flow control is released
-            for (ChannelConfig config : publisherConnections.values()) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Disable Flow Control Over Channel " + config.toString());
-                }
-                config.setAutoRead(true);
-            }
         }
     }
 

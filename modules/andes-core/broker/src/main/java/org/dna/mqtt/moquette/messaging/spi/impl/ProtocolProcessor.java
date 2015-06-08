@@ -57,7 +57,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
      * Indicates (via configuration) that server should always expect credentials from users.
      */
     private boolean isAuthenticationRequired;
-    
+
     ProtocolProcessor() {
     }
 
@@ -74,12 +74,12 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         this.subscriptions = subscriptions;
         m_authenticator = authenticator;
         m_storageService = storageService;
-        
-        isAuthenticationRequired = 
+
+        isAuthenticationRequired =
                     AndesConfigurationManager.readValue(TRANSPORTS_MQTT_USER_ATHENTICATION) == MQTTUserAuthenticationScheme.REQUIRED;
-        
+
         Integer RingBufferSize = AndesConfigurationManager.readValue(TRANSPORTS_MQTT_DELIVERY_BUFFER_SIZE);
-        
+
         // Init the output Disruptor
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("Disruptor MQTT Protocol Processor thread %d").build();
@@ -89,12 +89,12 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                 ValueEvent.EVENT_FACTORY,
                 RingBufferSize,
                 executor);
-        
+
         disruptor.handleExceptionsWith(new IgnoreExceptionHandler());
         SequenceBarrier barrier = disruptor.getRingBuffer().newBarrier();
         BatchEventProcessor<ValueEvent> m_eventProcessor = new BatchEventProcessor<ValueEvent>(
                 disruptor.getRingBuffer(), barrier, this);
-        
+
         disruptor.handleEventsWith(m_eventProcessor);
 
         m_ringBuffer = disruptor.start();
@@ -303,43 +303,43 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
      * @param messageID   the unique identifier of the message
      */
     public void publishToSubscriber(String topic, AbstractMessage.QOSType qos, ByteBuffer origMessage,
-                                    boolean retain, Integer messageID, String mqttClientID) {
+                                    boolean retain, Integer messageID, String mqttClientID) throws MQTTException {
         Subscription subscription = subscriptions.getSubscriptions(topic, mqttClientID);
 
+        if (subscription != null) {
 
-        if (qos.ordinal() > subscription.getRequestedQos().ordinal()) {
-            qos = subscription.getRequestedQos();
-        }
+            if (qos.ordinal() > subscription.getRequestedQos().ordinal()) {
+                qos = subscription.getRequestedQos();
+            }
 
-        ByteBuffer message = origMessage.duplicate();
+            ByteBuffer message = origMessage.duplicate();
 
-        if (qos == AbstractMessage.QOSType.MOST_ONE && subscription.isActive()) {
-            //QoS 0
-            sendPublish(subscription.getClientId(), topic, qos, message, false);
-        } else {
-            //QoS 1 or 2
-            //if the target subscription is not clean session and is not connected => store it
-            if (!subscription.isCleanSession() && !subscription.isActive()) {
-                //clone the event with matching clientID
-                PublishEvent newPublishEvt = new PublishEvent(topic, qos, message, retain, subscription.getClientId(),
-                        messageID, null);
-                m_storageService.storePublishForFuture(newPublishEvt);
+            if (qos == AbstractMessage.QOSType.MOST_ONE && subscription.isActive()) {
+                //QoS 0
+                sendPublish(subscription.getClientId(), topic, qos, message, false);
             } else {
-                //if QoS 2 then store it in temp memory
-                //TODO need to address the situation of the subscriber failing to receive the message in QOS 2
-          /*      if (qos == AbstractMessage.QOSType.EXACTLY_ONCE) {
-                    String publishKey = String.format("%s%d", subscription.getClientId(), messageID);
-                    PublishEvent newPublishEvt = new PublishEvent(topic, qos, message, retain,
-                            subscription.getClientId(), messageID, null);
-                    m_storageService.addInFlight(newPublishEvt, publishKey);
-                }*/
-                //publish
-                if (subscription.isActive()) {
-                    //Change done by WSO2 will be overloading the method
-                    sendPublish(subscription.getClientId(), topic, qos, message, false, messageID);
+                //QoS 1 or 2
+                //if the target subscription is not clean session and is not connected => store it
+                if (!subscription.isCleanSession() && !subscription.isActive()) {
+                    //clone the event with matching clientID
+                    PublishEvent newPublishEvt = new PublishEvent(topic, qos, message, retain, subscription.getClientId(),
+                            messageID, null);
+                    m_storageService.storePublishForFuture(newPublishEvt);
+                } else {
+
+                    //publish
+                    if (subscription.isActive()) {
+                        //Change done by WSO2 will be overloading the method
+                        sendPublish(subscription.getClientId(), topic, qos, message, false, messageID);
+                    }
                 }
             }
+
+        } else {
+            //This means by the time the message was given out for delivery the subscription has closed its connection
+            throw new MQTTException("Subscriber disconnected unexpectedly, will not deliver the message");
         }
+
     }
 
     /**

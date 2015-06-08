@@ -26,6 +26,7 @@ import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTMessageContext;
+import org.wso2.andes.mqtt.MQTTPublisherChannel;
 import org.wso2.andes.server.store.MessageMetaDataType;
 
 import java.nio.ByteBuffer;
@@ -105,11 +106,12 @@ public class MQTTUtils {
      * @param qosLevel             the level of qos the message was published
      * @param messageContentLength the content length of the message
      * @param retain               should this message retain
-     * @param publisherID          the uuid which will uniquely identify the publisher
+     * @param publisher          the uuid which will uniquely identify the publisher
      * @return the meta information compliant with the kernal
      */
     public static AndesMessageMetadata convertToAndesHeader(long messageID, String topic, int qosLevel,
-                                                            int messageContentLength, boolean retain, UUID publisherID) {
+                                                            int messageContentLength, boolean retain,
+                                                            MQTTPublisherChannel publisher) {
         long receivedTime = System.currentTimeMillis();
 
         AndesMessageMetadata messageHeader = new AndesMessageMetadata();
@@ -118,7 +120,7 @@ public class MQTTUtils {
         messageHeader.setDestination(topic);
         messageHeader.setPersistent(true);
         messageHeader.setRetain(retain);
-        messageHeader.setChannelId(publisherID);
+        messageHeader.setChannelId(publisher.getClusterID());
         messageHeader.setMessageContentLength(messageContentLength);
         messageHeader.setStorageQueueName(topic);
         messageHeader.setMetaDataType(MessageMetaDataType.META_DATA_MQTT);
