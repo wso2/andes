@@ -22,7 +22,6 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.gte;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.in;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.lte;
-
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -33,7 +32,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
+import org.wso2.carbon.metrics.manager.Level;
 import org.apache.log4j.Logger;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.DataType;
@@ -55,9 +54,9 @@ import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
-import org.wso2.andes.matrics.DataAccessMatrixManager;
-import org.wso2.andes.matrics.MatrixConstants;
+import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.store.AndesStoreUnavailableException;
+import org.wso2.carbon.metrics.manager.MetricManager;
 import org.wso2.carbon.metrics.manager.Timer.Context;
 
 /**
@@ -253,7 +252,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException {
 
-        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_MESSAGE_PART, this).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.ADD_MESSAGE_PART).start();
 
         try {
             BatchStatement batchStatement = new BatchStatement();
@@ -295,7 +294,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public void deleteMessageParts(Collection<Long> messageIdList) throws AndesException {
 
-        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.DELETE_MESSAGE_PART, this).start();
+        Context context = MetricManager.timer(Level.INFO, MetricsConstants.DELETE_MESSAGE_PART).start();
 
         try {
             BatchStatement batchStatement = new BatchStatement();
@@ -335,7 +334,8 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
 
-        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_CONTENT, this).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_CONTENT).start();
+
 
         try {
             Statement statement = QueryBuilder.select().all().
@@ -371,7 +371,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public Map<Long, List<AndesMessagePart>> getContent(List<Long> messageIdList) throws AndesException {
-        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_CONTENT_BATCH, this).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_CONTENT_BATCH).start();
 
         try {
 
@@ -430,7 +430,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public void addMetaData(List<AndesMessageMetadata> metadataList) throws AndesException {
 
-        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_META_DATA_LIST, this).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_META_DATA_LIST).start();
 
         try {
             BatchStatement batchStatement = new BatchStatement();
@@ -452,7 +452,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public void addMetaData(AndesMessageMetadata metadata) throws AndesException {
 
-        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_META_DATA, this).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.ADD_META_DATA).start();
 
         try {
             BatchStatement batchStatement = new BatchStatement();
@@ -492,7 +492,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     public void addMetaDataToQueue(String queueName,
                                    AndesMessageMetadata metadata) throws AndesException {
 
-        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.ADD_META_DATA_TO_QUEUE, this).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.ADD_META_DATA_TO_QUEUE).start();
 
         try {
             BatchStatement batchStatement = new BatchStatement();
@@ -513,8 +513,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     public void addMetadataToQueue(String queueName,
                                    List<AndesMessageMetadata> metadataList) throws AndesException {
 
-        Context context = DataAccessMatrixManager.
-                addAndGetTimer(MatrixConstants.ADD_META_DATA_TO_QUEUE_LIST, this).start();
+        Context context = MetricManager.timer(Level.DEBUG,MetricsConstants.ADD_META_DATA_TO_QUEUE_LIST).start();
 
         try {
             BatchStatement batchStatement = new BatchStatement();
@@ -557,8 +556,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     public void updateMetaDataInformation(String currentQueueName,
                                           List<AndesMessageMetadata> metadataList) throws AndesException {
 
-        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.UPDATE_META_DATA_INFORMATION, this)
-                .start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.UPDATE_META_DATA_INFORMATION).start();
 
         try {
             // Step 1 add metadata to the new queue
@@ -590,7 +588,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public AndesMessageMetadata getMetaData(long messageId) throws AndesException {
-        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_META_DATA, this)
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_META_DATA)
                 .start();
 
         try {
@@ -623,7 +621,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                                                       long firstMsgId,
                                                       long lastMsgID) throws AndesException {
 
-        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.GET_META_DATA_LIST, this).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_META_DATA_LIST).start();
 
         try {
             Statement statement = QueryBuilder.select().column(CQLConstants.MESSAGE_ID).column(CQLConstants.METADATA).
@@ -656,8 +654,8 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                                                                        long firstMsgId,
                                                                        int count) throws AndesException {
 
-        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.
-                GET_NEXT_MESSAGE_METADATA_FROM_QUEUE, this).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.
+                GET_NEXT_MESSAGE_METADATA_FROM_QUEUE).start();
 
         try {
             Statement statement = QueryBuilder.select().column(CQLConstants.METADATA).column(CQLConstants.MESSAGE_ID).
@@ -701,8 +699,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     public void deleteMessageMetadataFromQueue(String storageQueueName,
                                                List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
 
-        Context context = DataAccessMatrixManager.addAndGetTimer(MatrixConstants.DELETE_MESSAGE_META_DATA_FROM_QUEUE, this).
-                start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.DELETE_MESSAGE_META_DATA_FROM_QUEUE).start();
 
         try {
             BatchStatement batchStatement = new BatchStatement();

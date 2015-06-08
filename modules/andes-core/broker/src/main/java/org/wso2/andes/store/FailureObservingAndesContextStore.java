@@ -21,7 +21,6 @@ package org.wso2.andes.store;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
-
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesContextStore;

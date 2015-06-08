@@ -25,16 +25,18 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
-
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.wso2.carbon.metrics.manager.Gauge;
+import org.wso2.carbon.metrics.manager.Level;
+import org.wso2.carbon.metrics.manager.MetricManager;
 
 public class FlowControlManager  implements StoreHealthListener {
     /**
@@ -127,6 +129,9 @@ public class FlowControlManager  implements StoreHealthListener {
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("AndesScheduledTaskManager-FlowControl")
                                                                      .build();
         executor = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
+
+        //Will start the gauge
+        MetricManager.gauge(Level.INFO, MetricsConstants.ACTIVE_CHANNELS, new ChannelGauge());
     }
 
     /**
@@ -331,5 +336,14 @@ public class FlowControlManager  implements StoreHealthListener {
     public void storeOperational(HealthAwareStore store) {
         unblockListenersOnErrorBasedFlowControl();
     }
-   
+
+    /**
+     * This will get current number of channels.
+     */
+    private class ChannelGauge implements Gauge<Integer> {
+        @Override
+        public Integer getValue() {
+            return channels.size();
+        }
+    }
 }

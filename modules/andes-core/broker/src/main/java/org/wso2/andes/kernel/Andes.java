@@ -31,7 +31,11 @@ import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.kernel.distruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
+import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.carbon.metrics.manager.Level;
+import org.wso2.carbon.metrics.manager.Meter;
+import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.List;
 import java.util.UUID;
@@ -165,6 +169,10 @@ public class Andes {
      */
     public void messageReceived(AndesMessage message, AndesChannel andesChannel, PubAckHandler pubAckHandler) {
         inboundEventManager.messageReceived(message, andesChannel, pubAckHandler);
+
+        //Adding metrics meter for message rate
+        Meter messageMeter = MetricManager.meter(Level.INFO, this.getClass() + MetricsConstants.MSG_RECEIVE_RATE);
+        messageMeter.mark();
     }
 
     /**
@@ -174,6 +182,10 @@ public class Andes {
      */
     public void ackReceived(AndesAckData ackData) throws AndesException {
         inboundEventManager.ackReceived(ackData);
+
+        //Adding metrics meter for ack rate
+        Meter ackMeter = MetricManager.meter(Level.INFO, this.getClass() + MetricsConstants.ACK_RECEIVE_RATE);
+        ackMeter.mark();
     }
 
     /**

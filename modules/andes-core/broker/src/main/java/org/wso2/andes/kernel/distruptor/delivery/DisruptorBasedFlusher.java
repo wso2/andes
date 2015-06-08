@@ -28,10 +28,10 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
-import org.wso2.andes.matrics.DataAccessMatrixManager;
-import org.wso2.andes.matrics.MatrixConstants;
+import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.carbon.metrics.manager.Gauge;
-
+import org.wso2.carbon.metrics.manager.Level;
+import org.wso2.carbon.metrics.manager.MetricManager;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -100,9 +100,8 @@ public class DisruptorBasedFlusher {
         disruptor.start();
         ringBuffer = disruptor.getRingBuffer();
 
-        //Will add the guage listener to periodically calculate the outbound messages in the ring
-        DataAccessMatrixManager.addGuage(MatrixConstants.DISRUPTOR_OUTBOUND_RING, this.getClass(),
-                new OutBoundRingGuage());
+        //Will add the gauge listener to periodically calculate the outbound messages in the ring
+        MetricManager.gauge(Level.INFO, MetricsConstants.DISRUPTOR_OUTBOUND_RING, new OutBoundRingGauge());
     }
 
     /**
@@ -137,7 +136,7 @@ public class DisruptorBasedFlusher {
      * Utility class used to gauge ring size.
      *
      */
-    private class OutBoundRingGuage implements Gauge<Long> {
+    private class OutBoundRingGauge implements Gauge<Long> {
         @Override
         public Long getValue() {
             //The total ring size will be reduced from the remaining ring size
