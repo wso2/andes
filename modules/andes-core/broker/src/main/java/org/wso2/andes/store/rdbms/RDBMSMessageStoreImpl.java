@@ -25,7 +25,6 @@ import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_MESSAGE_PART;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_METADATA;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
-
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -38,7 +37,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
@@ -1774,10 +1772,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement preparedStatementForTopicSelect = null;
         List<String> topicList = new ArrayList<String>();
-        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start(); 
         ResultSet results = null;
-
-        Context contextRead = DataAccessMetricsManager.addAndGetTimer(MetricsConstants.DB_READ, this.getClass()).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
             connection = getConnection();
             connection.setAutoCommit(false);
