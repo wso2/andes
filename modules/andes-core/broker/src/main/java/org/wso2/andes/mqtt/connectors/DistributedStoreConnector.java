@@ -55,7 +55,6 @@ public class DistributedStoreConnector implements MQTTConnector {
     private static Log log = LogFactory.getLog(DistributedStoreConnector.class);
     private static final String MQTT_TOPIC_DESTINATION = "destination";
     private static final String MQTT_QUEUE_IDENTIFIER = "targetQueue";
-    private AndesChannel andesChannel;
 
     /**
      * Will maintain the relation between the publisher client identifiers vs the id generated cluster wide
@@ -64,29 +63,6 @@ public class DistributedStoreConnector implements MQTTConnector {
     private Map<String, MQTTPublisherChannel> publisherTopicCorrelate = new HashMap<String, MQTTPublisherChannel>();
 
     public DistributedStoreConnector() {
-   /*     andesChannel = Andes.getInstance().createChannel(new FlowControlListener() {
-            @Override
-            public void block() {
-                log.info("Enforcing flow control over MQTT Channel");
-                try {
-                    MQTTopicManager.getInstance().enforceFlowControl(true);
-                } catch (MQTTException e) {
-                    String error = "Error occurred while enforcing flow control";
-                    log.error(error,e);
-                }
-            }
-
-            @Override
-            public void unblock() {
-                log.info("Disabling flow control over MQTT Channel");
-                try {
-                    MQTTopicManager.getInstance().enforceFlowControl(false);
-                } catch (MQTTException e) {
-                    String error = "Error occurred while disabling flow control";
-                    log.error(error, e);
-                }
-            }
-        });*/
     }
 
     /**
