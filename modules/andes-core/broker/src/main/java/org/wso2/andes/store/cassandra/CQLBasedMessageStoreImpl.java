@@ -24,14 +24,13 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.in;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.lte;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.Map.Entry;
+
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.carbon.metrics.manager.Level;
 import org.apache.log4j.Logger;
 import com.datastax.driver.core.BatchStatement;
@@ -74,6 +73,8 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     private AndesContextStore contextStore;
 
     private CQLUtils cqlUtils;
+
+    private long lastRecoveryMessageId;
     
     /**
      * CQL prepared statement to insert message content to DB
@@ -182,6 +183,8 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         psUpdateRetainMetadata    = session.prepare(PS_UPDATE_RETAIN_METADATA);
         psDeleteRetainMessagePart = session.prepare(PS_DELETE_RETAIN_MESSAGE_PART);
         psInsertRetainMessagePart = session.prepare(PS_INSERT_RETAIN_MESSAGE_PART);
+
+        this.lastRecoveryMessageId = ServerStartupRecoveryUtils.getMessageIdToCompleteRecovery();
 
         return cqlConnection;
     }
@@ -654,29 +657,78 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                                                                        long firstMsgId,
                                                                        int count) throws AndesException {
 
+        Timer timer = new Timer();
+        List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>();
+        long lastMsgId;
+
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.
                 GET_NEXT_MESSAGE_METADATA_FROM_QUEUE).start();
+
+        if (firstMsgId == 0) {
+            try {
+                String recoveryStartFrom = AndesConfigurationManager.readValue
+                        (AndesConfiguration.RECOVERY_MESSAGES_START_FROM_DATE);
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                Date recoveryDate = dateFormat.parse(recoveryStartFrom);
+                firstMsgId = recoveryDate.getTime();
+            } catch (ParseException e) {
+                throw new AndesException("Error while parsing <startRecoveryFrom> property. " +
+                        "Please verify date format.");
+            }
+        }
+        long messageIdDifference = 256 * 1024 * 100000L;
+        lastMsgId = firstMsgId + messageIdDifference;
 
         try {
             Statement statement = QueryBuilder.select().column(CQLConstants.METADATA).column(CQLConstants.MESSAGE_ID).
                     from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
                     where(eq(CQLConstants.QUEUE_NAME, storageQueueName)).
                     and(gte(CQLConstants.MESSAGE_ID, firstMsgId)).
+                    and(lte(CQLConstants.MESSAGE_ID, lastMsgId)).
                     limit(count).
                     setConsistencyLevel(config.getReadConsistencyLevel());
 
             ResultSet resultSet = execute(statement, "retrieving metadata list from " + storageQueueName +
-                    " with starting msg id " + firstMsgId + " and limit " + count);
-            List<AndesMessageMetadata> metadataList =
+                    " with starting msg id " + firstMsgId + " and ending message id " + lastMsgId);
+            metadataList =
                     new ArrayList<AndesMessageMetadata>(resultSet.getAvailableWithoutFetching());
 
             for (Row row : resultSet) {
                 metadataList.add(getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID)));
             }
-            return metadataList;
+
+            if (metadataList.size() == 0) {
+                ServerStartupRecoveryUtils.readingCassandraInfoLog(timer);
+                while (lastMsgId <= lastRecoveryMessageId) {
+                    long nextMsgId = lastMsgId + 1;
+                    lastMsgId = nextMsgId + messageIdDifference;
+                    statement = QueryBuilder.select().column(CQLConstants.METADATA).column(CQLConstants.MESSAGE_ID).
+                            from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
+                            where(eq(CQLConstants.QUEUE_NAME, storageQueueName)).
+                            and(gte(CQLConstants.MESSAGE_ID, nextMsgId)).
+                            and(lte(CQLConstants.MESSAGE_ID, lastMsgId)).
+                            limit(count).
+                            setConsistencyLevel(config.getReadConsistencyLevel());
+
+                    resultSet = execute(statement, "retrieving metadata list from " + storageQueueName +
+                            " with starting msg id " + firstMsgId + " ending message id " + lastMsgId);
+                    metadataList =
+                            new ArrayList<AndesMessageMetadata>(resultSet.getAvailableWithoutFetching());
+
+                    for (Row row : resultSet) {
+                        metadataList.add(getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID)));
+                    }
+                    if (metadataList.size() > 0) {
+                        break;
+                    }
+                }
+            }
+
         } finally {
             context.stop();
+            timer.cancel();
         }
+        return metadataList;
     }
 
     /**
@@ -1044,7 +1096,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public List<String> getAllRetainedTopics() throws AndesException {
 
-        List<String> topicList = new ArrayList<>();
+        List<String> topicList = new ArrayList<String>();
         ResultSet resultSet;
 
         Statement statement = QueryBuilder.select().column(CQLConstants.TOPIC_NAME).

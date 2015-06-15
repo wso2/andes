@@ -112,27 +112,31 @@ public class AndesKernelBoot {
      * @throws AndesException
      */
     public static void recoverDistributedSlotMap() throws AndesException {
-        // Slot recreation is required in the clustering mode
-        if (AndesContext.getInstance().isClusteringEnabled()) {
-            HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
+        try {
+            // Slot recreation is required in the clustering mode
+            if (AndesContext.getInstance().isClusteringEnabled()) {
+                HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
 
-            try {
-                hazelcastAgent.acquireInitializationLock();
-                if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
-                    log.info("Restoring slot mapping in the cluster.");
+                try {
+                    hazelcastAgent.acquireInitializationLock();
+                    if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
+                        log.info("Restoring slot mapping in the cluster.");
 
-                    recoverMapsForEachQueue();
+                        recoverMapsForEachQueue();
 
-                    hazelcastAgent.indicateSuccessfulInitilization();
+                        hazelcastAgent.indicateSuccessfulInitilization();
+                    }
+                } finally {
+                    hazelcastAgent.releaseInitializationLock();
                 }
-            } finally {
-                hazelcastAgent.releaseInitializationLock();
+            } else {
+                log.info("Restoring slot mapping in the node.");
+                recoverMapsForEachQueue();
             }
-        } else {
-            log.info("Restoring slot mapping in the node.");
-            recoverMapsForEachQueue();
+            log.info("Slot mapping restore completed.");
+        } catch (Throwable e) {
+            e.printStackTrace();
         }
-        log.info("Slot mapping restore completed.");
     }
 
     /**

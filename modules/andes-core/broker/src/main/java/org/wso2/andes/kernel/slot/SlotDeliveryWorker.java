@@ -387,7 +387,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
     @Override
     public void storeNonOperational(HealthAwareStore store, Exception ex) {
       
-        log.info("message stores became inoperational therefore waiting");
+        log.info("Message stores became not operational therefore waiting");
         messageStoresUnavailable = SettableFuture.create();
  
     }
@@ -398,7 +398,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      */
     @Override
     public void storeOperational(HealthAwareStore store) {
-        log.info("message stores became operational therefore resuming work");
+        log.info("Message stores became operational therefore resuming work");
         messageStoresUnavailable.set(false);
         
     }

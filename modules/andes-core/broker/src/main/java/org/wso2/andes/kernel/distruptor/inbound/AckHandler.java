@@ -162,7 +162,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
      */
     @Override
     public void storeNonOperational(HealthAwareStore store, Exception ex) {
-        log.info(String.format("messagestore became inoperational. messages to delete : %d", 
+        log.info(String.format("Message store became not operational. messages to delete : %d",
                                removableMetadata.size()));
         messageStoresUnavailable = SettableFuture.create();
     }
@@ -173,7 +173,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
      */
     @Override
     public void storeOperational(HealthAwareStore store) {
-        log.info(String.format("messagestore became operational. messages to delete : %d", 
+        log.info(String.format("Message store became operational. messages to delete : %d",
                                 removableMetadata.size()));
         messageStoresUnavailable.set(false);
    }

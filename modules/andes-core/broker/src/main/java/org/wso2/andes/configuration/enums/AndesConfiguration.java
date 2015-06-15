@@ -412,7 +412,12 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * NOT USED FOR NOW.
      */
     FLOW_CONTROL_CONNECTION_BASED_PER_CONNECTION_MESSAGE_THRESHOLD("flowControl/connectionBased" +
-            "/perConnectionMessageThreshold", "1000", Integer.class);
+            "/perConnectionMessageThreshold", "1000", Integer.class),
+
+    /**
+     * MB starts recovery messages from given date onwards if single node/entire nodes in cluster went down.
+     */
+    RECOVERY_MESSAGES_START_FROM_DATE("recovery/startRecoveryFrom", "2015-05-27 00:00:00", String.class);
 
 
 

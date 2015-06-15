@@ -27,6 +27,8 @@ import org.apache.commons.lang.NotImplementedException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -40,11 +42,10 @@ import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 import static org.wso2.carbon.metrics.manager.Timer.*;
 
@@ -76,6 +77,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     private AndesContextStore contextStore;
 
+    private long lastRecoveryMessageId;
+
     /**
      * {@inheritDoc}
      */
@@ -88,6 +91,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             hectorConnection = new HectorConnection();
         }
         hectorConnection.initialize(connectionProperties);
+
+        this.lastRecoveryMessageId = ServerStartupRecoveryUtils.getMessageIdToCompleteRecovery();
 
         this.contextStore = contextStore;
         // get cassandra cluster and create column families
@@ -470,20 +475,57 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                                                                        long firstMsgId, int count)
             throws AndesException {
 
+        Timer timer = new Timer();
+        List<AndesMessageMetadata> messagesFromQueue = new ArrayList<AndesMessageMetadata>();
+        long lastMsgId;
+
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_NEXT_MESSAGE_METADATA_FROM_QUEUE).start();
+
+        if (firstMsgId == 0) {
+            try {
+                String recoveryStartFrom = AndesConfigurationManager.readValue
+                        (AndesConfiguration.RECOVERY_MESSAGES_START_FROM_DATE);
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                Date recoveryDate = dateFormat.parse(recoveryStartFrom);
+                firstMsgId = recoveryDate.getTime();
+            } catch (ParseException e) {
+                throw new AndesException("Error while parsing <startRecoveryFrom> property. " +
+                        "Please verify date format.");
+            }
+        }
+        long messageIdDifference = 256 * 1024 * 100000L;
+        lastMsgId = firstMsgId + messageIdDifference;
         try {
-            return HectorDataAccessHelper
+            messagesFromQueue = HectorDataAccessHelper
                     .getMessagesFromQueue(queueName,
                             HectorConstants.META_DATA_COLUMN_FAMILY,
-                            keyspace, firstMsgId, Long.MAX_VALUE,
+                            keyspace, firstMsgId, lastMsgId,
                             count, true);
+            if (messagesFromQueue.size() == 0) {
+                ServerStartupRecoveryUtils.readingCassandraInfoLog(timer);
+                while (lastMsgId <= lastRecoveryMessageId) {
+                    long nextMsgId = lastMsgId + 1;
+                    lastMsgId = nextMsgId + messageIdDifference;
+                    messagesFromQueue = HectorDataAccessHelper
+                            .getMessagesFromQueue(queueName,
+                                    HectorConstants.META_DATA_COLUMN_FAMILY,
+                                    keyspace, nextMsgId, lastMsgId,
+                                    count, true);
+                    if (messagesFromQueue.size() > 0) {
+                        break;
+                    }
+                }
+
+            }
 
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while reading meta data list for message IDs " +
                     "from " + firstMsgId + " to " + firstMsgId, e);
         } finally {
             context.stop();
+            timer.cancel();
         }
+        return messagesFromQueue;
     }
 
     /**
