@@ -47,7 +47,12 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      * Cassandra Keyspace
      */
     private Keyspace keyspace;
-
+    
+    /**
+     * Encapsulates functionality required to test connectivity to cluster
+     */
+    private HectorUtils hectorUtils;
+    
     /**
      * Set HectorConnection
      */
@@ -90,6 +95,14 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
             HectorDataAccessHelper.createColumnFamily(NODE_DETAIL_COLUMN_FAMILY, keyspace, cluster,
                     HectorConstants.UTF8_TYPE, gcGraceSeconds);
 
+            HectorDataAccessHelper.createColumnFamily(HectorConstants.MESSAGE_STORE_STATUS_COLUMN_FAMILY,
+                                                      keyspace, cluster,
+                                                      HectorConstants.UTF8_TYPE,
+                                                      gcGraceSeconds);
+
+            
+            hectorUtils = new HectorUtils();
+            
             return hectorConnection;
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while creating column spaces during subscription " +
@@ -102,7 +115,14 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public Map<String, List<String>> getAllStoredDurableSubscriptions() throws AndesException {
-        return HectorDataAccessHelper.listAllStringRows(SUBSCRIPTIONS_COLUMN_FAMILY, keyspace);
+
+        try {
+            return HectorDataAccessHelper.listAllStringRows(SUBSCRIPTIONS_COLUMN_FAMILY, keyspace);
+
+        } catch (CassandraDataAccessException e) {
+            throw new AndesException("Error while retrieving durable subscriptions to cassandra " +
+                    "context store", e);
+        }
     }
 
     /**
@@ -454,6 +474,9 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public boolean isOperational(String testString, long testTime) {
-        return true;
+        return hectorConnection.isReachable() &&
+               hectorUtils.testInsert(hectorConnection, testString, testTime) &&
+               hectorUtils.testRead(hectorConnection, testString, testTime) &&
+               hectorUtils.testDelete(hectorConnection, testString, testTime);
     }
 }

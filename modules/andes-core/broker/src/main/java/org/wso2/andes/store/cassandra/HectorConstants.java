@@ -18,7 +18,7 @@
 
 package org.wso2.andes.store.cassandra;
 
-import me.prettyprint.cassandra.serializers.*;
+import me.prettyprint.cassandra.serializers.StringSerializer;
 
 /**
  * Constants used by Hector related classes
@@ -112,6 +112,18 @@ public class HectorConstants {
     public final static String MESSAGE_COUNTERS_RAW_NAME = "QueueMessageCountRow";
 
     public final static String MESSAGES_FOR_EXPIRY_COLUMN_FAMILY="MessagesForExpiration";
+
+    /**
+     * Used to write/read/delete 'test-data' in order to check cassandra can be
+     * accessed with specified
+     * read/write consistency level
+     */
+    public final static String MESSAGE_STORE_STATUS_COLUMN_FAMILY = "MessageStoreStatus";
+    
+    /**
+     * Column stores a long value (current time) while checking for connectivity
+     */
+    public final static String MESSAGE_STORE_STATUS_COLUMN_TIME_STAMP = "TimeStamp";
 
     /**
      * Number of seconds to configure as the GC Grace seconds when creating Cassandra column

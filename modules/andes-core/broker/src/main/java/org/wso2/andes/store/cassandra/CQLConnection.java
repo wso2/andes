@@ -88,15 +88,6 @@ public class CQLConnection extends DurableStoreConnection {
      * {@inheritDoc}
      */
     @Override
-    public boolean isLive() {
-        // TODO: implement Cassandra specific DB check for availability.
-        return true;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public Object getConnection() {
         return session;
     }

@@ -120,4 +120,11 @@ public class FailureObservingStoreManager {
         }
 
     }
+    
+    /**
+     * Stop the scheduled tasks which are checking for message stores availability.
+     */
+    /*package*/ static void close(){
+        executor.shutdown();
+    }
 }
