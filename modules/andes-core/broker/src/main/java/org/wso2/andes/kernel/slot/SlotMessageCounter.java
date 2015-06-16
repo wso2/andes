@@ -56,6 +56,20 @@ public class SlotMessageCounter {
 
     private static final int SLOT_SUBMIT_LOOP_SKIP_COUNT_THRESHOLD = 10;
 
+    /**
+     * Time between successive slot submit scheduled tasks.
+     * <p>
+     * In a slow message publishing scenario, this is the delay for each message for delivery.
+     * For instance if we publish one message per minute then each message will have to wait
+     * till this timeout before the messages are submitted to the slot coordinator.
+     */
+    public static final int SLOT_SUBMIT_TIMEOUT = 4000;
+
+    /**
+     * maximum expected time a submit slot task will execute
+     */
+    private static final int SLOT_SUBMIT_TASK_EXEC_PERIOD = 3000;
+
     private SlotMessageCounter() {
         scheduleSubmitSlotToCoordinatorTimer();
 
@@ -102,11 +116,10 @@ public class SlotMessageCounter {
                         } catch (ConnectionException e) {
                             log.error("Error while sending slot deletion safe zone update", e);
                         }
-
                     }
                 }
             }
-        }, 4000, 3000);
+        }, SLOT_SUBMIT_TIMEOUT, SLOT_SUBMIT_TASK_EXEC_PERIOD);
     }
 
     /**
@@ -200,6 +213,14 @@ public class SlotMessageCounter {
 
     public void updateSafeZoneForNode(long currentSafeZoneVal) {
         currentSlotDeleteSafeZone = currentSafeZoneVal;
+    }
+
+    /**
+     * Message id generated through {@link org.wso2.andes.kernel.distruptor.inbound.MessagePreProcessor}.
+     * This Id is updated through scheduled task.
+     */
+    public long getCurrentNodeSafeZoneId() {
+        return currentSlotDeleteSafeZone;
     }
 
     /**

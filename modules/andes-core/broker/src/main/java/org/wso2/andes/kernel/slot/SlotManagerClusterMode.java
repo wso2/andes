@@ -18,10 +18,10 @@
 
 package org.wso2.andes.kernel.slot;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.hazelcast.core.IMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.HashmapStringTreeSetWrapper;
 
@@ -30,7 +30,15 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wr
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetSlotWrapper;
 
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Slot Manager Cluster Mode is responsible of slot allocating, slot creating,
@@ -44,31 +52,27 @@ public class SlotManagerClusterMode {
 
     private static final int SAFE_ZONE_EVALUATION_INTERVAL = 5 * 1000;
 
-    private static final String HAZELCAST_INACTIVE_WARNING = "Hazelcast instance is not active. Could not proceed with ";
-
-    private static final String HAZELCAST_INACTIVE_DURING_SHUTDOWN = "The server is shutting down and therefore the cluster is inactive at the moment for ";
-
     /**
      * Slots which are previously owned and released by another node. Key is the queueName. Value
      * is TreeSetSlotWrapper objects. TreeSetSlotWrapper is a wrapper class for TreeSet<Slot>.
      */
-    private IMap<String, TreeSetSlotWrapper> unAssignedSlotMap;
+    private final IMap<String, TreeSetSlotWrapper> unAssignedSlotMap;
 
     /**
      * To keep TreeSetLongWrapper objects against queues. TreeSetLongWrapper is a wrapper class
      * for a Long TreeSet. Long TreeSet inside TreeSetLongWrapper is the list of message IDs.
      */
-    private IMap<String, TreeSetLongWrapper> slotIDMap;
+    private final IMap<String, TreeSetLongWrapper> slotIDMap;
 
     /**
      * To keep track of last assigned message ID against queue.
      */
-    private IMap<String, Long> queueToLastAssignedIDMap;
+    private final IMap<String, Long> queueToLastAssignedIDMap;
 
     /**
      * To keep track of last published ID against node
      */
-    private IMap<String, Long> nodeToLastPublishedIDMap;
+    private final IMap<String, Long> nodeToLastPublishedIDMap;
 
     /**
      * To keep track of assigned slots up to now. Key of the map contains nodeID. Value is
@@ -76,7 +80,7 @@ public class SlotManagerClusterMode {
      * HashMap<String,List<Slot>>. Key in that hash map is queue name. value is List of Slot
      * objects.
      */
-    private IMap<String, HashmapStringTreeSetWrapper> slotAssignmentMap;
+    private final IMap<String, HashmapStringTreeSetWrapper> slotAssignmentMap;
 
     /**
      * HazelCast map keeping overlapped slots. Overlapped slots are eligible to be assigned again.
@@ -85,27 +89,44 @@ public class SlotManagerClusterMode {
      * HashMap<String,List<Slot>>. Key in that hash map is queue name. value is List of Slot
      * objects.
      */
-    private IMap<String, HashmapStringTreeSetWrapper> overLappedSlotMap;
+    private final IMap<String, HashmapStringTreeSetWrapper> overLappedSlotMap;
 
     /**
      * Keeps slot deletion safe zones for each node, as they are informed by nodes via thrift
      * communication. Used for safe zone calculation for cluster by Slot Manager
      */
-    private Map<String, Long> nodeInformedSlotDeletionSafeZones;
+    private final Map<String, Long> nodeInformedSlotDeletionSafeZones;
 
     //safe zone calculator
-    private SlotDeleteSafeZoneCalc slotDeleteSafeZoneCalc;
+    private final SlotDeleteSafeZoneCalc slotDeleteSafeZoneCalc;
 
-    private static Log log = LogFactory.getLog(SlotManagerClusterMode.class);
+    /**
+     * Most recent node that left the cluster.
+     */
+    private String removedNode;
 
+    private static final Log log = LogFactory.getLog(SlotManagerClusterMode.class);
     //first message id of fresh slot
     private long firstMessageId;
 
+    /**
+     * Denotes whether a slot recovery task is scheduled
+     */
+    private boolean slotRecoveryScheduled;
 
+    /**
+     * Queues that need to be recovered  While a slot recovery is scheduled a submit
+     * slot comes to the given queue that queue will be removed from the scheduled task.
+     */
+    private Set<String> queuesToRecover;
+
+    /**
+     * Creates a slot manager for cluster mode slot coordination
+     */
     private SlotManagerClusterMode() {
 
         HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
-
+        removedNode = "";
         //Initialize distributed maps used in this class
         unAssignedSlotMap = hazelcastAgent.getUnAssignedSlotMap();
         overLappedSlotMap = hazelcastAgent.getOverLappedSlotMap();
@@ -114,7 +135,8 @@ public class SlotManagerClusterMode {
         nodeToLastPublishedIDMap = hazelcastAgent.getLastPublishedIDMap();
         slotAssignmentMap = hazelcastAgent.getSlotAssignmentMap();
 
-        nodeInformedSlotDeletionSafeZones = new HashMap<String, Long>();
+        nodeInformedSlotDeletionSafeZones = new HashMap<>();
+        slotRecoveryScheduled = false;
 
         //start a thread to calculate slot delete safe zone
         //TODO: use a common  thread pool for tasks like this?
@@ -311,7 +333,7 @@ public class SlotManagerClusterMode {
             HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
             if (wrapper == null) {
                 wrapper = new HashmapStringTreeSetWrapper();
-                queueToSlotMap = new HashMap<String, TreeSet<Slot>>();
+                queueToSlotMap = new HashMap<>();
                 wrapper.setStringListHashMap(queueToSlotMap);
                 slotAssignmentMap.putIfAbsent(nodeId, wrapper);
             }
@@ -320,7 +342,7 @@ public class SlotManagerClusterMode {
             queueToSlotMap = wrapper.getStringListHashMap();
             currentSlotList = queueToSlotMap.get(queueName);
             if (currentSlotList == null) {
-                currentSlotList = new TreeSet<Slot>();
+                currentSlotList = new TreeSet<>();
             }
 
             //update slot state
@@ -357,6 +379,11 @@ public class SlotManagerClusterMode {
                 wrapper = new TreeSetLongWrapper();
                 slotIDMap.putIfAbsent(queueName, wrapper);
             }
+
+            if (slotRecoveryScheduled) {
+                queuesToRecover.remove(queueName);
+            }
+
             messageIdSet = wrapper.getLongTreeSet();
 
             String lockKey = queueName + SlotManagerClusterMode.class;
@@ -455,7 +482,7 @@ public class SlotManagerClusterMode {
         if (queueToSlotMap != null) {
             for (Map.Entry<String, TreeSet<Slot>> entry : queueToSlotMap.entrySet()) {
                 TreeSet<Slot> slotsToBeReAssigned = entry.getValue();
-                TreeSet<Slot> freeSlotTreeSet = new TreeSet<Slot>();
+                TreeSet<Slot> freeSlotTreeSet = new TreeSet<>();
                 TreeSetSlotWrapper treeSetStringWrapper = new TreeSetSlotWrapper();
 
                 for (Slot slotToBeReAssigned : slotsToBeReAssigned) {
@@ -619,14 +646,14 @@ public class SlotManagerClusterMode {
                 synchronized (lockKeyForQueueName.intern()) {
                     TreeSetSlotWrapper treeSetStringWrapper = unAssignedSlotMap.get(queueName);
 
-                    TreeSet<Slot> unAssignedSlotSet = new TreeSet<Slot>();
+                    TreeSet<Slot> unAssignedSlotSet = new TreeSet<>();
                     if (null != treeSetStringWrapper) {
                         unAssignedSlotSet = treeSetStringWrapper.getSlotTreeSet();
                     } else {
                         treeSetStringWrapper = new TreeSetSlotWrapper();
                     }
                     if (unAssignedSlotSet == null) {
-                        unAssignedSlotSet = new TreeSet<Slot>();
+                        unAssignedSlotSet = new TreeSet<>();
                     }
                     for (Slot slotToBeReAssigned : assignedSlotList) {
                         //Reassign only if the slot is not empty
@@ -662,7 +689,7 @@ public class SlotManagerClusterMode {
      * beyond this zone.
      * @return current safe zone value
      */
-    public long getSlotDeleteSafeZone() {
+    long getSlotDeleteSafeZone() {
         return slotDeleteSafeZoneCalc.getSlotDeleteSafeZone();
     }
 
@@ -754,7 +781,7 @@ public class SlotManagerClusterMode {
      * @return TreeSet<Slot>
      */
     private TreeSet<Slot> getOverlappedAssignedSlots(String queueName, long startMsgID, long endMsgID) {
-        TreeSet<Slot> overlappedSlots = new TreeSet<Slot>();
+        TreeSet<Slot> overlappedSlots = new TreeSet<>();
 
         // Sweep all assigned slots to find overlaps using slotAssignmentMap, cos its optimized for node,queue-wise iteration.
         // The requirement here is to clear slot associations for the queue on all nodes.
@@ -763,7 +790,7 @@ public class SlotManagerClusterMode {
         for (String nodeID : nodeIDs) {
             String lockKey = nodeID + SlotManagerClusterMode.class;
 
-            TreeSet<Slot> overlappingSlotsOnNode = new TreeSet<Slot>();
+            TreeSet<Slot> overlappingSlotsOnNode = new TreeSet<>();
 
             synchronized (lockKey.intern()) {
                 HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeID);
@@ -823,6 +850,55 @@ public class SlotManagerClusterMode {
         }
 
         return overlappedSlots;
+    }
+
+    /**
+     * Recover any messages that are persisted but not notified to the slot coordinator from killed nodes.
+     * <p>
+     * For instance if a node get killed after persisting messages but before submitting slots,
+     * until another message is published to any remaining node a new slot will not be created.
+     * Hence these messages will not get delivered until another message is published.
+     * <p>
+     * Recover mechanism here will schedule tasks for each queue so that if no message get received within the
+     * given time period that queue slot manager will create a slot and capture those messages it self.
+     */
+    public void recoverSlots() {
+
+        int threadPoolCount = 1; // Single thread is suffice for this task
+        ThreadFactory namedThreadFactory =
+                new ThreadFactoryBuilder().setNameFormat("RecoverSlotsThreadPool").build();
+        ScheduledExecutorService recoverSlotScheduler =
+                Executors.newScheduledThreadPool(threadPoolCount, namedThreadFactory);
+        queuesToRecover = slotIDMap.keySet();
+
+        recoverSlotScheduler.schedule(
+                new Runnable() {
+                    @Override
+                    public void run() {
+
+                        long lastId = SlotMessageCounter.getInstance().getCurrentNodeSafeZoneId();
+                        for (String queueName : queuesToRecover) {
+                            // Trigger a submit slot for each queue so that new slots are created
+                            // for queues that have not published any messages after a node crash
+                            updateMessageID(queueName, removedNode, lastId - 1, lastId);
+                        }
+                        slotRecoveryScheduled = false;
+                    }
+                },
+                SlotMessageCounter.SLOT_SUBMIT_TIMEOUT,
+                TimeUnit.MILLISECONDS
+        );
+
+        slotRecoveryScheduled = true;
+
+    }
+
+    /**
+     * Set the recently removed node of the cluster
+     * @param nodeId Node id of the removed node
+     */
+    public void setRemovedNode(String nodeId) {
+        removedNode = nodeId;
     }
 
 }
