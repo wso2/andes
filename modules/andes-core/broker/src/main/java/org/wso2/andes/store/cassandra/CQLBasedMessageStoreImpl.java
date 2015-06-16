@@ -24,13 +24,16 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.in;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.lte;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Timer;
+import java.util.TimerTask;
 
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.carbon.metrics.manager.Level;
 import org.apache.log4j.Logger;
 import com.datastax.driver.core.BatchStatement;
@@ -665,18 +668,9 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                 GET_NEXT_MESSAGE_METADATA_FROM_QUEUE).start();
 
         if (firstMsgId == 0) {
-            try {
-                String recoveryStartFrom = AndesConfigurationManager.readValue
-                        (AndesConfiguration.RECOVERY_MESSAGES_START_FROM_DATE);
-                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                Date recoveryDate = dateFormat.parse(recoveryStartFrom);
-                firstMsgId = recoveryDate.getTime();
-            } catch (ParseException e) {
-                throw new AndesException("Error while parsing <startRecoveryFrom> property. " +
-                        "Please verify date format.");
-            }
+            firstMsgId = ServerStartupRecoveryUtils.getStartMessageIdForWarmStartup();
         }
-        long messageIdDifference = 256 * 1024 * 100000L;
+        long messageIdDifference = ServerStartupRecoveryUtils.getMessageDifferenceForWarmStartup();
         lastMsgId = firstMsgId + messageIdDifference;
 
         try {
@@ -698,7 +692,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             }
 
             if (metadataList.size() == 0) {
-                ServerStartupRecoveryUtils.readingCassandraInfoLog(timer);
+                readingCassandraInfoLog(timer);
                 while (lastMsgId <= lastRecoveryMessageId) {
                     long nextMsgId = lastMsgId + 1;
                     lastMsgId = nextMsgId + messageIdDifference;
@@ -723,12 +717,27 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                     }
                 }
             }
-
         } finally {
             context.stop();
             timer.cancel();
         }
         return metadataList;
+    }
+
+    /**
+     * INFO log print to inform user while reading tombstone
+     *
+     * @param timer TimerTask to schedule printing logs
+     */
+    private void readingCassandraInfoLog(Timer timer) {
+        long printDelay = 30000L;
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                log.info("Reading data from cassandra.");
+            }
+        }, 0, printDelay);
+
     }
 
     /**

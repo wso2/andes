@@ -24,11 +24,8 @@ import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.factory.HFactory;
 import me.prettyprint.hector.api.mutation.Mutator;
 import org.apache.commons.lang.NotImplementedException;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
@@ -43,11 +40,15 @@ import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
-import static org.wso2.carbon.metrics.manager.Timer.*;
+import static org.wso2.carbon.metrics.manager.Timer.Context;
 
 /**
  * This is the implementation of MessageStore that deals with Cassandra no SQL DB.
@@ -482,18 +483,9 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_NEXT_MESSAGE_METADATA_FROM_QUEUE).start();
 
         if (firstMsgId == 0) {
-            try {
-                String recoveryStartFrom = AndesConfigurationManager.readValue
-                        (AndesConfiguration.RECOVERY_MESSAGES_START_FROM_DATE);
-                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                Date recoveryDate = dateFormat.parse(recoveryStartFrom);
-                firstMsgId = recoveryDate.getTime();
-            } catch (ParseException e) {
-                throw new AndesException("Error while parsing <startRecoveryFrom> property. " +
-                        "Please verify date format.");
-            }
+            firstMsgId = ServerStartupRecoveryUtils.getStartMessageIdForWarmStartup();
         }
-        long messageIdDifference = 256 * 1024 * 100000L;
+        long messageIdDifference = ServerStartupRecoveryUtils.getMessageDifferenceForWarmStartup();
         lastMsgId = firstMsgId + messageIdDifference;
         try {
             messagesFromQueue = HectorDataAccessHelper
@@ -502,7 +494,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                             keyspace, firstMsgId, lastMsgId,
                             count, true);
             if (messagesFromQueue.size() == 0) {
-                ServerStartupRecoveryUtils.readingCassandraInfoLog(timer);
+                readingCassandraInfoLog(timer);
                 while (lastMsgId <= lastRecoveryMessageId) {
                     long nextMsgId = lastMsgId + 1;
                     lastMsgId = nextMsgId + messageIdDifference;
@@ -515,7 +507,6 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                         break;
                     }
                 }
-
             }
 
         } catch (CassandraDataAccessException e) {
@@ -526,6 +517,22 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             timer.cancel();
         }
         return messagesFromQueue;
+    }
+
+    /**
+     * INFO log print to inform user while reading tombstone
+     *
+     * @param timer TimerTask to schedule printing logs
+     */
+    private void readingCassandraInfoLog(Timer timer) {
+        long printDelay = 30000L;
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                log.info("Reading data from cassandra.");
+            }
+        }, 0, printDelay);
+
     }
 
     /**

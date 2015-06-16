@@ -417,7 +417,14 @@ public enum AndesConfiguration implements ConfigurationProperty {
     /**
      * MB starts recovery messages from given date onwards if single node/entire nodes in cluster went down.
      */
-    RECOVERY_MESSAGES_START_FROM_DATE("recovery/startRecoveryFrom", "2015-05-27 00:00:00", String.class);
+    RECOVERY_MESSAGES_START_FROM_DATE("recovery/startRecoveryFrom", "2015-05-27 00:00:00", String.class),
+
+
+    /**
+     * Recover message chunks at particular database call. Please make sure this config won't cause
+     * TombstoneOverwhelmingException
+     */
+    RECOVERY_MESSAGES_RECOVERY_WINDOW_SIZE("recovery/recoveryWindowSize", "100000", Long.class);
 
 
 
