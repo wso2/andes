@@ -88,6 +88,11 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     private long lastRecoveryMessageId;
 
     /**
+     * The comma is used to append message IDs to one another when performing column operations
+     */
+    private final String comma = " , ";
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -322,7 +327,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         removableMetaDataList.add(messageId);
 
         addMetaDataToQueue(targetQueueName, messageMetadataList.get(0));
-        deleteMessageMetadataFromQueue(currentQueueName, removableMetaDataList);
+        deleteMessageMetaDataFromQueue(currentQueueName, removableMetaDataList);
     }
 
     /**
@@ -518,7 +523,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessageMetadataFromQueue(String queueName, List<Long>
+    public void deleteMessageMetaDataFromQueue(String queueName, List<Long>
             messagesToRemove) throws AndesException {
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.DELETE_MESSAGE_META_DATA_FROM_QUEUE).start();
@@ -526,7 +531,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             if (log.isTraceEnabled()) {
                 StringBuilder messageIDsString = new StringBuilder();
                 for (Long metadata : messagesToRemove) {
-                    messageIDsString.append(metadata.longValue()).append(" , ");
+                    messageIDsString.append(metadata.longValue()).append(comma);
                 }
                 log.trace(messagesToRemove.size() + " messages removed : " + messageIDsString);
             }
@@ -554,15 +559,15 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     public void deleteMessages(final String storageQueueName,
-                               List<Long> messagesToRemove, boolean deleteAllMeta)
+                               List<Long> messagesToRemove, boolean deleteAllMetaData)
             throws AndesException {
         Context context = MetricManager.timer(Level.INFO, MetricsConstants.DELETE_MESSAGE_META_DATA_AND_CONTENT)
                 .start();
         try {
             if (log.isTraceEnabled()) {
                 StringBuilder messageIDsString = new StringBuilder();
-                for (Long metadata : messagesToRemove) {
-                    messageIDsString.append(metadata.longValue()).append(" , ");
+                for (Long messageID : messagesToRemove) {
+                    messageIDsString.append(messageID.longValue()).append(comma);
                 }
                 log.trace(messagesToRemove.size() + " messages removed : " + messageIDsString);
             }
@@ -572,20 +577,20 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             List<String> rows2Remove = new ArrayList<String>();
             //if all metadata is not be removed, add metadata and content of each message to delete
             //else, add content of each message and all metadata for the queue to delete
-            if (!deleteAllMeta) {
-                for (Long message : messagesToRemove) {
+            if (!deleteAllMetaData) {
+                for (Long messageID : messagesToRemove) {
                     HectorDataAccessHelper
                             .deleteLongColumnFromRaw(
                                     HectorConstants.META_DATA_COLUMN_FAMILY,
-                                    storageQueueName, message.longValue(), mutator, false);
+                                    storageQueueName, messageID.longValue(), mutator, false);
                     rows2Remove.add(MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX +
-                            message.longValue());
+                            messageID.longValue());
                 }
             } else {
                 mutator.addDeletion(storageQueueName, HectorConstants.META_DATA_COLUMN_FAMILY);
-                for (Long message : messagesToRemove) {
+                for (Long messageID : messagesToRemove) {
                     rows2Remove.add(MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX +
-                            message.longValue());
+                            messageID.longValue());
                 }
             }
             if (!rows2Remove.isEmpty()) {

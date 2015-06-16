@@ -468,7 +468,7 @@ public class MessagingEngine {
             for (Map.Entry<String, AndesRemovableMetadataDTO> entry : storageSeperatedAndesRemovableMetadataDTOs
                     .entrySet()) {
                 //delete message metadata only
-                messageStore.deleteMessageMetadataFromQueue(entry.getKey(), entry.getValue().messagesToRemove);
+                messageStore.deleteMessageMetaDataFromQueue(entry.getKey(), entry.getValue().messagesToRemove);
                 decrementQueueCount(entry.getKey(), entry.getValue().msgCount);
             }
         }

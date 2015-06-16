@@ -240,10 +240,10 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessageMetadataFromQueue(String storageQueueName, List<Long> messagesToRemove)
+    public void deleteMessageMetaDataFromQueue(String storageQueueName, List<Long> messagesToRemove)
             throws AndesException {
         try {
-            wrappedInstance.deleteMessageMetadataFromQueue(storageQueueName, messagesToRemove);
+            wrappedInstance.deleteMessageMetaDataFromQueue(storageQueueName, messagesToRemove);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -254,10 +254,10 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     public void deleteMessages(final String storageQueueName,
-                               List<Long> messagesToRemove, boolean deleteAllMeta)
+                               List<Long> messagesToRemove, boolean deleteAllMetaData)
             throws AndesException {
         try {
-            wrappedInstance.deleteMessages(storageQueueName, messagesToRemove, deleteAllMeta);
+            wrappedInstance.deleteMessages(storageQueueName, messagesToRemove, deleteAllMetaData);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
