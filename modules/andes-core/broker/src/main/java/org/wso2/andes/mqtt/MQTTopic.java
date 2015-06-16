@@ -30,7 +30,7 @@ import static org.dna.mqtt.wso2.AndesMQTTBridge.QOSLevel;
  * Each topic will have multiple relationships with its subscribers, the list of subscribers and the topics will be
  * maintained through this class
  */
-public class MQTTopic {
+public class MQTTopic  {
 
     /**
      * Will log the messages generated through the class
@@ -92,11 +92,13 @@ public class MQTTopic {
             subscriber.setSubscriberChannelID(clusterSpecificID);
             //Will set the subscription channel
             subscriber.setSubscriptionChannel(subscriptionChannel);
+            //Will set the topic name
+            subscriber.setTopicName(topic);
             //Will register the subscriber
             subscribers.put(mqttClientChannelID, subscriber);
             if (log.isDebugEnabled()) {
                 log.debug("Subscriber with channel id :" + mqttClientChannelID + " with qos :" + qos +
-                        " havin clean session :" + isCleanSession);
+                        " having clean session :" + isCleanSession);
             }
 
         } else {
@@ -136,6 +138,12 @@ public class MQTTopic {
         return subscriber;
     }
 
+    /**
+     * Returns the subscription relevant for a particular channel
+     *
+     * @param mqttClientChannelID the channel id of the subscription
+     * @return the subscription
+     */
     public MQTTSubscriber getSubscription(String mqttClientChannelID) {
         return subscribers.get(mqttClientChannelID);
     }

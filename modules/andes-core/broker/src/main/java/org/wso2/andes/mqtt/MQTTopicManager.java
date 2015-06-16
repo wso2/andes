@@ -28,9 +28,12 @@ import org.wso2.andes.mqtt.connectors.MQTTConnector;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.dna.mqtt.wso2.AndesMQTTBridge.*;
 
@@ -46,10 +49,6 @@ public class MQTTopicManager {
      */
     private static Log log = LogFactory.getLog(MQTTopicManager.class);
     /**
-     * The instance which will be referred
-     */
-    private static MQTTopicManager instance = new MQTTopicManager();
-    /**
      * The topic name will be defined as the key and the value will hold the subscription information
      * We could go with the hash map since we don't need immediate reflection of values being added during the runtime
      * i.e subscription getting bound when a message is given out for distribution, for topics we only need to deliver
@@ -57,17 +56,23 @@ public class MQTTopicManager {
      */
     private Map<String, MQTTopic> topics = new HashMap<String, MQTTopic>();
     /**
+     * key - the channel in which the message was transmitted
+     * value - <local message id generated, subscription that holds the channel information>
+     * <p><b>Note:<b>A channel could have 1..* topic subscriptions, at a given time the local message id generated will
+     * be unique, we keep the local ids of the map in sorted order</p>
+     * We use a concurrent hash-map since there will be messages added while subscriptions are bound - multi threaded
+     */
+    private Map<String,MQTTOnFlightMessages> onFlightMessages = new ConcurrentHashMap<String, MQTTOnFlightMessages>();
+    /**
+     * The instance which will be referred
+     */
+    private static MQTTopicManager instance = new MQTTopicManager();
+
+    /**
      * Will keep the reference with the bridge
      */
     private static AndesMQTTBridge mqttAndesConnectingBridge = null;
-    /**
-     * Will correlate between topic and subscribers
-     * The map will be used when subscriber disconnection is called where the corresponding topic needs to be identified
-     * the underlying protocol engine only provides the disconnected client id.
-     * The key of the map will be the client id and the value will be the topic
-     * We use the Hash-map here since there cannot have an occurrence of subscriber binding and disconnecting in parallel
-     */
-    private Map<String, String> subscriberTopicCorrelate = new HashMap<String, String>();
+
     /**
      * The channel reference which will be used to interact with the Andes Kernal
      */
@@ -166,15 +171,11 @@ public class MQTTopicManager {
         //Will add the subscription to the topic
         //The status will be false if the subscriber with the same channel id exists
         try {
-            // Register the the topic subscription for the topic
-            subscriberTopicCorrelate.put(mqttClientChannelID, topicName);
-
             //First the topic should be registered in the cluster
             subscriptionID = registerTopicSubscriptionInCluster(topicName, mqttClientChannelID, isCleanSession,
                     qos, subscriptionChannelID);
             topic.addSubscriber(mqttClientChannelID, qos, isCleanSession, subscriptionID, subscriptionChannelID);
-            //Finally will register the the topic subscription for the topic
-            subscriberTopicCorrelate.put(mqttClientChannelID, topicName);
+
         } catch (SubscriptionAlreadyExistsException ignore) {
             //We do not throw this any further, the process should not stop due to this
             final String message = "Error while adding the subscriber to the cluster";
@@ -193,64 +194,74 @@ public class MQTTopicManager {
      * Will be called during the event where the subscriber disconnection or un-subscription is triggered
      *
      * @param mqttClientChannelID the id of the channel which the subscriber is bound to
+     * @param unSubscribedTopic   the name of the topic unsubscribed
      * @param action              describes whether its a disconnection or an un-subscription
      * @throws MQTTException occurs if the subscriber was not disconnected properly
      */
-    public void removeOrDisconnectTopicSubscription(String mqttClientChannelID, SubscriptionEvent action)
-            throws MQTTException {
-        //First the topic name will be taken from the subscriber channel
-        String topic = subscriberTopicCorrelate.get(mqttClientChannelID);
-        //If the topic has correlations
-        if (null != topic) {
-            //Will get the corresponding topic
-            MQTTopic mqttTopic = topics.get(topic);
+    public void removeOrDisconnectTopicSubscription(String mqttClientChannelID, String unSubscribedTopic,
+                                                    SubscriptionEvent action) throws MQTTException {
 
-            if (null != mqttTopic) {
-                //Will remove the subscription entity
-                MQTTSubscriber subscriber = mqttTopic.removeSubscriber(mqttClientChannelID);
-                String subscriberChannelID = subscriber.getSubscriberChannelID();
-                UUID subscriberChannel = subscriber.getSubscriptionChannel();
-                boolean isCleanSession = subscriber.isCleanSession();
-                //The corresponding subscription created cluster wide will be topic name and the local channel id
-                //Will remove the subscriber cluster wide
-                try {
-                    //Will indicate the disconnection of the topic
-                    if (action == SubscriptionEvent.DISCONNECT && !(subscriber.getQOSLevel() == QOSLevel.AT_MOST_ONCE
-                            && !subscriber.isCleanSession())) {
-                        connector.disconnectSubscriber(this, topic, subscriberChannelID, subscriberChannel,
-                                isCleanSession, mqttClientChannelID);
-                    } else {
-                        //If un-subscribed we need to remove the subscription off
-                        connector.removeSubscriber(this, topic, subscriberChannelID, subscriberChannel,
-                                isCleanSession, mqttClientChannelID);
-                    }
-                    if (log.isDebugEnabled()) {
-                        final String message = "Subscription with cluster id " + subscriberChannelID + " disconnected " +
-                                "from topic " + topic;
-                        log.debug(message);
+        //A given subscriber could subscribed to 1..* topics
+        List<String> topicSubscriptionList;
+        if (unSubscribedTopic == null) {
+            //If the topic has not being specified through the un-subscription operation
+            topicSubscriptionList = getSubscribedTopics(mqttClientChannelID);
+        } else {
+            //If it has being specified
+            topicSubscriptionList = new ArrayList<String>();
+            topicSubscriptionList.add(unSubscribedTopic);
+        }
+        for (String topic : topicSubscriptionList) {
+            //If the topic has correlations
+            if (null != topic) {
+                //Will get the corresponding topic
+                MQTTopic mqttTopic = topics.get(topic);
+
+                if (null != mqttTopic) {
+                    //Will remove the subscription entity
+                    MQTTSubscriber subscriber = mqttTopic.removeSubscriber(mqttClientChannelID);
+                    String subscriberChannelID = subscriber.getSubscriberChannelID();
+                    UUID subscriberChannel = subscriber.getSubscriptionChannel();
+                    boolean isCleanSession = subscriber.isCleanSession();
+                    //The corresponding subscription created cluster wide will be topic name and the local channel id
+                    //Will remove the subscriber cluster wide
+                    try {
+                        //Will indicate the disconnection of the topic
+                        if (action == SubscriptionEvent.DISCONNECT && !(subscriber.getQOSLevel() == QOSLevel.AT_MOST_ONCE
+                                && !subscriber.isCleanSession())) {
+                            connector.disconnectSubscriber(this, topic, subscriberChannelID, subscriberChannel,
+                                    isCleanSession, mqttClientChannelID);
+                        } else {
+                            //If un-subscribed we need to remove the subscription off
+                            connector.removeSubscriber(this, topic, subscriberChannelID, subscriberChannel,
+                                    isCleanSession, mqttClientChannelID);
+                        }
+                        if (log.isDebugEnabled()) {
+                            final String message = "Subscription with cluster id " + subscriberChannelID + " disconnected " +
+                                    "from topic " + topic;
+                            log.debug(message);
+                        }
+
+                    } catch (MQTTException ex) {
+                        //Should re state the connection of the subscriber back to the map
+                        mqttTopic.addSubscriber(mqttClientChannelID, subscriber);
+                        final String error = "Error occurred while removing the subscription " + mqttClientChannelID;
+                        log.error(error, ex);
+                        throw ex;
                     }
 
-                    // Remove the topic mapping
-                    subscriberTopicCorrelate.remove(mqttClientChannelID);
-                } catch (MQTTException ex) {
-                    //Should re state the connection of the subscriber back to the map
-                    mqttTopic.addSubscriber(mqttClientChannelID, subscriber);
-                    final String error = "Error occurred while removing the subscription " + mqttClientChannelID;
-                    log.error(error, ex);
-                    throw ex;
+                } else {
+                    final String message = "Error unidentified topic found for client id " + mqttClientChannelID;
+                    throw new MQTTException(message);
                 }
 
             } else {
-                final String message = "Error unidentified topic found for client id " + mqttClientChannelID;
-                throw new MQTTException(message);
-            }
-
-        } else {
-            //If the connection is publisher based
-            UUID publisherID = connector.removePublisher(mqttClientChannelID);
-            if (null == publisherID) {
-                log.warn("A subscriber or a publisher with Connection with id " + mqttClientChannelID + " cannot be " +
-                        "found to disconnect.");
+                //If the connection is publisher based
+                UUID publisherID = connector.removePublisher(mqttClientChannelID);
+                if (null == publisherID) {
+                    log.warn("A subscriber or a publisher with Connection with id " + mqttClientChannelID + " cannot be " +
+                            "found to disconnect.");
+                }
             }
         }
     }
@@ -266,37 +277,56 @@ public class MQTTopicManager {
      * @param subscriberQOS the level of QOS of the subscription
      * @throws MQTTException during a failure to deliver the message to the subscribers
      */
-    public void distributeMessageToSubscriber(String storageName, ByteBuffer message, long messageID, int publishedQOS,
-                                              boolean shouldRetain, String channelID, int subscriberQOS)
+    public void distributeMessageToSubscriber(String storageName, String destination, ByteBuffer message, long messageID,
+                                              int publishedQOS, boolean shouldRetain, String channelID, int subscriberQOS)
             throws MQTTException {
         //Will generate a unique id, cannot force MQTT to have a long as the message id since the protocol looks for
         //unsigned short
         int mqttLocalMessageID = 1;
-        //Should get the topic name from the channel id
-        String topic = subscriberTopicCorrelate.get(channelID);
+
         //We need to keep track of the message if the QOS level is > 0
         if (subscriberQOS > QOSLevel.AT_MOST_ONCE.getQosValue()) {
             //We need to add the message information to maintain state, in-order to identify the messages
             // once the acks receive
-            MQTTopic mqttopic = topics.get(topic);
+            MQTTopic mqttopic = topics.get(destination);
             MQTTSubscriber mqttSubscriber = mqttopic.getSubscription(channelID);
+
             //There could be a situation where the message was published, but before it arrived to the subscription
             //The subscriber has disconnected at a situation as such we have to indicate the disconnection
             if (null != mqttSubscriber) {
-                //Will mark the message as sent to subscribers
-                mqttLocalMessageID = mqttSubscriber.markSend(messageID);
+                String subscriberChannel = mqttSubscriber.getSubscriberChannelID();
                 //Will add the information that will be necessary to process once the acks arrive
                 mqttSubscriber.setStorageIdentifier(storageName);
+                //We need to add the message to the tracker
+                //A channel could have several subscriptions
+                //message id at a given time should be unique across all subscriptions
+                MQTTOnFlightMessages messageToChannel = onFlightMessages.get(subscriberChannel);
+
+                if (null == messageToChannel) {
+                    messageToChannel = new MQTTOnFlightMessages();
+                    onFlightMessages.put(subscriberChannel, messageToChannel);
+
+                }
+
+                //Holds the locally generated id
+                Integer mid = messageToChannel.addMessage(mqttSubscriber);
+                //Will mark the message as sent to subscribers, here the local id will be provided just so that the
+                //subscriber could co-relate between the local id to the cluster id
+                mqttSubscriber.markSend(messageID, mid);
                 //Subscriber state will not be handled for the case of QoS 0, hence if the subscription has disconnected it
                 // will be handled from the protocol engine
-                getBridgeInstance().distributeMessageToSubscriptions(topic, publishedQOS, message,
-                        shouldRetain, mqttLocalMessageID, channelID);
+                if (log.isDebugEnabled()) {
+                    log.debug("The message with id " + mid + " is sent for delivery to subscriber, " + channelID +
+                            " for topic " + destination);
+                }
+                getBridgeInstance().distributeMessageToSubscriptions(destination, publishedQOS, message,
+                        shouldRetain, mid, channelID);
             } else {
                 throw new MQTTException("The subscriber with id " + channelID +
                         " has disconnected hence message will not be published to " + messageID);
             }
         } else {
-            getBridgeInstance().distributeMessageToSubscriptions(topic, publishedQOS, message,
+            getBridgeInstance().distributeMessageToSubscriptions(destination, publishedQOS, message,
                     shouldRetain, mqttLocalMessageID, channelID);
         }
     }
@@ -308,16 +338,25 @@ public class MQTTopicManager {
      * @param messageID     the message id on which the ack was received
      */
     public void onMessageAck(String mqttChannelID, int messageID) throws MQTTException {
-        //Will retrieve the topic
-        String topicName = subscriberTopicCorrelate.get(mqttChannelID);
-        //Will retrieve the topic object out of the list
-        MQTTopic mqttTopic = topics.get(topicName);
-        //Will get the subscription object out of the topic
-        MQTTSubscriber mqttSubscriber = mqttTopic.getSubscription(mqttChannelID);
-        //Will indicate that the ack was received
-        long clusterID = mqttSubscriber.ackReceived(messageID);
-        //First we need to get the subscription information
-        messageAck(topicName, clusterID, mqttSubscriber.getStorageIdentifier(), mqttSubscriber.getSubscriptionChannel());
+        if (log.isDebugEnabled()) {
+            log.debug("Message ack received for id " + messageID + " for subscription " + mqttChannelID);
+        }
+        String channelIDPrefix = "carbon:";
+        mqttChannelID = channelIDPrefix + mqttChannelID;
+        MQTTOnFlightMessages message = onFlightMessages.get(mqttChannelID);
+        MQTTSubscriber mqttSubscriber = message.removeMessage(messageID);
+        if (null != mqttSubscriber) {
+            String topicName = mqttSubscriber.getTopicName();
+            //Will indicate that the ack was received
+            long clusterID = mqttSubscriber.ackReceived(messageID);
+            //First we need to get the subscription information
+            messageAck(topicName, clusterID, mqttSubscriber.getStorageIdentifier(),
+                    mqttSubscriber.getSubscriptionChannel());
+        } else {
+            String error = "A message acknowledgment had arrived for id " + messageID + " for subscription " +
+                    mqttChannelID + "but the subscriber information cannot be found";
+            log.error(error);
+        }
     }
 
     /**
@@ -377,6 +416,27 @@ public class MQTTopicManager {
             log.error(message, ex);
             throw new MQTTException(message, ex);
         }
+    }
+
+    /**
+     * A subscriber could subscribe to 1..* topics, Provides the list of topics a subscriber has subscribed
+     * <p><b>Note:</b>This operation would be performance costly, each subscription will be iterated</p>
+     *
+     * @param clientID the id of the subscriber
+     * @return the list of topics
+     */
+    private List<String> getSubscribedTopics(String clientID) {
+        List<String> topicList = new ArrayList<String>();
+        for (MQTTopic topic : topics.values()) {
+            //A given subscriber cannot be subscribed more than once to the same topic
+            MQTTSubscriber subscriber = topic.getSubscription(clientID);
+            //If a subscription exists for the topic this needs to be added to the list
+            if (null != subscriber) {
+                topicList.add(topic.getTopic());
+            }
+        }
+
+        return topicList;
     }
 
 }

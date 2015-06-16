@@ -17,8 +17,6 @@
  */
 package org.wso2.andes.mqtt;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 import java.util.Map;
 import java.util.UUID;
@@ -27,9 +25,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import static org.dna.mqtt.wso2.AndesMQTTBridge.QOSLevel;
 
 /**
- * All the subscriptions relation to a topic will be maintained though the following class, attributes such as QOS
- * levels will be maintained here
+ * All the topicOccurrences relation to a topic will be maintained though the following class, attributes such as QOS
+ * levels will be maintained here, a given channel could occur in multiple topics, the subscription will be unique
  */
+//TODO rename to subscription
 public class MQTTSubscriber {
     /**
      * The level of QOS the subscriber is bound to
@@ -53,6 +52,11 @@ public class MQTTSubscriber {
     private UUID subscriptionChannel;
 
     /**
+     * The name of the topic the subscription is bound to
+     */
+    private String topicName;
+
+    /**
      * The map maintains the relation between the cluster ids to the local ids, MQTT ids will be the type int
      * Each subscription object will maintain the ids of the messages that were sent out for delivery
      * Upon relieving of an ack the message element will be removed
@@ -63,33 +67,13 @@ public class MQTTSubscriber {
     private Map<Integer, Long> clusterMessageToLocalMessage = new ConcurrentHashMap<Integer, Long>();
 
     /**
-     * Will hold the message id which was last processed
-     * Will generate a unique id
-     */
-    private int lastGeneratedMessageID = 0;
-
-    /**
-     * Will log the events
-     */
-    private static Log log = LogFactory.getLog(MQTTSubscriber.class);
-
-    /**
-     * Will add the details of the message that will be delivered among the subscriptions
+     * Will add the details of the message that will be delivered among the topicOccurrences
      *
      * @param clusterMessageID the unique cluster identifier of the message
-     * @return a unique identifier for the local message sent through the subscription
+     * @param mid              a locally generated id for the subscriber
      */
-    public int markSend(long clusterMessageID) {
-        lastGeneratedMessageID = lastGeneratedMessageID + 1;
-        if (lastGeneratedMessageID == Short.MAX_VALUE) {
-            //Then we need to reduce
-            log.info("The message ids will be refreshed since it exceeded the maximum limit ");
-            lastGeneratedMessageID = 1;
-
-        }
-        //Here the local id will be the key since we do not accept the same local id to duplicate
-        clusterMessageToLocalMessage.put(lastGeneratedMessageID, clusterMessageID);
-        return lastGeneratedMessageID;
+    public void markSend(long clusterMessageID, int mid) {
+        clusterMessageToLocalMessage.put(mid, clusterMessageID);
     }
 
     /**
@@ -187,5 +171,12 @@ public class MQTTSubscriber {
         return this.QOSLevel;
     }
 
+    public String getTopicName() {
+        return topicName;
+    }
+
+    public void setTopicName(String topicName) {
+        this.topicName = topicName;
+    }
 
 }

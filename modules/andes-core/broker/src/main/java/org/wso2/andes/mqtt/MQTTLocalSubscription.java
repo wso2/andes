@@ -189,9 +189,10 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
                     OnflightMessageTracker.getInstance().addMessageToSendingTracker(getChannelID(),
                             messageMetadata.getMessageID());
 
-                    mqqtServerChannel.distributeMessageToSubscriber(this.getStorageQueueName(), message,
-                            messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
-                            messageMetadata.isPersistent(), getMqttSubscriptionID(), getSubscriberQOS());
+                    mqqtServerChannel.distributeMessageToSubscriber(this.getStorageQueueName(),
+                            this.getSubscribedDestination(),message,messageMetadata.getMessageID(),
+                            messageMetadata.getQosLevel(), messageMetadata.isPersistent(), getMqttSubscriptionID(),
+                            getSubscriberQOS());
                     //We will indicate the ack to the kernel at this stage
                     //For MQTT QOS 0 we do not get ack from subscriber, hence will be implicitly creating an ack
                     if (QOSLevel.AT_MOST_ONCE.getQosValue() == getSubscriberQOS() ||

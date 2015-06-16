@@ -250,11 +250,11 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         //Remove the message from message store
         //TODO removed the storage service
         // m_storageService.cleanPersistedPublishMessage(clientID, messageID);
-        //Will inform the cluser that the message was removed
+        //Will inform the cluster that the message was removed
         try {
             AndesMQTTBridge.getBridgeInstance().onAckReceived(clientID, messageID);
         } catch (MQTTException e) {
-            final String message = "Error while reciving ack from the client " + clientID + " for message " + messageID;
+            final String message = "Error while receiving ack from the client " + clientID + " for message " + messageID;
             log.error(message, e);
         }
     }
@@ -286,10 +286,12 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             //store the message in temp store
             m_storageService.persistQoS2Message(publishKey, evt);
             sendPubRec(evt.getClientID(), evt.getMessageID());
-        }
+            //We do not add the message to andes at this point since the message addition would happen upon the PUBREL
+        }else{
+            AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), evt.getMessage(), evt.isRetain(),
+                    evt.getMessageID(), clientID, this,evt.getSession().getSocketChannel());
 
-        AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), message, retain,
-                evt.getMessageID(), clientID, this,evt.getSession().getSocketChannel());
+        }
 
     }
 
@@ -487,12 +489,11 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         final String topic = evt.getTopic();
         final AbstractMessage.QOSType qos = evt.getQos();
 
-        m_storageService.removeQoS2Message(publishKey);
+        //TODO we need to get the publisher session for QoS 2
+        AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), evt.getMessage(), evt.isRetain(),
+                evt.getMessageID(), clientID, this,null);
 
-        if (evt.isRetain()) {
-            //TODO call the cluster specifc store here
-            //m_storageService.storeRetained(topic, evt.getMessage(), qos);
-        }
+        m_storageService.removeQoS2Message(publishKey);
     }
 
     private void sendPubComp(String clientID, int messageID) {
@@ -552,7 +553,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         subscriptions.deactivate(clientID);
 
         try {
-            AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID,
+            AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID,null,
                     AndesMQTTBridge.SubscriptionEvent.DISCONNECT);
             log.info("Disconnected client " + clientID + " with clean session " + cleanSession);
         } catch (MQTTException e) {
@@ -570,7 +571,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             //Andes change
             //Need to handle disconnection
             try {
-                AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID,
+                AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID,null,
                         AndesMQTTBridge.SubscriptionEvent.DISCONNECT);
             } catch (MQTTException e) {
                 final String message = "Error occured when attempting to diconnect subscriber ";
@@ -593,10 +594,10 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             subscriptions.removeSubscription(topic, clientID);
             //also will unsubscribe from the kernal
             try {
-                AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID,
-                        AndesMQTTBridge.SubscriptionEvent.UN_SUBSCRIBE);
+                AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID,topic,
+                        AndesMQTTBridge.SubscriptionEvent.UNSUBSCRIBE);
             } catch (Exception e) {
-                final String message = "Error occured when disconneting the subscriber ";
+                final String message = "Error occurred when disconnecting the subscriber ";
                 log.error(message + e.getMessage());
             }
             // bridge.onSubscriberDisconnection(clientID);

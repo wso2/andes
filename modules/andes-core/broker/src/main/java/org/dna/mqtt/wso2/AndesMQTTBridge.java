@@ -65,7 +65,7 @@ public final class AndesMQTTBridge {
         //The subscriber connection was lost
         DISCONNECT,
         //The subscriber specifies to be un-bound from a topic
-        UN_SUBSCRIBE
+        UNSUBSCRIBE
     }
 
     /**
@@ -158,10 +158,13 @@ public final class AndesMQTTBridge {
      * Will remove the subscribers once disconnection call is being triggered
      *
      * @param mqttClientChannelID the id of the client(subscriber) who requires disconnection
+     * @param topic               the name of the topic unsubscribed
+     * @param event               whether the subscription is initiated or disconnected unexpectedly
+     *                            {@link org.dna.mqtt.wso2.AndesMQTTBridge.SubscriptionEvent}
      */
-    public void onSubscriberDisconnection(String mqttClientChannelID,SubscriptionEvent event) {
+    public void onSubscriberDisconnection(String mqttClientChannelID, String topic, SubscriptionEvent event) {
         try {
-            MQTTopicManager.getInstance().removeOrDisconnectTopicSubscription(mqttClientChannelID,event);
+            MQTTopicManager.getInstance().removeOrDisconnectTopicSubscription(mqttClientChannelID, topic, event);
         } catch (MQTTException e) {
             //Will capture the exception here and will not throw it any further
             final String message = "Error while disconnecting the subscription with the id " + mqttClientChannelID;

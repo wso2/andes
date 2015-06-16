@@ -28,7 +28,7 @@ import java.util.Map;
  * partially use its functionality.
  * {@link org.dna.mqtt.moquette.messaging.spi.impl.subscriptions.SubscriptionsStore}
  */
-public class ClusterSubscriptionStore extends SubscriptionsStore {
+public class MQTTSubscriptionStore extends SubscriptionsStore {
 
     /**
      * Key = the name of the topic
@@ -60,33 +60,27 @@ public class ClusterSubscriptionStore extends SubscriptionsStore {
     @Override
     protected void addDirect(Subscription newSubscription) {
         addLocalSubscription(newSubscription);
-        //super.addDirect(newSubscription);
     }
 
     @Override
     public void add(Subscription newSubscription) {
         addLocalSubscription(newSubscription);
-        //super.add(newSubscription);
     }
 
     @Override
     public void removeSubscription(String topic, String clientID) {
         Subscribers subscribers = localSubscriptions.get(topic);
         subscribers.removeSubscription(clientID);
-        // super.removeSubscription(topic, clientID);
     }
 
     @Override
     public Subscription getSubscriptions(String topic, String clientID) {
         Subscribers subscribers = localSubscriptions.get(topic);
-        Subscription subscriber = subscribers.getSubscriptionFromClientID(clientID);
-        //return super.getSubscriptions(topic, clientID);
-        return subscriber;
+        return subscribers.getSubscriptionFromClientID(clientID);
     }
 
     @Override
     public void clearAllSubscriptions() {
         localSubscriptions.clear();
-        //super.clearAllSubscriptions();
     }
 }
