@@ -48,7 +48,7 @@ public class MQTTopic  {
      * Will map between the relationship of topics and subscribers key will be the channel id of the subscriber
      * Value will be the properties associated with the subscriber
      */
-    private Map<String, MQTTSubscriber> subscribers = new HashMap<String, MQTTSubscriber>();
+    private Map<String, MQTTSubscription> subscribers = new HashMap<String, MQTTSubscription>();
 
     /**
      * Will construct the topic object which will hold references to all the subscribers
@@ -80,10 +80,10 @@ public class MQTTopic  {
     public void addSubscriber(String mqttClientChannelID, QOSLevel qos, boolean isCleanSession,
                               String clusterSpecificID, UUID subscriptionChannel)
     throws MQTTException {
-        MQTTSubscriber subscriber = subscribers.get(mqttClientChannelID);
+        MQTTSubscription subscriber = subscribers.get(mqttClientChannelID);
         //Will create a new subscriber if the subscriber do not exist
         if (null == subscriber) {
-            subscriber = new MQTTSubscriber();
+            subscriber = new MQTTSubscription();
             //Will set the level of QOS of the subscriber
             subscriber.setQOSLevel(qos);
             //Will specify the durability of the session
@@ -114,7 +114,7 @@ public class MQTTopic  {
      * @param mqttchannelID the id of the channel of the subscriber
      * @param subscriber    the subscription
      */
-    public void addSubscriber(String mqttchannelID, MQTTSubscriber subscriber) {
+    public void addSubscriber(String mqttchannelID, MQTTSubscription subscriber) {
         //Will not do a check here, since this operation will mostly be called during the call back
         subscribers.put(mqttchannelID, subscriber);
     }
@@ -126,9 +126,9 @@ public class MQTTopic  {
      * @return the subscriber object which will be removed
      * @throws MQTTException will indicate if an error occurs during subscription entry removal
      */
-    public MQTTSubscriber removeSubscriber(String mqttClientChannelID) throws MQTTException {
+    public MQTTSubscription removeSubscriber(String mqttClientChannelID) throws MQTTException {
         //Will get the subscription
-        MQTTSubscriber subscriber = subscribers.remove(mqttClientChannelID);
+        MQTTSubscription subscriber = subscribers.remove(mqttClientChannelID);
         //If there was no subscriber to be removed
         if (null == subscriber) {
             final String message = "Subscriber with id " + mqttClientChannelID + " cannot be found";
@@ -144,7 +144,7 @@ public class MQTTopic  {
      * @param mqttClientChannelID the channel id of the subscription
      * @return the subscription
      */
-    public MQTTSubscriber getSubscription(String mqttClientChannelID) {
+    public MQTTSubscription getSubscription(String mqttClientChannelID) {
         return subscribers.get(mqttClientChannelID);
     }
 
@@ -155,7 +155,7 @@ public class MQTTopic  {
      * @return the cluster specific id generated for subscription
      */
     public String getSubscriptionID(String mqttClientChannelID) {
-        MQTTSubscriber subscriber = subscribers.get(mqttClientChannelID);
+        MQTTSubscription subscriber = subscribers.get(mqttClientChannelID);
         return subscriber != null ? subscriber.getSubscriberChannelID() : null;
     }
 

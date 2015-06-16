@@ -28,8 +28,7 @@ import static org.dna.mqtt.wso2.AndesMQTTBridge.QOSLevel;
  * All the topicOccurrences relation to a topic will be maintained though the following class, attributes such as QOS
  * levels will be maintained here, a given channel could occur in multiple topics, the subscription will be unique
  */
-//TODO rename to subscription
-public class MQTTSubscriber {
+public class MQTTSubscription {
     /**
      * The level of QOS the subscriber is bound to
      */

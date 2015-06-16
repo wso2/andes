@@ -35,7 +35,7 @@ public class MQTTOnFlightMessages {
      * Value - mqtt subscription which holds information relevant to co-relate to identify the cluster specific info
      * A given channel (subscription could be involved in multiple topics)
      */
-    private Map<Integer, MQTTSubscriber> messages = new ConcurrentHashMap<Integer, MQTTSubscriber>();
+    private Map<Integer, MQTTSubscription> messages = new ConcurrentHashMap<Integer, MQTTSubscription>();
     /**
      * At a given time the message id should be unique a across a given channel
      * This will be used to maintain a counter
@@ -50,7 +50,7 @@ public class MQTTOnFlightMessages {
      *
      * @param subscription the info related to the subscription involved in the message exchange
      */
-    public Integer addMessage(MQTTSubscriber subscription) {
+    public Integer addMessage(MQTTSubscription subscription) {
 
         currentMessageID.incrementAndGet();
         if (currentMessageID.get() == Short.MAX_VALUE) {
@@ -69,7 +69,7 @@ public class MQTTOnFlightMessages {
      * @param messageID the id of the message required to be removed, id < SHORT.MAX
      * @return MQTTSubscriber
      */
-    public MQTTSubscriber removeMessage(Integer messageID) {
+    public MQTTSubscription removeMessage(Integer messageID) {
         return messages.remove(messageID);
     }
 }

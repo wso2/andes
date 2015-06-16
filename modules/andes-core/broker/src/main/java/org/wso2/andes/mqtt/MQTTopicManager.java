@@ -219,7 +219,7 @@ public class MQTTopicManager {
 
                 if (null != mqttTopic) {
                     //Will remove the subscription entity
-                    MQTTSubscriber subscriber = mqttTopic.removeSubscriber(mqttClientChannelID);
+                    MQTTSubscription subscriber = mqttTopic.removeSubscriber(mqttClientChannelID);
                     String subscriberChannelID = subscriber.getSubscriberChannelID();
                     UUID subscriberChannel = subscriber.getSubscriptionChannel();
                     boolean isCleanSession = subscriber.isCleanSession();
@@ -289,7 +289,7 @@ public class MQTTopicManager {
             //We need to add the message information to maintain state, in-order to identify the messages
             // once the acks receive
             MQTTopic mqttopic = topics.get(destination);
-            MQTTSubscriber mqttSubscriber = mqttopic.getSubscription(channelID);
+            MQTTSubscription mqttSubscriber = mqttopic.getSubscription(channelID);
 
             //There could be a situation where the message was published, but before it arrived to the subscription
             //The subscriber has disconnected at a situation as such we have to indicate the disconnection
@@ -344,7 +344,7 @@ public class MQTTopicManager {
         String channelIDPrefix = "carbon:";
         mqttChannelID = channelIDPrefix + mqttChannelID;
         MQTTOnFlightMessages message = onFlightMessages.get(mqttChannelID);
-        MQTTSubscriber mqttSubscriber = message.removeMessage(messageID);
+        MQTTSubscription mqttSubscriber = message.removeMessage(messageID);
         if (null != mqttSubscriber) {
             String topicName = mqttSubscriber.getTopicName();
             //Will indicate that the ack was received
@@ -429,7 +429,7 @@ public class MQTTopicManager {
         List<String> topicList = new ArrayList<String>();
         for (MQTTopic topic : topics.values()) {
             //A given subscriber cannot be subscribed more than once to the same topic
-            MQTTSubscriber subscriber = topic.getSubscription(clientID);
+            MQTTSubscription subscriber = topic.getSubscription(clientID);
             //If a subscription exists for the topic this needs to be added to the list
             if (null != subscriber) {
                 topicList.add(topic.getTopic());
