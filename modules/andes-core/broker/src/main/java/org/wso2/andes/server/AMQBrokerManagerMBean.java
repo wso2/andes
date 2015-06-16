@@ -1,20 +1,21 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
- *
- * WSO2 Inc. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
+*  Copyright (c) 2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+*
+*  WSO2 Inc. licenses this file to you under the Apache License,
+*  Version 2.0 (the "License"); you may not use this file except
+*  in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/
+
 package org.wso2.andes.server;
 
 import java.io.IOException;
@@ -78,6 +79,9 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
         _exchangeFactory = virtualHost.getExchangeFactory();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public String getObjectInstanceName()
     {
         return _virtualHostMBean.getVirtualHost().getName();
@@ -90,13 +94,13 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
      */
     public String[] getExchangeTypes() throws IOException
     {
-        ArrayList<String> exchangeTypes = new ArrayList<String>();
+        ArrayList<String> exchangeTypes = new ArrayList<>();
         for(ExchangeType<? extends Exchange> ex : _exchangeFactory.getPublicCreatableTypes())
         {
             exchangeTypes.add(ex.getName().toString());
         }
 
-        return exchangeTypes.toArray(new String[0]);
+        return exchangeTypes.toArray(new String[exchangeTypes.size()]);
     }
 
     /**
@@ -110,19 +114,22 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
     }
 
     /**
-     * Returns a List of Object Lists containing the requested attribute values (in the same sequence requested) for each queue in the virtualhost.
-     * If a particular attribute cant be found or raises an mbean/reflection exception whilst being gathered its value is substituted with the String "-".
-     * @since Qpid JMX API 1.3
+     * Returns a List of Object Lists containing the requested attribute values (in the same sequence requested) for
+     * each queue in the virtualhost.
+     * If a particular attribute cant be found or raises an mbean/reflection exception whilst being gathered its
+     * value is substituted with the String "-".
+     *
      * @throws IOException
+     * @since Qpid JMX API 1.3
      */
     public List<List<Object>> retrieveQueueAttributeValues(String[] attributes) throws IOException
     {
         if(_queueRegistry.getQueues().size() == 0)
         {
-            return new ArrayList<List<Object>>();
+            return new ArrayList<>();
         }
 
-        List<List<Object>> queueAttributesList = new ArrayList<List<Object>>(_queueRegistry.getQueues().size());
+        List<List<Object>> queueAttributesList = new ArrayList<>(_queueRegistry.getQueues().size());
 
         int attributesLength = attributes.length;
 
@@ -135,7 +142,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                 continue;
             }
 
-            List<Object> attributeValues = new ArrayList<Object>(attributesLength);
+            List<Object> attributeValues = new ArrayList<>(attributesLength);
 
             for (String attribute : attributes) {
                 try {
@@ -154,13 +161,12 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
     /**
      * Creates new exchange and registers it with the registry.
      *
-     * @param exchangeName
-     * @param type
-     * @param durable
+     * @param exchangeName The name for the new exchange.
+     * @param type The exchange type can be 'direct', 'topic', 'header', 'fanout'.
+     * @param durable Whether the exchange should be durable or not.
      * @throws JMException
-     * @throws MBeanException
      */
-    public void createNewExchange(String exchangeName, String type, boolean durable) throws JMException, MBeanException
+    public void createNewExchange(String exchangeName, String type, boolean durable) throws JMException
     {
         CurrentActor.set(new ManagementActor(_logActor.getRootMessageLogger()));
         try
@@ -199,13 +205,13 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
     }
 
     /**
-     * Unregisters the exchange from registry.
+     * Unregister the exchange from registry.
      *
-     * @param exchangeName
+     * @param exchangeName The exchange name to unregister
      * @throws JMException
      * @throws MBeanException
      */
-    public void unregisterExchange(String exchangeName) throws JMException, MBeanException
+    public void unregisterExchange(String exchangeName) throws JMException
     {
         // TODO
         // Check if the exchange is in use.
@@ -229,16 +235,16 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
     }
 
     /**
+     *
      * Creates a new queue and registers it with the registry and puts it
      * in persistance storage if durable queue.
      *
-     * @param queueName
-     * @param durable
-     * @param owner
+     * @param queueName The name of the queue to create.
+     * @param owner The owner's username.
+     * @param durable Whether the queue is durable or not.
      * @throws JMException
-     * @throws MBeanException
      */
-    public void createNewQueue(String queueName, String owner, boolean durable) throws JMException, MBeanException
+    public void createNewQueue(String queueName, String owner, boolean durable) throws JMException
     {
         AMQQueue queue = _queueRegistry.getQueue(new AMQShortString(queueName));
         try
@@ -256,7 +262,8 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                 ownerShortString = new AMQShortString(owner);
             }
 
-            queue = AMQQueueFactory.createAMQQueueImpl(new AMQShortString(queueName), durable, ownerShortString, false, false, getVirtualHost(), null);
+            queue = AMQQueueFactory.createAMQQueueImpl(new AMQShortString(queueName), durable, ownerShortString,
+                                                                                false, false, getVirtualHost(), null);
             if (queue.isDurable() && !queue.isAutoDelete())
             {
                 _durableConfig.createQueue(queue);
@@ -277,19 +284,23 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
         }
     }
 
-    private VirtualHost getVirtualHost()
-    {
+    /**
+     * Gets the virtual host of andes.
+     *
+     * @return The virtual host.
+     */
+    private VirtualHost getVirtualHost() {
         return _virtualHostMBean.getVirtualHost();
     }
 
     /**
      * Deletes the queue from queue registry and persistant storage.
      *
-     * @param queueName
+     * @param queueName The name of the queue to delete.
      * @throws JMException
      * @throws MBeanException
      */
-    public void deleteQueue(final String queueName) throws JMException, MBeanException
+    public void deleteQueue(final String queueName) throws JMException
     {
         AMQQueue queue = _queueRegistry.getQueue(new AMQShortString(queueName));
         if (queue == null)
@@ -302,6 +313,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
             boolean isQueueDeletable = ClusterResourceHolder.getInstance().
                     getVirtualHostConfigSynchronizer().checkIfQueueDeletable(queue);
             if(isQueueDeletable) {
+                // Removes the binding and unregister the queue.
                 queue.delete();
                 if (queue.isDurable())
                 {
@@ -338,7 +350,8 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
                 throw new MBeanException(jme, "Error in deleting queue " + queueName + ":");
             }
         } catch (Exception e) {
-            throw new MBeanException(e, "Error in deleting queue " + queueName + ". There was an issue with cluster coordination");
+            throw new MBeanException(e, "Error in deleting queue " + queueName + ". There was an issue with cluster " +
+                                        "coordination");
         }
         finally
         {
@@ -346,6 +359,9 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public ManagedObject getParentObject()
     {
@@ -359,7 +375,7 @@ public class AMQBrokerManagerMBean extends AMQManagedObject implements ManagedBr
         return getObjectNameForSingleInstanceMBean();
     }
 
-    public void resetStatistics() throws Exception
+    public void resetStatistics()
     {
         getVirtualHost().resetStatistics();
     }
