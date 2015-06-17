@@ -316,6 +316,17 @@ public class SecurityManager
         });
     }
 
+    public boolean authoriseBrowse(final AMQQueue queue)
+    {
+        return checkAllPlugins(new AccessCheck()
+        {
+            Result allowed(SecurityPlugin plugin)
+            {
+                return plugin.authorise(BROWSE, QUEUE, new ObjectProperties(queue));
+            }
+        });
+    }
+
     public boolean authoriseConsume(final boolean exclusive, final boolean noAck, final boolean noLocal, final boolean nowait, final AMQQueue queue)
     {
         return checkAllPlugins(new AccessCheck()
