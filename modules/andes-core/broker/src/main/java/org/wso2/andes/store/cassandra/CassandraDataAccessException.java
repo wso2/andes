@@ -23,17 +23,21 @@ package org.wso2.andes.store.cassandra;
  */
 public class CassandraDataAccessException extends Exception{
 
-    private String message;
-
+    /**
+     * Serial version UID
+     */
+    private static final long serialVersionUID = 1L;
+    
+   
+    
     public CassandraDataAccessException(String message) {
         super(message);
-        this.message = message;
-
+       
     }
 
     public CassandraDataAccessException(String message, Exception e) {
         super(message,e);
-        this.message = message;
+        
     }
 
 

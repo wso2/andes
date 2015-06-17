@@ -43,13 +43,6 @@ public abstract class DurableStoreConnection {
     public abstract void close();
 
     /**
-     * check if connection is live
-     *
-     * @return if connection is live
-     */
-    public abstract boolean isLive();
-
-    /**
      * return instance of connection
      *
      * @return instance

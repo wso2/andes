@@ -39,7 +39,6 @@ import java.sql.SQLException;
 public class RDBMSConnection extends DurableStoreConnection {
 
     private static final Logger logger = Logger.getLogger(RDBMSConnection.class);
-    private boolean isConnected;
     private DataSource datasource;
 
     @Override
@@ -50,7 +49,6 @@ public class RDBMSConnection extends DurableStoreConnection {
         Connection connection = null;
         String jndiLookupName = "";
         String dataSourceUserName   = "";
-        isConnected = false;
         try {
             // try to get the lookup name. If error empty string will be returned
             jndiLookupName = connectionProperties.getProperty(RDBMSConstants.PROP_JNDI_LOOKUP_NAME);
@@ -65,7 +63,6 @@ public class RDBMSConnection extends DurableStoreConnection {
             }
 
             connection = datasource.getConnection();
-            isConnected = true; // if no errors
             logger.info("JDBC connection established with jndi config " + jndiLookupName);
         } catch (SQLException e) {
             throw new AndesException("Connecting to database failed with jndi lookup : " +
@@ -93,12 +90,7 @@ public class RDBMSConnection extends DurableStoreConnection {
 
     @Override
     public void close() {
-        isConnected = false;
-    }
-
-    @Override
-    public boolean isLive() {
-        return isConnected;
+        // nothing to do.
     }
 
     @Override

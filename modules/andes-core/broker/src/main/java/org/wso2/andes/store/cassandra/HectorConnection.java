@@ -18,23 +18,24 @@
 
 package org.wso2.andes.store.cassandra;
 
-import com.datastax.driver.core.exceptions.UnavailableException;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
 
+import me.prettyprint.cassandra.connection.HConnectionManager;
 import me.prettyprint.cassandra.model.ConfigurableConsistencyLevel;
 import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.HConsistencyLevel;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.exceptions.HectorException;
+import me.prettyprint.hector.api.factory.HFactory;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
-import org.wso2.andes.store.StoreHealthListener;
 
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
+import com.datastax.driver.core.exceptions.UnavailableException;
 
 /**
  * Hector based connection to Cassandra
@@ -57,11 +58,6 @@ public class HectorConnection extends DurableStoreConnection {
      * Cassandra Keyspace instance
      */
     private Keyspace keyspace;
-
-    /**
-     * Flag to get the availability of Cassandra connection.
-     */
-    private boolean isCassandraConnectionLive = false;
 
     /**
      * {@inheritDoc}
@@ -131,10 +127,6 @@ public class HectorConnection extends DurableStoreConnection {
 	        //create keyspace with consistency levels
 	        createKeySpace(keyspace, Integer.parseInt(replicationFactor), strategyClass,configurableConsistencyLevel);
 
-	        //start Cassandra connection live check
-            isCassandraConnectionLive = true;
-            checkCassandraConnection();
-
         } catch (NamingException e) {
             throw new AndesException("Couldn't look up jndi entry for " +
                     "\"" + jndiLookupName + "\"" + e);
@@ -143,18 +135,11 @@ public class HectorConnection extends DurableStoreConnection {
 
     /**
      * {@inheritDoc}
+     * Remove the cluster and shutdown the {@link HConnectionManager} (underneath)
      */
     @Override
     public void close() {
-        stopTasks();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isLive() {
-        return isCassandraConnectionLive;
+        HFactory.shutdownCluster(cluster);
     }
 
     /**
@@ -229,85 +214,22 @@ public class HectorConnection extends DurableStoreConnection {
         }
     }
 
+    
     /**
-     * Check the availability of Hector based Cassandra connection
+     * Tests whether cluster/keyspace is reachable.
+     * @return
      */
-    private void checkCassandraConnection() {
-        Thread cassandraConnectionCheckerThread = new Thread(new Runnable() {
-            public void run() {
-                int retriedCount = 0;
-                while (true) {
-                    try {
-                        if (cluster.describeClusterName() != null) {
-                            boolean previousState = isCassandraConnectionLive;
-                            isCassandraConnectionLive = true;
-                            retriedCount = 0;
-                            if (!previousState) {
-                                //start back all tasks accessing cassandra
-                                log.info("Cassandra Message Store is alive....");
-                                startTasks();
-                            }
-                            Thread.sleep(10000);
-                        }
-                    } catch (HectorException e) {
-                        try {
-                            if (e.getMessage().contains("All host pools marked down. " +
-                                    "Retry " +
-                                    "burden pushed out to client")) {
+    public boolean isReachable() {
 
-                                isCassandraConnectionLive = false;
-                                //print the error log several times
-                                if (retriedCount < 5) {
-                                    log.error(e);
-                                }
-                                retriedCount += 1;
-                                if (retriedCount == 4) {
-                                    //stop all tasks accessing  Cassandra
-                                    log.error("Cassandra Message Store is Inaccessible....");
-                                    stopTasks();
-                                }
-                                log.info("Waiting for Cassandra connection configured to become live...");
-
-                                if (retriedCount <= 10) {
-                                    Thread.sleep(6000);
-                                } else {
-                                    if (retriedCount == 120) {
-                                        retriedCount = 10;
-                                    }
-                                    Thread.sleep(500 * retriedCount);
-                                }
-                            }
-                        } catch (InterruptedException ex) {
-                            //silently ignore
-                        } catch (Exception ex) {
-                            log.error("Error while checking if Cassandra Connection is alive.", ex);
-                        }
-                    } catch (InterruptedException e) {
-                        //silently ignore
-                    } catch (Exception e) {
-                        log.error("Error while checking if Cassandra Connection is alive.", e);
-                    }
-                }
-            }
-        });
-        cassandraConnectionCheckerThread.start();
-    }
-
-    /**
-     * Start all background threads accessing durable store
-     */
-    private void startTasks() {
+        boolean reachable = false;
         try {
-            Andes.getInstance().startMessageDelivery();
-        } catch (Exception e) {
-            throw new RuntimeException("Error while starting broker tasks back. Not retrying.", e);
+            cluster.describeClusterName();
+            reachable = true;
+        } catch (HectorException ignore) {
+            
         }
-    }
 
-    /**
-     * Stop all background threads accessing durable store
-     */
-    private void stopTasks() {
-        Andes.getInstance().stopMessageDelivery();
+        return reachable;
     }
+    
 }
