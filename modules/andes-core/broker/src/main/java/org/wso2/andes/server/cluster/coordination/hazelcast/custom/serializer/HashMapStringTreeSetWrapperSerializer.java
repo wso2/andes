@@ -88,14 +88,14 @@ public class HashMapStringTreeSetWrapperSerializer implements
         //Build HashmapStringListWrapper object using json string.
         String jsonString = objectDataInput.readUTF();
         HashmapStringTreeSetWrapper wrapper = new HashmapStringTreeSetWrapper();
-        HashMap<String, TreeSet<Slot>> hashMap = new HashMap<String, TreeSet<Slot>>();
+        HashMap<String, TreeSet<Slot>> hashMap = new HashMap<>();
         JsonObject jsonObject = new JsonParser().parse(jsonString).getAsJsonObject()
                 .getAsJsonObject("stringTreeSetHashMap");
         Set<Map.Entry<String, JsonElement>> set = jsonObject.entrySet();
         for (Map.Entry<String, JsonElement> entry : set) {
             String key = entry.getKey();
             JsonElement value = entry.getValue();
-            TreeSet<Slot> arrayList = new TreeSet<Slot>();
+            TreeSet<Slot> arrayList = new TreeSet<>();
             JsonArray jsonArray = value.getAsJsonArray();
             for (JsonElement elem : jsonArray) {
                 Slot slot = new Slot();
