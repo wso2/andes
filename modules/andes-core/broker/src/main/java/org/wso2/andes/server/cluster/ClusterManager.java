@@ -104,6 +104,7 @@ public class ClusterManager {
     public void memberRemoved(Member node) throws AndesException {
         String deletedNodeId = hazelcastAgent.getIdOfNode(node);
 
+        SlotManagerClusterMode.getInstance().setRemovedNode(deletedNodeId);
         //refresh global queue sync ID
         reAssignNodeSyncId();
 
@@ -292,6 +293,8 @@ public class ClusterManager {
             hazelcastAgent.getThriftServerDetailsMap().put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP, thriftCoordinatorServerIP);
             hazelcastAgent.getThriftServerDetailsMap().put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT,
                                                            Integer.toString(thriftCoordinatorServerPort));
+            SlotManagerClusterMode.getInstance().recoverSlots();
+
         }
     }
 

@@ -265,7 +265,7 @@ public class HazelcastAgent {
         // If the config value is "default" we must generate the ID
         if (AndesConfiguration.COORDINATION_NODE_ID.get().getDefaultValue().equals(nodeId)) {
             Member localMember = hazelcastInstance.getCluster().getLocalMember();
-            nodeId = CoordinationConstants.NODE_NAME_PREFIX + localMember.getSocketAddress();
+            nodeId = getIdOfNode(localMember);
         }
 
         return nodeId;
@@ -289,8 +289,7 @@ public class HazelcastAgent {
         Set<Member> members = this.getAllClusterMembers();
         List<String> nodeIDList = new ArrayList<String>();
         for (Member member : members) {
-            nodeIDList.add(CoordinationConstants.NODE_NAME_PREFIX +
-                    member.getSocketAddress());
+            nodeIDList.add(getIdOfNode(member));
         }
 
         return nodeIDList;
