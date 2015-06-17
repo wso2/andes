@@ -424,7 +424,13 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Recover message chunks at particular database call. Please make sure this config won't cause
      * TombstoneOverwhelmingException
      */
-    RECOVERY_MESSAGES_RECOVERY_WINDOW_SIZE("recovery/recoveryWindowSize", "100000", Long.class);
+    RECOVERY_MESSAGES_RECOVERY_WINDOW_SIZE("recovery/recoveryWindowSize", "100000", Long.class),
+
+    /**
+     * Concurrently reads storage queues to make warm startup faster. But increasing concurrent value to big number
+     * may cause heavy load to Cassandra.
+     */
+    RECOVERY_MESSAGES_CONCURRENT_STORAGE_QUEUE_READS("recovery/concurrentStorageQueueReads", "5", Integer.class);
 
 
 

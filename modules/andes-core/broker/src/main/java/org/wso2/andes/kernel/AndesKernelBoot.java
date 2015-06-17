@@ -152,7 +152,9 @@ public class AndesKernelBoot {
     private static void recoverMapsForEachQueue() throws AndesException {
         List<AndesQueue> queueList = contextStore.getAllQueuesStored();
         List<Future> futureSlotRecoveryExecutorList = new ArrayList<Future>();
-        ExecutorService executorService = Executors.newFixedThreadPool(5);
+        Integer concurrentReads = AndesConfigurationManager.readValue
+                (AndesConfiguration.RECOVERY_MESSAGES_CONCURRENT_STORAGE_QUEUE_READS);
+        ExecutorService executorService = Executors.newFixedThreadPool(concurrentReads);
         for (final AndesQueue queue : queueList) {
             final String queueName = queue.queueName;
             // Skip slot creation for Dead letter Channel
@@ -178,6 +180,7 @@ public class AndesKernelBoot {
                 slotRecoveryExecutor.get();
             } catch (InterruptedException e) {
                 log.error("Error occurred in slot recovery.", e);
+                Thread.currentThread().interrupt();
             } catch (ExecutionException e) {
                 log.error("Error occurred in slot recovery.", e);
             }
@@ -208,8 +211,8 @@ public class AndesKernelBoot {
         restoreMessagesCounter = restoreMessagesCounter + messageList.size();
         databaseReadsCounterMap.put(queueName, databaseReadsCounter);
         restoreMessagesCounterMap.put(queueName, restoreMessagesCounter);
-        Timer timer = new Timer();
-        scheduleTimerToPrintCounter(timer, queueName);
+        ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+        scheduleTimerToPrintCounter(scheduledExecutorService, queueName);
 
         long lastMessageID;
         long firstMessageID;
@@ -239,22 +242,23 @@ public class AndesKernelBoot {
             restoreMessagesCounterMap.put(queueName, restoreMessagesCounter);
         }
         printCounter(queueName);
-        timer.cancel();
+        scheduledExecutorService.shutdownNow();
     }
 
     /**
      * Message count and database read count prints in each 30 seconds until slot mapping restoration completes
      *
-     * @param timer TimerUnit object
+     * @param scheduledExecutorService ScheduledExecutorService object
      */
-    private static void scheduleTimerToPrintCounter(Timer timer, final String queueName) {
-        long printDelay = 30000;
-        timer.scheduleAtFixedRate(new TimerTask() {
+    private static void scheduleTimerToPrintCounter(ScheduledExecutorService scheduledExecutorService,
+                                                    final String queueName) {
+        long printDelay = 30L;
+        scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
                 printCounter(queueName);
             }
-        }, 0, printDelay);
+        }, 0, printDelay, TimeUnit.SECONDS);
     }
 
     /**

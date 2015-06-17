@@ -45,8 +45,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.wso2.carbon.metrics.manager.Timer.Context;
 
@@ -476,9 +477,10 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                                                                        long firstMsgId, int count)
             throws AndesException {
 
-        Timer timer = new Timer();
-        List<AndesMessageMetadata> messagesFromQueue = new ArrayList<AndesMessageMetadata>();
+        ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+        List<AndesMessageMetadata> messageMetadataList = new ArrayList<AndesMessageMetadata>();
         long lastMsgId;
+        int listSize;
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_NEXT_MESSAGE_METADATA_FROM_QUEUE).start();
 
@@ -488,13 +490,15 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         long messageIdDifference = ServerStartupRecoveryUtils.getMessageDifferenceForWarmStartup();
         lastMsgId = firstMsgId + messageIdDifference;
         try {
-            messagesFromQueue = HectorDataAccessHelper
+            List<AndesMessageMetadata> messagesFromQueue = HectorDataAccessHelper
                     .getMessagesFromQueue(queueName,
                             HectorConstants.META_DATA_COLUMN_FAMILY,
                             keyspace, firstMsgId, lastMsgId,
                             count, true);
-            if (messagesFromQueue.size() == 0) {
-                readingCassandraInfoLog(timer);
+            listSize = messagesFromQueue.size();
+            messageMetadataList.addAll(messagesFromQueue);
+            if (listSize < count) {
+                readingCassandraInfoLog(scheduledExecutorService);
                 while (lastMsgId <= lastRecoveryMessageId) {
                     long nextMsgId = lastMsgId + 1;
                     lastMsgId = nextMsgId + messageIdDifference;
@@ -503,7 +507,10 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                                     HectorConstants.META_DATA_COLUMN_FAMILY,
                                     keyspace, nextMsgId, lastMsgId,
                                     count, true);
-                    if (messagesFromQueue.size() > 0) {
+                    listSize = listSize + messagesFromQueue.size();
+                    messageMetadataList.addAll(messagesFromQueue);
+                    if (listSize >= count) {
+                        messageMetadataList = messageMetadataList.subList(0, count);
                         break;
                     }
                 }
@@ -514,24 +521,24 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                     "from " + firstMsgId + " to " + firstMsgId, e);
         } finally {
             context.stop();
-            timer.cancel();
+            scheduledExecutorService.shutdownNow();
         }
-        return messagesFromQueue;
+        return messageMetadataList;
     }
 
     /**
      * INFO log print to inform user while reading tombstone
      *
-     * @param timer TimerTask to schedule printing logs
+     * @param scheduledExecutorService ScheduledExecutorService to schedule printing logs
      */
-    private void readingCassandraInfoLog(Timer timer) {
-        long printDelay = 30000L;
-        timer.scheduleAtFixedRate(new TimerTask() {
+    private void readingCassandraInfoLog(ScheduledExecutorService scheduledExecutorService) {
+        long printDelay = 30L;
+        scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
                 log.info("Reading data from cassandra.");
             }
-        }, 0, printDelay);
+        }, 0, printDelay, TimeUnit.SECONDS);
 
     }
 

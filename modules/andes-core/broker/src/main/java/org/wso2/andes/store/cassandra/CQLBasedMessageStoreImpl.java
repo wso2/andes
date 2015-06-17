@@ -31,8 +31,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.wso2.carbon.metrics.manager.Level;
 import org.apache.log4j.Logger;
@@ -660,8 +661,8 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                                                                        long firstMsgId,
                                                                        int count) throws AndesException {
 
-        Timer timer = new Timer();
-        List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>();
+        ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+        List<AndesMessageMetadata> messageMetadataList = new ArrayList<AndesMessageMetadata>();
         long lastMsgId;
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.
@@ -672,6 +673,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         }
         long messageIdDifference = ServerStartupRecoveryUtils.getMessageDifferenceForWarmStartup();
         lastMsgId = firstMsgId + messageIdDifference;
+        int listSize;
 
         try {
             Statement statement = QueryBuilder.select().column(CQLConstants.METADATA).column(CQLConstants.MESSAGE_ID).
@@ -684,15 +686,17 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
             ResultSet resultSet = execute(statement, "retrieving metadata list from " + storageQueueName +
                     " with starting msg id " + firstMsgId + " and ending message id " + lastMsgId);
-            metadataList =
+            List<AndesMessageMetadata> messageMetadata =
                     new ArrayList<AndesMessageMetadata>(resultSet.getAvailableWithoutFetching());
 
             for (Row row : resultSet) {
-                metadataList.add(getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID)));
+                messageMetadata.add(getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID)));
             }
+            messageMetadataList.addAll(messageMetadata);
+            listSize = messageMetadataList.size();
 
-            if (metadataList.size() == 0) {
-                readingCassandraInfoLog(timer);
+            if (listSize < count) {
+                readingCassandraInfoLog(scheduledExecutorService);
                 while (lastMsgId <= lastRecoveryMessageId) {
                     long nextMsgId = lastMsgId + 1;
                     lastMsgId = nextMsgId + messageIdDifference;
@@ -706,37 +710,40 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
                     resultSet = execute(statement, "retrieving metadata list from " + storageQueueName +
                             " with starting msg id " + firstMsgId + " ending message id " + lastMsgId);
-                    metadataList =
+                    messageMetadata =
                             new ArrayList<AndesMessageMetadata>(resultSet.getAvailableWithoutFetching());
 
                     for (Row row : resultSet) {
-                        metadataList.add(getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID)));
+                        messageMetadata.add(getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID)));
                     }
-                    if (metadataList.size() > 0) {
+                    listSize = listSize + messageMetadata.size();
+                    messageMetadataList.addAll(messageMetadata);
+                    if (listSize >= count) {
+                        messageMetadataList = messageMetadataList.subList(0, count);
                         break;
                     }
                 }
             }
         } finally {
             context.stop();
-            timer.cancel();
+            scheduledExecutorService.shutdownNow();
         }
-        return metadataList;
+        return messageMetadataList;
     }
 
     /**
      * INFO log print to inform user while reading tombstone
      *
-     * @param timer TimerTask to schedule printing logs
+     * @param scheduledExecutorService ScheduledExecutorService to schedule printing logs
      */
-    private void readingCassandraInfoLog(Timer timer) {
-        long printDelay = 30000L;
-        timer.scheduleAtFixedRate(new TimerTask() {
+    private void readingCassandraInfoLog(ScheduledExecutorService scheduledExecutorService) {
+        long printDelay = 30L;
+        scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
                 log.info("Reading data from cassandra.");
             }
-        }, 0, printDelay);
+        }, 0, printDelay, TimeUnit.SECONDS);
 
     }
 

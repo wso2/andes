@@ -43,9 +43,11 @@ public class ServerStartupRecoveryUtils {
      * @return id of the message used to stop slot recovery task
      */
     public static long getMessageIdToCompleteRecovery() {
+        //REFERENCE_START time set to 2011
         long REFERENCE_START = 41L * 365L * 24L * 60L * 60L * 1000L;
+        long timeDifference = 256 * 1024;
         long ts = System.currentTimeMillis();
-        return (ts - REFERENCE_START) * 256 * 1024;
+        return (ts - REFERENCE_START) * timeDifference;
     }
 
     /**
@@ -78,7 +80,7 @@ public class ServerStartupRecoveryUtils {
             firstMsgId = recoveryDate.getTime();
         } catch (ParseException e) {
             throw new AndesException("Error while parsing <startRecoveryFrom> property. " +
-                    "Please verify date format.");
+                    "Please verify date format.", e);
         }
         return firstMsgId;
     }
