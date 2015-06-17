@@ -354,7 +354,7 @@ public class RDBMSMessageStoreImplTest {
         messageStore.addMetadata(RDBMSTestHelper.getMetadataList(destQueue_2, 5, 10));
 
         // Retrieve
-        List<AndesMessageMetadata> list = messageStore.getMetadataList(destQueue_1, 0, 5);
+        List<AndesMessageMetadata> list = messageStore.getMetadataList(destQueue_1, 0, 5, false);
         // Test
         Assert.assertEquals(5, list.size());
         for (AndesMessageMetadata andesMessageMetadata : list) {
@@ -362,7 +362,7 @@ public class RDBMSMessageStoreImplTest {
         }
 
         // Retrieve
-        list = messageStore.getMetadataList(destQueue_2, 5, 10);
+        list = messageStore.getMetadataList(destQueue_2, 5, 10, false);
         // Test
         Assert.assertEquals(5, list.size());
         for (AndesMessageMetadata andesMessageMetadata : list) {
@@ -421,7 +421,7 @@ public class RDBMSMessageStoreImplTest {
 
         // Retrieve
         List<AndesMessageMetadata> mdList =
-                messageStore.getNextNMessageMetadataFromQueue(destQueues[0], 0, 3);
+                messageStore.getNextNMessageMetadataFromQueue(destQueues[0], 0, 3, true);
         // Test
         Assert.assertEquals(3, mdList.size());
         for (AndesMessageMetadata andesMessageMetadata : mdList) {
@@ -429,7 +429,7 @@ public class RDBMSMessageStoreImplTest {
         }
 
         // Retrieve
-        mdList = messageStore.getNextNMessageMetadataFromQueue(destQueues[1], 2, 5);
+        mdList = messageStore.getNextNMessageMetadataFromQueue(destQueues[1], 2, 5, true);
         // Test
         Assert.assertEquals(4, mdList.size());
         for (AndesMessageMetadata andesMessageMetadata : mdList) {

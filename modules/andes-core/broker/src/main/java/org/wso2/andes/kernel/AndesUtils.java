@@ -127,7 +127,7 @@ public class AndesUtils {
         // We need to add a prefix so that we could differentiate if queue is created under the same name
         //as topic
         if(isTopic) {
-            storageQueueName = new StringBuilder("TOPIC_NODE_QUEUE_PREFIX").append("|").append(destination).append("|").append(nodeID).toString();
+            storageQueueName = new StringBuilder(TOPIC_NODE_QUEUE_PREFIX).append("|").append(destination).append("|").append(nodeID).toString();
         } else {
             storageQueueName = destination;
         }

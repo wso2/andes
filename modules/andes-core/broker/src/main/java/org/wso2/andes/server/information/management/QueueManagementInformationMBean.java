@@ -55,6 +55,7 @@ import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.queue.QueueRegistry;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostImpl;
+import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.transport.codec.BBDecoder;
 
 import javax.jms.JMSException;
@@ -218,13 +219,14 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         try {
             List<String> queuesList = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
             Iterator itr = queuesList.iterator();
+            //TODO check if we need this if
             //remove topic specific queues
             while (itr.hasNext()) {
                 String destinationQueueName = (String) itr.next();
-                if(destinationQueueName.startsWith("tmp_") || destinationQueueName.contains
+                /*if(destinationQueueName.startsWith("tmp_") || destinationQueueName.contains
                         ("carbon:") || destinationQueueName.startsWith("TempQueue")) {
                     itr.remove();
-                }
+                }*/
             }
             String[] queues= new String[queuesList.size()];
             queuesList.toArray(queues);
@@ -319,68 +321,49 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * Restore a given browser message Id list from the Dead Letter Queue to the same queue it was previous in before
      * moving to the Dead Letter Queue
      * and remove them from the Dead Letter Queue.
+     *
      * @param andesMetadataIDs    The browser message Ids
-     * @param deadLetterQueueName The Dead Letter Queue Name for the tenant*/
+     * @param deadLetterQueueName The Dead Letter Queue Name for the tenant
+     */
     @Override
     public void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
-            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs,
-                                                   @MBeanOperationParameter(name = "deadLetterQueueName",
+            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs, @MBeanOperationParameter
+            (name = "deadLetterQueueName",
             description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName) {
 
-        if (null != andesMetadataIDs) {
-            List<Long> andesMessageIdList = Arrays.asList(ArrayUtils.toObject(andesMetadataIDs));
-            List<AndesRemovableMetadata> removableMetadataList = new ArrayList<>(andesMessageIdList.size());
+        try {
+            boolean interruptedByFlowControl = false;
 
-            try {
-                Map<Long, List<AndesMessagePart>> messageContent = MessagingEngine.getInstance().getContent
-                        (andesMessageIdList);
-
-                boolean interruptedByFlowControl = false;
-
-                for (Long messageId : andesMessageIdList) {
-                    if (restoreBlockedByFlowControl) {
-                        interruptedByFlowControl = true;
-                        break;
-                    }
-                    List<AndesMessageMetadata> messageMetadataListForOne = MessagingEngine.getInstance().getMetaDataList
-                            (deadLetterQueueName, messageId, messageId);
-                    AndesMessageMetadata metadata = messageMetadataListForOne.get(0);
-                    String destination = metadata.getDestination();
-
-                    // Create a removable metadata to remove the current message
-                    removableMetadataList.add(new AndesRemovableMetadata(messageId, deadLetterQueueName,
-                            deadLetterQueueName));
-
-                    // Set the new destination queue
-                    metadata.setDestination(destination);
-                    metadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination(destination,
-                            ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(), false));
-                    AndesMessage andesMessage = new AndesMessage(metadata);
-
-                    // Update Andes message with all the chunk details
-                    List<AndesMessagePart> messageParts = messageContent.get(messageId);
-                    for (AndesMessagePart messagePart : messageParts) {
-                        andesMessage.addMessagePart(messagePart);
-                    }
-
-                    // Handover message to Andes
-                    Andes.getInstance().messageReceived(andesMessage, andesChannel, disablePubAck);
+            for (Long messageId : andesMetadataIDs) {
+                if (restoreBlockedByFlowControl) {
+                    interruptedByFlowControl = true;
+                    break;
                 }
 
-                // Delete old messages
-                Andes.getInstance().deleteMessages(removableMetadataList, false);
+                List<AndesMessageMetadata> messageMetadataListForOne = MessagingEngine.getInstance().getMetaDataList
+                        (deadLetterQueueName, messageId, messageId, true);
 
-                if (interruptedByFlowControl) {
-                    // Throw this out so UI will show this to the user as an error message.
-                    throw new RuntimeException("Message restore from dead letter queue has been interrupted by flow " +
-                            "control. Please try again later.");
-                }
-
-            } catch (AndesException e) {
-                throw new RuntimeException("Error restoring messages from " + deadLetterQueueName, e);
+                AndesMessageMetadata metadata = messageMetadataListForOne.get(0);
+                // Set the new destination queue
+                metadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination(metadata.getDestination(),
+                        ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(), false));
+                AndesMessage andesMessage = new AndesMessage(metadata);
+                //indicate that this message is being restored
+                andesMessage.setIsBeingRestored(true);
+                // Update Andes message with all the chunk details
+                // Handover message to Andes
+                Andes.getInstance().messageReceived(andesMessage, andesChannel, disablePubAck);
             }
-        }
 
+            if (interruptedByFlowControl) {
+                // Throw this out so UI will show this to the user as an error message.
+                throw new RuntimeException("Message restore from dead letter queue has been interrupted by flow " +
+                        "control. Please try again later.");
+            }
+
+        } catch (AndesException e) {
+            throw new RuntimeException("Error restoring messages from " + deadLetterQueueName, e);
+        }
     }
 
     /**
@@ -389,25 +372,23 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      *
      * @param andesMetadataIDs    The browser message Ids
      * @param destination         The new destination
-     * @param deadLetterQueueName The Dead Letter Queue Name for the tenant
+     * @param deadLetterQueueName The storage queue name of the message inside the Dead Letter Channel Name
      */
     @Override
     public void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
             description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs,
                                                    @MBeanOperationParameter(name = "destination",
-            description = "Destination of the message to be restored") String destination,
+                                                           description = "Destination of the message to be restored")
+                                                   String destination,
                                                    @MBeanOperationParameter(name = "deadLetterQueueName",
-            description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName) {
+                                                           description = "The Dead Letter Queue Name for the selected" +
+                                                                   " tenant") String deadLetterQueueName) {
 
         if (null != andesMetadataIDs) {
 
             List<Long> andesMessageIdList = Arrays.asList(ArrayUtils.toObject(andesMetadataIDs));
-            List<AndesRemovableMetadata> removableMetadataList = new ArrayList<>(andesMessageIdList.size());
 
             try {
-                Map<Long, List<AndesMessagePart>> messageContent = MessagingEngine.getInstance().getContent
-                        (andesMessageIdList);
-
                 boolean interruptedByFlowControl = false;
 
                 for (Long messageId : andesMessageIdList) {
@@ -415,39 +396,30 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                         interruptedByFlowControl = true;
                         break;
                     }
-
                     List<AndesMessageMetadata> messageMetadataListForOne = MessagingEngine.getInstance().getMetaDataList
-                            (deadLetterQueueName, messageId, messageId);
+                            (deadLetterQueueName, messageId, messageId, true);
                     AndesMessageMetadata metadata = messageMetadataListForOne.get(0);
-
-                    // Create a removable metadata to remove the current message
-                    removableMetadataList.add(new AndesRemovableMetadata(messageId, deadLetterQueueName,
-                            deadLetterQueueName));
 
                     // Set the new destination queue
                     metadata.setDestination(destination);
                     metadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination(destination,
-                                                                                          ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(), false));
+                            ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(), false));
                     metadata.updateMetadata(destination, "amqp.direct");
+
+                    //Create new andes messade from the metadata
                     AndesMessage andesMessage = new AndesMessage(metadata);
 
-                    // Update Andes message with all the chunk details
-                    List<AndesMessagePart> messageParts = messageContent.get(messageId);
-                    for (AndesMessagePart messagePart : messageParts) {
-                        andesMessage.addMessagePart(messagePart);
-                    }
+                    //Set isBeingRestored to not re write content
+                    andesMessage.setIsBeingRestored(true);
 
                     // Handover message to Andes
                     Andes.getInstance().messageReceived(andesMessage, andesChannel, disablePubAck);
                 }
 
-                // Delete old messages
-                Andes.getInstance().deleteMessages(removableMetadataList, false);
-
                 if (interruptedByFlowControl) {
                     // Throw this out so UI will show this to the user as an error message.
                     throw new RuntimeException("Message restore from dead letter queue has been interrupted by flow " +
-                                               "control. Please try again later.");
+                            "control. Please try again later.");
                 }
 
             } catch (AndesException e) {
@@ -479,7 +451,6 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
             List<AndesMessageMetadata> nextNMessageMetadataFromQueue = MessagingEngine.getInstance()
                     .getNextNMessageMetadataFromQueue(queueName, nextMsgId, maxMsgCount);
-
             for (AndesMessageMetadata andesMessageMetadata : nextNMessageMetadataFromQueue) {
                 //get AMQMessage from AndesMessageMetadata
                 AMQMessage amqMessage = AMQPUtils.getAMQMessageFromAndesMetaData(andesMessageMetadata);
@@ -492,7 +463,14 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                     stringBuilder.append(headerKey).append(" = ").append(properties.getHeaders().get(headerKey));
                     stringBuilder.append(", ");
                 }
-                String msgProperties = stringBuilder.toString();
+
+                // If browsing the dead letter channel, set the storage name to the original storage queue
+                if (DLCQueueUtils.isDeadLetterQueue(queueName)) {
+                    andesMessageMetadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination
+                            (andesMessageMetadata.getDestination(),
+                                    ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(), false));
+                }
+                    String msgProperties = stringBuilder.toString();
                 //get content type
                 String contentType = properties.getContentTypeAsString();
                 //get message id
@@ -608,7 +586,11 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      */
     @Override
     public long getNumberMessagesInDLCForQueue(String queueName) {
-        return 0;
+        try {
+            return MessagingEngine.getInstance().getMessageCountInDLCForQueue(queueName);
+        } catch (AndesException e){
+            throw new RuntimeException("Error restoring messages from dead letter channel for:" + queueName, e);
+        }
     }
 
     /**
@@ -617,13 +599,145 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     @Override
     public CompositeData[] getMessageInDLCForQueue(
             @MBeanOperationParameter(name = "queueName", description = "Name of queue to browse " +
-                                                                       "messages") String queueName,
+                    "messages") String queueName,
             @MBeanOperationParameter(name = "lastMsgId", description = "Browse message this " +
-                                                                       "onwards") long nextMsgId,
+                    "onwards") long nextMsgId,
             @MBeanOperationParameter(name = "maxMsgCount", description = "Maximum message count " +
-                                                                 "per request") int maxMessageCount)
+                    "per request") int maxMessageCount)
             throws MBeanException {
-        return new CompositeData[0];
+        List<CompositeData> compositeDataList = new ArrayList<>();
+        try {
+
+            List<AndesMessageMetadata> nextNMessageMetadataFromQueue = MessagingEngine.getInstance()
+                    .getNextNMessageMetadataFromDLCForQueue(queueName, nextMsgId, maxMessageCount);
+            for (AndesMessageMetadata andesMessageMetadata : nextNMessageMetadataFromQueue) {
+                //get AMQMessage from AndesMessageMetadata
+                AMQMessage amqMessage = AMQPUtils.getAMQMessageFromAndesMetaData(andesMessageMetadata);
+                //header properties from AMQMessage
+                BasicContentHeaderProperties properties = (BasicContentHeaderProperties) amqMessage
+                        .getContentHeaderBody().getProperties();
+                //get custom header properties of AMQMessage
+                StringBuilder stringBuilder = new StringBuilder();
+                for (String headerKey : properties.getHeaders().keys()) {
+                    stringBuilder.append(headerKey).append(" = ").append(properties.getHeaders().get(headerKey));
+                    stringBuilder.append(", ");
+                }
+
+                //If read from DLC, set the storage queuename to the original storage queue name
+                if (DLCQueueUtils.isDeadLetterQueue(queueName)) {
+                    andesMessageMetadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination
+                            (andesMessageMetadata.getDestination(),
+                            ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(), false));
+                }
+                String msgProperties = stringBuilder.toString();
+                //get content type
+                String contentType = properties.getContentTypeAsString();
+                //get message id
+                String messageId = properties.getMessageIdAsString();
+                //get message correlation id
+                String correlationId = properties.getCorrelationIdAsString();
+                //get type of message
+                String type = properties.getTypeAsString();
+                //get redelivered
+                Boolean redelivered = andesMessageMetadata.getRedelivered();
+                //get delivery mode
+                Integer deliveredMode = (int) properties.getDeliveryMode();
+                //get priority
+                Integer priority = (int) properties.getPriority();
+                //get timestamp
+                Long timeStamp = properties.getTimestamp();
+                //get expiration
+                Long expiration = properties.getExpiration();
+                //get destination
+                String destination = andesMessageMetadata.getStorageQueueName();
+                //get AndesMessageMetadata id
+                Long andesMessageMetadataId = andesMessageMetadata.getMessageID();
+                //get encoding
+                String encoding = amqMessage.getMessageHeader().getEncoding();
+                if (encoding == null) {
+                    encoding = "UTF-8";
+                }
+                //get mime type of message
+                String mimeType = amqMessage.getMessageHeader().getMimeType();
+                // setting default mime type
+                if (StringUtils.isBlank(mimeType)) {
+                    mimeType = MIME_TYPE_TEXT_PLAIN;
+                }
+
+                //content is constructing
+                final int bodySize = (int) amqMessage.getSize();
+                List<Byte> messageContent = new ArrayList<Byte>();
+                java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(bodySize);
+                int position = 0;
+                while (position < bodySize) {
+                    position += amqMessage.getContent(buffer, position);
+                    buffer.flip();
+                    for (int i = 0; i < buffer.limit(); i++) {
+                        messageContent.add(buffer.get(i));
+                    }
+                    buffer.clear();
+                }
+
+                //create message content to readable text from ByteBuffer
+                Byte[] msgContent = messageContent.toArray(new Byte[messageContent.size()]);
+                byte[] byteMsgContent = ArrayUtils.toPrimitive(msgContent);
+                ByteBuffer wrapMsgContent = ByteBuffer.wrap(byteMsgContent);
+                String content[] = new String[2];
+                String summaryMsg = "";
+                String wholeMsg = "";
+
+                //get TextMessage content to display
+                if (mimeType.equals(MIME_TYPE_TEXT_PLAIN) || mimeType.equals(MIMI_TYPE_TEXT_XML)) {
+                    wholeMsg = extractTextMessageContent(wrapMsgContent, encoding);
+                    //get ByteMessage content to display
+                } else if (mimeType.equals(MIME_TYPE_APPLICATION_OCTET_STREAM)) {
+                    wholeMsg = extractByteMessageContent(wrapMsgContent, byteMsgContent);
+                    //get ObjectMessage content to display
+                } else if (mimeType.equals(MIME_TYPE_APPLICATION_JAVA_OBJECT_STREAM)) {
+                    wholeMsg = "This Operation is Not Supported!";
+                    summaryMsg = "Not Supported";
+                    //get StreamMessage content to display
+                } else if (mimeType.equals(MIME_TYPE_JMS_STREAM_MESSAGE)) {
+                    wholeMsg = extractStreamMessageContent(wrapMsgContent, encoding);
+                    //get MapMessage content to display
+                } else if (mimeType.equals(MIME_TYPE_AMQP_MAP) || mimeType.equals(MIME_TYPE_JMS_MAP_MESSAGE)) {
+                    wholeMsg = extractMapMessageContent(wrapMsgContent);
+                }
+                //trim content to summary and whole message
+                if (wholeMsg.length() >= CHARACTERS_TO_SHOW) {
+                    summaryMsg = wholeMsg.substring(0, CHARACTERS_TO_SHOW);
+                } else {
+                    summaryMsg = wholeMsg;
+                }
+                if (wholeMsg.length() > MESSAGE_DISPLAY_LENGTH_MAX) {
+                    wholeMsg = wholeMsg.substring(0, MESSAGE_DISPLAY_LENGTH_MAX - 3) +
+                            DISPLAY_CONTINUATION + DISPLAY_LENGTH_EXCEEDED;
+                }
+
+                content[0] = summaryMsg;
+                content[1] = wholeMsg;
+
+                //set content type of message to readable name
+                contentType = getReadableNameForMessageContentType(contentType);
+
+                //set CompositeData of message
+                Object[] itemValues = {msgProperties, contentType, content, messageId, correlationId, type, redelivered,
+                        deliveredMode, priority, timeStamp, expiration, destination, andesMessageMetadataId};
+                CompositeDataSupport support = new CompositeDataSupport(_msgContentType,
+                        VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.toArray(
+                                new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]), itemValues);
+                compositeDataList.add(support);
+            }
+        } catch (AndesException e) {
+            throw new MBeanException(e, "Error occurred in browse queue.");
+        } catch (OpenDataException e) {
+            throw new MBeanException(e, "Error occurred in browse queue.");
+        } catch (AMQException e) {
+            throw new MBeanException(e, "Error occurred in browse queue.");
+        } catch (CharacterCodingException e) {
+            throw new MBeanException(e, "Error occurred in browse queue.");
+        }
+        return compositeDataList.toArray(new CompositeData[compositeDataList.size()]);
     }
 
     /**
@@ -847,28 +961,6 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             }
         }
         return contentType;
-    }
-
-    /**
-     * Retrieve a valid andes messageId list from a given browser message Id list.
-     *
-     * @param browserMessageIdList List of browser messageIds.
-     * @return Valid Andes MessageId list
-     */
-    private List<Long> getValidAndesMessageIdList(String[] browserMessageIdList) {
-        List<Long> andesMessageIdList = new ArrayList<Long>(browserMessageIdList.length);
-
-        for (String browserMessageId : browserMessageIdList) {
-            Long andesMessageId = AndesUtils.getAndesMessageId(browserMessageId);
-
-            if (andesMessageId > 0) {
-                andesMessageIdList.add(andesMessageId);
-            } else {
-                log.warn("A valid message could not be found for the message Id : " + browserMessageId);
-            }
-        }
-
-        return andesMessageIdList;
     }
 
     /**

@@ -37,6 +37,11 @@ public class MetricsConstants {
     public static final String DB_READ = PREFIX + "database.read";
 
     /**
+     * Time taken for a single database update operation
+     */
+    public static final String DB_UPDATE = PREFIX + "database.update";
+
+    /**
      * Add message content to the message store
      */
     public static final String ADD_MESSAGE_PART = PREFIX + "store.messagePart.add";

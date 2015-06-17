@@ -46,7 +46,10 @@ public class H2MemMessageStoreImpl extends RDBMSMessageStoreImpl {
             "MESSAGE_ID BIGINT, " +
             "CONTENT_OFFSET INT, " +
             "MESSAGE_CONTENT BLOB NOT NULL, " +
-            "PRIMARY KEY (MESSAGE_ID,CONTENT_OFFSET)" +
+            "PRIMARY KEY (MESSAGE_ID,CONTENT_OFFSET), " +
+            "FOREIGN KEY (MESSAGE_ID) REFERENCES MB_METADATA(MESSAGE_ID) " +
+            "ON DELETE CASCADE " +
+            "ON UPDATE CASCADE" +
             ");";
 
     /**
@@ -65,9 +68,11 @@ public class H2MemMessageStoreImpl extends RDBMSMessageStoreImpl {
     protected static final String CREATE_METADATA_TABLE = "CREATE TABLE IF NOT EXISTS MB_METADATA (" +
             "MESSAGE_ID BIGINT, " +
             "QUEUE_ID INT, " +
+            "DLC_QUEUE_ID INT, " +
             "MESSAGE_METADATA BINARY, " +
             "PRIMARY KEY (MESSAGE_ID, QUEUE_ID), " +
-            "FOREIGN KEY (QUEUE_ID) REFERENCES MB_QUEUE_MAPPING (QUEUE_ID) " +
+            "FOREIGN KEY (QUEUE_ID) REFERENCES MB_QUEUE_MAPPING(QUEUE_ID), " +
+            "FOREIGN KEY (DLC_QUEUE_ID) REFERENCES MB_QUEUE_MAPPING(QUEUE_ID)" +
             ");";
 
     /**
@@ -147,9 +152,9 @@ public class H2MemMessageStoreImpl extends RDBMSMessageStoreImpl {
      */
     public void createTables() throws AndesException {
         String[] queries = {
-                CREATE_CONTENT_TABLE,
                 CREATE_QUEUES_TABLE,
                 CREATE_METADATA_TABLE,
+                CREATE_CONTENT_TABLE,
                 CREATE_EXPIRATION_DATA_TABLE,
                 CREATE_RETAIN_METADATA_TABLE,
                 CREATE_RETAIN_CONTENT_TABLE

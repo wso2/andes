@@ -128,8 +128,13 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
         // Messages are processed in the order they arrive at ring buffer By this processor.
         // By setting message ID through message pre processor we assure, even in a multi publisher scenario, there is
         // no message id ordering issue at node level.
-        setMessageID(message);
 
+        //If a message is being restored, set the current id as the previous id
+        if (message.isBeingRestored()) {
+            message.setPreviousMessageID(message.getMetadata().getMessageID());
+        }
+        //set the newly generated id as the current message id
+        setMessageID(message);
         if(log.isDebugEnabled()){
             log.debug("[ Sequence " + sequence + " ] Pre processing message. Message ID "
                     + message.getMetadata().getMessageID());

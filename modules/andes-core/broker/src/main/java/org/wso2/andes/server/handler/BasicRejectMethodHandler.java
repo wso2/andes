@@ -18,9 +18,11 @@
 package org.wso2.andes.server.handler;
 
 import org.wso2.andes.AMQException;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.framing.BasicRejectBody;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
@@ -51,7 +53,6 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
         AMQProtocolSession session = stateManager.getProtocolSession();
 
         AMQChannel channel = session.getChannel(channelId);
-
         if (channel == null)
         {
             throw body.getChannelNotFoundException(channelId);
@@ -127,7 +128,10 @@ public class BasicRejectMethodHandler implements StateAwareMethodListener<BasicR
             {
                 _logger.warn("Dropping message as requeue not required and there is no dead letter queue");
                 try {
-                    MessagingEngine.getInstance().moveMessageToDeadLetterChannel(message.getMessage().getMessageNumber(),message.getQueue().getName());
+                    AndesMessageMetadata messageMetadata = AMQPUtils.convertAMQMessageToAndesMetadata((AMQMessage)
+                            message.getMessage(), channel.getId());
+                    MessagingEngine.getInstance().moveMessageToDeadLetterChannel(messageMetadata, message.getQueue()
+                            .getName());
                 } catch (AndesException e) {
                     _logger.error("Error while moving message to DLC" , e);
                     throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while moving message to DLC", e);
