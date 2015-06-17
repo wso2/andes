@@ -39,6 +39,7 @@ import me.prettyprint.hector.api.ddl.ColumnFamilyDefinition;
 import me.prettyprint.hector.api.ddl.ColumnType;
 import me.prettyprint.hector.api.ddl.ComparatorType;
 import me.prettyprint.hector.api.ddl.KeyspaceDefinition;
+import me.prettyprint.hector.api.exceptions.HUnavailableException;
 import me.prettyprint.hector.api.exceptions.HectorException;
 import me.prettyprint.hector.api.factory.HFactory;
 import me.prettyprint.hector.api.mutation.Mutator;
@@ -48,10 +49,14 @@ import me.prettyprint.hector.api.query.MultigetSliceQuery;
 import me.prettyprint.hector.api.query.QueryResult;
 import me.prettyprint.hector.api.query.RangeSlicesQuery;
 import me.prettyprint.hector.api.query.SliceQuery;
+
 import org.apache.commons.lang.StringUtils;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.MessageExpirationWorker;
+import org.wso2.andes.store.AndesStoreUnavailableException;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -67,6 +72,10 @@ import java.util.Map;
  */
 public class HectorDataAccessHelper {
 
+    /** The error message emitted hector client library when it loose connectivity to all known cassandra hosts */
+    private static final String HECTOR_CONNECTION_ERROR_MESSAGE = 
+                                                    "All host pools marked down. Retry burden pushed out to client";
+    
     public static final int STANDARD_PAGE_SIZE = 1000;
     /**
      * Serializes used for Cassandra data operations
@@ -126,66 +135,95 @@ public class HectorDataAccessHelper {
      * @throws CassandraDataAccessException In case of an Error accessing database or data error
      */
     public static void createColumnFamily(String name, String keySpace, Cluster cluster,
-                                          String comparatorType, int gcGraceSeconds) throws
-            CassandraDataAccessException {
+                                          String comparatorType, int gcGraceSeconds)
+                                                                                    throws AndesStoreUnavailableException,
+                                                                                    CassandraDataAccessException {
 
-        KeyspaceDefinition keyspaceDefinition = cluster.describeKeyspace(keySpace);
+        try {
 
-        if (keyspaceDefinition == null) {
-            throw new CassandraDataAccessException("Can't create Column family, keyspace " +
-                    keySpace + " does not exist");
-        }
+            KeyspaceDefinition keyspaceDefinition = cluster.describeKeyspace(keySpace);
 
-        ColumnFamilyDefinition columnFamilyDefinition =
-                new ThriftCfDef(keySpace, name,
-                        ComparatorType.getByClassName(comparatorType));
+            if (keyspaceDefinition == null) {
+                throw new IllegalStateException("Can't create Column family, keyspace " +
+                                                keySpace + " does not exist");
+            }
 
-        columnFamilyDefinition.setGcGraceSeconds(gcGraceSeconds);
-        List<ColumnFamilyDefinition> cfDefinitionList = keyspaceDefinition.getCfDefs();
-        HashSet<String> columnFamilyNames = new HashSet<String>();
+            ColumnFamilyDefinition columnFamilyDefinition =
+                                                            new ThriftCfDef(
+                                                                            keySpace,
+                                                                            name,
+                                                                            ComparatorType.getByClassName(comparatorType));
+            
+            columnFamilyDefinition.setGcGraceSeconds(gcGraceSeconds);
+            List<ColumnFamilyDefinition> cfDefinitionList = keyspaceDefinition.getCfDefs();
+            HashSet<String> columnFamilyNames = new HashSet<String>();
 
-        for (ColumnFamilyDefinition definition : cfDefinitionList) {
-            columnFamilyNames.add(definition.getName());
-        }
-        if (!columnFamilyNames.contains(name)) {
-            cluster.addColumnFamily(columnFamilyDefinition, true);
-        }
+            for (ColumnFamilyDefinition definition : cfDefinitionList) {
+                columnFamilyNames.add(definition.getName());
+            }
+            if (!columnFamilyNames.contains(name)) {
+                cluster.addColumnFamily(columnFamilyDefinition, true);
+            }
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("Unable to create the column family " + name +
+                                                     " consistency level was not met",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Unable to create keyspace " + name +
+                                                         "cassandra connection is down", e);
+            } else {
+                throw new CassandraDataAccessException("Error while creating:" + name, e);
+            }
+        } 
     }
 
     /**
      * Create a Column family for cassandra counters in a given Cluster instance
      *
      * @param name     ColumnFamily Name
-     * @param keySpace KeySpace name
      * @param cluster  Cluster instance
      * @throws CassandraDataAccessException In case of an Error accessing database or data error
      */
     public static void createCounterColumnFamily(String name, String keySpace, Cluster cluster,
-                                                 int gcGraceSeconds) throws
-            CassandraDataAccessException {
+                                                 int gcGraceSeconds) throws CassandraDataAccessException,
+                                                                    AndesStoreUnavailableException
+    {
+        try {
+            KeyspaceDefinition ksDef = cluster.describeKeyspace(keySpace);
 
-        KeyspaceDefinition ksDef = cluster.describeKeyspace(keySpace);
+            if (ksDef == null) {
+                throw new IllegalStateException("Can't create Column family, keyspace " +
+                                                keySpace + " does not exist");
+            }
 
-        if (ksDef == null) {
-            throw new CassandraDataAccessException("Can't create Column family, keyspace " +
-                    keySpace + " does not exist");
-        }
+            ColumnFamilyDefinition cfDef = HFactory.createColumnFamilyDefinition(keySpace, name,
+                                                                                 ComparatorType.COUNTERTYPE);
+            cfDef.setGcGraceSeconds(gcGraceSeconds);
+            cfDef.setComparatorType(ComparatorType.UTF8TYPE);
+            cfDef.setDefaultValidationClass(ComparatorType.COUNTERTYPE.getClassName());
+            cfDef.setColumnType(ColumnType.STANDARD);
 
-        ColumnFamilyDefinition cfDef = HFactory.createColumnFamilyDefinition(keySpace, name,
-                ComparatorType.COUNTERTYPE);
-        cfDef.setGcGraceSeconds(gcGraceSeconds);
-        cfDef.setComparatorType(ComparatorType.UTF8TYPE);
-        cfDef.setDefaultValidationClass(ComparatorType.COUNTERTYPE.getClassName());
-        cfDef.setColumnType(ColumnType.STANDARD);
-
-        List<ColumnFamilyDefinition> cfDefsList = ksDef.getCfDefs();
-        HashSet<String> cfNames = new HashSet<String>();
-        for (ColumnFamilyDefinition columnFamilyDefinition : cfDefsList) {
-            cfNames.add(columnFamilyDefinition.getName());
-        }
-        if (!cfNames.contains(name)) {
-            cluster.addColumnFamily(cfDef, true);
-        }
+            List<ColumnFamilyDefinition> cfDefsList = ksDef.getCfDefs();
+            HashSet<String> cfNames = new HashSet<String>();
+            for (ColumnFamilyDefinition columnFamilyDefinition : cfDefsList) {
+                cfNames.add(columnFamilyDefinition.getName());
+            }
+            if (!cfNames.contains(name)) {
+                cluster.addColumnFamily(cfDef, true);
+            }
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("Unable to create the column family " + name +
+                                                     " consistency level was not met",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Unable to create keyspace " + name +
+                                                         "cassandra connection is down", e);
+            } else {
+                throw new CassandraDataAccessException("Error while creating:" + name, e);
+            }
+        } 
     }
 
     /**
@@ -198,26 +236,41 @@ public class HectorDataAccessHelper {
      */
     public static void createMessageExpiryColumnFamily(String name, String keySpace,
                                                        Cluster cluster, String comparatorType,
-                                                       int gcGraceSeconds)
-            throws CassandraDataAccessException {
-        KeyspaceDefinition ksDef = cluster.describeKeyspace(keySpace);
+                                                       int gcGraceSeconds) throws CassandraDataAccessException,
+                                                                          AndesStoreUnavailableException
+    {
+        try {
+            KeyspaceDefinition ksDef = cluster.describeKeyspace(keySpace);
 
-        if (ksDef == null) {
-            throw new CassandraDataAccessException("Can't create Column family, keyspace " +
-                    keySpace + " does not exist");
-        }
+            if (ksDef == null) {
+                throw new IllegalStateException("Can't create Column family, keyspace " +
+                                                keySpace + " does not exist");
+            }
 
-        ColumnFamilyDefinition cfDef =
-                new ThriftCfDef(keySpace, /*"Queue"*/name,
-                        ComparatorType.getByClassName(comparatorType));
-        cfDef.setGcGraceSeconds(gcGraceSeconds);
-        List<ColumnFamilyDefinition> cfDefsList = ksDef.getCfDefs();
-        HashSet<String> cfNames = new HashSet<String>();
-        for (ColumnFamilyDefinition columnFamilyDefinition : cfDefsList) {
-            cfNames.add(columnFamilyDefinition.getName());
-        }
-        if (!cfNames.contains(name)) {
-            cluster.addColumnFamily(cfDef, true);
+            ColumnFamilyDefinition cfDef =
+                                           new ThriftCfDef(keySpace, /* "Queue" */name,
+                                                           ComparatorType.getByClassName(comparatorType));
+            cfDef.setGcGraceSeconds(gcGraceSeconds);
+            List<ColumnFamilyDefinition> cfDefsList = ksDef.getCfDefs();
+            HashSet<String> cfNames = new HashSet<String>();
+            for (ColumnFamilyDefinition columnFamilyDefinition : cfDefsList) {
+                cfNames.add(columnFamilyDefinition.getName());
+            }
+            if (!cfNames.contains(name)) {
+                cluster.addColumnFamily(cfDef, true);
+            }
+
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("Unable to create the column family " + name +
+                                                     " consistency level was not met",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Unable to create keyspace " + name +
+                                                         "cassandra connection is down", e);
+            } else {
+                throw new CassandraDataAccessException("Error while creating:" + name, e);
+            }
         }
     }
 
@@ -232,7 +285,7 @@ public class HectorDataAccessHelper {
      */
     public static void insertCounterColumn(String cfName, String counterRowName, String queueColumn,
                                            Keyspace keyspace)
-            throws CassandraDataAccessException {
+            throws AndesStoreUnavailableException, CassandraDataAccessException {
         try {
             Mutator<String> mutator = HFactory.createMutator(keyspace, StringSerializer.get());
             // inserting counter column
@@ -243,10 +296,13 @@ public class HectorDataAccessHelper {
                     keyspace, stringSerializer, stringSerializer);
 
             counter.setColumnFamily(cfName).setKey(counterRowName).setName(queueColumn);
-        } catch (Exception e) {
-            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Unable to insert data since " +
-                        "cassandra connection is down");
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Unable to insert data since " +
+                        "cassandra connection is down", e);
             } else {
                 throw new CassandraDataAccessException("Error while inserting data to:" + cfName, e);
             }
@@ -264,7 +320,7 @@ public class HectorDataAccessHelper {
      */
     public static void removeCounterColumn(String cfName, String counterRowName,
                                            String queueColumn, Keyspace keyspace)
-            throws CassandraDataAccessException {
+            throws AndesStoreUnavailableException, CassandraDataAccessException {
 
         try {
             Mutator<String> mutator = HFactory.createMutator(keyspace, StringSerializer.get());
@@ -274,10 +330,13 @@ public class HectorDataAccessHelper {
                     keyspace, stringSerializer, stringSerializer);
 
             counter.setColumnFamily(cfName).setKey(counterRowName).setName(queueColumn);
-        } catch (Exception e) {
-            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Unable to access data as " +
-                        "cassandra connection is down");
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Unable to access data as " +
+                        "cassandra connection is down", e);
             } else {
                 throw new CassandraDataAccessException("Error while accessing:" + cfName, e);
             }
@@ -296,15 +355,18 @@ public class HectorDataAccessHelper {
      */
     public static void incrementCounter(String columnName, String columnFamily, String rawID,
                                         Keyspace keyspace, long incrementBy)
-            throws CassandraDataAccessException {
+            throws AndesStoreUnavailableException, CassandraDataAccessException {
         try {
             Mutator<String> mutator = HFactory.createMutator(keyspace, StringSerializer.get());
             mutator.incrementCounter(rawID, columnFamily, columnName, incrementBy);
             mutator.execute();
-        } catch (Exception e) {
-            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Error while accessing " + columnFamily +
-                        " since cassandra connection is down");
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Error while accessing " + columnFamily +
+                        " since cassandra connection is down", e);
             } else {
                 throw new CassandraDataAccessException("Error while accessing:" + columnFamily, e);
             }
@@ -322,15 +384,18 @@ public class HectorDataAccessHelper {
      */
     public static void decrementCounter(String columnName, String columnFamily, String rawID,
                                         Keyspace keyspace, long decrementBy)
-            throws CassandraDataAccessException {
+            throws AndesStoreUnavailableException, CassandraDataAccessException {
         try {
             Mutator<String> mutator = HFactory.createMutator(keyspace, StringSerializer.get());
             mutator.decrementCounter(rawID, columnFamily, columnName, decrementBy);
             mutator.execute();
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
         } catch (HectorException he) {
-            if (he.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Error while accessing " + columnFamily +
-                        " since cassandra connection is down");
+            if (he.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Error while accessing " + columnFamily +
+                        " since cassandra connection is down", he);
             } else {
                 throw new CassandraDataAccessException("Error while accessing:" + columnFamily, he);
             }
@@ -349,7 +414,7 @@ public class HectorDataAccessHelper {
      */
     public static long getCountValue(Keyspace keyspace, String columnFamily, String cloumnName,
                                      String key)
-            throws CassandraDataAccessException {
+            throws AndesStoreUnavailableException, CassandraDataAccessException {
         try {
             long count = 0;
             CounterQuery<String, String> query = HFactory.createCounterColumnQuery(keyspace,
@@ -360,10 +425,13 @@ public class HectorDataAccessHelper {
                 count = counter.getValue();
             }
             return count;
-        } catch (Exception e) {
-            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Error while accessing " + columnFamily +
-                        " since cassandra connection is down");
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Error while accessing " + columnFamily +
+                        " since cassandra connection is down", e);
             } else {
                 throw new CassandraDataAccessException("Error while accessing:" + columnFamily, e);
             }
@@ -381,14 +449,14 @@ public class HectorDataAccessHelper {
      */
     public static byte[] getMessageMetaDataOfMessage(String columnFamilyName, Keyspace keyspace,
                                                      long messageId) throws
-            CassandraDataAccessException {
+                                                     AndesStoreUnavailableException, CassandraDataAccessException {
         byte[] value = null;
         if (keyspace == null) {
-            throw new CassandraDataAccessException("Can't access Data , no keyspace provided ");
+            throw new IllegalArgumentException("Can't access Data , no keyspace provided ");
         }
 
         if (columnFamilyName == null) {
-            throw new CassandraDataAccessException("Can't access data with queueType = " +
+            throw new IllegalArgumentException("Can't access data with queueType = " +
                     columnFamilyName);
         }
 
@@ -415,10 +483,13 @@ public class HectorDataAccessHelper {
                 }
             }
             return value;
-        } catch (Exception e) {
-            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Error while getting data from " +
-                        columnFamilyName + " since cassandra connection is down");
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Error while getting data from " +
+                        columnFamilyName + " since cassandra connection is down", e);
             } else {
                 throw new CassandraDataAccessException("Error while getting data from " +
                         columnFamilyName, e);
@@ -445,13 +516,13 @@ public class HectorDataAccessHelper {
                                                                   long lastProcessedId,
                                                                   int count,
                                                                   boolean parse
-    ) throws CassandraDataAccessException {
+    ) throws AndesStoreUnavailableException, CassandraDataAccessException {
         if (keyspace == null) {
-            throw new CassandraDataAccessException("Can't access Data , no keyspace provided ");
+            throw new IllegalArgumentException("Can't access Data , no keyspace provided ");
         }
 
         if (columnFamilyName == null || rowName == null) {
-            throw new CassandraDataAccessException("Can't access data with queueType = " +
+            throw new IllegalArgumentException("Can't access data with queueType = " +
                     columnFamilyName + " and queueName=" + rowName);
         }
 
@@ -479,10 +550,13 @@ public class HectorDataAccessHelper {
             }
 
             return metadataList;
-        } catch (Exception e) {
-            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Error while getting data from " +
-                        columnFamilyName + " since cassandra connection is down");
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Error while getting data from " +
+                        columnFamilyName + " since cassandra connection is down", e);
             } else {
                 throw new CassandraDataAccessException("Error while getting data from " +
                         columnFamilyName, e);
@@ -502,19 +576,19 @@ public class HectorDataAccessHelper {
     public static ColumnSlice<String, String> getStringTypeColumnsInARow(String rowName,
                                                                          String columnFamilyName,
                                                                          Keyspace keyspace, int count)
-            throws CassandraDataAccessException {
+            throws AndesStoreUnavailableException, CassandraDataAccessException {
 
         if (keyspace == null) {
-            throw new CassandraDataAccessException("Can't access Data , no keyspace provided ");
+            throw new IllegalArgumentException("Can't access Data , no keyspace provided");
         }
 
         if (StringUtils.isBlank(columnFamilyName) || StringUtils.isBlank(rowName)) {
-            throw new CassandraDataAccessException("Can't access data with queueType = " +
+            throw new IllegalArgumentException("Can't access data with queueType = " +
                     columnFamilyName + " and rowName=" + rowName);
         }
 
         try {
-            SliceQuery sliceQuery = HFactory.createSliceQuery(keyspace, stringSerializer,
+            SliceQuery<String,String,String> sliceQuery = HFactory.createSliceQuery(keyspace, stringSerializer,
                     stringSerializer, stringSerializer);
             sliceQuery.setKey(rowName);
             sliceQuery.setColumnFamily(columnFamilyName);
@@ -524,10 +598,13 @@ public class HectorDataAccessHelper {
             ColumnSlice<String, String> columnSlice = result.get();
 
             return columnSlice;
-        } catch (Exception e) {
-            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Error while getting data from " +
-                        columnFamilyName + " since cassandra connection is down");
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Error while getting data from " +
+                        columnFamilyName + " since cassandra connection is down", e);
             } else {
                 throw new CassandraDataAccessException("Error while getting data from : " +
                         columnFamilyName, e);
@@ -545,14 +622,18 @@ public class HectorDataAccessHelper {
      * @return List<Long>
      * @throws CassandraDataAccessException
      */
-    public static List<Long> getNumericColumnKeysOfRow(Keyspace keyspace, String columnFamilyName, String rowKey, int count, Long lastProcessedID) throws CassandraDataAccessException {
+    public static List<Long> getNumericColumnKeysOfRow(Keyspace keyspace, String columnFamilyName, String rowKey,
+                                                       int count, Long lastProcessedID)
+                                                                                       throws AndesStoreUnavailableException,
+                                                                                       CassandraDataAccessException {
 
         if (keyspace == null) {
-            throw new CassandraDataAccessException("Can't access Data , no keyspace provided ");
+            throw new IllegalArgumentException("Can't access Data , no keyspace provided");
         }
 
         if (StringUtils.isBlank(columnFamilyName) || StringUtils.isBlank(rowKey)) {
-            throw new CassandraDataAccessException("Can't access data with queueType = " + columnFamilyName + " and row key =" + rowKey);
+            throw new IllegalArgumentException("Can't access data with queueType = " + columnFamilyName +
+                                                   " and row key =" + rowKey);
         }
 
         List<Long> messageIDs = new ArrayList<Long>();
@@ -563,7 +644,7 @@ public class HectorDataAccessHelper {
                             bytesArraySerializer);
             sliceQuery.setKey(rowKey);
             sliceQuery.setRange(lastProcessedID, null, false, count);
-
+            
             sliceQuery.setColumnFamily(columnFamilyName);
             QueryResult<ColumnSlice<Long, byte[]>> result = sliceQuery.execute();
             ColumnSlice<Long, byte[]> columnSlice = result.get();
@@ -575,12 +656,15 @@ public class HectorDataAccessHelper {
             }
 
             return messageIDs;
-        } catch (Exception e) {
-            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
                 throw new CassandraDataAccessException("Error while getting data from " +
-                        columnFamilyName + " since cassandra connection is down");
+                        columnFamilyName + " since cassandra connection is down", e);
             } else {
-                throw new CassandraDataAccessException("Error while getting data from " +
+                throw new AndesStoreUnavailableException("Error while getting data from " +
                         columnFamilyName, e);
             }
         }
@@ -599,14 +683,14 @@ public class HectorDataAccessHelper {
      */
     public static void addMessageToQueue(String columnFamily, String queue, int key,
                                          byte[] message, Mutator<String> mutator, boolean execute)
-            throws CassandraDataAccessException {
+            throws AndesStoreUnavailableException, CassandraDataAccessException {
 
         if (mutator == null) {
-            throw new CassandraDataAccessException("Can't add Data , no mutator provided ");
+            throw new IllegalArgumentException("Can't add Data , no mutator provided");
         }
 
         if (StringUtils.isBlank(columnFamily) || StringUtils.isBlank(queue) || message == null) {
-            throw new CassandraDataAccessException("Can't add data with queueType = " +
+            throw new IllegalArgumentException("Can't add data with queueType = " +
                     columnFamily + " and queue=" + queue + " offset = " + key + " message = " +
                     message);
         }
@@ -619,10 +703,13 @@ public class HectorDataAccessHelper {
                 mutator.execute();
             }
 
-        } catch (Exception e) {
-            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Error while adding message to Queue " +
-                        queue + " since cassandra connection is down");
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Error while adding message to Queue " +
+                        queue + " since cassandra connection is down", e);
             } else {
                 throw new CassandraDataAccessException("Error while adding message to Queue", e);
             }
@@ -643,14 +730,14 @@ public class HectorDataAccessHelper {
      */
     public static void addMessageToQueue(String columnFamily, String queue, long messageId,
                                          byte[] message, Mutator<String> mutator, boolean execute)
-            throws CassandraDataAccessException {
+            throws AndesStoreUnavailableException, CassandraDataAccessException {
 
         if (mutator == null) {
-            throw new CassandraDataAccessException("Can't add Data , no mutator provided ");
+            throw new IllegalArgumentException("Can't add Data , no mutator provided ");
         }
 
         if (columnFamily == null || queue == null || message == null) {
-            throw new CassandraDataAccessException("Can't add data with queueType = " +
+            throw new IllegalArgumentException("Can't add data with queueType = " +
                     columnFamily + " and queue=" + queue + " message id  = " + messageId + " " +
                     "message = " + message);
         }
@@ -663,10 +750,13 @@ public class HectorDataAccessHelper {
                 mutator.execute();
             }
 
-        } catch (Exception e) {
-            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Error while adding message to Queue " +
-                        queue + " since cassandra connection is down");
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Error while adding message to Queue " +
+                        queue + " since cassandra connection is down", e);
             } else {
                 throw new CassandraDataAccessException("Error while adding message to Queue", e);
             }
@@ -685,14 +775,14 @@ public class HectorDataAccessHelper {
      * @throws CassandraDataAccessException In case of database access error or data error
      */
     public static void addMappingToRaw(String columnFamily, String row, String cKey, String cValue,
-                                       Keyspace keyspace) throws CassandraDataAccessException {
+                                       Keyspace keyspace) throws AndesStoreUnavailableException, CassandraDataAccessException {
 
         if (keyspace == null) {
-            throw new CassandraDataAccessException("Can't add Data , no KeySpace provided ");
+            throw new IllegalArgumentException("Can't add Data , no KeySpace provided ");
         }
 
         if (columnFamily == null || row == null || cKey == null) {
-            throw new CassandraDataAccessException("Can't add data with queueType = " +
+            throw new IllegalArgumentException("Can't add data with queueType = " +
                     columnFamily + " and rowName=" + row + " key = " + cKey);
         }
 
@@ -701,10 +791,13 @@ public class HectorDataAccessHelper {
             mutator.addInsertion(row, columnFamily,
                     HFactory.createColumn(cKey, cValue.trim(), stringSerializer, stringSerializer));
             mutator.execute();
-        } catch (Exception e) {
-            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Error while adding a mapping to row " +
-                        row + " since cassandra connection is down");
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Error while adding a mapping to row " +
+                        row + " since cassandra connection is down", e);
             } else {
                 throw new CassandraDataAccessException("Error while adding a mapping to row ", e);
             }
@@ -722,9 +815,9 @@ public class HectorDataAccessHelper {
      */
     public static void deleteStringColumnFromRaw(String columnFamily, String row, String key,
                                                  Keyspace keyspace)
-            throws CassandraDataAccessException {
+            throws AndesStoreUnavailableException, CassandraDataAccessException {
         if (keyspace == null) {
-            throw new CassandraDataAccessException("Can't delete Data , no keyspace provided ");
+            throw new IllegalArgumentException("Can't delete Data , no keyspace provided ");
         }
 
         if (columnFamily == null || row == null || key == null) {
@@ -736,10 +829,13 @@ public class HectorDataAccessHelper {
             Mutator<String> mutator = HFactory.createMutator(keyspace, stringSerializer);
             mutator.addDeletion(row, columnFamily, key, stringSerializer);
             mutator.execute();
-        } catch (Exception e) {
-            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Error while deleting " + key + " from " +
-                        columnFamily + " since cassandra connection is down");
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Error while deleting " + key + " from " +
+                        columnFamily + " since cassandra connection is down", e);
             } else {
                 throw new CassandraDataAccessException("Error while deleting " + key + " from " +
                         columnFamily);
@@ -759,15 +855,15 @@ public class HectorDataAccessHelper {
      */
     public static void deleteLongColumnFromRaw(String columnFamily, String row, long key,
                                                Mutator<String> mutator, boolean execute)
-            throws CassandraDataAccessException {
+            throws AndesStoreUnavailableException, CassandraDataAccessException {
 
 
         if (mutator == null) {
-            throw new CassandraDataAccessException("Can't delete Data , no mutator provided ");
+            throw new IllegalArgumentException("Can't delete Data , no mutator provided ");
         }
 
         if (columnFamily == null || row == null) {
-            throw new CassandraDataAccessException("Can't delete data in queueType = " +
+            throw new IllegalArgumentException("Can't delete data in queueType = " +
                     columnFamily + " and rowName=" + row + " key = " + key);
         }
 
@@ -778,13 +874,16 @@ public class HectorDataAccessHelper {
                 mutator.execute();
             }
 
-        } catch (Exception e) {
-            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Error while deleting " + key + " from " +
-                        row + " since cassandra connection is down");
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Error while deleting " + key + " from " +
+                                                         row + " since cassandra connection is down", e);
             } else {
                 throw new CassandraDataAccessException("Error while deleting " + key + " from " +
-                        row);
+                                                       row);
             }
         }
     }
@@ -799,13 +898,13 @@ public class HectorDataAccessHelper {
      */
     public static void deleteIntegerRowListFromColumnFamily(String columnFamily, List<String> rows,
                                                             Mutator<String> mutator, boolean execute)
-            throws CassandraDataAccessException {
+            throws AndesStoreUnavailableException, CassandraDataAccessException {
         if (mutator == null) {
-            throw new CassandraDataAccessException("Can't delete Data , no mutator provided ");
+            throw new IllegalArgumentException("Can't delete Data , no mutator provided ");
         }
 
         if (columnFamily == null || rows == null) {
-            throw new CassandraDataAccessException("Can't delete data in queueType = " +
+            throw new IllegalArgumentException("Can't delete data in queueType = " +
                     columnFamily + " and rowName=" + rows);
         }
 
@@ -817,10 +916,13 @@ public class HectorDataAccessHelper {
             if (execute) {
                 mutator.execute();
             }
-        } catch (Exception e) {
-            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Error while deleting data since " +
-                        "cassandra connection is down");
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Error while deleting data since " +
+                                                         "cassandra connection is down", e);
             } else {
                 throw new CassandraDataAccessException("Error while deleting data", e);
             }
@@ -835,26 +937,45 @@ public class HectorDataAccessHelper {
      * @return Map of Rows
      */
     public static Map<String, List<String>> listAllStringRows(String columnFamilyName,
-                                                              Keyspace keyspace) {
-        Map<String, List<String>> results = new HashMap<String, List<String>>();
+                                                              Keyspace keyspace) throws AndesException
+                                                                                , CassandraDataAccessException {
+        
+    try{
+            Map<String, List<String>> results = new HashMap<String, List<String>>();
 
-        RangeSlicesQuery<String, String, String> rangeSlicesQuery = HFactory
-                .createRangeSlicesQuery(keyspace, stringSerializer, stringSerializer,
-                        stringSerializer);
+            RangeSlicesQuery<String, String, String> rangeSlicesQuery =
+                                                                        HFactory
+                                                                                .createRangeSlicesQuery(keyspace,
+                                                                                                        stringSerializer,
+                                                                                                        stringSerializer,
+                                                                                                        stringSerializer);
 
-        rangeSlicesQuery.setColumnFamily(columnFamilyName);
-        rangeSlicesQuery.setRange("", "", false, MAX_NUMBER_OF_ROWS_TO_READ);
-        QueryResult<OrderedRows<String, String, String>> result = rangeSlicesQuery
-                .execute();
-        for (Row<String, String, String> row : result.get().getList()) {
-            List<String> list = new ArrayList<String>();
-            String rowkey = new String(row.getKey().getBytes());
-            for (HColumn<String, String> hc : row.getColumnSlice().getColumns()) {
-                list.add(hc.getValue());
+            rangeSlicesQuery.setColumnFamily(columnFamilyName);
+            rangeSlicesQuery.setRange("", "", false, MAX_NUMBER_OF_ROWS_TO_READ);
+            QueryResult<OrderedRows<String, String, String>> result = rangeSlicesQuery
+                                                                                      .execute();
+            for (Row<String, String, String> row : result.get().getList()) {
+                List<String> list = new ArrayList<String>();
+                String rowkey = new String(row.getKey().getBytes());
+                for (HColumn<String, String> hc : row.getColumnSlice().getColumns()) {
+                    list.add(hc.getValue());
+                }
+                results.put(rowkey, list);
             }
-            results.put(rowkey, list);
+            return results;
+
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Error while deleting data since " +
+                                                         "cassandra connection is down", e);
+            } else {
+                throw new CassandraDataAccessException("Error while deleting data", e);
+            }
         }
-        return results;
+
     }
 
     /**
@@ -869,7 +990,7 @@ public class HectorDataAccessHelper {
     public static Map<Long, List<AndesMessagePart>> getMessageContentBatch(
             String columnFamily,
             Keyspace keyspace, List<Long> messageId) throws
-            CassandraDataAccessException {
+            AndesStoreUnavailableException, CassandraDataAccessException {
 
         //Holds the messages that will be sent back to the API for delivery
         Map<Long, List<AndesMessagePart>> messageContentBatch = new HashMap<Long, List<AndesMessagePart>>();
@@ -890,8 +1011,8 @@ public class HectorDataAccessHelper {
 
             //Create the query to get the list of messages for the specified list of ids
             //SELECT * FROM MB_KEYSPACE.MB_CONTENT WHERE "QpidKeySpace"."MessageContent"
-            Collection messageIDs = sanitizedMessageID;
-            MultigetSliceQuery getMessageListQuery = HFactory
+            Collection<String> messageIDs = sanitizedMessageID;
+            MultigetSliceQuery<String, Integer, ByteBuffer> getMessageListQuery = HFactory
                     .createMultigetSliceQuery(keyspace, stringSerializer, integerSerializer, byteBufferSerializer);
             getMessageListQuery.setColumnFamily(columnFamily);
             getMessageListQuery.setRange(startOffSet, maxOffset, false, maxOffset);
@@ -942,12 +1063,14 @@ public class HectorDataAccessHelper {
                     }
                 }
             }
-
-
-        } catch (Exception e) {
-            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Error while getting message content " +
-                        "since cassandra connection is down");
+            
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        } catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Error while getting message content " +
+                        "since cassandra connection is down", e);
             } else {
                 throw new CassandraDataAccessException("Error while getting message content", e);
             }
@@ -973,11 +1096,11 @@ public class HectorDataAccessHelper {
                                                      String columnFamily,
                                                      Keyspace keyspace, long messageId,
                                                      int offsetValue) throws
-            CassandraDataAccessException {
+                                                     AndesStoreUnavailableException, CassandraDataAccessException {
         AndesMessagePart messagePart = new AndesMessagePart();
 
         try {
-            ColumnQuery columnQuery = HFactory.createColumnQuery(keyspace,
+            ColumnQuery<String, Integer, ByteBuffer> columnQuery = HFactory.createColumnQuery(keyspace,
                     stringSerializer, integerSerializer, byteBufferSerializer);
 
             columnQuery.setColumnFamily(columnFamily);
@@ -1000,10 +1123,13 @@ public class HectorDataAccessHelper {
                         "message id :" + messageId);
             }
 
-        } catch (Exception e) {
-            if (e.getMessage().contains("All host pools marked down. Retry burden pushed out to client")) {
-                throw new CassandraDataAccessException("Error while getting message content " +
-                        "since cassandra connection is down");
+        } catch (HUnavailableException unavailEx) {
+            throw new AndesStoreUnavailableException("unable to meet required consitancy level for the operation",
+                                                     unavailEx);
+        }catch (HectorException e) {
+            if (e.getMessage().contains(HECTOR_CONNECTION_ERROR_MESSAGE)) {
+                throw new AndesStoreUnavailableException("Error while getting message content " +
+                        "since cassandra connection is down", e);
             } else {
                 throw new CassandraDataAccessException("Error while getting message content", e);
             }

@@ -23,6 +23,7 @@ import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.factory.HFactory;
 import me.prettyprint.hector.api.mutation.Mutator;
+
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -37,6 +38,7 @@ import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.stats.PerformanceCounter;
+import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 
@@ -78,7 +80,12 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * Mainly we use this to have the message counts 
      */
     private AndesContextStore contextStore;
-
+    
+/**
+     * Encapsulates functionality required to test connectivity to cluster
+     */
+    private HectorUtils hectorUtils;
+    
     private long lastRecoveryMessageId;
 
     /**
@@ -97,8 +104,11 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         this.lastRecoveryMessageId = ServerStartupRecoveryUtils.getMessageIdToCompleteRecovery();
 
         this.contextStore = contextStore;
+        
         // get cassandra cluster and create column families
         initializeCassandraMessageStore(hectorConnection);
+        
+        this.hectorUtils = new HectorUtils();
         return hectorConnection;
     }
 
@@ -162,7 +172,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             //batch execute
             mutator.execute();
         } catch (CassandraDataAccessException e) {
-            throw new AndesException(e);
+            throw new AndesException("Error while deleting message contents", e);
         } finally {
             context.stop();
         }
@@ -180,7 +190,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                     HectorConstants.MESSAGE_CONTENT_COLUMN_FAMILY, keyspace, messageId,
                     offsetValue);
 
-        } catch (Exception e) {
+        } catch (CassandraDataAccessException e) {
             throw new AndesException(
                     "Error while reading content messageID=" + messageId + " offset=" +
                             offsetValue, e);
@@ -243,10 +253,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                 PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(latency);
             }
 
-        } catch (Exception e) {
-            //TODO handle Cassandra failures
-            //TODO may be we can write those message to a disk, or do something. Currently we
-            // will just loose them
+        } catch (CassandraDataAccessException e) {
+        
             throw new AndesException("Error while writing incoming messages to Cassandra", e);
         } finally {
             context.stop();
@@ -419,7 +427,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                             keyspace, messageId);
             return new AndesMessageMetadata(messageId, value, true);
 
-        } catch (Exception e) {
+        } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while getting meta data for messageID " + messageId,
                     e);
         } finally {
@@ -571,7 +579,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             //batch execute
             mutator.execute();
 
-        } catch (Exception e) {
+        } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while deleting messages", e);
         } finally {
             context.stop();
@@ -790,14 +798,9 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * @param hectorConnection hector based connection to Cassandra
      * @throws AndesException
      */
-    private void initializeCassandraMessageStore(HectorConnection hectorConnection)
-            throws AndesException {
-        try {
+    private void initializeCassandraMessageStore(HectorConnection hectorConnection) throws AndesException {
             keyspace = hectorConnection.getKeySpace();
             createColumnFamilies(hectorConnection, hectorConnection.getCluster(), keyspace.getKeyspaceName());
-        } catch (CassandraDataAccessException e) {
-            throw new AndesException("Error while initializing cassandra message store", e);
-        }
     }
 
     /**
@@ -807,8 +810,9 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     private void createColumnFamilies(HectorConnection connection,
                                       Cluster cluster,
-                                      String keyspace) throws CassandraDataAccessException {
+                                      String keyspace) throws AndesException {
 
+        try{
         int gcGraceSeconds = connection.getGcGraceSeconds();
         HectorDataAccessHelper.createColumnFamily(HectorConstants.MESSAGE_CONTENT_COLUMN_FAMILY,
                 keyspace, cluster,
@@ -825,13 +829,26 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         HectorDataAccessHelper.createMessageExpiryColumnFamily(
                 HectorConstants.MESSAGES_FOR_EXPIRY_COLUMN_FAMILY, keyspace,
                 cluster, HectorConstants.UTF8_TYPE, gcGraceSeconds);
+
+    
+        HectorDataAccessHelper.createColumnFamily(HectorConstants.MESSAGE_STORE_STATUS_COLUMN_FAMILY,
+                                                  keyspace, cluster,
+                                                  HectorConstants.UTF8_TYPE,
+                                                  gcGraceSeconds);
+        } catch (CassandraDataAccessException ex){
+            throw new AndesException("Error while initializing cassandra message store", ex);
+        }
+    
     }
     
    /**
     * {@inheritDoc}
     */
     public boolean isOperational(String testString, long testTime){
-        return true;
+        return hectorConnection.isReachable() &&
+               hectorUtils.testInsert(hectorConnection, testString, testTime) &&
+               hectorUtils.testRead(hectorConnection, testString, testTime) &&
+               hectorUtils.testDelete(hectorConnection, testString, testTime);
     }
 
 

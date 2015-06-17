@@ -481,6 +481,7 @@ public class FailureObservingMessageStore implements MessageStore {
     @Override
     public void close() {
         wrappedInstance.close();
+        FailureObservingStoreManager.close();
     }
 
     /**
@@ -534,6 +535,5 @@ public class FailureObservingMessageStore implements MessageStore {
         }
         
     }
-
-
+    
 }
