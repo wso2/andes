@@ -31,6 +31,9 @@ import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
+import org.wso2.andes.store.HealthAwareStore;
+import org.wso2.andes.store.StoreHealthListener;
+import org.wso2.andes.store.UIStoreHealthListener;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -65,6 +68,7 @@ public class ClusterManager {
      * AndesContextStore instance
      */
     private AndesContextStore andesContextStore;
+    private String storeHealth;
 
     /**
      * Create a ClusterManager instance
@@ -350,4 +354,13 @@ public class ClusterManager {
         return addresses;
     }
 
+    /**
+     * Gets the health of the stores.
+     *
+     * @return If messages store is broken, the exception string which cause the problem. Else empty string is returned.
+     */
+    public String getStoreHealth() {
+
+        return UIStoreHealthListener.getInstance().getExceptionStringValue();
+    }
 }

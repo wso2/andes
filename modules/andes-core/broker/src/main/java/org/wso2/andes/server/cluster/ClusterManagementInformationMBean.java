@@ -29,8 +29,7 @@ import java.util.List;
  * <code>ClusterManagementInformationMBean</code> The the JMS MBean that expose cluster management information
  * Exposes the Cluster Management related information using MBeans
  */
-public class ClusterManagementInformationMBean extends AMQManagedObject
-        implements ClusterManagementInformation {
+public class ClusterManagementInformationMBean extends AMQManagedObject implements ClusterManagementInformation {
 
     /**
      * ClusterManager instance to get the information to expose
@@ -87,5 +86,13 @@ public class ClusterManagementInformationMBean extends AMQManagedObject
     @Override
     public List<String> getAllClusterNodeAddresses() {
         return this.clusterManager.getAllClusterNodeAddresses();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getStoreHealth() {
+        return this.clusterManager.getStoreHealth();
     }
 }

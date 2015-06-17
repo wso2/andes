@@ -47,4 +47,11 @@ public interface ClusterManagementInformation {
     @MBeanAttribute(name = "getAllClusterNodeAddresses", description = "Gets the addresses of the members in a cluster")
     List<String> getAllClusterNodeAddresses();
 
+    /**
+     * Gets the broker health status.
+     *
+     * @return Exception message
+     */
+    @MBeanAttribute(name = "getStoreHealth", description = "Gets the broker's health status")
+    String getStoreHealth();
 }
