@@ -78,4 +78,12 @@ public class AndesMessage {
         //Messages should be deliverable by default if no rules have been implemented.
         return true;
     }
+
+    /**
+     * Set content chunk list of the message
+     * @param chunkList List of {@link org.wso2.andes.kernel.AndesMessagePart}
+     */
+    public void setChunkList(List<AndesMessagePart> chunkList) {
+        this.contentChunkList = chunkList;
+    }
 }

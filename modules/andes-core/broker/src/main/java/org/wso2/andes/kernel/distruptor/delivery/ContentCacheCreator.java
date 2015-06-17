@@ -19,13 +19,11 @@
 package org.wso2.andes.kernel.distruptor.delivery;
 
 import org.apache.log4j.Logger;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.DisruptorCachedContent;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.server.store.StorableMessageMetaData;
 
 import java.util.List;
 import java.util.Map;
@@ -38,6 +36,19 @@ public class ContentCacheCreator {
      * Class Logger for logging information, error and warning.
      */
     private static final Logger log = Logger.getLogger(ContentCacheCreator.class);
+
+    /**
+     * Maximum content chunk size stored in DB
+     */
+    private final int maxChunkSize;
+
+    /**
+     * Creates a {@link org.wso2.andes.kernel.distruptor.delivery.ContentCacheCreator} object
+     * @param maxContentChunkSize maximum content chunk size stored in DB
+     */
+    public ContentCacheCreator(int maxContentChunkSize) {
+        this.maxChunkSize = maxContentChunkSize;
+    }
 
     /**
      * Load content for a message in to the memory.
@@ -54,11 +65,10 @@ public class ContentCacheCreator {
 
         for (DeliveryEventData deliveryEventData : eventDataList) {
 
-            AndesMessageMetadata message = deliveryEventData.getMetadata();
-            long messageID =  message.getMessageID();
+            AndesMessageMetadata metadata = deliveryEventData.getMetadata();
+            long messageID =  metadata.getMessageID();
 
-            StorableMessageMetaData metaData = AMQPUtils.convertAndesMetadataToAMQMetadata(message);
-            int contentSize = metaData.getContentSize();
+            int contentSize = metadata.getMessageContentLength();
             List<AndesMessagePart> contentList = contentListMap.get(messageID);
 
             if (null != contentList) {
@@ -71,7 +81,7 @@ public class ContentCacheCreator {
             }
 
             deliveryEventData.setAndesContent(new DisruptorCachedContent(deliveryEventData,
-                                                                                    contentSize));
+                                                                                    contentSize, maxChunkSize));
 
             if (log.isTraceEnabled()) {
                 log.trace("All content read for message " + messageID);
