@@ -181,7 +181,7 @@ public class MessageCountFlusher implements Runnable, StoreHealthListener {
      */
     @Override
     public void storeNonOperational(HealthAwareStore store, Exception ex) {
-        log.info("Message store became inoperational. "
+        log.info("Message store became not operational. "
                  + "Message counts will not be updated until message stores become available");
         this.messageStoresOperational.set(false);
 

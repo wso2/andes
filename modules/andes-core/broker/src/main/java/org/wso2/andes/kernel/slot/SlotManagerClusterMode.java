@@ -39,6 +39,7 @@ import java.util.*;
 public class SlotManagerClusterMode {
 
 
+    public static final int INITIAL_MESSAGE_ID = -1;
     private static SlotManagerClusterMode slotManager = new SlotManagerClusterMode();
 
     private static final int SAFE_ZONE_EVALUATION_INTERVAL = 5 * 1000;
@@ -97,6 +98,9 @@ public class SlotManagerClusterMode {
 
     private static Log log = LogFactory.getLog(SlotManagerClusterMode.class);
 
+    //first message id of fresh slot
+    private long firstMessageId;
+
 
     private SlotManagerClusterMode() {
 
@@ -116,6 +120,8 @@ public class SlotManagerClusterMode {
         //TODO: use a common  thread pool for tasks like this?
         slotDeleteSafeZoneCalc = new SlotDeleteSafeZoneCalc(SAFE_ZONE_EVALUATION_INTERVAL);
         new Thread(slotDeleteSafeZoneCalc).start();
+
+        firstMessageId = INITIAL_MESSAGE_ID;
 
     }
 
@@ -192,7 +198,7 @@ public class SlotManagerClusterMode {
                     if (lastAssignedId != null) {
                         slotToBeAssigned.setStartMessageId(lastAssignedId + 1);
                     } else {
-                        slotToBeAssigned.setStartMessageId(0L);
+                        slotToBeAssigned.setStartMessageId(firstMessageId);
                     }
 
                     //end messageID will be the lowest in published message ID list. Get and remove
@@ -340,6 +346,10 @@ public class SlotManagerClusterMode {
      */
     public void updateMessageID(String queueName, String nodeId, long startMessageIdInTheSlot, long lastMessageIdInTheSlot) {
 
+            //setting up first message id of the slot
+            if(firstMessageId > startMessageIdInTheSlot || firstMessageId == -1) {
+                firstMessageId = startMessageIdInTheSlot;
+            }
             // Read message Id set for slots from hazelcast
             TreeSet<Long> messageIdSet;
             TreeSetLongWrapper wrapper = slotIDMap.get(queueName);

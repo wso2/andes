@@ -121,7 +121,7 @@ public class MessageContentRemoverTask implements Runnable, StoreHealthListener 
      */
     @Override
     public void storeNonOperational(HealthAwareStore store, Exception ex) {
-        log.info(String.format("Message store became inoperational. Number of message-contents to be deleted: %d",
+        log.info(String.format("Message store became not operational. Number of message-contents to be deleted: %d",
                                messageIdToDeleteQueue.size()));
         storeOperational.set(false);
     }

@@ -24,7 +24,6 @@ import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.factory.HFactory;
 import me.prettyprint.hector.api.mutation.Mutator;
 import org.apache.commons.lang.NotImplementedException;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
@@ -40,13 +39,17 @@ import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
-import static org.wso2.carbon.metrics.manager.Timer.*;
+import static org.wso2.carbon.metrics.manager.Timer.Context;
 
 /**
  * This is the implementation of MessageStore that deals with Cassandra no SQL DB.
@@ -76,6 +79,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     private AndesContextStore contextStore;
 
+    private long lastRecoveryMessageId;
+
     /**
      * {@inheritDoc}
      */
@@ -88,6 +93,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             hectorConnection = new HectorConnection();
         }
         hectorConnection.initialize(connectionProperties);
+
+        this.lastRecoveryMessageId = ServerStartupRecoveryUtils.getMessageIdToCompleteRecovery();
 
         this.contextStore = contextStore;
         // get cassandra cluster and create column families
@@ -470,20 +477,69 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                                                                        long firstMsgId, int count)
             throws AndesException {
 
+        ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+        List<AndesMessageMetadata> messageMetadataList = new ArrayList<AndesMessageMetadata>();
+        long lastMsgId;
+        int listSize;
+
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_NEXT_MESSAGE_METADATA_FROM_QUEUE).start();
+
+        if (firstMsgId == 0) {
+            firstMsgId = ServerStartupRecoveryUtils.getStartMessageIdForWarmStartup();
+        }
+        long messageIdDifference = ServerStartupRecoveryUtils.getMessageDifferenceForWarmStartup();
+        lastMsgId = firstMsgId + messageIdDifference;
         try {
-            return HectorDataAccessHelper
+            List<AndesMessageMetadata> messagesFromQueue = HectorDataAccessHelper
                     .getMessagesFromQueue(queueName,
                             HectorConstants.META_DATA_COLUMN_FAMILY,
-                            keyspace, firstMsgId, Long.MAX_VALUE,
+                            keyspace, firstMsgId, lastMsgId,
                             count, true);
+            listSize = messagesFromQueue.size();
+            messageMetadataList.addAll(messagesFromQueue);
+            if (listSize < count) {
+                readingCassandraInfoLog(scheduledExecutorService);
+                while (lastMsgId <= lastRecoveryMessageId) {
+                    long nextMsgId = lastMsgId + 1;
+                    lastMsgId = nextMsgId + messageIdDifference;
+                    messagesFromQueue = HectorDataAccessHelper
+                            .getMessagesFromQueue(queueName,
+                                    HectorConstants.META_DATA_COLUMN_FAMILY,
+                                    keyspace, nextMsgId, lastMsgId,
+                                    count, true);
+                    listSize = listSize + messagesFromQueue.size();
+                    messageMetadataList.addAll(messagesFromQueue);
+                    if (listSize >= count) {
+                        messageMetadataList = messageMetadataList.subList(0, count);
+                        break;
+                    }
+                }
+            }
 
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while reading meta data list for message IDs " +
                     "from " + firstMsgId + " to " + firstMsgId, e);
         } finally {
             context.stop();
+            scheduledExecutorService.shutdownNow();
         }
+        return messageMetadataList;
+    }
+
+    /**
+     * INFO log print to inform user while reading tombstone
+     *
+     * @param scheduledExecutorService ScheduledExecutorService to schedule printing logs
+     */
+    private void readingCassandraInfoLog(ScheduledExecutorService scheduledExecutorService) {
+        long printDelay = 30L;
+        scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                log.info("Reading data from cassandra.");
+            }
+        }, 0, printDelay, TimeUnit.SECONDS);
+
     }
 
     /**

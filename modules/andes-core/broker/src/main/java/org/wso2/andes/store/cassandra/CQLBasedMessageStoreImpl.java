@@ -26,12 +26,15 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import org.wso2.carbon.metrics.manager.Level;
 import org.apache.log4j.Logger;
 import com.datastax.driver.core.BatchStatement;
@@ -74,6 +77,8 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     private AndesContextStore contextStore;
 
     private CQLUtils cqlUtils;
+
+    private long lastRecoveryMessageId;
     
     /**
      * CQL prepared statement to insert message content to DB
@@ -182,6 +187,8 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         psUpdateRetainMetadata    = session.prepare(PS_UPDATE_RETAIN_METADATA);
         psDeleteRetainMessagePart = session.prepare(PS_DELETE_RETAIN_MESSAGE_PART);
         psInsertRetainMessagePart = session.prepare(PS_INSERT_RETAIN_MESSAGE_PART);
+
+        this.lastRecoveryMessageId = ServerStartupRecoveryUtils.getMessageIdToCompleteRecovery();
 
         return cqlConnection;
     }
@@ -654,29 +661,90 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                                                                        long firstMsgId,
                                                                        int count) throws AndesException {
 
+        ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+        List<AndesMessageMetadata> messageMetadataList = new ArrayList<AndesMessageMetadata>();
+        long lastMsgId;
+
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.
                 GET_NEXT_MESSAGE_METADATA_FROM_QUEUE).start();
+
+        if (firstMsgId == 0) {
+            firstMsgId = ServerStartupRecoveryUtils.getStartMessageIdForWarmStartup();
+        }
+        long messageIdDifference = ServerStartupRecoveryUtils.getMessageDifferenceForWarmStartup();
+        lastMsgId = firstMsgId + messageIdDifference;
+        int listSize;
 
         try {
             Statement statement = QueryBuilder.select().column(CQLConstants.METADATA).column(CQLConstants.MESSAGE_ID).
                     from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
                     where(eq(CQLConstants.QUEUE_NAME, storageQueueName)).
                     and(gte(CQLConstants.MESSAGE_ID, firstMsgId)).
+                    and(lte(CQLConstants.MESSAGE_ID, lastMsgId)).
                     limit(count).
                     setConsistencyLevel(config.getReadConsistencyLevel());
 
             ResultSet resultSet = execute(statement, "retrieving metadata list from " + storageQueueName +
-                    " with starting msg id " + firstMsgId + " and limit " + count);
-            List<AndesMessageMetadata> metadataList =
+                    " with starting msg id " + firstMsgId + " and ending message id " + lastMsgId);
+            List<AndesMessageMetadata> messageMetadata =
                     new ArrayList<AndesMessageMetadata>(resultSet.getAvailableWithoutFetching());
 
             for (Row row : resultSet) {
-                metadataList.add(getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID)));
+                messageMetadata.add(getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID)));
             }
-            return metadataList;
+            messageMetadataList.addAll(messageMetadata);
+            listSize = messageMetadataList.size();
+
+            if (listSize < count) {
+                readingCassandraInfoLog(scheduledExecutorService);
+                while (lastMsgId <= lastRecoveryMessageId) {
+                    long nextMsgId = lastMsgId + 1;
+                    lastMsgId = nextMsgId + messageIdDifference;
+                    statement = QueryBuilder.select().column(CQLConstants.METADATA).column(CQLConstants.MESSAGE_ID).
+                            from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
+                            where(eq(CQLConstants.QUEUE_NAME, storageQueueName)).
+                            and(gte(CQLConstants.MESSAGE_ID, nextMsgId)).
+                            and(lte(CQLConstants.MESSAGE_ID, lastMsgId)).
+                            limit(count).
+                            setConsistencyLevel(config.getReadConsistencyLevel());
+
+                    resultSet = execute(statement, "retrieving metadata list from " + storageQueueName +
+                            " with starting msg id " + firstMsgId + " ending message id " + lastMsgId);
+                    messageMetadata =
+                            new ArrayList<AndesMessageMetadata>(resultSet.getAvailableWithoutFetching());
+
+                    for (Row row : resultSet) {
+                        messageMetadata.add(getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID)));
+                    }
+                    listSize = listSize + messageMetadata.size();
+                    messageMetadataList.addAll(messageMetadata);
+                    if (listSize >= count) {
+                        messageMetadataList = messageMetadataList.subList(0, count);
+                        break;
+                    }
+                }
+            }
         } finally {
             context.stop();
+            scheduledExecutorService.shutdownNow();
         }
+        return messageMetadataList;
+    }
+
+    /**
+     * INFO log print to inform user while reading tombstone
+     *
+     * @param scheduledExecutorService ScheduledExecutorService to schedule printing logs
+     */
+    private void readingCassandraInfoLog(ScheduledExecutorService scheduledExecutorService) {
+        long printDelay = 30L;
+        scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                log.info("Reading data from cassandra.");
+            }
+        }, 0, printDelay, TimeUnit.SECONDS);
+
     }
 
     /**
@@ -1044,7 +1112,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public List<String> getAllRetainedTopics() throws AndesException {
 
-        List<String> topicList = new ArrayList<>();
+        List<String> topicList = new ArrayList<String>();
         ResultSet resultSet;
 
         Statement statement = QueryBuilder.select().column(CQLConstants.TOPIC_NAME).

@@ -81,7 +81,7 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
          */
         currentMessageList = new ArrayList<AndesMessage>(messageBatchSize);
         previouslyFailedMessageList = new ArrayList<AndesMessage>(messageBatchSize); // init in the same capacity
-        retainMap = new HashMap<>();
+        retainMap = new HashMap<String, AndesMessage>();
         messageStoresUnavailable = null;
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
@@ -175,7 +175,7 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
      */
     @Override
     public void storeNonOperational(HealthAwareStore store, Exception ex) {
-        log.info(String.format("messagestore became inoperational. messages to store : %d",
+        log.info(String.format("Message store became not operational. messages to store : %d",
                                currentMessageList.size()));
         messageStoresUnavailable = SettableFuture.create();
     }
@@ -188,7 +188,7 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
      */
     @Override
     public void storeOperational(HealthAwareStore store) {
-        log.info(String.format("messagestore became operational. messages to store : %d", currentMessageList.size()));
+        log.info(String.format("Message store became operational. messages to store : %d", currentMessageList.size()));
         messageStoresUnavailable.set(false);
 
     }

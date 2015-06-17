@@ -412,7 +412,25 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * NOT USED FOR NOW.
      */
     FLOW_CONTROL_CONNECTION_BASED_PER_CONNECTION_MESSAGE_THRESHOLD("flowControl/connectionBased" +
-            "/perConnectionMessageThreshold", "1000", Integer.class);
+            "/perConnectionMessageThreshold", "1000", Integer.class),
+
+    /**
+     * MB starts recovery messages from given date onwards if single node/entire nodes in cluster went down.
+     */
+    RECOVERY_MESSAGES_START_FROM_DATE("recovery/startRecoveryFrom", "2015-05-27 00:00:00", String.class),
+
+
+    /**
+     * Recover message chunks at particular database call. Please make sure this config won't cause
+     * TombstoneOverwhelmingException
+     */
+    RECOVERY_MESSAGES_RECOVERY_WINDOW_SIZE("recovery/recoveryWindowSize", "100000", Long.class),
+
+    /**
+     * Concurrently reads storage queues to make warm startup faster. But increasing concurrent value to big number
+     * may cause heavy load to Cassandra.
+     */
+    RECOVERY_MESSAGES_CONCURRENT_STORAGE_QUEUE_READS("recovery/concurrentStorageQueueReads", "5", Integer.class);
 
 
 

@@ -18,10 +18,16 @@
 
 package org.wso2.andes.kernel;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -57,8 +63,16 @@ public class AndesKernelBoot {
     private static Log log = LogFactory.getLog(AndesKernelBoot.class);
     private static VirtualHost virtualHost;
     private static MessageStore messageStore;
-    private static int restoreSlotMappingCounter;
-    private static int numberOfReadsFromDatabase;
+
+    /**
+     * slot remapping database read counter keep against storage queue name
+     */
+    private static Map<String, Integer> databaseReadsCounterMap;
+
+    /**
+     * slot remapping message counter keep against storage queue name
+     */
+    private static Map<String, Integer> restoreMessagesCounterMap;
 
     /**
      * Scheduled thread pool executor to run periodic andes recovery task
@@ -112,27 +126,23 @@ public class AndesKernelBoot {
      * @throws AndesException
      */
     public static void recoverDistributedSlotMap() throws AndesException {
-        // Slot recreation is required in the clustering mode
+        // Slot recreation
+        databaseReadsCounterMap = new HashMap<String, Integer>();
+        restoreMessagesCounterMap = new HashMap<String, Integer>();
         if (AndesContext.getInstance().isClusteringEnabled()) {
             HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
-
             try {
                 hazelcastAgent.acquireInitializationLock();
                 if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
-                    log.info("Restoring slot mapping in the cluster.");
-
                     recoverMapsForEachQueue();
-
                     hazelcastAgent.indicateSuccessfulInitilization();
                 }
             } finally {
                 hazelcastAgent.releaseInitializationLock();
             }
         } else {
-            log.info("Restoring slot mapping in the node.");
             recoverMapsForEachQueue();
         }
-        log.info("Slot mapping restore completed.");
     }
 
     /**
@@ -141,14 +151,39 @@ public class AndesKernelBoot {
      */
     private static void recoverMapsForEachQueue() throws AndesException {
         List<AndesQueue> queueList = contextStore.getAllQueuesStored();
-
-        for (AndesQueue queue : queueList) {
+        List<Future> futureSlotRecoveryExecutorList = new ArrayList<Future>();
+        Integer concurrentReads = AndesConfigurationManager.readValue
+                (AndesConfiguration.RECOVERY_MESSAGES_CONCURRENT_STORAGE_QUEUE_READS);
+        ExecutorService executorService = Executors.newFixedThreadPool(concurrentReads);
+        for (final AndesQueue queue : queueList) {
+            final String queueName = queue.queueName;
             // Skip slot creation for Dead letter Channel
-            if (DLCQueueUtils.isDeadLetterQueue(queue.queueName)) {
+            if (DLCQueueUtils.isDeadLetterQueue(queueName)) {
                 continue;
             }
-
-            initializeSlotMapForQueue(queue.queueName);
+            Future submit = executorService.submit(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        log.info("Slot restoring start in " + queueName);
+                        initializeSlotMapForQueue(queueName);
+                        log.info("Slot restoring end in " + queueName);
+                    } catch (AndesException e) {
+                        log.error("Error occurred in slot recovery.", e);
+                    }
+                }
+            });
+            futureSlotRecoveryExecutorList.add(submit);
+        }
+        for (Future slotRecoveryExecutor : futureSlotRecoveryExecutorList) {
+            try {
+                slotRecoveryExecutor.get();
+            } catch (InterruptedException e) {
+                log.error("Error occurred in slot recovery.", e);
+                Thread.currentThread().interrupt();
+            } catch (ExecutionException e) {
+                log.error("Error occurred in slot recovery.", e);
+            }
         }
     }
 
@@ -162,6 +197,8 @@ public class AndesKernelBoot {
      */
     private static void initializeSlotMapForQueue(String queueName)
             throws AndesException {
+        int databaseReadsCounter = 0;
+        int restoreMessagesCounter = 0;
         // Read slot window size from cluster configuration
         Integer slotSize = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
@@ -170,10 +207,12 @@ public class AndesKernelBoot {
         int numberOfMessages = messageList.size();
 
         //setting up timer to print restoring message count and database read count
-        numberOfReadsFromDatabase++;
-        restoreSlotMappingCounter = restoreSlotMappingCounter + messageList.size();
-        Timer timer = new Timer();
-        scheduleTimerToPrintCounter(timer);
+        databaseReadsCounter++;
+        restoreMessagesCounter = restoreMessagesCounter + messageList.size();
+        databaseReadsCounterMap.put(queueName, databaseReadsCounter);
+        restoreMessagesCounterMap.put(queueName, restoreMessagesCounter);
+        ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+        scheduleTimerToPrintCounter(scheduledExecutorService, queueName);
 
         long lastMessageID;
         long firstMessageID;
@@ -186,7 +225,8 @@ public class AndesKernelBoot {
                 log.debug("Created a slot with " + messageList.size() + " messages for queue (" + queueName + ")");
             }
             if (AndesContext.getInstance().isClusteringEnabled()) {
-                SlotManagerClusterMode.getInstance().updateMessageID(queueName, HazelcastAgent.getInstance().getNodeId(), firstMessageID, lastMessageID);
+                SlotManagerClusterMode.getInstance().updateMessageID(queueName,
+                        HazelcastAgent.getInstance().getNodeId(), firstMessageID, lastMessageID);
             } else {
                 SlotManagerStandalone.getInstance().updateMessageID(queueName,lastMessageID);
             }
@@ -194,36 +234,41 @@ public class AndesKernelBoot {
             // including the given starting ID.
             messageList = messageStore
                     .getNextNMessageMetadataFromQueue(queueName, lastMessageID + 1, slotSize);
-            numberOfReadsFromDatabase++;
-            restoreSlotMappingCounter = restoreSlotMappingCounter + messageList.size();
             numberOfMessages = messageList.size();
+            //increase value of counters
+            databaseReadsCounter++;
+            restoreMessagesCounter = restoreMessagesCounter + messageList.size();
+            databaseReadsCounterMap.put(queueName, databaseReadsCounter);
+            restoreMessagesCounterMap.put(queueName, restoreMessagesCounter);
         }
-        printCounter();
-        timer.cancel();
+        printCounter(queueName);
+        scheduledExecutorService.shutdownNow();
     }
 
     /**
      * Message count and database read count prints in each 30 seconds until slot mapping restoration completes
      *
-     * @param timer TimerUnit object
+     * @param scheduledExecutorService ScheduledExecutorService object
      */
-    private static void scheduleTimerToPrintCounter(Timer timer) {
-        long printDelay = 30000;
-        timer.scheduleAtFixedRate(new TimerTask() {
+    private static void scheduleTimerToPrintCounter(ScheduledExecutorService scheduledExecutorService,
+                                                    final String queueName) {
+        long printDelay = 30L;
+        scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
-                printCounter();
+                printCounter(queueName);
             }
-        }, 0, printDelay);
+        }, 0, printDelay, TimeUnit.SECONDS);
     }
 
     /**
      * Print INFO log with slot mapping restore details
      *
      */
-    private static void printCounter() {
-        if (restoreSlotMappingCounter > 0) {
-            log.info(restoreSlotMappingCounter + " messages mapped in " + numberOfReadsFromDatabase + " database reads.");
+    private static void printCounter(String queueName) {
+        if (restoreMessagesCounterMap.get(queueName) > 0) {
+            log.info(queueName + " : " + restoreMessagesCounterMap.get(queueName) + " messages mapped in "
+                    + databaseReadsCounterMap.get(queueName) + " database reads.");
         }
     }
 

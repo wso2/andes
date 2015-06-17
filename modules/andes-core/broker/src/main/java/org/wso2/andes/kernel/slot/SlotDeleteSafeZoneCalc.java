@@ -109,7 +109,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                 slotDeleteSafeZone = globalSafeZoneVal;
 
                 if (log.isDebugEnabled()) {
-                    log.info("Safe Zone Calculated : " + slotDeleteSafeZone);
+                    log.debug("Safe Zone Calculated : " + slotDeleteSafeZone);
                 }
 
                 try {
