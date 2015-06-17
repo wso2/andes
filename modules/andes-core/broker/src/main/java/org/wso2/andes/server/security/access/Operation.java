@@ -32,7 +32,8 @@ public enum Operation
     DELETE,
     PURGE,
     UPDATE,
-    EXECUTE;
+    EXECUTE,
+    BROWSE;
     
     public static Operation parse(String text)
     {

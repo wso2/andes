@@ -393,9 +393,14 @@ public class SimpleAMQQueue implements AMQQueue, Subscription.StateListener
             throws AMQSecurityException, ExistingExclusiveSubscription, ExistingSubscriptionPreventsExclusive
     {
         // Access control
-        if (!getVirtualHost().getSecurityManager().authoriseConsume(this))
-        {
-            throw new AMQSecurityException("Permission denied");
+        if (subscription instanceof SubscriptionImpl.BrowserSubscription) {
+            if (!getVirtualHost().getSecurityManager().authoriseBrowse(this)) {
+                throw new AMQSecurityException("Permission denied");
+            }
+        } else {
+            if (!getVirtualHost().getSecurityManager().authoriseConsume(this)) {
+                throw new AMQSecurityException("Permission denied");
+            }
         }
 
         //If the owner is DLC we should not allow subscriptions
