@@ -361,7 +361,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
             ByteBuffer message = origMessage.duplicate();
      /*       log.debug("Broker republishing to client <{}> topic <{}> qos <{}>, active {}",
-                    sub.getClientId(), sub.getTopic(), qos, sub.isActive());*/
+                    sub.getClientId(), sub.getChannelID(), qos, sub.isActive());*/
 
             if (qos == AbstractMessage.QOSType.MOST_ONE && sub.isActive()) {
                 //QoS 0
@@ -486,14 +486,19 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         String publishKey = String.format("%s%d", clientID, messageID);
         PublishEvent evt = m_storageService.retrieveQoS2Message(publishKey);
 
-        final String topic = evt.getTopic();
-        final AbstractMessage.QOSType qos = evt.getQos();
+        if (null != evt) {
+            final String topic = evt.getTopic();
+            final AbstractMessage.QOSType qos = evt.getQos();
 
-        //TODO we need to get the publisher session for QoS 2
-        AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), evt.getMessage(), evt.isRetain(),
-                evt.getMessageID(), clientID, this,null);
+            //TODO we need to get the publisher session for QoS 2
+            AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), evt.getMessage(), evt.isRetain(),
+                    evt.getMessageID(), clientID, this,null);
 
-        m_storageService.removeQoS2Message(publishKey);
+            m_storageService.removeQoS2Message(publishKey);
+        } else {
+            log.warn("A PUBREL was received for message id "+messageID+" from client "+clientID+" the state has not " +
+                    "being identified, no action will be taken");
+        }
     }
 
     private void sendPubComp(String clientID, int messageID) {
@@ -629,7 +634,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                 log.error(message + e.getMessage(), e);
                 throw new RuntimeException(message, e);
             }
-            // bridge.onTopicSubscription(req.getTopic(), clientID);
+            // bridge.onTopicSubscription(req.getChannelID(), clientID);
         }
 
         //ack the client
