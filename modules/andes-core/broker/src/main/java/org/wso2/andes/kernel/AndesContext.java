@@ -25,7 +25,6 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * AndesContext is used to pass instances created and configurations read through component level
@@ -35,11 +34,11 @@ public class AndesContext {
     private SubscriptionStore subscriptionStore;
     private AndesContextStore andesContextStore;
     private StoreConfiguration storeConfiguration;
-	private Map<String, AndesSubscription> dataSenderMap;
     private ClusteringAgent clusteringAgent;
     private boolean isClusteringEnabled;
     private AMQPConstructStore AMQPConstructStore;
     private static AndesContext instance = new AndesContext();
+    private MessageStore messageStore;
 
     /**
      * Get virtual host configuration object
@@ -83,14 +82,6 @@ public class AndesContext {
      */
     public AndesContextStore getAndesContextStore() {
         return this.andesContextStore;
-    }
-
-    public void addDataSender(String key, AndesSubscription dataSender) {
-        dataSenderMap.put(key, dataSender);
-    }
-
-    public AndesSubscription getDataSender(String key) {
-        return dataSenderMap.get(key);
     }
 
     /**
@@ -156,7 +147,8 @@ public class AndesContext {
 
     /**
      * get thrift server port
-     * @return
+     *
+     * @return The port value
      */
     public Integer getThriftServerPort() {
         return AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_THRIFT_SERVER_PORT);
@@ -191,5 +183,23 @@ public class AndesContext {
             storeConfiguration.addContextStoreProperty(contextStoreProperty, (String) AndesConfigurationManager
                     .readValueOfChildByKey(AndesConfiguration.PERSISTENCE_CONTEXT_STORE_PROPERTY,contextStoreProperty));
         }
+    }
+
+    /**
+     * Gets the message store.
+     *
+     * @return The message store.
+     */
+    public MessageStore getMessageStore() {
+        return messageStore;
+    }
+
+    /**
+     * Sets message store instance
+     *
+     * @param messageStore The message store
+     */
+    public void setMessageStore(MessageStore messageStore) {
+        this.messageStore = messageStore;
     }
 }

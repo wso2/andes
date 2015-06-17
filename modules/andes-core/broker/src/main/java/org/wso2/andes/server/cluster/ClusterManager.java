@@ -25,12 +25,14 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesContextStore;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
+import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
-import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -193,7 +195,7 @@ public class ClusterManager {
             }
 
             //update node information in durable store
-            List<String> nodeList = new ArrayList<String>(andesContextStore.getAllStoredNodeData().keySet());
+            List<String> nodeList = new ArrayList<>(andesContextStore.getAllStoredNodeData().keySet());
 
             for (String node : nodeList) {
                 andesContextStore.removeNodeData(node);
@@ -233,7 +235,7 @@ public class ClusterManager {
          */
         clearAllPersistedStatesOfDisappearedNode(nodeId);
 
-        List<String> storedNodes = new ArrayList<String>(andesContextStore.getAllStoredNodeData().keySet());
+        List<String> storedNodes = new ArrayList<>(andesContextStore.getAllStoredNodeData().keySet());
         List<String> availableNodeIds = hazelcastAgent.getMembersNodeIDs();
         for (String storedNodeId : storedNodes) {
             if (!availableNodeIds.contains(storedNodeId)) {
@@ -340,7 +342,7 @@ public class ClusterManager {
      * @return A list of address of the nodes in a cluster
      */
     public List<String> getAllClusterNodeAddresses() {
-        List<String> addresses = new ArrayList<String>();
+        List<String> addresses = new ArrayList<>();
         if (AndesContext.getInstance().isClusteringEnabled()) {
             for (Member member : HazelcastAgent.getInstance().getAllClusterMembers()) {
                 InetSocketAddress socket = member.getSocketAddress();
@@ -350,4 +352,19 @@ public class ClusterManager {
         return addresses;
     }
 
+    /**
+     * Gets the message store's health status
+     *
+     * @return true if healthy, else false.
+     */
+    public boolean getStoreHealth() {
+        String myNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+
+        boolean isMessageStoreOperational = AndesContext.getInstance().getMessageStore().isOperational(myNodeId,
+                System.currentTimeMillis());
+        boolean isAndesContextStoreOperational = AndesContext.getInstance().getAndesContextStore().isOperational
+                (myNodeId, System.currentTimeMillis());
+
+        return isMessageStoreOperational && isAndesContextStoreOperational;
+    }
 }

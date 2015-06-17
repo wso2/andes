@@ -368,7 +368,10 @@ public class AndesKernelBoot {
         messageStore = new FailureObservingMessageStore(createMessageStoreFromConfig(contextStoreInConfig));
         MessagingEngine messagingEngine = MessagingEngine.getInstance();
         messagingEngine.initialise(messageStore, subscriptionStore);
-        
+
+        // Setting the message store in the context store
+        AndesContext.getInstance().setMessageStore(messageStore);
+
         //create AMQP Constructs store
         AMQPConstructStore amqpConstructStore = new AMQPConstructStore(contextStore, messageStore);
         AndesContext.getInstance().setAMQPConstructStore(amqpConstructStore);
@@ -431,9 +434,7 @@ public class AndesKernelBoot {
     }
 
     /**
-     * stop andes house keeping threads
-     *
-     * @throws Exception
+     * Stop andes house keeping threads
      */
     public static void stopHouseKeepingThreads() {
         log.info("Stop syncing exchanges, queues, bindings and subscriptions...");
@@ -502,8 +503,6 @@ public class AndesKernelBoot {
 
     /**
      * Start accepting and delivering messages
-     *
-     * @throws Exception
      */
     public static void startMessaging() {
         Andes.getInstance().startMessageDelivery();
@@ -522,8 +521,6 @@ public class AndesKernelBoot {
 
         //this will un-assign all slots currently owned
         Andes.getInstance().stopMessageDelivery();
-
-
     }
 
 
