@@ -353,15 +353,17 @@ public class ClusterManager {
     }
 
     /**
-     * Gets the broker's storage health status.
+     * Gets the message store's health status
      *
      * @return true if healthy, else false.
      */
     public boolean getStoreHealth() {
-        boolean isMessageStoreOperational = AndesContext.getInstance().getMessageStore().isOperational("testString",
+        String myNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+
+        boolean isMessageStoreOperational = AndesContext.getInstance().getMessageStore().isOperational(myNodeId,
                 System.currentTimeMillis());
         boolean isAndesContextStoreOperational = AndesContext.getInstance().getAndesContextStore().isOperational
-                ("testString", System.currentTimeMillis());
+                (myNodeId, System.currentTimeMillis());
 
         return isMessageStoreOperational && isAndesContextStoreOperational;
     }

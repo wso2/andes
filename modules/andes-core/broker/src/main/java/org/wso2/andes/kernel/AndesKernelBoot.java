@@ -369,7 +369,7 @@ public class AndesKernelBoot {
         MessagingEngine messagingEngine = MessagingEngine.getInstance();
         messagingEngine.initialise(messageStore, subscriptionStore);
 
-        // setting the message store in the context store
+        // Setting the message store in the context store
         AndesContext.getInstance().setMessageStore(messageStore);
 
         //create AMQP Constructs store
