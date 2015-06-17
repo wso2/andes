@@ -48,10 +48,10 @@ public interface ClusterManagementInformation {
     List<String> getAllClusterNodeAddresses();
 
     /**
-     * Gets the broker health status.
+     * Gets the broker's storage health status.
      *
-     * @return Exception message
+     * @return true if healthy, else false.
      */
     @MBeanAttribute(name = "getStoreHealth", description = "Gets the broker's health status")
-    String getStoreHealth();
+    boolean getStoreHealth();
 }

@@ -92,7 +92,7 @@ public class ClusterManagementInformationMBean extends AMQManagedObject implemen
      * {@inheritDoc}
      */
     @Override
-    public String getStoreHealth() {
+    public boolean getStoreHealth() {
         return this.clusterManager.getStoreHealth();
     }
 }
