@@ -158,6 +158,11 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
 
     }
 
+    /**
+     * Prepare new subscription to publish to disruptor.
+     *
+     * @param subscriptionManager
+     */
     public void prepareForNewSubscription(AndesSubscriptionManager subscriptionManager) {
         eventType = EventType.OPEN_SUBSCRIPTION_EVENT;
         this.subscriptionManager = subscriptionManager;

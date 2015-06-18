@@ -1065,7 +1065,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     /**
      * Create new retain entry for given topic message
      *
-     * @param message
+     * @param message AndesMessage for create retain entry in CQL
      * @throws AndesException
      */
     private void createRetainedEntry(AndesMessage message) throws AndesException {
@@ -1345,8 +1345,8 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         /**
          * Retained item entry
          *
-         * @param topicID
-         * @param messageID
+         * @param topicID Retain topic id
+         * @param messageID Retain message id
          */
         private RetainedItemData(long topicID, long messageID) {
             this.topicID = topicID;

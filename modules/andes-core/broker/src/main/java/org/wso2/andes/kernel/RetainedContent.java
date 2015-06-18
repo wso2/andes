@@ -38,6 +38,13 @@ public class RetainedContent implements AndesContent {
     private Map<Integer, AndesMessagePart> messagePartCache;
     private long messageID;
 
+    /**
+     * Store new retain content based with given params
+     *
+     * @param messageParts message content part
+     * @param contentLength length of the message content
+     * @param messageID retain message id
+     */
     public RetainedContent(Map<Integer, AndesMessagePart> messageParts, int contentLength, long messageID) {
         this.messagePartCache = messageParts;
         this.contentLength = contentLength;

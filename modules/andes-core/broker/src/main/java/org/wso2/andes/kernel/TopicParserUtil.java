@@ -51,7 +51,9 @@ public class TopicParserUtil {
 
 
     /**
-     * Check whether subscribed topic name with wildcards matches the given subscription topic name
+     * Check whether subscribed topic name with wildcards matches the given subscription topic name.
+     * @see <a href="MQTT_V3.1_Protocol_Specific.pdf">
+     *     http://public.dhe.ibm.com/software/dw/webservices/ws-mqtt/MQTT_V3.1_Protocol_Specific.pdf</a>
      *
      * @param topicName
      *         topic name
