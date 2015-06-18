@@ -107,6 +107,9 @@ public class ClusterManager {
         String deletedNodeId = hazelcastAgent.getIdOfNode(node);
 
         SlotManagerClusterMode.getInstance().setRemovedNode(deletedNodeId);
+        if(AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
+            SlotManagerClusterMode.getInstance().recoverSlots();
+        }
         //refresh global queue sync ID
         reAssignNodeSyncId();
 
