@@ -123,13 +123,13 @@ public class DistributedStoreConnector implements MQTTConnector {
      * {@inheritDoc}
      */
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
-                              boolean isCleanSesion, QOSLevel qos, UUID subscriptionChannelID)
+                              boolean isCleanSession, QOSLevel qos, UUID subscriptionChannelID)
             throws MQTTException, SubscriptionAlreadyExistsException {
 
         MQTTLocalSubscription mqttTopicSubscriber;
         //Should indicate the record in the cluster
         try {
-            if (isCleanSesion) {
+            if (isCleanSession) {
                 mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
                         true, qos.getQosValue(), subscriptionChannelID, topic, true, true, false);
             } else {
@@ -137,7 +137,8 @@ public class DistributedStoreConnector implements MQTTConnector {
                 mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
                         false, qos.getQosValue(), subscriptionChannelID, clientID, true, true, false);
                 //We need to create a queue in-order to preserve messages relevant for the durable subscription
-                InboundQueueEvent createQueueEvent = new InboundQueueEvent(clientID, "admin", false, true);
+                String queueUser = "admin";
+                InboundQueueEvent createQueueEvent = new InboundQueueEvent(clientID, queueUser, false, true);
                 Andes.getInstance().createQueue(createQueueEvent);
             }
 
@@ -186,7 +187,6 @@ public class DistributedStoreConnector implements MQTTConnector {
             Andes.getInstance().deleteQueue(queueChange);
             Andes.getInstance().closeLocalSubscription(mqttTopicSubscriber);
             //Will indicate the closure of the subscription connection
-            //TODO we need to check whether to close the connection before closing the subscription
             Andes.getInstance().clientConnectionClosed(subscriberChannel);
             if (log.isDebugEnabled()) {
                 log.debug("Disconnected subscriber from topic " + subscribedTopic);
@@ -246,8 +246,8 @@ public class DistributedStoreConnector implements MQTTConnector {
     /**
      * @{inheritDoc}
      */
-    public UUID removePublisher(String mqttclientChannelId) {
-        MQTTPublisherChannel publisher = publisherTopicCorrelate.remove(mqttclientChannelId);
+    public UUID removePublisher(String mqttClientChannelId) {
+        MQTTPublisherChannel publisher = publisherTopicCorrelate.remove(mqttClientChannelId);
         UUID clusterID = null;
         if (null != publisher) {
             clusterID = publisher.getClusterID();
@@ -286,8 +286,8 @@ public class DistributedStoreConnector implements MQTTConnector {
         final String myNodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         MQTTLocalSubscription localTopicSubscription = new MQTTLocalSubscription(MQTT_TOPIC_DESTINATION + "=" + topic
                 + "," + MQTT_QUEUE_IDENTIFIER + "=" + queueIdentifier + "," + isBoundToTopic + "=" + isTopicBound + "," +
-                subscribedNode + "=" + myNodeID + "," + isDurable + "=" + !isCleanSession + "," + hasExternalSubscription + "="
-                + hasExternal);
+                subscribedNode + "=" + myNodeID + "," + isDurable + "=" + !isCleanSession + "," + hasExternalSubscription+
+                "="+ hasExternal);
         localTopicSubscription.setIsTopic(isTopicBound);
         if (!isCleanSession) {
             //For subscriptions with clean session = false we need to make a queue in andes

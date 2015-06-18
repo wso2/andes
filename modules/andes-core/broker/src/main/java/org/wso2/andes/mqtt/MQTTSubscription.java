@@ -60,7 +60,7 @@ public class MQTTSubscription {
      * Each subscription object will maintain the ids of the messages that were sent out for delivery
      * Upon relieving of an ack the message element will be removed
      * Cluster message id to local messages the key will be the local id of the map and the value will be cluster id
-     * We use a concurrent hash-map since this map is accessible by multiple threads. Accessed by both andes kernal for
+     * We use a concurrent hash-map since this map is accessible by multiple threads. Accessed by both andes kernel for
      * put operations and remove is done when the ack arrives
      */
     private Map<Integer, Long> clusterMessageToLocalMessage = new ConcurrentHashMap<Integer, Long>();

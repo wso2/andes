@@ -181,7 +181,7 @@ public class MQTTopics {
      * Across a channel this id should be unique until the ack is received, the maximum value the id could holds is
      * SHORT.MAX
      *
-     * @return the unique id generated for onflight message, this should be < SHORT.MAX
+     * @return the unique id generated for on-flight message, this should be < SHORT.MAX
      */
     private int getNextMessageID() {
 
