@@ -211,7 +211,7 @@ public class Broker
 
                         NetworkTransportConfiguration settings =
                                 new ServerNetworkTransportConfiguration(serverConfig, port,
-                                                                    bindAddressForHostname.getHostName(), Transport.TCP);
+                                                                        bindAddressFromBrokerOptions, Transport.TCP);
 
                         IncomingNetworkTransport transport = Transport.getIncomingTransportInstance();
                         MultiVersionProtocolEngineFactory protocolEngineFactory =
@@ -236,7 +236,7 @@ public class Broker
                     {
                         NetworkTransportConfiguration settings =
                                 new ServerNetworkTransportConfiguration(serverConfig, sslPort,
-                                                                    bindAddressForHostname.getHostName(), Transport.TCP);
+                                                                        bindAddressFromBrokerOptions, Transport.TCP);
 
                         IncomingNetworkTransport transport = new MinaNetworkTransport();
 
