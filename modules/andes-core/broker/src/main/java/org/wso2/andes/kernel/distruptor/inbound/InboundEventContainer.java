@@ -26,6 +26,7 @@ import org.wso2.andes.kernel.AndesMessage;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * All inbound events are published to disruptor ring buffer as an InboundEventContainer object
@@ -59,6 +60,13 @@ public class InboundEventContainer {
      * Acknowledgments received to disruptor
      */
     public AndesAckData ackData;
+
+    /**
+     * When content chunk processed this boolean is set to false
+     * {@link org.wso2.andes.kernel.distruptor.inbound.ContentChunkHandler} will check this boolean and
+     * if not processed will process the content chunk.
+     */
+    private final AtomicBoolean freshContent;
 
     /**
      * Publisher acknowledgements are handled by this ack handler
@@ -121,9 +129,10 @@ public class InboundEventContainer {
     }
 
     public InboundEventContainer() {
-        messageList = new ArrayList<AndesMessage>();
+        messageList = new ArrayList<>();
         eventType = Type.IGNORE_EVENT;
         safeZoneLimit = Long.MIN_VALUE;
+        freshContent = new AtomicBoolean(true);
 
     }
 
@@ -163,6 +172,7 @@ public class InboundEventContainer {
         eventType = Type.IGNORE_EVENT;
         pubAckHandler = null;
         transactionEvent = null;
+        freshContent.set(true);
     }
 
     /**
@@ -174,6 +184,19 @@ public class InboundEventContainer {
             return new InboundEventContainer() {
             };
         }
+    }
+
+    /**
+     * If content is fresh and available for processing this will return true and atomically updated the state
+     * of the event to denote content is taken for processing
+     * <p/>
+     * This method is used by {@link org.wso2.andes.kernel.distruptor.inbound.ContentChunkHandler} to
+     * grab a incoming message for content processing
+     *
+     * @return true if content is fresh for processing and false otherwise
+     */
+    public boolean availableForContentProcessing() {
+        return freshContent.compareAndSet(true, false);
     }
 
     /**

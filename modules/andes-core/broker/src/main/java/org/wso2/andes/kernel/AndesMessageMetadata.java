@@ -323,6 +323,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
             expirationTime = ((MessageMetaData) mdt).getMessageHeader().getExpiration();
             arrivalTime = ((MessageMetaData) mdt).getArrivalTime();
             destination = ((MessageMetaData) mdt).getMessagePublishInfo().getRoutingKey().toString();
+            this.messageContentLength = ((MessageMetaData) mdt).getContentSize();
             isTopic = ((MessageMetaData) mdt).getMessagePublishInfo().getExchange().equals(AMQPUtils.TOPIC_EXCHANGE_NAME);
         }
         //For MQTT Specific Types
@@ -336,16 +337,13 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
     }
 
-    public Object getMessageHeader(String header) {
-        ByteBuffer buf = ByteBuffer.wrap(metadata);
-        buf.position(1);
-        buf = buf.slice();
-        MessageMetaDataType type = MessageMetaDataType.values()[metadata[0]];
-        StorableMessageMetaData mdt = type.getFactory()
-                .createMetaData(buf);
-        return ((MessageMetaData) mdt).getMessageHeader().getHeader(header);
-    }
-
+    /**
+     * Create a copy of metadata
+     * @param originalMetadata source metadata that needs to be copied
+     * @param routingKey routing key of the message
+     * @param exchangeName exchange of the message
+     * @return copu of the metadata as a byte array
+     */
     private byte[] createNewMetadata(byte[] originalMetadata, String routingKey, String exchangeName) {
         ByteBuffer buf = ByteBuffer.wrap(originalMetadata);
         buf.position(1);

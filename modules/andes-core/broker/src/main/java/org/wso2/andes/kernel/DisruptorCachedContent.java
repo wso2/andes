@@ -37,9 +37,21 @@ public class DisruptorCachedContent implements AndesContent {
      */
     private final int contentLength;
 
-    public DisruptorCachedContent(DeliveryEventData eventDataHolder, int contentLength) {
+    /**
+     * Maximum chunk size allowed within Andes core
+     */
+    private final int maxChunkSize;
+
+    /**
+     * Create a {@link org.wso2.andes.kernel.DisruptorCachedContent} object
+     * @param eventDataHolder {@link org.wso2.andes.kernel.distruptor.delivery.DeliveryEventData}
+     * @param contentLength length of the content to be cached
+     * @param maxChunkSize maximum chunk size of the stored content
+     */
+    public DisruptorCachedContent(DeliveryEventData eventDataHolder, int contentLength, int maxChunkSize) {
         this.eventDataHolder = eventDataHolder;
         this.contentLength = contentLength;
+        this.maxChunkSize = maxChunkSize;
     }
 
     /**
@@ -56,8 +68,8 @@ public class DisruptorCachedContent implements AndesContent {
 
         while (maxRemaining > written) {
             // This is an integer division
-            int chunkNumber = currentBytePosition / AMQPUtils.DEFAULT_CONTENT_CHUNK_SIZE;
-            int chunkStartByteIndex = chunkNumber * AMQPUtils.DEFAULT_CONTENT_CHUNK_SIZE;
+            int chunkNumber = currentBytePosition / maxChunkSize;
+            int chunkStartByteIndex = chunkNumber * maxChunkSize;
             int positionToReadFromChunk = currentBytePosition - chunkStartByteIndex;
 
             AndesMessagePart messagePart = eventDataHolder.getMessagePart(chunkStartByteIndex);

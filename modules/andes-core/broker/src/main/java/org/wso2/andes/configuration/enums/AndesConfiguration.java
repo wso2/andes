@@ -190,7 +190,30 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * is healthy between message store (/Database) and this server instance.
      */
     PERSISTENCE_STORE_HEALTH_CHECK_INTERVAL("persistence/storeHealthCheckInterval", "10", Integer.class),
-            
+
+    /**
+     * Andes core will store message content chunks according to this chunk size. Different database will
+     * have limits and performance gains by tuning this parameter.
+     * <p/>
+     * For instance in MySQL the maximum table column size for content is less than 65534, which is the default
+     * chunk size of AMQP. By changing this parameter to a lesser value we can store large content
+     * chunks converted to smaller content chunks within the DB with this parameter.
+     */
+    PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE
+            ("performanceTuning/contentHandling/maxContentChunkSize", "65500", Integer.class),
+
+    /**
+     * Within Andes there are content chunk handlers which convert incoming large content chunks
+     * into max content chunk size allowed by Andes core. These handlers run in parallel converting
+     * large content chunks to smaller chunks.
+     * <p/>
+     * If the protocol specific content chunk size is different from the max chunk size allowed by Andes core
+     * and there are significant number of large messages published, then having multiple handlers will
+     * increase performance.
+     */
+    PERFORMANCE_TUNING_CONTENT_CHUNK_HANDLER_COUNT
+            ("performanceTuning/contentHandling/contentChunkHandlerCount", "3", Integer.class),
+
     /**
      * Maximum time interval until which a slot can be retained in memory before updating to the cluster.
      * NOTE : specified in milliseconds.

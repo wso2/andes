@@ -60,11 +60,13 @@ public class DisruptorBasedFlusher {
                 AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_PARALLEL_DELIVERY_HANDLERS);
         Integer contentSizeToBatch = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_CONTENT_READ_BATCH_SIZE);
+        int maxContentChunkSize = AndesConfigurationManager.readValue(
+                AndesConfiguration.PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);
 
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("DisruptorBasedFlusher-%d").build();
         Executor threadPoolExecutor = Executors.newCachedThreadPool(namedThreadFactory);
 
-        disruptor = new Disruptor<DeliveryEventData>(new DeliveryEventData.DeliveryEventDataFactory(), ringBufferSize,
+        disruptor = new Disruptor<>(new DeliveryEventData.DeliveryEventDataFactory(), ringBufferSize,
                                                      threadPoolExecutor,
                                                      ProducerType.MULTI,
                                                      new BlockingWaitStrategy());
@@ -81,7 +83,7 @@ public class DisruptorBasedFlusher {
             contentReadTaskBatchProcessor[i] = new ConcurrentContentReadTaskBatchProcessor(
                     disruptor.getRingBuffer(),
                     barrier,
-                    new ContentCacheCreator(),
+                    new ContentCacheCreator(maxContentChunkSize),
                     i,
                     parallelContentReaders,
                     contentSizeToBatch);

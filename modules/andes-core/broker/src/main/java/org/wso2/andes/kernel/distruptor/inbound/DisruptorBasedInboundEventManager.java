@@ -66,13 +66,17 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
                 PERFORMANCE_TUNING_MESSAGE_WRITER_BATCH_SIZE);
         Integer ackHandlerBatchSize = AndesConfigurationManager.readValue(
                 PERFORMANCE_TUNING_ACKNOWLEDGEMENT_HANDLER_BATCH_SIZE);
+        int maxContentChunkSize = AndesConfigurationManager.readValue(
+                PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);
+        int contentChunkHandlerCount = AndesConfigurationManager.readValue(
+                PERFORMANCE_TUNING_CONTENT_CHUNK_HANDLER_COUNT);
 
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                                     .setNameFormat("Disruptor Inbound Event Thread %d").build();
         ExecutorService executorPool = Executors.newCachedThreadPool(namedThreadFactory);
 
 
-        disruptor = new Disruptor<InboundEventContainer>(InboundEventContainer.getFactory(),
+        disruptor = new Disruptor<>(InboundEventContainer.getFactory(),
                 bufferSize, 
                 executorPool,
                 ProducerType.MULTI,
@@ -82,6 +86,11 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
 
         ConcurrentBatchEventHandler[] concurrentBatchEventHandlers =
                 new ConcurrentBatchEventHandler[writeHandlerCount + ackHandlerCount];
+
+        ContentChunkHandler[] chunkHandlers = new ContentChunkHandler[contentChunkHandlerCount];
+        for (int i = 0; i < contentChunkHandlerCount; i++) {
+            chunkHandlers[i] = new ContentChunkHandler(maxContentChunkSize);
+        }
 
         for (int turn = 0; turn < writeHandlerCount; turn++) {
             concurrentBatchEventHandlers[turn] = new ConcurrentBatchEventHandler(turn, writeHandlerCount,
@@ -97,14 +106,19 @@ public class DisruptorBasedInboundEventManager implements InboundEventManager {
                     new AckHandler(messagingEngine));
         }
 
-        // Pre processor runs first then Write handlers and ack handlers run in parallel. State event handler comes
-        // after them
-        disruptor.handleEventsWith(new MessagePreProcessor(subscriptionStore)).then(concurrentBatchEventHandlers);
+        MessagePreProcessor preProcessor = new MessagePreProcessor(subscriptionStore);
+
+        // Order in which handlers run in Disruptor
+        // - ContentChunkHandlers
+        // - MessagePreProcessor
+        // - MessageWriters and AckHandlers
+        // - StateEventHandler
+        disruptor.handleEventsWith(chunkHandlers).then(preProcessor);
+        disruptor.after(preProcessor).handleEventsWith(concurrentBatchEventHandlers);
 
         // State event handler should run at last.
         // State event handler update the state of Andes after other handlers work is done.
         disruptor.after(concurrentBatchEventHandlers).handleEventsWith(new StateEventHandler(messagingEngine));
-
         ringBuffer = disruptor.start();
 
         //Will add the gauge to metrics manager

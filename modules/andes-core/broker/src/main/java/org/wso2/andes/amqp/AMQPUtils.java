@@ -196,6 +196,7 @@ public class AMQPUtils {
         metadata.setSlot(amqMessage.getSlot());
         metadata.setExpirationTime(amqMessage.getExpiration());
         metadata.setArrivalTime(amqMessage.getArrivalTime());
+        metadata.setMessageContentLength(amqMetadata.getContentSize());
 
         return metadata;
     }
