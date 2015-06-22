@@ -467,7 +467,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         Statement statement = QueryBuilder.delete().
                 from(config.getKeyspace(), QUEUE_EXCHANGE_NODE_TABLE).
                 where(eq(QUEUE_EXCHANGE_NODE_ROW, QUEUE_ENTITY_TYPE)).
-                and(eq(QUEUE_NAME, queueName)).
+                and(eq(QUEUE_EXCHANGE_NODE_IDENTIFIER, queueName)).
                 setConsistencyLevel(config.getWriteConsistencyLevel());
 
         execute(statement, "deleting queue information for queue " + queueName);

@@ -94,6 +94,12 @@ public class MetricsConstants {
      * Delete metadata and content
      */
     public static final String DELETE_MESSAGE_META_DATA_AND_CONTENT = PREFIX + "store.messageMetadataAndContent.delete";
+
+    /**
+     * Delete all messages addressed for a specific destination queue from DLC
+     */
+    public static final String DELETE_MESSAGES_FOR_QUEUE_FROM_DLC = PREFIX + "store.messagesForQueueFromDLC.delete";
+
     /**
      * Update meta data
      */

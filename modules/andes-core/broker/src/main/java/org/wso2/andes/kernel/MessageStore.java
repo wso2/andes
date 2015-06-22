@@ -229,14 +229,16 @@ public interface MessageStore extends HealthAwareStore{
      */
     public void deleteAllMessageMetadata(String storageQueueName) throws AndesException;
 
-    /***
+    /**
      * Store level method to remove all DLC records of all messages addressed to a specific queue.
      *
      * @param storageQueueName name of the queue being purged
-     * @return int number of deleted messages
+     * @param DLCQueueName     name of the DLC from which to delete the messages
+     * @return List of the message IDs in the DLC that are addressed to the storage queue
      * @throws AndesException
      */
-    public int deleteAllMessageMetadataFromDLC(String storageQueueName, String DLCQueueName) throws AndesException;
+    public int deleteAllMessagesFromDLCForStorageQueue(String storageQueueName, String DLCQueueName) throws
+            AndesException;
 
     /***
      * Get Message ID list addressed to a specific queue.

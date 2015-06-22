@@ -346,13 +346,15 @@ public class MessagingEngine {
         return purgedNumOfMessages;
     }
 
-    /***
+    /**
      * Clear all references to all message metadata / content addressed to a specific queue. Used when purging.
+     *
      * @param storageQueueName name of storage queue
-     * @param startMessageID id of the message the query should start from
+     * @param startMessageID   id of the message the query should start from
      * @throws AndesException
      */
-    public int purgeQueueFromStore(String storageQueueName, Long startMessageID, boolean isTopic) throws AndesException{
+    public int purgeQueueFromStore(String storageQueueName, Long startMessageID, boolean isTopic) throws
+            AndesException {
 
         try {
             // Retrieve message IDs addressed to the queue and keep track of message count for
@@ -381,11 +383,11 @@ public class MessagingEngine {
 
             //For durable topics and queues the purge would not return true for a topic, non durable topics would not
             //send the message to the DLC therefor we don't need to purge message for non-durable case
-            Integer messageCountFromDLC = 0;
-            if(!isTopic) {
+            int messageCountFromDLC = 0;
+            if (!isTopic) {
                 //We would consider removal of messages from the DLC for queues and durable topics
-                messageCountFromDLC = messageStore.deleteAllMessageMetadataFromDLC(DLCQueueUtils
-                        .identifyTenantInformationAndGenerateDLCString(storageQueueName), storageQueueName);
+                messageCountFromDLC = messageStore.deleteAllMessagesFromDLCForStorageQueue(storageQueueName,
+                        DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(storageQueueName));
 
             }
 
