@@ -32,7 +32,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -854,7 +853,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessageMetaDataFromQueue(final String storageQueueName,
+    public void deleteMessageMetadataFromQueue(final String storageQueueName,
                                                List<Long> messagesToRemove)
             throws AndesException {
 
@@ -905,6 +904,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     /**
      * {@inheritDoc}
      */
+    @Override
     public void deleteMessages(final String storageQueueName,
                                List<Long> messagesToRemove, boolean deleteAllMetaData)
             throws AndesException {

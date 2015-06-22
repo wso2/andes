@@ -38,7 +38,6 @@ import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.server.stats.PerformanceCounter;
-import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 
@@ -88,9 +87,9 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     private long lastRecoveryMessageId;
 
     /**
-     * The comma is used to append message IDs to one another when performing column operations
+     * The COMMA is used to append message IDs to one another when performing column operations
      */
-    private final String comma = " , ";
+    private static final String COMMA = " , ";
 
     /**
      * {@inheritDoc}
@@ -327,7 +326,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         removableMetaDataList.add(messageId);
 
         addMetaDataToQueue(targetQueueName, messageMetadataList.get(0));
-        deleteMessageMetaDataFromQueue(currentQueueName, removableMetaDataList);
+        deleteMessageMetadataFromQueue(currentQueueName, removableMetaDataList);
     }
 
     /**
@@ -523,7 +522,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessageMetaDataFromQueue(String queueName, List<Long>
+    public void deleteMessageMetadataFromQueue(String queueName, List<Long>
             messagesToRemove) throws AndesException {
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.DELETE_MESSAGE_META_DATA_FROM_QUEUE).start();
@@ -531,7 +530,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             if (log.isTraceEnabled()) {
                 StringBuilder messageIDsString = new StringBuilder();
                 for (Long metadata : messagesToRemove) {
-                    messageIDsString.append(metadata.longValue()).append(comma);
+                    messageIDsString.append(metadata.longValue()).append(COMMA);
                 }
                 log.trace(messagesToRemove.size() + " messages removed : " + messageIDsString);
             }
@@ -548,8 +547,8 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             //batch execute
             mutator.execute();
 
-        } catch (Exception e) {
-            throw new AndesException("Error while deleting messages", e);
+        } catch (CassandraDataAccessException e) {
+            throw new AndesException("Error while deleting messages from queue " + queueName, e);
         } finally {
             context.stop();
         }
@@ -558,6 +557,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     /**
      * {@inheritDoc}
      */
+    @Override
     public void deleteMessages(final String storageQueueName,
                                List<Long> messagesToRemove, boolean deleteAllMetaData)
             throws AndesException {
@@ -567,7 +567,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             if (log.isTraceEnabled()) {
                 StringBuilder messageIDsString = new StringBuilder();
                 for (Long messageID : messagesToRemove) {
-                    messageIDsString.append(messageID.longValue()).append(comma);
+                    messageIDsString.append(messageID.longValue()).append(COMMA);
                 }
                 log.trace(messagesToRemove.size() + " messages removed : " + messageIDsString);
             }

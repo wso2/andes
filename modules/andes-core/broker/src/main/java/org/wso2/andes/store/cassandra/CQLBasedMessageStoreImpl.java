@@ -511,7 +511,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         removableMetadataList.add(messageId);
 
         addMetaDataToQueue(targetQueueName, metadataList.get(0));
-        deleteMessageMetaDataFromQueue(currentQueueName, removableMetadataList);
+        deleteMessageMetadataFromQueue(currentQueueName, removableMetadataList);
     }
 
     /**
@@ -533,7 +533,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             for (AndesMessageMetadata metadata : metadataList) {
                 removableMetadataList.add(metadata.getMessageID());
             }
-            deleteMessageMetaDataFromQueue(currentQueueName, removableMetadataList);
+            deleteMessageMetadataFromQueue(currentQueueName, removableMetadataList);
         } finally {
             context.stop();
         }
@@ -719,7 +719,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessageMetaDataFromQueue(String storageQueueName,
+    public void deleteMessageMetadataFromQueue(String storageQueueName,
                                                List<Long> messagesToRemove) throws AndesException {
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.DELETE_MESSAGE_META_DATA_FROM_QUEUE)
@@ -745,6 +745,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     /**
      * {@inheritDoc}
      */
+    @Override
     public void deleteMessages(final String storageQueueName, List<Long> messagesToRemove, boolean deleteAllMetaData)
             throws AndesException {
         Context context = MetricManager.timer(Level.INFO, MetricsConstants.DELETE_MESSAGE_META_DATA_AND_CONTENT)
@@ -851,7 +852,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
             // When the end of current fetched results is reached we delete that found removable messages from DLC
             if (resultSet.getAvailableWithoutFetching() == 0 && !removableMetadataList.isEmpty()) {
-                deleteMessageMetaDataFromQueue(DLCQueueName, removableMetadataList);
+                deleteMessageMetadataFromQueue(DLCQueueName, removableMetadataList);
                 removedMessageCount = removedMessageCount + removableMetadataList.size();
                 removableMetadataList.clear();
             }

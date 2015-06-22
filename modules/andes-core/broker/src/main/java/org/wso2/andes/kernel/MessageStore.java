@@ -202,7 +202,7 @@ public interface MessageStore extends HealthAwareStore{
      * @param messagesToRemove messages to remove
      * @throws AndesException
      */
-    public void deleteMessageMetaDataFromQueue(final String storageQueueName, List<Long> messagesToRemove)
+    public void deleteMessageMetadataFromQueue(final String storageQueueName, List<Long> messagesToRemove)
             throws AndesException;
 
     /**
