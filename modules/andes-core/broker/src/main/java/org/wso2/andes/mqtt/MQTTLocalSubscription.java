@@ -21,6 +21,7 @@ import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -33,7 +34,6 @@ import org.wso2.andes.kernel.OnflightMessageTracker;
 import java.nio.ByteBuffer;
 import java.util.UUID;
 
-import static org.dna.mqtt.wso2.AndesMQTTBridge.*;
 
 /**
  * Cluster wide subscriptions relevant per topic will be maintained through this class
@@ -192,11 +192,11 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
                     mqqtServerChannel.distributeMessageToSubscriber(this.getStorageQueueName(),
                             this.getSubscribedDestination(),message,messageMetadata.getMessageID(),
                             messageMetadata.getQosLevel(), messageMetadata.isPersistent(), getMqttSubscriptionID(),
-                            getSubscriberQOS());
+                            getSubscriberQOS(),messageMetadata);
                     //We will indicate the ack to the kernel at this stage
                     //For MQTT QOS 0 we do not get ack from subscriber, hence will be implicitly creating an ack
-                    if (QOSLevel.AT_MOST_ONCE.getQosValue() == getSubscriberQOS() ||
-                            QOSLevel.AT_MOST_ONCE.getQosValue() == messageMetadata.getQosLevel()) {
+                    if (QOSLevel.AT_MOST_ONCE.getValue() == getSubscriberQOS() ||
+                            QOSLevel.AT_MOST_ONCE.getValue() == messageMetadata.getQosLevel()) {
                         mqqtServerChannel.implicitAck(getSubscribedDestination(), messageMetadata.getMessageID(),
                                 this.getStorageQueueName(), getChannelID());
                     }

@@ -20,18 +20,22 @@ package org.wso2.andes.mqtt.connectors;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.dna.mqtt.wso2.AndesMQTTBridge;
+import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTException;
 import org.wso2.andes.mqtt.MQTTMessageContext;
-import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.mqtt.MQTTopicManager;
+import org.wso2.andes.mqtt.utils.MQTTUtils;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * Will be used to handle the incoming messages through the in-memory store, this will be supported only for QoS 0
@@ -55,13 +59,18 @@ public class InMemoryConnector implements MQTTConnector {
         throw new NotImplementedException();
     }
 
+    @Override
+    public void messageNack(AndesMessageMetadata metadata) {
+
+    }
+
     /**
      * {@inheritDoc}
      */
     @Override
     public void addMessage(MQTTMessageContext messageContext) throws MQTTException {
         broadcastMessages(messageContext.getTopic(), messageContext.getMessage(), messageContext.getMqttLocalMessageID(),
-                messageContext.getQosLevel().getQosValue(), messageContext.isRetain(), messageContext.getPublisherID(),
+                messageContext.getQosLevel().getValue(), messageContext.isRetain(), messageContext.getPublisherID(),
                 messageContext.getPubAckHandler());
         if (log.isDebugEnabled()) {
             log.debug("Message published to topic " + messageContext.getTopic() + " with publisher id " +
@@ -74,7 +83,7 @@ public class InMemoryConnector implements MQTTConnector {
      */
     @Override
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
-                              boolean isCleanSesion, AndesMQTTBridge.QOSLevel qos, UUID subscriptionChannelID)
+                              boolean isCleanSession, QOSLevel qos, UUID subscriptionChannelID)
             throws MQTTException, SubscriptionAlreadyExistsException {
 
         List<String> subscribers = messageSubscription.get(topic);
@@ -145,7 +154,7 @@ public class InMemoryConnector implements MQTTConnector {
                 //We allow only QoS 0 messages to be exchanged in-memory
                 int memoryQoSLevel = 0;
                 MQTTopicManager.getInstance().distributeMessageToSubscriber(topic,topic, messages, messageID,
-                        memoryQoSLevel, retain, subChannel, memoryQoSLevel);
+                        memoryQoSLevel, retain, subChannel, memoryQoSLevel,new AndesMessageMetadata());
                 if (log.isDebugEnabled()) {
                     log.debug("Message " + messageID + " Delivered to subscription " + subChannel + " to topic " + topic);
                 }

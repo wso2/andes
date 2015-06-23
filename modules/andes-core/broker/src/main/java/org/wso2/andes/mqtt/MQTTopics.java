@@ -20,14 +20,17 @@ package org.wso2.andes.mqtt;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.dna.mqtt.wso2.QOSLevel;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ConcurrentSkipListSet;
 
-import static org.dna.mqtt.wso2.AndesMQTTBridge.QOSLevel;
+
 
 /**
  * Mapped against the channel id, a given channel could subscribe to 1..* topics
@@ -42,9 +45,9 @@ public class MQTTopics {
     private static Log log = LogFactory.getLog(MQTTopics.class);
 
     /**
-     * Holds the name of the channelID that is of relevance
+     * Holds the name of the channelId that is of relevance
      */
-    private String channelID;
+    private String channelId;
 
     /**
      * The list of topics the channel has bound to will be maintained
@@ -52,7 +55,7 @@ public class MQTTopics {
      * Value - The subscriptions which holds information {@link org.wso2.andes.mqtt.MQTTSubscription}
      * <p><b>Note: </b> A given channel cannot be bound to the same topic more than once</p>
      */
-    private Map<String, MQTTSubscription> subscriptions = new HashMap<String, MQTTSubscription>();
+    private Map<String, MQTTSubscription> subscriptions = new ConcurrentHashMap<String, MQTTSubscription>();
 
     /**
      * Holds the onFlightMessages that are on flight - in the process of delivering them to its subscribers
@@ -67,29 +70,33 @@ public class MQTTopics {
      * This will be used to maintain a counter
      * In MQTT a message id should be a short value, need to ensure the id will not exceed this limit
      */
-    private AtomicInteger currentMessageID = new AtomicInteger(0);
+    //private AtomicInteger currentMessageId = new AtomicInteger(0);
 
+
+    private Set<Integer> messageIds = new ConcurrentSkipListSet<Integer>();
 
 
     /**
      * Will construct the channel which will hold references to all subscriptions
-     * @param channelID the name of the channelID registered
+     * @param channelID the name of the channelId registered
+     * @param mIds the list of possibilities for message ids set of Integers with numbers < SHORT.MAX
      */
-    public MQTTopics(String channelID) {
-        this.channelID = channelID;
+    public MQTTopics(String channelID,Set<Integer> mIds) {
+        this.channelId = channelID;
+        this.messageIds.addAll(mIds);
     }
 
     /**
-     * @return name of the channelID
+     * @return name of the channelId
      */
-    public String getChannelID() {
-        return channelID;
+    public String getChannelId() {
+        return channelId;
     }
 
     /**
-     * Will create a new subscriber for the channelID
+     * Will create a new subscriber for the channelId
      *
-     * @param mqttClientChannelID the channel identity of the subscriber bound to the channelID
+     * @param mqttClientChannelID the channel identity of the subscriber bound to the channelId
      * @param qos                 the level of qos which can be of value 0,1 or 2
      * @param isCleanSession      the durability of the session
      * @param clusterSpecificID   the id generated for the subscriber which is unique across the cluster
@@ -111,7 +118,7 @@ public class MQTTopics {
             subscriber.setSubscriberChannelID(clusterSpecificID);
             //Will set the subscription channel
             subscriber.setSubscriptionChannel(subscriptionChannel);
-            //Will set the channelID name
+            //Will set the channelId name
             subscriber.setTopicName(topicName);
             //Will register the subscriber
             subscriptions.put(topicName, subscriber);
@@ -129,7 +136,7 @@ public class MQTTopics {
     }
 
     /**
-     * Will add the subscriber object directly to the channelID, this method was designed to be called during callback
+     * Will add the subscriber object directly to the channelId, this method was designed to be called during callback
      *
      * @param topicName     the name of the topic the subscription will be bound
      * @param subscriber    the subscription
@@ -183,15 +190,18 @@ public class MQTTopics {
      *
      * @return the unique id generated for on-flight message, this should be < SHORT.MAX
      */
-    private int getNextMessageID() {
+    private Integer getNextMessageID() {
 
-        currentMessageID.incrementAndGet();
-        if (currentMessageID.get() == Short.MAX_VALUE) {
-            currentMessageID.set(1);
-            log.info("Message id count has breached its maximum, refreshing the message ids");
+        Integer messageId = null;
+
+        if (!messageIds.isEmpty()) {
+            messageId = messageIds.iterator().next();
+            messageIds.remove(messageId);
+        } else {
+            log.warn("Message ids cannot be generated, since it has reached its maximum");
         }
 
-        return currentMessageID.get();
+        return messageId;
     }
 
     /**
@@ -203,25 +213,39 @@ public class MQTTopics {
      * @param topic                  the destination in which the message should be distributed
      * @param clusterMessageID       the id generated by andes for cluster representation of the message
      * @param storageQueueIdentifier the unique identifier of the storage queue (cluster representation)
+     * @param metadata               message information relevant that should be used when sending a nack
      * @return the mqtt specific id generated co-relating the cluster specific id < SHORT.MAX
      * @throws org.wso2.andes.mqtt.MQTTException
      */
-    public int addOnFlightMessage(String topic, String storageQueueIdentifier, long clusterMessageID)
-            throws MQTTException {
-        //Generates a unique id for the message, this should be
-        int messageID = getNextMessageID();
+    public int addOnFlightMessage(String topic, String storageQueueIdentifier, long clusterMessageID,
+                                  AndesMessageMetadata metadata) throws MQTTException {
+
         MQTTSubscription subscription = subscriptions.get(topic);
 
+        Integer messageID;
+
         if (null != subscription) {
+            //If the message is being resent
+            messageID = subscription.getMessageID(clusterMessageID);
+
+            if (null == messageID) {
+                //This means the message id has not be generated for this message
+                //Here a new message id will be generated
+                messageID = getNextMessageID();
+            }
+            //Will set the meat info
+            metadata.setChannelId(subscription.getSubscriptionChannel());
             //Sets the storage queue identifier of the subscription
             subscription.setStorageIdentifier(storageQueueIdentifier);
             //Indicates that the message was dispatched for the distribution
             onFlightMessages.put(messageID, subscription);
+            //unAckedMessages.add(messageID);
+            //messageIdTime.put(System.currentTimeMillis(), messageID);
             //Each subscription holds the cluster id <-> messages id in order to co-relate when ack is received
-            subscription.markSend(clusterMessageID, messageID);
+            subscription.markSent(clusterMessageID, messageID, metadata);
         } else {
             String error = "Error occurred while dispatching the message to the subscriber for channel id " +
-                    channelID + " for topic " + topic;
+                    channelId + " for topic " + topic;
             throw new MQTTException(error);
         }
 
@@ -229,14 +253,51 @@ public class MQTTopics {
     }
 
     /**
+     * This is called when retrieving values to send rejection ack
+     * @param allMessages list of messages that has all the integer values < SHORT.MAX
+     * @return the set messages that are on flight and had not being
+     */
+    public Set<Integer> getUnackedMessages(Set<Integer> allMessages) {
+        //We take the allMessages/messageIds since message id holds messages which have not being dispatched
+        Set<Integer> unAcknowledgedMessages = new LinkedHashSet<Integer>();
+        unAcknowledgedMessages.addAll(messageIds);
+        unAcknowledgedMessages.removeAll(allMessages);
+        return unAcknowledgedMessages;
+    }
+
+    /**
+     * Returns the subscription information, the information will include the correlations between the locally generated
+     * message ids and cluster specific ids
+     *
+     * @param messageID the id of the message the information is required
+     * @return the subscription information
+     */
+    public MQTTSubscription getSubscription(Integer messageID) {
+        return onFlightMessages.get(messageID);
+    }
+
+    /**
      * Removes a given message from the tacking list
      * This operation is called when an ack is received for a particular message
      *
-     * @param messageID the id of the message
+     * @param messageId the id of the message
      * @return MQTTSubscription holds information relevant for the subscription
      */
-    public MQTTSubscription removeOnFlightMessage(int messageID) {
-        return onFlightMessages.remove(messageID);
+    public MQTTSubscription removeOnFlightMessage(int messageId) {
+        return onFlightMessages.remove(messageId);
+    }
+
+    /**
+     * Adds the message id to be reused
+     * <p>This method is invoked when an ack is received for a given message, so that its id could be reused
+     * </p>
+     * <p><b>Note: </b> This should be called after calling call necessary operations related to ack handling, so that
+     * there will not be any state inconsistencies</p>
+     *
+     * @param messageId the id the message which was acked
+     */
+    public void addMessageId(int messageId) {
+        messageIds.add(messageId);
     }
 
 }

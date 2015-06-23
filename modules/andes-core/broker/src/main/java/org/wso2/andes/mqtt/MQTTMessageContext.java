@@ -18,14 +18,13 @@
 package org.wso2.andes.mqtt;
 
 import io.netty.channel.Channel;
+import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
-
 import java.nio.ByteBuffer;
 
-import static org.dna.mqtt.wso2.AndesMQTTBridge.QOSLevel;
 
 /**
- * Builder pattern to contain parameter values defined through the protocol engine
+ * Holds message information pertaining to a MQTT message
  */
 public class MQTTMessageContext {
     /**
@@ -34,7 +33,7 @@ public class MQTTMessageContext {
     private String topic;
     /**
      * The level of QoS this will be either 0,1 or 2
-     * @see org.dna.mqtt.wso2.AndesMQTTBridge.QOSLevel
+     * @see org.dna.mqtt.wso2.QOSLevel
      */
     private QOSLevel qosLevel;
     /**
@@ -58,9 +57,9 @@ public class MQTTMessageContext {
      */
     private PubAckHandler pubAckHandler;
     /**
-     * The socket used to communicate with the publisher
+     * The channel used to communicate with the publisher
      */
-    private Channel socket;
+    private Channel channel;
 
     public String getTopic() {
         return topic;
@@ -118,12 +117,12 @@ public class MQTTMessageContext {
         this.pubAckHandler = pubAckHandler;
     }
 
-    public Channel getSocket() {
-        return socket;
+    public Channel getChannel() {
+        return channel;
     }
 
-    public void setSocket(Channel socket) {
-        this.socket = socket;
+    public void setChannel(Channel channel) {
+        this.channel = channel;
     }
 
 }

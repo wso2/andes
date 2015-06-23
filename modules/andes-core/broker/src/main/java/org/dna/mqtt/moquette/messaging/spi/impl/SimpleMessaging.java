@@ -18,6 +18,7 @@ import org.dna.mqtt.moquette.proto.messages.*;
 import org.dna.mqtt.moquette.server.Constants;
 import org.dna.mqtt.moquette.server.IAuthenticator;
 import org.dna.mqtt.moquette.server.ServerChannel;
+import org.dna.mqtt.wso2.MQTTPingRequest;
 import org.dna.mqtt.wso2.MQTTSubscriptionStore;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
@@ -46,7 +47,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
     
     private static SimpleMessaging INSTANCE;
 
-    private ProtocolProcessor m_processor = new ProtocolProcessor();
+    private ProtocolProcessor mqttProcessor = new ProtocolProcessor();
 
     CountDownLatch m_stopLatch;
 
@@ -130,18 +131,18 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
             log.debug("onEvent processing messaging event from input ringbuffer " + evt);
         }
         if (evt instanceof PublishEvent) {
-            m_processor.processPublish((PublishEvent) evt);
+            mqttProcessor.processPublish((PublishEvent) evt);
         } else if (evt instanceof StopEvent) {
             processStop();
         } else if (evt instanceof DisconnectEvent) {
             DisconnectEvent disEvt = (DisconnectEvent) evt;
             String clientID = (String) disEvt.getSession().getAttribute(Constants.ATTR_CLIENTID);
-            m_processor.processDisconnect(disEvt.getSession(), clientID, false);
+            mqttProcessor.processDisconnect(disEvt.getSession(), clientID, false);
         } else if (evt instanceof ProtocolEvent) {
             ServerChannel session = ((ProtocolEvent) evt).getSession();
             AbstractMessage message = ((ProtocolEvent) evt).getMessage();
             if (message instanceof ConnectMessage) {
-                m_processor.processConnect(session, (ConnectMessage) message);
+                mqttProcessor.processConnect(session, (ConnectMessage) message);
             } else if (message instanceof PublishMessage) {
                 PublishEvent pubEvt;
                 String clientID = (String) session.getAttribute(Constants.ATTR_CLIENTID);
@@ -152,39 +153,43 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 //                } else {
 //                    pubEvt = new PublishEvent(pubMsg.getTopicName(), pubMsg.getQos(), pubMsg.getPayload(), pubMsg.isRetainFlag(), clientID, pubMsg.getMessageID(), session);
 //                }
-                m_processor.processPublish(pubEvt);
+                mqttProcessor.processPublish(pubEvt);
             } else if (message instanceof DisconnectMessage) {
                 String clientID = (String) session.getAttribute(Constants.ATTR_CLIENTID);
                 boolean cleanSession = (Boolean) session.getAttribute(Constants.CLEAN_SESSION);
 
                 //close the TCP connection
                 //session.close(true);
-                m_processor.processDisconnect(session, clientID, cleanSession);
+                mqttProcessor.processDisconnect(session, clientID, cleanSession);
             } else if (message instanceof UnsubscribeMessage) {
                 UnsubscribeMessage unsubMsg = (UnsubscribeMessage) message;
                 String clientID = (String) session.getAttribute(Constants.ATTR_CLIENTID);
-                m_processor.processUnsubscribe(session, clientID, unsubMsg.topics(), unsubMsg.getMessageID());
+                mqttProcessor.processUnsubscribe(session, clientID, unsubMsg.topics(), unsubMsg.getMessageID());
             } else if (message instanceof SubscribeMessage) {
                 String clientID = (String) session.getAttribute(Constants.ATTR_CLIENTID);
                 boolean cleanSession = (Boolean) session.getAttribute(Constants.CLEAN_SESSION);
-                m_processor.processSubscribe(session, (SubscribeMessage) message, clientID, cleanSession);
+                mqttProcessor.processSubscribe(session, (SubscribeMessage) message, clientID, cleanSession);
             } else if (message instanceof PubRelMessage) {
                 String clientID = (String) session.getAttribute(Constants.ATTR_CLIENTID);
                 int messageID = ((PubRelMessage) message).getMessageID();
-                m_processor.processPubRel(clientID, messageID);
+                mqttProcessor.processPubRel(clientID, messageID);
             } else if (message instanceof PubRecMessage) {
                 String clientID = (String) session.getAttribute(Constants.ATTR_CLIENTID);
                 int messageID = ((PubRecMessage) message).getMessageID();
-                m_processor.processPubRec(clientID, messageID);
+                mqttProcessor.processPubRec(clientID, messageID);
             } else if (message instanceof PubCompMessage) {
                 String clientID = (String) session.getAttribute(Constants.ATTR_CLIENTID);
                 int messageID = ((PubCompMessage) message).getMessageID();
-                m_processor.processPubComp(clientID, messageID);
+                mqttProcessor.processPubComp(clientID, messageID);
             } else if (message instanceof PubAckMessage) {
                 String clientID = (String) session.getAttribute(Constants.ATTR_CLIENTID);
                 int messageID = ((PubAckMessage) message).getMessageID();
-                m_processor.processPubAck(clientID, messageID);
-            } else {
+                mqttProcessor.processPubAck(clientID, messageID);
+            }else if(message instanceof MQTTPingRequest){
+                String clientID = ((MQTTPingRequest) message).getChannelId();
+                mqttProcessor.pingRequestReceived(clientID);
+            }
+            else {
                 throw new RuntimeException("Illegal message received " + message);
             }
 
@@ -192,7 +197,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
             processInit(((InitEvent) evt).getConfig());
         } else if (evt instanceof LostConnectionEvent) {
             LostConnectionEvent lostEvt = (LostConnectionEvent) evt;
-            m_processor.proccessConnectionLost(lostEvt.getClientID());
+            mqttProcessor.proccessConnectionLost(lostEvt.getClientID());
         }
     }
 
@@ -209,7 +214,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
         try {
             Class<? extends IAuthenticator> authenticatorClass = Class.forName(authenticatorClassName).asSubclass(IAuthenticator.class);
             IAuthenticator authenticator = authenticatorClass.newInstance();
-            m_processor.init(subscriptions, m_storageService, authenticator);
+            mqttProcessor.init(subscriptions, m_storageService, authenticator);
                    
         } catch (ClassNotFoundException e) {
             throw new RuntimeException("unable to find the class authenticator: " +  authenticatorClassName, e);

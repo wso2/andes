@@ -21,19 +21,22 @@ package org.wso2.andes.mqtt;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
+import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
-import org.wso2.andes.mqtt.connectors.DistributedStoreConnector;
+import org.wso2.andes.mqtt.connectors.PersistenceStoreConnector;
 import org.wso2.andes.mqtt.connectors.MQTTConnector;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
-import static org.dna.mqtt.wso2.AndesMQTTBridge.QOSLevel;
 import static org.dna.mqtt.wso2.AndesMQTTBridge.SubscriptionEvent;
 import static org.dna.mqtt.wso2.AndesMQTTBridge.getBridgeInstance;
 
@@ -68,12 +71,18 @@ public class MQTTopicManager {
     /**
      * The channel reference which will be used to interact with the Andes Kernel
      */
-    private MQTTConnector connector = new DistributedStoreConnector();
+    private MQTTConnector connector = new PersistenceStoreConnector();
+
+    private final Set<Integer> messageIdList = new LinkedHashSet<Integer>();
 
     /**
      * The class will be declared as singleton since the state will be centralized
+     * <p><b>Note:</b> The constrictor will also initialize the values of the message ids a channel could have</p>
      */
     private MQTTopicManager() {
+        for(Integer counter=1;counter!=Short.MAX_VALUE;counter++){
+            messageIdList.add(counter);
+        }
     }
 
     /**
@@ -137,7 +146,7 @@ public class MQTTopicManager {
      * @param qos                 the level of QOS the message subscription was created the value can be wither 0,1 or 2
      * @param isCleanSession      indicates whether the subscription should be durable or not
      * @throws MQTTException if the subscriber addition was not successful
-     * @see org.dna.mqtt.wso2.AndesMQTTBridge.QOSLevel
+     * @see org.dna.mqtt.wso2.QOSLevel
      */
     public void addTopicSubscription(String topicName, String mqttClientChannelID, QOSLevel qos,
                                      boolean isCleanSession) throws MQTTException {
@@ -150,12 +159,12 @@ public class MQTTopicManager {
             MQTTopics topics = topicSubscriptions.get(mqttClientChannelID);
             //Will generate a unique identifier for the subscription
             subscriptionChannelID = MQTTUtils.generateSubscriptionChannelID(mqttClientChannelID, topicName,
-                    qos.getQosValue(), isCleanSession);
+                    qos.getValue(), isCleanSession);
             //If the topic has not being created before
             if (null == topics) {
                 //First the topic should be registered in the cluster
                 //Once the cluster registration is successful the topic will be created
-                topics = new MQTTopics(mqttClientChannelID);
+                topics = new MQTTopics(mqttClientChannelID,messageIdList);
                 //Will set the topic specific subscription id generated
                 topicSubscriptions.put(mqttClientChannelID, topics);
 
@@ -242,6 +251,12 @@ public class MQTTopicManager {
                     throw ex;
                 }
             }
+
+            //Finally will check if there're any relevant subscriptions for the topic
+            //If there arn't we could remove the entry
+            if(mqtTopics.getAllSubscriptionsForChannel().isEmpty()){
+                topicSubscriptions.remove(mqttClientChannelID);
+            }
         } else {
             //If the connection is publisher based
             UUID publisherID = connector.removePublisher(mqttClientChannelID);
@@ -264,14 +279,15 @@ public class MQTTopicManager {
      * @throws MQTTException during a failure to deliver the message to the subscribers
      */
     public void distributeMessageToSubscriber(String storageName, String destination, ByteBuffer message, long messageID,
-                                              int publishedQOS, boolean shouldRetain, String channelID, int subscriberQOS)
+                                              int publishedQOS, boolean shouldRetain, String channelID, int subscriberQOS
+                                              ,AndesMessageMetadata metaData)
             throws MQTTException {
         //Will generate a unique id, cannot force MQTT to have a long as the message id since the protocol looks for
         //unsigned short
         int mqttLocalMessageID = 1;
 
         //We need to keep track of the message if the QOS level is > 0
-        if (subscriberQOS > QOSLevel.AT_MOST_ONCE.getQosValue()) {
+        if (subscriberQOS > QOSLevel.AT_MOST_ONCE.getValue()) {
             //We need to add the message information to maintain state, in-order to identify the messages
             // once the acks receive
 
@@ -280,7 +296,7 @@ public class MQTTopicManager {
             //There could be a situation where the message was published, but before it arrived to the subscription
             //The subscriber has disconnected at a situation as such we have to indicate the disconnection
             if (null != topicSubscriptions) {
-                Integer mid = topicSubscriptions.addOnFlightMessage(destination, storageName, messageID);
+                Integer mid = topicSubscriptions.addOnFlightMessage(destination, storageName, messageID,metaData);
 
                 if (log.isDebugEnabled()) {
                     log.debug("The message with id " + mid + " is sent for delivery to subscriber, " + channelID +
@@ -309,7 +325,7 @@ public class MQTTopicManager {
             log.debug("Message ack received for id " + messageID + " for subscription " + mqttChannelID);
         }
 
-        MQTTopics subscriptions = topicSubscriptions.get(mqttChannelID);
+       MQTTopics subscriptions = topicSubscriptions.get(mqttChannelID);
 
         if (null != subscriptions) {
             MQTTSubscription subscription = subscriptions.removeOnFlightMessage(messageID);
@@ -320,6 +336,8 @@ public class MQTTopicManager {
                 UUID subscriptionChannel = subscription.getSubscriptionChannel();
                 //Informs the cluster regarding the subscription
                 messageAck(subscribedTopic, clusterSpecificMessageID, storageQueueIdentifier, subscriptionChannel);
+                //Finally we could reuse the message id since the state is no longer required
+                subscriptions.addMessageId(messageID);
             } else {
                 String error = "Could not find information to get subscription information for message ack with id " +
                         messageID + " for channel " + mqttChannelID;
@@ -331,6 +349,21 @@ public class MQTTopicManager {
             log.error(error);
         }
 
+    }
+
+    /**
+     * Called by the process of sending rejection for messages which have not being acked
+     *
+     * @param metadata which holds information regarding the messages which has not being acked
+     */
+    private void onMessageNack(AndesMessageMetadata metadata) {
+        try {
+            connector.messageNack(metadata);
+        } catch (AndesException e) {
+            //We do not throw this any further
+            String message = "Error occurred while sending a rejection ack for message " + metadata.getMessageID();
+            log.error(message, e);
+        }
     }
 
     /**
@@ -384,12 +417,38 @@ public class MQTTopicManager {
      */
     private void messageAck(String topic, long messageID, String storageName, UUID subChannelID) throws MQTTException {
         try {
-            connector.messageAck(messageID, topic, storageName, subChannelID);
+           connector.messageAck(messageID, topic, storageName, subChannelID);
         } catch (AndesException ex) {
             final String message = "Error occurred while cleaning up the acked message";
             log.error(message, ex);
             throw new MQTTException(message, ex);
         }
+    }
+
+    /**
+     * Triggers when each channel sends the ping request, this is used to send nack for messages which are still
+     * on-flight
+     *
+     * @param clientID the channel id of the ping request sender
+     */
+    public void processPingRequest(String clientID) {
+        MQTTopics mqtTopics = topicSubscriptions.get(clientID);
+
+        //This could be a publisher based topic subscription that processed the ping
+        if (null != mqtTopics) {
+            Set<Integer> unackedMessages = mqtTopics.getUnackedMessages(messageIdList);
+
+            for (Integer messageID : unackedMessages) {
+                MQTTSubscription subscription = mqtTopics.getSubscription(messageID);
+                AndesMessageMetadata mataInformation = subscription.getMessageMetaInformation(messageID);
+                onMessageNack(mataInformation);
+
+                if(log.isDebugEnabled()){
+                   log.debug("Message null ack sent to message id "+messageID);
+                }
+            }
+        }
+
     }
 
 }

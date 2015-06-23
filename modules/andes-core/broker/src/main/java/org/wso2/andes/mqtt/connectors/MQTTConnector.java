@@ -17,8 +17,9 @@
  */
 package org.wso2.andes.mqtt.connectors;
 
-import org.dna.mqtt.wso2.AndesMQTTBridge;
+import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.mqtt.MQTTException;
 import org.wso2.andes.mqtt.MQTTMessageContext;
@@ -43,6 +44,13 @@ public interface MQTTConnector {
             throws AndesException;
 
     /**
+     * Triggers when a rejection ack is be initiated, this will be done as a result of ping request
+     * @param metadata the meta information of the message being rejected
+     * @throws org.wso2.andes.kernel.AndesException
+     */
+    public void messageNack(AndesMessageMetadata metadata) throws AndesException;
+
+    /**
      * Adds message to the connector to handle an incoming message
      *
      * @param messageContext includes the message information to the relevant message connector
@@ -60,13 +68,13 @@ public interface MQTTConnector {
      * @param topic                 the name of the topic which has subscriber/s
      * @param clientID              the id which will distinguish the topic channel
      * @param mqttClientID          the subscription id which is local to the subscriber
-     * @param isCleanSesion         should the connection be durable
+     * @param isCleanSession         should the connection be durable
      * @param qos                   the subscriber specific qos this can be either 0,1 or 2
      * @param subscriptionChannelID will hold the unique identifier of the subscription
      * @throws MQTTException
      */
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
-                              boolean isCleanSesion, AndesMQTTBridge.QOSLevel qos, UUID subscriptionChannelID)
+                              boolean isCleanSession, QOSLevel qos, UUID subscriptionChannelID)
             throws MQTTException, SubscriptionAlreadyExistsException;
 
 

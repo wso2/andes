@@ -18,11 +18,12 @@
 package org.wso2.andes.mqtt;
 
 
+import org.dna.mqtt.wso2.QOSLevel;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.dna.mqtt.wso2.AndesMQTTBridge.QOSLevel;
 
 /**
  * All the topicOccurrences relation to a topic will be maintained though the following class, attributes such as QOS
@@ -63,16 +64,51 @@ public class MQTTSubscription {
      * We use a concurrent hash-map since this map is accessible by multiple threads. Accessed by both andes kernel for
      * put operations and remove is done when the ack arrives
      */
-    private Map<Integer, Long> clusterMessageToLocalMessage = new ConcurrentHashMap<Integer, Long>();
+    private Map<Integer, Long> localMessageToClusterMessage = new ConcurrentHashMap<Integer, Long>();
+
+    /**
+     * co-relates between the cluster representation of the message to its message information
+     * key- the cluster message id
+     * value - message information {@link org.wso2.andes.mqtt.MQTTSubscriptionInformation}
+     */
+    private Map<Long, MQTTSubscriptionInformation> clusterMessageToMessageInformation =
+            new ConcurrentHashMap<Long, MQTTSubscriptionInformation>();
 
     /**
      * Will add the details of the message that will be delivered among the topicOccurrences
      *
      * @param clusterMessageID the unique cluster identifier of the message
      * @param mid              a locally generated id for the subscriber
+     * @param metaInfo         holds message information relevant to the message
      */
-    public void markSend(long clusterMessageID, int mid) {
-        clusterMessageToLocalMessage.put(mid, clusterMessageID);
+    public void markSent(long clusterMessageID, int mid, AndesMessageMetadata metaInfo) {
+        localMessageToClusterMessage.put(mid, clusterMessageID);
+
+        MQTTSubscriptionInformation subscriptionInfo = new MQTTSubscriptionInformation();
+        subscriptionInfo.setLocalMessageID(mid);
+        subscriptionInfo.setMetadata(metaInfo);
+
+        clusterMessageToMessageInformation.put(clusterMessageID, subscriptionInfo);
+    }
+
+    /**
+     * Will get an id for the message if its existing, else will return -1 indicating that an id has not being generated
+     * <p><b>Note: </b>When a message is sent to its subscriptions the first time it will return null,
+     * else if its a resend the particular id will be returned </p>
+     *
+     * @param clusterID the cluster representation of the id relevant for the message
+     * @return if the message is a resend the corresponding message id, null if there's no message id defined
+     */
+    public Integer getMessageID(long clusterID) {
+        MQTTSubscriptionInformation subscriptionInformation = clusterMessageToMessageInformation.get(clusterID);
+
+        if (null == subscriptionInformation) {
+            //This means there's not existing id defined
+            return null;
+        } else {
+            //This means the message is a resend
+            return subscriptionInformation.getLocalMessageID();
+        }
     }
 
     /**
@@ -82,8 +118,28 @@ public class MQTTSubscription {
      * @return the cluster specific message if of the message which received the ack
      */
     public long ackReceived(int localMessageID) {
-        return clusterMessageToLocalMessage.remove(localMessageID);
+        Long clusterID = localMessageToClusterMessage.remove(localMessageID);
+        clusterMessageToMessageInformation.remove(clusterID);
+        return clusterID;
+    }
 
+    /**
+     * Gets message meta information form a provided local id, meta information is required to send rejection for
+     * un-acked messages.
+     * {@link org.wso2.andes.kernel.Andes#messageRejected(org.wso2.andes.kernel.AndesMessageMetadata)}
+     * @param localID the local message id generated before dispatching the message to its subscriptions
+     * @return the meta information relevant for the message
+     */
+    public AndesMessageMetadata getMessageMetaInformation(Integer localID){
+        long clusterID = localMessageToClusterMessage.get(localID);
+
+        MQTTSubscriptionInformation mqttSubscriptionInformation = clusterMessageToMessageInformation.get(clusterID);
+
+        if(null != mqttSubscriptionInformation){
+            return mqttSubscriptionInformation.getMetadata();
+        }else {
+            return null;
+        }
     }
 
     /**

@@ -22,7 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.impl.subscriptions.SubscriptionsStore;
 import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
-import org.dna.mqtt.wso2.AndesMQTTBridge;
+import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTMessageContext;
@@ -180,7 +180,7 @@ public class MQTTUtils {
      * @param qos the quality of service level the message should be published/subscribed
      * @return the level which is compliment by the mqtt library
      */
-    public static AbstractMessage.QOSType getMQTTQOSTypeFromInteger(int qos) {
+    public static AbstractMessage.QOSType getQOSType(int qos) {
         return AbstractMessage.QOSType.valueOf(qos);
     }
 
@@ -233,7 +233,7 @@ public class MQTTUtils {
      *
      * @param topic              the name of the topic the message was sent
      * @param qosLevel           the level of QoS
-     * @see org.dna.mqtt.wso2.AndesMQTTBridge.QOSLevel
+     * @see org.dna.mqtt.wso2.QOSLevel
      * @param message            the message in bytes
      * @param retain             should this message be persisted
      * @param mqttLocalMessageID the local id of the mqtt message
@@ -242,7 +242,7 @@ public class MQTTUtils {
      * @param socket             the channel in which the communication occurred
      * @return the message context
      */
-    public static MQTTMessageContext createMessageContext(String topic, AndesMQTTBridge.QOSLevel qosLevel,
+    public static MQTTMessageContext createMessageContext(String topic, QOSLevel qosLevel,
                                                           ByteBuffer message, boolean retain,
                                                           int mqttLocalMessageID, String publisherID,
                                                           PubAckHandler pubAckHandler, Channel socket) {
@@ -254,7 +254,7 @@ public class MQTTUtils {
         messageContext.setMqttLocalMessageID(mqttLocalMessageID);
         messageContext.setPublisherID(publisherID);
         messageContext.setPubAckHandler(pubAckHandler);
-        messageContext.setSocket(socket);
+        messageContext.setChannel(socket);
 
         return messageContext;
     }

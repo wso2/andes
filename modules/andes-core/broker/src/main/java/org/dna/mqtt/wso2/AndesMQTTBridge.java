@@ -69,58 +69,6 @@ public final class AndesMQTTBridge {
     }
 
     /**
-     * Defines the three levels of QoS the message delivery/distribution could be at
-     */
-    public enum QOSLevel {
-        /**
-         * The message will be delivered/distributed at its best performance effort, the level of QoS would be 0
-         * Note: There's a possibility of the message not getting delivered/distributed to its interested parties
-         */
-        AT_MOST_ONCE(0),
-        /**
-         * The message would be delivered at least once to the subscription, the level of QoS would be 1
-         * Note: Message duplication could occur when using this QoS
-         */
-        AT_LEAST_ONCE(1),
-        /**
-         * The message will be delivered to its best reliable efforts ensuring exactly once delivery,
-         * the level of QoS would be 2
-         * Note: This level of QoS the performance would be less in comparison to the other two.
-         */
-        EXACTLY_ONCE(2);
-
-        //Will hold the level of QoS i.e 0,1 or 2
-        private int qosValue;
-
-        private QOSLevel(int value){
-            this.qosValue = value;
-        }
-
-        public int getQosValue() {
-            return qosValue;
-        }
-
-        /**
-         * Returns the corresponding enum from its value
-         * @param qos the level of QoS
-         * @return the level of QoS as its enum representation
-         */
-        public static QOSLevel getQoSFromValue(int qos){
-           switch (qos){
-               case 0:
-                   return QOSLevel.AT_MOST_ONCE;
-               case 1:
-                   return QOSLevel.AT_LEAST_ONCE;
-               case 2:
-                   return QOSLevel.EXACTLY_ONCE;
-               default:
-                   return QOSLevel.AT_MOST_ONCE;
-           }
-        }
-
-    }
-
-    /**
      * The class will be declared as singleton since only one instance of this should be created on the JVM
      * We cannot define multiple bridge instances since all the state between the topics will be maintained here
      */
@@ -183,16 +131,16 @@ public final class AndesMQTTBridge {
      * @param mqttLocalMessageID the message unique identifier
      * @param publisherID        the id of the publisher provided by mqtt protocol
      * @param pubAckHandler      publisher acknowledgements are handled by this handler
-     * @param socket             will be provided for flow controlling purposes
+     * @param channel            will be provided for flow controlling purposes
      */
     public static void onMessagePublished(String topic, int qosLevel, ByteBuffer message, boolean retain,
                                           int mqttLocalMessageID, String publisherID, PubAckHandler pubAckHandler,
-                                          Channel socket) {
+                                          Channel channel) {
         try {
             //Will prepare the level of QoS, convert the integer to the corresponding enum
             QOSLevel qos = QOSLevel.getQoSFromValue(qosLevel);
             MQTTMessageContext messageContext = MQTTUtils.createMessageContext(topic, qos, message, retain,
-                    mqttLocalMessageID, publisherID, pubAckHandler,socket);
+                    mqttLocalMessageID, publisherID, pubAckHandler, channel);
             MQTTopicManager.getInstance().addTopicMessage(messageContext);
         } catch (MQTTException e) {
             //Will capture the message here and will not throw it further to mqtt protocol
@@ -260,13 +208,12 @@ public final class AndesMQTTBridge {
      */
     public void distributeMessageToSubscriptions(String topic, int qos, ByteBuffer message, boolean retain,
                                                  int messageID, String channelID) throws MQTTException {
-
         if (null != mqttProtocolHandlingEngine) {
             //Need to set do a re position of bytes for writing to the buffer
             //Since the buffer needs to be initialized for reading before sending out
             final int bytesPosition = 0;
             message.position(bytesPosition);
-            AbstractMessage.QOSType qosType = MQTTUtils.getMQTTQOSTypeFromInteger(qos);
+            AbstractMessage.QOSType qosType = MQTTUtils.getQOSType(qos);
             // mqttProtocolHandlingEngine.publish2Subscribers(topic, qosType, message, retain, andesMessageID);
             mqttProtocolHandlingEngine.publishToSubscriber(topic, qosType, message, retain, messageID, channelID);
             if (log.isDebugEnabled()) {
@@ -280,5 +227,16 @@ public final class AndesMQTTBridge {
                     "an attempt was made to deliver message ";
             log.error(error + messageID);
         }
+    }
+
+    /**
+     * Triggers when the client sends a ping request, this will inform the topic manager to perform nacks
+     * @param clientID the id of the client the ping request was sent
+     */
+    public void onProcessPingRequest(String clientID){
+        if(log.isDebugEnabled()){
+            log.debug("Ping request received for client id "+clientID);
+        }
+        MQTTopicManager.getInstance().processPingRequest(clientID);
     }
 }
