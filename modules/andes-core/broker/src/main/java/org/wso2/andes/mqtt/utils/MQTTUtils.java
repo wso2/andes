@@ -17,11 +17,16 @@
  */
 package org.wso2.andes.mqtt.utils;
 
+import io.netty.channel.Channel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.impl.subscriptions.SubscriptionsStore;
 import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
+import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
+import org.wso2.andes.mqtt.MQTTMessageContext;
+import org.wso2.andes.mqtt.MQTTPublisherChannel;
 import org.wso2.andes.server.store.MessageMetaDataType;
 
 import java.nio.ByteBuffer;
@@ -101,11 +106,12 @@ public class MQTTUtils {
      * @param qosLevel             the level of qos the message was published
      * @param messageContentLength the content length of the message
      * @param retain               should this message retain
-     * @param publisherID          the uuid which will uniquely identify the publisher
+     * @param publisher          the uuid which will uniquely identify the publisher
      * @return the meta information compliant with the kernal
      */
     public static AndesMessageMetadata convertToAndesHeader(long messageID, String topic, int qosLevel,
-                                                            int messageContentLength, boolean retain, UUID publisherID) {
+                                                            int messageContentLength, boolean retain,
+                                                            MQTTPublisherChannel publisher) {
         long receivedTime = System.currentTimeMillis();
 
         AndesMessageMetadata messageHeader = new AndesMessageMetadata();
@@ -114,7 +120,7 @@ public class MQTTUtils {
         messageHeader.setDestination(topic);
         messageHeader.setPersistent(true);
         messageHeader.setRetain(retain);
-        messageHeader.setChannelId(publisherID);
+        messageHeader.setChannelId(publisher.getClusterID());
         messageHeader.setMessageContentLength(messageContentLength);
         messageHeader.setStorageQueueName(topic);
         messageHeader.setMetaDataType(MessageMetaDataType.META_DATA_MQTT);
@@ -174,19 +180,10 @@ public class MQTTUtils {
      * @param qos the quality of service level the message should be published/subscribed
      * @return the level which is compliment by the mqtt library
      */
-    public static AbstractMessage.QOSType getMQTTQOSTypeFromInteger(int qos) {
+    public static AbstractMessage.QOSType getQOSType(int qos) {
         return AbstractMessage.QOSType.valueOf(qos);
     }
 
-    /**
-     * Will get the qos type defined through the protocol and will send the integer representation of it
-     *
-     * @param qos the level of qos which will be MOST_ONE, LEAST_ONE or EXACTLY_ONCE
-     * @return the level of qos as an integer which can be either 0,1 or 2
-     */
-    public static int convertMQTTProtocolTypeToInteger(AbstractMessage.QOSType qos) {
-        return qos.getValue();
-    }
 
     /**
      * Check if a subscribed queue bound destination routing key matches with a given message routing key using MQTT
@@ -230,4 +227,36 @@ public class MQTTUtils {
     public static UUID generateSubscriptionChannelID(String clientId, String topic, int qos, boolean cleanSession) {
         return UUID.nameUUIDFromBytes((clientId + topic + qos + cleanSession).getBytes());
     }
+
+    /**
+     * Creates the message context based on the values obtained from the protocol engine
+     *
+     * @param topic              the name of the topic the message was sent
+     * @param qosLevel           the level of QoS
+     * @see org.dna.mqtt.wso2.QOSLevel
+     * @param message            the message in bytes
+     * @param retain             should this message be persisted
+     * @param mqttLocalMessageID the local id of the mqtt message
+     * @param publisherID        the id of the publisher
+     * @param pubAckHandler      the acknowledgment handler
+     * @param socket             the channel in which the communication occurred
+     * @return the message context
+     */
+    public static MQTTMessageContext createMessageContext(String topic, QOSLevel qosLevel,
+                                                          ByteBuffer message, boolean retain,
+                                                          int mqttLocalMessageID, String publisherID,
+                                                          PubAckHandler pubAckHandler, Channel socket) {
+        MQTTMessageContext messageContext = new MQTTMessageContext();
+        messageContext.setTopic(topic);
+        messageContext.setQosLevel(qosLevel);
+        messageContext.setMessage(message);
+        messageContext.setRetain(retain);
+        messageContext.setMqttLocalMessageID(mqttLocalMessageID);
+        messageContext.setPublisherID(publisherID);
+        messageContext.setPubAckHandler(pubAckHandler);
+        messageContext.setChannel(socket);
+
+        return messageContext;
+    }
+
 }

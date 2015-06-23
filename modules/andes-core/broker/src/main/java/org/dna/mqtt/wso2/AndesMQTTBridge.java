@@ -17,16 +17,19 @@
  */
 package org.dna.mqtt.wso2;
 
+import io.netty.channel.Channel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.impl.ProtocolProcessor;
 import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
 import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTException;
+import org.wso2.andes.mqtt.MQTTMessageContext;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.mqtt.MQTTopicManager;
 
 import java.nio.ByteBuffer;
+
 
 
 /**
@@ -39,16 +42,30 @@ import java.nio.ByteBuffer;
 
 public final class AndesMQTTBridge {
 
-    //Will log the messages generated through the class
+    /**
+     *Will log the messages generated through the class
+     */
+
     private static Log log = LogFactory.getLog(AndesMQTTBridge.class);
-    //The connection between the MQTT library
+    /**
+     * The connection between the MQTT library
+     */
+
     private static ProtocolProcessor mqttProtocolHandlingEngine = null;
-    //The Andes bridge instance
+
+    /**
+     *  The Andes bridge instance
+     */
     private static AndesMQTTBridge instance = new AndesMQTTBridge();
 
-    //Will define the different states the connection could have
+    /**
+     * Will define the different states of subscription events
+     * */
     public enum SubscriptionEvent{
-        DISCONNECT,UNSUBSCRIBE
+        //The subscriber connection was lost
+        DISCONNECT,
+        //The subscriber specifies to be un-bound from a topic
+        UNSUBSCRIBE
     }
 
     /**
@@ -89,10 +106,13 @@ public final class AndesMQTTBridge {
      * Will remove the subscribers once disconnection call is being triggered
      *
      * @param mqttClientChannelID the id of the client(subscriber) who requires disconnection
+     * @param topic               the name of the topic unsubscribed
+     * @param event               whether the subscription is initiated or disconnected unexpectedly
+     *                            {@link org.dna.mqtt.wso2.AndesMQTTBridge.SubscriptionEvent}
      */
-    public void onSubscriberDisconnection(String mqttClientChannelID,SubscriptionEvent event) {
+    public void onSubscriberDisconnection(String mqttClientChannelID, String topic, SubscriptionEvent event) {
         try {
-            MQTTopicManager.getInstance().removeOrDisconnectTopicSubscription(mqttClientChannelID,event);
+            MQTTopicManager.getInstance().removeOrDisconnectTopicSubscription(mqttClientChannelID, topic, event);
         } catch (MQTTException e) {
             //Will capture the exception here and will not throw it any further
             final String message = "Error while disconnecting the subscription with the id " + mqttClientChannelID;
@@ -111,12 +131,17 @@ public final class AndesMQTTBridge {
      * @param mqttLocalMessageID the message unique identifier
      * @param publisherID        the id of the publisher provided by mqtt protocol
      * @param pubAckHandler      publisher acknowledgements are handled by this handler
+     * @param channel            will be provided for flow controlling purposes
      */
     public static void onMessagePublished(String topic, int qosLevel, ByteBuffer message, boolean retain,
-                                          int mqttLocalMessageID, String publisherID, PubAckHandler pubAckHandler) {
+                                          int mqttLocalMessageID, String publisherID, PubAckHandler pubAckHandler,
+                                          Channel channel) {
         try {
-            MQTTopicManager.getInstance().addTopicMessage(
-                    topic, qosLevel, message, retain, mqttLocalMessageID, publisherID, pubAckHandler);
+            //Will prepare the level of QoS, convert the integer to the corresponding enum
+            QOSLevel qos = QOSLevel.getQoSFromValue(qosLevel);
+            MQTTMessageContext messageContext = MQTTUtils.createMessageContext(topic, qos, message, retain,
+                    mqttLocalMessageID, publisherID, pubAckHandler, channel);
+            MQTTopicManager.getInstance().addTopicMessage(messageContext);
         } catch (MQTTException e) {
             //Will capture the message here and will not throw it further to mqtt protocol
             final String error = "Error occurred while adding the message content for message id : "
@@ -133,14 +158,15 @@ public final class AndesMQTTBridge {
      *
      * @param topic               the name of the topic the subscribed to
      * @param mqttClientChannelID the client identification maintained by the MQTT protocol lib
-     * @param qos                 the type of qos the subscription is connected to this can be either MOST_ONE,LEAST_ONE, EXACTLY_ONE
+     * @param qos                 the type of qos the subscription is connected to this can be either MOST_ONE,LEAST_ONE,
+     *                            EXACTLY_ONE
      * @param isCleanSession      whether the subscription is durable
      */
     public void onTopicSubscription(String topic, String mqttClientChannelID, AbstractMessage.QOSType qos,
                                     boolean isCleanSession) {
         try {
             MQTTopicManager.getInstance().addTopicSubscription(topic,
-                    mqttClientChannelID, MQTTUtils.convertMQTTProtocolTypeToInteger(qos), isCleanSession);
+                    mqttClientChannelID, QOSLevel.getQoSFromValue(qos.getValue()), isCleanSession);
         } catch (MQTTException e) {
             //Will not throw the exception further since the bridge will handle the exceptions in both the realm
             final String message = "Error occurred while subscription is initiated for topic : " + topic +
@@ -181,14 +207,13 @@ public final class AndesMQTTBridge {
      * @param messageID the identity of the message
      */
     public void distributeMessageToSubscriptions(String topic, int qos, ByteBuffer message, boolean retain,
-                                                 int messageID, String channelID) {
-
+                                                 int messageID, String channelID) throws MQTTException {
         if (null != mqttProtocolHandlingEngine) {
             //Need to set do a re position of bytes for writing to the buffer
             //Since the buffer needs to be initialized for reading before sending out
             final int bytesPosition = 0;
             message.position(bytesPosition);
-            AbstractMessage.QOSType qosType = MQTTUtils.getMQTTQOSTypeFromInteger(qos);
+            AbstractMessage.QOSType qosType = MQTTUtils.getQOSType(qos);
             // mqttProtocolHandlingEngine.publish2Subscribers(topic, qosType, message, retain, andesMessageID);
             mqttProtocolHandlingEngine.publishToSubscriber(topic, qosType, message, retain, messageID, channelID);
             if (log.isDebugEnabled()) {
@@ -202,5 +227,16 @@ public final class AndesMQTTBridge {
                     "an attempt was made to deliver message ";
             log.error(error + messageID);
         }
+    }
+
+    /**
+     * Triggers when the client sends a ping request, this will inform the topic manager to perform nacks
+     * @param clientID the id of the client the ping request was sent
+     */
+    public void onProcessPingRequest(String clientID){
+        if(log.isDebugEnabled()){
+            log.debug("Ping request received for client id "+clientID);
+        }
+        MQTTopicManager.getInstance().processPingRequest(clientID);
     }
 }

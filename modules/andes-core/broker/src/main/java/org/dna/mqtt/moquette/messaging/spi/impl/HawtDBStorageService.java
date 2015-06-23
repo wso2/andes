@@ -285,13 +285,16 @@ public class HawtDBStorageService implements IStorageService {
         StoredPublishEvent storedEvt = new StoredPublishEvent(evt);
         return storedEvt;
     }
-    
+
     private PublishEvent convertFromStored(StoredPublishEvent evt) {
-        byte[] message = evt.getMessage();
-        ByteBuffer bbmessage = ByteBuffer.wrap(message);
-        //bbmessage.flip();
-        PublishEvent liveEvt = new PublishEvent(evt.getTopic(), evt.getQos(), 
-                bbmessage, evt.isRetain(), evt.getClientID(), evt.getMessageID(), null);
+        PublishEvent liveEvt = null;
+        if (null != evt) {
+            byte[] message = evt.getMessage();
+            ByteBuffer bbmessage = ByteBuffer.wrap(message);
+            //bbmessage.flip();
+            liveEvt = new PublishEvent(evt.getTopic(), evt.getQos(),
+                    bbmessage, evt.isRetain(), evt.getClientID(), evt.getMessageID(), null);
+        }
         return liveEvt;
     }
 }

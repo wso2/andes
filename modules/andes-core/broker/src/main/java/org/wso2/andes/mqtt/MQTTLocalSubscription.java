@@ -21,6 +21,7 @@ import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -32,6 +33,7 @@ import org.wso2.andes.kernel.OnflightMessageTracker;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
+
 
 /**
  * Cluster wide subscriptions relevant per topic will be maintained through this class
@@ -175,35 +177,39 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
      * {@inheritDoc}
      */
     @Override
-    public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata, AndesContent content) throws AndesException {
+    public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata, AndesContent content)
+            throws AndesException {
         //Should get the message from the list
         ByteBuffer message = MQTTUtils.getContentFromMetaInformation(content);
         //Will publish the message to the respective queue
-        if (mqqtServerChannel != null) {
+        if (null != mqqtServerChannel) {
             try {
-                OnflightMessageTracker.getInstance().incrementNonAckedMessageCount(channelID);
-                OnflightMessageTracker.getInstance().addMessageToSendingTracker(getChannelID(),
-                        messageMetadata.getMessageID());
-                try {
-                    mqqtServerChannel.distributeMessageToSubscriber(
-                            this.getStorageQueueName(), message, messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
-                            messageMetadata.isPersistent(), getMqttSubscriptionID(), getSubscriberQOS());
-                } catch (MQTTException ex) {
-                    //We need to decrement the tracker count
-                    OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(channelID);
-                    final String error = "Error occured while sending the message to subscriber ";
-                    log.error(error, ex);
-                    throw new AndesException(error, ex);
-                }
+                boolean successful = OnflightMessageTracker.getInstance().incrementNonAckedMessageCount(channelID);
+                if (successful) {
+                    OnflightMessageTracker.getInstance().addMessageToSendingTracker(getChannelID(),
+                            messageMetadata.getMessageID());
 
-                //We will indicate the ack to the kernel at this stage
-                //For MQTT QOS 0 we do not get ack from subscriber, hence will be implicitly creating an ack
-                if (0 == getSubscriberQOS() || 0 == messageMetadata.getQosLevel()) {
-                    mqqtServerChannel.implicitAck(getSubscribedDestination(), messageMetadata.getMessageID(),
-                            this.getStorageQueueName(), getChannelID());
+                    mqqtServerChannel.distributeMessageToSubscriber(this.getStorageQueueName(),
+                            this.getSubscribedDestination(),message,messageMetadata.getMessageID(),
+                            messageMetadata.getQosLevel(), messageMetadata.isPersistent(), getMqttSubscriptionID(),
+                            getSubscriberQOS(),messageMetadata);
+                    //We will indicate the ack to the kernel at this stage
+                    //For MQTT QOS 0 we do not get ack from subscriber, hence will be implicitly creating an ack
+                    if (QOSLevel.AT_MOST_ONCE.getValue() == getSubscriberQOS() ||
+                            QOSLevel.AT_MOST_ONCE.getValue() == messageMetadata.getQosLevel()) {
+                        mqqtServerChannel.implicitAck(getSubscribedDestination(), messageMetadata.getMessageID(),
+                                this.getStorageQueueName(), getChannelID());
+                    }
+                } else {
+                    //This means the subscription channel has closed and the message acknowledgments would not be tracked
+                    //We do not want to attempt to deliver a message to a ghost
+                    //Hence we inform the upper layers that the message was not delivered
+                    String error = "The subscription do not exist, hence the message will not be dispatched";
+                    throw new AndesException(error);
                 }
             } catch (MQTTException e) {
-                final String error = "Error occured while delivering message to the subscriber for message :" +
+                OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(channelID);
+                final String error = "Error occurred while delivering message to the subscriber for message :" +
                         messageMetadata.getMessageID();
                 log.error(error, e);
                 throw new AndesException(error, e);

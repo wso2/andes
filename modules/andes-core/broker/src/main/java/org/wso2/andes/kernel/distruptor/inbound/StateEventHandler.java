@@ -109,11 +109,21 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
             // For each message increment by 1. Underlying messaging engine will handle the increment destination
             // wise.
             messagingEngine.incrementQueueCount(message.getMetadata().getDestination(), 1);
-            eventContainer.pubAckHandler.ack(message.getMetadata());
 
             //Adding metrics meter for ack rate
             Meter ackMeter = MetricManager.meter(Level.INFO, this.getClass() + MetricsConstants.ACK_SENT_RATE);
             ackMeter.mark();
+        }
+
+        //We need to ack only once since, one publisher - multiple topics
+        //Event container holds messages relevant to one message published
+        //i.e retain messages the ack will be handled during the pre processing stage, therefore we need to ensure that
+        // there're messages on the list
+        if (messageList.size() > 0) {
+            if (log.isDebugEnabled()) {
+                log.debug("Acknowledging to the publisher " + eventContainer.getChannel());
+            }
+            eventContainer.pubAckHandler.ack(messageList.get(0).getMetadata());
         }
 
         //record the successfully written message count

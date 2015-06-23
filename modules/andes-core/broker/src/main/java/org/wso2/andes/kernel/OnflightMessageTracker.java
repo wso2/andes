@@ -156,7 +156,7 @@ public class OnflightMessageTracker {
             this.timestamp = timestamp;
             this.expirationTime = expirationTime;
             this.channelToNumOfDeliveries = new ConcurrentHashMap<UUID, Integer>();
-            this.messageStatus = new ArrayList<MessageStatus>();
+            this.messageStatus = Collections.synchronizedList( new ArrayList<MessageStatus>());
             this.messageStatus.add(messageStatus);
             this.numberOfScheduledDeliveries = new AtomicInteger(0);
             this.arrivalTime = arrivalTime;
@@ -751,12 +751,25 @@ public class OnflightMessageTracker {
      * When a message is sent from Andes non acknowledged message count should be incremented
      *
      * @param channelID channelID
+     * @return whether the operation was successful
      */
-    public void incrementNonAckedMessageCount(UUID channelID) {
+    public boolean incrementNonAckedMessageCount(UUID channelID) {
         // NOTE channelID should be in map. ChannelID added to map at channel creation
-        int intCount = unAckedMsgCountMap.get(channelID).incrementAndGet();
-        if (log.isDebugEnabled()) {
-            log.debug("Increment non acked message count. Channel " + channelID + " pending Count " + intCount);
+        AtomicInteger unAckedMessageCount = unAckedMsgCountMap.get(channelID);
+
+        if (null != unAckedMessageCount) {
+            int intCount = unAckedMessageCount.incrementAndGet();
+            if (log.isDebugEnabled()) {
+                log.debug("Increment non acked message count. Channel " + channelID + " pending Count " + intCount);
+            }
+            //If the count has being incremented the operation is successful
+            return true;
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("Channel ID " + channelID + " could not be found, possibly the connection is closed");
+            }
+            //We cannot continue if there's no indication of the message count being incremented
+            return false;
         }
     }
 
