@@ -1,6 +1,6 @@
 package org.wso2.andes.kernel;
 
-import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
+import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 
 /**
  * This Implementation of ack handler drops any ack or nack received

@@ -18,9 +18,9 @@
 
 package org.wso2.andes.kernel;
 
-import org.wso2.andes.kernel.distruptor.inbound.AndesInboundStateEvent;
-import org.wso2.andes.kernel.distruptor.inbound.InboundTransactionEvent;
-import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
+import org.wso2.andes.kernel.disruptor.inbound.AndesInboundStateEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
+import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 
 import java.util.List;
 

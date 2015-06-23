@@ -19,7 +19,7 @@
 package org.wso2.andes.kernel;
 
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.kernel.distruptor.delivery.DeliveryEventData;
+import org.wso2.andes.kernel.disruptor.delivery.DeliveryEventData;
 
 import java.nio.ByteBuffer;
 

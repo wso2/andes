@@ -22,15 +22,16 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.distruptor.inbound.InboundAndesChannelEvent;
-import org.wso2.andes.kernel.distruptor.inbound.InboundBindingEvent;
-import org.wso2.andes.kernel.distruptor.inbound.InboundDeleteMessagesEvent;
-import org.wso2.andes.kernel.distruptor.inbound.InboundExchangeEvent;
-import org.wso2.andes.kernel.distruptor.inbound.InboundKernelOpsEvent;
-import org.wso2.andes.kernel.distruptor.inbound.InboundQueueEvent;
-import org.wso2.andes.kernel.distruptor.inbound.InboundSubscriptionEvent;
-import org.wso2.andes.kernel.distruptor.inbound.InboundTransactionEvent;
-import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
+import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
+import org.wso2.andes.kernel.disruptor.inbound.InboundAndesChannelEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundDeleteMessagesEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundKernelOpsEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
+import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.carbon.metrics.manager.Level;
@@ -103,11 +104,6 @@ public class Andes {
     private final int MAX_TX_BATCH_SIZE;
 
     /**
-     * maximum connections reserved for transactional  tasks
-     */
-    private final int MAX_TX_CONNECTIONS_COUNT;
-
-    /**
      * Instance of AndesAPI returned
      *
      * @return AndesAPI
@@ -120,13 +116,10 @@ public class Andes {
      * Singleton class. Hence private constructor.
      */
     private Andes() {
-        PURGE_TIMEOUT_SECONDS = (Integer) AndesConfigurationManager.readValue(PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT);
+        PURGE_TIMEOUT_SECONDS = AndesConfigurationManager.readValue(PERFORMANCE_TUNING_PURGED_COUNT_TIMEOUT);
         this.flowControlManager = new FlowControlManager();
-        MAX_TX_BATCH_SIZE = (Integer) AndesConfigurationManager.
+        MAX_TX_BATCH_SIZE = AndesConfigurationManager.
                 readValue(AndesConfiguration.MAX_TRANSACTION_BATCH_SIZE);
-        MAX_TX_CONNECTIONS_COUNT = (Integer) AndesConfigurationManager.
-                readValue(AndesConfiguration.DB_CONNECTION_POOL_SIZE_FOR_TRANSACTIONS);
-
     }
 
     /**
@@ -141,7 +134,7 @@ public class Andes {
         this.messagingEngine = messagingEngine;
         this.subscriptionManager = subscriptionManager;
 
-        inboundEventManager = InboundEventManagerFactory.createEventManager(subscriptionStore, messagingEngine);
+        inboundEventManager = new InboundEventManager(subscriptionStore, messagingEngine);
 
         log.info("Andes API initialised.");
     }
@@ -573,9 +566,8 @@ public class Andes {
      * @throws AndesException
      */
     public InboundTransactionEvent newTransaction(AndesChannel channel) throws AndesException {
-        return new InboundTransactionEvent(
-                messagingEngine.newTransaction(), inboundEventManager,
-                MAX_TX_BATCH_SIZE, MAX_TX_CONNECTIONS_COUNT, channel);
+        return new InboundTransactionEvent(messagingEngine, inboundEventManager,
+                MAX_TX_BATCH_SIZE, channel);
     }
 
 }

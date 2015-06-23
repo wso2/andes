@@ -417,6 +417,10 @@ public class RDBMSConstants {
     protected static final String TASK_RETRIEVING_CONTENT_FOR_MESSAGES = "retrieving content for multiple messages";
     protected static final String TASK_ADDING_METADATA_LIST = "adding metadata list.";
     protected static final String TASK_ADDING_METADATA = "adding metadata.";
+    protected static final String TASK_ADDING_MESSAGES = "adding messages";
+    protected static final String TASK_DELETING_MESSAGES = "deleting messages";
+
+
     protected static final String TASK_ADDING_METADATA_TO_QUEUE = "adding metadata to " +
             "destination. ";
     protected static final String TASK_ADDING_METADATA_LIST_TO_QUEUE = "adding metadata list to " +
