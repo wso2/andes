@@ -27,7 +27,11 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -35,8 +39,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class SlotMessageCounter {
 
-    private ConcurrentHashMap<String, Slot> queueToSlotMap = new ConcurrentHashMap<String, Slot>();
-    private ConcurrentHashMap<String, Long> slotTimeOutMap = new ConcurrentHashMap<String, Long>();
+    private ConcurrentHashMap<String, Slot> queueToSlotMap = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, Long> slotTimeOutMap = new ConcurrentHashMap<>();
     /**
      * Timeout in milliseconds for messages in the slot. When this timeout is exceeded slot will be
      * submitted to the coordinator
@@ -63,15 +67,13 @@ public class SlotMessageCounter {
      * For instance if we publish one message per minute then each message will have to wait
      * till this timeout before the messages are submitted to the slot coordinator.
      */
-    public static final int SLOT_SUBMIT_TIMEOUT = 4000;
-
-    /**
-     * maximum expected time a submit slot task will execute
-     */
-    private static final int SLOT_SUBMIT_TASK_EXEC_PERIOD = 3000;
+    public final int SLOT_SUBMIT_TIMEOUT;
 
     private SlotMessageCounter() {
         scheduleSubmitSlotToCoordinatorTimer();
+
+        SLOT_SUBMIT_TIMEOUT = AndesConfigurationManager.readValue(
+                AndesConfiguration.PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT);
 
         slotWindowSize = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
@@ -96,13 +98,10 @@ public class SlotMessageCounter {
                         try {
                             submitSlot(entry.getKey());
                         } catch (AndesException e) {
-                           /*
-                            We do not do anything here since this thread will be run every 3
-                            seconds
-                             */
-                            log.error(
-                                    "Error occurred while connecting to the thrift coordinator " + e
-                                            .getMessage(), e);
+                            // We do not do anything here since this thread will be run every 3
+                            // seconds
+                            log.error("Error occurred while connecting to the thrift coordinator " +
+                                    e.getMessage(), e);
                         }
                     }
                 }
@@ -119,7 +118,7 @@ public class SlotMessageCounter {
                     }
                 }
             }
-        }, SLOT_SUBMIT_TIMEOUT, SLOT_SUBMIT_TASK_EXEC_PERIOD);
+        }, SLOT_SUBMIT_TIMEOUT, SLOT_SUBMIT_TIMEOUT);
     }
 
     /**

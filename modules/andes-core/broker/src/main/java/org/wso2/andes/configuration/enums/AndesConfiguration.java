@@ -234,6 +234,18 @@ public enum AndesConfiguration implements ConfigurationProperty {
             Integer.class),
 
     /**
+     * Published message information is sent to slot coordinator by the node when it either reaches the
+     * slot window size or the window creation timeout. This configures the timeout for slot window creation
+     * task.
+     * <p>
+     * In a slow message publishing scenario, this is the delay for each message for delivery.
+     * For instance if we publish one message per minute then each message will have to wait
+     * till this timeout before the messages are submitted to the slot coordinator.
+     */
+    PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT (
+            "performanceTuning/slots/windowCreationTimeout", "3000", Integer.class),
+
+    /**
      * Maximum number of undelivered messages that can be in memory. Increasing this value could cause out of memory
      * scenarios, but performance will be improved
      */
