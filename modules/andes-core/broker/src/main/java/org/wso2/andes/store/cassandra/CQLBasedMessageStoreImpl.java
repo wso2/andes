@@ -25,9 +25,7 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.lte;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -299,46 +297,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessageParts(Collection<Long> messageIdList) throws AndesException {
-
-        Context context = MetricManager.timer(Level.INFO, MetricsConstants.DELETE_MESSAGE_PART).start();
-
-        try {
-            BatchStatement batchStatement = new BatchStatement();
-            batchStatement.setConsistencyLevel(config.getWriteConsistencyLevel());
-            Iterator<Long> messages = messageIdList.iterator();
-            //We need to maintain a pointer to ensure that the batch size limitation would not be exceeded
-            int messageIDPointer = 0;
-
-            while (messages.hasNext()) {
-                Long messageID = messages.next();
-                batchStatement.add(psDeleteMessagePart.bind(messageID));
-                messageIDPointer = messageIDPointer + 1;
-
-                //If the maximum batch limit has exceeded we need to execute the current batch first
-                if(messageIDPointer == CQLConstants.MAX_MESSAGE_BATCH_SIZE){
-                    execute(batchStatement, "deleting message part list. List size " + messageIdList.size());
-                    //Will clear the batch to add on the rest of the elements
-                    batchStatement.clear();
-                    //Will reset the pointer back to its origin
-                    messageIDPointer = 0;
-                }
-
-            }
-            //We need to execute if the batch statement has elements in it
-            if(batchStatement.size() > 0) {
-                execute(batchStatement, "deleting message part list. List size " + messageIdList.size());
-            }
-
-        } finally {
-            context.stop();
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_CONTENT).start();
@@ -549,8 +507,8 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             throw new AndesException("Message MetaData not found to move the message to Dead Letter Channel");
         }
 
-        List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>(1);
-        removableMetadataList.add(new AndesRemovableMetadata(messageId, currentQueueName, currentQueueName));
+        List<Long> removableMetadataList = new ArrayList<Long>(1);
+        removableMetadataList.add(messageId);
 
         addMetaDataToQueue(targetQueueName, metadataList.get(0));
         deleteMessageMetadataFromQueue(currentQueueName, removableMetadataList);
@@ -571,12 +529,9 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
             // Step 2 - Delete the old meta data when inserting new meta is complete to avoid
             // losing messages
-            List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>(metadataList.size());
+            List<Long> removableMetadataList = new ArrayList<Long>(metadataList.size());
             for (AndesMessageMetadata metadata : metadataList) {
-                removableMetadataList.add(new AndesRemovableMetadata(metadata.getMessageID(),
-                                metadata.getDestination(),
-                                currentQueueName)
-                );
+                removableMetadataList.add(metadata.getMessageID());
             }
             deleteMessageMetadataFromQueue(currentQueueName, removableMetadataList);
         } finally {
@@ -765,21 +720,60 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public void deleteMessageMetadataFromQueue(String storageQueueName,
-                                               List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
+                                               List<Long> messagesToRemove) throws AndesException {
 
-        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.DELETE_MESSAGE_META_DATA_FROM_QUEUE).start();
+        Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.DELETE_MESSAGE_META_DATA_FROM_QUEUE)
+                .start();
 
         try {
             BatchStatement batchStatement = new BatchStatement();
-
-            for (AndesRemovableMetadata metadata : messagesToRemove) {
+            batchStatement.setConsistencyLevel(config.getWriteConsistencyLevel());
+            for (Long messageID : messagesToRemove) {
                 batchStatement.add(psDeleteMetadata.bind(
                         storageQueueName,
-                        metadata.getMessageID()
+                        messageID.longValue()
                 ));
             }
 
             execute(batchStatement, "deleting metadata list from " + storageQueueName +
+                    " list size " + messagesToRemove.size());
+        } finally {
+            context.stop();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteMessages(final String storageQueueName, List<Long> messagesToRemove, boolean deleteAllMetaData)
+            throws AndesException {
+        Context context = MetricManager.timer(Level.INFO, MetricsConstants.DELETE_MESSAGE_META_DATA_AND_CONTENT)
+                .start();
+
+        try {
+            //create separate batch statements to delete metadata and content
+            BatchStatement batchStatement = new BatchStatement();
+            batchStatement.setConsistencyLevel(config.getWriteConsistencyLevel());
+            //if all metadata is not be removed, add metadata and content of each message to delete
+            //else, add content of each message and all metadata for the queue to delete
+            if (!deleteAllMetaData) {
+                for (Long messageID : messagesToRemove) {
+                    batchStatement.add(psDeleteMetadata.bind(
+                            storageQueueName,
+                            messageID.longValue()
+                    ));
+                    batchStatement.add(psDeleteMessagePart.bind(messageID.longValue()));
+                }
+            } else {
+                batchStatement.add(QueryBuilder.delete().from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
+                        where(eq(CQLConstants.QUEUE_NAME, storageQueueName)).
+                        setConsistencyLevel(config.getWriteConsistencyLevel()));
+                for (Long messageID : messagesToRemove) {
+                    batchStatement.add(psDeleteMessagePart.bind(messageID.longValue()));
+                }
+            }
+            execute(batchStatement, "deleting metadata and content list from " + storageQueueName +
                     " list size " + messagesToRemove.size());
         } finally {
             context.stop();
@@ -845,7 +839,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         // using the same fetch size to iterate through the messages and delete from DLC
         int fetchSize = query.getFetchSize();
         int removedMessageCount = 0;
-        List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>(fetchSize);
+        List<Long> removableMetadataList = new ArrayList<Long>(fetchSize);
         AndesMessageMetadata metadata;
 
         for (Row row : resultSet) {
@@ -853,12 +847,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
             if (metadata.getStorageQueueName().equals(storageQueueName)) {
 
-                AndesRemovableMetadata removableMetadata = new AndesRemovableMetadata(
-                        metadata.getMessageID(),
-                        metadata.getDestination(),
-                        metadata.getStorageQueueName()
-                );
-                removableMetadataList.add(removableMetadata);
+                removableMetadataList.add(metadata.getMessageID());
             }
 
             // When the end of current fetched results is reached we delete that found removable messages from DLC
@@ -1301,20 +1290,12 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                 return;
             }
 
-            List<AndesRemovableMetadata> removableMetadataList = new ArrayList<AndesRemovableMetadata>();
-            List<Long> idList = new ArrayList<Long>();
+            List<Long> removableMetadataList = new ArrayList<Long>();
             for (AndesMessage message : rollbackList) {
-                AndesRemovableMetadata andesRemovableMetadata =
-                        new AndesRemovableMetadata(message.getMetadata().getMessageID(),
-                                message.getMetadata().getStorageQueueName(),
-                                message.getMetadata().getStorageQueueName());
-
-                removableMetadataList.add(andesRemovableMetadata);
-                idList.add(message.getMetadata().getMessageID());
+                removableMetadataList.add(message.getMetadata().getMessageID());
             }
 
-            deleteMessageMetadataFromQueue(rollbackList.get(0).getMetadata().getStorageQueueName(), removableMetadataList);
-            deleteMessageParts(idList);
+            deleteMessages(rollbackList.get(0).getMetadata().getStorageQueueName(), removableMetadataList, false);
         }
 
         /**

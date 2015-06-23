@@ -18,7 +18,6 @@
 
 package org.wso2.andes.store;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
@@ -83,19 +82,6 @@ public class FailureObservingMessageStore implements MessageStore {
     public void storeMessagePart(List<AndesMessagePart> partList) throws AndesException {
         try {
             wrappedInstance.storeMessagePart(partList);
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void deleteMessageParts(Collection<Long> messageIdList) throws AndesException {
-        try {
-            wrappedInstance.deleteMessageParts(messageIdList);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -254,14 +240,30 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessageMetadataFromQueue(String storageQueueName, List<AndesRemovableMetadata> messagesToRemove)
-                                                                                                                      throws AndesException {
+    public void deleteMessageMetadataFromQueue(String storageQueueName, List<Long> messagesToRemove)
+            throws AndesException {
         try {
             wrappedInstance.deleteMessageMetadataFromQueue(storageQueueName, messagesToRemove);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteMessages(final String storageQueueName,
+                               List<Long> messagesToRemove, boolean deleteAllMetaData)
+            throws AndesException {
+        try {
+            wrappedInstance.deleteMessages(storageQueueName, messagesToRemove, deleteAllMetaData);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+
     }
 
     /**

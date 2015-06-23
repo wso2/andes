@@ -91,6 +91,10 @@ public class MetricsConstants {
      */
     public static final String DELETE_MESSAGE_META_DATA_FROM_QUEUE = PREFIX + "store.messageMetadataFromQueue.delete";
     /**
+     * Delete metadata and content
+     */
+    public static final String DELETE_MESSAGE_META_DATA_AND_CONTENT = PREFIX + "store.messageMetadataAndContent.delete";
+    /**
      * Update meta data
      */
     public static final String UPDATE_META_DATA_INFORMATION = PREFIX + "store.metadata.update";

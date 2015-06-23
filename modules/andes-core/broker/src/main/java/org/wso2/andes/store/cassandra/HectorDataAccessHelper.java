@@ -909,10 +909,7 @@ public class HectorDataAccessHelper {
         }
 
         try {
-            for (String row : rows) {
-                mutator.addDeletion(row, columnFamily);
-            }
-
+            mutator.addDeletion(rows, columnFamily);
             if (execute) {
                 mutator.execute();
             }
