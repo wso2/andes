@@ -267,6 +267,7 @@ public class Broker
      */
     private void startupImpl(final BrokerOptions options) throws AndesException {
 
+        boolean isActorSet = false;
         try {
 
             final String qpidHome = options.getQpidHome();
@@ -311,6 +312,8 @@ public class Broker
             CurrentActor.setDefault(new BrokerActor(config.getRootMessageLogger()));
             GenericActor.setDefaultMessageLogger(config.getRootMessageLogger());
 
+            isActorSet = true;
+
             startAMQPListener(config, options, serverConfig);
 
             /**
@@ -324,8 +327,10 @@ public class Broker
         } catch (Exception e) {
             throw new AndesException("Unable to initialise application registry", e);
         } finally {
-            // Startup is complete so remove the AR initialised Startup actor
-            CurrentActor.remove();
+            if (isActorSet) {
+                // Startup is complete so remove the AR initialised Startup actor
+                CurrentActor.remove();
+            }
         }
     }
 
