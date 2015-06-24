@@ -80,6 +80,7 @@ public class SlotMessageCounter {
         timeOutForMessagesInQueue = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY);
 
+        scheduleSubmitSlotToCoordinatorTimer();
         slotSubmitLoopSkipCount = 0;
         slotCoordinator = MessagingEngine.getInstance().getSlotCoordinator();
 
