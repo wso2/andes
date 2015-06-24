@@ -885,7 +885,7 @@ public class SlotManagerClusterMode {
                         slotRecoveryScheduled = false;
                     }
                 },
-                SlotMessageCounter.SLOT_SUBMIT_TIMEOUT,
+                SlotMessageCounter.getInstance().SLOT_SUBMIT_TIMEOUT,
                 TimeUnit.MILLISECONDS
         );
 
