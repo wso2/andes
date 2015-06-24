@@ -21,6 +21,7 @@ package org.wso2.andes.server;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.logging.Log;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
@@ -320,6 +321,9 @@ public class Broker
              * Boot andes kernel
              */
             AndesKernelBoot.bootAndesKernel();
+
+            AMQPUtils.DEFAULT_CONTENT_CHUNK_SIZE = AndesConfigurationManager.readValue(
+                    AndesConfiguration.PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);
         } catch (ConfigurationException ce) {
             throw new AndesException("Unable to create configuration files based application registry", ce);
         } catch (AMQException amqe) {

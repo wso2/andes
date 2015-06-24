@@ -63,7 +63,10 @@ public class AMQPUtils {
 
     public static String DEFAULT_EXCHANGE_NAME = "<<default>>";
 
-    public static final int DEFAULT_CONTENT_CHUNK_SIZE = 65534;
+    /**
+     * Max chunk size of the stored content in Andes;
+     */
+    public static int DEFAULT_CONTENT_CHUNK_SIZE;
 
     private static Log log = LogFactory.getLog(AMQPUtils.class);
 
