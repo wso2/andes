@@ -99,12 +99,6 @@ public class BasicSubscription implements AndesSubscription {
                 this.hasExternalSubscriptions = Boolean.parseBoolean(tokens[1]);
             } else if (tokens[0].equals("subscriptionType")) {
                 this.subscriptionType = SubscriptionType.valueOf(tokens[1]);
-                // Will automatically throw an IllegalArgumentException if the value does not match to any
-                // SubscriptionType
-            } else {
-                if (tokens[0].trim().length() > 0) {
-                    throw new UnsupportedOperationException("Unexpected token " + tokens[0]);
-                }
             }
         }
 
