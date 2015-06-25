@@ -20,6 +20,7 @@ package org.wso2.andes.kernel.slot;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.hazelcast.core.IMap;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
@@ -29,16 +30,18 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wr
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetLongWrapper;
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetSlotWrapper;
 
-
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Slot Manager Cluster Mode is responsible of slot allocating, slot creating,
@@ -112,7 +115,7 @@ public class SlotManagerClusterMode {
     /**
      * Denotes whether a slot recovery task is scheduled
      */
-    private boolean slotRecoveryScheduled;
+    private AtomicBoolean slotRecoveryScheduled;
 
     /**
      * Queues that need to be recovered  While a slot recovery is scheduled a submit
@@ -136,7 +139,7 @@ public class SlotManagerClusterMode {
         slotAssignmentMap = hazelcastAgent.getSlotAssignmentMap();
 
         nodeInformedSlotDeletionSafeZones = new HashMap<>();
-        slotRecoveryScheduled = false;
+        slotRecoveryScheduled = new AtomicBoolean(false);
 
         //start a thread to calculate slot delete safe zone
         //TODO: use a common  thread pool for tasks like this?
@@ -380,7 +383,7 @@ public class SlotManagerClusterMode {
             slotIDMap.putIfAbsent(queueName, wrapper);
         }
 
-        if (slotRecoveryScheduled) {
+        if (slotRecoveryScheduled.compareAndSet(true, true)) {
             queuesToRecover.remove(queueName);
         }
 
@@ -558,6 +561,7 @@ public class SlotManagerClusterMode {
                         for (Slot slot : currentSlotList) {
                             if (slot.getStartMessageId() == emptySlot.getStartMessageId()) {
                                 slotInAssignmentMap = slot;
+                                break;
                             }
                         }
 
@@ -870,7 +874,11 @@ public class SlotManagerClusterMode {
                 new ThreadFactoryBuilder().setNameFormat("RecoverSlotsThreadPool").build();
         ScheduledExecutorService recoverSlotScheduler =
                 Executors.newScheduledThreadPool(threadPoolCount, namedThreadFactory);
-        queuesToRecover = slotIDMap.keySet();
+        
+        // this is accessed from another thread therefore using a set that supports concurrency
+        Set<String> concurrentSet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>(slotIDMap.keySet().size()));
+        concurrentSet.addAll(slotIDMap.keySet());
+        queuesToRecover = concurrentSet;
 
         recoverSlotScheduler.schedule(
                 new Runnable() {
@@ -883,14 +891,14 @@ public class SlotManagerClusterMode {
                             // for queues that have not published any messages after a node crash
                             updateMessageID(queueName, removedNode, lastId - 1, lastId);
                         }
-                        slotRecoveryScheduled = false;
+                        slotRecoveryScheduled.set(false);
                     }
                 },
                 SlotMessageCounter.getInstance().SLOT_SUBMIT_TIMEOUT,
                 TimeUnit.MILLISECONDS
         );
 
-        slotRecoveryScheduled = true;
+        slotRecoveryScheduled.set(true);
 
     }
 

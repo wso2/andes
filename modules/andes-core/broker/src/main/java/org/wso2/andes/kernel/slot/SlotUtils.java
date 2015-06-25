@@ -47,7 +47,7 @@ public class SlotUtils {
                             slot.getEndMessageId());
             return messagesReturnedFromCassandra == null || messagesReturnedFromCassandra.isEmpty();
         } catch (AndesException e) {
-            log.error("Error occurred while querying metadata from cassandra", e);
+            log.error("Error occurred while querying metadata from message store", e);
             return false;
         }
     }

@@ -98,8 +98,10 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
     private void initializeDeliveryRules() {
 
         //checking counting delivery rule
-        deliveryRulesList.add(new MaximumNumOfDeliveryRule(channel));
-
+        
+        if (  ! isBoundToTopic || isDurable){ //evaluate this only for queues and durable subscriptions
+            deliveryRulesList.add(new MaximumNumOfDeliveryRule(channel));
+        }
         // NOTE: Feature Message Expiration moved to a future release
 //        //checking message expiration deliver rule
 //        deliveryRulesList.add(new MessageExpiredRule());
@@ -165,8 +167,9 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
             String destinationQueue = message.getMessageMetaData().getMessagePublishInfo().getRoutingKey().toString();
             // Move message to DLC
             // All the Queues and Durable Topics related messages are adding to DLC
-            if (!isBoundToTopic || isDurable)
+            if (!isBoundToTopic || isDurable){
                 MessagingEngine.getInstance().moveMessageToDeadLetterChannel(message.getMessageId(), destinationQueue);
+            }
         }
     }
 
