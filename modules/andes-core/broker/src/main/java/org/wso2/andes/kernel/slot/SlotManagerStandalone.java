@@ -63,10 +63,10 @@ public class SlotManagerStandalone {
         /**
          * Initialize distributed maps used in this class
          */
-        slotIDMap = new ConcurrentHashMap<String, TreeSet<Long>>();
-        queueToLastAssignedIDMap = new ConcurrentHashMap<String, Long>();
-        slotAssignmentMap = new ConcurrentHashMap<String, TreeSet<Slot>>();
-        unAssignedSlotMap = new ConcurrentHashMap<String, TreeSet<Slot>>();
+        slotIDMap = new ConcurrentHashMap<>();
+        queueToLastAssignedIDMap = new ConcurrentHashMap<>();
+        slotAssignmentMap = new ConcurrentHashMap<>();
+        unAssignedSlotMap = new ConcurrentHashMap<>();
     }
 
     /**
@@ -153,7 +153,7 @@ public class SlotManagerStandalone {
     private void updateSlotAssignmentMap(String queueName, Slot assignedSlot) {
         TreeSet<Slot> assignedSlotSet = slotAssignmentMap.get(queueName);
         if (null == assignedSlotSet) {
-            assignedSlotSet = new TreeSet<Slot>();
+            assignedSlotSet = new TreeSet<>();
         }
         assignedSlotSet.add(assignedSlot);
         slotAssignmentMap.put(queueName, assignedSlotSet);
@@ -171,7 +171,7 @@ public class SlotManagerStandalone {
 
         TreeSet<Long> messageIdSet = slotIDMap.get(queueName);
         if (messageIdSet == null) {
-            messageIdSet = new TreeSet<Long>();
+            messageIdSet = new TreeSet<>();
         }
         String lockKey = queueName + SlotManagerStandalone.class;
         synchronized (lockKey.intern()) {
@@ -191,7 +191,7 @@ public class SlotManagerStandalone {
     }
 
     /**
-     * Delete slot details when slot is empty. (All the messages are delivered and acks are
+     * Delete slot details when slot is empty. (All the messages are delivered and acknowledgments are
      * returned )
      * @param queueName Name of the queue
      * @param slotToBeDeleted  Slot to be deleted
@@ -227,7 +227,7 @@ public class SlotManagerStandalone {
             synchronized (lockKey.intern()) {
                 TreeSet<Slot> unassignedSlots = unAssignedSlotMap.get(queueName);
                 if (null == unassignedSlots) {
-                    unassignedSlots = new TreeSet<Slot>();
+                    unassignedSlots = new TreeSet<>();
                 }
                 for (Slot slotToBeReAssigned : slotsToBeReAssigned) {
                     unassignedSlots.add(slotToBeReAssigned);

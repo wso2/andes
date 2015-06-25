@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel.slot;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ExecutionException;
@@ -56,7 +55,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
     private static Log log = LogFactory.getLog(SlotDeliveryWorker.class);
 
     /**
-     * This map contains slotId to slot hashmap against queue name
+     * This map contains slotId to slot hash map against queue name
      */
     private volatile boolean running;
     private MessageFlusher messageFlusher;
@@ -66,7 +65,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
     /**
      * Indicates and provides a barrier if messages stores become offline.
      * marked as volatile since this value could be set from a different thread
-     * (other than those of disrupter)
+     * (other than those of Disruptor)
      */
     private volatile SettableFuture<Boolean> messageStoresUnavailable;
 
@@ -81,7 +80,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
     
     public SlotDeliveryWorker() {
         messageFlusher = MessageFlusher.getInstance();
-        this.storageQueueNameToDestinationMap = new ConcurrentSkipListMap<String, String>();
+        this.storageQueueNameToDestinationMap = new ConcurrentSkipListMap<>();
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         slotDeletionScheduler = new SlotDeletionScheduler(SLOT_DELETION_SCHEDULE_INTERVAL);
         /*
@@ -229,22 +228,22 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      */
     private List<AndesMessageMetadata> getMetaDataListBySlot(String storageQueueName, 
                                                              Slot slot) throws AndesException {
-        return getMetaDataListBySlot(storageQueueName, slot, 0);
+        return getMetadataListBySlot(storageQueueName, slot, 0);
     }
 
     /**
      * Returns a list of {@link AndesMessageMetadata} in specified slot. This method is recursive.
-     * @param storageQueueName
-     * @param slot
-     * @param numberOfRetriesBefore
-     * @return
+     * @param storageQueueName storage queue of the slot
+     * @param slot Retrieve metadata relevant to the given {@link org.wso2.andes.kernel.slot.Slot}
+     * @param numberOfRetriesBefore retry count for the query
+     * @return return a list of {@link org.wso2.andes.kernel.AndesMessageMetadata}
      * @throws AndesException
      */
-    private List<AndesMessageMetadata> getMetaDataListBySlot(String storageQueueName,
+    private List<AndesMessageMetadata> getMetadataListBySlot(String storageQueueName,
                                                              Slot slot,
                                                              int numberOfRetriesBefore) throws AndesException {
 
-        List<AndesMessageMetadata> messagesRead = Collections.emptyList();
+        List<AndesMessageMetadata> messagesRead;
                
         if ( messageStoresUnavailable != null){
             try {
@@ -258,7 +257,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
             } catch (InterruptedException e) {
                 throw new AndesException("Thread interrupted while waiting for message stores to come online", e);
             } catch (ExecutionException e){
-                throw new AndesException("Error occured while waiting for message stores to come online", e);
+                throw new AndesException("Error occurred while waiting for message stores to come online", e);
             }
         }
         
@@ -287,7 +286,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                                                 + " %s, retry count = %d",
                                                 slot.toString(), numberOfRetriesBefore);
                 log.error(errorMsg, aex);
-                messagesRead = getMetaDataListBySlot(storageQueueName, slot, numberOfRetriesBefore + 1);
+                messagesRead = getMetadataListBySlot(storageQueueName, slot, numberOfRetriesBefore + 1);
             } else {
                 String errorMsg =
                          String.format("error occurred retrieving metadata list for slot : %s, in final attempt = %d. "

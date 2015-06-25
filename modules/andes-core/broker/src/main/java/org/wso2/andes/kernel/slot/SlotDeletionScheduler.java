@@ -18,7 +18,6 @@
 
 package org.wso2.andes.kernel.slot;
 
-import com.hazelcast.core.HazelcastInstanceNotActiveException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.MessagingEngine;

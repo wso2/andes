@@ -74,7 +74,7 @@ public class TreeSetSlotWrapperSerializer implements StreamSerializer<TreeSetSlo
         String jsonString = objectDataInput.readUTF();
         JsonArray jsonArray = new JsonParser().parse(jsonString).getAsJsonObject().getAsJsonArray
                 ("slotTreeSet");
-        TreeSet<Slot> treeSet = new TreeSet<Slot>();
+        TreeSet<Slot> treeSet = new TreeSet<>();
         for (JsonElement jsonElement : jsonArray) {
             JsonObject jsonObject = (JsonObject) jsonElement;
             Slot slot = new Slot();

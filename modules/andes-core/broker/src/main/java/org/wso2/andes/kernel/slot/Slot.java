@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -79,7 +79,7 @@ public class Slot implements Serializable, Comparable<Slot> {
     public Slot() {
         isSlotActive = true;
         isAnOverlappingSlot = false;
-        this.slotStates = new ArrayList<SlotState>();
+        this.slotStates = new ArrayList<>();
         addState(SlotState.CREATED);
     }
 
@@ -201,9 +201,13 @@ public class Slot implements Serializable, Comparable<Slot> {
     public void decodeAndSetSlotStates(String stateInfo) {
         String[] states = StringUtils.split(stateInfo, "%");
         slotStates.clear();
-        for (String state : states) {
-            int code = Integer.parseInt(state);
-            slotStates.add(SlotState.parseSlotState(code));
+        if (states != null) {
+            for (String state : states) {
+                int code = Integer.parseInt(state);
+                slotStates.add(SlotState.parseSlotState(code));
+            }
+        } else {
+            log.warn("Invalid encoded string received. Encoded string: " + stateInfo);
         }
     }
 

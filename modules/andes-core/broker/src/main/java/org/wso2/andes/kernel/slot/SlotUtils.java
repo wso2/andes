@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -37,7 +37,7 @@ public class SlotUtils {
     /**
      * Check whether there  are any messages left in the slot after all the acks are received.
      * Returns false  if there are any.
-     * @param slot
+     * @param slot {@link org.wso2.andes.kernel.slot.Slot} to be checked
      * @return Whether the slot is empty or not
      */
     public static boolean checkSlotEmptyFromMessageStore(Slot slot) {
@@ -45,11 +45,7 @@ public class SlotUtils {
             List<AndesMessageMetadata> messagesReturnedFromCassandra =
                     MessagingEngine.getInstance().getMetaDataList(slot.getStorageQueueName(), slot.getStartMessageId(),
                             slot.getEndMessageId());
-            if (messagesReturnedFromCassandra == null || messagesReturnedFromCassandra.isEmpty()) {
-                return true;
-            } else {
-                return false;
-            }
+            return messagesReturnedFromCassandra == null || messagesReturnedFromCassandra.isEmpty();
         } catch (AndesException e) {
             log.error("Error occurred while querying metadata from cassandra", e);
             return false;

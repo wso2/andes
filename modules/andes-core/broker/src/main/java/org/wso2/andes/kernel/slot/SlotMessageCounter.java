@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -52,8 +52,10 @@ public class SlotMessageCounter {
     private Integer slotWindowSize;
     private long currentSlotDeleteSafeZone;
 
-    /** Keep track of how many update loops
-     * are skipped without messages. */
+    /**
+     * Keep track of how many update loops
+     * are skipped without messages.
+     */
     private int slotSubmitLoopSkipCount;
 
     private SlotCoordinator slotCoordinator;
@@ -62,7 +64,7 @@ public class SlotMessageCounter {
 
     /**
      * Time between successive slot submit scheduled tasks.
-     * <p>
+     * <p/>
      * In a slow message publishing scenario, this is the delay for each message for delivery.
      * For instance if we publish one message per minute then each message will have to wait
      * till this timeout before the messages are submitted to the slot coordinator.
@@ -106,9 +108,9 @@ public class SlotMessageCounter {
                         }
                     }
                 }
-                if(slotTimeoutEntries.isEmpty()) {
+                if (slotTimeoutEntries.isEmpty()) {
                     slotSubmitLoopSkipCount += 1;
-                    if(slotSubmitLoopSkipCount == SLOT_SUBMIT_LOOP_SKIP_COUNT_THRESHOLD) {
+                    if (slotSubmitLoopSkipCount == SLOT_SUBMIT_LOOP_SKIP_COUNT_THRESHOLD) {
                         //update current slot Deletion Safe Zone
                         try {
                             submitCurrentSafeZone(currentSlotDeleteSafeZone);
@@ -136,6 +138,7 @@ public class SlotMessageCounter {
 
     /**
      * Add a new message to the count for the current slot related to a particular queue
+     *
      * @param metadata AndesMessageMetadata
      */
     public void recordMetadataCountInSlot(AndesMessageMetadata metadata) {
@@ -158,13 +161,13 @@ public class SlotMessageCounter {
 
     private void submitCurrentSafeZone(long currentSlotDeleteSafeZone) throws ConnectionException {
         slotCoordinator.updateSlotDeletionSafeZone(currentSlotDeleteSafeZone);
-
     }
 
     /**
      * Update in-memory queue to slot map. This method is is not synchronized. Single publisher should access this.
      * Ideally through a disruptor event handler
-     * @param metadata  Andes metadata whose ID needs to be reported to SlotManager
+     *
+     * @param metadata Andes metadata whose ID needs to be reported to SlotManager
      * @return Current slot which this metadata belongs to
      */
     private Slot updateQueueToSlotMap(AndesMessageMetadata metadata) {
@@ -190,13 +193,13 @@ public class SlotMessageCounter {
     /**
      * Submit last message ID in the slot to SlotManager.
      *
-     * @param storageQueueName  name of the queue which this slot belongs to
+     * @param storageQueueName name of the queue which this slot belongs to
      */
     public void submitSlot(String storageQueueName) throws AndesException {
         Slot slot = queueToSlotMap.get(storageQueueName);
         if (null != slot) {
             try {
-                slotCoordinator.updateMessageId(storageQueueName,slot.getStartMessageId(),
+                slotCoordinator.updateMessageId(storageQueueName, slot.getStartMessageId(),
                         slot.getEndMessageId());
                 queueToSlotMap.remove(storageQueueName);
                 slotTimeOutMap.remove(storageQueueName);
