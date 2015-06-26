@@ -23,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This Runnable will calculate safe zone for the cluster time to time.
@@ -32,7 +33,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
 
     private static Log log = LogFactory.getLog(SlotDeleteSafeZoneCalc.class);
 
-    private long slotDeleteSafeZone;
+    private AtomicLong slotDeleteSafeZone;
 
     private boolean running;
 
@@ -51,7 +52,8 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
         this.seekInterval = seekInterval;
         this.running = true;
         this.isLive = true;
-        this.slotDeleteSafeZone = Long.MAX_VALUE;
+        this.slotDeleteSafeZone = new AtomicLong(Long.MAX_VALUE);
+        
     }
 
     @Override
@@ -106,7 +108,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                     }
                 }
 
-                slotDeleteSafeZone = globalSafeZoneVal;
+                slotDeleteSafeZone.set(globalSafeZoneVal);
 
                 if (log.isDebugEnabled()) {
                     log.debug("Safe Zone Calculated : " + slotDeleteSafeZone);
@@ -133,7 +135,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
      * @return current clot deletion safe zone
      */
     public long getSlotDeleteSafeZone() {
-        return slotDeleteSafeZone;
+        return slotDeleteSafeZone.get();
     }
 
     /**
@@ -142,7 +144,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
      * @param slotDeleteSafeZone safe zone value to be set
      */
     public void setSlotDeleteSafeZone(long slotDeleteSafeZone) {
-        this.slotDeleteSafeZone = slotDeleteSafeZone;
+        this.slotDeleteSafeZone.set(slotDeleteSafeZone);
     }
 
     /**

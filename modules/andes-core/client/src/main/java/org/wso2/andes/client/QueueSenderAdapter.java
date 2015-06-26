@@ -35,10 +35,16 @@ public class QueueSenderAdapter implements QueueSender
     private Queue _queue;
     private boolean closed = false;
 
+    private boolean verifyQueueBindingBeforePublish;
+   
     public QueueSenderAdapter(BasicMessageProducer msgProducer, Queue queue)
     {
         _delegate = msgProducer;
         _queue = queue;
+        
+        verifyQueueBindingBeforePublish =
+                                          Boolean.parseBoolean(System.getProperty("org.wso2.andes.client.verifyQueueBindingBeforePublish",
+                                                                                  "true"));
     }
 
     public Queue getQueue() throws JMSException
@@ -222,6 +228,6 @@ public class QueueSenderAdapter implements QueueSender
 
     private boolean checkQueueBeforePublish()
     {
-        return "true".equalsIgnoreCase(System.getProperty("org.wso2.andes.client.verifyQueueBindingBeforePublish", "true"));
+        return verifyQueueBindingBeforePublish;
     }
 }
