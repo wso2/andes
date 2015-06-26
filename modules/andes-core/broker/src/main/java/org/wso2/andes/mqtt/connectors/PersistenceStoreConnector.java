@@ -28,18 +28,17 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.FlowControlListener;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
-import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTException;
 import org.wso2.andes.mqtt.MQTTLocalSubscription;
 import org.wso2.andes.mqtt.MQTTMessage;
+import org.wso2.andes.mqtt.MQTTMessageContext;
+import org.wso2.andes.mqtt.MQTTPublisherChannel;
 import org.wso2.andes.mqtt.MQTTopicManager;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
 
-import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -62,7 +61,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
      * Key of the map would be the mqtt specific client id and the value would be the cluster uuid
      */
     //TODO state the usage of a hashmap instead of using concurrent hashmap
-    private Map<String, MQTTPublisherChannel> publisherTopicCorrelate = new HashMap<String, MQTTPublisherChannel>();
+    private Map<String, MQTTPublisherChannel> publisherTopicCorrelate = new HashMap<>();
 
 
     /**
@@ -79,7 +78,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
      * {@inheritDoc}
      */
     public void messageNack(AndesMessageMetadata metadata) throws AndesException{
-            Andes.getInstance().messageRejected(metadata);
+        Andes.getInstance().messageRejected(metadata);
     }
 
     /**
@@ -292,9 +291,9 @@ public class PersistenceStoreConnector implements MQTTConnector {
 
         final String myNodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         MQTTLocalSubscription localTopicSubscription = new MQTTLocalSubscription(MQTT_TOPIC_DESTINATION + "=" + topic
-                + "," + MQTT_QUEUE_IDENTIFIER + "=" + queueIdentifier + "," + isBoundToTopic + "=" + isTopicBound + "," +
-                subscribedNode + "=" + myNodeID + "," + isDurable + "=" + !isCleanSession + "," + hasExternalSubscription+
-                "="+ hasExternal);
+                                                                                 + "," + MQTT_QUEUE_IDENTIFIER + "=" + queueIdentifier + "," + isBoundToTopic + "=" + isTopicBound + "," +
+                                                                                 subscribedNode + "=" + myNodeID + "," + isDurable + "=" + !isCleanSession + "," + hasExternalSubscription+
+                                                                                 "="+ hasExternal);
         localTopicSubscription.setIsTopic(isTopicBound);
         if (!isCleanSession) {
             //For subscriptions with clean session = false we need to make a queue in andes

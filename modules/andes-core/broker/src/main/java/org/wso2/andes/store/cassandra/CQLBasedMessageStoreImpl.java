@@ -183,7 +183,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         psUpdateRetainMetadata    = session.prepare(PS_UPDATE_RETAIN_METADATA);
         psDeleteRetainMessagePart = session.prepare(PS_DELETE_RETAIN_MESSAGE_PART);
         psInsertRetainMessagePart = session.prepare(PS_INSERT_RETAIN_MESSAGE_PART);
-
+        
         return cqlConnection;
     }
 
@@ -516,7 +516,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             throw new AndesException("Message MetaData not found to move the message to Dead Letter Channel");
         }
 
-        List<Long> removableMetadataList = new ArrayList<Long>(1);
+        List<Long> removableMetadataList = new ArrayList<>(1);
         removableMetadataList.add(messageId);
 
         addMetadataToQueue(targetQueueName, metadataList.get(0));
@@ -538,7 +538,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
             // Step 2 - Delete the old meta data when inserting new meta is complete to avoid
             // losing messages
-            List<Long> removableMetadataList = new ArrayList<Long>(metadataList.size());
+            List<Long> removableMetadataList = new ArrayList<>(metadataList.size());
             for (AndesMessageMetadata metadata : metadataList) {
                 removableMetadataList.add(metadata.getMessageID());
             }
@@ -626,7 +626,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                                                                        int count) throws AndesException {
 
         ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
-        List<AndesMessageMetadata> messageMetadataList = new ArrayList<AndesMessageMetadata>();
+        List<AndesMessageMetadata> messageMetadataList = new ArrayList<>();
         long lastMsgId;
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.
@@ -675,8 +675,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
                     resultSet = execute(statement, "retrieving metadata list from " + storageQueueName +
                             " with starting msg id " + firstMsgId + " ending message id " + lastMsgId);
-                    messageMetadata =
-                            new ArrayList<AndesMessageMetadata>(resultSet.getAvailableWithoutFetching());
+                    messageMetadata = new ArrayList<>(resultSet.getAvailableWithoutFetching());
 
                     for (Row row : resultSet) {
                         messageMetadata.add(getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID)));
@@ -741,7 +740,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             for (Long messageID : messagesToRemove) {
                 batchStatement.add(psDeleteMetadata.bind(
                         storageQueueName,
-                        messageID.longValue()
+                        messageID
                 ));
             }
 
@@ -771,16 +770,16 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                 for (Long messageID : messagesToRemove) {
                     batchStatement.add(psDeleteMetadata.bind(
                             storageQueueName,
-                            messageID.longValue()
+                            messageID
                     ));
-                    batchStatement.add(psDeleteMessagePart.bind(messageID.longValue()));
+                    batchStatement.add(psDeleteMessagePart.bind(messageID));
                 }
             } else {
                 batchStatement.add(QueryBuilder.delete().from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
                         where(eq(CQLConstants.QUEUE_NAME, storageQueueName)).
                         setConsistencyLevel(config.getWriteConsistencyLevel()));
                 for (Long messageID : messagesToRemove) {
-                    batchStatement.add(psDeleteMessagePart.bind(messageID.longValue()));
+                    batchStatement.add(psDeleteMessagePart.bind(messageID));
                 }
             }
             execute(batchStatement, "deleting metadata and content list from " + storageQueueName +
@@ -849,7 +848,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         // using the same fetch size to iterate through the messages and delete from DLC
         int fetchSize = query.getFetchSize();
         int removedMessageCount = 0;
-        List<Long> removableMetadataList = new ArrayList<Long>(fetchSize);
+        List<Long> removableMetadataList = new ArrayList<>(fetchSize);
         AndesMessageMetadata metadata;
 
         for (Row row : resultSet) {
@@ -1018,15 +1017,14 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     /**
      * Update already existing retain topic message
      *
-     * @param message
-     * @param metadata
-     * @param retainedItemData
+     * @param message          Andes retained message
+     * @param metadata         Retained metadata of message
+     * @param retainedItemData Retained message content
      * @throws AndesException
      */
     private void addRetainedMessageToUpdateBatch(AndesMessage message,
                                                  AndesMessageMetadata metadata,
-                                                 RetainedItemData retainedItemData)
-            throws AndesException {
+                                                 RetainedItemData retainedItemData) throws AndesException {
 
         BatchStatement batchStatement = new BatchStatement();
 
@@ -1198,14 +1196,14 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public Map<Integer, AndesMessagePart> getRetainedContentParts(long messageID) throws AndesException {
 
-        Map<Integer, AndesMessagePart> retainContentPartMap = new HashMap<Integer, AndesMessagePart>();
+        Map<Integer, AndesMessagePart> retainContentPartMap = new HashMap<>();
         ResultSet results;
 
         Statement statement =
                 QueryBuilder.select().column(CQLConstants.MESSAGE_OFFSET).column(CQLConstants.MESSAGE_CONTENT).
-                             from(config.getKeyspace(), CQLConstants.RETAINED_CONTENT_TABLE).
-                             where(eq(CQLConstants.MESSAGE_ID, messageID)).
-                setConsistencyLevel(config.getReadConsistencyLevel());
+                        from(config.getKeyspace(), CQLConstants.RETAINED_CONTENT_TABLE).
+                        where(eq(CQLConstants.MESSAGE_ID, messageID)).
+                        setConsistencyLevel(config.getReadConsistencyLevel());
 
         results = execute(statement, "retrieving retained topic message content for message id " + messageID);
 
@@ -1225,95 +1223,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             retainContentPartMap.put(offset, messagePart);
         }
 
-
-
-
         return retainContentPartMap;
-    }
-
-    /**
-     * CQL based message store transaction implementation
-     */
-    public class CQLBasedTransactionImpl implements AndesTransaction {
-
-        /**
-         * Messages to be committed is added to this message list
-         */
-        private final List<AndesMessage> messageList;
-
-        /**
-         * Following the commit in this class Andes state needs to be updated using
-         * {@link org.wso2.andes.kernel.distruptor.inbound.StateEventHandler}. But if a commit fails at state event
-         * handler we need to be able to rollback. For this purpose we need a list of last successful commit from
-         * this class.
-         */
-        private final List<AndesMessage> rollbackList;
-
-        /**
-         * Creates a CQL based transaction object
-         */
-        CQLBasedTransactionImpl() {
-            messageList = new ArrayList<AndesMessage>();
-            rollbackList = new ArrayList<AndesMessage>();
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void enqueue(AndesMessage message) throws AndesException {
-            messageList.add(message);
-            rollbackList.add(message);
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void commit() throws AndesException {
-
-            BatchStatement batchStatement = new BatchStatement();
-
-            for(AndesMessage message: messageList) {
-                addContentToBatch(batchStatement, message.getContentChunkList());
-                addMetadataToBatch(batchStatement, message.getMetadata(), message.getMetadata().getStorageQueueName());
-            }
-            execute(batchStatement, "Storing metadata for transaction. Batch size" + messageList.size());
-            messageList.clear();
-            rollbackList.clear();
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void rollback() throws AndesException {
-            messageList.clear();
-            if (rollbackList.isEmpty()) {
-                return;
-            }
-
-            List<Long> removableMetadataList = new ArrayList<Long>();
-            for (AndesMessage message : rollbackList) {
-                removableMetadataList.add(message.getMetadata().getMessageID());
-            }
-
-            deleteMessageMetadataFromQueue(
-                    rollbackList.get(0).getMetadata().getStorageQueueName(),
-                    removableMetadataList);
-
-            deleteMessages(rollbackList.get(0).getMetadata().getStorageQueueName(), removableMetadataList, false);
-            rollbackList.clear();
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void close() throws AndesException {
-            messageList.clear();
-            rollbackList.clear();
-        }
     }
 
 
