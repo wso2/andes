@@ -264,4 +264,14 @@ public class SlotManagerStandalone {
       return slotManagerStandalone;
     }
 
+    /**
+     * Return last assign message id of slot for given queue when MB standalone mode
+     *
+     * @param queueName name of destination queue
+     * @return last assign message id
+     */
+    public Long getLastAssignedSlotMessageIdInStandaloneMode(String queueName) {
+        return slotIDMap.get(queueName).last();
+    }
+
 }

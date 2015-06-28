@@ -84,8 +84,6 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     private HectorUtils hectorUtils;
     
-    private long lastRecoveryMessageId;
-
     /**
      * The COMMA is used to append message IDs to one another when performing column operations
      */
@@ -103,8 +101,6 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             hectorConnection = new HectorConnection();
         }
         hectorConnection.initialize(connectionProperties);
-
-        this.lastRecoveryMessageId = ServerStartupRecoveryUtils.getMessageIdToCompleteRecovery();
 
         this.contextStore = contextStore;
         
@@ -465,6 +461,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         }
         long messageIdDifference = ServerStartupRecoveryUtils.getMessageDifferenceForWarmStartup();
         lastMsgId = firstMsgId + messageIdDifference;
+        long lastRecoveryMessageId = ServerStartupRecoveryUtils.getMessageIdToCompleteRecovery();
         try {
             List<AndesMessageMetadata> messagesFromQueue = HectorDataAccessHelper
                     .getMessagesFromQueue(queueName,

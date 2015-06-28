@@ -20,8 +20,6 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -56,10 +54,6 @@ public class QueueBrowserDeliveryWorker {
     private Subscription subscription;
     private AMQQueue queue;
     private AMQProtocolSession session;
-    private String id;
-    private int defaultMessageCount = Integer.MAX_VALUE;
-    private int messageCount;
-    private Integer messageBatchSize;
 
     private static Log log = LogFactory.getLog(QueueBrowserDeliveryWorker.class);
 
@@ -68,16 +62,11 @@ public class QueueBrowserDeliveryWorker {
         this.subscription = subscription;
         this.queue = queue;
         this.session = session;
-        this.id = "" + subscription.getSubscriptionID();
-        this.messageCount = defaultMessageCount;
-        this.messageBatchSize = AndesConfigurationManager.readValue
-                (AndesConfiguration.MANAGEMENT_CONSOLE_MESSAGE_BATCH_SIZE_FOR_BROWSER_SUBSCRIPTIONS);
-
     }
 
 
     public void send() {
-        List<QueueEntry> messages = null;
+        List<QueueEntry> messages;
         try {
             messages = getSortedMessages();
             sendMessagesToClient(messages);
@@ -95,12 +84,7 @@ public class QueueBrowserDeliveryWorker {
      */
     private void sendMessagesToClient(List<QueueEntry> messages){
             if (messages.size() > 0) {
-                int count = messageBatchSize;
-                if (messages.size() < messageBatchSize) {
-                    count = messages.size();
-                }
-                for (int i = 0; i < count; i++) {
-                    QueueEntry message = messages.get(i);
+                for (QueueEntry message : messages) {
                     try {
                         if (subscription instanceof SubscriptionImpl.BrowserSubscription) {
                             subscription.send(message);
@@ -123,20 +107,16 @@ public class QueueBrowserDeliveryWorker {
     private List<QueueEntry> getSortedMessages() throws AndesException {
 
         String queueName = queue.getResourceName();
-        long lastReadMessageId = 0L;
+        long lastAssignedSlotMessageId = MessagingEngine.getInstance().getLastAssignedSlotMessageId(queueName);
+        long messageIdDifference = 1024 * 256 * 5000;
+        long lastReadMessageId = lastAssignedSlotMessageId - messageIdDifference;
+        int countOfQueue = (int) MessagingEngine.getInstance().getMessageCountOfQueue(queueName);
 
         List<AndesMessageMetadata> queueMessageMetaData = new ArrayList<AndesMessageMetadata>();
-        List<AndesMessageMetadata> currentlyReadMessageMetaData = MessagingEngine.getInstance().getNextNMessageMetadataFromQueue(queueName, lastReadMessageId, messageBatchSize);
-        int currentBatchSize = currentlyReadMessageMetaData.size();
+        List<AndesMessageMetadata> currentlyReadMessageMetaData = MessagingEngine.getInstance()
+                .getNextNMessageMetadataFromQueue(queueName, lastReadMessageId, countOfQueue);
 
         queueMessageMetaData.addAll(currentlyReadMessageMetaData);
-
-        while (currentBatchSize == messageBatchSize) {
-            lastReadMessageId = currentlyReadMessageMetaData.get(currentBatchSize -1).getMessageID();
-            currentlyReadMessageMetaData = MessagingEngine.getInstance().getNextNMessageMetadataFromQueue(queueName, lastReadMessageId, messageBatchSize);
-            queueMessageMetaData.addAll(currentlyReadMessageMetaData);
-            currentBatchSize = currentlyReadMessageMetaData.size();
-        }
 
         CustomComparator orderComparator = new CustomComparator();
         Collections.sort(queueMessageMetaData, orderComparator);
