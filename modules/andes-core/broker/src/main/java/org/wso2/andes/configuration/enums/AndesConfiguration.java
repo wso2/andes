@@ -384,7 +384,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * The number of messages to be handled in a single operation related to browser subscriptions.
      */
     MANAGEMENT_CONSOLE_MESSAGE_BATCH_SIZE_FOR_BROWSER_SUBSCRIPTIONS("managementConsole" +
-            "/messageBatchSizeForBrowserSubscriptions", "200", Integer.class),
+            "/messageBatchSizeForBrowserSubscriptions", "100", Integer.class),
 
     /**
      * This property defines the maximum message content length that can be displayed at the management console when

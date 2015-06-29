@@ -76,8 +76,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
     private CQLUtils cqlUtils;
 
-    private long lastRecoveryMessageId;
-    
     /**
      * CQL prepared statement to insert message content to DB
      * Params to bind
@@ -185,8 +183,6 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         psUpdateRetainMetadata    = session.prepare(PS_UPDATE_RETAIN_METADATA);
         psDeleteRetainMessagePart = session.prepare(PS_DELETE_RETAIN_MESSAGE_PART);
         psInsertRetainMessagePart = session.prepare(PS_INSERT_RETAIN_MESSAGE_PART);
-
-        this.lastRecoveryMessageId = ServerStartupRecoveryUtils.getMessageIdToCompleteRecovery();
 
         return cqlConnection;
     }
@@ -628,6 +624,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         }
         long messageIdDifference = ServerStartupRecoveryUtils.getMessageDifferenceForWarmStartup();
         lastMsgId = firstMsgId + messageIdDifference;
+        long lastRecoveryMessageId = ServerStartupRecoveryUtils.getMessageIdToCompleteRecovery();
         int listSize;
 
         try {

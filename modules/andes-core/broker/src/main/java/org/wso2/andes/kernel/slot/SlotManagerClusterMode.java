@@ -50,7 +50,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class SlotManagerClusterMode {
 
 
-    public static final int INITIAL_MESSAGE_ID = -1;
+    private static final int INITIAL_MESSAGE_ID = -1;
     private static final SlotManagerClusterMode slotManager = new SlotManagerClusterMode();
 
     private static final int SAFE_ZONE_EVALUATION_INTERVAL = 5 * 1000;
@@ -909,6 +909,16 @@ public class SlotManagerClusterMode {
      */
     public void setRemovedNode(String nodeId) {
         removedNode = nodeId;
+    }
+
+    /**
+     * Return last assign message id of slot for given queue when MB cluster mode
+     *
+     * @param queueName name of destination queue
+     * @return last assign message id
+     */
+    public Long getLastAssignedSlotMessageIdInClusterMode(String queueName) {
+        return queueToLastAssignedIDMap.get(queueName);
     }
 
 }

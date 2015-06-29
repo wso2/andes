@@ -90,6 +90,12 @@ public class AndesKernelBoot {
     private static boolean isKernelShuttingDown = false;
 
     /**
+     * Keep track of first message id read from database in recovery mode to
+     * use in queue browse as soon as server startup
+     */
+    private static Map<String, Long> firstRecoveredMessageIdMap;
+
+    /**
      * This will boot up all the components in Andes kernel and bring the server to working state
      */
     public static void bootAndesKernel() throws AndesException {
@@ -129,6 +135,7 @@ public class AndesKernelBoot {
         // Slot recreation
         databaseReadsCounterMap = new HashMap<String, Integer>();
         restoreMessagesCounterMap = new HashMap<String, Integer>();
+        firstRecoveredMessageIdMap = new HashMap<String, Long>();
         if (AndesContext.getInstance().isClusteringEnabled()) {
             HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
             try {
@@ -213,6 +220,10 @@ public class AndesKernelBoot {
         restoreMessagesCounterMap.put(queueName, restoreMessagesCounter);
         ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
         scheduleTimerToPrintCounter(scheduledExecutorService, queueName);
+
+        if (restoreMessagesCounter > 0) {
+           firstRecoveredMessageIdMap.put(queueName, messageList.get(0).getMessageID());
+        }
 
         long lastMessageID;
         long firstMessageID;
@@ -558,5 +569,19 @@ public class AndesKernelBoot {
 
     public static boolean isKernelShuttingDown() {
         return isKernelShuttingDown;
+    }
+
+    /**
+     * Return first recovered message id by queue name
+     * @param queueName name of the queue
+     * @return first recovered message id
+     */
+    public static long getFirstRecoveredMessageId(String queueName) {
+        long firstMessageId = 0L;
+        Long messageId = firstRecoveredMessageIdMap.get(queueName);
+        if (messageId != null) {
+            firstMessageId = messageId;
+        }
+        return firstMessageId;
     }
 }

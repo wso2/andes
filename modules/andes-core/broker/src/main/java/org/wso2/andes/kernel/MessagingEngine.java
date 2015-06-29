@@ -27,6 +27,8 @@ import org.wso2.andes.kernel.slot.SlotCoordinator;
 import org.wso2.andes.kernel.slot.SlotCoordinatorCluster;
 import org.wso2.andes.kernel.slot.SlotCoordinatorStandalone;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
+import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
+import org.wso2.andes.kernel.slot.SlotManagerStandalone;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
@@ -758,5 +760,28 @@ public class MessagingEngine {
      */
     public MessageStore.AndesTransaction newTransaction() throws AndesException {
         return messageStore.newTransaction();
+    }
+
+    /**
+     * Return last assign message id of slot for given queue
+     *
+     * @param queueName name of destination queue
+     * @return last assign message id
+     */
+    public long getLastAssignedSlotMessageId(String queueName) {
+        long lastMessageId = 0;
+        long messageIdDifference = 1024 * 256 * 5000;
+        Long lastAssignedSlotMessageId;
+        if (ClusterResourceHolder.getInstance().getClusterManager().isClusteringEnabled()) {
+            lastAssignedSlotMessageId = SlotManagerClusterMode.getInstance()
+                    .getLastAssignedSlotMessageIdInClusterMode(queueName);
+        } else {
+            lastAssignedSlotMessageId = SlotManagerStandalone.getInstance()
+                    .getLastAssignedSlotMessageIdInStandaloneMode(queueName);
+        }
+        if(lastAssignedSlotMessageId != null) {
+            lastMessageId = lastAssignedSlotMessageId - messageIdDifference;
+        }
+        return lastMessageId;
     }
 }
