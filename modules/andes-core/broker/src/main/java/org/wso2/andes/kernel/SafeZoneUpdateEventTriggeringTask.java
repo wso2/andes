@@ -18,6 +18,8 @@
 
 package org.wso2.andes.kernel;
 
+import org.wso2.andes.kernel.disruptor.inbound.InboundEventManager;
+
 /**
  * Disruptor task used to asynchronously communicate safe zone of this node to the coordinator and retrieve the
  * derived safe zone value for the whole cluster.

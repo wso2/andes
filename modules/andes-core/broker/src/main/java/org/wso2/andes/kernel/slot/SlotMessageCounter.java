@@ -27,6 +27,7 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -129,7 +130,7 @@ public class SlotMessageCounter {
      *
      * @param messageList AndesMessage list to be record
      */
-    public void recordMetaDataCountInSlot(List<AndesMessage> messageList) {
+    public void recordMetadataCountInSlot(Collection<AndesMessage> messageList) {
         //If metadata list is null this method is called from time out thread
         for (AndesMessage message : messageList) {
             recordMetadataCountInSlot(message.getMetadata());
@@ -219,7 +220,7 @@ public class SlotMessageCounter {
     }
 
     /**
-     * Message id generated through {@link org.wso2.andes.kernel.distruptor.inbound.MessagePreProcessor}.
+     * Message id generated through {@link org.wso2.andes.kernel.disruptor.inbound.MessagePreProcessor}.
      * This Id is updated through scheduled task.
      */
     public long getCurrentNodeSafeZoneId() {

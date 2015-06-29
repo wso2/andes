@@ -22,7 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.distruptor.delivery.DisruptorBasedFlusher;
+import org.wso2.andes.kernel.disruptor.delivery.DisruptorBasedFlusher;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.subscription.SubscriptionStore;

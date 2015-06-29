@@ -122,8 +122,8 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      *                                          long, String, int, int, boolean, java.util.UUID)
      *
      * This boolean state will be checked each time andes message received in MessagePreProcessor.
-     * @see org.wso2.andes.kernel.distruptor.inbound.MessagePreProcessor#handleTopicRoutine(
-     * org.wso2.andes.kernel.distruptor.inbound.InboundEventContainer, AndesMessage, AndesChannel)
+     * @see org.wso2.andes.kernel.disruptor.inbound.MessagePreProcessor#handleTopicRoutine(
+     * org.wso2.andes.kernel.disruptor.inbound.InboundEventContainer, AndesMessage, AndesChannel)
      *
      */
     private boolean retain;
@@ -355,7 +355,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
         byte[] underlying;
         MetaDataHandler handler;
-        //TODO need to impliment factory pattern here
+        //TODO need to implement factory pattern here
         if (type.equals(MessageMetaDataType.META_DATA_MQTT)) {
             handler = new MQTTMetaDataHandler();
             //This needs to be set to the latest queue name

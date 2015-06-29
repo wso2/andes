@@ -17,7 +17,6 @@
  */
 package org.wso2.andes.mqtt;
 
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
@@ -57,7 +56,7 @@ public class MQTTopicManager {
      * i.e subscription getting bound when a message is given out for distribution, for topicSubscriptions we only need
      * to deliver messages to subscribers who were bound before the message was published to the broker
      */
-    private Map<String, MQTTopics> topicSubscriptions = new HashMap<String, MQTTopics>();
+    private Map<String, MQTTopics> topicSubscriptions = new HashMap<>();
     /**
      * The instance which will be referred
      */
@@ -73,7 +72,7 @@ public class MQTTopicManager {
      */
     private MQTTConnector connector = new PersistenceStoreConnector();
 
-    private final Set<Integer> messageIdList = new LinkedHashSet<Integer>();
+    private final Set<Integer> messageIdList = new LinkedHashSet<>();
 
     /**
      * The class will be declared as singleton since the state will be centralized
@@ -212,7 +211,7 @@ public class MQTTopicManager {
                 //this means we need to remove all subscriptions relevant for the channel
                 topicSubscriptionList = mqtTopics.getAllSubscriptionsForChannel();
             } else {
-                topicSubscriptionList = new ArrayList<MQTTSubscription>();
+                topicSubscriptionList = new ArrayList<>();
                 topicSubscriptionList.add(mqtTopics.getSubscription(unSubscribedTopic));
             }
 

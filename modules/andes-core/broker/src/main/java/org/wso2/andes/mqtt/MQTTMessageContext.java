@@ -19,7 +19,7 @@ package org.wso2.andes.mqtt;
 
 import io.netty.channel.Channel;
 import org.dna.mqtt.wso2.QOSLevel;
-import org.wso2.andes.kernel.distruptor.inbound.PubAckHandler;
+import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import java.nio.ByteBuffer;
 
 

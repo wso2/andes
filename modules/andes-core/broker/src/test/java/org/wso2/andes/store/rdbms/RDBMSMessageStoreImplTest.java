@@ -194,7 +194,7 @@ public class RDBMSMessageStoreImplTest {
         List<AndesMessageMetadata> lst = RDBMSTestHelper.getMetadataList(destQueueName, firstMsgId, lastMsgId);
 
         // add metadata
-        messageStore.addMetaData(lst);
+        messageStore.addMetadata(lst);
 
         // TEST
         String sqlStr = "SELECT * FROM " + RDBMSConstants.METADATA_TABLE;
@@ -224,8 +224,8 @@ public class RDBMSMessageStoreImplTest {
         int msgId = 2; // JDBCTestHelper returns positive expiry values for even number message ids
         AndesMessageMetadata md = RDBMSTestHelper.getMetadata(msgId, "myQueue");
 //        AndesMessageMetadata md2 = JDBCTestHelper.getMetadata(msgId, "myQueue2"); // to test ref count
-        messageStore.addMetaData(md);
-//        messageStore.addMetaData(md2);
+        messageStore.addMetadata(md);
+//        messageStore.addMetadata(md2);
 
         // Test Metadata
         String sql = "SELECT * FROM " + RDBMSConstants.METADATA_TABLE +
@@ -270,7 +270,7 @@ public class RDBMSMessageStoreImplTest {
         md.setMetadata(content);
         md.setExpirationTime(System.currentTimeMillis() + 10000);
 
-        messageStore.addMetaDataToQueue(specificQueue, md);
+        messageStore.addMetadataToQueue(specificQueue, md);
 
         // TEST
         String sql = "SELECT * FROM " + RDBMSConstants.METADATA_TABLE +
@@ -334,11 +334,11 @@ public class RDBMSMessageStoreImplTest {
         int lastMsgId = firstMsgId + 10;
         String destQueueName = "queue";
         List<AndesMessageMetadata> lst = RDBMSTestHelper.getMetadataList(destQueueName, firstMsgId, lastMsgId);
-        messageStore.addMetaData(lst);
+        messageStore.addMetadata(lst);
 
         //TEST
         for (AndesMessageMetadata md : lst) {
-            AndesMessageMetadata retrieved = messageStore.getMetaData(md.getMessageID());
+            AndesMessageMetadata retrieved = messageStore.getMetadata(md.getMessageID());
             Assert.assertEquals(md.getMessageID(), retrieved.getMessageID());
             Assert.assertEquals(true, Arrays.equals(md.getMetadata(), retrieved.getMetadata()));
             Assert.assertEquals(destQueueName, md.getStorageQueueName());
@@ -350,11 +350,11 @@ public class RDBMSMessageStoreImplTest {
 
         String destQueue_1 = "queue_1";
         String destQueue_2 = "queue_2";
-        messageStore.addMetaData(RDBMSTestHelper.getMetadataList(destQueue_1, 0, 5));
-        messageStore.addMetaData(RDBMSTestHelper.getMetadataList(destQueue_2, 5, 10));
+        messageStore.addMetadata(RDBMSTestHelper.getMetadataList(destQueue_1, 0, 5));
+        messageStore.addMetadata(RDBMSTestHelper.getMetadataList(destQueue_2, 5, 10));
 
         // Retrieve
-        List<AndesMessageMetadata> list = messageStore.getMetaDataList(destQueue_1, 0, 5);
+        List<AndesMessageMetadata> list = messageStore.getMetadataList(destQueue_1, 0, 5);
         // Test
         Assert.assertEquals(5, list.size());
         for (AndesMessageMetadata andesMessageMetadata : list) {
@@ -362,7 +362,7 @@ public class RDBMSMessageStoreImplTest {
         }
 
         // Retrieve
-        list = messageStore.getMetaDataList(destQueue_2, 5, 10);
+        list = messageStore.getMetadataList(destQueue_2, 5, 10);
         // Test
         Assert.assertEquals(5, list.size());
         for (AndesMessageMetadata andesMessageMetadata : list) {
@@ -379,8 +379,8 @@ public class RDBMSMessageStoreImplTest {
         List<AndesMessageMetadata> mdList1 = RDBMSTestHelper.getMetadataList(destQueue_1, 0, 5, 1);
         List<AndesMessageMetadata> mdList2 = RDBMSTestHelper.getMetadataList(destQueue_2, 5, 10, 1);
 
-        messageStore.addMetaData(mdList1);
-        messageStore.addMetaData(mdList2);
+        messageStore.addMetadata(mdList1);
+        messageStore.addMetadata(mdList2);
 
         Thread.sleep(500);
 
@@ -417,7 +417,7 @@ public class RDBMSMessageStoreImplTest {
     public void testGetNextNMessageMetadataFromQueue() throws Exception {
 
         String destQueues[] = {"queue_1", "queue_2"};
-        messageStore.addMetaData(RDBMSTestHelper.getMetadataForMultipleQueues(destQueues, 2, 0, 10));
+        messageStore.addMetadata(RDBMSTestHelper.getMetadataForMultipleQueues(destQueues, 2, 0, 10));
 
         // Retrieve
         List<AndesMessageMetadata> mdList =
