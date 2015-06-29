@@ -183,7 +183,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         psUpdateRetainMetadata    = session.prepare(PS_UPDATE_RETAIN_METADATA);
         psDeleteRetainMessagePart = session.prepare(PS_DELETE_RETAIN_MESSAGE_PART);
         psInsertRetainMessagePart = session.prepare(PS_INSERT_RETAIN_MESSAGE_PART);
-        
+
         return cqlConnection;
     }
 
