@@ -1604,6 +1604,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         PreparedStatement updateMetadataPreparedStatement = null;
         PreparedStatement deleteContentPreparedStatement = null;
+        PreparedStatement deleteMetadataPreparedStatement = null;
         PreparedStatement insertContentPreparedStatement = null;
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
@@ -1617,6 +1618,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     RDBMSConstants.PS_UPDATE_RETAINED_METADATA);
             deleteContentPreparedStatement = connection.prepareStatement(
                     RDBMSConstants.PS_DELETE_RETAIN_MESSAGE_PARTS);
+            deleteMetadataPreparedStatement = connection.prepareStatement(
+                    RDBMSConstants.PS_DELETE_RETAIN_MESSAGE_METADATA);
             insertContentPreparedStatement = connection.prepareStatement(
                     RDBMSConstants.PS_INSERT_RETAIN_MESSAGE_PART);
 
@@ -1633,9 +1636,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     }
 
                     addRetainedMessageToUpdateBatch(updateMetadataPreparedStatement,
-                            deleteContentPreparedStatement,
-                            insertContentPreparedStatement,
-                            message, metadata, retainedItemData);
+                                                    deleteContentPreparedStatement,
+                                                    deleteMetadataPreparedStatement,
+                                                    insertContentPreparedStatement,
+                                                    message, metadata, retainedItemData);
                     retainedItemData.messageID = metadata.getMessageID();
 
                 } else {
@@ -1648,26 +1652,28 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             if (!batchEmpty) {
                 deleteContentPreparedStatement.executeBatch();
+                deleteMetadataPreparedStatement.executeBatch();
                 updateMetadataPreparedStatement.executeBatch();
                 insertContentPreparedStatement.executeBatch();
                 connection.commit();
             }
 
         } catch (SQLNonTransientConnectionException sqlConEx) {
-            rollback(connection, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
+            rollback(connection, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE);
             throw new AndesStoreUnavailableException("Error occurred while adding retained message content to DB ",
-                    sqlConEx.getSQLState(), sqlConEx);
+                                                     sqlConEx.getSQLState(), sqlConEx);
 
         } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
+            rollback(connection, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE);
             throw new AndesException("Error occurred while adding retained message content to DB ", e);
 
         } finally {
             contextWrite.stop();
-            close(updateMetadataPreparedStatement, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
-            close(deleteContentPreparedStatement, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
-            close(insertContentPreparedStatement, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
-            close(connection, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
+            close(updateMetadataPreparedStatement, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE);
+            close(deleteContentPreparedStatement, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE);
+            close(deleteMetadataPreparedStatement, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE);
+            close(insertContentPreparedStatement, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE);
+            close(connection, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE);
         }
     }
 
@@ -1696,7 +1702,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * Update batching prepared statements with current message
      *
      * @param updateMetadataPreparedStatement update prepared statement
-     * @param deleteContentPreparedStatement  delete prepared statement
+     * @param deleteContentPreparedStatement  delete content prepared statement
+     * @param deleteMetadataPreparedStatement delete metadata prepared statement
      * @param insertContentPreparedStatement  insert prepared statement
      * @param message                         current message
      * @param metadata                        current message metadata
@@ -1705,25 +1712,55 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     private void addRetainedMessageToUpdateBatch(PreparedStatement updateMetadataPreparedStatement,
                                                  PreparedStatement deleteContentPreparedStatement,
+                                                 PreparedStatement deleteMetadataPreparedStatement,
                                                  PreparedStatement insertContentPreparedStatement,
                                                  AndesMessage message,
                                                  AndesMessageMetadata metadata,
                                                  RetainedItemData retainedItemData)
             throws SQLException {
-        // update metadata
-        updateMetadataPreparedStatement.setLong(1, metadata.getMessageID());
-        updateMetadataPreparedStatement.setBytes(2, metadata.getMetadata());
-        updateMetadataPreparedStatement.setInt(3, retainedItemData.topicID);
-        updateMetadataPreparedStatement.addBatch();
 
-        // update content
-        deleteContentPreparedStatement.setLong(1, retainedItemData.messageID);
-        deleteContentPreparedStatement.addBatch();
-        for (AndesMessagePart messagePart : message.getContentChunkList()) {
-            insertContentPreparedStatement.setLong(1, metadata.getMessageID());
-            insertContentPreparedStatement.setInt(2, messagePart.getOffSet());
-            insertContentPreparedStatement.setBytes(3, messagePart.getData());
-            insertContentPreparedStatement.addBatch();
+        // Will set to true if payload of retained message is empty. Therefore, instead of update
+        // retain topic entry will be deleted from database.
+        boolean isRetainTopicSetToDelete = false;
+
+
+        // If retain topic message received with empty payload that particular retain topic will be
+        // deleted from broker instead of updating.
+        if(!message.getContentChunkList().isEmpty()) {
+            if (message.getContentChunkList().get(0).getData().length == 0) {
+
+                isRetainTopicSetToDelete = true;
+
+                deleteMetadataPreparedStatement.setLong(1, retainedItemData.messageID);
+                deleteMetadataPreparedStatement.addBatch();
+
+                deleteContentPreparedStatement.setLong(1, retainedItemData.messageID);
+                deleteContentPreparedStatement.addBatch();
+
+            }
+        }
+
+        // If retain topic is not set to delete (payload is not empty) following 3 operations will occur.
+        // 1. metadata will be updated with new parameters.
+        // 2. old content corresponding to previous retain message will be deleted.
+        // 3. new content will be created for newly arrived retained message.
+        if(!isRetainTopicSetToDelete) {
+
+            // update metadata
+            updateMetadataPreparedStatement.setLong(1, metadata.getMessageID());
+            updateMetadataPreparedStatement.setBytes(2, metadata.getMetadata());
+            updateMetadataPreparedStatement.setInt(3, retainedItemData.topicID);
+            updateMetadataPreparedStatement.addBatch();
+
+            // update content
+            deleteContentPreparedStatement.setLong(1, retainedItemData.messageID);
+            deleteContentPreparedStatement.addBatch();
+            for (AndesMessagePart messagePart : message.getContentChunkList()) {
+                insertContentPreparedStatement.setLong(1, metadata.getMessageID());
+                insertContentPreparedStatement.setInt(2, messagePart.getOffSet());
+                insertContentPreparedStatement.setBytes(3, messagePart.getData());
+                insertContentPreparedStatement.addBatch();
+            }
         }
     }
 
@@ -1753,7 +1790,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             }
         } finally {
             contextRead.stop();
-            close(preparedStatementForMetadataSelect, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
             close(preparedStatementForMetadataSelect, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPIC_ID);
         }
 
@@ -1804,8 +1840,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             return new RetainedItemData(topicID, messageID);
         } finally {
             contextWrite.stop();
-            close(preparedStatementForContent, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
-            close(preparedStatementForMetadata, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
+            close(preparedStatementForContent, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE);
+            close(preparedStatementForMetadata, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE);
         }
     }
 

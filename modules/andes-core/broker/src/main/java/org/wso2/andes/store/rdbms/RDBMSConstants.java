@@ -353,6 +353,14 @@ public class RDBMSConstants {
             " WHERE " + MESSAGE_ID + "=?";
 
     /**
+     * Prepared statement to delete messages from retained metadata
+     */
+    protected static final String PS_DELETE_RETAIN_MESSAGE_METADATA =
+            "DELETE" +
+            " FROM " + RETAINED_METADATA_TABLE +
+            " WHERE " + MESSAGE_ID + "=?";
+
+    /**
      * Prepared statement to insert messages to retained content
      */
     protected static final String PS_INSERT_RETAIN_MESSAGE_PART =
@@ -440,7 +448,7 @@ public class RDBMSConstants {
     protected static final String TASK_CREATING_QUEUE = "creating queue. ";
 
     // Message Store related retained message jdbc tasks executed
-    protected static final String TASK_STORING_RETAINED_MESSAGE_PARTS = "storing retained messages.";
+    protected static final String TASK_STORING_RETAINED_MESSAGE = "storing retained messages.";
     protected static final String TASK_RETRIEVING_RETAINED_MESSAGE_PARTS = "retrieving retained " +
             "message parts.";
     protected static final String TASK_RETRIEVING_RETAINED_TOPICS = "retrieving all retained topics";
