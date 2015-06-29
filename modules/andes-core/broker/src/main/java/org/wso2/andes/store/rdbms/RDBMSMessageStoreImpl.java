@@ -25,17 +25,18 @@ import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_MESSAGE_PART;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_METADATA;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
+
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.SQLNonTransientConnectionException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -50,12 +51,9 @@ import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.metrics.MetricsConstants;
-import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 import org.wso2.carbon.metrics.manager.Timer.Context;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * ANSI SQL based message store implementation. Message persistence related methods are implemented
@@ -102,12 +100,16 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
     private static final String TASK_CLOSING_TRANSACTION = "closing transaction";
 
+  
+    
+    
     public RDBMSMessageStoreImpl() {
         queueMap = new ConcurrentHashMap<String, Integer>();
+        
         MAX_TX_CONNECTIONS_COUNT = (Integer) AndesConfigurationManager.
                 readValue(AndesConfiguration.DB_CONNECTION_POOL_SIZE_FOR_TRANSACTIONS);
         txConnectionsCount = new AtomicInteger(0);
-        rdbmsStoreUtils = new RDBMSStoreUtils();
+        
     }
 
     /**
@@ -121,12 +123,15 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         this.rdbmsConnection = new RDBMSConnection();
         // read data source name from config and use
         this.rdbmsConnection.initialize(connectionProperties);
+        this.rdbmsStoreUtils = new RDBMSStoreUtils(connectionProperties);
 
-
+     
+        
         log.info("Message Store initialised");
         return rdbmsConnection;
     }
 
+  
     /**
      * {@inheritDoc}
      */
@@ -154,14 +159,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             rdbmsStoreUtils.raiseBatchUpdateException(partList, connection, bue,
                     RDBMSConstants.TASK_STORING_MESSAGE_PARTS);
 
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            rollback(connection, RDBMSConstants.TASK_STORING_MESSAGE_PARTS);
-            throw new AndesStoreUnavailableException("Error occurred while adding message content to DB ",
-                    sqlConEx.getSQLState(), sqlConEx);
-
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_STORING_MESSAGE_PARTS);
-            throw new AndesException("Error occurred while adding message content to DB ", e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while adding message content to DB ", e);
         } finally {
             messageContentAdditionContext.stop();
             contextWrite.stop();
@@ -208,11 +208,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             if (results.next()) {
                 messagePart = createMessagePart(results, messageId, offsetValue);
             }
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            throw new AndesStoreUnavailableException("Error occurred while retrieving message content from DB" +
-                    " [msg_id=" + messageId + "]", sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
-            throw new AndesException("Error occurred while retrieving message content from DB" +
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while retrieving message content from DB" +
                     " [msg_id= " + messageId + " ]", e);
         } finally {
             messageContentRetrievalContext.stop();
@@ -263,11 +260,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 partList.add(msgPart);
             }
 
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            throw new AndesStoreUnavailableException("Error occurred while retrieving message content from DB for " +
-                    messageIDList.size() + " messages ", sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
-            throw new AndesException("Error occurred while retrieving message content from DB for " +
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while retrieving message content from DB for " +
                     messageIDList.size() + " messages ", e);
         } finally {
             messageContentRetrievalContext.stop();
@@ -341,13 +335,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             rdbmsStoreUtils.raiseBatchUpdateException(metadataList, connection, bue, RDBMSConstants.TASK_ADDING_METADATA_LIST);
 
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA_LIST);
-            throw new AndesStoreUnavailableException("Error occurred while inserting metadata list to queues ",
-                    sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_ADDING_METADATA_LIST);
-            throw new AndesException("Error occurred while inserting metadata list to queues ", e);
+            throw  rdbmsStoreUtils.convertSQLException("Error occurred while inserting metadata list to queues ", e);
         } finally {
             metaDataAdditionContext.stop();
             contextWrite.stop();
@@ -397,13 +387,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
            throw new AndesException("Error occurred while inserting metadata list to queues ", bue);
             
-        }*/ catch (SQLNonTransientConnectionException sqlConEx) {
+        }*/ catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
-            throw new AndesStoreUnavailableException("Error occurred while inserting message metadata to queue ",
-                    sqlConEx.getSQLState(), sqlConEx);
-        } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA);
-            throw new AndesException("Error occurred while inserting message metadata to queue ", e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while inserting message metadata to queue ", e);
         } finally {
             metaDataAdditionContext.stop();
             contextWrite.stop();
@@ -451,13 +437,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA_TO_QUEUE + queueName);
            throw new AndesException("Error occurred while inserting message metadata to queue ", bue);
             
-        }*/ catch (SQLNonTransientConnectionException sqlConEx) {
+        }*/ catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_ADDING_METADATA_TO_QUEUE + queueName);
-            throw new AndesStoreUnavailableException("Error occurred while inserting message metadata to queue ",
-                    sqlConEx.getSQLState(), sqlConEx);
-        } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA_TO_QUEUE + queueName);
-            throw new AndesException(
+            throw rdbmsStoreUtils.convertSQLException(
                     "Error occurred while inserting message metadata to queue " + queueName, e);
         } finally {
             metaAdditionToQueueContext.stop();
@@ -500,13 +482,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             rdbmsStoreUtils.raiseBatchUpdateException(metadataList, connection, bue,
                     RDBMSConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
 
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            rollback(connection, RDBMSConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
-            throw new AndesStoreUnavailableException("Error occurred while inserting message metadata list to queue " + queueName,
-                    sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
-            throw new AndesException(
+            throw rdbmsStoreUtils.convertSQLException(
                     "Error occurred while inserting message metadata list to queue " + queueName, e);
         } finally {
             metaAddditionToQueuecontext.stop();
@@ -539,13 +517,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatement.close();
 
             connection.commit();
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            rollback(connection, RDBMSConstants.TASK_UPDATING_META_DATA_QUEUE + targetQueueName);
-            throw new AndesStoreUnavailableException("Error occurred while updating message metadata to destination queue " +
-                    targetQueueName, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_UPDATING_META_DATA_QUEUE + targetQueueName);
-            throw new AndesException("Error occurred while updating message metadata to destination queue "
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while updating message metadata to destination queue "
                     + targetQueueName, e);
         } finally {
             contextWrite.stop();
@@ -588,13 +562,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             rdbmsStoreUtils.raiseBatchUpdateException(metadataList, connection, bue,
                     RDBMSConstants.TASK_UPDATING_META_DATA);
 
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            rollback(connection, RDBMSConstants.TASK_UPDATING_META_DATA);
-            throw new AndesStoreUnavailableException("Error occurred while updating message metadata list.",
-                    sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_UPDATING_META_DATA);
-            throw new AndesException("Error occurred while updating message metadata list.", e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while updating message metadata list.", e);
         } finally {
             metaUpdateContext.stop();
             contextWrite.stop();
@@ -719,11 +689,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 byte[] b = results.getBytes(RDBMSConstants.METADATA);
                 md = new AndesMessageMetadata(messageId, b, true);
             }
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            throw new AndesStoreUnavailableException("error occurred while retrieving message " + "metadata for msg id:" +
-                    messageId, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
-            throw new AndesException("error occurred while retrieving message " +
+            throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving message " +
                     "metadata for msg id:" + messageId, e);
         } finally {
             metaRetrievalContext.stop();
@@ -774,12 +741,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                         ") in destination queue " + storageQueueName
                         + "\nresponse: metadata count " + metadataList.size());
             }
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            throw new AndesStoreUnavailableException("Error occurred while retrieving messages between msg id " +
-                    firstMsgId + " and " + lastMsgID + " from queue " + storageQueueName,
-                    sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
-            throw new AndesException("Error occurred while retrieving messages between msg id " + firstMsgId + " and " +
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while retrieving messages between msg id " + firstMsgId + " and " +
                     lastMsgID + " from queue " + storageQueueName, e);
         } finally {
             metaListRetrievalContext.stop();
@@ -834,11 +797,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 mdList.add(md);
                 resultCount++;
             }
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            throw new AndesStoreUnavailableException("error occurred while retrieving message metadata from queue ",
-                    sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
-            throw new AndesException("error occurred while retrieving message metadata from queue ", e);
+            throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving message metadata from queue ", e);
         } finally {
             nextMetaRetrievalContext.stop();
             contextRead.stop();
@@ -882,15 +842,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 log.debug("Metadata removed. " + messagesToRemove.size() +
                         " metadata from destination " + storageQueueName);
             }
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            rollback(connection, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
-            throw new AndesStoreUnavailableException("error occurred while deleting message metadata from queue " +
-                    storageQueueName,
-                    sqlConEx.getSQLState(), sqlConEx);
-
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
-            throw new AndesException("error occurred while deleting message metadata from queue ",
+            throw rdbmsStoreUtils.convertSQLException("error occurred while deleting message metadata from queue ",
                     e);
         } finally {
             metaDeletionContext.stop();
@@ -960,17 +914,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 log.debug("Metadata and content removed. " + messagesToRemove.size() +
                         " for destination queue" + storageQueueName);
             }
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            rollback(connection, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName
-                    + " and " + RDBMSConstants.TASK_DELETING_MESSAGE_PARTS);
-            throw new AndesStoreUnavailableException("error occurred while deleting message metadata " +
-                    "and content for queue " + storageQueueName,
-                    sqlConEx.getSQLState(), sqlConEx);
-
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName
                     + " and " + RDBMSConstants.TASK_DELETING_MESSAGE_PARTS);
-            throw new AndesException("error occurred while deleting message metadata and content for queue ",
+            throw rdbmsStoreUtils.convertSQLException("error occurred while deleting message metadata and content for queue ",
                     e);
         } finally {
 
@@ -1020,13 +967,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 resultCount++;
             }
             return list;
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            rollback(connection, RDBMSConstants.TASK_RETRIEVING_EXPIRED_MESSAGES);
-            throw new AndesStoreUnavailableException("error occurred while retrieving expired messages.",
-                    sqlConEx.getSQLState(), sqlConEx);
-
         } catch (SQLException e) {
-            throw new AndesException("error occurred while retrieving expired messages.", e);
+            rollback(connection, RDBMSConstants.TASK_RETRIEVING_EXPIRED_MESSAGES);
+            throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving expired messages.", e);
         } finally {
             contextRead.stop();
             close(resultSet, RDBMSConstants.TASK_RETRIEVING_EXPIRED_MESSAGES);
@@ -1100,14 +1043,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             }
             preparedStatement.executeBatch();
             connection.commit();
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            rollback(connection, RDBMSConstants.TASK_DELETING_FROM_EXPIRY_TABLE);
-            throw new AndesStoreUnavailableException("error occurred while deleting message metadata "
-                    + "from expiration table ", sqlConEx.getSQLState(), sqlConEx);
-
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_DELETING_FROM_EXPIRY_TABLE);
-            throw new AndesException("error occurred while deleting message metadata " +
+            throw rdbmsStoreUtils.convertSQLException("error occurred while deleting message metadata " +
                     "from expiration table ", e);
         } finally {
             contextWrite.stop();
@@ -1350,14 +1288,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 log.debug("DELETED all message metadata from " + storageQueueName +
                         " with queue ID " + queueID);
             }
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            rollback(connection, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
-            throw new AndesStoreUnavailableException("error occurred while deleting message metadata "
-                    + "from expiration table ", sqlConEx.getSQLState(), sqlConEx);
-
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
-            throw new AndesException("error occurred while clearing message metadata from queue :" +
+            throw rdbmsStoreUtils.convertSQLException("error occurred while clearing message metadata from queue :" +
                     storageQueueName, e);
         } finally {
             contextWrite.stop();
@@ -1396,13 +1329,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 messageIDs.add(results.getLong(RDBMSConstants.MESSAGE_ID));
             }
 
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-
-            throw new AndesStoreUnavailableException("Error while getting message IDs for queue : " +
-                    storageQueueName, sqlConEx.getSQLState(), sqlConEx);
-
         } catch (SQLException e) {
-            throw new AndesException("Error while getting message IDs for queue : " +
+            throw rdbmsStoreUtils.convertSQLException("Error while getting message IDs for queue : " +
                     storageQueueName, e);
         } finally {
             contextRead.stop();
@@ -1445,13 +1373,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             }
 
 
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-
-            throw new AndesStoreUnavailableException("Error while getting message count from queue " +
-                    storageQueueName, sqlConEx.getSQLState(), sqlConEx);
-
         } catch (SQLException e) {
-            throw new AndesException("Error while getting message count from queue " +
+            throw rdbmsStoreUtils.convertSQLException("Error while getting message count from queue " +
                     storageQueueName, e);
         } finally {
             contextRead.stop();
@@ -1553,15 +1476,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     }
                 }
             }
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            log.error("Error while deleting messages in DLC for queue : " + storageQueueName, sqlConEx);
-            throw new AndesStoreUnavailableException("Error while deleting messages in DLC for queue : " + storageQueueName,
-                    sqlConEx.getSQLState(), sqlConEx);
-
         } catch (SQLException e) {
             // This could be thrown only from the while loop reading messages in DLC.
             log.error("Error while deleting messages in DLC for queue : " + storageQueueName, e);
-            throw new AndesException("Error while deleting messages in DLC for queue : " + storageQueueName, e);
+            throw rdbmsStoreUtils.convertSQLException("Error while deleting messages in DLC for queue : " + storageQueueName, e);
         }
 
         // Execute Batch Delete
@@ -1573,14 +1491,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 log.debug("Removed. " + messageCountInDLCForQueue +
                         " messages from DLC for destination " + storageQueueName);
             }
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            rollback(connection, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
-            throw new AndesStoreUnavailableException("Error occurred while deleting message metadata from queue :" +
-                    storageQueueName, sqlConEx.getSQLState(), sqlConEx);
-
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
-            throw new AndesException("Error occurred while deleting message metadata from queue :" + storageQueueName,
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while deleting message metadata from queue :" + storageQueueName,
                     e);
         } finally {
             contextWrite.stop();
@@ -1653,14 +1566,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 connection.commit();
             }
 
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            rollback(connection, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
-            throw new AndesStoreUnavailableException("Error occurred while adding retained message content to DB ",
-                    sqlConEx.getSQLState(), sqlConEx);
-
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_STORING_RETAINED_MESSAGE_PARTS);
-            throw new AndesException("Error occurred while adding retained message content to DB ", e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while adding retained message content to DB ", e);
 
         } finally {
             contextWrite.stop();
@@ -1830,11 +1738,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 topicList.add(results.getString(RDBMSConstants.TOPIC_NAME));
             }
 
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            throw new AndesStoreUnavailableException("Error occurred while reading retained topics ",
-                    sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
-            throw new AndesException("Error occurred while reading retained topics ", e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while reading retained topics ", e);
         } finally {
             close(results, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPICS);
             close(preparedStatementForTopicSelect, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPICS);
@@ -1874,12 +1779,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 long messageId = results.getLong(RDBMSConstants.MESSAGE_ID);
                 metadata = new AndesMessageMetadata(messageId, b, true);
             }
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-
-            throw new AndesStoreUnavailableException("Error occurred while reading retained topics ",
-                    sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
-            throw new AndesException("error occurred while retrieving retained message " +
+            throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving retained message " +
                     "for destination:" + destination, e);
         } finally {
             contextRead.stop();
@@ -1925,14 +1826,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 messagePart.setOffSet(offset);
                 contentParts.put(offset, messagePart);
             }
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-
-            throw new AndesStoreUnavailableException(
-                    "Error occurred while retrieving retained message content from DB" +
-                            " [msg_id=" + messageID + "]", sqlConEx.getSQLState(),
-                    sqlConEx);
         } catch (SQLException e) {
-            throw new AndesException("Error occurred while retrieving retained message content from DB" +
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while retrieving retained message content from DB" +
                     " [msg_id=" + messageID + "]", e);
         } finally {
             close(results, RDBMSConstants.TASK_RETRIEVING_RETAINED_MESSAGE_PARTS);
@@ -1958,6 +1853,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         }
     }
 
+    
+    
+        
     /**
      * Implementation of AndesTransaction class for RDBMS. This handles the transaction life cycle of a
      * transactional session for message  publishing.
@@ -2068,6 +1966,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             txConnectionsCount.decrementAndGet();
             connectionClosed = true;
         }
+        
     }
 }
 

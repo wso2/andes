@@ -18,6 +18,9 @@
 
 package org.wso2.andes.store.rdbms;
 
+import java.sql.DataTruncation;
+import java.sql.SQLDataException;
+
 /**
  * JDBC storage related prepared statements, table names, column names and tasks are grouped
  * in this class.
@@ -30,6 +33,53 @@ public class RDBMSConstants {
     // Configuration properties
     protected static final String PROP_JNDI_LOOKUP_NAME = "dataSource";
 
+    /**
+     * Configuration name used to specify sql state code classes (i.e first two digits) for database
+     * connectivity errors.
+     * <p>
+     * configuration is configured in broker.xml,
+     * <ul>
+     * <li>persistence/messageStore/</li>
+     * <li>persistence/contextStore/</li>
+     * </ul>
+     * </p>
+     * 
+     */
+    protected static final String STORE_UNAVAILABLE_SQL_STATE_CLASSES = "storeUnavailableSQLStateClasses";
+
+    /**
+     * Configuration name used to specify SQL state code classes (i.e first two
+     * digits)
+     * corresponding to various database server generated errors similar to
+     * {@link DataTruncation}, {@link SQLDataException} (but driver didn't
+     * differentiated and just choose set the sql state only)
+     * <p>
+     * configuration is configured in broker.xml,
+     * <ul>
+     * <li>persistence/messageStore/</li>
+     * <li>persistence/contextStore/</li>
+     * </ul>
+     * </p>
+     * 
+     */
+    protected static final String DATA_INTEGRITY_VIOLATION_SQL_STATE_CLASSES = "integrityViolationSQLStateClasses";
+    
+    /**
+     * Configuration name used to specify SQL state code classes (i.e first two
+     * digits)
+     * corresponding to integrity violation errors.
+     * <p>
+     * configuration is configured in broker.xml,
+     * <ul>
+     * <li>persistence/messageStore/</li>
+     * <li>persistence/contextStore/</li>
+     * </ul>
+     * </p>
+     * 
+     */
+    protected static final String DATA_ERROR_SQL_STATE_CLASSES = "dataErrorSQLStateClasses";
+    
+    
     // Message Store tables
     protected static final String CONTENT_TABLE = "MB_CONTENT";
     protected static final String METADATA_TABLE = "MB_METADATA";
