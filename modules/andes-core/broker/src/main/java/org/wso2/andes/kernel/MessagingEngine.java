@@ -18,6 +18,7 @@
 
 package org.wso2.andes.kernel;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.log4j.Logger;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -27,6 +28,8 @@ import org.wso2.andes.kernel.slot.SlotCoordinator;
 import org.wso2.andes.kernel.slot.SlotCoordinatorCluster;
 import org.wso2.andes.kernel.slot.SlotCoordinatorStandalone;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
+import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
+import org.wso2.andes.kernel.slot.SlotManagerStandalone;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
@@ -37,8 +40,6 @@ import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.thrift.MBThriftClient;
-
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -736,5 +737,28 @@ public class MessagingEngine {
         Map<Integer, AndesMessagePart> retainedContentParts = messageStore.getRetainedContentParts(messageID);
 
         return new RetainedContent(retainedContentParts, contentSize, messageID);
+    }
+
+    /**
+     * Return last assign message id of slot for given queue
+     *
+     * @param queueName name of destination queue
+     * @return last assign message id
+     */
+    public long getLastAssignedSlotMessageId(String queueName) {
+        long lastMessageId = 0;
+        long messageIdDifference = 1024 * 256 * 5000;
+        Long lastAssignedSlotMessageId;
+        if (ClusterResourceHolder.getInstance().getClusterManager().isClusteringEnabled()) {
+            lastAssignedSlotMessageId = SlotManagerClusterMode.getInstance()
+                    .getLastAssignedSlotMessageIdInClusterMode(queueName);
+        } else {
+            lastAssignedSlotMessageId = SlotManagerStandalone.getInstance()
+                    .getLastAssignedSlotMessageIdInStandaloneMode(queueName);
+        }
+        if(lastAssignedSlotMessageId != null) {
+            lastMessageId = lastAssignedSlotMessageId - messageIdDifference;
+        }
+        return lastMessageId;
     }
 }
