@@ -204,16 +204,17 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      */
     @SuppressWarnings("unchecked")
     protected void setupVirtualHosts(org.apache.commons.configuration.Configuration conf) throws ConfigurationException {
-        List<String> vhostFiles = conf.getList("virtualhosts");
+        
+        String[] vhostFiles = conf.getStringArray("virtualhosts");
         org.apache.commons.configuration.Configuration vhostConfig = conf.subset("virtualhosts");
 
         // Only one configuration mechanism allowed
-        if (!vhostFiles.isEmpty() && !vhostConfig.subset("virtualhost").isEmpty()) {
+        if (!(vhostFiles.length == 0) && !vhostConfig.subset("virtualhost").isEmpty()) {
             throw new ConfigurationException("Only one of external or embedded virtualhosts configuration allowed.");
         }
 
         // We can only have one vhosts XML file included
-        if (vhostFiles.size() > 1) {
+        if (vhostFiles.length > 1) {
             throw new ConfigurationException("Only one external virtualhosts configuration file allowed, " +
                     "multiple filenames found.");
         }

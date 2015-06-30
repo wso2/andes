@@ -17,6 +17,19 @@
  */
 package org.wso2.andes.configuration;
 
+import java.lang.reflect.InvocationTargetException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.text.DateFormat;
+import java.text.MessageFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
@@ -28,18 +41,6 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.util.ConfigurationProperty;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.carbon.utils.ServerConstants;
-
-import java.lang.reflect.InvocationTargetException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.text.DateFormat;
-import java.text.MessageFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
 
 /**
  * This class acts as a singleton access point for all config parameters used within MB.
@@ -111,28 +112,31 @@ public class AndesConfigurationManager {
 
             compositeConfiguration = new CompositeConfiguration();
 
+            compositeConfiguration.setDelimiterParsingDisabled(true);
+            
             log.info("Main andes configuration located at : " + ROOT_CONFIG_FILE_PATH + ROOT_CONFIG_FILE_NAME);
 
-            XMLConfiguration rootConfiguration = new XMLConfiguration(ROOT_CONFIG_FILE_PATH + ROOT_CONFIG_FILE_NAME);
+            
+            XMLConfiguration rootConfiguration = new XMLConfiguration();
+            rootConfiguration.setDelimiterParsingDisabled(true);
+            rootConfiguration.setFileName(ROOT_CONFIG_FILE_PATH + ROOT_CONFIG_FILE_NAME);
             rootConfiguration.setExpressionEngine(new XPathExpressionEngine());
-
+            rootConfiguration.load();
             compositeConfiguration.addConfiguration(rootConfiguration);
-
             // Load and combine other configurations linked to broker.xml
-            List<String> linkedConfigurations = compositeConfiguration.getList("links/link");
+            String[] linkedConfigurations = compositeConfiguration.getStringArray("links/link");
 
             for (String linkedConfigurationPath : linkedConfigurations) {
 
                 log.info("Linked configuration file path : " + ROOT_CONFIG_FILE_PATH + linkedConfigurationPath);
 
-                XMLConfiguration linkedConfiguration = new XMLConfiguration(ROOT_CONFIG_FILE_PATH +
-                        linkedConfigurationPath);
+                XMLConfiguration linkedConfiguration = new XMLConfiguration();
+                linkedConfiguration.setDelimiterParsingDisabled(false);
+                linkedConfiguration.setFileName(ROOT_CONFIG_FILE_PATH + linkedConfigurationPath);
                 linkedConfiguration.setExpressionEngine(new XPathExpressionEngine());
+                linkedConfiguration.load();
                 compositeConfiguration.addConfiguration(linkedConfiguration);
             }
-
-            compositeConfiguration.setDelimiterParsingDisabled(true); // If we don't do this,
-            // we can't add a new configuration to the compositeConfiguration by code.
 
             // derive certain special properties that are not simply specified in
             // the configuration files.
@@ -271,6 +275,7 @@ public class AndesConfigurationManager {
         }
     }
 
+    
     /**
      * Use this method when you need to acquire a list of properties of same group.
      *
@@ -281,7 +286,7 @@ public class AndesConfigurationManager {
     public static List<String> readValueList(AndesConfiguration configurationProperty) {
 
         if (configurationProperty.toString().startsWith(LIST_TYPE)) {
-            return compositeConfiguration.getList(configurationProperty.get().getKeyInFile());
+            return Arrays.asList(compositeConfiguration.getStringArray(configurationProperty.get().getKeyInFile()));
         } else {
             log.error(MessageFormat.format(PROPERTY_NOT_A_LIST, configurationProperty));
             return new ArrayList<String>();

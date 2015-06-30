@@ -62,7 +62,7 @@
             <artifactId>commons-collections</artifactId>
         </dependency>
         <dependency>
-            <groupId>commons-configuration.wso2</groupId>
+            <groupId>commons-configuration</groupId>
             <artifactId>commons-configuration</artifactId>
         </dependency>
         <dependency>

@@ -27,7 +27,9 @@ import javax.jms.Connection;
 import javax.jms.Queue;
 import javax.jms.Session;
 import java.util.List;
+import java.util.Arrays;
 import java.io.File;
+
 
 /**
  * The MessageStore test suite validates that the follow log messages as
@@ -59,7 +61,7 @@ public class DerbyMessageStoreLoggingTest extends MemoryMessageStoreLoggingTest
         // Load the default configuration file to get the list of defined vhosts
         ServerConfiguration configuration = new ServerConfiguration(new File(_configFile.getParent() + "/config.xml"));
         configuration.initialise();
-        List<String> vhosts = configuration.getConfig().getList("virtualhosts.virtualhost.name");
+        String[] vhosts = configuration.getConfig().getStringArray("virtualhosts.virtualhost.name");
 
         // Make them all persistent i.e. Use DerbyMessageStore and
         // test that it logs correctly.
@@ -100,7 +102,7 @@ public class DerbyMessageStoreLoggingTest extends MemoryMessageStoreLoggingTest
         // Load VirtualHost list from file.
         ServerConfiguration configuration = new ServerConfiguration(_configFile);
         configuration.initialise();
-        List<String> vhosts = configuration.getConfig().getList("virtualhosts.virtualhost.name");
+        List<String> vhosts = Arrays.asList(configuration.getConfig().getStringArray("virtualhosts.virtualhost.name"));
 
         //Validate each vhost logs a creation
         results = waitAndFindMatches("MST-1002");
@@ -164,7 +166,7 @@ public class DerbyMessageStoreLoggingTest extends MemoryMessageStoreLoggingTest
         // Load VirtualHost list from file.
         ServerConfiguration configuration = new ServerConfiguration(_configFile);
         configuration.initialise();
-        List<String> vhosts = configuration.getConfig().getList("virtualhosts.virtualhost.name");
+        List<String> vhosts = Arrays.asList(configuration.getConfig().getStringArray("virtualhosts.virtualhost.name"));
 
         //Validate each vhost logs a creation
         results = waitAndFindMatches("MST-1004");
@@ -232,7 +234,7 @@ public class DerbyMessageStoreLoggingTest extends MemoryMessageStoreLoggingTest
         // Load VirtualHost list from file.
         ServerConfiguration configuration = new ServerConfiguration(_configFile);
         configuration.initialise();
-        List<String> vhosts = configuration.getConfig().getList("virtualhosts.virtualhost.name");
+        List<String> vhosts = Arrays.asList(configuration.getConfig().getStringArray("virtualhosts.virtualhost.name"));
 
         //Validate each vhost logs a creation
         results = waitAndFindMatches("MST-1006");
@@ -299,7 +301,7 @@ public class DerbyMessageStoreLoggingTest extends MemoryMessageStoreLoggingTest
         // Load VirtualHost list from file.
         ServerConfiguration configuration = new ServerConfiguration(_configFile);
         configuration.initialise();
-        List<String> vhosts = configuration.getConfig().getList("virtualhosts.virtualhost.name");
+        List<String> vhosts = Arrays.asList(configuration.getConfig().getStringArray("virtualhosts.virtualhost.name"));
 
         //Validate each vhost logs a creation
         results = waitAndFindMatches("MST-1004 : Recovery Start :");
@@ -365,7 +367,7 @@ public class DerbyMessageStoreLoggingTest extends MemoryMessageStoreLoggingTest
         // Load VirtualHost list from file.
         ServerConfiguration configuration = new ServerConfiguration(_configFile);
         configuration.initialise();
-        List<String> vhosts = configuration.getConfig().getList("virtualhosts.virtualhost.name");
+        List<String> vhosts = Arrays.asList(configuration.getConfig().getStringArray("virtualhosts.virtualhost.name"));
 
         //Validate each vhost logs a creation
         results = waitAndFindMatches("MST-1006 : Recovery Complete :");
@@ -508,7 +510,7 @@ public class DerbyMessageStoreLoggingTest extends MemoryMessageStoreLoggingTest
             // Load VirtualHost list from file.
             ServerConfiguration configuration = new ServerConfiguration(_configFile);
             configuration.initialise();
-            List<String> vhosts = configuration.getConfig().getList("virtualhosts.virtualhost.name");
+            List<String> vhosts = Arrays.asList(configuration.getConfig().getStringArray("virtualhosts.virtualhost.name"));
 
             //Validate each vhost logs a creation
             results = waitAndFindMatches("MST-1004 : Recovery Start : " + queueName);
