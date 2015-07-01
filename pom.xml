@@ -74,9 +74,9 @@
                 <version>${commons-collections.version}</version>
             </dependency>
             <dependency>
-                <groupId>commons-configuration.wso2</groupId>
+                <groupId>commons-configuration</groupId>
                 <artifactId>commons-configuration</artifactId>
-                <version>${commons-configuration.version}.wso2v1</version>
+                <version>${commons-configuration.version}</version>
             </dependency>
             <dependency>
                 <groupId>commons-jxpath</groupId>
@@ -544,7 +544,7 @@
         <project.scm.id>my-scm-server</project.scm.id>
         <andes.version>2.6.0</andes.version>
         <commons-cli.version>1.0</commons-cli.version>
-        <commons-configuration.version>1.6.0</commons-configuration.version>
+        <commons-configuration.version>1.10</commons-configuration.version>
         <commons-lang.version>2.6</commons-lang.version>
         <geronimo-jms_1.1_spec.version>1.1.0</geronimo-jms_1.1_spec.version>
         <mina-core.version>1.1.7</mina-core.version>

@@ -1,17 +1,17 @@
 /*
  * Copyright (c) 2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
- *
+ * 
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License.
  * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
+ * KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations
  * under the License.
  */
@@ -20,16 +20,33 @@ package org.wso2.andes.store.rdbms;
 
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
+import java.sql.DataTruncation;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLClientInfoException;
+import java.sql.SQLDataException;
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
+import java.sql.SQLInvalidAuthorizationSpecException;
+import java.sql.SQLNonTransientConnectionException;
+import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.wso2.andes.configuration.util.ConfigurationProperties;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.store.AndesBatchUpdateException;
+import org.wso2.andes.store.AndesDataIntegrityViolationException;
+import org.wso2.andes.store.AndesDataException;
+import org.wso2.andes.store.AndesStoreUnavailableException;
 
+import com.google.common.base.Splitter;
 
 /**
  * Contains utilility methods required for both {@link RDBMSMessageStoreImpl}
@@ -38,6 +55,114 @@ import org.wso2.andes.store.AndesBatchUpdateException;
 public class RDBMSStoreUtils {
 
     private static final Logger log = Logger.getLogger(RDBMSStoreUtils.class);
+
+    /**
+     * Keep track of SQL state code classes (i.e first two digits)
+     * corresponding to database connectivity errors
+     */
+    private Set<String> storeUnavailableSQLStatesClassCodes;
+
+
+    /**
+     * Keep track of SQL state code classes (i.e first two digits)
+     * corresponding to integrity violation errors
+     */
+    
+    private Set<String> dataIntegrityViolationSQLStateClassCodes;
+
+    
+    /**
+     * Keep track of SQL state code classes (i.e first two digits)
+     * corresponding to various database server generated errors similar to
+     * {@link DataTruncation}, {@link SQLDataException} (but driver didn't
+     * differentiated and just choose set the sql state only)
+     */
+    private Set<String> dataErrorSQLStateClassCodes;
+
+    
+    
+    public RDBMSStoreUtils(ConfigurationProperties connectionProperties) {
+
+        // extract the configurations set in broker.xml
+        storeUnavailableSQLStatesClassCodes =
+                                              extractAndFill(connectionProperties,
+                                                             RDBMSConstants.STORE_UNAVAILABLE_SQL_STATE_CLASSES
+                                              );
+
+        dataIntegrityViolationSQLStateClassCodes =
+                                                   extractAndFill(connectionProperties,
+                                                                  RDBMSConstants.DATA_INTEGRITY_VIOLATION_SQL_STATE_CLASSES
+                                                   );
+
+        dataErrorSQLStateClassCodes = extractAndFill(connectionProperties, RDBMSConstants.DATA_ERROR_SQL_STATE_CLASSES
+                                      );
+               
+    }
+
+   
+    
+    public AndesException convertSQLException(String message, SQLException sqlException) {
+
+        // try using SQLException subclasses (works for mysql)
+        AndesException convertedException = convertBySQLException(message, sqlException);
+
+        
+        if (null == convertedException) {
+         // trying using sql state flags ( works for jtds, mssql etc)
+            convertedException = convertBySQLState(message, sqlException);
+        }
+
+        if (null == convertedException) { 
+            // if unable to determine exact error then throw a generic exception.
+            convertedException = new AndesException(message, sqlException.getSQLState(), sqlException);
+        }
+        
+        return convertedException;
+
+    }
+
+    private AndesException convertBySQLException(String message, SQLException sqlException) {
+        AndesException convertedException = null;
+
+        if (SQLClientInfoException.class.isInstance(sqlException)
+            || SQLInvalidAuthorizationSpecException.class.isInstance(sqlException)
+            || SQLNonTransientConnectionException.class.isInstance(sqlException)
+            || SQLTransientConnectionException.class.isInstance(sqlException)) {
+
+            String sqlState = extractSqlState(sqlException);
+            convertedException = new AndesStoreUnavailableException(message, sqlState, sqlException);
+
+        } else if (SQLIntegrityConstraintViolationException.class.isInstance(sqlException)) {
+            String sqlState = extractSqlState(sqlException);
+            convertedException = new AndesDataIntegrityViolationException(message, sqlState, sqlException);
+        } else if (DataTruncation.class.isInstance(sqlException) ||
+                   SQLDataException.class.isInstance(sqlException)) {
+            String sqlState = extractSqlState(sqlException);
+            convertedException = new AndesDataException(message, sqlState, sqlException);
+        }
+        
+        return convertedException;
+    }
+    
+    private AndesException convertBySQLState(String message, SQLException sqlException) {
+
+        AndesException convertedException = null;
+        String sqlState = extractSqlState(sqlException);
+
+        String sqlStateClassCode = determineSqlStateClassCode(sqlState);
+
+        if (storeUnavailableSQLStatesClassCodes.contains(sqlStateClassCode)) {
+            convertedException = new AndesStoreUnavailableException(message, sqlState, sqlException);
+        } else if (dataIntegrityViolationSQLStateClassCodes.contains(sqlStateClassCode)) {
+            convertedException = new AndesDataIntegrityViolationException(message, sqlState, sqlException);
+        } else if (dataErrorSQLStateClassCodes.contains(sqlStateClassCode)){
+            convertedException = new AndesDataException(message, sqlState, sqlException);
+        }
+
+        return convertedException;
+    }
+  
+    
     
     /**
      * Inserts a test record
@@ -79,26 +204,29 @@ public class RDBMSStoreUtils {
 
         return canInsert;
     }
-    
+
     /**
-     * Reads a test record 
-     * @param testString a string value
-     * @param testTime a time value 
-     * @return true if the test was successful. 
+     * Reads a test record
+     * 
+     * @param testString
+     *            a string value
+     * @param testTime
+     *            a time value
+     * @return true if the test was successful.
      */
-    public boolean testRead(Connection connection, 
-                            String testString, 
-                            long testTime) throws SQLException{
+    public boolean testRead(Connection connection,
+                            String testString,
+                            long testTime) throws SQLException {
 
         boolean canRead = false;
-        
+
         PreparedStatement selectPreparedStatement = null;
 
         ResultSet results = null;
 
         try {
             selectPreparedStatement = connection.prepareStatement(
-                                       RDBMSConstants.PS_TEST_MSG_STORE_SELECT);
+                                                RDBMSConstants.PS_TEST_MSG_STORE_SELECT);
             selectPreparedStatement.setString(1, testString);
             selectPreparedStatement.setLong(2, testTime);
 
@@ -110,7 +238,7 @@ public class RDBMSStoreUtils {
 
         } catch (SQLException e) {
             log.error(RDBMSConstants.TASK_TEST_MESSAGE_STORE_OPERATIONAL_READ +
-                              String.format("test data : [%s, %d]", testString, testTime), e);
+                      String.format("test data : [%s, %d]", testString, testTime), e);
 
         } finally {
             String msg =
@@ -124,7 +252,7 @@ public class RDBMSStoreUtils {
 
         return canRead;
     }
-  
+
     /**
      * Delete a test record
      * 
@@ -166,13 +294,14 @@ public class RDBMSStoreUtils {
 
         return canDelete;
     }
-    
-    
+
     /**
      * close the prepared statement resource
      *
-     * @param preparedStatement PreparedStatement
-     * @param task              task that was done by the closed prepared statement.
+     * @param preparedStatement
+     *            PreparedStatement
+     * @param task
+     *            task that was done by the closed prepared statement.
      */
     private void close(PreparedStatement preparedStatement, String task) {
         if (preparedStatement != null) {
@@ -187,8 +316,10 @@ public class RDBMSStoreUtils {
     /**
      * closes the result set resources
      *
-     * @param resultSet ResultSet
-     * @param task      task that was done by the closed result set.
+     * @param resultSet
+     *            ResultSet
+     * @param task
+     *            task that was done by the closed result set.
      */
     private void close(ResultSet resultSet, String task) {
         if (resultSet != null) {
@@ -199,13 +330,14 @@ public class RDBMSStoreUtils {
             }
         }
     }
-    
-    
+
     /**
      * Closes the provided connection. on failure log the error;
      *
-     * @param connection Connection
-     * @param task       task that was done before closing
+     * @param connection
+     *            Connection
+     * @param task
+     *            task that was done before closing
      */
     private void close(Connection connection, String task) {
         if (connection != null) {
@@ -221,8 +353,10 @@ public class RDBMSStoreUtils {
     /**
      * On database update failure tries to rollback
      *
-     * @param connection database connection
-     * @param task       explanation of the task done when the rollback was triggered
+     * @param connection
+     *            database connection
+     * @param task
+     *            explanation of the task done when the rollback was triggered
      */
     private void rollback(Connection connection, String task) {
         if (connection != null) {
@@ -233,7 +367,7 @@ public class RDBMSStoreUtils {
             }
         }
     }
-    
+
     /**
      * Throws an {@link AndesBatchUpdateException} with specified
      * information. and rollback the tried batch operation.
@@ -270,9 +404,90 @@ public class RDBMSStoreUtils {
         rollback(connection, task); // try to rollback the batch operation.
 
         AndesBatchUpdateException insertEx =
-                                                new AndesBatchUpdateException(task + " failed", bue.getSQLState(),
-                                                                                 bue, failed, succeded);
+                                             new AndesBatchUpdateException(task + " failed", bue.getSQLState(),
+                                                                           bue, failed, succeded);
         throw insertEx;
+    }
+
+    
+    
+    /**
+     * A Utility method which will extract a configuration, tokenize and
+     *  return a {@link Set} with values.
+     * 
+     * @param connectionProperties
+     *            All configurations
+     * @param configParam
+     *            specific configuration name (to extract value)
+     * @return parsed configurations
+     */
+    private Set<String> extractAndFill(ConfigurationProperties connectionProperties,
+                                       String configParam) {
+        Set<String> configValues = Collections.emptySet();
+
+        String value = connectionProperties.getProperty(configParam);
+
+        if (StringUtils.isNotBlank(value)) {
+            Iterable<String> splitValues = Splitter.on(',').trimResults()
+                                                   .omitEmptyStrings()
+                                                   .split(value);
+
+            configValues = new HashSet<String>();
+            for (String state : splitValues) {
+                configValues.add(state);
+            }
+        }
+
+        return configValues;
+    }    
+    
+    
+    /**
+     * Extract the vendor specific error code from a sql exception
+     * 
+     * @param sqlException
+     *            the error
+     * @return the error code supplied by the vendor
+     */
+    private int extractErrorCode(SQLException sqlException) {
+        int errorCode = sqlException.getErrorCode();
+        SQLException nextEx = sqlException.getNextException();
+        while (errorCode == 0 && nextEx != null) {
+            errorCode = nextEx.getErrorCode();
+            nextEx = nextEx.getNextException();
+        }
+        return errorCode;
+    }
+
+    /**
+     * Extracts SQL State from a given sql exception
+     * 
+     * @param sqlException
+     *            the error
+     * @return sql state
+     */
+    private String extractSqlState(SQLException sqlException) {
+        String sqlState = sqlException.getSQLState();
+        SQLException nextEx = sqlException.getNextException();
+        while (sqlState == null && nextEx != null) {
+            sqlState = nextEx.getSQLState();
+            nextEx = nextEx.getNextException();
+        }
+        return sqlState;
+    }
+
+    /**
+     * Extracts the Sql state class ( the first two digits of the sql state)
+     * 
+     * @param sqlState
+     *            the sql state given in a sql exception
+     * @return the sql state class
+     */
+    private String determineSqlStateClassCode(String sqlState) {
+        if (sqlState == null || sqlState.length() < 2) {
+            return sqlState;
+        }
+        return sqlState.substring(0, 2);
     }
 
 }

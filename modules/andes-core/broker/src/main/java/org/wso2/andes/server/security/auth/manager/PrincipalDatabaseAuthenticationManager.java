@@ -162,14 +162,14 @@ public class PrincipalDatabaseAuthenticationManager implements AuthenticationMan
   
         public Map<String,String> getPdClassAttributeMap() throws ConfigurationException
         {
-            final List<String> argumentNames = _configuration.getList("principal-database.attributes.attribute.name");
-            final List<String> argumentValues = _configuration.getList("principal-database.attributes.attribute.value");
-            final Map<String,String> attributes = new HashMap<String,String>(argumentNames.size());
+            final String[] argumentNames = _configuration.getStringArray("principal-database.attributes.attribute.name");
+            final String[] argumentValues = _configuration.getStringArray("principal-database.attributes.attribute.value");
+            final Map<String,String> attributes = new HashMap<String,String>(argumentNames.length);
 
-            for (int i = 0; i < argumentNames.size(); i++)
+            for (int i = 0; i < argumentNames.length; i++)
             {
-                final String argName = argumentNames.get(i);
-                final String argValue = argumentValues.get(i);
+                final String argName = argumentNames[i];
+                final String argValue = argumentValues[i];
 
                 attributes.put(argName, argValue);
             }
