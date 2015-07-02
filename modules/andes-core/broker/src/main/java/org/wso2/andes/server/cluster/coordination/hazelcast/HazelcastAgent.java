@@ -947,7 +947,9 @@ public class HazelcastAgent implements SlotAgent {
             HashMap<String, TreeSet<Slot>> queueToSlotMap = wrapper.getStringListHashMap();
             if (queueToSlotMap != null) {
                 TreeSet<Slot> slotListForQueueOnNode = queueToSlotMap.get(queueName);
-                resultSet.addAll(slotListForQueueOnNode);
+                if(null != slotListForQueueOnNode ) {
+                    resultSet.addAll(slotListForQueueOnNode);
+                }
             }
         }
         return resultSet;
@@ -995,7 +997,12 @@ public class HazelcastAgent implements SlotAgent {
     @Override
     public void updateOverlappedSlots(String nodeId, String queueName, TreeSet<Slot> overlappedSlots) throws AndesException {
         HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
-        HashMap<String, TreeSet<Slot>> queueToSlotMap = wrapper.getStringListHashMap();
+        HashMap<String, TreeSet<Slot>> queueToSlotMap = new HashMap<>();
+        if(null == wrapper) {
+            wrapper = new HashmapStringTreeSetWrapper();
+        } else {
+            queueToSlotMap = wrapper.getStringListHashMap();
+        }
         HashmapStringTreeSetWrapper olWrapper = overLappedSlotMap.get(nodeId);
         HashMap<String, TreeSet<Slot>> olSlotMap = olWrapper.getStringListHashMap();
         for(Slot slot : overlappedSlots) {

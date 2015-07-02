@@ -18,6 +18,10 @@
 
 package org.wso2.andes.store.rdbms;
 
+import org.wso2.andes.kernel.slot.SlotState;
+import java.sql.DataTruncation;
+import java.sql.SQLDataException;
+
 /**
  * JDBC storage related prepared statements, table names, column names and tasks are grouped
  * in this class.
@@ -454,6 +458,7 @@ public class RDBMSConstants {
     protected static final String PS_SELECT_ALL_SLOTS_BY_QUEUE_NAME =
             "SELECT * FROM " + SLOT_TABLE +
                     " WHERE " + STORAGE_QUEUE_NAME + " =? " +
+                    " AND " + SLOT_STATE + " = " + SlotState.ASSIGNED.getCode() +
                     " ORDER BY " + SLOT_ID;
 
     protected static final String PS_SELECT_UNASSIGNED_SLOT =
