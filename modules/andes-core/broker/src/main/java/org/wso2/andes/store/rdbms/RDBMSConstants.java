@@ -18,6 +18,10 @@
 
 package org.wso2.andes.store.rdbms;
 
+import org.wso2.andes.kernel.slot.SlotState;
+import java.sql.DataTruncation;
+import java.sql.SQLDataException;
+
 /**
  * JDBC storage related prepared statements, table names, column names and tasks are grouped
  * in this class.
