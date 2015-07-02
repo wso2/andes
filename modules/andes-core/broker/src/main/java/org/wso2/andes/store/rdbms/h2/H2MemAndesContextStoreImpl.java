@@ -170,6 +170,4 @@ public class H2MemAndesContextStoreImpl extends RDBMSAndesContextStoreImpl {
             close(connection, TASK_CREATING_DB_TABLES);
         }
     }
-
-
 }

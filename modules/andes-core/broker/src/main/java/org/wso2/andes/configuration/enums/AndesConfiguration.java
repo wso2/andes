@@ -451,7 +451,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "/perConnectionMessageThreshold", "1000", Integer.class),
 
     /**
-     * MB starts recovery messages from given date onwards if single node/entire nodes in cluster went down.
+     * Enable RDBMS slot information store
      */
     RECOVERY_MESSAGES_START_FROM_DATE("recovery/startRecoveryFrom", "2015-05-27 00:00:00", String.class),
 
@@ -466,9 +466,13 @@ public enum AndesConfiguration implements ConfigurationProperty {
      * Concurrently reads storage queues to make warm startup faster. But increasing concurrent value to big number
      * may cause heavy load to Cassandra.
      */
-    RECOVERY_MESSAGES_CONCURRENT_STORAGE_QUEUE_READS("recovery/concurrentStorageQueueReads", "5", Integer.class);
+    RECOVERY_MESSAGES_CONCURRENT_STORAGE_QUEUE_READS("recovery/concurrentStorageQueueReads", "5", Integer.class),
 
-
+    /**
+     * Enable RDBMS slot information store
+     */
+    SLOT_MANAGEMENT_STORAGE("slotManagement/storage", "Hazelcast",
+                                                  String.class);
 
 
     private final MetaProperties metaProperties;

@@ -18,9 +18,6 @@
 
 package org.wso2.andes.store.rdbms;
 
-import java.sql.DataTruncation;
-import java.sql.SQLDataException;
-
 /**
  * JDBC storage related prepared statements, table names, column names and tasks are grouped
  * in this class.
@@ -109,6 +106,11 @@ public class RDBMSConstants {
     protected static final String BINDINGS_TABLE = "MB_BINDING";
     protected static final String QUEUE_INFO_TABLE = "MB_QUEUE";
     protected static final String QUEUE_COUNTER_TABLE = "MB_QUEUE_COUNTER";
+    // Slot related tables
+    protected static final String SLOT_TABLE = "MB_SLOT";
+    protected static final String SLOT_MESSAGE_ID_TABLE = "MB_SLOT_MESSAGE_ID";
+    protected static final String QUEUE_TO_LAST_ASSIGNED_ID = "MB_QUEUE_TO_LAST_ASSIGNED_ID";
+    protected static final String NODE_TO_LAST_PUBLISHED_ID = "MB_NODE_TO_LAST_PUBLISHED_ID";
 
     // Andes Context Store table columns
     protected static final String DURABLE_SUB_ID = "SUBSCRIPTION_ID";
@@ -124,6 +126,16 @@ public class RDBMSConstants {
     protected static final String QUEUE_DATA = "QUEUE_DATA";
     protected static final String MESSAGE_COUNT = "MESSAGE_COUNT";
     protected static final String TIME_STAMP = "TIME_STAMP";
+
+    //Slot table columns
+    protected static final String SLOT_ID = "SLOT_ID";
+    protected static final String START_MESSAGE_ID = "START_MESSAGE_ID";
+    protected static final String END_MESSAGE_ID = "END_MESSAGE_ID";
+    protected static final String STORAGE_QUEUE_NAME = "STORAGE_QUEUE_NAME";
+    protected static final String SLOT_STATE = "SLOT_STATE";
+    protected static final String ASSIGNED_NODE_ID = "ASSIGNED_NODE_ID";
+    protected static final String ASSIGNED_QUEUE_NAME = "ASSIGNED_QUEUE_NAME";
+
 
     // prepared statements for Message Store
     protected static final String PS_INSERT_MESSAGE_PART =
@@ -372,6 +384,161 @@ public class RDBMSConstants {
                     " VALUES ( ?,? )";
 
     /**
+     * Prepared statements save slot information
+     */
+    protected static final String PS_INSERT_SLOT =
+            "INSERT INTO " + SLOT_TABLE + " (" +
+                    START_MESSAGE_ID + "," +
+                    END_MESSAGE_ID + "," +
+                    STORAGE_QUEUE_NAME + "," +
+                    SLOT_STATE + "," +
+                    ASSIGNED_NODE_ID + ")" +
+                    " VALUES (?,?,?,2,?)";
+
+    protected static final String PS_DELETE_SLOT =
+            "DELETE FROM " + SLOT_TABLE +
+                    " WHERE " + START_MESSAGE_ID + "=?" +
+                    " AND " + END_MESSAGE_ID + "=?";
+
+    protected static final String PS_DELETE_SLOTS_BY_QUEUE_NAME =
+            "DELETE FROM " + SLOT_TABLE +
+                    " WHERE " + STORAGE_QUEUE_NAME + "=?";
+
+    protected static final String PS_INSERT_SLOT_ASSIGNMENT =
+            "UPDATE " + SLOT_TABLE +
+                    " SET " +
+                    ASSIGNED_NODE_ID + "=?, " +
+                    ASSIGNED_QUEUE_NAME + "=?," +
+                    SLOT_STATE + "=" + SlotState.ASSIGNED.getCode() +
+                    " WHERE " + START_MESSAGE_ID + "=?" +
+                    " AND " + END_MESSAGE_ID + "=?";
+
+    protected static final String PS_DELETE_SLOT_ASSIGNMENT =
+            "UPDATE " + SLOT_TABLE +
+                    " SET " +
+                    ASSIGNED_NODE_ID + "=NULL, " +
+                    ASSIGNED_QUEUE_NAME + "=NULL " +
+                    SLOT_STATE + "=" + SlotState.RETURNED.getCode() +
+                    " WHERE " + START_MESSAGE_ID + "=?" +
+                    " AND " + END_MESSAGE_ID + "=?";
+
+    protected static final String PS_DELETE_SLOT_ASSIGNMENT_BY_QUEUE_NAME =
+            "UPDATE " + SLOT_TABLE +
+                    " SET " +
+                    ASSIGNED_NODE_ID + " = NULL, " +
+                    ASSIGNED_QUEUE_NAME + " = NULL, " +
+                    SLOT_STATE + "=" + SlotState.RETURNED.getCode() +
+                    " WHERE " + ASSIGNED_NODE_ID + "= ?" +
+                    " AND " + ASSIGNED_QUEUE_NAME + "= ?";
+
+    protected static final String PS_GET_ASSIGNED_SLOTS_BY_NODE_ID =
+            "SELECT * " +
+                    " FROM " + SLOT_TABLE +
+                    " WHERE " + ASSIGNED_NODE_ID + "=?" +
+                    " AND " + SLOT_STATE + "=" + SlotState.ASSIGNED.getCode() +
+                    " ORDER BY " + SLOT_ID;
+
+    /**
+     * Prepared statements for setting slot states
+     */
+    protected static final String PS_SET_SLOT_STATE =
+            "UPDATE " + SLOT_TABLE +
+                    " SET " + SLOT_STATE + " = ?" +
+                    " WHERE " + START_MESSAGE_ID + " = ?" +
+                    " AND " + END_MESSAGE_ID + " = ?";
+
+    /**
+     * Prepared statement for selecting unassigned slot
+     */
+
+    protected static final String PS_SELECT_ALL_SLOTS_BY_QUEUE_NAME =
+            "SELECT * FROM " + SLOT_TABLE +
+                    " WHERE " + STORAGE_QUEUE_NAME + " =? " +
+                    " ORDER BY " + SLOT_ID;
+
+    protected static final String PS_SELECT_UNASSIGNED_SLOT =
+            "SELECT * " +
+                    " FROM " + SLOT_TABLE +
+                    " WHERE " + SLOT_STATE + " = " + SlotState.RETURNED.getCode() +
+                    " AND " + STORAGE_QUEUE_NAME + " =? " +
+                    " ORDER BY " + SLOT_ID;
+
+    /**
+     * Prepared statement for selecting oldest overlapped slot
+     */
+    protected static final String PS_SELECT_OVERLAPPED_SLOT =
+            "SELECT * " +
+                    " FROM " + SLOT_TABLE +
+                    " WHERE " + SLOT_STATE + "=" + SlotState.OVERLAPPED.getCode() +
+                    " AND " + STORAGE_QUEUE_NAME + "=?"  +
+                    " ORDER BY " + SLOT_ID;
+
+    /**
+     * Prepared statement for getting last assigned id for queue
+     */
+    protected static final String PS_SELECT_QUEUE_TO_LAST_ASSIGNED_ID =
+            "SELECT * " +
+                    " FROM " + QUEUE_TO_LAST_ASSIGNED_ID +
+                    " WHERE " + QUEUE_NAME + "=?";
+
+    protected static final String PS_INSERT_QUEUE_TO_LAST_ASSIGNED_ID =
+            "INSERT INTO " + QUEUE_TO_LAST_ASSIGNED_ID + "(" +
+                    QUEUE_NAME + "," +
+                    MESSAGE_ID + ")" +
+                    " VALUES (?,?)";
+
+    protected static final String PS_UPDATE_QUEUE_TO_LAST_ASSIGNED_ID =
+            "UPDATE " + QUEUE_TO_LAST_ASSIGNED_ID +
+                    " SET " + MESSAGE_ID + "=? " +
+                    " WHERE " + QUEUE_NAME + "=?";
+
+    protected static final String PS_SELECT_NODE_TO_LAST_PUBLISHED_ID =
+            "SELECT * " +
+                    " FROM " + NODE_TO_LAST_PUBLISHED_ID +
+                    " WHERE " + NODE_ID + "=?";
+
+    protected static final String PS_INSERT_NODE_TO_LAST_PUBLISHED_ID =
+            "INSERT INTO " + NODE_TO_LAST_PUBLISHED_ID + "(" +
+                    NODE_ID + "," +
+                    MESSAGE_ID + ") " +
+                    " VALUES (?,?)";
+
+    protected static final String PS_UPDATE_NODE_TO_LAST_PUBLISHED_ID =
+            "UPDATE " + NODE_TO_LAST_PUBLISHED_ID +
+                    " SET " + MESSAGE_ID + "=? " +
+                    " WHERE " + NODE_ID + "=?";
+
+    protected static final String PS_SELECT_MESSAGE_PUBLISHED_NODES =
+            "SELECT " + NODE_ID +
+                    " FROM " + NODE_TO_LAST_PUBLISHED_ID;
+
+    protected static final String PS_INSERT_SLOT_MESSAGE_ID =
+            "INSERT INTO " + SLOT_MESSAGE_ID_TABLE + "(" +
+                    QUEUE_NAME + "," +
+                    MESSAGE_ID + ") " +
+                    " VALUES (?,?)";
+
+    protected static final String PS_GET_MESSAGE_IDS =
+            "SELECT * " +
+                    "FROM " + SLOT_MESSAGE_ID_TABLE +
+                    " WHERE " + QUEUE_NAME + "=?" +
+                    " ORDER BY " + MESSAGE_ID;
+
+    protected static final String PS_DELETE_MESSAGE_ID =
+            "DELETE FROM " + SLOT_MESSAGE_ID_TABLE +
+                    " WHERE " + MESSAGE_ID + "=?";
+
+    protected static final String PS_DELETE_MESSAGE_IDS_BY_QUEUE_NAME =
+            "DELETE FROM " + SLOT_MESSAGE_ID_TABLE +
+                    " WHERE " + QUEUE_NAME + "=?";
+
+
+    protected static final String PS_GET_ALL_QUEUES =
+            "SELECT DISTINCT " + STORAGE_QUEUE_NAME +
+                " FROM " + SLOT_TABLE;
+
+
+    /**
      * Prepared Statement to test deletes are working for message store
      */
     protected static final String PS_TEST_MSG_STORE_SELECT =
@@ -493,7 +660,6 @@ public class RDBMSConstants {
     protected static final String TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE = "retrieving " +
             "message ID list from queue. ";
     protected static final String TASK_DELETING_FROM_EXPIRY_TABLE = "deleting from expiry table.";
-    protected static final String TASK_DELETING_MESSAGE_LIST = "deleting message list.";
     protected static final String TASK_DELETING_METADATA_FROM_QUEUE = "deleting metadata from " +
             "queue. ";
     protected static final String TASK_RESETTING_MESSAGE_COUNTER = "Resetting message counter for queue";
@@ -544,6 +710,27 @@ public class RDBMSConstants {
     protected static final String TASK_DELETING_QUEUE_COUNTER = "deleting queue counter";
     protected static final String TASK_INCREMENTING_QUEUE_COUNT = "incrementing queue count";
     protected static final String TASK_DECREMENTING_QUEUE_COUNT = "decrementing queue count";
+
+    protected static final String TASK_CREATE_SLOT = "creating slot";
+    protected static final String TASK_DELETE_SLOT = "deleting slot";
+    protected static final String TASK_DELETE_SLOT_BY_QUEUE_NAME = "deleting slot by queue name";
+    protected static final String TASK_DELETE_MESSAGE_ID_BY_QUEUE_NAME = "deleting message id by queue name";
+    protected static final String TASK_CREATE_SLOT_ASSIGNMENT = "creating slot assignment";
+    protected static final String TASK_DELETE_SLOT_ASSIGNMENT = "deleting slot assignment";
+    protected static final String TASK_SELECT_UNASSIGNED_SLOTS = "selecting unassigned slots";
+    protected static final String TASK_GET_QUEUE_TO_LAST_ASSIGNED_ID = "getting queue to last assigned id";
+    protected static final String TASK_SET_QUEUE_TO_LAST_ASSIGNED_ID = "setting queue to last assigned id";
+    protected static final String TASK_GET_NODE_TO_LAST_PUBLISHED_ID = "getting node to last published id";
+    protected static final String TASK_SET_NODE_TO_LAST_PUBLISHED_ID = "setting node to last published id";
+    protected static final String TASK_GET_MESSAGE_PUBLISHED_NODES = "getting message published nodes";
+    protected static final String TASK_SET_SLOT_STATE = "setting slot state";
+    protected static final String TASK_ADD_MESSAGE_ID = "adding message id";
+    protected static final String TASK_DELETE_MESSAGE_ID = "deleting message ids";
+    protected static final String TASK_GET_MESSAGE_IDS = "getting message ids";
+    protected static final String TASK_GET_ASSIGNED_SLOTS_BY_NODE_ID = "getting assigned slots by node id";
+    protected static final String TASK_GET_ALL_SLOTS_BY_QUEUE_NAME = "getting all slots by queue name";
+    protected static final String TASK_GET_OVERLAPPED_SLOT = "getting overlapped slot";
+    protected static final String TASK_GET_ALL_QUEUES = "getting all queues";
 
     /**
      * Messages related to checking message store is operational.

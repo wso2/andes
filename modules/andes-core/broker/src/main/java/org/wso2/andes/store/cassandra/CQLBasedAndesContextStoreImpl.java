@@ -23,19 +23,12 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.incr;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.set;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.AndesBinding;
-import org.wso2.andes.kernel.AndesContextStore;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesExchange;
-import org.wso2.andes.kernel.AndesQueue;
-import org.wso2.andes.kernel.DurableStoreConnection;
-
+import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.kernel.slot.SlotState;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
@@ -45,6 +38,9 @@ import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.schemabuilder.SchemaBuilder;
+import org.apache.commons.lang.NotImplementedException;
+
+import static com.datastax.driver.core.querybuilder.QueryBuilder.*;
 
 /**
  * CQL 3 based AndesContextStore implementation. This is intended to support Cassandra 2.xx series upwards.
@@ -556,6 +552,181 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         } catch (QueryExecutionException e) {
             throw new AndesException("Error occurred while " + task, e);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void createSlot(long startMessageId, long endMessageId,
+                           String storageQueueName, String assignedNodeId) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void createSlotAssignment(String nodeId, String queueName, long startMsgId,
+                                               long endMsgId) {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Slot selectUnAssignedSlot(String queueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getQueueToLastAssignedId(String queueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setQueueToLastAssignedId(String queueName, long messageId)
+            throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getNodeToLastPublishedId(String nodeId) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setNodeToLastPublishedId(String nodeId, long messageId)
+            throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TreeSet<String> getMessagePublishedNodes() throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteSlotAssignment(long startMessageId, long endMessageId)
+            throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteSlotAssignmentByQueueName(String nodeId, String queueName)
+            throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setSlotState(long startMessageId, long endMessageId, SlotState slotState)
+            throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Slot getOverlappedSlot(String queueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addMessageId(String queueName, long messageId) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TreeSet<Long> getMessageIds(String queueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteMessageId(long messageId) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteSlot(long startMessageId, long endMessageId) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteSlotsByQueueName(String queueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteMessageIdsByQueueName(String queueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TreeSet<Slot> getAssignedSlotsByNodeId(String nodeId) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TreeSet<Slot> getAllSlotsByQueueName(String queueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Set<String> getAllQueues() throws AndesException {
+        throw new NotImplementedException();
     }
 
     /**

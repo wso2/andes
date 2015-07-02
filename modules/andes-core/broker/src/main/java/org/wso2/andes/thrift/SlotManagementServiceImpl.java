@@ -20,6 +20,7 @@ package org.wso2.andes.thrift;
 
 import org.apache.thrift.TException;
 import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.thrift.slot.gen.SlotInfo;
@@ -38,11 +39,15 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     @Override
     public SlotInfo getSlotInfo(String queueName, String nodeId) throws TException {
         if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
-            Slot slot = slotManager.getSlot(queueName, nodeId);
             SlotInfo slotInfo = new SlotInfo();
-            if (null != slot) {
-                slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(),
-                        slot.getStorageQueueName(),nodeId,slot.isAnOverlappingSlot());
+            try {
+                Slot slot = slotManager.getSlot(queueName, nodeId);
+                if (null != slot) {
+                    slotInfo = new SlotInfo(slot.getStartMessageId(), slot.getEndMessageId(),
+                            slot.getStorageQueueName(), nodeId, slot.isAnOverlappingSlot());
+                }
+            } catch (AndesException e) {
+                throw new TException("Failed to get slot info for queue: " + queueName + " nodeId: " + nodeId, e);
             }
             return slotInfo;
         } else {
@@ -53,7 +58,11 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     @Override
     public void updateMessageId(String queueName, String nodeId, long startMessageId, long endMessageId) throws TException {
         if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
-            slotManager.updateMessageID(queueName, nodeId, startMessageId, endMessageId);
+            try {
+                slotManager.updateMessageID(queueName, nodeId, startMessageId, endMessageId);
+            } catch (AndesException e) {
+                throw new TException("Failed to update message id for queue: " + queueName + " nodeId: " + nodeId, e);
+            }
         } else {
             throw new TException("This node is not the slot coordinator right now");
         }
@@ -63,10 +72,16 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     public boolean deleteSlot(String queueName, SlotInfo slotInfo, String nodeId) throws TException {
         if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
             Slot slot = new Slot();
+            boolean result = false;
             slot.setStartMessageId(slotInfo.getStartMessageId());
             slot.setEndMessageId(slotInfo.getEndMessageId());
             slot.setStorageQueueName(slotInfo.getQueueName());
-            return slotManager.deleteSlot(queueName, slot, nodeId);
+            try {
+                result = slotManager.deleteSlot(queueName, slot, nodeId);
+            } catch (AndesException e) {
+                throw new TException("Failed to delete slot for queue:" + queueName);
+            }
+            return result;
         } else {
             throw new TException("This node is not the slot coordinator right now");
         }
@@ -75,7 +90,11 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     @Override
     public void reAssignSlotWhenNoSubscribers(String nodeId, String queueName) throws TException {
         if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
-            slotManager.reAssignSlotWhenNoSubscribers(nodeId, queueName);
+            try {
+                slotManager.reAssignSlotWhenNoSubscribers(nodeId, queueName);
+            } catch (AndesException e) {
+                throw new TException("Failed to reAssign slot for node:" + nodeId + " queue:" + queueName);
+            }
         } else {
             throw new TException("This node is not the slot coordinator right now");
         }
@@ -95,7 +114,11 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     @Override
     public void clearAllActiveSlotRelationsToQueue(String queueName) throws TException {
         if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
-            slotManager.clearAllActiveSlotRelationsToQueue(queueName);
+            try {
+                slotManager.clearAllActiveSlotRelationsToQueue(queueName);
+            } catch (AndesException e) {
+                throw new TException("Failed to clear active slots for queue:" + queueName);
+            }
         } else {
             throw new TException("This node is not the slot coordinator right now");
         }
