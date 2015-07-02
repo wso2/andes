@@ -34,22 +34,22 @@ import java.util.List;
  */
 public interface QueueManagementInformation {
 
-    static final String TYPE = "QueueManagementInformation";
+    String TYPE = "QueueManagementInformation";
     //CompositeType key/description information for message content
     //For compatibility reasons, DON'T MODIFY the existing key values if expanding the set.
-    static final String JMS_PROPERTIES = "JMSProperties";
-    static final String CONTENT_TYPE = "ContentType";
-    static final String CONTENT = "Content";
-    static final String JMS_MESSAGE_ID = "JMSMessageId";
-    static final String JMS_CORRELATION_ID = "JMSCorrelationId";
-    static final String JMS_TYPE = "JMSType";
-    static final String JMS_REDELIVERED = "JMSRedelivered";
-    static final String JMS_DELIVERY_MODE = "JMSDeliveryMode";
-    static final String JMS_PRIORITY = "JMSPriority";
-    static final String TIME_STAMP = "TimeStamp";
-    static final String JMS_EXPIRATION = "JMSExpiration";
-    static final String MSG_DESTINATION = "MessageDestination";
-    static final String ANDES_MSG_METADATA_ID = "AndesMessageMetadataId";
+    String JMS_PROPERTIES = "JMSProperties";
+    String CONTENT_TYPE = "ContentType";
+    String CONTENT = "Content";
+    String JMS_MESSAGE_ID = "JMSMessageId";
+    String JMS_CORRELATION_ID = "JMSCorrelationId";
+    String JMS_TYPE = "JMSType";
+    String JMS_REDELIVERED = "JMSRedelivered";
+    String JMS_DELIVERY_MODE = "JMSDeliveryMode";
+    String JMS_PRIORITY = "JMSPriority";
+    String TIME_STAMP = "TimeStamp";
+    String JMS_EXPIRATION = "JMSExpiration";
+    String MSG_DESTINATION = "MessageDestination";
+    String ANDES_MSG_METADATA_ID = "AndesMessageMetadataId";
 
     List<String> VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC = Collections.unmodifiableList(Arrays.asList(JMS_PROPERTIES,
             CONTENT_TYPE, CONTENT, JMS_MESSAGE_ID, JMS_CORRELATION_ID, JMS_TYPE, JMS_REDELIVERED, JMS_DELIVERY_MODE,
@@ -106,53 +106,52 @@ public interface QueueManagementInformation {
 
     /**
      * Delete a selected message list from a given Dead Letter Queue of a tenant.
-     *
-     * @param messageIDs          The browser message Ids
+     * @param andesMetadataIDs          The browser message Ids
      * @param deadLetterQueueName The Dead Letter Queue Name for the tenant
      */
     @MBeanAttribute(name = " DeleteMessages In Dead Letter Queue ", description = "Will Delete Messages From Dead Letter Queue")
-    void deleteMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "messageIDs",
-            description = "ID of the Messages to Be Deleted") String[] messageIDs, @MBeanOperationParameter(name = "deadLetterQueueName",
+    void deleteMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
+            description = "ID of the Messages to Be Deleted") long[] andesMetadataIDs, @MBeanOperationParameter(name = "deadLetterQueueName",
             description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName);
 
     /**
      * Restore a given browser message Id list from the Dead Letter Queue to the same queue it was previous in before moving to the Dead Letter Queue
      * and remove them from the Dead Letter Queue.
-     *
-     * @param messageIDs          The browser message Ids
-     * @param deadLetterQueueName The Dead Letter Queue Name for the tenant
-     */
+     * @param andesMetadataIDs          The browser message Ids
+     * @param deadLetterQueueName The Dead Letter Queue Name for the tenant*/
     @MBeanAttribute(name = " Restore Back a Specific set of Messages ", description = "Will Restore a Specific Set of Messages Back to Its Original Queue")
-    void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "messageIDs",
-            description = "IDs of the Messages to Be Restored") String[] messageIDs, @MBeanOperationParameter(name = "deadLetterQueueName",
+    void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
+            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs, @MBeanOperationParameter(name = "deadLetterQueueName",
             description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName);
 
     /**
      * Restore a given browser message Id list from the Dead Letter Queue to a different given queue in the same tenant and remove them from the Dead Letter Queue.
-     *
-     * @param messageIDs          The browser message Ids
+     * @param andesMetadataIDs          The browser message Ids
      * @param destination         The new destination
      * @param deadLetterQueueName The Dead Letter Queue Name for the tenant
      */
     @MBeanAttribute(name = " Restore Back a Specific set of Messages ", description = "Will Restore a Specific Set of Messages Back to a Queue differnt from the original")
-    void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "messageIDs",
-            description = "IDs of the Messages to Be Restored") String[] messageIDs,@MBeanOperationParameter(name = "destination",
+    void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
+            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs,@MBeanOperationParameter(name = "destination",
             description = "Destination of the message to be restored") String destination, @MBeanOperationParameter(name = "deadLetterQueueName",
             description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName);
 
     /**
      * Browse queue for given id starting from last message id until it meet max message count
      *
-     *
      * @param queueName name of queue
      * @param nextMsgId last browse message id
      * @param maxMsgCount total message count to browse
-     * @return
+     * @return list of messages
      */
     @MBeanAttribute(name = " Browse Queue ", description = "Browse messages of given queue")
-    public CompositeData[] browseQueue(@MBeanOperationParameter(name = "queueName", description = "Name of queue to browse messages") String queueName,
-                                                  @MBeanOperationParameter(name = "lastMsgId", description = "Browse message this onwards") long nextMsgId,
-                                                  @MBeanOperationParameter(name = "maxMsgCount", description = "Maximum message count per request") int maxMsgCount)
+    CompositeData[] browseQueue(@MBeanOperationParameter(name = "queueName", description = "Name of queue to browse " +
+                                                                                           "messages") String queueName,
+                                @MBeanOperationParameter(name = "lastMsgId", description = "Browse message this " +
+                                                                                           "onwards") long nextMsgId,
+                                @MBeanOperationParameter(name = "maxMsgCount", description = "Maximum message count " +
+                                                                                             "per request") int
+                                        maxMsgCount)
             throws MBeanException;
 
 }
