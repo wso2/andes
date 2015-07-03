@@ -175,9 +175,6 @@ public class SlotManagerClusterMode {
             }
         }
 
-        if (andesContextStore == null) {
-            andesContextStore = AndesContext.getInstance().getAndesContextStore();
-        }
         return slotToBeAssigned;
 
     }
