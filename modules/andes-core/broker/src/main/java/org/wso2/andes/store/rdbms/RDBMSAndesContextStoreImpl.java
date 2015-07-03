@@ -1284,7 +1284,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             if(resultSet.next()) {
                 unAssignedSlot = new Slot();
-                unAssignedSlot.setMessageCount(resultSet.getLong(RDBMSConstants.MESSAGE_COUNT));
                 unAssignedSlot
                         .setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
                 unAssignedSlot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
@@ -1587,7 +1586,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             resultSet = preparedStatement.executeQuery();
 
             if(resultSet.next()) {
-                overlappedSlot.setMessageCount(resultSet.getLong(RDBMSConstants.MESSAGE_COUNT));
                 overlappedSlot
                         .setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
                 overlappedSlot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
@@ -1740,7 +1738,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             while (resultSet.next()) {
                 Slot assignedSlot = new Slot();
-                assignedSlot.setMessageCount(resultSet.getLong(RDBMSConstants.MESSAGE_COUNT));
                 assignedSlot.setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
                 assignedSlot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
                 assignedSlot.setStorageQueueName(
@@ -1785,7 +1782,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             while (resultSet.next()) {
                 Slot slot = new Slot();
-                slot.setMessageCount(resultSet.getLong(RDBMSConstants.MESSAGE_COUNT));
                 slot.setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
                 slot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
                 slot.setStorageQueueName(
