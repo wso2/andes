@@ -426,7 +426,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                     // Set the new destination queue
                     metadata.setDestination(destination);
                     metadata.setStorageQueueName(AndesUtils.getStorageQueueForDestination(destination,
-                            ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(), false));
+                                                                                          ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID(), false));
                     metadata.updateMetadata(destination, "amqp.direct");
                     AndesMessage andesMessage = new AndesMessage(metadata);
 
@@ -596,6 +596,29 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             throw new MBeanException(e, "Error occurred in browse queue.");
         }
         return compositeDataList.toArray(new CompositeData[compositeDataList.size()]);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getNumberMessagesInDLCForQueue(String queueName) {
+        return 0;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompositeData[] getMessageInDLCForQueue(
+            @MBeanOperationParameter(name = "queueName", description = "Name of queue to browse " +
+                                                                       "messages") String queueName,
+            @MBeanOperationParameter(name = "lastMsgId", description = "Browse message this " +
+                                                                       "onwards") long nextMsgId,
+            @MBeanOperationParameter(name = "maxMsgCount", description = "Maximum message count " +
+                                                                 "per request") int maxMessageCount)
+            throws MBeanException {
+        return new CompositeData[0];
     }
 
     /**
