@@ -23,19 +23,19 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.OnflightMessageTracker;
 
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This class is responsible for deleting slots and scheduling slot deletions.
- * TODO: This implementation should be changed to use a Executors (in java.concurrent)
  */
 public class SlotDeletionScheduler {
 
     private long deleteRetryInterval;
 
     private static Log log = LogFactory.getLog(SlotDeletionScheduler.class);
-
 
     /**
      * Create slot deletion scheduler
@@ -55,22 +55,25 @@ public class SlotDeletionScheduler {
      * @param nodeID       Cluster unique ID of the node
      */
     public void scheduleSlotDeletion(Slot slotToDelete, String nodeID) {
-        Timer timer = new Timer();
-        SlotDeletionTimerTask timerTask = new SlotDeletionTimerTask(timer, slotToDelete, nodeID);
-        timer.schedule(timerTask, 0, deleteRetryInterval);
+        ScheduledExecutorService deletionTaskScheduler = Executors.newScheduledThreadPool(2);
+
+        SlotDeletionTimedTask slotDeletionTimedTask = new SlotDeletionTimedTask(slotToDelete,nodeID);
+
+        ScheduledFuture deletionTaskHandle = deletionTaskScheduler.scheduleWithFixedDelay(slotDeletionTimedTask, 0, deleteRetryInterval, TimeUnit.MILLISECONDS);
+
+        slotDeletionTimedTask.setTaskHandle(deletionTaskHandle);
     }
 
     /**
-     * SlotDeletionTimerTask class defines a timer task to delete slots
+     * SlotDeletionTimedTask class defines a timer task to delete slots
      */
-    private class SlotDeletionTimerTask extends TimerTask {
+    private class SlotDeletionTimedTask implements Runnable {
 
-        private Timer timer;
         private Slot slotToDelete;
         private String nodeID;
+        private ScheduledFuture taskHandle;
 
-        public SlotDeletionTimerTask(Timer timer, Slot slotToDelete, String nodeID) {
-            this.timer = timer;
+        protected SlotDeletionTimedTask(Slot slotToDelete, String nodeID) {
             this.slotToDelete = slotToDelete;
             this.nodeID = nodeID;
         }
@@ -88,14 +91,18 @@ public class SlotDeletionScheduler {
                 log.error("Error while trying to delete the slot " + slotToDelete + " Thrift connection failed. Rescheduling delete.");
             }
             if (deleteSuccess) {
-                //Terminate the timer thread. Clear local tracking of slot
+                //Terminate the ScheduledExecutor handle. Clear local tracking of slot
                 OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slotToDelete);
-                timer.cancel();
                 if (log.isDebugEnabled()) {
                     log.debug("Deleted slot of queue : " + slotToDelete.getStorageQueueName() +
                             " : by node : " + nodeID + " | " + slotToDelete);
                 }
+                taskHandle.cancel(true);
             }
+        }
+
+        protected void setTaskHandle(ScheduledFuture taskHandle) {
+            this.taskHandle = taskHandle;
         }
     }
 }

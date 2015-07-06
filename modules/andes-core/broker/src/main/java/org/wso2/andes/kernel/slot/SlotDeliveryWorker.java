@@ -69,7 +69,10 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      */
     private volatile SettableFuture<Boolean> messageStoresUnavailable;
 
-    
+    /***
+     * The interval between which the slot deletion is attempted by the Scheduled
+     * task for the specific slot. (15 seconds by default)
+     */
     private static final long SLOT_DELETION_SCHEDULE_INTERVAL = 15 * 1000;
 
     /**
@@ -301,8 +304,8 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
 
     }
     
-    
-    /** 
+
+    /**
      * Get a slot from the Slot to deliver ( from the coordinator if the MB is clustered)
      * @param storageQueueName the storage queue name for from which a slot should be returned.
      * @return a {@link Slot}
