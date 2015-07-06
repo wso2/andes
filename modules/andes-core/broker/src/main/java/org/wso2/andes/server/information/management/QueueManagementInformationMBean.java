@@ -20,6 +20,7 @@ package org.wso2.andes.server.information.management;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.mina.common.ByteBuffer;
@@ -521,6 +522,10 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 }
                 //get mime type of message
                 String mimeType = amqMessage.getMessageHeader().getMimeType();
+                // setting default mime type
+                if (StringUtils.isBlank(mimeType)) {
+                    mimeType = MIME_TYPE_TEXT_PLAIN;
+                }
 
                 //content is constructing
                 final int bodySize = (int) amqMessage.getSize();
@@ -828,16 +833,18 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * @return readable name
      */
     private String getReadableNameForMessageContentType(String contentType) {
-        if (contentType.equals(MIME_TYPE_TEXT_PLAIN) || contentType.equals(MIMI_TYPE_TEXT_XML)) {
-            contentType = "Text";
-        } else if (contentType.equals(MIME_TYPE_APPLICATION_JAVA_OBJECT_STREAM)) {
-            contentType = "Object";
-        } else if (contentType.equals(MIME_TYPE_AMQP_MAP) || contentType.equals(MIME_TYPE_JMS_MAP_MESSAGE)) {
-            contentType = "Map";
-        } else if (contentType.equals(MIME_TYPE_JMS_STREAM_MESSAGE)) {
-            contentType = "Stream";
-        } else if (contentType.equals(MIME_TYPE_APPLICATION_OCTET_STREAM)) {
-            contentType = "Byte";
+        if (StringUtils.isNotBlank(contentType)) {
+            if (contentType.equals(MIME_TYPE_TEXT_PLAIN) || contentType.equals(MIMI_TYPE_TEXT_XML)) {
+                contentType = "Text";
+            } else if (contentType.equals(MIME_TYPE_APPLICATION_JAVA_OBJECT_STREAM)) {
+                contentType = "Object";
+            } else if (contentType.equals(MIME_TYPE_AMQP_MAP) || contentType.equals(MIME_TYPE_JMS_MAP_MESSAGE)) {
+                contentType = "Map";
+            } else if (contentType.equals(MIME_TYPE_JMS_STREAM_MESSAGE)) {
+                contentType = "Stream";
+            } else if (contentType.equals(MIME_TYPE_APPLICATION_OCTET_STREAM)) {
+                contentType = "Byte";
+            }
         }
         return contentType;
     }
