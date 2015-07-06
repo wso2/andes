@@ -154,4 +154,34 @@ public interface QueueManagementInformation {
                                         maxMsgCount)
             throws MBeanException;
 
+    /**
+     * Retrieve current message count in the DLC for a specific queue.
+     *
+     * @param queueName name of queue
+     * @return Count of messages in store for the given queue.
+     */
+    @MBeanAttribute(name = "NumberMessagesInDLCForQueue", description = "Message count in the DLC" +
+                                                                        " for a specific queue")
+    long getNumberMessagesInDLCForQueue(
+            @MBeanOperationParameter(name = "queueName", description = "Name of queue to browse" +
+                                                               " DLC messages") String queueName);
+
+    /**
+     * Retrieve messages in DLC for a specific queue for given id starting from last message id
+     * until it meet max message count.
+     *
+     * @param queueName       name of queue
+     * @param nextMsgId       last browse message id
+     * @param maxMessageCount total message count to browse
+     * @return list of messages
+     */
+    @MBeanAttribute(name = "MessageInDLCForQueue", description = "Browse messages of given queue")
+    CompositeData[] getMessageInDLCForQueue(
+            @MBeanOperationParameter(name = "queueName", description = "Name of queue to browse " +
+                                                               "in DLC messages") String queueName,
+            @MBeanOperationParameter(name = "lastMsgId", description = "Browse message this " +
+                                                                       "onwards") long nextMsgId,
+            @MBeanOperationParameter(name = "maxMessageCount", description = "Maximum message " +
+                                                         "count per request") int maxMessageCount)
+            throws MBeanException;
 }
