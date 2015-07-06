@@ -76,4 +76,13 @@ public class MessageTracer {
         }
     }
 
+	/**
+	 * This method will check if trace logs are enabled. This method can be used when performing
+	 * operations inside trace() method parameters
+	 * @return Status of MessageTracer
+	 */
+    public static boolean isEnabled() {
+        return log.isTraceEnabled();
+    }
+
 }
