@@ -34,6 +34,7 @@ import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.Meter;
 import org.wso2.carbon.metrics.manager.MetricManager;
@@ -161,6 +162,10 @@ public class Andes {
      * @param pubAckHandler PubAckHandler
      */
     public void messageReceived(AndesMessage message, AndesChannel andesChannel, PubAckHandler pubAckHandler) {
+
+        //Tracing message
+        MessageTracer.trace(message, MessageTracer.REACHED_ANDES_CORE);
+
         inboundEventManager.messageReceived(message, andesChannel, pubAckHandler);
 
         //Adding metrics meter for message rate

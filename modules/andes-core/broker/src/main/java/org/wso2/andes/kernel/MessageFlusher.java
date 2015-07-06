@@ -26,6 +26,7 @@ import org.wso2.andes.kernel.disruptor.delivery.DisruptorBasedFlusher;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -250,6 +251,8 @@ public class MessageFlusher {
                                                                                            message);
                 if (isOKToBuffer) {
                     messageDeliveryInfo.readButUndeliveredMessages.add(message);
+                    //Tracing message
+                    MessageTracer.trace(message, MessageTracer.METADATA_BUFFERED_FOR_DELIVERY);
                     //increment the message count in the slot
                     OnflightMessageTracker.getInstance().incrementMessageCountInSlot(slot);
                 } else {
