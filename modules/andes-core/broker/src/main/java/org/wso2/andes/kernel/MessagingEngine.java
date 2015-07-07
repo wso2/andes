@@ -37,7 +37,6 @@ import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.queue.DLCQueueUtils;
-import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.thrift.MBThriftClient;
 
@@ -262,9 +261,7 @@ public class MessagingEngine {
             throws AndesException {
         String deadLetterQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(destinationQueueName);
 
-        long start = System.currentTimeMillis();
         messageStore.moveMetadataToQueue(messageId, destinationQueueName, deadLetterQueueName);
-        PerformanceCounter.warnIfTookMoreTime("Move Metadata ", start, 10);
 
         // Increment count by 1 in DLC and decrement by 1 in original queue
         incrementQueueCount(deadLetterQueueName, 1);

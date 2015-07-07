@@ -24,7 +24,6 @@ import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.factory.HFactory;
 import me.prettyprint.hector.api.mutation.Mutator;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
@@ -37,7 +36,6 @@ import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.metrics.MetricsConstants;
-import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
@@ -220,11 +218,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
 
             if (latency > 1000) {
                 log.warn("Cassandra writing took " + latency + " millisecoonds for batch of " +
-                        metadataList.size());
-            }
-
-            if(log.isDebugEnabled()) {
-                PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(latency);
+                         metadataList.size());
             }
 
         } catch (CassandraDataAccessException e) {
@@ -381,12 +375,6 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
 
             //batch execute
             insertMutator.execute();
-
-            if(log.isDebugEnabled()) {
-                PerformanceCounter.recordIncomingMessageWrittenToCassandraLatency(
-                        (int) (System.currentTimeMillis() -
-                                start));
-            }
 
             // Step 2 - Delete the old meta data when inserting new meta is complete to avoid
             // losing messages

@@ -28,7 +28,6 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorker;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
-import org.wso2.andes.server.stats.PerformanceCounter;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -403,11 +402,6 @@ public class OnflightMessageTracker {
             //we consider ack is received if all acks came for channels message was sent
             if (trackingData.allAcksReceived() && getNumberOfScheduledDeliveries(messageID) == 0) {
                 trackingData.addMessageStatus(MessageStatus.ACKED_BY_ALL);
-                //record how much time took between delivery and ack receive
-                long timeTook = (System.currentTimeMillis() - trackingData.timestamp);
-                if (log.isDebugEnabled()) {
-                    PerformanceCounter.recordAckReceived(trackingData.destination, (int) timeTook);
-                }
                 decrementMessageCountInSlotAndCheckToResend(trackingData.slot);
 
                 isOKToDeleteMessage = true;

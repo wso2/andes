@@ -30,7 +30,6 @@ import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.kernel.disruptor.BatchEventHandler;
-import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
@@ -112,8 +111,6 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
             }
 
             OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(ack.getChannelID());
-            //record ack received
-            PerformanceCounter.recordMessageRemovedAfterAck();
             event.clear();
         }
 
