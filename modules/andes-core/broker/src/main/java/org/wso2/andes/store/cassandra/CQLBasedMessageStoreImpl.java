@@ -603,7 +603,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
                     setConsistencyLevel(config.getReadConsistencyLevel());
 
             ResultSet resultSet = execute(statement, "retrieving metadata list from queue " + queueName +
-                                                     "between msg id " + firstMsgId + " and " + lastMsgID);
+                    "between msg id " + firstMsgId + " and " + lastMsgID);
             List<AndesMessageMetadata> metadataList =
                     new ArrayList<>(resultSet.getAvailableWithoutFetching());
 
@@ -834,36 +834,36 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public int deleteAllMessageMetadataFromDLC(String storageQueueName,
-                                               String DLCQueueName) throws AndesException {
+    public int deleteAllMessagesFromDLCForStorageQueue(String storageQueueName,
+                                                       String dlcQueueName) throws AndesException {
 
         Statement query = QueryBuilder.select().column(CQLConstants.MESSAGE_ID).column(CQLConstants.METADATA).
                 from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
-                where(eq(CQLConstants.QUEUE_NAME, DLCQueueName)).
+                where(eq(CQLConstants.QUEUE_NAME, dlcQueueName)).
                 setConsistencyLevel(config.getReadConsistencyLevel());
 
-        ResultSet resultSet = execute(query, "retrieving metadata from DLC " + DLCQueueName);
+        ResultSet resultSet = execute(query, "retrieving metadata from DLC " + dlcQueueName);
 
         // Internally CQL retrieves results as pages. Doesn't load all the result at once to client side
         // using the same fetch size to iterate through the messages and delete from DLC
         int fetchSize = query.getFetchSize();
         int removedMessageCount = 0;
-        List<Long> removableMetadataList = new ArrayList<>(fetchSize);
+        List<Long> messageIDsInDLCForQueue = new ArrayList<>(fetchSize);
         AndesMessageMetadata metadata;
 
         for (Row row : resultSet) {
             metadata = getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID));
 
-            if (metadata.getStorageQueueName().equals(storageQueueName)) {
+            if (storageQueueName.equals(metadata.getDestination())) {
 
-                removableMetadataList.add(metadata.getMessageID());
+                messageIDsInDLCForQueue.add(metadata.getMessageID());
             }
 
             // When the end of current fetched results is reached we delete that found removable messages from DLC
-            if (resultSet.getAvailableWithoutFetching() == 0 && !removableMetadataList.isEmpty()) {
-                deleteMessageMetadataFromQueue(DLCQueueName, removableMetadataList);
-                removedMessageCount = removedMessageCount + removableMetadataList.size();
-                removableMetadataList.clear();
+            if (0 == resultSet.getAvailableWithoutFetching() && !messageIDsInDLCForQueue.isEmpty()) {
+                deleteMessages(dlcQueueName, messageIDsInDLCForQueue, false);
+                removedMessageCount = removedMessageCount + messageIDsInDLCForQueue.size();
+                messageIDsInDLCForQueue.clear();
             }
         }
         return removedMessageCount;

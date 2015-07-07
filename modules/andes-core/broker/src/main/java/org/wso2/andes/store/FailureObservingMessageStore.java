@@ -333,9 +333,10 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public int deleteAllMessageMetadataFromDLC(String storageQueueName, String DLCQueueName) throws AndesException {
+    public int deleteAllMessagesFromDLCForStorageQueue(String storageQueueName, String dlcQueueName) throws
+            AndesException {
         try {
-            return wrappedInstance.deleteAllMessageMetadataFromDLC(storageQueueName, DLCQueueName);
+            return wrappedInstance.deleteAllMessagesFromDLCForStorageQueue(storageQueueName, dlcQueueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

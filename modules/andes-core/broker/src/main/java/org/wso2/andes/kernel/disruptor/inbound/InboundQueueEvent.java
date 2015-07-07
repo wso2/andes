@@ -163,7 +163,7 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
     private void handlePurgeEvent() {
         int count = -1;
         try {
-            count = messagingEngine.purgeMessages(queueName, queueOwner, isTopic,null);
+            count = messagingEngine.purgeMessages(queueName, queueOwner, isTopic, 0l);
             purgedCount.set(count);
         } catch (AndesException e) {
             purgedCount.setException(e);

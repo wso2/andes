@@ -1446,89 +1446,51 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
     /**
      * {@inheritDoc}
-     *
-     * @param storageQueueName name of the queue being purged
-     * @param DLCQueueName     Name of the DLC queue used within the resident tenant.
-     * @return number of deleted messages.
-     * @throws AndesException
      */
     @Override
-    public int deleteAllMessageMetadataFromDLC(String storageQueueName, String DLCQueueName) throws
+    public int deleteAllMessagesFromDLCForStorageQueue(String storageQueueName, String dlcQueueName) throws
             AndesException {
 
-        Connection connection;
-        PreparedStatement preparedStatement;
-        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
+        Context context = MetricManager.timer(Level.INFO, MetricsConstants.DELETE_MESSAGES_FOR_QUEUE_FROM_DLC).start();
 
-        int messageCountInDLCForQueue = 0;
+        List<Long> messageIDsInDLCForQueue = new ArrayList<>();
 
-        try {
+        long lastProcessedID = 0l;
 
-            Long lastProcessedID = 0l;
+        int pageSize = STANDARD_PAGE_SIZE;
 
-            Integer pageSize = STANDARD_PAGE_SIZE;
+        boolean allRecordsReceived = false;
+        while (!allRecordsReceived) {
 
-            int queueID = getCachedQueueID(DLCQueueName);
-
-            connection = getConnection();
-            connection.setAutoCommit(false);
-            preparedStatement = connection
-                    .prepareStatement(RDBMSConstants.PS_DELETE_METADATA_FROM_QUEUE);
-
-            Boolean allRecordsReceived = false;
-
-            while (!allRecordsReceived) {
-
-                List<AndesMessageMetadata> metadataList = getNextNMessageMetadataFromQueue
-                        (DLCQueueName, lastProcessedID, pageSize);
-
-                if (metadataList.size() == 0) {
-                    allRecordsReceived = true; // this means that there are no more messages to
-                    // be retrieved for this queue
-                } else {
-                    for (AndesMessageMetadata amm : metadataList) {
-                        if (storageQueueName.equals(amm.getDestination())) {
-                            preparedStatement.setInt(1, queueID);
-                            preparedStatement.setLong(2, amm.getMessageID());
-                            preparedStatement.addBatch();
-                        }
-                    }
-
-                    lastProcessedID = metadataList.get(metadataList.size() - 1).getMessageID();
-
-                    if (metadataList.size() < pageSize) {
-                        // again means there are no more metadata to be retrieved
-                        allRecordsReceived = true;
+            List<AndesMessageMetadata> metadataList = getNextNMessageMetadataFromQueue
+                    (dlcQueueName, lastProcessedID, pageSize);
+            if (metadataList.isEmpty()) {
+                // This means that there are no more messages to be retrieved for this queue
+                allRecordsReceived = true;
+            } else {
+                for (AndesMessageMetadata amm : metadataList) {
+                    if (storageQueueName.equals(amm.getDestination())) {
+                        messageIDsInDLCForQueue.add(amm.getMessageID());
                     }
                 }
+
+                lastProcessedID = metadataList.get(metadataList.size() - 1).getMessageID();
+
+                if (metadataList.size() < pageSize) {
+                    // again means there are no more metadata to be retrieved
+                    allRecordsReceived = true;
+                }
             }
-        } catch (SQLException e) {
-            // This could be thrown only from the while loop reading messages in DLC.
-            log.error("Error while deleting messages in DLC for queue : " + storageQueueName, e);
-            throw rdbmsStoreUtils.convertSQLException("Error while deleting messages in DLC for queue : " + storageQueueName, e);
         }
+        //delete all the messages
+        this.deleteMessages(dlcQueueName, messageIDsInDLCForQueue, false);
 
-        // Execute Batch Delete
-        try {
-            preparedStatement.executeBatch();
-            connection.commit();
-
-            if (log.isDebugEnabled()) {
-                log.debug("Removed. " + messageCountInDLCForQueue +
-                        " messages from DLC for destination " + storageQueueName);
-            }
-        } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
-            throw rdbmsStoreUtils.convertSQLException("Error occurred while deleting message metadata from queue :" + storageQueueName,
-                    e);
-        } finally {
-            contextWrite.stop();
-            String task = RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName;
-            close(preparedStatement, task);
-            close(connection, task);
+        if (log.isDebugEnabled()) {
+            log.debug("Removed. " + messageIDsInDLCForQueue +
+                    " messages from DLC for destination " + storageQueueName);
         }
-
-        return messageCountInDLCForQueue;
+        context.stop();
+        return messageIDsInDLCForQueue.size();
     }
 
     /**

@@ -671,14 +671,14 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         mutator.execute();
     }
 
-    @Override
     /**
      * {@inheritDoc}
      */
-    public int deleteAllMessageMetadataFromDLC(String storageQueueName, String DLCQueueName) throws AndesException {
+    @Override
+    public int deleteAllMessagesFromDLCForStorageQueue(String storageQueueName, String dlcQueueName) throws
+            AndesException {
 
-        int messageCountInDLC;
-
+        List<Long> messageIDsInDLCForQueue = new ArrayList<>();
         try {
 
             Long lastProcessedID = 0l;
@@ -689,23 +689,23 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
 
             Boolean allRecordsRetrieved = false;
 
-            Mutator<String> mutator = HFactory.createMutator(keyspace,StringSerializer.get());
-
             while (!allRecordsRetrieved) {
 
                 List<AndesMessageMetadata> metadataList = HectorDataAccessHelper
-                        .getMessagesFromQueue(DLCQueueName,
+                        .getMessagesFromQueue(dlcQueueName,
                                 HectorConstants.META_DATA_COLUMN_FAMILY,
                                 keyspace, lastProcessedID,
                                 Long.MAX_VALUE, pageSize, true);
 
                 if (metadataList.size() == 0) {
-                    allRecordsRetrieved = true; // this means that there are no more messages
-                    // to be retrieved for this queue
+                    // This means that there are no more messages to be retrieved for this queue
+                    allRecordsRetrieved = true;
                 } else {
                     for (AndesMessageMetadata amm : metadataList) {
                         if (amm.getDestination().equals(storageQueueName)) {
-                            mutator.addDeletion(DLCQueueName, HectorConstants.META_DATA_COLUMN_FAMILY, amm.getMessageID());
+                            //add the message id to the list of messages in the dlc that are addressed to the storage
+                            // queue
+                            messageIDsInDLCForQueue.add(amm.getMessageID());
                         }
                     }
 
@@ -718,17 +718,13 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                 }
 
             }
-
-            messageCountInDLC = mutator.getPendingMutationCount();
-
-            // Execute Batch Delete
-            mutator.execute();
+            deleteMessages(dlcQueueName, messageIDsInDLCForQueue, false);
 
         } catch (CassandraDataAccessException e) {
             throw new AndesException("Error while getting messages in DLC for queue : " + storageQueueName, e);
         }
 
-        return messageCountInDLC;
+        return messageIDsInDLCForQueue.size();
     }
 
     /**
@@ -742,12 +738,12 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
 
         List<Long> messageIDs = new ArrayList<Long>();
 
-        Long lastProcessedID = startMessageID;
+        long lastProcessedID = startMessageID;
         // In case paginated data fetching is slow, this can be set to Integer.MAX.
         // This is set to paginate so that a big data read wont cause continuous timeouts.
-        Integer pageSize = HectorDataAccessHelper.STANDARD_PAGE_SIZE;
+        int pageSize = HectorDataAccessHelper.STANDARD_PAGE_SIZE;
 
-        Boolean allRecordsRetrieved = false;
+        boolean allRecordsRetrieved = false;
 
         while (!allRecordsRetrieved) {
             try {
@@ -772,7 +768,6 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                 throw new AndesException("Error while getting message IDs for queue : " + storageQueueName, e);
             }
         }
-
         return messageIDs;
     }
 
