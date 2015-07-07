@@ -156,7 +156,7 @@ public class OnflightMessageTracker {
             this.timestamp = timestamp;
             this.expirationTime = expirationTime;
             this.channelToNumOfDeliveries = new ConcurrentHashMap<UUID, Integer>();
-            this.messageStatus = Collections.synchronizedList( new ArrayList<MessageStatus>());
+            this.messageStatus =  new ArrayList<MessageStatus>(); //  Collections.synchronizedList( new ArrayList<MessageStatus>());
             this.messageStatus.add(messageStatus);
             this.numberOfScheduledDeliveries = new AtomicInteger(0);
             this.arrivalTime = arrivalTime;
