@@ -271,8 +271,19 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                 // be resent
                 // when channel is available
                 if (getChannel().isClosing()) {
+                    
+                    
+                    
+                    
                     AndesMessageMetadata message = AMQPUtils
                             .convertAMQMessageToAndesMetadata((AMQMessage) entry.getMessage(), getChannel().getId());
+
+                    if ( log.isDebugEnabled()){
+                        log.debug("channel getting closed therefore, not trying to deliver : " + message.getMessageID());
+                        
+                    }
+
+                    
                     MessagingEngine.getInstance().messageRejected(message);
                     return;
                 }

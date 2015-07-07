@@ -109,7 +109,7 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
 
         //checking counting delivery rule
         
-        if (  ! isBoundToTopic || isDurable){ //evaluate this only for queues and durable subscriptions
+        if (  (! isBoundToTopic) || isDurable){ //evaluate this only for queues and durable subscriptions
             deliveryRulesList.add(new MaximumNumOfDeliveryRule(channel));
         }
         // NOTE: Feature Message Expiration moved to a future release
