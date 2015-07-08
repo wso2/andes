@@ -169,7 +169,7 @@ public class Andes {
         inboundEventManager.messageReceived(message, andesChannel, pubAckHandler);
 
         //Adding metrics meter for message rate
-        Meter messageMeter = MetricManager.meter(Level.INFO, MetricsConstants.MSG_RECEIVE_RATE);
+        Meter messageMeter = MetricManager.meter(Level.INFO, this.getClass() + MetricsConstants.MSG_RECEIVE_RATE);
         messageMeter.mark();
     }
 
@@ -182,7 +182,7 @@ public class Andes {
         inboundEventManager.ackReceived(ackData);
 
         //Adding metrics meter for ack rate
-        Meter ackMeter = MetricManager.meter(Level.INFO, MetricsConstants.ACK_RECEIVE_RATE);
+        Meter ackMeter = MetricManager.meter(Level.INFO, this.getClass() + MetricsConstants.ACK_RECEIVE_RATE);
         ackMeter.mark();
     }
 

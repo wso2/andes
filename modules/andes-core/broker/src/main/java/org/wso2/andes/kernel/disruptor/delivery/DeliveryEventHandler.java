@@ -96,7 +96,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                     MessageTracer.trace(message, MessageTracer.DISPATCHED_TO_PROTOCOL);
 
                     //Adding metrics meter for ack rate
-                    Meter msgMeter = MetricManager.meter(Level.INFO, MetricsConstants.MSG_SENT_RATE);
+                    Meter msgMeter = MetricManager.meter(Level.INFO, this.getClass() + MetricsConstants.MSG_SENT_RATE);
                     msgMeter.mark();
 
                 } else {
