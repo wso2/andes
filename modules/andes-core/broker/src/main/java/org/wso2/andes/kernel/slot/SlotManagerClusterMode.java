@@ -31,6 +31,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.cluster.coordination.SlotAgent;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.cluster.coordination.rdbms.RDBMSAgent;
+import org.wso2.andes.store.AndesDataIntegrityViolationException;
 
 import java.util.Collections;
 import java.util.HashMap;

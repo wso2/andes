@@ -1008,19 +1008,12 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement.executeUpdate();
             connection.commit();
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_CREATE_SLOT + " startMessageId: " + startMessageId + " endMessageId: " +
-                            endMessageId + " storageQueueName:" + storageQueueName + " assignedNodeId:" + assignedNodeId;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_CREATE_SLOT + " startMessageId: " + startMessageId + " endMessageId: " +
                             endMessageId + " storageQueueName:" + storageQueueName + " assignedNodeId:" + assignedNodeId;
             rollback(connection, RDBMSConstants.TASK_CREATE_SLOT);
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(preparedStatement, RDBMSConstants.TASK_CREATE_SLOT);
             close(connection, RDBMSConstants.TASK_CREATE_SLOT);
@@ -1047,19 +1040,12 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement.executeUpdate();
             connection.commit();
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_DELETE_SLOT + " startMessageId: " + startMessageId + " endMessageId: " +
-                            endMessageId;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_DELETE_SLOT + " startMessageId: " + startMessageId + " endMessageId: " +
                             endMessageId;
             rollback(connection, RDBMSConstants.TASK_DELETE_SLOT);
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(preparedStatement, RDBMSConstants.TASK_DELETE_SLOT);
             close(connection, RDBMSConstants.TASK_DELETE_SLOT);
@@ -1086,17 +1072,11 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement.executeUpdate();
             connection.commit();
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_DELETE_SLOT_BY_QUEUE_NAME + " queueName: " + queueName;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_DELETE_SLOT_BY_QUEUE_NAME + " queueName: " + queueName;
             rollback(connection, RDBMSConstants.TASK_DELETE_SLOT_BY_QUEUE_NAME);
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(preparedStatement, RDBMSConstants.TASK_DELETE_SLOT_BY_QUEUE_NAME);
             close(connection, RDBMSConstants.TASK_DELETE_SLOT_BY_QUEUE_NAME);
@@ -1122,17 +1102,11 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement.executeUpdate();
             connection.commit();
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_DELETE_MESSAGE_ID_BY_QUEUE_NAME + " queueName: " + queueName;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_DELETE_MESSAGE_ID_BY_QUEUE_NAME + " queueName: " + queueName;
             rollback(connection, RDBMSConstants.TASK_DELETE_MESSAGE_ID_BY_QUEUE_NAME);
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(preparedStatement, RDBMSConstants.TASK_DELETE_MESSAGE_ID_BY_QUEUE_NAME);
             close(connection, RDBMSConstants.TASK_DELETE_MESSAGE_ID_BY_QUEUE_NAME);
@@ -1163,19 +1137,12 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement.executeUpdate();
             connection.commit();
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_CREATE_SLOT_ASSIGNMENT + " nodeId: " + nodeId + " queueName: " +
-                            queueName + "startMsgId: " + startMsgId + "endMsgId: " + endMsgId;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_CREATE_SLOT_ASSIGNMENT + " nodeId: " + nodeId + " queueName: " +
                             queueName + "startMsgId: " + startMsgId + "endMsgId: " + endMsgId;
             rollback(connection, RDBMSConstants.TASK_CREATE_SLOT_ASSIGNMENT);
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(preparedStatement, RDBMSConstants.TASK_CREATE_SLOT_ASSIGNMENT);
             close(connection, RDBMSConstants.TASK_CREATE_SLOT_ASSIGNMENT);
@@ -1203,19 +1170,12 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement.executeUpdate();
             connection.commit();
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_DELETE_SLOT_ASSIGNMENT + " startMessageId: " + startMessageId + " endMessageId: " +
-                            endMessageId;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_DELETE_SLOT_ASSIGNMENT + " startMessageId: " + startMessageId + " endMessageId: " +
                             endMessageId;
             rollback(connection, RDBMSConstants.TASK_DELETE_SLOT_ASSIGNMENT);
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(preparedStatement, RDBMSConstants.TASK_DELETE_SLOT_ASSIGNMENT);
             close(connection, RDBMSConstants.TASK_DELETE_SLOT_ASSIGNMENT);
@@ -1245,19 +1205,12 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             preparedStatement.executeUpdate();
 
             connection.commit();
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.PS_DELETE_SLOT_ASSIGNMENT_BY_QUEUE_NAME + " nodeId: " + nodeId + " queueName: " +
-                            queueName;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.PS_DELETE_SLOT_ASSIGNMENT_BY_QUEUE_NAME + " nodeId: " + nodeId + " queueName: " +
                             queueName;
             rollback(connection, RDBMSConstants.PS_DELETE_SLOT_ASSIGNMENT_BY_QUEUE_NAME);
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(preparedStatement, RDBMSConstants.PS_DELETE_SLOT_ASSIGNMENT_BY_QUEUE_NAME);
             close(connection, RDBMSConstants.PS_DELETE_SLOT_ASSIGNMENT_BY_QUEUE_NAME);
@@ -1292,16 +1245,10 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             }
 
             return unAssignedSlot;
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_SELECT_UNASSIGNED_SLOTS + " queueName: " + queueName;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_SELECT_UNASSIGNED_SLOTS + " queueName: " + queueName;
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(resultSet, RDBMSConstants.TASK_SELECT_UNASSIGNED_SLOTS);
             close(preparedStatement, RDBMSConstants.TASK_SELECT_UNASSIGNED_SLOTS);
@@ -1331,16 +1278,10 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                 messageId = resultSet.getLong(RDBMSConstants.MESSAGE_ID);
             }
             return messageId;
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_GET_QUEUE_TO_LAST_ASSIGNED_ID + " queueName: " + queueName;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_GET_QUEUE_TO_LAST_ASSIGNED_ID + " queueName: " + queueName;
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(resultSet, RDBMSConstants.TASK_GET_QUEUE_TO_LAST_ASSIGNED_ID);
             close(preparedStatement, RDBMSConstants.TASK_GET_QUEUE_TO_LAST_ASSIGNED_ID);
@@ -1382,19 +1323,12 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             preparedStatement.executeUpdate();
             connection.commit();
 
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_SET_QUEUE_TO_LAST_ASSIGNED_ID + " queueName: " + queueName + " messageId: " +
-                            messageId;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_SET_QUEUE_TO_LAST_ASSIGNED_ID + " queueName: " + queueName + " messageId: " +
                             messageId;
             rollback(connection, RDBMSConstants.TASK_SET_QUEUE_TO_LAST_ASSIGNED_ID);
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(preparedStatement, RDBMSConstants.TASK_SET_QUEUE_TO_LAST_ASSIGNED_ID);
             close(connection, RDBMSConstants.TASK_SET_QUEUE_TO_LAST_ASSIGNED_ID);
@@ -1422,16 +1356,10 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                 messageId = resultSet.getLong(RDBMSConstants.MESSAGE_ID);
             }
             return messageId;
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_GET_NODE_TO_LAST_PUBLISHED_ID + " nodeId: " + nodeId;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_GET_NODE_TO_LAST_PUBLISHED_ID + " nodeId: " + nodeId;
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(resultSet, RDBMSConstants.TASK_GET_NODE_TO_LAST_PUBLISHED_ID);
             close(preparedStatement, RDBMSConstants.TASK_GET_NODE_TO_LAST_PUBLISHED_ID);
@@ -1473,19 +1401,12 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement.executeUpdate();
             connection.commit();
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_SET_NODE_TO_LAST_PUBLISHED_ID + " nodeId: " + nodeId + " messageId: " +
-                            messageId;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_SET_NODE_TO_LAST_PUBLISHED_ID + " nodeId: " + nodeId + " messageId: " +
                             messageId;
             rollback(connection, RDBMSConstants.TASK_SET_NODE_TO_LAST_PUBLISHED_ID);
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(preparedStatement, RDBMSConstants.TASK_SET_NODE_TO_LAST_PUBLISHED_ID);
             close(connection, RDBMSConstants.TASK_SET_NODE_TO_LAST_PUBLISHED_ID);
@@ -1512,16 +1433,10 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                 nodeList.add(resultSet.getString(RDBMSConstants.NODE_ID));
             }
             return nodeList;
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_GET_MESSAGE_PUBLISHED_NODES;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_GET_MESSAGE_PUBLISHED_NODES;
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(resultSet, RDBMSConstants.TASK_GET_MESSAGE_PUBLISHED_NODES);
             close(preparedStatement, RDBMSConstants.TASK_GET_MESSAGE_PUBLISHED_NODES);
@@ -1549,19 +1464,12 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement.executeUpdate();
             connection.commit();
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_SET_SLOT_STATE + " startMessageId: " + startMessageId + " endMessageId: " +
-                            endMessageId + " slotState:" + slotState;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_SET_SLOT_STATE + " startMessageId: " + startMessageId + " endMessageId: " +
                             endMessageId + " slotState:" + slotState;
             rollback(connection, RDBMSConstants.TASK_SET_SLOT_STATE);
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(preparedStatement, RDBMSConstants.TASK_SET_SLOT_STATE);
             close(connection, RDBMSConstants.TASK_SET_SLOT_STATE);
@@ -1593,16 +1501,11 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                         resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
             }
             return overlappedSlot;
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_GET_OVERLAPPED_SLOT + " queueName: " + queueName;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_GET_OVERLAPPED_SLOT + " queueName: " + queueName;
             logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(resultSet, RDBMSConstants.TASK_GET_OVERLAPPED_SLOT);
             close(preparedStatement, RDBMSConstants.TASK_GET_OVERLAPPED_SLOT);
@@ -1630,17 +1533,11 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement.executeUpdate();
             connection.commit();
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_ADD_MESSAGE_ID + " queueName: " + queueName + " messageId: " + messageId;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_ADD_MESSAGE_ID + " queueName: " + queueName + " messageId: " + messageId;
             rollback(connection, RDBMSConstants.TASK_ADD_MESSAGE_ID);
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(preparedStatement, RDBMSConstants.TASK_ADD_MESSAGE_ID);
             close(connection, RDBMSConstants.TASK_ADD_MESSAGE_ID);
@@ -1667,16 +1564,10 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                 messageIdSet.add(resultSet.getLong(RDBMSConstants.MESSAGE_ID));
             }
             return messageIdSet;
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_GET_MESSAGE_IDS + " queueName: " + queueName;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_GET_MESSAGE_IDS + " queueName: " + queueName;
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(resultSet, RDBMSConstants.TASK_GET_MESSAGE_IDS);
             close(preparedStatement, RDBMSConstants.TASK_GET_MESSAGE_IDS);
@@ -1702,17 +1593,11 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             preparedStatement.executeUpdate();
             connection.commit();
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_DELETE_MESSAGE_ID + " messageId: " + messageId;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_DELETE_MESSAGE_ID + " messageId: " + messageId;
             rollback(connection, RDBMSConstants.TASK_DELETE_MESSAGE_ID);
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(preparedStatement, RDBMSConstants.TASK_DELETE_MESSAGE_ID);
             close(connection, RDBMSConstants.TASK_DELETE_MESSAGE_ID);
@@ -1745,16 +1630,10 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                 assignedSlotSet.add(assignedSlot);
             }
             return assignedSlotSet;
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_GET_ASSIGNED_SLOTS_BY_NODE_ID + " nodeId: " + nodeId;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_GET_ASSIGNED_SLOTS_BY_NODE_ID + " nodeId: " + nodeId;
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(resultSet, RDBMSConstants.TASK_GET_ASSIGNED_SLOTS_BY_NODE_ID);
             close(preparedStatement, RDBMSConstants.TASK_GET_ASSIGNED_SLOTS_BY_NODE_ID);
@@ -1789,16 +1668,10 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                 slotSet.add(slot);
             }
             return slotSet;
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_GET_ALL_SLOTS_BY_QUEUE_NAME + " queueName: " + queueName;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_GET_ALL_SLOTS_BY_QUEUE_NAME + " queueName: " + queueName;
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(resultSet, RDBMSConstants.TASK_GET_ALL_SLOTS_BY_QUEUE_NAME);
             close(preparedStatement, RDBMSConstants.TASK_GET_ALL_SLOTS_BY_QUEUE_NAME);
@@ -1828,16 +1701,10 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             }
             return queueList;
 
-        } catch (SQLNonTransientConnectionException sqlConEx) {
-            String errMsg =
-                    RDBMSConstants.TASK_GET_ALL_QUEUES;
-            rollback(connection, errMsg);
-            throw new AndesStoreUnavailableException("Error occurred while " + errMsg, sqlConEx.getSQLState(), sqlConEx);
         } catch (SQLException e) {
             String errMsg =
                     RDBMSConstants.TASK_GET_ALL_QUEUES;
-            logger.error("Error occurred while " + errMsg, e);
-            throw new AndesException("Error occurred while " + errMsg, e);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {
             close(resultSet, RDBMSConstants.TASK_GET_ALL_QUEUES);
             close(preparedStatement, RDBMSConstants.TASK_GET_ALL_QUEUES);
