@@ -26,7 +26,6 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import org.wso2.andes.metrics.MetricsConstants;
-import org.wso2.andes.server.stats.PerformanceCounter;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.Meter;
@@ -128,9 +127,6 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
             }
             eventContainer.pubAckHandler.ack(messageList.get(0).getMetadata());
         }
-
-        //record the successfully written message count
-        PerformanceCounter.recordIncomingMessageWrittenToStore();
 
         if (log.isTraceEnabled()) {
             StringBuilder messageIds = new StringBuilder();
