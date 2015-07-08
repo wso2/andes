@@ -31,6 +31,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.cluster.coordination.SlotAgent;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.cluster.coordination.rdbms.RDBMSAgent;
+import org.wso2.andes.store.AndesDataIntegrityViolationException;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -344,7 +345,11 @@ public class SlotManagerClusterMode {
                                 log.debug("RightExtra in overlapping slot : " + rightExtraSlot);
                             }
                             //Update last message ID - expand ongoing slot to cater this leftover part.
-                            slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
+                            try {
+                                slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
+                            } catch (AndesDataIntegrityViolationException ex) {
+                                //Primary key violation exception ignored
+                            }
 
                             if (log.isDebugEnabled()) {
                                 log.debug(lastMessageIdInTheSlot + " added to store " +
