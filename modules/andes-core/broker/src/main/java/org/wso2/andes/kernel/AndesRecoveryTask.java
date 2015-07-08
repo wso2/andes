@@ -23,19 +23,16 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.store.HealthAwareStore;
-import org.wso2.andes.store.StoreHealthListener;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * This task will periodically load exchanges,queues,bindings,subscriptions from database
  * and simulate cluster notifications. This is implemented to bring the node
  * to the current state of cluster in case some hazlecast notifications are missed
  */
-public class AndesRecoveryTask implements Runnable, StoreHealthListener {
+public class AndesRecoveryTask implements Runnable {
 
     private List<QueueListener> queueListeners = new ArrayList<QueueListener>();
     private List<ExchangeListener> exchangeListeners = new ArrayList<ExchangeListener>();
@@ -44,9 +41,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
     AndesContextStore andesContextStore;
     AMQPConstructStore amqpConstructStore;
 
-	AtomicBoolean isContextStoreOperational = new AtomicBoolean(true);
-
-	private static Log log = LogFactory.getLog(AndesRecoveryTask.class);
+    private static Log log = LogFactory.getLog(AndesRecoveryTask.class);
 
     public AndesRecoveryTask() {
         queueListeners.add(new ClusterCoordinationHandler(HazelcastAgent.getInstance()));
@@ -59,18 +54,14 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 
     @Override
     public void run() {
-	    if(isContextStoreOperational.compareAndSet(true,true)) {
-		    try {
-			    reloadExchangesFromDB();
-			    reloadQueuesFromDB();
-			    reloadBindingsFromDB();
-			    reloadSubscriptions();
-		    } catch (AndesException e) {
-			    log.error("Error in running andes recovery task", e);
-		    }
-	    } else {
-		    log.info("AndesRecoveryTask was paused due to non-operational context store.");
-	    }
+        try {
+            reloadExchangesFromDB();
+            reloadQueuesFromDB();
+            reloadBindingsFromDB();
+            reloadSubscriptions();
+        } catch (AndesException e) {
+            log.error("Error in running andes recovery task", e);
+        }
     }
 
     /**
@@ -80,135 +71,81 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
      * @throws AndesException
      */
     public void recoverExchangesQueuesBindingsSubscriptions() throws AndesException {
-	    if(isContextStoreOperational.compareAndSet(true,true)) {
-		    reloadExchangesFromDB();
-		    reloadQueuesFromDB();
-		    reloadBindingsFromDB();
-		    reloadSubscriptions();
-	    } else {
-		    log.info("AndesRecoveryTask was paused due to non-operational context store.");
-	    }
+        reloadExchangesFromDB();
+        reloadQueuesFromDB();
+        reloadBindingsFromDB();
+        reloadSubscriptions();
     }
 
     private void reloadExchangesFromDB() throws AndesException {
-	    if(isContextStoreOperational.compareAndSet(true,true)) {
-		    List<AndesExchange> fromDB = andesContextStore.getAllExchangesStored();
-		    List<AndesExchange> fromMap = amqpConstructStore.getExchanges();
-		    List<AndesExchange> fromDBDuplicated = new ArrayList<AndesExchange>(fromDB);
+        List<AndesExchange> fromDB = andesContextStore.getAllExchangesStored();
+        List<AndesExchange> fromMap = amqpConstructStore.getExchanges();
+        List<AndesExchange> fromDBDuplicated = new ArrayList<AndesExchange>(fromDB);
 
-		    fromDB.removeAll(fromMap);
-		    for (AndesExchange exchange : fromDB) {
-			    for (ExchangeListener listener : exchangeListeners) {
-				    log.warn("Recovering node. Adding exchange " + exchange.toString());
-				    listener.handleClusterExchangesChanged(exchange,
-				                                           ExchangeListener.ExchangeChange.Added);
-			    }
-		    }
+        fromDB.removeAll(fromMap);
+        for (AndesExchange exchange : fromDB) {
+            for (ExchangeListener listener : exchangeListeners) {
+                log.warn("Recovering node. Adding exchange " + exchange.toString());
+                listener.handleClusterExchangesChanged(exchange, ExchangeListener.ExchangeChange.Added);
+            }
+        }
 
-		    fromMap.removeAll(fromDBDuplicated);
-		    for (AndesExchange exchange : fromMap) {
-			    for (ExchangeListener listener : exchangeListeners) {
-				    log.warn("Recovering node. Removing exchange " + exchange.toString());
-				    listener.handleClusterExchangesChanged(exchange,
-				                                           ExchangeListener.ExchangeChange.Deleted);
-			    }
-		    }
-	    } else {
-		    log.info("Failed to recover exchanges from database" +
-		             " due to non-operational context store.");
-	    }
+        fromMap.removeAll(fromDBDuplicated);
+        for (AndesExchange exchange : fromMap) {
+            for (ExchangeListener listener : exchangeListeners) {
+                log.warn("Recovering node. Removing exchange " + exchange.toString());
+                listener.handleClusterExchangesChanged(exchange, ExchangeListener.ExchangeChange.Deleted);
+            }
+        }
     }
 
     private void reloadQueuesFromDB() throws AndesException {
-	    if(isContextStoreOperational.compareAndSet(true,true)) {
-		    List<AndesQueue> fromDB = andesContextStore.getAllQueuesStored();
-		    List<AndesQueue> fromMap = amqpConstructStore.getQueues();
-		    List<AndesQueue> fromDBDuplicated = new ArrayList<AndesQueue>(fromDB);
+        List<AndesQueue> fromDB = andesContextStore.getAllQueuesStored();
+        List<AndesQueue> fromMap = amqpConstructStore.getQueues();
+        List<AndesQueue> fromDBDuplicated = new ArrayList<AndesQueue>(fromDB);
 
-		    fromDB.removeAll(fromMap);
-		    for (AndesQueue queue : fromDB) {
-			    for (QueueListener listener : queueListeners) {
-				    log.warn("Recovering node. Adding queue " + queue.toString());
-				    listener.handleClusterQueuesChanged(queue, QueueListener.QueueEvent.ADDED);
-			    }
-		    }
+        fromDB.removeAll(fromMap);
+        for (AndesQueue queue : fromDB) {
+            for (QueueListener listener : queueListeners) {
+                log.warn("Recovering node. Adding queue " + queue.toString());
+                listener.handleClusterQueuesChanged(queue, QueueListener.QueueEvent.ADDED);
+            }
+        }
 
-		    fromMap.removeAll(fromDBDuplicated);
-		    for (AndesQueue queue : fromMap) {
-			    for (QueueListener listener : queueListeners) {
-				    log.warn("Recovering node. Removing queue " + queue.toString());
-				    listener.handleClusterQueuesChanged(queue, QueueListener.QueueEvent.DELETED);
-			    }
-		    }
-	    } else {
-		    log.info("Failed to recover queues from database" +
-		             " due to non-operational context store.");
-	    }
+        fromMap.removeAll(fromDBDuplicated);
+        for (AndesQueue queue : fromMap) {
+            for (QueueListener listener : queueListeners) {
+                log.warn("Recovering node. Removing queue " + queue.toString());
+                listener.handleClusterQueuesChanged(queue, QueueListener.QueueEvent.DELETED);
+            }
+        }
     }
 
     private void reloadBindingsFromDB() throws AndesException {
-	    if(isContextStoreOperational.compareAndSet(true,true)) {
-		    List<AndesExchange> exchanges = andesContextStore.getAllExchangesStored();
-		    for (AndesExchange exchange : exchanges) {
-			    List<AndesBinding> fromDB =
-					    andesContextStore.getBindingsStoredForExchange(exchange.exchangeName);
-			    List<AndesBinding> fromMap =
-					    amqpConstructStore.getBindingsForExchange(exchange.exchangeName);
-			    List<AndesBinding> fromDBDuplicated = new ArrayList<AndesBinding>(fromDB);
-			    fromDB.removeAll(fromMap);
-			    for (AndesBinding binding : fromDB) {
-				    for (BindingListener listener : bindingListeners) {
-					    log.warn("Recovering node. Adding binding " + binding.toString());
-					    listener.handleClusterBindingsChanged(binding,
-					                                          BindingListener.BindingEvent.ADDED);
-				    }
-			    }
+        List<AndesExchange> exchanges = andesContextStore.getAllExchangesStored();
+        for (AndesExchange exchange : exchanges) {
+            List<AndesBinding> fromDB = andesContextStore.getBindingsStoredForExchange(exchange.exchangeName);
+            List<AndesBinding> fromMap = amqpConstructStore.getBindingsForExchange(exchange.exchangeName);
+            List<AndesBinding> fromDBDuplicated = new ArrayList<AndesBinding>(fromDB);
+            fromDB.removeAll(fromMap);
+            for (AndesBinding binding : fromDB) {
+                for (BindingListener listener : bindingListeners) {
+                    log.warn("Recovering node. Adding binding " + binding.toString());
+                    listener.handleClusterBindingsChanged(binding, BindingListener.BindingEvent.ADDED);
+                }
+            }
 
-			    fromMap.removeAll(fromDBDuplicated);
-			    for (AndesBinding binding : fromMap) {
-				    for (BindingListener listener : bindingListeners) {
-					    log.warn("Recovering node. removing binding " + binding.toString());
-					    listener.handleClusterBindingsChanged(binding,
-					                                          BindingListener.BindingEvent.DELETED);
-				    }
-			    }
-		    }
-	    } else {
-		    log.info("Failed to recover bindings from database" +
-		             " due to non-operational context store.");
-	    }
+            fromMap.removeAll(fromDBDuplicated);
+            for (AndesBinding binding : fromMap) {
+                for (BindingListener listener : bindingListeners) {
+                    log.warn("Recovering node. removing binding " + binding.toString());
+                    listener.handleClusterBindingsChanged(binding, BindingListener.BindingEvent.DELETED);
+                }
+            }
+        }
     }
 
     private void reloadSubscriptions() throws AndesException {
-	    if(isContextStoreOperational.compareAndSet(true,true)) {
-		    ClusterResourceHolder.getInstance().getSubscriptionManager()
-		                         .reloadSubscriptionsFromStorage();
-	    } else {
-		    log.info("Failed to recover subscriptions from database" +
-		             " due to non-operational context store.");
-	    }
+        ClusterResourceHolder.getInstance().getSubscriptionManager().reloadSubscriptionsFromStorage();
     }
-
-	/**
-	 * Invoked when specified store becomes non-operational
-	 *
-	 * @param store the store which went offline.
-	 * @param ex exception
-	 */
-	@Override public void storeNonOperational(HealthAwareStore store, Exception ex) {
-		if(store.getClass().isInstance(AndesContextStore.class)) {
-			isContextStoreOperational.set(false);
-		}
-	}
-
-	/**
-	 * Invoked when specified store becomes operational
-	 *
-	 * @param store Reference to the operational store
-	 */
-	@Override public void storeOperational(HealthAwareStore store) {
-		if(store.getClass().isInstance(AndesContextStore.class)) {
-			isContextStoreOperational.set(true);
-		}
-	}
 }
