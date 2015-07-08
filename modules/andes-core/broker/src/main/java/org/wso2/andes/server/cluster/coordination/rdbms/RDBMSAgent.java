@@ -24,6 +24,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.server.cluster.coordination.SlotAgent;
+import org.wso2.andes.store.AndesDataIntegrityViolationException;
 
 import java.util.Set;
 import java.util.TreeSet;
@@ -159,7 +160,11 @@ public class RDBMSAgent implements SlotAgent {
 	 */
 	@Override
 	public void addMessageId(String queueName, long messageId) throws AndesException {
-		andesContextStore.addMessageId(queueName, messageId);
+		try {
+			andesContextStore.addMessageId(queueName, messageId);
+		} catch (AndesDataIntegrityViolationException ignore) {
+			//Primary key violation exception ignored
+		}
 	}
 
 

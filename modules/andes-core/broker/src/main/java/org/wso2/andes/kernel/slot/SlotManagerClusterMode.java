@@ -345,11 +345,7 @@ public class SlotManagerClusterMode {
                                 log.debug("RightExtra in overlapping slot : " + rightExtraSlot);
                             }
                             //Update last message ID - expand ongoing slot to cater this leftover part.
-                            try {
-                                slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
-                            } catch (AndesDataIntegrityViolationException ex) {
-                                //Primary key violation exception ignored
-                            }
+                            slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
 
                             if (log.isDebugEnabled()) {
                                 log.debug(lastMessageIdInTheSlot + " added to store " +
