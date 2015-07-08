@@ -59,7 +59,6 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      */
     private volatile boolean running;
     private MessageFlusher messageFlusher;
-    private SlotDeletionScheduler slotDeletionScheduler;
     private SlotCoordinator slotCoordinator;
 
     /**
@@ -68,9 +67,6 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      * (other than those of Disruptor)
      */
     private volatile SettableFuture<Boolean> messageStoresUnavailable;
-
-    
-    private static final long SLOT_DELETION_SCHEDULE_INTERVAL = 15 * 1000;
 
     /**
      * Maximum number to retries retrieve metadata list for a given storage
@@ -82,14 +78,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
         messageFlusher = MessageFlusher.getInstance();
         this.storageQueueNameToDestinationMap = new ConcurrentSkipListMap<>();
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-        slotDeletionScheduler = new SlotDeletionScheduler(SLOT_DELETION_SCHEDULE_INTERVAL);
-        /*
-        Start slot deleting thread only if clustering is enabled. Otherwise slots assignment will
-         not happen
-         */
-
         slotCoordinator = MessagingEngine.getInstance().getSlotCoordinator();
-        
         messageStoresUnavailable = null;
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
@@ -374,9 +363,13 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
     }
 
 
+    /**
+     * Submit slot to execute delete
+     *
+     * @param slot slot to delete
+     */
     public void deleteSlot(Slot slot) {
-        String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
-        slotDeletionScheduler.scheduleSlotDeletion(slot, nodeID);
+        SlotDeletionExecutor.getInstance().executeSlotDeletion(slot);
     }
 
     /**

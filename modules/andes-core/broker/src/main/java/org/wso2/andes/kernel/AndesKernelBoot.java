@@ -22,8 +22,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -38,6 +36,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.slot.SlotDeletionExecutor;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.kernel.slot.SlotManagerStandalone;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -112,6 +111,12 @@ public class AndesKernelBoot {
             startThriftServer();
             startMessaging();
             createSuperTenantDLC();
+
+            //Start slot deleting thread only if clustering is enabled.
+            //Otherwise slots assignment will not happen
+            if (AndesContext.getInstance().isClusteringEnabled()) {
+                SlotDeletionExecutor.getInstance().init();
+            }
 
             Andes.getInstance().startSafeZoneAnalysisWorker();
         } catch (JMException e) {
