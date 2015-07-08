@@ -26,6 +26,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesKernelBoot;
 import org.wso2.andes.kernel.FlowControlManager;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.slot.SlotDeletionExecutor;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.registry.ApplicationRegistry;
@@ -239,6 +240,9 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
             // Shut down Store writing tasks - (after waiting for completion)
             // Shut down message store
             completePendingMessageStoringOperations();
+
+            // Slot deletion shutdown at this point
+            SlotDeletionExecutor.getInstance().stopSlotDeletionExecutor();
 
             //Stop Slot manager in coordinator
             if (AndesContext.getInstance().isClusteringEnabled() && AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
