@@ -31,6 +31,7 @@ import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 /**
  * Implementation of {@link MessageStore} which observes failures such is
@@ -269,6 +270,14 @@ public class FailureObservingMessageStore implements MessageStore {
             throws AndesException {
         try {
             wrappedInstance.deleteMessages(storageQueueName, messagesToRemove, deleteAllMetaData);
+
+            //Tracing message activity
+            if(MessageTracer.isEnabled()) {
+                for(long messageId : messagesToRemove) {
+                    MessageTracer.trace(messageId, storageQueueName, MessageTracer.MESSAGE_DELETED);
+                }
+            }
+
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

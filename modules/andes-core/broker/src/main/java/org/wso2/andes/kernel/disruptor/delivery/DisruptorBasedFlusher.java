@@ -118,7 +118,7 @@ public class DisruptorBasedFlusher {
     public void submit(LocalSubscription subscription, AndesMessageMetadata metadata) {
 
         //Tracing Message
-        MessageTracer.trace(metadata, MessageTracer.PUBLISHED_TO_DISRUPTOR);
+        MessageTracer.trace(metadata, MessageTracer.PUBLISHED_TO_OUTBOUND_DISRUPTOR);
 
         long nextSequence = ringBuffer.next();
 
