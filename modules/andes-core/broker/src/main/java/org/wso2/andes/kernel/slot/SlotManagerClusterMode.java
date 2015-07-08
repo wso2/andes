@@ -24,14 +24,12 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.cluster.coordination.SlotAgent;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.cluster.coordination.rdbms.RDBMSAgent;
-import org.wso2.andes.store.AndesDataIntegrityViolationException;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -106,11 +104,9 @@ public class SlotManagerClusterMode {
             AndesConfigurationManager.readValue(AndesConfiguration.SLOT_MANAGEMENT_STORAGE).equals("RDBMS")) {
             //Use RDBMS slot information storing
             slotAgent = new RDBMSAgent();
-
         } else {
             //Use Hazelcast slot information storing
             slotAgent = HazelcastAgent.getInstance();
-
         }
 
         removedNode = "";
@@ -161,16 +157,13 @@ public class SlotManagerClusterMode {
         }
 
         if (null != slotToBeAssigned) {
-
             if (!isFreshSlot) {
                 updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
             }
-
             if (log.isDebugEnabled()) {
                 log.debug("Assigning slot for node : " + nodeId + " ||| " + slotToBeAssigned);
             }
         } else {
-
             if (log.isDebugEnabled()) {
                 log.debug("Slot Manager - returns empty slot for the queue: " + queueName);
             }
@@ -209,12 +202,16 @@ public class SlotManagerClusterMode {
 
             //end messageID will be the lowest in published message ID list. Get and remove
             slotToBeAssigned.setEndMessageId(messageIDSet.pollFirst());
+
             //remove polled message id from database
             slotAgent.deleteMessageId(queueName, slotToBeAssigned.getEndMessageId());
+
             //set storage queue name (db queue to read messages from)
             slotToBeAssigned.setStorageQueueName(queueName);
+
             //modify last assigned ID by queue to database
             slotAgent.setQueueToLastAssignedId(queueName, slotToBeAssigned.getEndMessageId());
+
             //Create new slot entry in database table and get the slot id
             slotAgent.createSlot(
                     slotToBeAssigned.getStartMessageId(),
@@ -297,78 +294,84 @@ public class SlotManagerClusterMode {
      */
     public void updateMessageID(String queueName, String nodeId, long startMessageIdInTheSlot,
                                 long lastMessageIdInTheSlot) throws AndesException{
+
         //setting up first message id of the slot
         if (firstMessageId > startMessageIdInTheSlot || firstMessageId == -1) {
             firstMessageId = startMessageIdInTheSlot;
         }
-            // Read message Id set for slots from store
-            TreeSet<Long> messageIdSet;
-            messageIdSet = slotAgent.getMessageIds(queueName);
 
-            String lockKey = queueName + SlotManagerClusterMode.class;
-            synchronized (lockKey.intern()) {
-                //Get last assigned message id from database
-                long lastAssignedMessageId = slotAgent.getQueueToLastAssignedId(queueName);
+	    if (slotRecoveryScheduled.compareAndSet(true, true)) {
+		    queuesToRecover.remove(queueName);
+	    }
 
-                // Check if input slot's start message ID is less than last assigned message ID
-                if (startMessageIdInTheSlot < lastAssignedMessageId) {
+	    // Read message Id set for slots from store
+	    TreeSet<Long> messageIdSet;
+	    messageIdSet = slotAgent.getMessageIds(queueName);
+
+        String lockKey = queueName + SlotManagerClusterMode.class;
+        synchronized (lockKey.intern()) {
+            //Get last assigned message id from database
+            long lastAssignedMessageId = slotAgent.getQueueToLastAssignedId(queueName);
+
+            // Check if input slot's start message ID is less than last assigned message ID
+            if (startMessageIdInTheSlot < lastAssignedMessageId) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Found overlapping slots during slot submit: " +
+                            startMessageIdInTheSlot + " to : " + lastMessageIdInTheSlot +
+                            ". Comparing to lastAssignedID : " + lastAssignedMessageId);
+                }
+                // Find overlapping slots
+                TreeSet<Slot> overlappingSlots = getOverlappedAssignedSlots(queueName, startMessageIdInTheSlot,
+                        lastMessageIdInTheSlot);
+
+                if (overlappingSlots.size() > 0) {
+
                     if (log.isDebugEnabled()) {
-                        log.debug("Found overlapping slots during slot submit: " +
-                                startMessageIdInTheSlot + " to : " + lastMessageIdInTheSlot +
-                                ". Comparing to lastAssignedID : " + lastAssignedMessageId);
+                        log.debug("Found " + overlappingSlots.size() + " overlapping slots.");
                     }
-                    // Find overlapping slots
-                    TreeSet<Slot> overlappingSlots = getOverlappedAssignedSlots(queueName, startMessageIdInTheSlot,
-                            lastMessageIdInTheSlot);
-
-                    if (overlappingSlots.size() > 0) {
+                    // Following means that we have a piece of the slot exceeding the earliest
+                    // assigned slot. breaking that piece and adding it as a new,unassigned slot.
+                    if (startMessageIdInTheSlot < overlappingSlots.first().getStartMessageId()) {
+                        Slot leftExtraSlot = new Slot(startMessageIdInTheSlot, overlappingSlots.first().
+                                getStartMessageId() - 1, queueName);
+                        if (log.isDebugEnabled()) {
+                            log.debug("Left Extra Slot in overlapping slots : " + leftExtraSlot);
+                        }
+                    }
+                    // This means that we have a piece of the slot exceeding the latest assigned slot.
+                    // breaking that piece and adding it as a new,unassigned slot.
+                    if (lastMessageIdInTheSlot > overlappingSlots.last().getEndMessageId()) {
+                        Slot rightExtraSlot = new Slot(overlappingSlots.last().getEndMessageId() + 1,
+                                lastMessageIdInTheSlot, queueName);
 
                         if (log.isDebugEnabled()) {
-                            log.debug("Found " + overlappingSlots.size() + " overlapping slots.");
+                            log.debug("RightExtra in overlapping slot : " + rightExtraSlot);
                         }
-                        // Following means that we have a piece of the slot exceeding the earliest
-                        // assigned slot. breaking that piece and adding it as a new,unassigned slot.
-                        if (startMessageIdInTheSlot < overlappingSlots.first().getStartMessageId()) {
-                            Slot leftExtraSlot = new Slot(startMessageIdInTheSlot, overlappingSlots.first().
-                                    getStartMessageId() - 1, queueName);
-                            if (log.isDebugEnabled()) {
-                                log.debug("Left Extra Slot in overlapping slots : " + leftExtraSlot);
-                            }
-                        }
-                        // This means that we have a piece of the slot exceeding the latest assigned slot.
-                        // breaking that piece and adding it as a new,unassigned slot.
-                        if (lastMessageIdInTheSlot > overlappingSlots.last().getEndMessageId()) {
-                            Slot rightExtraSlot = new Slot(overlappingSlots.last().getEndMessageId() + 1,
-                                    lastMessageIdInTheSlot, queueName);
+                        //Update last message ID - expand ongoing slot to cater this leftover part.
+                        slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
 
-                            if (log.isDebugEnabled()) {
-                                log.debug("RightExtra in overlapping slot : " + rightExtraSlot);
-                            }
-                            //Update last message ID - expand ongoing slot to cater this leftover part.
-                            slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
-
-                            if (log.isDebugEnabled()) {
-                                log.debug(lastMessageIdInTheSlot + " added to store " +
-                                        "(RightExtraSlot). Current values in " +
-                                        "store " + messageIdSet);
-                            }
-                            slotAgent.setNodeToLastPublishedId(nodeId, lastMessageIdInTheSlot);
+                        if (log.isDebugEnabled()) {
+                            log.debug(lastMessageIdInTheSlot + " added to store " +
+                                    "(RightExtraSlot). Current values in " +
+                                    "store " + messageIdSet);
                         }
+                        slotAgent.setNodeToLastPublishedId(nodeId, lastMessageIdInTheSlot);
                     }
-                } else {
-                     //Update the store only if the last assigned message ID is less than the new start message ID
-                    slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
-
-                    if (log.isDebugEnabled()) {
-                        log.debug("No overlapping slots found during slot submit " + startMessageIdInTheSlot + " to : " +
-                                lastMessageIdInTheSlot + ". Added msgID " +
-                                lastMessageIdInTheSlot + " to store");
-                    }
-
-                    //record last published message ID
-                    slotAgent.setNodeToLastPublishedId(nodeId, lastMessageIdInTheSlot);
                 }
+            } else {
+                 //Update the store only if the last assigned message ID is less than the new start message ID
+                slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
+
+                if (log.isDebugEnabled()) {
+                    log.debug("No overlapping slots found during slot submit " + startMessageIdInTheSlot + " to : " +
+                            lastMessageIdInTheSlot + ". Added msgID " +
+                            lastMessageIdInTheSlot + " to store");
+                }
+
+                //record last published message ID
+                slotAgent.setNodeToLastPublishedId(nodeId, lastMessageIdInTheSlot);
             }
+        }
     }
 
     /**
