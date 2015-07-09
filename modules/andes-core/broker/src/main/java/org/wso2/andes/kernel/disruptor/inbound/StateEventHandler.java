@@ -110,8 +110,6 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
             //Tracing Message
             MessageTracer.trace(message, MessageTracer.SLOT_INFO_UPDATED);
 
-            eventContainer.pubAckHandler.ack(message.getMetadata());
-
             //Adding metrics meter for ack rate
             Meter ackMeter = MetricManager.meter(Level.INFO, this.getClass() + MetricsConstants.ACK_SENT_RATE);
             ackMeter.mark();
