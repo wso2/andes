@@ -19,7 +19,6 @@
 package org.wso2.andes.kernel.slot;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -109,7 +108,9 @@ public class SlotManagerClusterMode {
             slotAgent = HazelcastAgent.getInstance();
         }
 
-        removedNode = "";
+        // Initialize the current node ID as the removed node. This is to avoid slot recovery task adding an empty
+        // node ID to the map used to calculate safe zone.
+        removedNode = HazelcastAgent.getInstance().getNodeId();
         firstMessageId = INITIAL_MESSAGE_ID;
         slotRecoveryScheduled = new AtomicBoolean(false);
 
