@@ -134,12 +134,6 @@ public class SlotManagerClusterMode {
         Slot slotToBeAssigned;
 
         /**
-         * When getting a fresh slot we can create slot and assign it at the same time without calling database
-         * twice. This variable will be used to isolate fresh slots when calling update slot assignment method.
-         */
-        boolean isFreshSlot = false;
-
-        /**
          *First look in the unassigned slots pool for free slots. These slots are previously own by
          * other nodes
          */
@@ -152,16 +146,13 @@ public class SlotManagerClusterMode {
             }
             if (null == slotToBeAssigned) {
                 slotToBeAssigned = getFreshSlot(queueName, nodeId);
-                isFreshSlot = true;
             }
         }
 
         if (null != slotToBeAssigned) {
-            if (!isFreshSlot) {
-                updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
-            }
+	        updateSlotAssignmentMap(queueName, slotToBeAssigned, nodeId);
             if (log.isDebugEnabled()) {
-                log.debug("Assigning slot for node : " + nodeId + " ||| " + slotToBeAssigned);
+                log.debug("Assigning slot for node : " + nodeId + " | " + slotToBeAssigned);
             }
         } else {
             if (log.isDebugEnabled()) {
