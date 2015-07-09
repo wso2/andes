@@ -163,7 +163,9 @@ public class RDBMSAgent implements SlotAgent {
 		try {
 			andesContextStore.addMessageId(queueName, messageId);
 		} catch (AndesDataIntegrityViolationException ignore) {
-			//Primary key violation exception ignored
+			//Same message id can be added to list when slots are overlapped. In RDBMS slot store
+			//composite primary key of queue name and message id have been used to avoid duplicates.
+			//Therefore primary key violation exception can be ignored.
 		}
 	}
 
