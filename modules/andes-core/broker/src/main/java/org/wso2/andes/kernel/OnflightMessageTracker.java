@@ -500,11 +500,12 @@ public class OnflightMessageTracker {
     }
 
     /**
-     * Release tracking of all messages belonging to a slot. i.e called when slot is removed.
-     * This will remove all buffering tracking of messages and tracking objects.
-     * But tracking objects will remain until delivery cycle completed
+     * Release tracking of all messages belonging to a slot. i.e called when slot is removed. This will remove all
+     * buffering tracking of messages and tracking objects. But tracking objects will remain until delivery cycle
+     * completed
      *
-     * @param slot slot to release
+     * @param slot
+     *         slot to release
      */
     public void releaseAllMessagesOfSlotFromTracking(Slot slot) {
         //remove all actual msgData objects
@@ -520,8 +521,10 @@ public class OnflightMessageTracker {
                     if (log.isDebugEnabled()) {
                         log.debug("removing tracking object from memory id " + messageId);
                     }
-                    msgId2MsgData.remove(messageId);
+                } else {
+                    log.error("Tracking data for message id " + messageId + " removed while in an invalid state.");
                 }
+                msgId2MsgData.remove(messageId);
             }
         }
     }

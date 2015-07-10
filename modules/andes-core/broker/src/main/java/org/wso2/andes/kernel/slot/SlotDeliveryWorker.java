@@ -18,11 +18,7 @@
 
 package org.wso2.andes.kernel.slot;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ExecutionException;
-
+import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
@@ -31,13 +27,16 @@ import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.MessageFlusher;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
 import org.wso2.andes.subscription.SubscriptionStore;
 
-import com.google.common.util.concurrent.SettableFuture;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ExecutionException;
 
 /**
  * SlotDelivery worker is responsible of distributing messages to subscribers. Messages will be
@@ -370,6 +369,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      */
     public void deleteSlot(Slot slot) {
         SlotDeletionExecutor.getInstance().executeSlotDeletion(slot);
+        OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
     }
 
     /**
