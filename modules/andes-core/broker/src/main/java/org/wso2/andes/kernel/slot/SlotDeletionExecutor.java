@@ -22,10 +22,12 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.OnflightMessageTracker;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
@@ -76,19 +78,36 @@ public class SlotDeletionExecutor {
      */
     class SlotDeletionTask implements Runnable {
 
+        //Slot which previously attempt to delete
+        Slot previouslyAttemptedSlot = null;
+
         /**
          * Running slot deletion task
          */
         public void run() {
             while (!Thread.currentThread().isInterrupted()) {
-                Slot slot = null;
                 try {
-                    slot = slotsToDelete.poll(1, TimeUnit.SECONDS);
-
-                    if (slot != null) {
-                        boolean deleteSuccess = deleteSlotAtCoordinator(slot);
-                        if (!deleteSuccess) {
-                            slotsToDelete.add(slot);
+                    //Slot to attempt current deletion
+                    Slot deletionAttempt;
+                    if (previouslyAttemptedSlot != null) {
+                        //Previous attempt to deletion is not success. Therefore try again to delete by assign it to
+                        //deletionAttempt
+                        deletionAttempt = previouslyAttemptedSlot;
+                        previouslyAttemptedSlot = null;
+                    } else {
+                        //Previous attempt to delete slot is success, therefore taking next slot from queue
+                        deletionAttempt = slotsToDelete.poll(1, TimeUnit.SECONDS);
+                    }
+                    //check current slot to delete is not null
+                    if (deletionAttempt != null) {
+                        //invoke coordinator to delete slot
+                        boolean deleteSuccess = deleteSlotAtCoordinator(deletionAttempt);
+                        if (deleteSuccess) {
+                            //all tracking removed if deletion is success i.e. SafeZone after given slot
+                            OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(deletionAttempt);
+                        } else {
+                            //delete attempt not success, therefore reassign current deletion attempted slot to previous slot
+                            previouslyAttemptedSlot = deletionAttempt;
                         }
                     }
 
