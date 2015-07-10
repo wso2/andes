@@ -565,7 +565,7 @@ public class HazelcastAgent implements SlotAgent {
     @Override
     public void deleteSlotAssignmentByQueueName(String nodeId, String queueName) throws AndesException {
         try {
-            TreeSet<Slot> assignedSlotList = null;
+            TreeSet<Slot> assignedSlotList = new TreeSet<Slot>();
             //Get assigned slots from Hazelcast, delete all belonging to queue
             //and set back
             HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.get(nodeId);
@@ -587,7 +587,8 @@ public class HazelcastAgent implements SlotAgent {
                 queueToOverlappedSlotMap = overlappedSlotWrapper.getStringListHashMap();
             }
             if (queueToOverlappedSlotMap != null) {
-                assignedSlotList = queueToOverlappedSlotMap.remove(queueName);
+                TreeSet<Slot> assignedOverlappedSlotList = queueToOverlappedSlotMap.remove(queueName);
+                assignedSlotList.addAll(assignedOverlappedSlotList);
                 overlappedSlotWrapper.setStringListHashMap(queueToOverlappedSlotMap);
                 this.overLappedSlotMap.set(nodeId, overlappedSlotWrapper);
             }
