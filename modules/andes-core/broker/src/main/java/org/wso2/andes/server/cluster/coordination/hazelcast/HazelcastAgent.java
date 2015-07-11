@@ -565,7 +565,7 @@ public class HazelcastAgent implements SlotAgent {
     @Override
     public void deleteSlotAssignmentByQueueName(String nodeId, String queueName) throws AndesException {
         try {
-            TreeSet<Slot> assignedSlotList = new TreeSet<Slot>();
+            TreeSet<Slot> slotListToReturn = new TreeSet<Slot>();
             //Get assigned slots from Hazelcast, delete all belonging to queue
             //and set back
             HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.get(nodeId);
@@ -574,7 +574,10 @@ public class HazelcastAgent implements SlotAgent {
                 queueToSlotMap = wrapper.getStringListHashMap();
             }
             if (queueToSlotMap != null) {
-                assignedSlotList = queueToSlotMap.remove(queueName);
+                TreeSet<Slot> assignedSlotList = queueToSlotMap.remove(queueName);
+                if(assignedSlotList != null) {
+                    slotListToReturn.addAll(assignedSlotList);
+                }
                 wrapper.setStringListHashMap(queueToSlotMap);
                 this.slotAssignmentMap.set(nodeId, wrapper);
             }
@@ -588,13 +591,15 @@ public class HazelcastAgent implements SlotAgent {
             }
             if (queueToOverlappedSlotMap != null) {
                 TreeSet<Slot> assignedOverlappedSlotList = queueToOverlappedSlotMap.remove(queueName);
-                assignedSlotList.addAll(assignedOverlappedSlotList);
+                if(assignedOverlappedSlotList != null) {
+                    slotListToReturn.addAll(assignedOverlappedSlotList);
+                }
                 overlappedSlotWrapper.setStringListHashMap(queueToOverlappedSlotMap);
                 this.overLappedSlotMap.set(nodeId, overlappedSlotWrapper);
             }
 
             //add the deleted slots to un-assigned slot map, so that they can be assigned again.
-            if (assignedSlotList != null && !assignedSlotList.isEmpty()) {
+            if (!slotListToReturn.isEmpty()) {
                 TreeSetSlotWrapper treeSetStringWrapper = unAssignedSlotMap.get(queueName);
                 TreeSet<Slot> unAssignedSlotSet = new TreeSet<Slot>();
                 if (null != treeSetStringWrapper) {
@@ -605,11 +610,11 @@ public class HazelcastAgent implements SlotAgent {
                 if (unAssignedSlotSet == null) {
                     unAssignedSlotSet = new TreeSet<Slot>();
                 }
-                for (Slot slotToBeReAssigned : assignedSlotList) {
+                for (Slot returnSlot : slotListToReturn) {
                     //Reassign only if the slot is not empty
-                    if (!SlotUtils.checkSlotEmptyFromMessageStore(slotToBeReAssigned)) {
-                        if (slotToBeReAssigned.addState(SlotState.RETURNED)) {
-                            unAssignedSlotSet.add(slotToBeReAssigned);
+                    if (!SlotUtils.checkSlotEmptyFromMessageStore(returnSlot)) {
+                        if (returnSlot.addState(SlotState.RETURNED)) {
+                            unAssignedSlotSet.add(returnSlot);
                         }
                     }
                     treeSetStringWrapper.setSlotTreeSet(unAssignedSlotSet);
