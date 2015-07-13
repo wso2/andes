@@ -57,8 +57,8 @@ public class ServerStartupRecoveryUtils {
      * @return difference between start message id and end message id
      */
     public static long getMessageDifferenceForWarmStartup() {
-        Long chunkSize = AndesConfigurationManager.readValue
-                (AndesConfiguration.RECOVERY_MESSAGES_RECOVERY_WINDOW_SIZE);
+        //Recover message chunks at particular database call. Prevents TombstoneOverwhelmingException in Cassandra
+        long chunkSize = 100000;
         long timeDifference = 256 * 1024;
         return timeDifference * chunkSize;
     }
@@ -73,8 +73,8 @@ public class ServerStartupRecoveryUtils {
     public static long getStartMessageIdForWarmStartup() throws AndesException {
         long firstMsgId;
         try {
-            String recoveryStartFrom = AndesConfigurationManager.readValue
-                    (AndesConfiguration.RECOVERY_MESSAGES_START_FROM_DATE);
+            //to avoid tombstones when reading from cassandra this reference time is used
+            String recoveryStartFrom = "2015-05-27 00:00:00";
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             Date recoveryDate = dateFormat.parse(recoveryStartFrom);
             firstMsgId = recoveryDate.getTime();
