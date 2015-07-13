@@ -18,11 +18,7 @@
 
 package org.wso2.andes.kernel.disruptor.inbound;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesMessage;
@@ -32,9 +28,12 @@ import org.wso2.andes.store.AndesBatchUpdateException;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
-
-import com.google.common.util.concurrent.SettableFuture;
 import org.wso2.andes.tools.utils.MessageTracer;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Writes messages in Disruptor ring buffer to message store in batches.
@@ -159,14 +158,21 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
             // Now message writer goes and inserts same batch again -> results in failures in batch update.
             // Therefore here we remove conflicting message parts (which are probably already in the database).
             //currentMessageList.removeAll(batchInsertEx.getFailedInserts());
-            previouslyFailedMessageList.addAll(currentMessageList);
-            currentMessageList.clear();
-            retainMap.clear();
+            handleStoreFailure();
         } catch (Exception ex) {
             log.warn("Unable to store messages, probably due to errors in message stores. messages count : " +
                     currentMessageList.size());
+            handleStoreFailure();
             throw ex;
         }
+    }
+
+    /**
+     * Move the messages to previouslyFailedMessageList and clear currentMessageList and retainMap
+     */
+    private void handleStoreFailure() {
+        previouslyFailedMessageList.addAll(currentMessageList);
+        currentMessageList.clear();
     }
 
     /**
