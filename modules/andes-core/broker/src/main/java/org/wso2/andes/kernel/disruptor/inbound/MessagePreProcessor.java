@@ -94,7 +94,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
 
         int size = 0;
         for (AndesMessage message : eventContainer.getMessageList()) {
-            size = size + message.getContentChunkList().size();
+            size = size + message.getMetadata().getMessageContentSize();
         }
         eventContainer.getChannel().recordRemovalFromBuffer(size);
     }
@@ -138,8 +138,9 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
         if (message.getMetadata().isTopic()) {
             handleTopicRoutine(event, message, andesChannel);
         } else {
-            andesChannel.recordAdditionToBuffer(message.getContentChunkList().size());
+
             AndesMessageMetadata messageMetadata = message.getMetadata();
+            andesChannel.recordAdditionToBuffer(messageMetadata.getMessageContentSize());
             messageMetadata.setStorageQueueName(messageMetadata.getDestination());
             event.addMessage(message);
         }
@@ -199,7 +200,9 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                     // add the topic wise cloned message to the events list. Message writers will pick that and
                     // write it.
                     event.addMessage(clonedMessage);
-                    andesChannel.recordAdditionToBuffer(clonedMessage.getContentChunkList().size());
+
+                    //Notify the Andes Channel that we've added a message of this size
+                    andesChannel.recordAdditionToBuffer(clonedMessage.getMetadata().getMessageContentSize());
                     isMessageRouted = true;
                     alreadyStoredQueueNames.add(subscription.getStorageQueueName());
                 }

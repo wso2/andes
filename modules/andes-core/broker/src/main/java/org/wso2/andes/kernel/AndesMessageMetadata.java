@@ -128,6 +128,11 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      */
     private boolean retain;
 
+    /**
+     * The actual byte size of the content of the message
+     */
+    private int messageContentSize;
+
     public AndesMessageMetadata() {
         propertyMap = new HashMap<String, Object>();
         this.retain = false;
@@ -442,5 +447,23 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      */
     public Object getProperty(String key) {
         return propertyMap.get(key);
+    }
+
+    /**
+     * Method to get the byte size of the message associated with this metadata
+     *
+     * @return content size of the message in bytes
+     */
+    public int getMessageContentSize() {
+        return messageContentSize;
+    }
+
+    /**
+     * Method to set the message content size
+     *
+     * @param messageContentSize the size of the contents
+     */
+    public void setMessageContentSize(int messageContentSize) {
+        this.messageContentSize = messageContentSize;
     }
 }

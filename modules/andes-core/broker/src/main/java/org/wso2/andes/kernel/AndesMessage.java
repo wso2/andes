@@ -66,6 +66,8 @@ public class AndesMessage {
 
     public void addMessagePart(AndesMessagePart messagePart) {
         contentChunkList.add(messagePart);
+        int messageContentSize = getMetadata().getMessageContentSize();
+        getMetadata().setMessageContentSize(messageContentSize + messagePart.getDataLength());
     }
 
     /**
@@ -81,9 +83,16 @@ public class AndesMessage {
 
     /**
      * Set content chunk list of the message
+     *
      * @param chunkList List of {@link org.wso2.andes.kernel.AndesMessagePart}
      */
     public void setChunkList(List<AndesMessagePart> chunkList) {
         this.contentChunkList = chunkList;
+        int contentSize = 0;
+        //iterate through the content chunk list and set the content size of the message
+        for (AndesMessagePart chunk : chunkList) {
+            contentSize = contentSize + chunk.getDataLength();
+        }
+        this.getMetadata().setMessageContentSize(contentSize);
     }
 }

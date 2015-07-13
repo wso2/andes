@@ -62,7 +62,7 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
             switch (event.getEventType()) {
                 case MESSAGE_EVENT:
                     updateSlotsAndQueueCounts(event);
-                    event.getChannel().recordRemovalFromBuffer(AndesChannel.getTotalChunkCount(event.getMessageList()));
+                    event.getChannel().recordRemovalFromBuffer(AndesChannel.getTotalChunkSize(event.getMessageList()));
                     break;
                 case SAFE_ZONE_DECLARE_EVENT:
                     updateSlotDeleteSafeZone(event);

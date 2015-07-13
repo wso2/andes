@@ -105,14 +105,14 @@ public class FlowControlManager  implements StoreHealthListener {
     private boolean shutDownTriggered;
 
     public FlowControlManager() {
-        // Read configured limits
-        globalLowLimit = (Integer) AndesConfigurationManager
+        // Read configured limits and multiply by 1048576 to convert MB into Bytes
+        globalLowLimit = 1048576 * (Integer) AndesConfigurationManager
                 .readValue(AndesConfiguration.FLOW_CONTROL_GLOBAL_LOW_LIMIT);
-        globalHighLimit = (Integer) AndesConfigurationManager
+        globalHighLimit = 1048576 * (Integer) AndesConfigurationManager
                 .readValue(AndesConfiguration.FLOW_CONTROL_GLOBAL_HIGH_LIMIT);
-        channelLowLimit = ((Integer) AndesConfigurationManager
+        channelLowLimit = 1048576 * ((Integer) AndesConfigurationManager
                 .readValue(AndesConfiguration.FLOW_CONTROL_BUFFER_BASED_LOW_LIMIT));
-        channelHighLimit = ((Integer) AndesConfigurationManager
+        channelHighLimit = 1048576 * ((Integer) AndesConfigurationManager
                 .readValue(AndesConfiguration.FLOW_CONTROL_BUFFER_BASED_HIGH_LIMIT));
 
         if (globalHighLimit <= globalLowLimit || channelHighLimit <= channelLowLimit) {
@@ -126,8 +126,8 @@ public class FlowControlManager  implements StoreHealthListener {
 
         FailureObservingStoreManager.registerStoreHealthListener(this);
         // Initialize executor service for state validity checking
-        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("AndesScheduledTaskManager-FlowControl")
-                                                                     .build();
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat
+                ("AndesScheduledTaskManager-FlowControl").build();
         executor = Executors.newSingleThreadScheduledExecutor(namedThreadFactory);
 
         //Will start the gauge
@@ -178,13 +178,11 @@ public class FlowControlManager  implements StoreHealthListener {
     /**
      * This method should be called when a message is put into the buffer
      *
-     * @param size
-     *         Number of items added to buffer
+     * @param size content size of the items added to buffer in Bytes
      */
     public void notifyAddition(int size) {
-        int count = messagesOnGlobalBuffer.addAndGet(size);
-
-        if ((!globalBufferBasedFlowControlEnabled) && (count >= globalHighLimit)) {
+        int currentSize = messagesOnGlobalBuffer.addAndGet(size);
+        if ((!globalBufferBasedFlowControlEnabled) && (currentSize >= globalHighLimit)) {
             blockListenersOnBufferBasedFlowControl();
         }
     }
@@ -192,13 +190,11 @@ public class FlowControlManager  implements StoreHealthListener {
     /**
      * This method should be called after a message is processed and no longer required in the buffer.
      *
-     * @param size
-     *         Number of items removed from buffer
+     * @param size content size of the items removed from buffer in Bytes
      */
     public void notifyRemoval(int size) {
-        int count = messagesOnGlobalBuffer.addAndGet(-size);
-
-        if (globalBufferBasedFlowControlEnabled && count <= globalLowLimit) {
+        int currentSize = messagesOnGlobalBuffer.addAndGet(-size);
+        if (globalBufferBasedFlowControlEnabled && currentSize <= globalLowLimit) {
             unblockListenersOnBufferBasedFlowControl();
         }
     }

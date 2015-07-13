@@ -171,9 +171,6 @@ public class AndesChannel {
         globalErrorBasedFlowControlEnabled = false;
         unblockLocalChannel();
     }
-
-    
-    
     
     /**
      * Notify local channel to unblock channel
@@ -200,44 +197,39 @@ public class AndesChannel {
             log.info("Flow control enabled for channel " + getId() + ".");
         }
     }
-    
-    
+
     /**
      * This method should be called when a message is put into the buffer
      *
-     * @param size
-     *         Number of items added to buffer
+     * @param size content size of the items added to buffer in Bytes
      */
     public void recordAdditionToBuffer(int size) {
         flowControlManager.notifyAddition(size);
 
-        int count = messagesOnBuffer.addAndGet(size);
+        int currentSize = messagesOnBuffer.addAndGet(size);
 
-        if (!flowControlEnabled && 
-               (globalBufferBasedFlowControlEnabled 
-                 || count >= flowControlHighLimit 
-                 || globalErrorBasedFlowControlEnabled)) {
+        if (!flowControlEnabled && (globalBufferBasedFlowControlEnabled
+                || currentSize >= flowControlHighLimit
+                || globalErrorBasedFlowControlEnabled)) {
             
             blockLocalChannel();
         }
     }
 
- 
-
     /**
      * This method should be called after a message is processed and no longer required in the buffer.
      *
-     * @param size
-     *         Number of items removed from buffer
+     * @param size content size of the items removed from buffer in Bytes
      */
     public void recordRemovalFromBuffer(int size) {
         flowControlManager.notifyRemoval(size);
 
-        int count = messagesOnBuffer.addAndGet(-size);
+        int currentSize = messagesOnBuffer.addAndGet(-size);
 
-        if (flowControlEnabled && (!globalBufferBasedFlowControlEnabled) 
-                               && (count <= flowControlLowLimit) 
-                               && (! globalErrorBasedFlowControlEnabled)) {
+        if (flowControlEnabled && (!globalBufferBasedFlowControlEnabled)
+                && (currentSize <= flowControlLowLimit)
+                && (!globalErrorBasedFlowControlEnabled)) {
+
             unblockLocalChannel();
         }
     }
@@ -266,15 +258,16 @@ public class AndesChannel {
     }
 
     /**
-     * Get total number of content chunks present in provided message list
+     * Get total size of content chunks present in provided message list
+     *
      * @param messages AndesMessage list
-     * @return total message chunks
+     * @return total message chunk size in Bytes
      */
-    public static int getTotalChunkCount(List<AndesMessage> messages) {
-        int count = 0;
+    public static int getTotalChunkSize(List<AndesMessage> messages) {
+        int size = 0;
         for (AndesMessage message : messages) {
-            count = count + message.getContentChunkList().size();
+            size = size + message.getMetadata().getMessageContentSize();
         }
-        return count;
+        return size;
     }
 }
