@@ -22,12 +22,10 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.OnflightMessageTracker;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
@@ -102,10 +100,7 @@ public class SlotDeletionExecutor {
                     if (deletionAttempt != null) {
                         //invoke coordinator to delete slot
                         boolean deleteSuccess = deleteSlotAtCoordinator(deletionAttempt);
-                        if (deleteSuccess) {
-                            //all tracking removed if deletion is success i.e. SafeZone after given slot
-                            OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(deletionAttempt);
-                        } else {
+                        if (!deleteSuccess) {
                             //delete attempt not success, therefore reassign current deletion attempted slot to previous slot
                             previouslyAttemptedSlot = deletionAttempt;
                         }
