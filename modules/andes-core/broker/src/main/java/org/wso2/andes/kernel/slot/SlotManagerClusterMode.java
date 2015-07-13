@@ -292,7 +292,7 @@ public class SlotManagerClusterMode {
             firstMessageId = startMessageIdInTheSlot;
         }
 
-	    if (slotRecoveryScheduled.compareAndSet(true, true)) {
+	    if (slotRecoveryScheduled.get()) {
 		    queuesToRecover.remove(queueName);
 	    }
 
@@ -455,9 +455,7 @@ public class SlotManagerClusterMode {
     }
 
     protected Set<String> getMessagePublishedNodes() throws AndesException{
-        Set<String> publishedNodes;
-        publishedNodes = slotAgent.getMessagePublishedNodes();
-        return publishedNodes;
+        return slotAgent.getMessagePublishedNodes();
     }
 
     /**
