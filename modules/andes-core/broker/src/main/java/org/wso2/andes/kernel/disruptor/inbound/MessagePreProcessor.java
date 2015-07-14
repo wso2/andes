@@ -218,7 +218,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                 event.pubAckHandler.ack(message.getMetadata());
 
                 //Adding metrics meter for ack rate
-                Meter ackMeter = MetricManager.meter(Level.INFO, this.getClass() + MetricsConstants.ACK_SENT_RATE);
+                Meter ackMeter = MetricManager.meter(Level.INFO, MetricsConstants.ACK_SENT_RATE);
                 ackMeter.mark();
 
 
