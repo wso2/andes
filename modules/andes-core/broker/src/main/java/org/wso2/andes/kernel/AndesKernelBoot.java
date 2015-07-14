@@ -18,6 +18,8 @@
 
 package org.wso2.andes.kernel;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -72,6 +74,12 @@ public class AndesKernelBoot {
      * slot remapping message counter keep against storage queue name
      */
     private static Map<String, Integer> restoreMessagesCounterMap;
+
+    /**
+     * Number of remaining messages retrieves and used to display useful log message while
+     * slot recovery task running
+     */
+    private static Map<String, Long> totalRemainingMessagesInQueue;
 
     /**
      * Scheduled thread pool executor to run periodic andes recovery task
@@ -141,6 +149,7 @@ public class AndesKernelBoot {
         databaseReadsCounterMap = new HashMap<String, Integer>();
         restoreMessagesCounterMap = new HashMap<String, Integer>();
         firstRecoveredMessageIdMap = new HashMap<String, Long>();
+        totalRemainingMessagesInQueue = new HashMap<String, Long>();
         if (AndesContext.getInstance().isClusteringEnabled()) {
             HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
             try {
@@ -223,6 +232,8 @@ public class AndesKernelBoot {
         restoreMessagesCounter = restoreMessagesCounter + messageList.size();
         databaseReadsCounterMap.put(queueName, databaseReadsCounter);
         restoreMessagesCounterMap.put(queueName, restoreMessagesCounter);
+        long messageCountOfQueue = MessagingEngine.getInstance().getMessageCountOfQueue(queueName);
+        totalRemainingMessagesInQueue.put(queueName, messageCountOfQueue);
         ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
         scheduleTimerToPrintCounter(scheduledExecutorService, queueName);
 
@@ -283,8 +294,13 @@ public class AndesKernelBoot {
      */
     private static void printCounter(String queueName) {
         if (restoreMessagesCounterMap.get(queueName) > 0) {
-            log.info(queueName + " : " + restoreMessagesCounterMap.get(queueName) + " messages mapped in "
-                    + databaseReadsCounterMap.get(queueName) + " database reads.");
+            double restoreMessageCount = restoreMessagesCounterMap.get(queueName);
+            double totalRemainingCount = totalRemainingMessagesInQueue.get(queueName);
+            double percentage = restoreMessageCount / totalRemainingCount * 100;
+            log.info("Message recovery daemon " + restoreMessagesCounterMap.get(queueName)
+                    + "/" + totalRemainingMessagesInQueue.get(queueName)
+                    + " (" + new BigDecimal(percentage).setScale(0, RoundingMode.CEILING) + "%)"
+                    + " - ["+queueName+"] number of database calls ["+databaseReadsCounterMap.get(queueName)+"].");
         }
     }
 
