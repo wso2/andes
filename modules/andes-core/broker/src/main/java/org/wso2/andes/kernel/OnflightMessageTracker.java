@@ -318,12 +318,12 @@ public class OnflightMessageTracker {
     }
 
     /**
-     * Decrement message count in slot and if it is zero check the slot again to resend
+     * Decrement message count in slot and if it is zero prepare for slot deletion
      *
      * @param slot Slot whose message count is decremented
      * @throws AndesException
      */
-    public void decrementMessageCountInSlotAndCheckToResend(Slot slot)
+    public void decrementMessageCountInSlot(Slot slot)
             throws AndesException {
         AtomicInteger pendingMessageCount = pendingMessagesBySlot.get(slot);
         int messageCount = pendingMessageCount.decrementAndGet();
@@ -332,16 +332,14 @@ public class OnflightMessageTracker {
             All the Acks for the slot has bee received. Check the slot again for unsend
             messages and if there are any send them and delete the slot.
              */
-            SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance().getSlotWorker(
-                    slot
-                            .getStorageQueueName());
+            SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance()
+                                                                     .getSlotWorker(slot.getStorageQueueName());
             if (log.isDebugEnabled()) {
                 log.debug("Slot has no pending messages. Now re-checking slot for messages");
             }
             slot.setSlotInActive();
             slotWorker.deleteSlot(slot);
         }
-
     }
 
     /**
@@ -402,7 +400,6 @@ public class OnflightMessageTracker {
             //we consider ack is received if all acks came for channels message was sent
             if (trackingData.allAcksReceived() && getNumberOfScheduledDeliveries(messageID) == 0) {
                 trackingData.addMessageStatus(MessageStatus.ACKED_BY_ALL);
-                decrementMessageCountInSlotAndCheckToResend(trackingData.slot);
 
                 isOKToDeleteMessage = true;
                 if (log.isDebugEnabled()) {
@@ -526,6 +523,20 @@ public class OnflightMessageTracker {
                 }
                 msgId2MsgData.remove(messageId);
             }
+        }
+    }
+
+    /**
+     * Report delivered messages for slot state update
+     *
+     * @param messagesToRemove
+     *         List messages removed from store
+     * @throws AndesException
+     */
+    public void updateMessageDeliveryInSlot(List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
+        for (AndesRemovableMetadata message : messagesToRemove) {
+            MsgData trackingData = getTrackingData(message.getMessageID());
+            decrementMessageCountInSlot(trackingData.slot);
         }
     }
 
@@ -790,7 +801,7 @@ public class OnflightMessageTracker {
 
         releaseMessageBufferingFromTracking(slot, messageID);
 
-        decrementMessageCountInSlotAndCheckToResend(slot);
+        decrementMessageCountInSlot(slot);
     }
 
     /**

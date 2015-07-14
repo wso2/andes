@@ -408,7 +408,7 @@ public class MessageFlusher {
 
                     if (subscriptions4Queue.size() == 0) {
                         iterator.remove(); // remove buffer
-                        OnflightMessageTracker.getInstance().decrementMessageCountInSlotAndCheckToResend(message.getSlot());
+                        OnflightMessageTracker.getInstance().decrementMessageCountInSlot(message.getSlot());
                         AndesRemovableMetadata removableMetadata = new AndesRemovableMetadata(message.getMessageID(),
                                 message.getDestination(), message.getStorageQueueName());
                         droppedTopicMessageList.add(removableMetadata);

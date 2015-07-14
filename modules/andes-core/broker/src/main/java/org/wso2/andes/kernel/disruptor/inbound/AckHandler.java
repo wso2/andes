@@ -1,27 +1,24 @@
 /*
  * Copyright (c) 2014-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
- * 
+ *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License.
  * You may obtain a copy of the License at
- * 
- * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied. See the License for the
+ * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
  */
 
 package org.wso2.andes.kernel.disruptor.inbound;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-
+import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesAckData;
@@ -35,31 +32,32 @@ import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
 
-import com.google.common.util.concurrent.SettableFuture;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Acknowledgement Handler for the Disruptor based inbound event handling.
- * This handler processes acknowledgements received from clients and updates
- * Andes.
+ * This handler processes acknowledgements received from clients and updates Andes.
  */
 public class AckHandler implements BatchEventHandler, StoreHealthListener {
 
     private static Log log = LogFactory.getLog(AckHandler.class);
-
+    
     private final MessagingEngine messagingEngine;
-
+    
     /**
      * Indicates and provides a barrier if messages stores become offline.
      * marked as volatile since this value could be set from a different thread
      * (other than those of disrupter)
      */
     private volatile SettableFuture<Boolean> messageStoresUnavailable;
-
+    
     /**
      * Keeps message meta-data that needs to be removed from the message store.
      */
     List<AndesRemovableMetadata> removableMetadata;
-
+    
     AckHandler(MessagingEngine messagingEngine) {
         this.messagingEngine = messagingEngine;
         this.messageStoresUnavailable = null;
@@ -83,8 +81,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
         try {
             ackReceived(eventList);
         } catch (AndesException e) {
-            // Log the AndesException since there is no point in passing the
-            // exception to Disruptor
+            // Log the AndesException since there is no point in passing the exception to Disruptor
             log.error("Error occurred while processing acknowledgements ", e);
         }
     }
@@ -98,20 +95,19 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
      *            inboundEvent list
      */
     public void ackReceived(final List<InboundEventContainer> eventList) throws AndesException {
-
+        
         for (InboundEventContainer event : eventList) {
 
             AndesAckData ack = event.ackData;
-            // For topics message is shared. If all acknowledgments are received
-            // only we should remove message
+            // For topics message is shared. If all acknowledgements are received only we should remove message
             boolean deleteMessage = OnflightMessageTracker.getInstance()
-                                                          .handleAckReceived(ack.getChannelID(), ack.getMessageID());
+                    .handleAckReceived(ack.getChannelID(), ack.getMessageID());
             if (deleteMessage) {
                 if (log.isDebugEnabled()) {
                     log.debug("Ok to delete message id " + ack.getMessageID());
                 }
                 removableMetadata.add(new AndesRemovableMetadata(ack.getMessageID(), ack.getDestination(),
-                                                                 ack.getMsgStorageDestination()));
+                        ack.getMsgStorageDestination()));
             }
 
             OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(ack.getChannelID());
@@ -139,6 +135,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
 
         try {
             messagingEngine.deleteMessages(removableMetadata, false);
+            OnflightMessageTracker.getInstance().updateMessageDeliveryInSlot(removableMetadata);
 
             if (log.isTraceEnabled()) {
                 StringBuilder messageIDsString = new StringBuilder();
