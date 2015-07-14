@@ -29,6 +29,7 @@ import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.SQLInvalidAuthorizationSpecException;
 import java.sql.SQLNonTransientConnectionException;
+import java.sql.SQLTransactionRollbackException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -45,6 +46,7 @@ import org.wso2.andes.store.AndesBatchUpdateException;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import org.wso2.andes.store.AndesDataException;
 import org.wso2.andes.store.AndesStoreUnavailableException;
+import org.wso2.andes.store.AndesTranactionRollbackException;
 
 import com.google.common.base.Splitter;
 
@@ -80,6 +82,8 @@ public class RDBMSStoreUtils {
     private Set<String> dataErrorSQLStateClassCodes;
 
     
+    private Set<String> transactionRollbackSQLStateClassCodes;
+    
     
     public RDBMSStoreUtils(ConfigurationProperties connectionProperties) {
 
@@ -96,7 +100,13 @@ public class RDBMSStoreUtils {
 
         dataErrorSQLStateClassCodes = extractAndFill(connectionProperties, RDBMSConstants.DATA_ERROR_SQL_STATE_CLASSES
                                       );
-               
+        
+        
+        transactionRollbackSQLStateClassCodes =
+                                                extractAndFill(connectionProperties,
+                                                               RDBMSConstants.TRANSACTION_ROLLBACK_ERROR_SQL_STATE_CLASSES
+                                                );
+
     }
 
    
@@ -124,10 +134,10 @@ public class RDBMSStoreUtils {
     private AndesException convertBySQLException(String message, SQLException sqlException) {
         AndesException convertedException = null;
 
-        if (SQLClientInfoException.class.isInstance(sqlException)
-            || SQLInvalidAuthorizationSpecException.class.isInstance(sqlException)
-            || SQLNonTransientConnectionException.class.isInstance(sqlException)
-            || SQLTransientConnectionException.class.isInstance(sqlException)) {
+        if (SQLNonTransientConnectionException.class.isInstance(sqlException) ||
+            SQLTransientConnectionException.class.isInstance(sqlException) ||
+            SQLInvalidAuthorizationSpecException.class.isInstance(sqlException) ||
+            SQLClientInfoException.class.isInstance(sqlException)) {
 
             String sqlState = extractSqlState(sqlException);
             convertedException = new AndesStoreUnavailableException(message, sqlState, sqlException);
@@ -135,6 +145,9 @@ public class RDBMSStoreUtils {
         } else if (SQLIntegrityConstraintViolationException.class.isInstance(sqlException)) {
             String sqlState = extractSqlState(sqlException);
             convertedException = new AndesDataIntegrityViolationException(message, sqlState, sqlException);
+        } else if (SQLTransactionRollbackException.class.isInstance(sqlException)) {
+            String sqlState = extractSqlState(sqlException);
+            convertedException = new AndesTranactionRollbackException(message, sqlState, sqlException);
         } else if (DataTruncation.class.isInstance(sqlException) ||
                    SQLDataException.class.isInstance(sqlException)) {
             String sqlState = extractSqlState(sqlException);
@@ -155,7 +168,9 @@ public class RDBMSStoreUtils {
             convertedException = new AndesStoreUnavailableException(message, sqlState, sqlException);
         } else if (dataIntegrityViolationSQLStateClassCodes.contains(sqlStateClassCode)) {
             convertedException = new AndesDataIntegrityViolationException(message, sqlState, sqlException);
-        } else if (dataErrorSQLStateClassCodes.contains(sqlStateClassCode)){
+        } else if (transactionRollbackSQLStateClassCodes.contains(sqlStateClassCode)) {
+            convertedException = new AndesTranactionRollbackException(message, sqlState, sqlException);
+        } else if (dataErrorSQLStateClassCodes.contains(sqlStateClassCode)) {
             convertedException = new AndesDataException(message, sqlState, sqlException);
         }
 

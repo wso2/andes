@@ -19,12 +19,15 @@
 package org.wso2.andes.kernel.disruptor.inbound;
 
 import com.google.common.util.concurrent.SettableFuture;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.disruptor.BatchEventHandler;
 import org.wso2.andes.store.AndesBatchUpdateException;
+import org.wso2.andes.store.AndesTranactionRollbackException;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
@@ -110,7 +113,7 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
             try {
                 messagingEngine.messagesReceived(previouslyFailedMessageList);
 
-            } catch (Exception ex) {
+            } catch (AndesException ex) {
                 log.error("errors encountered while persisting previously failed messages batch, "
                         + " this incident will result messages being lost", ex);
 
@@ -159,9 +162,18 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
             // Therefore here we remove conflicting message parts (which are probably already in the database).
             //currentMessageList.removeAll(batchInsertEx.getFailedInserts());
             handleStoreFailure();
+            throw batchInsertEx;
+        } catch (AndesTranactionRollbackException transRollbackEx){
+            // Transaction failed therefore we will re-attempt this batch with next batch insertion.
+            log.warn("Unable to store messages, since transaction rollback. " +
+                     "opertation will be reattempted. messages count : " +
+                     currentMessageList.size());
+            handleStoreFailure();
+            throw transRollbackEx;
         } catch (Exception ex) {
-            log.warn("Unable to store messages, probably due to errors in message stores. messages count : " +
-                    currentMessageList.size());
+            log.warn("Unable to store messages, due to errors in message stores. " +
+                     "opertation will be reattempted. messages count : " +
+                     currentMessageList.size());
             handleStoreFailure();
             throw ex;
         }
@@ -172,7 +184,7 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
      */
     private void handleStoreFailure() {
         previouslyFailedMessageList.addAll(currentMessageList);
-        currentMessageList.clear();
+        currentMessageList.clear(); 
     }
 
     /**

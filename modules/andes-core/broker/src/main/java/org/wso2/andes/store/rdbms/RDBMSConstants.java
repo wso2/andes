@@ -81,6 +81,9 @@ public class RDBMSConstants {
     protected static final String DATA_ERROR_SQL_STATE_CLASSES = "dataErrorSQLStateClasses";
     
     
+    protected static final String TRANSACTION_ROLLBACK_ERROR_SQL_STATE_CLASSES = "transactionRollbackSQLStateClasses";
+    
+    
     // Message Store tables
     protected static final String CONTENT_TABLE = "MB_CONTENT";
     protected static final String METADATA_TABLE = "MB_METADATA";
