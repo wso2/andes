@@ -96,8 +96,8 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                     MessageTracer.trace(message, MessageTracer.DISPATCHED_TO_PROTOCOL);
 
                     //Adding metrics meter for ack rate
-                    Meter msgMeter = MetricManager.meter(Level.INFO, this.getClass() + MetricsConstants.MSG_SENT_RATE);
-                    msgMeter.mark();
+                    Meter messageMeter = MetricManager.meter(Level.INFO, MetricsConstants.MSG_SENT_RATE);
+                    messageMeter.mark();
 
                 } else {
                     //destination would be target queue if it is durable topic, otherwise it is queue or non durable topic
