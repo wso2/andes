@@ -113,7 +113,7 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
      */
     public void setExceptionHandler(final ExceptionHandler exceptionHandler) {
         if (null == exceptionHandler) {
-            throw new NullPointerException();
+            throw new NullPointerException("Exception handler cannot be null.");
         }
 
         this.exceptionHandler = exceptionHandler;
