@@ -451,18 +451,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
             "/perConnectionMessageThreshold", "1000", Integer.class),
 
     /**
-     * Enable RDBMS slot information store
-     */
-    RECOVERY_MESSAGES_START_FROM_DATE("recovery/startRecoveryFrom", "2015-05-27 00:00:00", String.class),
-
-
-    /**
-     * Recover message chunks at particular database call. Please make sure this config won't cause
-     * TombstoneOverwhelmingException
-     */
-    RECOVERY_MESSAGES_RECOVERY_WINDOW_SIZE("recovery/recoveryWindowSize", "100000", Long.class),
-
-    /**
      * Concurrently reads storage queues to make warm startup faster. But increasing concurrent value to big number
      * may cause heavy load to Cassandra.
      */
