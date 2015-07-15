@@ -196,6 +196,32 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public void moveMetadataToDLC(long messageId, String dlcQueueName) throws AndesException {
+        try {
+            wrappedInstance.moveMetadataToDLC(messageId, dlcQueueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void moveMetadataToDLC(List<Long> messageIds, String dlcQueueName) throws AndesException {
+        try {
+            wrappedInstance.moveMetadataToDLC(messageIds, dlcQueueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void updateMetadataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList)
                                                                                                            throws AndesException {
         try {
@@ -237,6 +263,36 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public List<AndesMessageMetadata> getMetadataListForStorageQueueFromDLC(String storageQueueName,
+                                                                            String dlcQueueName, long firstMsgId,
+                                                                            long lastMsgId) throws AndesException {
+        try {
+            return wrappedInstance.getMetadataListForStorageQueueFromDLC(storageQueueName, dlcQueueName, firstMsgId,
+                    lastMsgId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesMessageMetadata> getMetadataListFromDLC(String dlcQueueName, long firstMsgId, long lastMsgId)
+            throws AndesException {
+        try {
+            return wrappedInstance.getMetadataListFromDLC(dlcQueueName, firstMsgId, lastMsgId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String storageQueueName, long firstMsgId,
                                                                        int count) throws AndesException {
         try {
@@ -251,10 +307,53 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public List<AndesMessageMetadata> getNextNMessageMetadataForQueueFromDLC(String storageQueueName,
+                                                                             String dlcQueueName, long firstMsgId,
+                                                                             int count) throws AndesException {
+        try {
+            return wrappedInstance.getNextNMessageMetadataForQueueFromDLC(storageQueueName, dlcQueueName, firstMsgId,
+                    count);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromDLC(String dlcQueueName, long firstMsgId, int count)
+            throws AndesException {
+        try {
+            return wrappedInstance.getNextNMessageMetadataFromDLC(dlcQueueName, firstMsgId, count);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void deleteMessageMetadataFromQueue(String storageQueueName, List<Long> messagesToRemove)
             throws AndesException {
         try {
             wrappedInstance.deleteMessageMetadataFromQueue(storageQueueName, messagesToRemove);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteMessageMetadata(List<Long> messagesToRemove) throws AndesException {
+        try {
+            wrappedInstance.deleteMessageMetadata(messagesToRemove);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -329,9 +428,22 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteAllMessageMetadata(String storageQueueName) throws AndesException {
+    public int deleteAllMessageMetadata(String storageQueueName) throws AndesException {
         try {
-            wrappedInstance.deleteAllMessageMetadata(storageQueueName);
+            return wrappedInstance.deleteAllMessageMetadata(storageQueueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int clearDlcQueue(String dlcQueueName) throws AndesException {
+        try {
+            return wrappedInstance.clearDlcQueue(dlcQueueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -385,6 +497,32 @@ public class FailureObservingMessageStore implements MessageStore {
     public long getMessageCountForQueue(String storageQueueName) throws AndesException {
         try {
             return wrappedInstance.getMessageCountForQueue(storageQueueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getMessageCountForQueueInDLC(String storageQueueName, String dlcQueueName) throws AndesException {
+        try {
+            return wrappedInstance.getMessageCountForQueueInDLC(storageQueueName, dlcQueueName);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getMessageCountForDLCQueue(String dlcQueueName) throws AndesException {
+        try {
+            return wrappedInstance.getMessageCountForDLCQueue(dlcQueueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

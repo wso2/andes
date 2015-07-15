@@ -107,34 +107,39 @@ public interface QueueManagementInformation {
     /**
      * Delete a selected message list from a given Dead Letter Queue of a tenant.
      * @param andesMetadataIDs          The browser message Ids
-     * @param deadLetterQueueName The Dead Letter Queue Name for the tenant
+     * @param destinationQueueName The Dead Letter Queue Name for the tenant
      */
     @MBeanAttribute(name = " DeleteMessages In Dead Letter Queue ", description = "Will Delete Messages From Dead Letter Queue")
     void deleteMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
-            description = "ID of the Messages to Be Deleted") long[] andesMetadataIDs, @MBeanOperationParameter(name = "deadLetterQueueName",
-            description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName);
+            description = "ID of the Messages to Be Deleted") long[] andesMetadataIDs, @MBeanOperationParameter(name = "destinationQueueName",
+            description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName);
 
     /**
-     * Restore a given browser message Id list from the Dead Letter Queue to the same queue it was previous in before moving to the Dead Letter Queue
+     * Restore a given browser message Id list from the Dead Letter Queue to the same queue it was previous in before
+     * moving to the Dead Letter Queue
      * and remove them from the Dead Letter Queue.
-     * @param andesMetadataIDs          The browser message Ids
-     * @param deadLetterQueueName The Dead Letter Queue Name for the tenant*/
+     *
+     * @param andesMetadataIDs     The browser message Ids
+     * @param destinationQueueName The Dead Letter Queue Name for the tenant
+     */
     @MBeanAttribute(name = " Restore Back a Specific set of Messages ", description = "Will Restore a Specific Set of Messages Back to Its Original Queue")
     void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
-            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs, @MBeanOperationParameter(name = "deadLetterQueueName",
-            description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName);
+            description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs, @MBeanOperationParameter(name = "destinationQueueName",
+            description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName);
 
     /**
-     * Restore a given browser message Id list from the Dead Letter Queue to a different given queue in the same tenant and remove them from the Dead Letter Queue.
-     * @param andesMetadataIDs          The browser message Ids
-     * @param destination         The new destination
-     * @param deadLetterQueueName The Dead Letter Queue Name for the tenant
+     * Restore a given browser message Id list from the Dead Letter Queue to a different given queue in the same
+     * tenant and remove them from the Dead Letter Queue.
+     *
+     * @param destinationQueueName    The Dead Letter Queue Name for the tenant
+     * @param andesMetadataIDs        The browser message Ids
+     * @param newDestinationQueueName The new destination
      */
     @MBeanAttribute(name = " Restore Back a Specific set of Messages ", description = "Will Restore a Specific Set of Messages Back to a Queue differnt from the original")
     void restoreMessagesFromDeadLetterQueue(@MBeanOperationParameter(name = "andesMetadataIDs",
             description = "IDs of the Messages to Be Restored") long[] andesMetadataIDs,@MBeanOperationParameter(name = "destination",
-            description = "Destination of the message to be restored") String destination, @MBeanOperationParameter(name = "deadLetterQueueName",
-            description = "The Dead Letter Queue Name for the selected tenant") String deadLetterQueueName);
+            description = "Destination of the message to be restored") String newDestinationQueueName, @MBeanOperationParameter(name = "deadLetterQueueName",
+            description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName);
 
     /**
      * Browse queue for given id starting from last message id until it meet max message count
@@ -164,7 +169,7 @@ public interface QueueManagementInformation {
                                                                         " for a specific queue")
     long getNumberMessagesInDLCForQueue(
             @MBeanOperationParameter(name = "queueName", description = "Name of queue to browse" +
-                                                               " DLC messages") String queueName);
+                                                               " DLC messages") String queueName) throws MBeanException;
 
     /**
      * Retrieve messages in DLC for a specific queue for given id starting from last message id

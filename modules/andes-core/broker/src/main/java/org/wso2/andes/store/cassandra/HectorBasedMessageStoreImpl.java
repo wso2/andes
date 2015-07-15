@@ -39,6 +39,8 @@ import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -356,6 +358,22 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public void moveMetadataToDLC(long messageId, String dlcQueueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void moveMetadataToDLC(List<Long> messageIds, String dlcQueueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void updateMetadataInformation(String currentQueueName, List<AndesMessageMetadata>
             metadataList) throws AndesException {
 
@@ -461,6 +479,25 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public List<AndesMessageMetadata> getMetadataListForStorageQueueFromDLC(String storageQueueName,
+                                                                            String dlcQueueName, long firstMsgId,
+                                                                            long lastMsgId) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesMessageMetadata> getMetadataListFromDLC(String dlcQueueName, long firstMsgId, long lastMsgId)
+            throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String queueName,
                                                                        long firstMsgId, int count)
             throws AndesException {
@@ -516,6 +553,25 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesMessageMetadata> getNextNMessageMetadataForQueueFromDLC(String storageQueueName,
+                                                                             String dlcQueueName, long firstMsgId,
+                                                                             int count) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromDLC(String dlcQueueName, long firstMsgId, int count)
+            throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
      * INFO log print to inform user while reading tombstone
      *
      * @param scheduledExecutorService ScheduledExecutorService to schedule printing logs
@@ -565,6 +621,14 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         } finally {
             context.stop();
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteMessageMetadata(List<Long> messagesToRemove) throws AndesException {
+        throw new NotImplementedException();
     }
 
     /**
@@ -649,14 +713,26 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
         //TODO implement
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void deleteAllMessageMetadata(String storageQueueName) throws AndesException {
+    public int deleteAllMessageMetadata(String storageQueueName) throws AndesException {
 
         Mutator<String> mutator = HFactory.createMutator(keyspace, StringSerializer.get());
 
         mutator.addDeletion(storageQueueName,HectorConstants.META_DATA_COLUMN_FAMILY);
 
         mutator.execute();
+        return 0;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int clearDlcQueue(String dlcQueueName) throws AndesException {
+        throw new NotImplementedException();
     }
 
     /**
@@ -773,6 +849,22 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     @Override
     public long getMessageCountForQueue(String storageQueueName) throws AndesException {
         return contextStore.getMessageCountForQueue(storageQueueName);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getMessageCountForQueueInDLC(String storageQueueName, String dlcQueueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getMessageCountForDLCQueue(String dlcQueueName) throws AndesException {
+        throw new NotImplementedException();
     }
 
     /**

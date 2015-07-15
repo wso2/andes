@@ -22,8 +22,6 @@ import static org.wso2.andes.store.rdbms.RDBMSConstants.CONTENT_TABLE;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_CONTENT;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_ID;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_DELETE_MESSAGE_PARTS;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_DELETE_METADATA_FROM_QUEUE;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_MESSAGE_PART;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_METADATA;
 import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
@@ -32,7 +30,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.SQLNonTransientConnectionException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -50,7 +47,6 @@ import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.metrics.MetricsConstants;
-import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
@@ -564,6 +560,76 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public void moveMetadataToDLC(long messageId, String dlcQueueName) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        Context moveMetadataToDLCContext = MetricManager.timer(Level.INFO, MetricsConstants.MOVE_METADATA_TO_DLC)
+                .start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_MOVE_METADATA_TO_DLC);
+
+            preparedStatement.setInt(1, getCachedQueueID(dlcQueueName));
+            preparedStatement.setLong(2, messageId);
+
+            preparedStatement.execute();
+
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while moving message metadata to dead letter " +
+                    "channel.", e);
+        } finally {
+            contextWrite.stop();
+            moveMetadataToDLCContext.stop();
+            close(preparedStatement, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
+            close(connection, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void moveMetadataToDLC(List<Long> messageIds, String dlcQueueName) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        Context moveMetadataToDLCContext = MetricManager.timer(Level.INFO, MetricsConstants.MOVE_METADATA_TO_DLC)
+                .start();
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
+
+        try {
+            connection = getConnection();
+            connection.setAutoCommit(false);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_MOVE_METADATA_TO_DLC);
+            for (Long messageId : messageIds) {
+                preparedStatement.setInt(1, getCachedQueueID(dlcQueueName));
+                preparedStatement.setLong(2, messageId);
+                preparedStatement.addBatch();
+            }
+
+            preparedStatement.execute();
+            connection.commit();
+
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while moving message metadata to dead letter " +
+                    "channel.", e);
+        } finally {
+            contextWrite.stop();
+            moveMetadataToDLCContext.stop();
+            close(preparedStatement, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
+            close(connection, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void updateMetadataInformation(String currentQueueName, List<AndesMessageMetadata> metadataList) throws
             AndesException {
         Connection connection = null;
@@ -793,6 +859,110 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public List<AndesMessageMetadata> getMetadataListForStorageQueueFromDLC(String storageQueueName,
+                                                                            String dlcQueueName, long firstMsgId,
+                                                                            long lastMsgId) throws AndesException {
+        List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>();
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+
+        Context metaListRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants
+                .GET_META_DATA_LIST_FOR_QUEUE_FROM_DLC).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection
+                    .prepareStatement(RDBMSConstants.PS_SELECT_METADATA_RANGE_FROM_QUEUE_IN_DLC);
+            preparedStatement.setInt(1, getCachedQueueID(storageQueueName));
+            preparedStatement.setInt(2, getCachedQueueID(dlcQueueName));
+            preparedStatement.setLong(3, firstMsgId);
+            preparedStatement.setLong(4, lastMsgId);
+
+            resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                AndesMessageMetadata md = new AndesMessageMetadata(
+                        resultSet.getLong(RDBMSConstants.MESSAGE_ID),
+                        resultSet.getBytes(RDBMSConstants.METADATA),
+                        true
+                );
+                md.setStorageQueueName(storageQueueName);
+                metadataList.add(md);
+            }
+            if (log.isDebugEnabled()) {
+                log.debug("request: metadata range (" + firstMsgId + " , " + lastMsgId +
+                        ") in destination queue " + storageQueueName
+                        + "\nresponse: metadata count " + metadataList.size());
+            }
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while retrieving messages between msg id " +
+                    firstMsgId + " and " + lastMsgId + "in DLC:" + dlcQueueName + " from queue " + storageQueueName, e);
+        } finally {
+            metaListRetrievalContext.stop();
+            contextRead.stop();
+            String task = RDBMSConstants.TASK_RETRIEVING_METADATA_RANGE_IN_DLC_FROM_QUEUE + storageQueueName;
+            close(resultSet, task);
+            close(preparedStatement, task);
+            close(connection, task);
+        }
+        return metadataList;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesMessageMetadata> getMetadataListFromDLC(String dlcQueueName, long firstMsgId, long lastMsgId)
+            throws AndesException {
+        List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>();
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+
+        Context metaListRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants
+                .GET_META_DATA_LIST_FOR_QUEUE_FROM_DLC).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection
+                    .prepareStatement(RDBMSConstants.PS_SELECT_METADATA_RANGE_FROM_DLC);
+            preparedStatement.setInt(1, getCachedQueueID(dlcQueueName));
+            preparedStatement.setLong(2, firstMsgId);
+            preparedStatement.setLong(3, lastMsgId);
+
+            resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                AndesMessageMetadata md = new AndesMessageMetadata(
+                        resultSet.getLong(RDBMSConstants.MESSAGE_ID),
+                        resultSet.getBytes(RDBMSConstants.METADATA),
+                        true
+                );
+                metadataList.add(md);
+            }
+            if (log.isDebugEnabled()) {
+                log.debug("request: metadata range (" + firstMsgId + " , " + lastMsgId +
+                        ") in dlc " + "\nresponse: metadata count " + metadataList.size());
+            }
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while retrieving messages between msg id " +
+                    firstMsgId + " and " + lastMsgId + "in DLC:" + dlcQueueName, e);
+        } finally {
+            metaListRetrievalContext.stop();
+            contextRead.stop();
+            String task = RDBMSConstants.TASK_RETRIEVING_METADATA_RANGE_IN_DLC;
+            close(resultSet, task);
+            close(preparedStatement, task);
+            close(connection, task);
+        }
+        return metadataList;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String storageQueueName,
                                                                        long firstMsgId, int count)
             throws AndesException {
@@ -847,6 +1017,113 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public List<AndesMessageMetadata> getNextNMessageMetadataForQueueFromDLC(String storageQueueName,
+                                                                             String dlcQueueName, long firstMsgId,
+                                                                             int count) throws AndesException {
+
+        List<AndesMessageMetadata> mdList = new ArrayList<AndesMessageMetadata>(count);
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet results = null;
+
+
+        Context nextMetaRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants
+                .GET_NEXT_MESSAGE_METADATA_IN_DLC_FOR_QUEUE).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection
+                    .prepareStatement(RDBMSConstants.PS_SELECT_METADATA_IN_DLC_FOR_QUEUE);
+            preparedStatement.setLong(1, firstMsgId - 1);
+            preparedStatement.setInt(2, getCachedQueueID(storageQueueName));
+            preparedStatement.setInt(3, getCachedQueueID(dlcQueueName));
+
+            results = preparedStatement.executeQuery();
+            int resultCount = 0;
+            while (results.next()) {
+
+                if (resultCount == count) {
+                    break;
+                }
+
+                AndesMessageMetadata md = new AndesMessageMetadata(
+                        results.getLong(RDBMSConstants.MESSAGE_ID),
+                        results.getBytes(RDBMSConstants.METADATA),
+                        true
+                );
+                md.setStorageQueueName(storageQueueName);
+                mdList.add(md);
+                resultCount++;
+            }
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving message metadata from queue ",
+                    e);
+        } finally {
+            nextMetaRetrievalContext.stop();
+            contextRead.stop();
+            close(results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_IN_DLC_FOR_QUEUE);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_IN_DLC_FOR_QUEUE);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_IN_DLC_FOR_QUEUE);
+        }
+        return mdList;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromDLC(String dlcQueueName, long firstMsgId, int count)
+            throws AndesException {
+        List<AndesMessageMetadata> mdList = new ArrayList<AndesMessageMetadata>(count);
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet results = null;
+
+        Context nextMetaRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants
+                .GET_NEXT_MESSAGE_METADATA_IN_DLC).start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection
+                    .prepareStatement(RDBMSConstants.PS_SELECT_METADATA_IN_DLC);
+            preparedStatement.setLong(1, firstMsgId - 1);
+            preparedStatement.setInt(2, getCachedQueueID(dlcQueueName));
+
+            results = preparedStatement.executeQuery();
+            int resultCount = 0;
+            while (results.next()) {
+
+                if (resultCount == count) {
+                    break;
+                }
+
+                AndesMessageMetadata md = new AndesMessageMetadata(
+                        results.getLong(RDBMSConstants.MESSAGE_ID),
+                        results.getBytes(RDBMSConstants.METADATA),
+                        true
+                );
+                mdList.add(md);
+                resultCount++;
+            }
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving message metadata from queue ",
+                    e);
+        } finally {
+            nextMetaRetrievalContext.stop();
+            contextRead.stop();
+            close(results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_DLC);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_DLC);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_DLC);
+        }
+        return mdList;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void deleteMessageMetadataFromQueue(final String storageQueueName,
                                                List<Long> messagesToRemove)
             throws AndesException {
@@ -890,6 +1167,14 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteMessageMetadata(List<Long> messagesToRemove) throws AndesException {
+
+    }
+
+    /**
      * Helper method to add message metadata, to be deleted, to the batch
      * @param preparedStatement {@link java.sql.PreparedStatement} related to the batch
      * @param queueId queue ID
@@ -930,12 +1215,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             //deleting message metadata will cause message content to be automatically deleted
             if (!deleteAllMetaData) {
                 metadataRemovalPreparedStatement = connection
-                        .prepareStatement(RDBMSConstants.PS_DELETE_METADATA_FROM_QUEUE);
+                        .prepareStatement(RDBMSConstants.PS_DELETE_METADATA);
 
                 for (Long messageID : messagesToRemove) {
                     //add parameters to delete metadata
-                    metadataRemovalPreparedStatement.setInt(1, queueID);
-                    metadataRemovalPreparedStatement.setLong(2, messageID);
+                    metadataRemovalPreparedStatement.setLong(1, messageID);
                     metadataRemovalPreparedStatement.addBatch();
 
                 }
@@ -1286,30 +1570,24 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
     /**
      * {@inheritDoc}
-     *
-     * @param storageQueueName name of the queue being purged
-     * @throws AndesException
      */
     @Override
-    public void deleteAllMessageMetadata(String storageQueueName) throws AndesException {
+    public int deleteAllMessageMetadata(String storageQueueName) throws AndesException {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
-
+        int deletedMessagecount = 0;
         try {
             int queueID = getCachedQueueID(storageQueueName);
 
             connection = getConnection();
-            connection.setAutoCommit(false);
             preparedStatement = connection
                     .prepareStatement(RDBMSConstants.PS_CLEAR_QUEUE_FROM_METADATA);
 
             preparedStatement.setInt(1, queueID);
 
-            preparedStatement.execute();
-            connection.commit();
-
+            deletedMessagecount = preparedStatement.executeUpdate();
             if (log.isDebugEnabled()) {
                 log.debug("DELETED all message metadata from " + storageQueueName +
                         " with queue ID " + queueID);
@@ -1323,6 +1601,44 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             String task = RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName;
             close(preparedStatement, task);
             close(connection, task);
+            return deletedMessagecount;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int clearDlcQueue(String dlcQueueName) throws AndesException {
+
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
+        int deletedMessagecount = 0;
+        try {
+            int queueID = getCachedQueueID(dlcQueueName);
+
+            connection = getConnection();
+            preparedStatement = connection
+                    .prepareStatement(RDBMSConstants.PS_CLEAR_DLC_QUEUE);
+
+            preparedStatement.setInt(1, queueID);
+
+            deletedMessagecount = preparedStatement.executeUpdate();
+            if (log.isDebugEnabled()) {
+                log.debug("DELETED all message metadata for dlc queue " + dlcQueueName +
+                        " with queue ID " + queueID);
+            }
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_CLEARING_DLC_QUEUE + dlcQueueName);
+            throw rdbmsStoreUtils.convertSQLException("error occurred while clearing dlc queue:" +
+                    dlcQueueName, e);
+        } finally {
+            contextWrite.stop();
+            String task = RDBMSConstants.TASK_CLEARING_DLC_QUEUE + dlcQueueName;
+            close(preparedStatement, task);
+            close(connection, task);
+            return deletedMessagecount;
         }
     }
 
@@ -1407,6 +1723,74 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             close(results, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT + storageQueueName);
             close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT + storageQueueName);
             close(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT + storageQueueName);
+        }
+
+        return messageCount;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getMessageCountForQueueInDLC(String storageQueueName, String dlcQueueName) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet results = null;
+        long messageCount = 0;
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_QUEUE_MESSAGE_COUNT_FROM_DLC);
+            preparedStatement.setInt(1, getCachedQueueID(storageQueueName));
+            preparedStatement.setInt(2, getCachedQueueID(dlcQueueName));
+
+            results = preparedStatement.executeQuery();
+
+            while (results.next()) {
+                messageCount = results.getLong(RDBMSConstants.PS_ALIAS_FOR_COUNT);
+            }
+
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("Error while getting message count in DLC from queue " +
+                    storageQueueName, e);
+        } finally {
+            contextRead.stop();
+            close(results, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC + storageQueueName);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC + storageQueueName);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC + storageQueueName);
+        }
+
+        return messageCount;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getMessageCountForDLCQueue(String dlcQueueName) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet results = null;
+        long messageCount = 0;
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_MESSAGE_COUNT_IN_DLC);
+            preparedStatement.setInt(1, getCachedQueueID(dlcQueueName));
+
+            results = preparedStatement.executeQuery();
+
+            while (results.next()) {
+                messageCount = results.getLong(RDBMSConstants.PS_ALIAS_FOR_COUNT);
+            }
+
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("Error while getting message count in DLC from queue ", e);
+        } finally {
+            contextRead.stop();
+            close(results, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC);
         }
 
         return messageCount;
@@ -1523,7 +1907,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     RDBMSConstants.PS_DELETE_RETAIN_MESSAGE_METADATA);
             insertContentPreparedStatement = connection.prepareStatement(
                     RDBMSConstants.PS_INSERT_RETAIN_MESSAGE_PART);
-
             for (AndesMessage message : retainMap.values()) {
 
                 AndesMessageMetadata metadata = message.getMetadata();

@@ -59,6 +59,7 @@ import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.carbon.metrics.manager.MetricManager;
 import org.wso2.carbon.metrics.manager.Timer.Context;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * CQL 3 based Cassandra MessageStore implementation. This is intended to support Cassandra 2.xx series upwards.
@@ -527,6 +528,22 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public void moveMetadataToDLC(long messageId, String dlcQueueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void moveMetadataToDLC(List<Long> messageIds, String dlcQueueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void updateMetadataInformation(String currentQueueName,
                                           List<AndesMessageMetadata> metadataList) throws AndesException {
 
@@ -621,6 +638,25 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public List<AndesMessageMetadata> getMetadataListForStorageQueueFromDLC(String storageQueueName,
+                                                                            String dlcQueueName, long firstMsgId,
+                                                                            long lastMsgId) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesMessageMetadata> getMetadataListFromDLC(String dlcQueueName, long firstMsgId, long lastMsgId)
+            throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String storageQueueName,
                                                                        long firstMsgId,
                                                                        int count) throws AndesException {
@@ -696,6 +732,25 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesMessageMetadata> getNextNMessageMetadataForQueueFromDLC(String storageQueueName,
+                                                                             String dlcQueueName, long firstMsgId,
+                                                                             int count) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromDLC(String dlcQueueName, long firstMsgId, int count)
+            throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
      * INFO log print to inform user while reading tombstone
      *
      * @param scheduledExecutorService ScheduledExecutorService to schedule printing logs
@@ -749,6 +804,14 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         } finally {
             context.stop();
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteMessageMetadata(List<Long> messagesToRemove) throws AndesException {
+        throw new NotImplementedException();
     }
 
     /**
@@ -821,13 +884,22 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteAllMessageMetadata(String storageQueueName) throws AndesException {
+    public int deleteAllMessageMetadata(String storageQueueName) throws AndesException {
 
         Statement statement = QueryBuilder.delete().from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
                 where(eq(CQLConstants.QUEUE_NAME, storageQueueName)).
                 setConsistencyLevel(config.getWriteConsistencyLevel());
 
         execute(statement, "deleting all metadata from " + storageQueueName);
+        return 0;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int clearDlcQueue(String dlcQueueName) throws AndesException {
+        throw new NotImplementedException();
     }
 
     /**
@@ -903,6 +975,22 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public long getMessageCountForQueue(String destinationQueueName) throws AndesException {
         return contextStore.getMessageCountForQueue(destinationQueueName);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getMessageCountForQueueInDLC(String storageQueueName, String dlcQueueName) throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getMessageCountForDLCQueue(String dlcQueueName) throws AndesException {
+        throw new NotImplementedException();
     }
 
     /**
