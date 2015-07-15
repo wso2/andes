@@ -204,9 +204,10 @@ public class ClusterManager {
 
             clearAllPersistedStatesOfDisappearedNode(nodeId);
 
-            log.info("Initializing Standalone Mode. Current Node ID:" + this.nodeId);
+            log.info("Initializing Standalone Mode. Current Node ID:" + this.nodeId + " "
+                     + InetAddress.getLocalHost().getHostAddress());
 
-            andesContextStore.storeNodeDetails(nodeId, (String) AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
+            andesContextStore.storeNodeDetails(nodeId, InetAddress.getLocalHost().getHostAddress());
         } catch (UnknownHostException e) {
             throw new AndesException("Unable to get the localhost address.", e);
         }
@@ -223,9 +224,16 @@ public class ClusterManager {
         this.nodeId = this.hazelcastAgent.getNodeId();
         log.info("Initializing Cluster Mode. Current Node ID:" + this.nodeId);
 
+        String localMemberHostAddress = this.hazelcastAgent.getLocalMember().getSocketAddress().
+                                        getAddress().getHostAddress();
+
+        if (log.isDebugEnabled()) {
+            log.debug("Stored node ID : " + this.nodeId +  ". Stored node data(Hazelcast local "
+                      + "member host address) : " + localMemberHostAddress);
+        }
+
         //add node information to durable store
-        andesContextStore.storeNodeDetails(nodeId, (String) AndesConfigurationManager.readValue
-                (AndesConfiguration.TRANSPORTS_BIND_ADDRESS));
+        andesContextStore.storeNodeDetails(nodeId, localMemberHostAddress);
 
         /**
          * If nodeList size is one, this is the first node joining to cluster. Here we check if
