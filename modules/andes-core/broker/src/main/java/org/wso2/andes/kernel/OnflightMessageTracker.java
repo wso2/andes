@@ -347,13 +347,13 @@ public class OnflightMessageTracker {
      *
      * @param slot slot whose message counter should increment
      */
-    public void incrementMessageCountInSlot(Slot slot) {
+    public void incrementMessageCountInSlot(Slot slot, int amount) {
         AtomicInteger pendingMessageCount = pendingMessagesBySlot.get(slot);
         if (null == pendingMessageCount) {
             pendingMessagesBySlot.putIfAbsent(slot, new AtomicInteger());
         }
         pendingMessageCount = pendingMessagesBySlot.get(slot);
-        pendingMessageCount.incrementAndGet();
+        pendingMessageCount.addAndGet(amount);
     }
 
 
@@ -513,13 +513,14 @@ public class OnflightMessageTracker {
         ConcurrentHashMap<Long, MsgData> messagesOfSlot = messageBufferingTracker.remove(slotID);
         if (messagesOfSlot != null) {
             for (Long messageId : messagesOfSlot.keySet()) {
-                getTrackingData(messageId).addMessageStatus(MessageStatus.SLOT_REMOVED);
+                MsgData msgData = getTrackingData(messageId);
+                msgData.addMessageStatus(MessageStatus.SLOT_REMOVED);
                 if (checkIfReadyToRemoveFromTracking(messageId)) {
                     if (log.isDebugEnabled()) {
                         log.debug("removing tracking object from memory id " + messageId);
                     }
                 } else {
-                    log.error("Tracking data for message id " + messageId + " removed while in an invalid state.");
+                    log.error("Tracking data for message id " + messageId + " removed while in an invalid state. (" + msgData.getStatusHistory() + ")");
                 }
                 msgId2MsgData.remove(messageId);
             }
