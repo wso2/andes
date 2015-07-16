@@ -906,7 +906,7 @@ public class HazelcastAgent implements SlotAgent {
      */
     @Override
     public TreeSet<Slot> getAssignedSlotsByNodeId(String nodeId) throws AndesException {
-        TreeSet<Slot> resultSet = null;
+        TreeSet<Slot> resultSet = new TreeSet<Slot>();
         try {
             HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.remove(nodeId);
             HashMap<String, TreeSet<Slot>> queueToSlotMap = null;

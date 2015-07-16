@@ -228,8 +228,7 @@ public class RDBMSAgent implements SlotAgent {
 	 */
 	@Override
 	public void reAssignSlot(Slot slotToBeReAssigned) throws AndesException {
-		this.setSlotState(slotToBeReAssigned.getStartMessageId(), slotToBeReAssigned.getEndMessageId(),
-							SlotState.RETURNED);
+        andesContextStore.deleteSlotAssignment(slotToBeReAssigned.getStartMessageId(), slotToBeReAssigned.getEndMessageId());
 	}
 
 	/**

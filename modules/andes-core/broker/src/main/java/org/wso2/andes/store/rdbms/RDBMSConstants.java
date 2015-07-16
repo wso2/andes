@@ -421,7 +421,7 @@ public class RDBMSConstants {
             "UPDATE " + SLOT_TABLE +
                     " SET " +
                     ASSIGNED_NODE_ID + "=NULL, " +
-                    ASSIGNED_QUEUE_NAME + "=NULL " +
+                    ASSIGNED_QUEUE_NAME + "=NULL, " +
                     SLOT_STATE + "=" + SlotState.RETURNED.getCode() +
                     " WHERE " + START_MESSAGE_ID + "=?" +
                     " AND " + END_MESSAGE_ID + "=?";

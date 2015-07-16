@@ -388,6 +388,10 @@ public class SlotManagerClusterMode {
                 }
             }
             slotAgent.deleteOverlappedSlots(nodeId);
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("No slots to return from node " + nodeId + " as member left");
+            }
         }
     }
 

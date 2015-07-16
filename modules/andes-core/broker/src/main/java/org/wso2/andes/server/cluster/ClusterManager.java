@@ -119,9 +119,7 @@ public class ClusterManager {
             clearAllPersistedStatesOfDisappearedNode(deletedNodeId);
 
             //Reassign the slot to free slots pool
-            if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
-                SlotManagerClusterMode.getInstance().reAssignSlotsWhenMemberLeaves(deletedNodeId);
-            }
+            SlotManagerClusterMode.getInstance().reAssignSlotsWhenMemberLeaves(deletedNodeId);
         }
 
         // Deactivate durable subscriptions belonging to the node
