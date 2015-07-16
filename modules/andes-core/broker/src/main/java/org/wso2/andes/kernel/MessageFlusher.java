@@ -233,6 +233,7 @@ public class MessageFlusher {
 
 
         try {
+            OnflightMessageTracker.getInstance().incrementMessageCountInSlot(slot, messagesRead.size());
             for (AndesMessageMetadata message : messagesRead) {
 
                 /**
@@ -254,15 +255,15 @@ public class MessageFlusher {
                     //Tracing message
                     MessageTracer.trace(message, MessageTracer.METADATA_BUFFERED_FOR_DELIVERY);
                     //increment the message count in the slot
-                    OnflightMessageTracker.getInstance().incrementMessageCountInSlot(slot);
                 } else {
+                    OnflightMessageTracker.getInstance().decrementMessageCountInSlot(slot);
                     log.warn("Tracker rejected message id= " + message.getMessageID() + " from buffering " +
                              "to deliver. This is an already buffered message");
                     //todo: this message is previously buffered. Should be removed from slot
                 }
             }
         } catch (Throwable e) {
-            log.fatal("Error running Cassandra Message Flusher" + e.getMessage(), e);
+            log.fatal("Error scheduling messages for delivery", e);
         }
     }
 
@@ -408,7 +409,7 @@ public class MessageFlusher {
 
                     if (subscriptions4Queue.size() == 0) {
                         iterator.remove(); // remove buffer
-                        OnflightMessageTracker.getInstance().decrementMessageCountInSlotAndCheckToResend(message.getSlot());
+                        OnflightMessageTracker.getInstance().decrementMessageCountInSlot(message.getSlot());
                         AndesRemovableMetadata removableMetadata = new AndesRemovableMetadata(message.getMessageID(),
                                 message.getDestination(), message.getStorageQueueName());
                         droppedTopicMessageList.add(removableMetadata);
