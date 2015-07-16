@@ -18,7 +18,6 @@
 package org.wso2.andes.server.cluster;
 
 
-import com.hazelcast.core.IMap;
 import com.hazelcast.core.Member;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -28,7 +27,6 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
@@ -46,12 +44,10 @@ import java.util.List;
  */
 public class ClusterManager {
 
-    private Log log = LogFactory.getLog(ClusterManager.class);
-
     /**
-     * HazelcastAgent instance
+     * Class logger
      */
-    private HazelcastAgent hazelcastAgent;
+    private Log log = LogFactory.getLog(ClusterManager.class);
 
     /**
      * Id of the local node
@@ -59,14 +55,14 @@ public class ClusterManager {
     private String nodeId;
 
     /**
-     * each node is assigned  an ID 0-x after arranging nodeIDs in an ascending order
-     */
-    private int nodeSyncSyncId;
-
-    /**
      * AndesContextStore instance
      */
     private AndesContextStore andesContextStore;
+
+    /**
+     * Cluster agent for managing cluster communication
+     */
+    private ClusterAgent clusterAgent;
 
     /**
      * Create a ClusterManager instance
@@ -82,39 +78,32 @@ public class ClusterManager {
      */
     public void init() throws AndesException{
 
-        if (!AndesContext.getInstance().isClusteringEnabled()) {
-            this.initStandaloneMode();
-            return;
+        if (AndesContext.getInstance().isClusteringEnabled()) {
+            initClusterMode();
+        } else {
+            initStandaloneMode();
         }
-
-        initClusterMode();
     }
 
     /**
      * Handles changes needs to be done in current node when a node joins to the cluster
      */
-    public void memberAdded() {
-        reAssignNodeSyncId();
-        //update thrift coordinator server details
-        updateThriftCoordinatorDetailsToMap();
-        updateCoordinatorNodeDetailMap();
+    public void memberAdded(String addedNodeId) {
+        log.info("Handling cluster gossip: Node " + addedNodeId + "  Joined the Cluster");
     }
 
     /**
      * Handles changes needs to be done in current node when a node leaves the cluster
+     * @param deletedNodeId deleted node id
      */
-    public void memberRemoved(Member node) throws AndesException {
-        String deletedNodeId = hazelcastAgent.getIdOfNode(node);
+    public void memberRemoved(String deletedNodeId) throws AndesException {
+        log.info("Handling cluster gossip: Node " + deletedNodeId + "  left the Cluster");
 
         SlotManagerClusterMode.getInstance().setRemovedNode(deletedNodeId);
-        if(AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
-            SlotManagerClusterMode.getInstance().recoverSlots();
-        }
-        //refresh global queue sync ID
-        reAssignNodeSyncId();
 
-        // Below steps are carried out only by the 0th node of the list.
-        if (nodeSyncSyncId == 0) {
+        if(clusterAgent.isCoordinator()) {
+            SlotManagerClusterMode.getInstance().recoverSlots();
+
             //clear persisted states of disappeared node
             clearAllPersistedStatesOfDisappearedNode(deletedNodeId);
 
@@ -123,23 +112,8 @@ public class ClusterManager {
         }
 
         // Deactivate durable subscriptions belonging to the node
-        ClusterResourceHolder.getInstance().getSubscriptionManager().
-                deactivateClusterDurableSubscriptionsForNodeID(AndesContext.getInstance().getClusteringAgent()
-                                .isCoordinator(),
-                        hazelcastAgent.getIdOfNode(node));
-
-        //update thrift coordinator server details
-        //  setThriftCoordinatorServerDetails();
-    }
-
-    /**
-     * get binding address of the node
-     *
-     * @param nodeId id of node assigned by Hazelcast
-     * @return bind address
-     */
-    public String getNodeAddress(String nodeId) throws AndesException {
-        return andesContextStore.getAllStoredNodeData().get(nodeId);
+        ClusterResourceHolder.getInstance().getSubscriptionManager().deactivateClusterDurableSubscriptionsForNodeID(
+                clusterAgent.isCoordinator(), deletedNodeId);
     }
 
     /**
@@ -161,9 +135,9 @@ public class ClusterManager {
     }
 
     /**
-     * gracefully stop all global queue workers assigned for the current node
+     * Perform cleanup tasks before shutdown
      */
-    public void shutDownMyNode() throws AndesException {
+    public void prepareLocalNodeForShutDown() throws AndesException {
         //clear stored node IDS and mark subscriptions of node as closed
         clearAllPersistedStatesOfDisappearedNode(nodeId);
     }
@@ -175,7 +149,7 @@ public class ClusterManager {
      */
     public int getUniqueIdForLocalNode() {
         if (AndesContext.getInstance().isClusteringEnabled()) {
-            return hazelcastAgent.getUniqueIdForNode();
+            return clusterAgent.getUniqueIdForLocalNode();
         }
         return 0;
     }
@@ -220,12 +194,15 @@ public class ClusterManager {
      */
     private void initClusterMode() throws AndesException {
 
-        this.hazelcastAgent = HazelcastAgent.getInstance();
-        this.nodeId = this.hazelcastAgent.getNodeId();
+        // Set the cluster agent from the Andes Context.
+        this.clusterAgent = AndesContext.getInstance().getClusterAgent();
+
+        clusterAgent.start(this);
+
+        this.nodeId = clusterAgent.getLocalNodeIdentifier();
         log.info("Initializing Cluster Mode. Current Node ID:" + this.nodeId);
 
-        String localMemberHostAddress = this.hazelcastAgent.getLocalMember().getSocketAddress().
-                                        getAddress().getHostAddress();
+        String localMemberHostAddress = clusterAgent.getLocalNodeIdentifier();
 
         if (log.isDebugEnabled()) {
             log.debug("Stored node ID : " + this.nodeId +  ". Stored node data(Hazelcast local "
@@ -245,21 +222,12 @@ public class ClusterManager {
         clearAllPersistedStatesOfDisappearedNode(nodeId);
 
         List<String> storedNodes = new ArrayList<>(andesContextStore.getAllStoredNodeData().keySet());
-        List<String> availableNodeIds = hazelcastAgent.getMembersNodeIDs();
+        List<String> availableNodeIds = clusterAgent.getAllNodeIdentifiers();
         for (String storedNodeId : storedNodes) {
             if (!availableNodeIds.contains(storedNodeId)) {
                 clearAllPersistedStatesOfDisappearedNode(storedNodeId);
             }
         }
-        memberAdded();
-        log.info("Handling cluster gossip: Node " + nodeId + "  Joined the Cluster");
-    }
-
-    /**
-     * update global queue synchronizing ID according to current status in cluster
-     */
-    private void reAssignNodeSyncId() {
-        this.nodeSyncSyncId = hazelcastAgent.getIndexOfLocalNode();
     }
 
     /**
@@ -279,51 +247,11 @@ public class ClusterManager {
 
     }
 
-    /**
-     * Get the ID of the given node
-     *
-     * @param node given node
-     * @return ID of the node
-     */
-    public String getNodeId(Member node) {
-        return hazelcastAgent.getIdOfNode(node);
-    }
 
     /**
-     * set coordinator's thrift server IP and port in hazelcast map.
+     * Perform coordinator initialization tasks, when this node is elected as the new coordinator
      */
-    public void updateThriftCoordinatorDetailsToMap() {
-
-        String thriftCoordinatorServerIP = AndesContext.getInstance().getThriftServerHost();
-        int thriftCoordinatorServerPort = AndesContext.getInstance().getThriftServerPort();
-
-
-        if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
-            log.info("This node is elected as the Slot Coordinator. Registering " +
-                     thriftCoordinatorServerIP + ":" + thriftCoordinatorServerPort);
-            hazelcastAgent.getThriftServerDetailsMap().put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP, thriftCoordinatorServerIP);
-            hazelcastAgent.getThriftServerDetailsMap().put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT,
-                                                           Integer.toString(thriftCoordinatorServerPort));
-            SlotManagerClusterMode.getInstance().recoverSlots();
-
-        }
-    }
-
-    /**
-     * Sets coordinator's hostname and port in
-     * {@link org.wso2.andes.server.cluster.coordination.CoordinationConstants#COORDINATOR_NODE_DETAILS_MAP_NAME}
-     * hazelcast map.
-     */
-    public void updateCoordinatorNodeDetailMap(){
-        if (AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
-            // Adding cluster coordinator's node IP and port
-            hazelcastAgent.getCoordinatorNodeDetailsMap().put(
-                    SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP,
-                    hazelcastAgent.getLocalMember().getSocketAddress().getAddress().getHostAddress());
-            hazelcastAgent.getCoordinatorNodeDetailsMap().put(
-                    SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT,
-                    Integer.toString(hazelcastAgent.getLocalMember().getSocketAddress().getPort()));
-        }
+    public void localNodeElectedAsCoordinator() {
     }
 
     /**
@@ -333,15 +261,14 @@ public class ClusterManager {
      */
     public String getCoordinatorNodeAddress() {
         if (AndesContext.getInstance().isClusteringEnabled()) {
-            IMap<String, String> coordinatorNodeDetailsMap = hazelcastAgent.getCoordinatorNodeDetailsMap();
-            if (null != coordinatorNodeDetailsMap) {
-                String ipAddress = coordinatorNodeDetailsMap.get(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP);
-                String port = coordinatorNodeDetailsMap.get(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT);
-                if (null != ipAddress && null != port) {
-                    return ipAddress + ":" + port;
-                }
+            CoordinatorInformation coordinatorDetails = clusterAgent.getCoordinatorDetails();
+            String ipAddress = coordinatorDetails.getHostname();
+            String port = coordinatorDetails.getPort();
+            if (null != ipAddress && null != port) {
+                return ipAddress + ":" + port;
             }
         }
+
         return StringUtils.EMPTY;
     }
 
@@ -367,7 +294,7 @@ public class ClusterManager {
      * @return true if healthy, else false.
      */
     public boolean getStoreHealth() {
-        String myNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        String myNodeId = getMyNodeID();
 
         boolean isMessageStoreOperational = AndesContext.getInstance().getMessageStore().isOperational(myNodeId,
                 System.currentTimeMillis());

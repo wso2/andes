@@ -448,7 +448,7 @@ public class AndesKernelBoot {
 
         ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllLocalSubscriptionsOfNode();
         // notify cluster this MB node is shutting down. For other nodes to do recovery tasks
-        ClusterResourceHolder.getInstance().getClusterManager().shutDownMyNode();
+        ClusterResourceHolder.getInstance().getClusterManager().prepareLocalNodeForShutDown();
     }
 
     /**

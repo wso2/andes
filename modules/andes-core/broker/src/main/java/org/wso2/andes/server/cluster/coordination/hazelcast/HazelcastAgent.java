@@ -17,16 +17,25 @@
  */
 package org.wso2.andes.server.cluster.coordination.hazelcast;
 
-import com.hazelcast.core.*;
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.HazelcastInstanceNotActiveException;
+import com.hazelcast.core.IAtomicLong;
+import com.hazelcast.core.ILock;
+import com.hazelcast.core.IMap;
+import com.hazelcast.core.ITopic;
+import com.hazelcast.core.IdGenerator;
+import com.hazelcast.core.Member;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesKernelBoot;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.kernel.slot.SlotUtils;
+import org.wso2.andes.server.cluster.HazelcastClusterAgent;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
@@ -35,8 +44,12 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wr
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetLongWrapper;
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetSlotWrapper;
 
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 
 /**
@@ -173,10 +186,7 @@ public class HazelcastAgent implements SlotAgent {
         log.info("Initializing Hazelcast Agent");
         this.hazelcastInstance = hazelcastInstance;
 
-        /**
-         * membership changes
-         */
-        this.hazelcastInstance.getCluster().addMembershipListener(new AndesMembershipListener());
+        AndesContext.getInstance().setClusterAgent(new HazelcastClusterAgent(hazelcastInstance));
 
         /**
          * subscription changes
@@ -377,6 +387,15 @@ public class HazelcastAgent implements SlotAgent {
 
     }
 
+    /**
+     * Check if the current node is the coordinator.
+     * @return {@code true} if current node is the coordinator, else false.
+     */
+    public boolean isCoordinator() {
+        Member oldestMember = hazelcastInstance.getCluster().getMembers().iterator().next();
+
+        return oldestMember.localMember();
+    }
 
     public void notifyQueuesChanged(ClusterNotification clusterNotification) throws AndesException {
 

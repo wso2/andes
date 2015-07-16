@@ -22,6 +22,7 @@ import org.apache.axis2.clustering.ClusteringAgent;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.server.cluster.ClusterAgent;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.List;
@@ -39,6 +40,29 @@ public class AndesContext {
     private AMQPConstructStore AMQPConstructStore;
     private static AndesContext instance = new AndesContext();
     private MessageStore messageStore;
+
+    /**
+     * This is mainly used by Cluster Manager to manger cluster communication
+     */
+    private ClusterAgent clusterAgent;
+
+    /**
+     * Getter for cluster agent
+     *
+     * @return cluster agent for this node if one is available, else null
+     */
+    public ClusterAgent getClusterAgent() {
+        return clusterAgent;
+    }
+
+    /**
+     * Setter for cluster agent.
+     *
+     * @param clusterAgent
+     */
+    public void setClusterAgent(ClusterAgent clusterAgent) {
+        this.clusterAgent = clusterAgent;
+    }
 
     /**
      * Get virtual host configuration object
