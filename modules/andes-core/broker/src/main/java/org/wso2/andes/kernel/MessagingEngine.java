@@ -230,6 +230,7 @@ public class MessagingEngine {
         OnflightMessageTracker.getInstance().handleFailure(metadata);
         LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId(metadata.getChannelId());
         if (subToResend != null) {
+            OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(metadata.getChannelId());
             reQueueMessage(metadata, subToResend);
         } else {
             log.warn("Cannot handle reject. Subscription not found for channel " + metadata.getChannelId()

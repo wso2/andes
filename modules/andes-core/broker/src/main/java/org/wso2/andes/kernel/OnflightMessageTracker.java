@@ -730,7 +730,8 @@ public class OnflightMessageTracker {
      * Decrements non acknowledged message count for a channel
      * <p/>
      * When acknowledgement for a message is received for a given channel by calling this method should be called to
-     * decrement the non acknowledged message count
+     * decrement the non acknowledged message count. Also during a message reject this is called to indicate that there
+     * was some response for the message sent.
      *
      * @param chanelID channelID
      */
