@@ -108,6 +108,11 @@ public class AndesChannel {
 	 */
 	private String destination;
 
+	/**
+	 * Publisher client socket attached to channel
+	 */
+	private String clientSocket;
+
     /**
      * Instantiates a new andes channel
      * 
@@ -189,8 +194,8 @@ public class AndesChannel {
             flowControlEnabled = false;
             listener.unblock();
 
-            log.info("Flow control disabled for channel [ ID: " + getId() + " , Destination: " +
-                     this.getDestination() + " ]");
+            log.info("Flow control disabled for channel [ ID: " + getId() + " , ClientSocket: "
+                     + this.getClientSocket() + " , Destination: " + this.getDestination() + " ]");
         }
     }
 
@@ -203,8 +208,8 @@ public class AndesChannel {
             listener.block();
             scheduledFlowControlTimeoutFuture = executor.schedule(flowControlTimeoutTask, 1, TimeUnit.MINUTES);
 
-            log.info("Flow control enabled for channel [ ID: " + getId() + " , Destination: "
-                     + this.getDestination() + " ]");
+            log.info("Flow control enabled for channel [ ID: " + getId() + " , ClientSocket: "
+                      + this.getClientSocket() + " , Destination: " + this.getDestination() + " ]");
         }
     }
     
@@ -300,4 +305,21 @@ public class AndesChannel {
 	public void setDestination(String destination) {
 		this.destination = destination;
 	}
+
+	/**
+	 * Set client socket associated with channel
+	 * @return client socket
+	 */
+	public String getClientSocket() {
+		return clientSocket;
+	}
+
+	/**
+	 * Get client socket associated with channel
+	 * @param clientSocket client socket
+	 */
+	public void setClientSocket(String clientSocket) {
+		this.clientSocket = clientSocket;
+	}
+
 }

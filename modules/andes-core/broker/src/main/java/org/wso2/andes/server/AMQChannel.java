@@ -408,6 +408,9 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                 //TODO
                 //check queue size from here and reject the request
 
+                //Set associated client ip of channel
+                andesChannel.setClientSocket(((AMQProtocolEngine) this._session).getAddress().substring(1));
+
                 //need to bind this to the inner class, as _currentMessage
                 final IncomingMessage incomingMessage = _currentMessage;
 
