@@ -51,7 +51,7 @@ public class MessagePurgeRule implements DeliveryRule {
                               .getLastPurgedTimestamp();
         if (onflightMessageTracker.getMsgArrivalTime(messageID) <= lastPurgedTimestampOfQueue) {
             log.warn("Message was sent at " + onflightMessageTracker.getMsgArrivalTime(messageID) +
-                     " before last purge event at " + lastPurgedTimestampOfQueue + ". Will be skipped. id= " +
+                     " before last purge event at " + lastPurgedTimestampOfQueue + ". Therefore, it will not be sent. id= " +
                      messageID);
             onflightMessageTracker.setMessageStatus(MessageStatus.PURGED, messageID);
             return false;
