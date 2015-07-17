@@ -30,6 +30,7 @@ import org.wso2.andes.kernel.DeliveryRule;
 import org.wso2.andes.kernel.HasInterestRule;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.MaximumNumOfDeliveryRule;
+import org.wso2.andes.kernel.MessagePurgeRule;
 import org.wso2.andes.kernel.MessageStatus;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.NoLocalRule;
@@ -116,8 +117,8 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
 //        //checking message expiration deliver rule
 //        deliveryRulesList.add(new MessageExpiredRule());
 
-//        //checking message purged delivery rule
-//        deliveryRulesList.add(new MessagePurgeRule());
+        //checking message purged delivery rule
+        deliveryRulesList.add(new MessagePurgeRule());
         //checking has interest delivery rule
         deliveryRulesList.add(new HasInterestRule(amqpSubscription));
         //checking no local delivery rule
