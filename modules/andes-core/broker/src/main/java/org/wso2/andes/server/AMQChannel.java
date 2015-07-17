@@ -409,6 +409,16 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
                 //TODO
                 //check queue size from here and reject the request
 
+                //Set channel details
+                //Substring to remove leading slash character from address
+                try {
+                    andesChannel.setIdentifier(
+                            ((AMQProtocolEngine) this._session).getAddress().substring(1));
+                } catch (NullPointerException e) {
+                    andesChannel.setIdentifier("AMQP-Unknown");
+                }
+                andesChannel.setDestination(this._currentMessage.getRoutingKey());
+
                 //need to bind this to the inner class, as _currentMessage
                 final IncomingMessage incomingMessage = _currentMessage;
 

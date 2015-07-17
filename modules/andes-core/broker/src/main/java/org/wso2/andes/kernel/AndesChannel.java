@@ -103,6 +103,16 @@ public class AndesChannel {
      */
     private ScheduledFuture<?> scheduledFlowControlTimeoutFuture;
 
+	/**
+	 * Queue / Topic destination attached to channel
+	 */
+	private String destination;
+
+	/**
+	 * Publisher identifier
+	 */
+	private String identifier;
+
     /**
      * Instantiates a new andes channel
      * 
@@ -182,7 +192,8 @@ public class AndesChannel {
             flowControlEnabled = false;
             listener.unblock();
 
-            log.info("Flow control disabled for channel " + getId() + ".");
+            log.info("Flow control disabled for channel [ ID: " + getId() + " , Identifier: "
+                     + this.getIdentifier() + " , Destination: " + this.getDestination() + " ]");
         }
     }
 
@@ -195,7 +206,8 @@ public class AndesChannel {
             listener.block();
             scheduledFlowControlTimeoutFuture = executor.schedule(flowControlTimeoutTask, 1, TimeUnit.MINUTES);
 
-            log.info("Flow control enabled for channel " + getId() + ".");
+            log.info("Flow control enabled for channel [ ID: " + getId() + " , Identifier: "
+                      + this.getIdentifier() + " , Destination: " + this.getDestination() + " ]");
         }
     }
     
@@ -275,4 +287,37 @@ public class AndesChannel {
         }
         return count;
     }
+
+	/**
+	 * Get destination attached to channel
+	 * @return destination name
+	 */
+	public String getDestination() {
+		return destination;
+	}
+
+	/**
+	 * Set destination attached to channel
+	 * @param destination queue/topic name
+	 */
+	public void setDestination(String destination) {
+		this.destination = destination;
+	}
+
+	/**
+	 * Get channel identifier
+	 * @return client identifier
+	 */
+	public String getIdentifier() {
+		return identifier;
+	}
+
+	/**
+	 * Set channel identifier
+	 * @param identifier client identifier
+	 */
+	public void setIdentifier(String identifier) {
+		this.identifier = identifier;
+	}
+
 }
