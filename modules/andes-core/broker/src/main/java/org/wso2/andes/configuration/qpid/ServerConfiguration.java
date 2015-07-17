@@ -538,7 +538,7 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      * @return Bind address
      */
     public String getBind() {
-        return AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_BIND_ADDRESS);
+        return AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_BIND_ADDRESS);
     }
 
     public int getReceiveBufferSize() {

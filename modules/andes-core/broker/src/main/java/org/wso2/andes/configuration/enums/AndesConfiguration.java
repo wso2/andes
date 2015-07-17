@@ -60,6 +60,16 @@ public enum AndesConfiguration implements ConfigurationProperty {
     TRANSPORTS_BIND_ADDRESS("transports/bindAddress", "*", String.class),
 
     /**
+     * The IP address to which mqtt channels should be bound.
+     */
+    TRANSPORTS_MQTT_BIND_ADDRESS("transports/mqtt/bindAddress", "*", String.class),
+
+    /**
+     * The IP address to which amqp channels should be bound.
+     */
+    TRANSPORTS_AMQP_BIND_ADDRESS("transports/amqp/bindAddress", "*", String.class),
+
+    /**
      * Enable this to support JMS messaging with added AMQP behaviour.
      */
     TRANSPORTS_AMQP_ENABLED("transports/amqp/@enabled", "true", Boolean.class),
