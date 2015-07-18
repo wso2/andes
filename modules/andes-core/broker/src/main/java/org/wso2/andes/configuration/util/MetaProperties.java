@@ -41,7 +41,7 @@ public interface MetaProperties {
     Class<?> getDataType();
 
     /**
-     * @return Name of the property (e.g. TRANSPORTS_AMQP_PORT)
+     * @return Name of the property (e.g. TRANSPORTS_AMQP_DEFAULT_CONNECTION_PORT)
      */
     String getName();
 

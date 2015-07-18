@@ -24,6 +24,7 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.modules.JKSStore;
 import org.wso2.andes.configuration.qpid.ServerConfiguration;
 import org.wso2.andes.configuration.qpid.ServerNetworkTransportConfiguration;
 import org.wso2.andes.configuration.qpid.management.ConfigurationManagementMBean;
@@ -224,11 +225,10 @@ public class Broker
                 }
 
                 if (serverConfig.getEnableSSL()) {
-                    String keystorePath = serverConfig.getKeystorePath();
-                    String keystorePassword = serverConfig.getKeystorePassword();
+                    JKSStore keyStore = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_KEYSTORE);
                     String certType = serverConfig.getCertType();
                     SSLContextFactory sslFactory =
-                            new SSLContextFactory(keystorePath, keystorePassword, certType);
+                            new SSLContextFactory(keyStore.getStoreLocation(), keyStore.getPassword(), certType);
 
                     for(int sslPort : sslPorts)
                     {
