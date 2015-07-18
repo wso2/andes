@@ -136,8 +136,8 @@ public class AndesChannel {
         this.messagesOnBuffer = new AtomicInteger(0);
         this.flowControlEnabled = false;
 
-        if(log.isDebugEnabled()) {
-            log.debug("Channel created with ID: " + getId());
+        if(log.isInfoEnabled()) {
+            log.info("Channel created with ID: " + getId());
         }
     }
 
