@@ -29,7 +29,6 @@ import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.slot.SlotDeletionExecutor;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 
 import java.util.concurrent.ExecutionException;
@@ -246,7 +245,7 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
             SlotDeletionExecutor.getInstance().stopSlotDeletionExecutor();
 
             //Stop Slot manager in coordinator
-            if (AndesContext.getInstance().isClusteringEnabled() && HazelcastAgent.getInstance().isCoordinator()) {
+            if (AndesContext.getInstance().isClusteringEnabled() && (AndesContext.getInstance().getClusterAgent().isCoordinator())) {
                 SlotManagerClusterMode.getInstance().shutDownSlotManager();
             }
 

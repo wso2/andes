@@ -19,10 +19,10 @@
 package org.wso2.andes.thrift;
 
 import org.apache.thrift.TException;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.thrift.slot.gen.SlotInfo;
 import org.wso2.andes.thrift.slot.gen.SlotManagementService;
 
@@ -38,7 +38,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
 
     @Override
     public SlotInfo getSlotInfo(String queueName, String nodeId) throws TException {
-        if (HazelcastAgent.getInstance().isCoordinator()) {
+        if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
             SlotInfo slotInfo = new SlotInfo();
             try {
                 Slot slot = slotManager.getSlot(queueName, nodeId);
@@ -57,7 +57,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
 
     @Override
     public void updateMessageId(String queueName, String nodeId, long startMessageId, long endMessageId) throws TException {
-        if (HazelcastAgent.getInstance().isCoordinator()) {
+        if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
             try {
                 slotManager.updateMessageID(queueName, nodeId, startMessageId, endMessageId);
             } catch (AndesException e) {
@@ -70,7 +70,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
 
     @Override
     public boolean deleteSlot(String queueName, SlotInfo slotInfo, String nodeId) throws TException {
-        if (HazelcastAgent.getInstance().isCoordinator()) {
+        if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
             Slot slot = new Slot();
             boolean result = false;
             slot.setStartMessageId(slotInfo.getStartMessageId());
@@ -89,7 +89,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
 
     @Override
     public void reAssignSlotWhenNoSubscribers(String nodeId, String queueName) throws TException {
-        if (HazelcastAgent.getInstance().isCoordinator()) {
+        if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
             try {
                 slotManager.reAssignSlotWhenNoSubscribers(nodeId, queueName);
             } catch (AndesException e) {
@@ -103,7 +103,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
     @Override
     public long updateCurrentMessageIdForSafeZone(long messageId, String nodeId) throws TException {
         long slotDeletionSafeZone;
-        if (HazelcastAgent.getInstance().isCoordinator()) {
+        if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
             slotDeletionSafeZone = slotManager.updateAndReturnSlotDeleteSafeZone(nodeId,messageId);
         } else {
             throw new TException("This node is not the slot coordinator right now");
@@ -113,7 +113,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
 
     @Override
     public void clearAllActiveSlotRelationsToQueue(String queueName) throws TException {
-        if (HazelcastAgent.getInstance().isCoordinator()) {
+        if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
             try {
                 slotManager.clearAllActiveSlotRelationsToQueue(queueName);
             } catch (AndesException e) {

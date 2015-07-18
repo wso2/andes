@@ -179,6 +179,9 @@ public class HazelcastClusterAgent implements ClusterAgent {
         IdGenerator idGenerator = this.hazelcastInstance.getIdGenerator(
                 CoordinationConstants.HAZELCAST_ID_GENERATOR_NAME);
         this.uniqueIdOfLocalMember = (int) idGenerator.newId();
+        if (log.isDebugEnabled()) {
+            log.debug("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
+        }
 
         memberAdded(hazelcastInstance.getCluster().getLocalMember());
     }

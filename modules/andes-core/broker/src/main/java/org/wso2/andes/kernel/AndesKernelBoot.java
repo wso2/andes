@@ -18,21 +18,6 @@
 
 package org.wso2.andes.kernel;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-import javax.management.JMException;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -56,6 +41,20 @@ import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.thrift.MBThriftServer;
 import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.user.api.UserStoreException;
+
+import javax.management.JMException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Andes kernel startup/shutdown related work is done through this class.
@@ -253,7 +252,9 @@ public class AndesKernelBoot {
             }
             if (AndesContext.getInstance().isClusteringEnabled()) {
                 SlotManagerClusterMode.getInstance().updateMessageID(queueName,
-                        HazelcastAgent.getInstance().getNodeId(), firstMessageID, lastMessageID);
+                                                                     AndesContext.getInstance().getClusterAgent()
+                                                                                 .getLocalNodeIdentifier(),
+                                                                     firstMessageID, lastMessageID);
             } else {
                 SlotManagerStandalone.getInstance().updateMessageID(queueName,lastMessageID);
             }
