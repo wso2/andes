@@ -21,7 +21,6 @@ package org.wso2.andes.kernel;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.store.HealthAwareStore;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -78,6 +77,16 @@ public interface MessageStore extends HealthAwareStore{
     public void addMetadata(List<AndesMessageMetadata> metadataList) throws AndesException;
 
     /**
+     * Store level method to update a list of messages
+     * The previousMessageID property of a message will be used to locate the existing message
+     * The message id and destination will be replaced from the new ones
+     * If was in the dead letter channel (DLC), it will be moved out of the DLC
+     *
+     * @param messageList list of message to be updated
+     */
+    public void updateMessage(List<AndesMessage> messageList) throws AndesException;
+
+    /**
      * store metadata of a single message
      *
      * @param metadata metadata to store
@@ -123,6 +132,18 @@ public interface MessageStore extends HealthAwareStore{
             AndesException;
 
     /**
+     * Add a message for a specific storage queue to dead letter channel (DLC)
+     *
+     * @param messageId            message ID of the message
+     * @param storageQueueName     storage queue of the message
+     * @param destinationQueueName destination queue of the message, used to create the DLC name
+     * @throws AndesException
+     */
+    public void moveMetaDataToDLC(long messageId, String storageQueueName, String destinationQueueName) throws
+            AndesException;
+
+
+    /**
      * Update the meta data for the given message with the given information in the AndesMetaData. Update destination
      * and meta data bytes.
      *
@@ -143,28 +164,32 @@ public interface MessageStore extends HealthAwareStore{
     public AndesMessageMetadata getMetadata(long messageId) throws AndesException;
 
     /**
-     * read a metadata list from store specifying a message id range
+     * Retrieve a list of metadata for within a range of message IDs and set the passed storage queue name for the
+     * retrieved message
      *
-     * @param storageQueueName name of the queue messages are stored
-     * @param firstMsgId first id of the range
-     * @param lastMsgID last id of the range
-     * @return list of metadata
+     * @param storageQueueName storage queue name to be set
+     * @param firstMsgId       starting value of the range of message IDs
+     * @param lastMsgID        ending value of the range of message IDs
+     * @param fromDLC          indication whether the message is retrived from the dead letter channel (DLC) or from
+     *                         the storage
+     * @return
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getMetadataList(final String storageQueueName, long firstMsgId,
-                                                      long lastMsgID) throws AndesException;
+                                                      long lastMsgID, boolean fromDLC) throws AndesException;
 
     /**
      * read  a metadata list from store specifying a starting message id and a count
      *
      * @param storageQueueName name of the queue
-     * @param firstMsgId first id
-     * @param count how many messages to read
+     * @param firstMsgId       first id
+     * @param count            how many messages to read
+     * @param fromStorage      whether from storage or dead letter channel
      * @return list of metadata
      * @throws AndesException
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String storageQueueName,
-                                                                       long firstMsgId, int count)
+                                                                       long firstMsgId, int count, boolean fromStorage)
             throws AndesException;
 
     /**
@@ -230,22 +255,23 @@ public interface MessageStore extends HealthAwareStore{
     public void deleteAllMessageMetadata(String storageQueueName) throws AndesException;
 
     /**
-     * Store level method to remove all DLC records of all messages addressed to a specific queue.
+     * Method to delete a list of messages from the DLC
      *
-     * @param storageQueueName name of the queue being purged
-     * @param DLCQueueName     name of the DLC from which to delete the messages
-     * @return List of the message IDs in the DLC that are addressed to the storage queue
-     * @throws AndesException
+     * @param messagesToRemove the list of message IDs to be removed
      */
-    public int deleteAllMessagesFromDLCForStorageQueue(String storageQueueName, String DLCQueueName) throws
-            AndesException;
+    public void deleteMessageMetadataFromDLC(List<AndesRemovableMetadata> messagesToRemove) throws AndesException;
 
-    /***
-     * Get Message ID list addressed to a specific queue.
+    /**
+     * Get a list of message IDs addressed to a specific queue.
+     *
      * @param storageQueueName name of the queue being purged.
+     * @param startMessageID   the start message id to start searching from
+     * @param storageType      the storage type from which to retrieved the message 0=normal storage, 1 = dead letter
+     *                         channel, 2=both 1&2
      * @throws AndesException
      */
-    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName, Long startMessageID) throws AndesException;
+    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName, Long startMessageID, int storageType)
+            throws AndesException;
 
     /**
      * Add message counting entry for queue. queue count is initialised to zero. The counter for
@@ -260,10 +286,12 @@ public interface MessageStore extends HealthAwareStore{
     /**
      * Get message count of queue
      *
+     * @param fromStorage
      * @param storageQueueName name of queue
+     * @param fromStorage      whether to read the message from storage or the dead letter channel
      * @return message count
      */
-    public long getMessageCountForQueue(String storageQueueName) throws AndesException;
+    public long getMessageCountForQueue(String storageQueueName, boolean fromStorage) throws AndesException;
 
     /**
      * Store level method to reset the message counter of a given queue to 0.

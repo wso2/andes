@@ -37,9 +37,26 @@ public class AndesMessage {
      */
     private List<AndesMessagePart> contentChunkList;
 
+    /**
+     * Variable to indicate whether the message is beingRestored
+     * If set to true, the message writer will not write but update the massage in the database when received
+     * If set to false, it will be written into the database as a fresh message
+     */
+    //TODO move to AndesMetadata
+    private boolean isBeingRestored;
+
+    /**
+     * Variable to indicate the previous message id
+     * This is useful when messages are being restored and rerouted
+     * Messages that are being restored and rerouted will have this message id so that the id can be updated
+     */
+    //TODO move to AndesMetadata
+    private long previousMessageID;
+
     public AndesMessage(AndesMessageMetadata metadata) {
         this.metadata = metadata;
         contentChunkList = new ArrayList<AndesMessagePart>();
+        this.isBeingRestored = false;
     }
 
 
@@ -77,6 +94,26 @@ public class AndesMessage {
     {
         //Messages should be deliverable by default if no rules have been implemented.
         return true;
+    }
+
+    // Get the value of isBeingRestored
+    public boolean isBeingRestored() {
+        return isBeingRestored;
+    }
+
+    //Set the value for the variable isBeingRestored
+    public void setIsBeingRestored(boolean isBeingRestored) {
+        this.isBeingRestored = isBeingRestored;
+    }
+
+    //Return the previous message ID
+    public long getPreviousMessageID() {
+        return previousMessageID;
+    }
+
+    //Set the previous messageID
+    public void setPreviousMessageID(long previousMessageID) {
+        this.previousMessageID = previousMessageID;
     }
 
     /**

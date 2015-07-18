@@ -199,6 +199,14 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public void updateMessage(List<AndesMessage> messageList) throws AndesException {
+        //Not implemented
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void addMetadata(List<AndesMessageMetadata> metadataList) throws AndesException {
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.ADD_META_DATA_LIST).start();
         try {
@@ -339,8 +347,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
     public void moveMetadataToQueue(long messageId, String currentQueueName,
                                     String targetQueueName) throws AndesException {
         List<AndesMessageMetadata> messageMetadataList = getMetadataList(currentQueueName,
-                messageId, messageId);
-
+                messageId, messageId, true);
         if (messageMetadataList == null || messageMetadataList.size() == 0) {
             throw new AndesException(
                     "Message MetaData not found to move the message to Dead Letter Channel");
@@ -350,6 +357,14 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
 
         addMetadataToQueue(targetQueueName, messageMetadataList.get(0));
         deleteMessageMetadataFromQueue(currentQueueName, removableMetaDataList);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void moveMetaDataToDLC(long messageId, String storageQueueName, String destinationQueueName) throws
+            AndesException {
+        //Not implemented
     }
 
     /**
@@ -422,7 +437,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public List<AndesMessageMetadata> getMetadataList(String queueName, long firstMsgId,
-                                                      long lastMsgID) throws AndesException {
+                                                      long lastMsgID, boolean fromDLC) throws AndesException {
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_META_DATA_LIST).start();
         try {
@@ -462,7 +477,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      */
     @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String queueName,
-                                                                       long firstMsgId, int count)
+                                                                       long firstMsgId, int count, boolean fromStorage)
             throws AndesException {
 
         ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
@@ -663,75 +678,25 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public int deleteAllMessagesFromDLCForStorageQueue(String storageQueueName, String dlcQueueName) throws
-            AndesException {
-
-        List<Long> messageIDsInDLCForQueue = new ArrayList<>();
-        try {
-
-            Long lastProcessedID = 0l;
-            // In case paginated data fetching is slow for some reason,
-            // this can be set to Integer.MAX..
-            // This is set to paginate so that a big data read wont cause continuous timeouts.
-            Integer pageSize = HectorDataAccessHelper.STANDARD_PAGE_SIZE;
-
-            Boolean allRecordsRetrieved = false;
-
-            while (!allRecordsRetrieved) {
-
-                List<AndesMessageMetadata> metadataList = HectorDataAccessHelper
-                        .getMessagesFromQueue(dlcQueueName,
-                                HectorConstants.META_DATA_COLUMN_FAMILY,
-                                keyspace, lastProcessedID,
-                                Long.MAX_VALUE, pageSize, true);
-
-                if (metadataList.size() == 0) {
-                    // This means that there are no more messages to be retrieved for this queue
-                    allRecordsRetrieved = true;
-                } else {
-                    for (AndesMessageMetadata amm : metadataList) {
-                        if (amm.getDestination().equals(storageQueueName)) {
-                            //add the message id to the list of messages in the dlc that are addressed to the storage
-                            // queue
-                            messageIDsInDLCForQueue.add(amm.getMessageID());
-                        }
-                    }
-
-                    lastProcessedID = metadataList.get(metadataList.size() - 1).getMessageID();
-
-                    if (metadataList.size() < pageSize) {
-                        // again means there are no more metadata to be retrieved
-                        allRecordsRetrieved = true;
-                    }
-                }
-
-            }
-            deleteMessages(dlcQueueName, messageIDsInDLCForQueue, false);
-
-        } catch (CassandraDataAccessException e) {
-            throw new AndesException("Error while getting messages in DLC for queue : " + storageQueueName, e);
-        }
-
-        return messageIDsInDLCForQueue.size();
+    public void deleteMessageMetadataFromDLC(List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
+        //Not implemented
     }
 
     /**
      * {@inheritDoc}
-     * @param storageQueueName name of the storage queue.
-     * @return List<Long> message ID list that is contained within given storage queues.
-     * @throws AndesException
      */
     @Override
-    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName,Long startMessageID) throws AndesException {
+    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName, Long startMessageID, int storageType)
+            throws AndesException {
 
         List<Long> messageIDs = new ArrayList<Long>();
 
-        long lastProcessedID = startMessageID;
+        Long lastProcessedID = startMessageID;
         // In case paginated data fetching is slow, this can be set to Integer.MAX.
         // This is set to paginate so that a big data read wont cause continuous timeouts.
-        int pageSize = HectorDataAccessHelper.STANDARD_PAGE_SIZE;
+        Integer pageSize = HectorDataAccessHelper.STANDARD_PAGE_SIZE;
 
-        boolean allRecordsRetrieved = false;
+        Boolean allRecordsRetrieved = false;
 
         while (!allRecordsRetrieved) {
             try {
@@ -756,6 +721,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                 throw new AndesException("Error while getting message IDs for queue : " + storageQueueName, e);
             }
         }
+
         return messageIDs;
     }
 
@@ -771,7 +737,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public long getMessageCountForQueue(String storageQueueName) throws AndesException {
+    public long getMessageCountForQueue(String storageQueueName, boolean fromStorage) throws AndesException {
         return contextStore.getMessageCountForQueue(storageQueueName);
     }
 

@@ -162,7 +162,6 @@ public class Andes {
      * @param pubAckHandler PubAckHandler
      */
     public void messageReceived(AndesMessage message, AndesChannel andesChannel, PubAckHandler pubAckHandler) {
-
         //Tracing message
         MessageTracer.trace(message, MessageTracer.REACHED_ANDES_CORE);
 
@@ -402,12 +401,14 @@ public class Andes {
     /**
      * Move the messages meta data in the given message to the Dead Letter Channel.
      *
-     * @param messageId            The message Id to be removed
+     * @param messageMetadata      The message metadata to be moved
      * @param destinationQueueName The original destination queue of the message
      * @throws AndesException
      */
-    public void moveMessageToDeadLetterChannel(long messageId, String destinationQueueName) throws AndesException {
-        MessagingEngine.getInstance().moveMessageToDeadLetterChannel(messageId, destinationQueueName);
+    //TODO See if we can remove this method
+    public void moveMessageToDeadLetterChannel(AndesMessageMetadata messageMetadata, String destinationQueueName)
+            throws AndesException {
+        MessagingEngine.getInstance().moveMessageToDeadLetterChannel(messageMetadata, destinationQueueName);
     }
 
     /**

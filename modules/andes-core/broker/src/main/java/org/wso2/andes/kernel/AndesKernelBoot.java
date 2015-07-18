@@ -223,8 +223,9 @@ public class AndesKernelBoot {
         // Read slot window size from cluster configuration
         Integer slotSize = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
+        //Retrieve message metadata from the store that are not in the DLC
         List<AndesMessageMetadata> messageList = messageStore
-                .getNextNMessageMetadataFromQueue(queueName, 0, slotSize);
+                .getNextNMessageMetadataFromQueue(queueName, 0, slotSize, true);
         int numberOfMessages = messageList.size();
 
         //setting up timer to print restoring message count and database read count
@@ -259,8 +260,9 @@ public class AndesKernelBoot {
             }
             // We need to increment lastMessageID since the getNextNMessageMetadataFromQueue returns message list
             // including the given starting ID.
+            //Retrieve message metadata from the store that are not in the DLC
             messageList = messageStore
-                    .getNextNMessageMetadataFromQueue(queueName, lastMessageID + 1, slotSize);
+                    .getNextNMessageMetadataFromQueue(queueName, lastMessageID + 1, slotSize, true);
             numberOfMessages = messageList.size();
             //increase value of counters
             databaseReadsCounter++;

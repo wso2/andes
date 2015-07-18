@@ -105,6 +105,7 @@ public class RDBMSConstants {
     protected static final String DESTINATION_QUEUE = "MESSAGE_DESTINATION";
     protected static final String TOPIC_NAME = "TOPIC_NAME";
     protected static final String TOPIC_ID = "TOPIC_ID";
+    protected static final String DLC_QUEUE_ID = "DLC_QUEUE_ID";
 
     // Andes Context Store tables
     protected static final String DURABLE_SUB_TABLE = "MB_DURABLE_SUBSCRIPTION";
@@ -170,6 +171,13 @@ public class RDBMSConstants {
                     METADATA + ")" +
                     " VALUES ( ?,?,? )";
 
+    //prepared statement to add metadata from a queue to dlc
+    protected static final String PS_UPDATE_METADATA_DLC_QUEUE =
+            "UPDATE " + METADATA_TABLE + " SET " +
+                    DLC_QUEUE_ID + "=?" +
+                    " WHERE " + QUEUE_ID + "=?" +
+                    " AND " + MESSAGE_ID + "=?";
+
     protected static final String PS_INSERT_EXPIRY_DATA =
             "INSERT INTO " + EXPIRATION_TABLE + " (" +
                     MESSAGE_ID + "," +
@@ -184,10 +192,25 @@ public class RDBMSConstants {
 
     protected static final String PS_ALIAS_FOR_COUNT = "count";
 
+    //Prepared statement to retrieve the number of messages for a queue in the storage
     protected static final String PS_SELECT_QUEUE_MESSAGE_COUNT =
             "SELECT COUNT(" + QUEUE_ID + ") AS " + PS_ALIAS_FOR_COUNT +
                     " FROM " + METADATA_TABLE +
-                    " WHERE " + QUEUE_ID + "=?";
+                    " WHERE " + QUEUE_ID + "=?" +
+                    " AND " + DLC_QUEUE_ID + " IS NULL";
+
+    //Prepared statement to retrieve the number of messages in DLC for a queue
+    protected static final String PS_SELECT_QUEUE_MESSAGE_COUNT_FROM_DLC_FOR_STORAGE_QUEUE =
+            "SELECT COUNT(" + MESSAGE_ID + ") AS " + PS_ALIAS_FOR_COUNT +
+                    " FROM " + METADATA_TABLE +
+                    " WHERE " + QUEUE_ID + "=?" +
+                    " AND " + DLC_QUEUE_ID + "=?";
+
+    //Prepared statement to retrieve the number of messages for a specific DLC queue in DLC
+    protected static final String PS_SELECT_QUEUE_MESSAGE_COUNT_FROM_DLC_FOR_DLC_QUEUE =
+            "SELECT COUNT(" + MESSAGE_ID + ") AS " + PS_ALIAS_FOR_COUNT +
+                    " FROM " + METADATA_TABLE +
+                    " WHERE " + DLC_QUEUE_ID + "=?";
 
     protected static final String PS_SELECT_METADATA =
             "SELECT " + METADATA +
@@ -198,9 +221,29 @@ public class RDBMSConstants {
             "SELECT " + MESSAGE_ID + "," + METADATA +
                     " FROM " + METADATA_TABLE +
                     " WHERE " + QUEUE_ID + "=?" +
+                    " AND " + DLC_QUEUE_ID + " IS NULL" +
                     " AND " + MESSAGE_ID +
                     " BETWEEN ?" +
                     " AND ?" +
+                    " ORDER BY " + MESSAGE_ID;
+
+    protected static final String PS_SELECT_METADATA_RANGE_FROM_DLC_FOR_DLC_QUEUE =
+            "SELECT " + MESSAGE_ID + "," + METADATA +
+                    " FROM " + METADATA_TABLE +
+                    " WHERE " + DLC_QUEUE_ID + "=?" +
+                    " AND " + MESSAGE_ID +
+                    " BETWEEN ?" +
+                    " AND ?" +
+                    " ORDER BY " + MESSAGE_ID;
+
+    protected static final String PS_SELECT_METADATA_RANGE_FROM_DLC_FOR_DESTINATION_QUEUE =
+            "SELECT " + MESSAGE_ID + "," + METADATA +
+                    " FROM " + METADATA_TABLE +
+                    " WHERE " + QUEUE_ID + "=?" +
+                    " AND " + MESSAGE_ID +
+                    " BETWEEN ?" +
+                    " AND ?" +
+                    " AND " + DLC_QUEUE_ID + "=?" +
                     " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_SELECT_METADATA_FROM_QUEUE =
@@ -208,13 +251,53 @@ public class RDBMSConstants {
                     " FROM " + METADATA_TABLE +
                     " WHERE " + MESSAGE_ID + ">?" +
                     " AND " + QUEUE_ID + "=?" +
+                    " AND " + DLC_QUEUE_ID + " IS NULL" +
+                    " ORDER BY " + MESSAGE_ID;
+
+    protected static final String PS_SELECT_METADATA_FROM_DLC_FOR_STORAGE_QUEUE =
+            "SELECT " + MESSAGE_ID + "," + METADATA +
+                    " FROM " + METADATA_TABLE +
+                    " WHERE " + MESSAGE_ID + ">?" +
+                    " AND " + QUEUE_ID + "=?" +
+                    " AND " + DLC_QUEUE_ID + "=?" +
+                    " ORDER BY " + MESSAGE_ID;
+
+    protected static final String PS_SELECT_METADATA_FROM_DLC_FOR_DLC_QUEUE =
+            "SELECT " + MESSAGE_ID + "," + METADATA +
+                    " FROM " + METADATA_TABLE +
+                    " WHERE " + MESSAGE_ID + ">?" +
+                    " AND " + DLC_QUEUE_ID + "=?" +
                     " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_SELECT_MESSAGE_IDS_FROM_METADATA_FOR_QUEUE =
             "SELECT " + MESSAGE_ID +
                     " FROM " + METADATA_TABLE +
                     " WHERE " + QUEUE_ID + "=?" +
-                    " ORDER BY " + MESSAGE_ID ;
+                    " AND " + DLC_QUEUE_ID + " IS NULL" +
+                    " ORDER BY " + MESSAGE_ID;
+
+    //string for the prepared statement to select message IDs addressed to a storage queue from the DLC table
+    protected static final String PS_SELECT_MESSAGE_IDS_FROM_DLC_FOR_STORAGE_QUEUE =
+            "SELECT " + MESSAGE_ID +
+                    " FROM " + METADATA_TABLE +
+                    " WHERE " + QUEUE_ID + "=?" +
+                    " AND " + DLC_QUEUE_ID + "=?" +
+                    " ORDER BY " + MESSAGE_ID;
+
+    //string for the prepared statement to select message IDs addressed to a storage queue from the metadata table
+    //retrieved messages both in DLC and storage
+    protected static final String PS_SELECT_MESSAGE_IDS_FOR_STORAGE_QUEUE =
+            "SELECT " + MESSAGE_ID +
+                    " FROM " + METADATA_TABLE +
+                    " WHERE " + QUEUE_ID + "=?" +
+                    " ORDER BY " + MESSAGE_ID;
+
+    //string for the prepared statement to select message IDs addressed to a specific DLC queue from the DLC table
+    protected static final String PS_SELECT_MESSAGE_IDS_FROM_DLC_METADATA_FOR_DLC_QUEUE =
+            "SELECT " + MESSAGE_ID +
+                    " FROM " + METADATA_TABLE +
+                    " WHERE " + DLC_QUEUE_ID + "=?" +
+                    " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_DELETE_EXPIRY_DATA = "DELETE " +
             " FROM " + EXPIRATION_TABLE +
@@ -224,6 +307,12 @@ public class RDBMSConstants {
             "DELETE " +
                     " FROM " + METADATA_TABLE +
                     " WHERE " + QUEUE_ID + "=?" +
+                    " AND " + MESSAGE_ID + "=?";
+
+    protected static final String PS_DELETE_METADATA_FROM_DLC_FOR_DLC_QUEUE =
+            "DELETE " +
+                    " FROM " + METADATA_TABLE +
+                    " WHERE " + DLC_QUEUE_ID + "=?" +
                     " AND " + MESSAGE_ID + "=?";
 
     protected static final String PS_CLEAR_QUEUE_FROM_METADATA = "DELETE " +
@@ -239,6 +328,14 @@ public class RDBMSConstants {
             "SELECT " + QUEUE_ID +
                     " FROM " + QUEUES_TABLE +
                     " WHERE " + QUEUE_NAME + "=?";
+
+    //Prepared statement to update message id in metadata
+    protected final static String PS_UPDATE_MESSAGE_ID_IN_METADATA =
+            "UPDATE " + METADATA_TABLE +
+                    " SET " + MESSAGE_ID + "=?" +
+                    ", " + QUEUE_ID + "=?" +
+                    ", " + DLC_QUEUE_ID + "=NULL" +
+                    " WHERE " + MESSAGE_ID + "=?";
 
     // prepared statements for Andes Context Store
     protected static final String PS_INSERT_DURABLE_SUBSCRIPTION =
@@ -652,6 +749,7 @@ public class RDBMSConstants {
     protected static final String TASK_ADDING_METADATA = "adding metadata.";
     protected static final String TASK_ADDING_MESSAGES = "adding messages";
     protected static final String TASK_DELETING_MESSAGES = "deleting messages";
+    protected static final String TASK_UPDATING_MESSAGE_ID = "updating messages for batch size: ";
 
 
     protected static final String TASK_ADDING_METADATA_TO_QUEUE = "adding metadata to " +
@@ -674,6 +772,7 @@ public class RDBMSConstants {
     protected static final String TASK_RETRIEVING_EXPIRED_MESSAGES = "retrieving expired messages.";
     protected static final String TASK_RETRIEVING_QUEUE_ID = "retrieving queue id for queue. ";
     protected static final String TASK_CREATING_QUEUE = "creating queue. ";
+    protected static final String TASK_DELETING_METADATA_FROM_DLC = "deleting message metadata from DLC.";
 
     // Message Store related retained message jdbc tasks executed
     protected static final String TASK_STORING_RETAINED_MESSAGE = "storing retained messages.";
@@ -683,6 +782,9 @@ public class RDBMSConstants {
     protected static final String TASK_RETRIEVING_RETAINED_TOPIC_ID = "retrieving retained " +
             " message id and topic id for given destination.";
 
+    //Message store related tasks involving the DLC
+    protected static final String TASK_UPDATING_MESSAGE_ID_OF_CONTENT = "updating message ID from content.";
+    protected static final String TASK_MOVING_METADATA_TO_DLC = "moving message metadata to dlc from queue ";
 
 
     // Andes Context Store related jdbc tasks executed

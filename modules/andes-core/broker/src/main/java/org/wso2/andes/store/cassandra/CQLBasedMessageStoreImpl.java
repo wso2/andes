@@ -388,6 +388,14 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
+    public void updateMessage(List<AndesMessage> messageList) throws AndesException {
+        //Not implemented
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void addMetadata(List<AndesMessageMetadata> metadataList) throws AndesException {
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_META_DATA_LIST).start();
@@ -510,7 +518,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     public void moveMetadataToQueue(long messageId,
                                     String currentQueueName,
                                     String targetQueueName) throws AndesException {
-        List<AndesMessageMetadata> metadataList = getNextNMessageMetadataFromQueue(currentQueueName, messageId, 1);
+        List<AndesMessageMetadata> metadataList = getNextNMessageMetadataFromQueue(currentQueueName, messageId, 1, true);
 
         if (metadataList.isEmpty()) {
             throw new AndesException("Message MetaData not found to move the message to Dead Letter Channel");
@@ -521,6 +529,14 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
 
         addMetadataToQueue(targetQueueName, metadataList.get(0));
         deleteMessageMetadataFromQueue(currentQueueName, removableMetadataList);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void moveMetaDataToDLC(long messageId, String storageQueueName, String destinationQueueName) throws
+            AndesException {
+
     }
 
     /**
@@ -590,7 +606,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public List<AndesMessageMetadata> getMetadataList(String queueName,
                                                       long firstMsgId,
-                                                      long lastMsgID) throws AndesException {
+                                                      long lastMsgID, boolean fromDLC) throws AndesException {
 
         Context context = MetricManager.timer(Level.DEBUG, MetricsConstants.GET_META_DATA_LIST).start();
 
@@ -623,7 +639,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
     @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String storageQueueName,
                                                                        long firstMsgId,
-                                                                       int count) throws AndesException {
+                                                                       int count, boolean fromStorage) throws AndesException {
 
         ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
         List<AndesMessageMetadata> messageMetadataList = new ArrayList<>();
@@ -830,58 +846,25 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
         execute(statement, "deleting all metadata from " + storageQueueName);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public int deleteAllMessagesFromDLCForStorageQueue(String storageQueueName,
-                                                       String dlcQueueName) throws AndesException {
+    public void deleteMessageMetadataFromDLC(List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
 
-        Statement query = QueryBuilder.select().column(CQLConstants.MESSAGE_ID).column(CQLConstants.METADATA).
-                from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
-                where(eq(CQLConstants.QUEUE_NAME, dlcQueueName)).
-                setConsistencyLevel(config.getReadConsistencyLevel());
-
-        ResultSet resultSet = execute(query, "retrieving metadata from DLC " + dlcQueueName);
-
-        // Internally CQL retrieves results as pages. Doesn't load all the result at once to client side
-        // using the same fetch size to iterate through the messages and delete from DLC
-        int fetchSize = query.getFetchSize();
-        int removedMessageCount = 0;
-        List<Long> messageIDsInDLCForQueue = new ArrayList<>(fetchSize);
-        AndesMessageMetadata metadata;
-
-        for (Row row : resultSet) {
-            metadata = getMetadataFromRow(row, row.getLong(CQLConstants.MESSAGE_ID));
-
-            if (storageQueueName.equals(metadata.getDestination())) {
-
-                messageIDsInDLCForQueue.add(metadata.getMessageID());
-            }
-
-            // When the end of current fetched results is reached we delete that found removable messages from DLC
-            if (0 == resultSet.getAvailableWithoutFetching() && !messageIDsInDLCForQueue.isEmpty()) {
-                deleteMessages(dlcQueueName, messageIDsInDLCForQueue, false);
-                removedMessageCount = removedMessageCount + messageIDsInDLCForQueue.size();
-                messageIDsInDLCForQueue.clear();
-            }
-        }
-        return removedMessageCount;
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName, Long startMessageID) throws AndesException {
+    public List<Long> getMessageIDsAddressedToQueue(String storageQueueName, Long startMessageID, int storageType)
+            throws AndesException {
 
         Statement statement = QueryBuilder.select().column(CQLConstants.MESSAGE_ID).
                 from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
-                where(eq(CQLConstants.QUEUE_NAME, storageQueueName)).and(gte(CQLConstants.MESSAGE_ID,startMessageID)).
+                where(eq(CQLConstants.QUEUE_NAME, storageQueueName)).and(gte(CQLConstants.MESSAGE_ID, startMessageID)).
                 setConsistencyLevel(config.getReadConsistencyLevel());
 
         ResultSet resultSet = execute(statement, "retrieving message ids addressed to " + storageQueueName);
-        List<Long> msgIDList = new ArrayList<>(resultSet.getAvailableWithoutFetching());
+        List<Long> msgIDList = new ArrayList<Long>(resultSet.getAvailableWithoutFetching());
 
         for (Row row : resultSet) {
             msgIDList.add(row.getLong(CQLConstants.MESSAGE_ID));
@@ -901,7 +884,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public long getMessageCountForQueue(String destinationQueueName) throws AndesException {
+    public long getMessageCountForQueue(String destinationQueueName, boolean fromStorage) throws AndesException {
         return contextStore.getMessageCountForQueue(destinationQueueName);
     }
 

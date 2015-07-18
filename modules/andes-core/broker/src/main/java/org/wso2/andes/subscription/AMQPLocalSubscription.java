@@ -109,8 +109,8 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
     private void initializeDeliveryRules() {
 
         //checking counting delivery rule
-        
-        if (  (! isBoundToTopic) || isDurable){ //evaluate this only for queues and durable subscriptions
+        //evaluate this only for queues and durable subscriptions
+        if (!isBoundToTopic || isDurable) {
             deliveryRulesList.add(new MaximumNumOfDeliveryRule(channel));
         }
         // NOTE: Feature Message Expiration moved to a future release
@@ -141,47 +141,54 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
     public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata, AndesContent content)
             throws AndesException {
         AMQMessage message = AMQPUtils.getAMQMessageForDelivery(messageMetadata, content);
-        sendAMQMessageToSubscriber(message, messageMetadata.getRedelivered());
+        QueueEntry messageToSend = AMQPUtils.convertAMQMessageToQueueEntry(message, amqQueue);
+        if (messageMetadata.getRedelivered()) {
+            messageToSend.setRedelivered();
+        }
+        if (evaluateDeliveryRules(messageToSend)) {
+            sendAMQMessageToSubscriber(message, messageToSend);
+        } else {
+            rejectMessageAndMoveToDLC(messageMetadata);
+        }
+    }
+
+    /**
+     * Reject message and move to dead letter channel
+     *
+     * @param messageMetadata message metadata to be rejected
+     */
+    private void rejectMessageAndMoveToDLC(AndesMessageMetadata messageMetadata) throws AndesException {
+        //Set message status to reject
+        onflightMessageTracker.setMessageStatus(MessageStatus.DELIVERY_REJECT, messageMetadata.getMessageID());
+        /**
+         * Message tracker rejected this message from sending. Hence moving
+         * to dead letter channel
+         */
+        // Move message to DLC
+        // All the Queues and Durable Topics related messages are adding to DLC
+        if (!isBoundToTopic || isDurable) {
+            MessagingEngine.getInstance().moveMessageToDeadLetterChannel(messageMetadata, messageMetadata
+                    .getDestination());
+        }
     }
 
     /**
      * send message to the internal subscription
      *
-     * @param message      message to send
-     * @param isRedelivery is a redelivered message
+     * @param message message to send
      * @throws AndesException
      */
-    private void sendAMQMessageToSubscriber(AMQMessage message, boolean isRedelivery) throws AndesException {
-        QueueEntry messageToSend = AMQPUtils.convertAMQMessageToQueueEntry(message, amqQueue);
-        if (isRedelivery) {
-            messageToSend.setRedelivered();
-        }
+    private void sendAMQMessageToSubscriber(AMQMessage message, QueueEntry messageToSend) throws AndesException {
+        int numOfDeliveriesOfCurrentMsg =
+                onflightMessageTracker.getNumOfMsgDeliveriesForChannel(message.getMessageId(), channel.getId());
 
-        if (evaluateDeliveryRules(messageToSend)) {
-            int numOfDeliveriesOfCurrentMsg =
-                    onflightMessageTracker.getNumOfMsgDeliveriesForChannel(message.getMessageId(), channel.getId());
-
-            onflightMessageTracker.setMessageStatus(MessageStatus.DELIVERY_OK, message.getMessageId());
-            if (numOfDeliveriesOfCurrentMsg == 1) {
-                onflightMessageTracker.setMessageStatus(MessageStatus.SENT, message.getMessageId());
-            } else if (numOfDeliveriesOfCurrentMsg > 1) {
-                onflightMessageTracker.setMessageStatus(MessageStatus.RESENT, message.getMessageId());
-            }
-            sendQueueEntryToSubscriber(messageToSend);
-        } else {
-            //Set message status to reject
-            onflightMessageTracker.setMessageStatus(MessageStatus.DELIVERY_REJECT, message.getMessageId());
-            /**
-             * Message tracker rejected this message from sending. Hence moving
-             * to dead letter channel
-             */
-            String destinationQueue = message.getMessageMetaData().getMessagePublishInfo().getRoutingKey().toString();
-            // Move message to DLC
-            // All the Queues and Durable Topics related messages are adding to DLC
-            if (!isBoundToTopic || isDurable){
-                MessagingEngine.getInstance().moveMessageToDeadLetterChannel(message.getMessageId(), destinationQueue);
-            }
+        onflightMessageTracker.setMessageStatus(MessageStatus.DELIVERY_OK, message.getMessageId());
+        if (numOfDeliveriesOfCurrentMsg == 1) {
+            onflightMessageTracker.setMessageStatus(MessageStatus.SENT, message.getMessageId());
+        } else if (numOfDeliveriesOfCurrentMsg > 1) {
+            onflightMessageTracker.setMessageStatus(MessageStatus.RESENT, message.getMessageId());
         }
+        sendQueueEntryToSubscriber(messageToSend);
     }
 
     /**
