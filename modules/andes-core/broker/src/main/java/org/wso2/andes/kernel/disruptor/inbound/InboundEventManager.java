@@ -35,6 +35,7 @@ import org.wso2.andes.kernel.disruptor.ConcurrentBatchEventHandler;
 import org.wso2.andes.kernel.disruptor.LogExceptionHandler;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Gauge;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
@@ -182,6 +183,9 @@ public class InboundEventManager {
         // make the event available to EventProcessors
         ringBuffer.publish(sequence);
 
+        //Tracing message activity
+        MessageTracer.trace(message, MessageTracer.PUBLISHED_TO_INBOUND_DISRUPTOR);
+
         if (log.isDebugEnabled()) {
             log.debug("[ sequence: " + sequence + " ] Message published to disruptor.");
         }
@@ -203,6 +207,10 @@ public class InboundEventManager {
         event.ackData = ackData;
         // make the event available to EventProcessors
         ringBuffer.publish(sequence);
+
+        //Tracing message
+        MessageTracer.trace(ackData.getMessageID(), ackData.getDestination(),
+                            MessageTracer.ACK_PUBLISHED_TO_DISRUPTOR);
 
         if (log.isDebugEnabled()) {
             log.debug("[ sequence: " + sequence + " ] Message acknowledgement published to disruptor. Message id " +

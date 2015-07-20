@@ -271,7 +271,7 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
         long messageId = idGenerator.getNextId();
 
         //Tracing message
-        if(MessageTracer.isEnabled()) {
+        if (MessageTracer.isEnabled()) {
             MessageTracer.trace(message, MessageTracer.MESSAGE_ID_MAPPED + " id: " + messageId);
         }
 

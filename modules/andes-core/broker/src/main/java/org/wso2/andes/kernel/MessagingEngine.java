@@ -39,6 +39,7 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.thrift.MBThriftClient;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -236,6 +237,9 @@ public class MessagingEngine {
             log.warn("Cannot handle reject. Subscription not found for channel " + metadata.getChannelId()
                     + "Dropping message id= " + metadata.getMessageID());
         }
+
+        //Tracing message activity
+        MessageTracer.trace(metadata, MessageTracer.MESSAGE_REJECTED);
     }
 
     /**
@@ -248,6 +252,9 @@ public class MessagingEngine {
     public void reQueueMessage(AndesMessageMetadata messageMetadata, LocalSubscription subscription)
             throws AndesException {
         MessageFlusher.getInstance().scheduleMessageForSubscription(subscription, messageMetadata);
+
+	    //Tracing message activity
+	    MessageTracer.trace(messageMetadata, MessageTracer.MESSAGE_REQUEUED);
     }
 
     /**
@@ -271,6 +278,9 @@ public class MessagingEngine {
         //remove tracking of the message
         OnflightMessageTracker.getInstance()
                 .stampMessageAsDLCAndRemoveFromTacking(messageId);
+
+	    //Tracing message activity
+	    MessageTracer.trace(messageId, destinationQueueName, MessageTracer.MOVED_TO_DLC);
     }
 
     /**
