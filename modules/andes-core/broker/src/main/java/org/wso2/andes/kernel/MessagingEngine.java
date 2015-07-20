@@ -269,7 +269,7 @@ public class MessagingEngine {
             throws AndesException {
         String deadLetterQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(destinationQueueName);
 
-        messageStore.moveMetadataToQueue(messageId, destinationQueueName, deadLetterQueueName);
+        messageStore.moveMetadataToDLC(messageId, deadLetterQueueName);
 
         // Increment count by 1 in DLC and decrement by 1 in original queue
         incrementQueueCount(deadLetterQueueName, 1);
@@ -357,7 +357,7 @@ public class MessagingEngine {
     /**
      * Clear all references to all message metadata / content addressed to a specific queue. Used when purging.
      *
-     * @param storageQueueName name of storage queue
+     * @param storageQueueName name of the queue, could be a storage queue or a dlc queue
      * @param startMessageID   id of the message the query should start from
      * @throws AndesException
      */
@@ -365,50 +365,19 @@ public class MessagingEngine {
             AndesException {
 
         try {
-            // Retrieve message IDs addressed to the queue and keep track of message count for
-            // the queue in the store
-            List<Long> messageIDsAddressedToQueue = messageStore.getMessageIDsAddressedToQueue(storageQueueName,
-                    startMessageID);
-
-            Integer messageCountInStore = messageIDsAddressedToQueue.size();
-
-            // Clear all message expiry data.
-            // Data should be removed from expiry data tables before deleting data from meta data table since expiry
-            // data table holds a foreign key constraint to meta data table.
-            messageStore.deleteMessagesFromExpiryQueue(messageIDsAddressedToQueue);
-
-            // delete messages for the queue
-            messageStore.deleteMessages(storageQueueName, messageIDsAddressedToQueue, true);
-            // Reset message count for the specific queue
-            messageStore.resetMessageCounterForQueue(storageQueueName);
-
-            // There is only 1 DLC queue per tenant. So we have to read and parse the message
-            // metadata and filter messages specific to a given queue.
-            // This is pretty exhaustive. If there are 1000 DLC messages and only 10 are relevant
-            // to the given queue, We still have to get all 1000
-            // into memory. Options are to delete dlc messages leisurely with another thread,
-            // or to break from original DLC pattern and maintain multiple DLC queues per each queue.
-
-            //For durable topics and queues the purge would not return true for a topic, non durable topics would not
-            //send the message to the DLC therefor we don't need to purge message for non-durable case
-            int messageCountFromDLC = 0;
-            if (!isTopic) {
-                //We would consider removal of messages from the DLC for queues and durable topics
-                messageCountFromDLC = messageStore.deleteAllMessagesFromDLCForStorageQueue(storageQueueName,
-                        DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(storageQueueName));
-
+            int deletedMessageCount = 0;
+            if (!DLCQueueUtils.isDeadLetterQueue(storageQueueName)) {
+                // delete all messages for the queue
+                deletedMessageCount = messageStore.deleteAllMessageMetadata(storageQueueName);
+            } else {
+                //delete all the messages in dlc
+                deletedMessageCount = messageStore.clearDlcQueue(storageQueueName);
             }
 
-            // If any other places in the store keep track of messages in future,
-            // they should also be cleared here.
-
-            return messageCountInStore + messageCountFromDLC;
+            return deletedMessageCount;
 
         } catch (AndesException e) {
-            // This will be a store-specific error. We could make all 5 operations into one atomic transaction so
-            // that in case of an error data won't be obsolete, but we must do it in a proper generic manner (to
-            // allow any collection of store methods to be executed in a single transaction.). To be done as a
-            // separate task.
+            // This will be a store-specific error.
             throw new AndesException("Error occurred when purging queue from store : " + storageQueueName, e);
         }
     }
@@ -452,16 +421,6 @@ public class MessagingEngine {
             }
             dto.messagesToRemove.add(message.getMessageID());
             dto.msgCount = dto.msgCount + 1;
-            //if to move, move to DLC. This is costly. Involves per message read and writes
-            if (moveToDeadLetterChannel) {
-                    AndesMessageMetadata metadata = messageStore.getMetadata(message.getMessageID());
-                    String dlcQueueName =
-                                          DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(message.getMessageDestination());
-                    messageStore.addMetadataToQueue(dlcQueueName, metadata);
-                    // Increment queue count of DLC
-                    // Cannot increment whole count at once since there are separate DLC queues for each tenant
-                    incrementQueueCount(dlcQueueName, 1);
-            }
         }
 
         if (!moveToDeadLetterChannel) {
@@ -474,9 +433,12 @@ public class MessagingEngine {
         } else {
             for (Map.Entry<String, AndesRemovableMetadataDTO> entry : storageSeperatedAndesRemovableMetadataDTOs
                     .entrySet()) {
-                //delete message metadata only
-                messageStore.deleteMessageMetadataFromQueue(entry.getKey(), entry.getValue().messagesToRemove);
-                decrementQueueCount(entry.getKey(), entry.getValue().msgCount);
+                //move messages to dead letter channel
+                String dlcQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(entry.getKey());
+                messageStore.moveMetadataToDLC(entry.getValue().messagesToRemove, dlcQueueName);
+                int messageCount = entry.getValue().msgCount;
+                decrementQueueCount(entry.getKey(), messageCount);
+                incrementQueueCount(dlcQueueName, messageCount);
             }
         }
 
@@ -524,6 +486,29 @@ public class MessagingEngine {
     }
 
     /**
+     * Get message count in DLC for a specific queue
+     *
+     * @param queueName    name of the storage queue
+     * @param dlcQueueName name of the dlc queue
+     * @return message count of the queue
+     * @throws AndesException
+     */
+    public long getMessageCountInDLCForQueue(String queueName, String dlcQueueName) throws AndesException {
+        return messageStore.getMessageCountForQueueInDLC(queueName, dlcQueueName);
+    }
+
+    /**
+     * Get message count in DLC
+     *
+     * @param dlcQueueName name of the dlc queue
+     * @return message count of the queue
+     * @throws AndesException
+     */
+    public long getMessageCountInDLC(String dlcQueueName) throws AndesException {
+        return messageStore.getMessageCountForDLCQueue(dlcQueueName);
+    }
+
+    /**
      * Get message metadata from queue between two message id values
      *
      * @param queueName  queue name
@@ -534,6 +519,35 @@ public class MessagingEngine {
      */
     public List<AndesMessageMetadata> getMetaDataList(final String queueName, long firstMsgId, long lastMsgID) throws AndesException {
         return messageStore.getMetadataList(queueName, firstMsgId, lastMsgID);
+    }
+
+    /**
+     * Get message metadata in dlc for a queue between two message id values
+     *
+     * @param queueName  storage queue name
+     * @param firstMsgId id of the starting id
+     * @param lastMsgID  id of the last id
+     * @return List of message metadata
+     * @throws AndesException
+     */
+    public List<AndesMessageMetadata> getMetaDataListInDLCForQueue(final String queueName, final String dlcQueueName,
+                                                                   long firstMsgId, long lastMsgID) throws
+            AndesException {
+        return messageStore.getMetadataListForStorageQueueFromDLC(queueName, dlcQueueName, firstMsgId, lastMsgID);
+    }
+
+    /**
+     * Get message metadata in DLC between two message id values
+     *
+     * @param dlcQueueName dead letter channel queue name
+     * @param firstMsgId   id of the starting id
+     * @param lastMsgID    id of the last id
+     * @return List of message metadata
+     * @throws AndesException
+     */
+    public List<AndesMessageMetadata> getMetaDataListFromDLC(final String dlcQueueName, long firstMsgId, long
+            lastMsgID) throws AndesException {
+        return messageStore.getMetadataListFromDLC(dlcQueueName, firstMsgId, lastMsgID);
     }
 
     /**
@@ -548,6 +562,37 @@ public class MessagingEngine {
      */
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId, int count) throws AndesException {
         return messageStore.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
+    }
+
+    /**
+     * Get message metadata from queue starting from given id up a given message count
+     *
+     * @param queueName    name of the queue
+     * @param dlcQueueName name of the dead letter channel queue
+     * @param firstMsgId   id of the starting id
+     * @param count        maximum num of messages to return
+     * @return List of message metadata
+     * @throws AndesException
+     */
+    public List<AndesMessageMetadata> getNextNMessageMetadataInDLCForQueue(final String queueName,
+                                                                           final String dlcQueueName, long firstMsgId,
+                                                                           int count) throws AndesException {
+        return messageStore.getNextNMessageMetadataForQueueFromDLC(queueName, dlcQueueName, firstMsgId, count);
+    }
+
+    /**
+     * Get message metadata from queue starting from given id up a given message count
+     *
+     * @param dlcQueueName name of the queue
+     * @param dlcQueueName name of the dead letter channel queue name
+     * @param firstMsgId   id of the starting id
+     * @param count        maximum num of messages to return
+     * @return List of message metadata
+     * @throws AndesException
+     */
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromDLC(final String dlcQueueName, long firstMsgId,
+                                                                     int count) throws AndesException {
+        return messageStore.getNextNMessageMetadataFromDLC(dlcQueueName, firstMsgId, count);
     }
 
     /**

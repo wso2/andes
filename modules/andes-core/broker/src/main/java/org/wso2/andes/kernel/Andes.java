@@ -40,6 +40,7 @@ import org.wso2.carbon.metrics.manager.Meter;
 import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -438,6 +439,17 @@ public class Andes {
     }
 
     /**
+     * Get content chunks for a list of message ids from store
+     *
+     * @param messageIdList list of messageIds
+     * @return map of message id:content chunk list
+     * @throws AndesException
+     */
+    public Map<Long, List<AndesMessagePart>> getContent(List<Long> messageIdList) throws AndesException {
+        return MessagingEngine.getInstance().getContent(messageIdList);
+    }
+
+    /**
      * Get message count for queue
      *
      * @param queueName name of the queue
@@ -446,6 +458,29 @@ public class Andes {
      */
     public long getMessageCountOfQueue(String queueName) throws AndesException {
         return MessagingEngine.getInstance().getMessageCountOfQueue(queueName);
+    }
+
+    /**
+     * Get message count in a dead letter channel queue
+     *
+     * @param dlcQueueName name of the dlc queue
+     * @return message count of the queue
+     * @throws AndesException
+     */
+    public long getMessageCountInDLC(String dlcQueueName) throws AndesException {
+        return MessagingEngine.getInstance().getMessageCountInDLC(dlcQueueName);
+    }
+
+    /**
+     * Get message count in DLC for a specific queue
+     *
+     * @param queueName    name of the queue
+     * @param dlcQueueName name of the dlc queue
+     * @return message count of the queue
+     * @throws AndesException
+     */
+    public long getMessageCountInDLCForQueue(String queueName, String dlcQueueName) throws AndesException {
+        return MessagingEngine.getInstance().getMessageCountInDLCForQueue(queueName, dlcQueueName);
     }
 
     /**
@@ -460,6 +495,22 @@ public class Andes {
     public List<AndesMessageMetadata> getMetaDataList(final String queueName, long firstMsgId, long lastMsgID)
             throws AndesException {
         return MessagingEngine.getInstance().getMetaDataList(queueName, firstMsgId, lastMsgID);
+    }
+
+    /**
+     * Get message metadata from queue between two message id values
+     *
+     * @param queueName  queue name
+     * @param firstMsgId id of the starting message
+     * @param lastMsgID  id of the last message
+     * @return List of message metadata
+     * @throws AndesException
+     */
+    public List<AndesMessageMetadata> getMetaDataListInDLCForQueue(final String queueName, final String dlcQueueName,
+                                                                   long firstMsgId, long lastMsgID)
+            throws AndesException {
+        return MessagingEngine.getInstance().getMetaDataListInDLCForQueue(queueName, dlcQueueName, firstMsgId,
+                lastMsgID);
     }
 
     /**
@@ -478,6 +529,36 @@ public class Andes {
     }
 
     /**
+     * Get message metadata in dlc for a queue for a given number of messages starting from a specified id
+     *
+     * @param queueName    name of the queue
+     * @param dlcQueueName name of the dead letter channel queue
+     * @param firstMsgId   starting message id
+     * @param count        maximum num of messages to return
+     * @return List of message metadata
+     * @throws AndesException
+     */
+    public List<AndesMessageMetadata> getNextNMessageMetadataInDLCForQueue(final String queueName, final String
+            dlcQueueName, long firstMsgId, int count) throws AndesException {
+        return MessagingEngine.getInstance().getNextNMessageMetadataInDLCForQueue(queueName, dlcQueueName,
+                firstMsgId, count);
+    }
+
+    /**
+     * Get message metadata in dlc for a given number of messages starting from a specified id
+     *
+     * @param dlcQueueName name of the dead letter channel queue
+     * @param firstMsgId   id of the starting id
+     * @param count        maximum num of messages to return
+     * @return List of message metadata
+     * @throws AndesException
+     */
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromDLC(final String dlcQueueName, long firstMsgId, int
+            count) throws AndesException {
+        return MessagingEngine.getInstance().getNextNMessageMetadataFromDLC(dlcQueueName, firstMsgId, count);
+    }
+
+    /**
      * Get expired but not yet deleted messages from message store
      * @param limit upper bound for number of messages to be returned
      * @return AndesRemovableMetadata
@@ -485,6 +566,16 @@ public class Andes {
      */
     public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException {
         return MessagingEngine.getInstance().getExpiredMessages(limit);
+    }
+
+    /**
+     * Return last assigned message id of slot for given queue
+     *
+     * @param queueName name of destination queue
+     * @return last assign message id
+     */
+    public long getLastAssignedSlotMessageId(String queueName) throws AndesException {
+        return MessagingEngine.getInstance().getLastAssignedSlotMessageId(queueName);
     }
 
     /**

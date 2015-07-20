@@ -97,7 +97,6 @@ public class IncomingMessage implements Filterable, InboundMessage, EnqueableMes
                     ((BasicContentHeaderProperties) _contentHeaderBody.getProperties()).getExpiration();
             long timestamp =
                     ((BasicContentHeaderProperties) _contentHeaderBody.getProperties()).getTimestamp();
-
             if (SYNCED_CLOCKS)
             {
                 _expiration = expiration;

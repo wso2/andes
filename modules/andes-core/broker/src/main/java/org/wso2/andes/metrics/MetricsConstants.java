@@ -75,6 +75,10 @@ public class MetricsConstants {
      */
     public static final String GET_META_DATA_LIST = PREFIX + "store.metadataList.get";
     /**
+     * Get message meta data list in DLC for a queue
+     */
+    public static final String GET_META_DATA_LIST_FOR_QUEUE_FROM_DLC = PREFIX + "store.metadataListForQueueFromDLC.get";
+    /**
      * Get message content
      */
     public static final String GET_CONTENT = PREFIX + "store.content.get";
@@ -83,9 +87,18 @@ public class MetricsConstants {
      */
     public static final String GET_NEXT_MESSAGE_METADATA_FROM_QUEUE = PREFIX + "store.nextMessageMetadataFromQueue.get";
     /**
-     * Delete message part
+     * Get next message meta data in dead letter channel for queue
      */
-    public static final String DELETE_MESSAGE_PART = PREFIX + "store.messagePart.delete";
+    public static final String GET_NEXT_MESSAGE_METADATA_IN_DLC_FOR_QUEUE = PREFIX + "store"
+            + ".nextMessageMetadataInDLCForQueue.get";
+    /**
+     * Get next message meta data in dead letter channel
+     */
+    public static final String GET_NEXT_MESSAGE_METADATA_IN_DLC = PREFIX + "store.nextMessageMetadataInDLC.get";
+    /**
+     * Move message metadata to DLC
+     */
+    public static final String MOVE_METADATA_TO_DLC = PREFIX + "store.messageMetadataToDLC.Move";
     /**
      * Delete message meta data from queue
      */
