@@ -209,6 +209,10 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
         }
     }
 
+    /**
+     * Convert Map to Properties object.
+     * @param map key value pair details
+     */
     private static Properties convertToProperties(Map map) {
 
         Properties prop = new Properties();
