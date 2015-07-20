@@ -26,6 +26,7 @@ import com.lmax.disruptor.dsl.ProducerType;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesMessage;
@@ -103,6 +104,17 @@ public class InboundEventManager {
                 .setNameFormat("DisruptorInboundEventThread-%d").build();
         ExecutorService executorPool = Executors.newCachedThreadPool(namedThreadFactory);
 
+        // Log an error if the the buffer high limit configured in the broker.xml is higher than the total
+        // content size that can be stored in the buffer
+        int bufferHighLimit = (Integer) AndesConfigurationManager.readValue(AndesConfiguration
+                .FLOW_CONTROL_BUFFER_BASED_HIGH_LIMIT);
+        int maxChunkSize = (Integer) AndesConfigurationManager.readValue(AndesConfiguration
+                .PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);
+        long maxBufferSizeInBytes = (long)maxChunkSize * (long)bufferSize;
+        if (maxBufferSizeInBytes < bufferHighLimit) {
+            log.error("Element highLimit: " + bufferHighLimit + " in broker.xml should be lower than disruptor ring "
+                    + "buffer size: " + maxBufferSizeInBytes + ". The broker might crash.");
+        }
 
         disruptor = new Disruptor<>(InboundEventContainer.getFactory(),
                 bufferSize,

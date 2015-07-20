@@ -410,28 +410,36 @@ public enum AndesConfiguration implements ConfigurationProperty {
     /**
      * This is the per publisher buffer size low limit which disable the flow control for a channel if the flow-control
      * was enabled previously.
+     * For 100 content chunks, with max chunk size = 64K, the limit could be calculated as 64K*100 ~ 6MB
+     * Since not all content chunks will be of size 64K, let's configure this to 5MB.
      */
     FLOW_CONTROL_BUFFER_BASED_LOW_LIMIT("flowControl/bufferBased" +
-                                        "/lowLimit", "100", Integer.class),
+                                        "/lowLimit", "5", Integer.class),
 
     /**
      * This is the per publisher buffer size high limit which enable the flow control for a channel.
+     * For 1000 content chunks, with max chunk size = 64K, the limit could be calculated as 64K*1000 ~ 60MB
+     * Since not all content chunks will be of size 64K, let's configure this to 50MB.
      */
     FLOW_CONTROL_BUFFER_BASED_HIGH_LIMIT("flowControl/bufferBased" +
-                                         "/highLimit", "1000", Integer.class),
+                                         "/highLimit", "50", Integer.class),
 
     /**
      * This is the global buffer low limit that disable the flow control globally if the flow-control
      * was enabled previously.
+     * For 800 content chunks, with max chunk size = 64K, the limit could be calculated as 64K*800 ~ 50MB
+     * Since not all content chunks will be of size 64K, let's configure this to 40MB.
      */
     FLOW_CONTROL_GLOBAL_LOW_LIMIT("flowControl/global" +
-                                        "/lowLimit", "800", Integer.class),
+                                        "/lowLimit", "40", Integer.class),
 
     /**
-     *  This is the global buffer high limit which enable the flow control globally.
+     * This is the global buffer high limit which enable the flow control globally.
+     * For 8000, content chunks, with max chunk size = 64K, the limit could be calculated as 64K*8000 ~ 500MB
+     * Since not all content chunks will be of size 64K, let's configure this to 400MB.
      */
     FLOW_CONTROL_GLOBAL_HIGH_LIMIT("flowControl/global" +
-                                         "/highLimit", "8000", Integer.class),
+                                         "/highLimit", "400", Integer.class),
 
      /**
      * The time interval at which the server should check for memory consumption and apply flow control to recover.
