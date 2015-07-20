@@ -317,38 +317,6 @@ public class MessageFlusher {
     }
 
     /**
-     * does that destination has too many messages pending
-     *
-     * @param localSubscription
-     *         local subscription
-     * @return is subscription ready to accept messages
-     */
-    private boolean isThisSubscriptionHasRoom(LocalSubscription localSubscription) {
-
-        int notAckedMsgCount = OnflightMessageTracker.getInstance().getNotAckedMessageCount(localSubscription.getChannelID());
-
-        //Here we ignore messages that has been scheduled but not executed,
-        // so it might send few messages than maxNumberOfUnAckedMessages
-        if(notAckedMsgCount < 0){
-            if(log.isDebugEnabled()){
-                log.debug("Invalid local subscription selected to send messages");
-            }
-            return false;
-        }
-        if (notAckedMsgCount < maxNumberOfUnAckedMessages) {
-            return true;
-        } else {
-
-            if (log.isDebugEnabled()) {
-                log.debug(
-                        "Not selected, channel =" + localSubscription + " pending count =" +
-                        (notAckedMsgCount));
-            }
-            return false;
-        }
-    }
-
-    /**
      * Check whether there are active subscribers and send
      *
      * @param destination queue name
@@ -365,7 +333,9 @@ public class MessageFlusher {
         int sentMessageCount = 0;
         boolean orphanedSlot = false;
         Iterator<AndesMessageMetadata> iterator = messages.iterator();
-        List<AndesRemovableMetadata> droppedTopicMessageList = new ArrayList<AndesRemovableMetadata>();
+        List<AndesRemovableMetadata> droppedTopicMessagesListRemovable = new ArrayList<AndesRemovableMetadata>();
+        List<AndesMessageMetadata> droppedTopicMessagesList = new ArrayList<AndesMessageMetadata>();
+        
 
         while (iterator.hasNext()) {
 
@@ -409,10 +379,10 @@ public class MessageFlusher {
 
                     if (subscriptions4Queue.size() == 0) {
                         iterator.remove(); // remove buffer
-                        OnflightMessageTracker.getInstance().decrementMessageCountInSlot(message.getSlot());
                         AndesRemovableMetadata removableMetadata = new AndesRemovableMetadata(message.getMessageID(),
                                 message.getDestination(), message.getStorageQueueName());
-                        droppedTopicMessageList.add(removableMetadata);
+                        droppedTopicMessagesListRemovable.add(removableMetadata);
+                        droppedTopicMessagesList.add(message);
 
                         continue; // skip this iteration if no subscriptions for the message
                     }
@@ -438,27 +408,30 @@ public class MessageFlusher {
                 for (int j = 0; j < subscriptions4Queue.size(); j++) {
                     LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
                             subscriptions4Queue);
-                    if (!message.isTopic()) { //for queue messages and durable topic messages (as they are now queue messages)
-                        if (isThisSubscriptionHasRoom(localSubscription)) {
-                            if (log.isDebugEnabled()) {
-                                log.debug("Scheduled to send id = " + message.getMessageID());
-                            }
-
-                            // In a re-queue for delivery scenario we need the correct destination. Hence setting
-                            // it back correctly in AndesMetadata for durable subscription for topics
-                            if (localSubscription.isBoundToTopic()) {
-                                message.setDestination(localSubscription.getSubscribedDestination());
-                            }
-                            deliverMessageAsynchronously(localSubscription, message);
-                            numOfCurrentMsgDeliverySchedules++;
-                            break;
-                        }
-                    } else { //for normal (non-durable) topic messages. We do not consider room
+                    if (localSubscription.hasRoomToAcceptMessages()) {
                         if (log.isDebugEnabled()) {
                             log.debug("Scheduled to send id = " + message.getMessageID());
                         }
+
+                        // In a re-queue for delivery scenario we need the correct destination. Hence setting
+                        // it back correctly in AndesMetadata for durable subscription for topics
+                        if (!message.isTopic() && localSubscription.isBoundToTopic()) {
+                            message.setDestination(localSubscription.getSubscribedDestination());
+                        }
+
                         deliverMessageAsynchronously(localSubscription, message);
                         numOfCurrentMsgDeliverySchedules++;
+
+                        //for queue messages and durable topic messages (as they are now queue messages)
+                        // we only send to one selected subscriber if it is a queue message
+                        if (!message.isTopic()) {
+                            break;
+                        }
+                    } else {
+                        if(message.isTopic()) {
+                            log.warn("Subscription " + localSubscription.encodeAsStr() + "will loose message" +
+                                    message.getMessageID() + " as it is too slow to ack");
+                        }
                     }
                 }
 
@@ -479,19 +452,18 @@ public class MessageFlusher {
                         //if we continue message order will break
                         break;
                     }
-                } else { //normal topic message
-                    if (numOfCurrentMsgDeliverySchedules == subscriptions4Queue.size()) {
-                        iterator.remove();
-                        if (log.isDebugEnabled()) {
-                            log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
-                        }
-                        sentMessageCount++;
-                    } else {
-                        log.warn("Could not schedule message delivery to all" +
-                                " subscriptions. May cause message duplication. id= " + message.getMessageID());
-                        //if we continue message order will break
-                        break;
+                } else { //normal topic message. We fire and forget
+                    iterator.remove();
+                    if(numOfCurrentMsgDeliverySchedules == 0) {
+                        AndesRemovableMetadata removableMetadata = new AndesRemovableMetadata(message.getMessageID(),
+                                message.getDestination(), message.getStorageQueueName());
+                        droppedTopicMessagesListRemovable.add(removableMetadata);
+                        droppedTopicMessagesList.add(message);
                     }
+                    if (log.isDebugEnabled()) {
+                        log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
+                    }
+                    sentMessageCount++;
                 }
             } catch (NoSuchElementException ex) {
                 // This exception can occur because the iterator of ConcurrentSkipListSet loads the at-the-time snapshot.
@@ -511,8 +483,18 @@ public class MessageFlusher {
             }
             messages.clear();
         }
-        // delete topic messages that were dropped due to no subscriptions for the message
-        Andes.getInstance().deleteMessages(droppedTopicMessageList, false);
+        // 
+        /**
+         * delete topic messages that were dropped due to no subscriptions 
+         * for the message and due to has no room to enqueue the message. Delete
+         * call is blocking and then slot message count is dropped in order
+         */
+        MessagingEngine.getInstance().deleteMessages(droppedTopicMessagesListRemovable,false);
+        
+        for(AndesMessageMetadata messageToRemove : droppedTopicMessagesList) {
+            OnflightMessageTracker.getInstance().decrementMessageCountInSlot(messageToRemove.getSlot());
+        }
+        
         return sentMessageCount;
     }
 

@@ -23,18 +23,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.kernel.AndesContent;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.DeliveryRule;
-import org.wso2.andes.kernel.HasInterestRule;
-import org.wso2.andes.kernel.LocalSubscription;
-import org.wso2.andes.kernel.MaximumNumOfDeliveryRule;
-import org.wso2.andes.kernel.MessagePurgeRule;
-import org.wso2.andes.kernel.MessageStatus;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.NoLocalRule;
-import org.wso2.andes.kernel.OnflightMessageTracker;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -48,6 +37,8 @@ import org.wso2.andes.server.subscription.SubscriptionImpl;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This class represents a AMQP subscription locally created
@@ -79,6 +70,17 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
      * List of Delivery Rules to evaluate
      */
     private List<DeliveryRule> deliveryRulesList = new ArrayList<DeliveryRule>();
+
+    /**
+     * Count sent but not acknowledged message count for channel of the subscriber
+     */
+    private AtomicInteger unAckedMsgCount = new AtomicInteger(0);
+
+    /**
+     * Map to track messages being sent <message id, MsgData reference>
+     */
+    private final ConcurrentHashMap<Long, MessageData> messageSendingTracker
+            = new ConcurrentHashMap<Long, MessageData>();
 
     public AMQPLocalSubscription(AMQQueue amqQueue, Subscription amqpSubscription, String subscriptionID, String destination,
                                  boolean isBoundToTopic, boolean isExclusive, boolean isDurable,
@@ -134,6 +136,29 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
         return channel.getId();
     }
 
+    @Override
+    public boolean hasRoomToAcceptMessages() {
+        return true;
+    }
+
+    @Override
+    public void ackReceived(long messageID) {
+        messageSendingTracker.remove(messageID);
+        unAckedMsgCount.decrementAndGet();
+    }
+
+    @Override
+    public void msgRejectReceived(long messageID) {
+        messageSendingTracker.remove(messageID);
+        unAckedMsgCount.decrementAndGet();
+    }
+
+    @Override
+    public void close() {
+        messageSendingTracker.clear();
+        unAckedMsgCount.set(0);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -141,32 +166,22 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
     public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata, AndesContent content)
             throws AndesException {
         AMQMessage message = AMQPUtils.getAMQMessageForDelivery(messageMetadata, content);
-        sendAMQMessageToSubscriber(message, messageMetadata.getRedelivered());
+        sendAMQMessageToSubscriber(message);
     }
 
     /**
      * send message to the internal subscription
      *
      * @param message      message to send
-     * @param isRedelivery is a redelivered message
      * @throws AndesException
      */
-    private void sendAMQMessageToSubscriber(AMQMessage message, boolean isRedelivery) throws AndesException {
+    private void sendAMQMessageToSubscriber(AMQMessage message) throws AndesException {
         QueueEntry messageToSend = AMQPUtils.convertAMQMessageToQueueEntry(message, amqQueue);
-        if (isRedelivery) {
-            messageToSend.setRedelivered();
-        }
 
         if (evaluateDeliveryRules(messageToSend)) {
-            int numOfDeliveriesOfCurrentMsg =
-                    onflightMessageTracker.getNumOfMsgDeliveriesForChannel(message.getMessageId(), channel.getId());
 
             onflightMessageTracker.setMessageStatus(MessageStatus.DELIVERY_OK, message.getMessageId());
-            if (numOfDeliveriesOfCurrentMsg == 1) {
-                onflightMessageTracker.setMessageStatus(MessageStatus.SENT, message.getMessageId());
-            } else if (numOfDeliveriesOfCurrentMsg > 1) {
-                onflightMessageTracker.setMessageStatus(MessageStatus.RESENT, message.getMessageId());
-            }
+
             sendQueueEntryToSubscriber(messageToSend);
         } else {
             //Set message status to reject
@@ -179,6 +194,7 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
             // Move message to DLC
             // All the Queues and Durable Topics related messages are adding to DLC
             if (!isBoundToTopic || isDurable){
+                messageSendingTracker.remove(message.getMessageId());
                 MessagingEngine.getInstance().moveMessageToDeadLetterChannel(message.getMessageId(), destinationQueue);
             }
         }
@@ -213,6 +229,40 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
         sendMessage(message);
     }
 
+
+    /**
+     * Stamp a message as sent. This method also evaluate if the
+     * message is being redelivered
+     *
+     * @param messageID id of the message
+     * @return if message is redelivered
+     */
+    private boolean addMessageToSendingTracker(long messageID) {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Adding message to sending tracker channel id = " + getChannelID() + " message id = "
+                    + messageID);
+        }
+
+        MessageData messageData = messageSendingTracker.get(messageID);
+
+        if (null == messageData) {
+            messageData = OnflightMessageTracker.getInstance().getTrackingData(messageID);
+            messageSendingTracker.put(messageID, messageData);
+        }
+        // increase delivery count
+        int numOfCurrentDeliveries = messageData.incrementDeliveryCount(getChannelID());
+
+
+        if (log.isDebugEnabled()) {
+            log.debug("Number of current deliveries for message id= " + messageID + " to Channel " + getChannelID()
+                    + " is " + numOfCurrentDeliveries);
+        }
+
+        //check if this is a redelivered message
+        return  messageData.isRedelivered(getChannelID());
+    }
+
     /**
      * write message to channel
      *
@@ -232,9 +282,16 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
 
         try {
 
-            // TODO: We might have to carefully implement this in every new subscription type we implement
-            // shall we move this up to LocalSubscription level?
-            onflightMessageTracker.incrementNonAckedMessageCount(channel.getId());
+            //record message as sent to this subscriber (channel)
+            boolean isRedelivery = addMessageToSendingTracker(messageNumber);
+            //set redelivery header
+            if(isRedelivery) {
+                queueEntry.setRedelivered();
+                onflightMessageTracker.setMessageStatus(MessageStatus.RESENT, messageNumber);
+            } else {
+                onflightMessageTracker.setMessageStatus(MessageStatus.SENT, messageNumber);
+            }
+            unAckedMsgCount.incrementAndGet();
 
             if (amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
                 //this check is needed to detect if subscription has suddenly closed
