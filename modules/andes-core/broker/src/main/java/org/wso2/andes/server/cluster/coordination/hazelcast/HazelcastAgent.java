@@ -705,14 +705,11 @@ public class HazelcastAgent implements SlotAgent {
                 this.unAssignedSlotMap.remove(queueName);
             }
 
-            // Clear slots assigned to the queue along with overlapped slots
-            String nodeId = clusterAgent.getLocalNodeIdentifier();
-
             // The requirement here is to clear slot associations for the queue on all nodes.
             List<String> nodeIDs = AndesContext.getInstance().getClusterAgent().getAllNodeIdentifiers();
 
             for (String nodeID : nodeIDs) {
-                HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
+                HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeID);
                 HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
                 if (null != wrapper) {
                     queueToSlotMap = wrapper.getStringListHashMap();
@@ -720,11 +717,11 @@ public class HazelcastAgent implements SlotAgent {
                 if (queueToSlotMap != null) {
                     queueToSlotMap.remove(queueName);
                     wrapper.setStringListHashMap(queueToSlotMap);
-                    slotAssignmentMap.set(nodeId, wrapper);
+                    slotAssignmentMap.set(nodeID, wrapper);
                 }
 
                 //clear overlapped slot map
-                HashmapStringTreeSetWrapper overlappedSlotsWrapper = overLappedSlotMap.get(nodeId);
+                HashmapStringTreeSetWrapper overlappedSlotsWrapper = overLappedSlotMap.get(nodeID);
                 if (null != overlappedSlotsWrapper) {
                     HashMap<String, TreeSet<Slot>> queueToOverlappedSlotMap = null;
                     if (null != wrapper) {
@@ -733,7 +730,7 @@ public class HazelcastAgent implements SlotAgent {
                     if (queueToSlotMap != null) {
                         queueToOverlappedSlotMap.remove(queueName);
                         overlappedSlotsWrapper.setStringListHashMap(queueToOverlappedSlotMap);
-                        overLappedSlotMap.set(nodeId, overlappedSlotsWrapper);
+                        overLappedSlotMap.set(nodeID, overlappedSlotsWrapper);
                     }
                 }
             }
