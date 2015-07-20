@@ -55,7 +55,7 @@ public class MessageTracer {
      * @param content message activity
      */
     public static void trace(long messageId, String destination, String content) {
-        if(log.isTraceEnabled()) {
+        if (log.isTraceEnabled()) {
 	        StringBuilder messageContent = new StringBuilder();
 	        messageContent.append("Message { Destination: ");
 	        messageContent.append(destination);

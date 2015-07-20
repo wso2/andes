@@ -272,8 +272,8 @@ public class FailureObservingMessageStore implements MessageStore {
             wrappedInstance.deleteMessages(storageQueueName, messagesToRemove, deleteAllMetaData);
 
             //Tracing message activity
-            if(MessageTracer.isEnabled()) {
-                for(long messageId : messagesToRemove) {
+            if (MessageTracer.isEnabled()) {
+                for (long messageId : messagesToRemove) {
                     MessageTracer.trace(messageId, storageQueueName, MessageTracer.MESSAGE_DELETED);
                 }
             }
