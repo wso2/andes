@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -24,14 +24,28 @@ import com.hazelcast.core.MembershipEvent;
 import com.hazelcast.core.MembershipListener;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.cluster.ClusterManager;
+import org.wso2.andes.server.cluster.HazelcastClusterAgent;
 
 /**
  * This class act as the listener to handle cluster node added and removed actions.
  */
 public class AndesMembershipListener implements MembershipListener {
     private static Log log = LogFactory.getLog(AndesMembershipListener.class);
+
+    /**
+     * This holds the Hazelcast agent instance for this broker. Used to check if the current node is the coordinator
+     */
+    private final HazelcastClusterAgent hazelcastAgent;
+
+    /**
+     * Default Constructor
+     *
+     * @param hazelcastAgent
+     *         Hazelcast agent for current node
+     */
+    public AndesMembershipListener(HazelcastClusterAgent hazelcastAgent) {
+        this.hazelcastAgent = hazelcastAgent;
+    }
 
     /**
      * This is triggered when a new member joined to the cluster.
@@ -45,7 +59,7 @@ public class AndesMembershipListener implements MembershipListener {
         log.info("Handling cluster gossip: New member joined to the cluster. Member Socket Address:"
                  + member.getSocketAddress() + " UUID:" + member.getUuid());
 
-        ClusterResourceHolder.getInstance().getClusterManager().memberAdded();
+        hazelcastAgent.memberAdded(membershipEvent.getMember());
     }
 
     /**
@@ -70,11 +84,11 @@ public class AndesMembershipListener implements MembershipListener {
         Member member = membershipEvent.getMember();
         log.info("Handling cluster gossip: A member left the cluster. Member Socket Address:"
                  + member.getSocketAddress() + " UUID:" + member.getUuid());
-        ClusterManager clusterManager = ClusterResourceHolder.getInstance().getClusterManager();
+
         try {
-            clusterManager.memberRemoved(member);
+            hazelcastAgent.memberRemoved(member);
         } catch (Exception e) {
-            log.error("Error while handling node removal, NodeID:" + clusterManager.getNodeId(member), e);
+            log.error("Error while handling node removal, NodeID:" + hazelcastAgent.getIdOfNode(member), e);
         }
     }
 }

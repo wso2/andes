@@ -17,16 +17,22 @@
  */
 package org.wso2.andes.server.cluster.coordination.hazelcast;
 
-import com.hazelcast.core.*;
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.HazelcastInstanceNotActiveException;
+import com.hazelcast.core.IAtomicLong;
+import com.hazelcast.core.ILock;
+import com.hazelcast.core.IMap;
+import com.hazelcast.core.ITopic;
+import com.hazelcast.core.Member;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesKernelBoot;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.kernel.slot.SlotUtils;
+import org.wso2.andes.server.cluster.HazelcastClusterAgent;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.ClusterNotification;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
@@ -35,8 +41,11 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wr
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetLongWrapper;
 import org.wso2.andes.server.cluster.coordination.hazelcast.custom.serializer.wrapper.TreeSetSlotWrapper;
 
-
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 
 /**
@@ -125,12 +134,6 @@ public class HazelcastAgent implements SlotAgent {
     private IMap<String,String> thriftServerDetailsMap;
 
     /**
-     * Unique ID generated to represent the node.
-     * This ID is used when generating message IDs.
-     */
-    private int uniqueIdOfLocalMember;
-
-    /**
      * Lock used to initialize the Slot map used by the Slot manager.
      */
     private ILock initializationLock;
@@ -142,10 +145,9 @@ public class HazelcastAgent implements SlotAgent {
     private IAtomicLong initializationDoneIndicator;
 
     /**
-     * This map is used to store coordinator node's host address and port.
-     */
-    private IMap<String,String> coordinatorNodeDetailsMap;
-
+     * Hazelcast based cluster agent
+      */
+    private HazelcastClusterAgent clusterAgent;
 
     /**
      * Private constructor.
@@ -173,10 +175,9 @@ public class HazelcastAgent implements SlotAgent {
         log.info("Initializing Hazelcast Agent");
         this.hazelcastInstance = hazelcastInstance;
 
-        /**
-         * membership changes
-         */
-        this.hazelcastInstance.getCluster().addMembershipListener(new AndesMembershipListener());
+        // Set cluster agent in Andes Context
+        clusterAgent = new HazelcastClusterAgent(hazelcastInstance);
+        AndesContext.getInstance().setClusterAgent(clusterAgent);
 
         /**
          * subscription changes
@@ -216,11 +217,6 @@ public class HazelcastAgent implements SlotAgent {
         clusterBindingChangedListener.addBindingListener(new ClusterCoordinationHandler(this));
         this.bindingChangeNotifierChannel.addMessageListener(clusterBindingChangedListener);
 
-
-        // generates a unique id for the node unique for the cluster
-        IdGenerator idGenerator = hazelcastInstance.getIdGenerator(CoordinationConstants.HAZELCAST_ID_GENERATOR_NAME);
-        this.uniqueIdOfLocalMember = (int) idGenerator.newId();
-
         /**
          * Initialize hazelcast maps for slots
          */
@@ -237,11 +233,6 @@ public class HazelcastAgent implements SlotAgent {
         thriftServerDetailsMap = hazelcastInstance.getMap(CoordinationConstants.THRIFT_SERVER_DETAILS_MAP_NAME);
 
         /**
-         * Initialize hazelcast map for coordinator node details
-         */
-        coordinatorNodeDetailsMap = hazelcastInstance.getMap(CoordinationConstants.COORDINATOR_NODE_DETAILS_MAP_NAME);
-
-        /**
          * Initialize distributed lock and boolean related to slot map initialization
          */
         initializationLock = hazelcastInstance.getLock(CoordinationConstants.INITIALIZATION_LOCK);
@@ -249,30 +240,6 @@ public class HazelcastAgent implements SlotAgent {
                 .getAtomicLong(CoordinationConstants.INITIALIZATION_DONE_INDICATOR);
 
         log.info("Successfully initialized Hazelcast Agent");
-
-        if (log.isDebugEnabled()) {
-            log.debug("Unique ID generation for message ID generation:" + uniqueIdOfLocalMember);
-        }
-    }
-
-    /**
-     * Node ID is generated in the format of "NODE/<host IP>:<Port>"
-     * @return NodeId Identifier of the node in the cluster
-     */
-    public String getNodeId() {
-
-        String nodeId;
-
-        // Get Node ID configured by user in broker.xml (if not "default" we must use it as the ID)
-        nodeId = AndesConfigurationManager.readValue(AndesConfiguration.COORDINATION_NODE_ID);
-
-        // If the config value is "default" we must generate the ID
-        if (AndesConfiguration.COORDINATION_NODE_ID.get().getDefaultValue().equals(nodeId)) {
-            Member localMember = hazelcastInstance.getCluster().getLocalMember();
-            nodeId = getIdOfNode(localMember);
-        }
-
-        return nodeId;
     }
 
     /**
@@ -283,86 +250,6 @@ public class HazelcastAgent implements SlotAgent {
     public Set<Member> getAllClusterMembers() {
         return hazelcastInstance.getCluster().getMembers();
     }
-
-    /**
-     * Get node IDs of all nodes available in the cluster.
-     *
-     * @return List of node IDs.
-     */
-    public List<String> getMembersNodeIDs() {
-        Set<Member> members = this.getAllClusterMembers();
-        List<String> nodeIDList = new ArrayList<String>();
-        for (Member member : members) {
-            nodeIDList.add(getIdOfNode(member));
-        }
-
-        return nodeIDList;
-    }
-
-    /**
-     * Get local node.
-     *
-     * @return local node as a Member.
-     */
-    public Member getLocalMember() {
-        return hazelcastInstance.getCluster().getLocalMember();
-    }
-
-    /**
-     * Get number of members in the cluster.
-     *
-     * @return number of members.
-     */
-    public int getClusterSize() {
-        return hazelcastInstance.getCluster().getMembers().size();
-    }
-
-    /**
-     * Get unique ID to represent local member.
-     *
-     * @return unique ID.
-     */
-    public int getUniqueIdForNode() {
-        return uniqueIdOfLocalMember;
-    }
-
-    /**
-     * Get node ID of the given node.
-     *
-     * @param node cluster node to get the ID
-     * @return node ID.
-     */
-    public String getIdOfNode(Member node) {
-        return CoordinationConstants.NODE_NAME_PREFIX +
-                node.getSocketAddress();
-    }
-
-    /**
-     * Each member of the cluster is given an unique UUID and here the UUIDs of all nodes are sorted
-     * and the index of the belonging UUID of the given node is returned.
-     *
-     * @param node node to get the index
-     * @return the index of the specified node
-     */
-    public int getIndexOfNode(Member node) {
-        TreeSet<String> membersUniqueRepresentations = new TreeSet<String>();
-        for (Member member : this.getAllClusterMembers()) {
-            membersUniqueRepresentations.add(member.getUuid());
-        }
-
-        return membersUniqueRepresentations.headSet(node.getUuid()).size();
-    }
-
-    /**
-     * Get the index where the local node is placed when all
-     * the cluster nodes are sorted according to their UUID.
-     *
-     * @return the index of the local node
-     */
-    public int getIndexOfLocalNode() {
-        return this.getIndexOfNode(this.getLocalMember());
-    }
-
 
     public void notifySubscriptionsChanged(ClusterNotification clusterNotification) throws AndesException {
         if (log.isDebugEnabled()) {
@@ -376,7 +263,6 @@ public class HazelcastAgent implements SlotAgent {
         }
 
     }
-
 
     public void notifyQueuesChanged(ClusterNotification clusterNotification) throws AndesException {
 
@@ -415,44 +301,12 @@ public class HazelcastAgent implements SlotAgent {
         }
     }
 
-    public IMap<String, TreeSetSlotWrapper> getUnAssignedSlotMap() {
-        return unAssignedSlotMap;
-    }
-
-    public IMap<String, TreeSetLongWrapper> getSlotIdMap() {
-        return slotIdMap;
-    }
-
-    public IMap<String, Long> getLastAssignedIDMap() {
-        return lastAssignedIDMap;
-    }
-
-    public IMap<String, Long> getLastPublishedIDMap() {
-        return lastPublishedIDMap;
-    }
-
-    public IMap<String, HashmapStringTreeSetWrapper> getSlotAssignmentMap() {
-        return slotAssignmentMap;
-    }
-
-    public IMap<String, HashmapStringTreeSetWrapper> getOverLappedSlotMap() {
-        return overLappedSlotMap;
-    }
-
     /**
      * This method returns a map containing thrift server port and hostname
      * @return thriftServerDetailsMap
      */
     public IMap<String, String> getThriftServerDetailsMap() {
         return thriftServerDetailsMap;
-    }
-
-    /**
-     * This method returns a map containing thrift server port and hostname
-     * @return coordinatorNodeDetailsMap
-     */
-    public IMap<String, String> getCoordinatorNodeDetailsMap() {
-        return coordinatorNodeDetailsMap;
     }
 
     /**
@@ -852,10 +706,10 @@ public class HazelcastAgent implements SlotAgent {
             }
 
             // Clear slots assigned to the queue along with overlapped slots
-            String nodeId = HazelcastAgent.getInstance().getNodeId();
+            String nodeId = clusterAgent.getLocalNodeIdentifier();
 
             // The requirement here is to clear slot associations for the queue on all nodes.
-            List<String> nodeIDs = HazelcastAgent.getInstance().getMembersNodeIDs();
+            List<String> nodeIDs = AndesContext.getInstance().getClusterAgent().getAllNodeIdentifiers();
 
             for (String nodeID : nodeIDs) {
                 HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);

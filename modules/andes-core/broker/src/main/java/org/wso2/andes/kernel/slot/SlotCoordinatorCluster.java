@@ -20,7 +20,7 @@ package org.wso2.andes.kernel.slot;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.thrift.MBThriftClient;
 
 /**
@@ -33,7 +33,7 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
 
 
     public SlotCoordinatorCluster(){
-        nodeId = HazelcastAgent.getInstance().getNodeId();
+        nodeId = AndesContext.getInstance().getClusterAgent().getLocalNodeIdentifier();
     }
 
     /**

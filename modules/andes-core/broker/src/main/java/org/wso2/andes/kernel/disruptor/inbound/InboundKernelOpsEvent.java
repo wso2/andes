@@ -232,7 +232,7 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
             inboundEventManager.stop();
 
             // Notify cluster this MB node is shutting down. For other nodes to do recovery tasks
-            ClusterResourceHolder.getInstance().getClusterManager().shutDownMyNode();
+            ClusterResourceHolder.getInstance().getClusterManager().prepareLocalNodeForShutDown();
 
             //Stop Recovery threads
             AndesKernelBoot.stopHouseKeepingThreads();
@@ -245,7 +245,7 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
             SlotDeletionExecutor.getInstance().stopSlotDeletionExecutor();
 
             //Stop Slot manager in coordinator
-            if (AndesContext.getInstance().isClusteringEnabled() && AndesContext.getInstance().getClusteringAgent().isCoordinator()) {
+            if (AndesContext.getInstance().isClusteringEnabled() && (AndesContext.getInstance().getClusterAgent().isCoordinator())) {
                 SlotManagerClusterMode.getInstance().shutDownSlotManager();
             }
 

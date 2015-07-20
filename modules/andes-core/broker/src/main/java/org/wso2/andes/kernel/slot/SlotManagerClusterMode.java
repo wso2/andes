@@ -110,7 +110,7 @@ public class SlotManagerClusterMode {
 
         // Initialize the current node ID as the removed node. This is to avoid slot recovery task adding an empty
         // node ID to the map used to calculate safe zone.
-        removedNode = HazelcastAgent.getInstance().getNodeId();
+        removedNode = AndesContext.getInstance().getClusterAgent().getLocalNodeIdentifier();
         firstMessageId = INITIAL_MESSAGE_ID;
         slotRecoveryScheduled = new AtomicBoolean(false);
 
@@ -518,7 +518,7 @@ public class SlotManagerClusterMode {
 
         // Sweep all assigned slots to find overlaps using slotAssignmentMap, cos its optimized for node,queue-wise iteration.
         // The requirement here is to clear slot associations for the queue on all nodes.
-        List<String> nodeIDs = HazelcastAgent.getInstance().getMembersNodeIDs();
+        List<String> nodeIDs = AndesContext.getInstance().getClusterAgent().getAllNodeIdentifiers();
         TreeSet<Slot> slotListForQueueOnNode;
         TreeSet<Slot> overlappedSlots = new TreeSet<Slot>();
 
