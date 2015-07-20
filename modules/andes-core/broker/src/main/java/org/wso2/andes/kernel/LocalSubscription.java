@@ -28,5 +28,31 @@ public interface LocalSubscription extends AndesSubscription {
 
     public UUID getChannelID();
 
+    /**
+     * Check if this subscription has ability to accept messages
+     * If pending ack count is high it does not have ability to accept new messages
+     * @return true if able to accept messages
+     */
+    public boolean hasRoomToAcceptMessages();
+
+    /**
+     * Ack received for subscription. Protocol specific subscribers implement
+     * independent behaviours
+     * @param messageID id of the message
+     */
+    public void ackReceived(long messageID);
+
+    /**
+     * Message rejected by the subscriber. Protocol specific subscribers implement
+     * independent behaviours
+     * @param messageID id of the rejected message
+     */
+    public void msgRejectReceived(long messageID);
+
+    /**
+     * Close subscriber. Here subscriber should release all the resources.
+     */
+    public void close();
+
     public LocalSubscription createQueueToListentoTopic();
 }

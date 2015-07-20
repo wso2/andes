@@ -20,7 +20,9 @@ package org.wso2.andes.kernel.disruptor.inbound;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.OnflightMessageTracker;
 
 import java.util.UUID;
@@ -65,10 +67,8 @@ public class InboundAndesChannelEvent implements AndesInboundStateEvent {
     public void updateState() throws AndesException {
         switch (eventType) {
             case CHANNEL_OPEN_EVENT:
-                OnflightMessageTracker.getInstance().addNewChannelForTracking(channelID);
                 break;
             case CHANNEL_CLOSE_EVENT:
-                OnflightMessageTracker.getInstance().releaseAllMessagesOfChannelFromTracking(channelID);
                 break;
             default:
                 log.error("Event type not set properly " + eventType);

@@ -21,14 +21,8 @@ package org.wso2.andes.kernel.disruptor.inbound;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesContent;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesSubscriptionManager;
-import org.wso2.andes.kernel.LocalSubscription;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.OnflightMessageTracker;
-import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
+import org.wso2.andes.kernel.*;
+import org.wso2.andes.mqtt.MQTTLocalSubscription;
 import org.wso2.andes.subscription.BasicSubscription;
 
 import java.util.List;
@@ -140,16 +134,18 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
         // Send retained message if available
         try {
 
-            // Before sending a retain message for given subscription event, have to
-            // verify if the given subscription bound to a topic and is not durable.
-            if (!this.isDurable() && this.isBoundToTopic()) {
-                List<AndesMessageMetadata> metadataList = MessagingEngine.getInstance().getRetainedMessageByTopic(
-                        this.getSubscribedDestination());
+            if (this instanceof MQTTLocalSubscription) {
+                // Before sending a retain message for given subscription event, have to
+                // verify if the given subscription bound to a topic and is not durable.
+                if (!this.isDurable() && this.isBoundToTopic()) {
+                    List<AndesMessageMetadata> metadataList = MessagingEngine.getInstance().getRetainedMessageByTopic(
+                            this.getSubscribedDestination());
 
-                for (AndesMessageMetadata metadata : metadataList) {
-                    AndesContent content = MessagingEngine.getInstance().getRetainedMessageContent(metadata);
-                    OnflightMessageTracker.getInstance().recordRetainedMessage(metadata.getMessageID());
-                    this.sendMessageToSubscriber(metadata, content);
+                    for (AndesMessageMetadata metadata : metadataList) {
+                        AndesContent content = MessagingEngine.getInstance().getRetainedMessageContent(metadata);
+                        metadata.setRetain(true);
+                        this.sendMessageToSubscriber(metadata, content);
+                    }
                 }
             }
         } catch (AndesException e) {

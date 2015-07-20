@@ -257,16 +257,6 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                  */
                 recordMessageDelivery(entry, deliveryTag);
 
-                long messageID = entry.getMessage().getMessageNumber();
-                OnflightMessageTracker messageTracker = OnflightMessageTracker.getInstance();
-
-                boolean isRedelivered = messageTracker.checkAndRegisterSent(messageID, getChannel().getId());
-
-                //set redelivery header
-                if (isRedelivered) {
-                    entry.setRedelivered();
-                }
-
                 //no point of trying to deliver if channel is closed ReQueue the message to
                 // be resent
                 // when channel is available
@@ -289,7 +279,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                 }
 
                 if (log.isDebugEnabled()) {
-                    log.debug("sent message : " + messageID + " JMSMessageId " + ": " +
+                    log.debug("sent message : " + entry.getMessageHeader().getMessageId() + " JMSMessageId " + ": " +
                               entry.getMessageHeader().getMessageId() + " channel=" + getChannel().getChannelId());
 
                 }

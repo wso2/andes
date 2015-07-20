@@ -22,9 +22,6 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.AMQException;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorker;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
@@ -58,50 +55,34 @@ public class OnflightMessageTracker {
         }
     }
 
-    /**
-     * Track messages sent as retained messages
-     */
-    private ConcurrentTrackingList<Long> retainedMessageList;
 
     public static OnflightMessageTracker getInstance() {
         return instance;
     }
 
-
-    /**
-     * Maximum number of times a message is tried to deliver
-     */
-    private Integer maximumRedeliveryTimes = 1;
-
     /**
      * In memory map keeping sent message statistics by message id
      */
-    private final ConcurrentHashMap<Long, MsgData> msgId2MsgData;
+    private final ConcurrentHashMap<Long, MessageData> msgId2MsgData;
 
     /**
      * Map to track messages being buffered to be sent <Id of the slot, messageID, MsgData
      * reference>
      */
-    private final ConcurrentHashMap<String, ConcurrentHashMap<Long, MsgData>> messageBufferingTracker
-            = new ConcurrentHashMap<String, ConcurrentHashMap<Long, MsgData>>();
+    private final ConcurrentHashMap<String, ConcurrentHashMap<Long, MessageData>> messageBufferingTracker
+            = new ConcurrentHashMap<String, ConcurrentHashMap<Long, MessageData>>();
 
     /**
      * Map to track messages being sent <channel id, message id, MsgData reference>
      */
-    private final ConcurrentHashMap<UUID, ConcurrentHashMap<Long, MsgData>> messageSendingTracker
-            = new ConcurrentHashMap<UUID, ConcurrentHashMap<Long, MsgData>>();
+    private final ConcurrentHashMap<UUID, ConcurrentHashMap<Long, MessageData>> messageSendingTracker
+            = new ConcurrentHashMap<UUID, ConcurrentHashMap<Long, MessageData>>();
 
     /**
      * Map to keep track of message counts pending to read
      */
     private final ConcurrentHashMap<Slot, AtomicInteger> pendingMessagesBySlot = new
             ConcurrentHashMap<Slot, AtomicInteger>();
-
-    /**
-     * Count sent but not acknowledged message count for all the channels
-     * key: channelID, value: per channel non acknowledged message count
-     */
-    private final ConcurrentMap<UUID, AtomicInteger> unAckedMsgCountMap = new ConcurrentHashMap<UUID, AtomicInteger>();
 
     /**
      * Map to keep track of subscription to slots map.
@@ -113,139 +94,15 @@ public class OnflightMessageTracker {
     /**
      * Class to keep tracking data of a message
      */
-    private class MsgData {
-
-        private final long msgID;
-        private final String destination;
-        /**
-         * timestamp at which the message was taken from store for processing.
-         */
-        private long timestamp;
-        /**
-         * Timestamp after which the message should expire.
-         */
-        private long expirationTime;
-        /**
-         * timestamp at which the message entered the first gates of the broker.
-         */
-        private long arrivalTime;
-        /**
-         * Number of scheduled deliveries. concurrently modified whenever the message is scheduled to be delivered.
-         */
-        private AtomicInteger numberOfScheduledDeliveries;
-        /**
-         * Number of deliveries done of this message in each amq channel.
-         */
-        private Map<UUID, Integer> channelToNumOfDeliveries;
-        /**
-         * State transition of the message
-         */
-        private List<MessageStatus> messageStatus;
-        /**
-         * Parent slot of message.
-         */
-        private Slot slot;
-
-        private MsgData(long msgID, Slot slot, String destination, long timestamp,
-                        long expirationTime, MessageStatus messageStatus,
-                        long arrivalTime) {
-            this.msgID = msgID;
-            this.slot = slot;
-            this.destination = destination;
-            this.timestamp = timestamp;
-            this.expirationTime = expirationTime;
-            this.channelToNumOfDeliveries = new ConcurrentHashMap<UUID, Integer>();
-            this.messageStatus = Collections.synchronizedList(new ArrayList<MessageStatus>());
-            this.messageStatus.add(messageStatus);
-            this.numberOfScheduledDeliveries = new AtomicInteger(0);
-            this.arrivalTime = arrivalTime;
-        }
-
-        private boolean isExpired() {
-            if (expirationTime != 0L) {
-                long now = System.currentTimeMillis();
-                return (now > expirationTime);
-            } else {
-                return false;
-            }
-        }
-
-        private void addMessageStatus(MessageStatus status) {
-            messageStatus.add(status);
-        }
-
-        private String getStatusHistory() {
-            String history = "";
-            for (MessageStatus status : messageStatus) {
-                history = history + status + ">>";
-            }
-            return history;
-        }
-
-        private MessageStatus getLatestState() {
-            MessageStatus latest = null;
-            if (messageStatus.size() > 0) {
-                latest = messageStatus.get(messageStatus.size() - 1);
-            }
-            return latest;
-        }
-
-        private boolean isRedelivered(UUID channelID) {
-            Integer numOfDeliveries = channelToNumOfDeliveries.get(channelID);
-            return numOfDeliveries > 1;
-        }
-
-        private int incrementDeliveryCount(UUID channelID) {
-            Integer numOfDeliveries = channelToNumOfDeliveries.get(channelID);
-            if (numOfDeliveries == null) {
-                numOfDeliveries = 0;
-            }
-            numOfDeliveries++;
-            channelToNumOfDeliveries.put(channelID, numOfDeliveries);
-            return numOfDeliveries;
-        }
-
-        private int decrementDeliveryCount(UUID channelID) {
-            Integer numOfDeliveries = channelToNumOfDeliveries.get(channelID);
-            numOfDeliveries--;
-            if (numOfDeliveries > 0) {
-                channelToNumOfDeliveries.put(channelID, numOfDeliveries);
-            } else {
-                channelToNumOfDeliveries.remove(channelID);
-            }
-            return numOfDeliveries;
-        }
-
-        private int getNumOfDeliveires4Channel(UUID channelID) {
-         /* Since sometimes Broker tries to send stored messages when it initialised a subscription
-            so then it returns null value for that subscription's channel's amount of deliveries,
-            Since we need to the evaluate the rules before we send message, therefore we have to ignore the null value,
-            then we have to check the number of deliveries for the particular channel */
-            if (null != channelToNumOfDeliveries.get(channelID)) {
-                return channelToNumOfDeliveries.get(channelID);
-            } else {
-                return 0;
-            }
-        }
-
-        private boolean allAcksReceived() {
-            return channelToNumOfDeliveries.isEmpty();
-        }
-    }
-
 
     private OnflightMessageTracker() throws AndesException {
-
-        this.maximumRedeliveryTimes = AndesConfigurationManager.readValue
-                (AndesConfiguration.TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS);
 
         // We don't know the size of the map at startup. hence using an arbitrary value of 16, Need to test
         // Load factor set to default value 0.75
         // Concurrency level set to 6. Currently SlotDeliveryWorker, AckHandler AckSubscription, DeliveryEventHandler,
         // MessageFlusher access this. To be on the safe side set to 6.
-        msgId2MsgData = new ConcurrentHashMap<Long, MsgData>(16, 0.75f, 6);
+        msgId2MsgData = new ConcurrentHashMap<Long, MessageData>(16, 0.75f, 6);
 
-        retainedMessageList = new ConcurrentTrackingList<Long>();
     }
 
     /**
@@ -261,15 +118,6 @@ public class OnflightMessageTracker {
             log.debug("message was rejected by client id= " + messageId + " channel= " + channelId);
         }
         stampMessageAsRejected(channelId, messageId);
-    }
-
-    /**
-     * Register that this message is being delivered to client
-     *
-     * @return boolean if the message is being redelivered
-     */
-    public boolean checkAndRegisterSent(long messageId, UUID channelID) throws AMQException {
-        return addMessageToSendingTracker(channelID, messageId);
     }
 
     /**
@@ -356,17 +204,6 @@ public class OnflightMessageTracker {
         pendingMessageCount.addAndGet(amount);
     }
 
-
-    /**
-     * Record the given message ID as a retained message in the trcker.
-     *
-     * @param messageID
-     *         Message ID of the retained message
-     */
-    public void recordRetainedMessage(long messageID) {
-        retainedMessageList.add(messageID);
-    }
-
     /**
      * Track acknowledgement for message. When acknowledgement received this method will remove the
      * tracking information from tracking lists.
@@ -382,14 +219,10 @@ public class OnflightMessageTracker {
             log.debug("Ack Received message id= " + messageID + " channel id= " + channel);
         }
 
-        // Remove if received acknowledgment message id contains in retained message list.
-        retainedMessageList.remove(messageID);
-
         boolean isOKToDeleteMessage = false;
 
         //release delivery tracing
-        releaseMessageDeliveryFromTracking(channel, messageID);
-        MsgData trackingData = getTrackingData(messageID);
+        MessageData trackingData = getTrackingData(messageID);
 
         //decrement delivery count
         if (trackingData != null) {
@@ -421,13 +254,11 @@ public class OnflightMessageTracker {
         if (log.isDebugEnabled()) {
             log.debug("stamping message as rejected id = " + messageID);
         }
-        MsgData trackingData = getTrackingData(messageID);
+        MessageData trackingData = getTrackingData(messageID);
         if (trackingData != null) {
             trackingData.timestamp = System.currentTimeMillis();
             trackingData.addMessageStatus(MessageStatus.REJECTED_AND_BUFFERED);
         }
-        //release delivery tracing
-        releaseMessageDeliveryFromTracking(channel, messageID);
     }
 
     /**
@@ -444,9 +275,9 @@ public class OnflightMessageTracker {
             log.debug("Buffering message id = " + messageID + " slot = " + slot.toString());
         }
         String slotID = slot.getId();
-        ConcurrentHashMap<Long, MsgData> messagesOfSlot = messageBufferingTracker.get(slotID);
+        ConcurrentHashMap<Long, MessageData> messagesOfSlot = messageBufferingTracker.get(slotID);
         if (messagesOfSlot == null) {
-            messagesOfSlot = new ConcurrentHashMap<Long, MsgData>();
+            messagesOfSlot = new ConcurrentHashMap<Long, MessageData>();
             messageBufferingTracker.put(slotID, messagesOfSlot);
             // track destination to slot
             // use this map to remove messageBufferingTracker when subscriber close before receive all messages in slot
@@ -460,9 +291,9 @@ public class OnflightMessageTracker {
                 subscriptionSlotTracker.put(slot.getDestinationOfMessagesInSlot(), subscriptionSlots);
             }
         }
-        MsgData trackingData = messagesOfSlot.get(messageID);
+        MessageData trackingData = messagesOfSlot.get(messageID);
         if (trackingData == null) {
-            trackingData = new MsgData(messageID, slot,
+            trackingData = new MessageData(messageID, slot,
                     slot.getDestinationOfMessagesInSlot(),
                     System.currentTimeMillis(),
                     andesMessageMetadata.getExpirationTime(),
@@ -489,7 +320,7 @@ public class OnflightMessageTracker {
     public boolean checkIfMessageIsAlreadyBuffered(Slot slot, long messageID) {
         boolean isAlreadyBuffered = false;
         String slotID = slot.getId();
-        MsgData trackingData = messageBufferingTracker.get(slotID).get(messageID);
+        MessageData trackingData = messageBufferingTracker.get(slotID).get(messageID);
         if (trackingData != null) {
             isAlreadyBuffered = true;
         }
@@ -510,10 +341,10 @@ public class OnflightMessageTracker {
             log.debug("Releasing tracking of messages for slot " + slot.toString());
         }
         String slotID = slot.getId();
-        ConcurrentHashMap<Long, MsgData> messagesOfSlot = messageBufferingTracker.remove(slotID);
+        ConcurrentHashMap<Long, MessageData> messagesOfSlot = messageBufferingTracker.remove(slotID);
         if (messagesOfSlot != null) {
             for (Long messageId : messagesOfSlot.keySet()) {
-                MsgData msgData = getTrackingData(messageId);
+                MessageData msgData = getTrackingData(messageId);
                 msgData.addMessageStatus(MessageStatus.SLOT_REMOVED);
                 if (checkIfReadyToRemoveFromTracking(messageId)) {
                     if (log.isDebugEnabled()) {
@@ -536,7 +367,7 @@ public class OnflightMessageTracker {
      */
     public void updateMessageDeliveryInSlot(List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
         for (AndesRemovableMetadata message : messagesToRemove) {
-            MsgData trackingData = getTrackingData(message.getMessageID());
+            MessageData trackingData = getTrackingData(message.getMessageID());
             decrementMessageCountInSlot(trackingData.slot);
         }
     }
@@ -548,7 +379,7 @@ public class OnflightMessageTracker {
      * @return eligibility to delete tracking object
      */
     private boolean checkIfReadyToRemoveFromTracking(long messageID) {
-        MsgData messageTrackingData = getTrackingData(messageID);
+        MessageData messageTrackingData = getTrackingData(messageID);
         return MessageStatus.isOKToRemove(messageTrackingData.messageStatus);
     }
 
@@ -563,39 +394,13 @@ public class OnflightMessageTracker {
             log.debug("Orphan slot situation and clear tracking of messages for slot = " + slot);
         }
         String slotID = slot.getId();
-        ConcurrentHashMap<Long, MsgData> messagesOfSlot = messageBufferingTracker.remove(slotID);
+        ConcurrentHashMap<Long, MessageData> messagesOfSlot = messageBufferingTracker.remove(slotID);
         if (messagesOfSlot != null) {
             for (Long messageId : messagesOfSlot.keySet()) {
                 msgId2MsgData.remove(messageId);
             }
         }
         subscriptionSlotTracker.remove(slot);
-    }
-
-    /**
-     * Release tracking of all messages sent from a channel
-     *
-     * @param channelID id of the channel
-     */
-    public void releaseAllMessagesOfChannelFromTracking(UUID channelID) {
-        if (log.isDebugEnabled()) {
-            log.debug("Releasing tracking of messages sent by channel id = " + channelID);
-        }
-        messageSendingTracker.remove(channelID);
-        unAckedMsgCountMap.remove(channelID);
-    }
-
-    /**
-     * Release tracking that this message is delivered.
-     *
-     * @param channelID id of the channel
-     * @param messageID id of the message to remove
-     */
-    public void releaseMessageDeliveryFromTracking(UUID channelID, long messageID) {
-        if (log.isDebugEnabled()) {
-            log.debug("Releasing tracking of message sent id= " + messageID);
-        }
-        messageSendingTracker.get(channelID).remove(messageID);
     }
 
     /**
@@ -621,7 +426,7 @@ public class OnflightMessageTracker {
      * @param messageID Id of the message to set expired
      */
     public void setMessageStatus(MessageStatus messageStatus, long messageID) {
-        MsgData trackingData = getTrackingData(messageID);
+        MessageData trackingData = getTrackingData(messageID);
         if (null != trackingData) {
             trackingData.addMessageStatus(messageStatus);
         }
@@ -653,7 +458,7 @@ public class OnflightMessageTracker {
      * @param messageID id of the message
      * @return tracking object for message
      */
-    private MsgData getTrackingData(long messageID) {
+    public MessageData getTrackingData(long messageID) {
         return msgId2MsgData.get(messageID);
     }
 
@@ -663,124 +468,6 @@ public class OnflightMessageTracker {
      */
     public ConcurrentMap<String, Set<Slot>> getSubscriptionSlotTracker() {
         return subscriptionSlotTracker;
-    }
-
-    /**
-     * Stamp a message as sent. This method also evaluate if the
-     * message is being redelivered
-     *
-     * @param channelID id of the connection message is delivering to subscriber
-     * @param messageID id of the message
-     * @return if message is redelivered
-     */
-    public boolean addMessageToSendingTracker(UUID channelID, long messageID) {
-
-        if (retainedMessageList.contains(messageID)) {
-            return false;
-        }
-
-        if (log.isDebugEnabled()) {
-            log.debug("Adding message to sending tracker channel id = " + channelID + " message id = " +
-                    messageID);
-        }
-        ConcurrentHashMap<Long, MsgData> messagesSentByChannel = messageSendingTracker.get(channelID);
-
-        // NOTE messagesSentByChannel shouldn't be null. At channel creation the map is added.
-        // See addNewChannelForTracking(...)
-        MsgData trackingData = messagesSentByChannel.get(messageID);
-        if (trackingData == null) {
-            trackingData = msgId2MsgData.get(messageID);
-            if (trackingData != null) {
-                messagesSentByChannel.put(messageID, trackingData);
-            }
-        }
-        // increase delivery count
-        int numOfCurrentDeliveries = 0;
-        if (trackingData != null) {
-            numOfCurrentDeliveries = trackingData.incrementDeliveryCount(channelID);
-        }
-
-        if (log.isDebugEnabled()) {
-            log.debug("Number of current deliveries for message id= " + messageID + " to Channel " + channelID + " is " + numOfCurrentDeliveries);
-        }
-
-        //check if this is a redelivered message
-        return trackingData != null && trackingData.isRedelivered(channelID);
-    }
-
-    /**
-     * This initialise internal tracking maps for the given channelID. This needs to be called at channel creation.
-     *
-     * @param channelID channelID
-     */
-    public void addNewChannelForTracking(UUID channelID) {
-        //We would check if the method returns and object,
-        // if it does it means there was a prviouse key linked with the object
-        if (null != messageSendingTracker.putIfAbsent(channelID, new ConcurrentHashMap<Long, MsgData>())) {
-            log.warn("Trying to initialise tracking for channel " + channelID + " which is already initialised.");
-        }
-        if (null != unAckedMsgCountMap.putIfAbsent(channelID, new AtomicInteger(0))) {
-            log.warn("Trying to initialise tracking for channel " + channelID + " which is already initialised.");
-        }
-    }
-
-    /**
-     * Number of un acknowledged messages for the given channel is returned
-     *
-     * @param channelID channelID
-     * @return number of un acknowledged messages
-     */
-    public int getNotAckedMessageCount(UUID channelID) {
-        if (unAckedMsgCountMap.get(channelID) != null) {
-            return unAckedMsgCountMap.get(channelID).get();
-        }else{
-          return -1;
-        }
-    }
-
-    /**
-     * Decrements non acknowledged message count for a channel
-     * <p/>
-     * When acknowledgement for a message is received for a given channel by calling this method should be called to
-     * decrement the non acknowledged message count. Also during a message reject this is called to indicate that there
-     * was some response for the message sent.
-     *
-     * @param chanelID channelID
-     */
-    public void decrementNonAckedMessageCount(UUID chanelID) {
-        // NOTE channelID should be in map. ChannelID added to map at channel creation
-        int msgCount = unAckedMsgCountMap.get(chanelID).decrementAndGet();
-        if (log.isDebugEnabled()) {
-            log.debug("Decrement non acked message count. Channel " + chanelID + " pending Count " + msgCount);
-        }
-    }
-
-    /**
-     * Increments the non acknowledged message count for the channel
-     * <p/>
-     * When a message is sent from Andes non acknowledged message count should be incremented
-     *
-     * @param channelID channelID
-     * @return whether the operation was successful
-     */
-    public boolean incrementNonAckedMessageCount(UUID channelID) {
-        // NOTE channelID should be in map. ChannelID added to map at channel creation
-        AtomicInteger unAckedMessageCount = unAckedMsgCountMap.get(channelID);
-
-        if (null != unAckedMessageCount) {
-            int intCount = unAckedMessageCount.incrementAndGet();
-            if (log.isDebugEnabled()) {
-                log.debug("Increment non acked message count. Channel " + channelID + " pending Count " + intCount);
-            }
-            //If the count has being incremented the operation is successful
-            return true;
-        } else {
-            if (log.isDebugEnabled()) {
-                log.debug("Channel ID " + channelID + " could not be found, possibly the connection is closed");
-            }
-            //We cannot continue if there's no indication of the message count being incremented
-            return false;
-        }
     }
 
     /**
@@ -795,10 +482,14 @@ public class OnflightMessageTracker {
         if (log.isDebugEnabled()) {
             log.debug("Removing all tracking of message id = " + messageID);
         }
-        MsgData trackingData = msgId2MsgData.remove(messageID);
+        MessageData trackingData = msgId2MsgData.remove(messageID);
         Slot slot = trackingData.slot;
-        for (UUID channelID : trackingData.channelToNumOfDeliveries.keySet()) {
-            releaseMessageDeliveryFromTracking(channelID, messageID);
+        for (UUID channelID : trackingData.getAllDeliveredChannels()) {
+            LocalSubscription subscription = AndesContext.getInstance().getSubscriptionStore()
+                    .getLocalSubscriptionForChannelId(channelID);
+            if(null != subscription) {
+                subscription.msgRejectReceived(messageID);
+            }
         }
 
         releaseMessageBufferingFromTracking(slot, messageID);
@@ -815,7 +506,7 @@ public class OnflightMessageTracker {
      * @return num of scheduled times after increment
      */
     public int incrementNumberOfScheduledDeliveries(long messageID) {
-        MsgData trackingData = getTrackingData(messageID);
+        MessageData trackingData = getTrackingData(messageID);
         int numOfSchedules = 0;
         if (trackingData != null) {
             trackingData.addMessageStatus(MessageStatus.SCHEDULED_TO_SEND);
@@ -835,7 +526,7 @@ public class OnflightMessageTracker {
      * @return num of scheduled times after decrement
      */
     public int decrementNumberOfScheduledDeliveries(long messageID) {
-        MsgData trackingData = getTrackingData(messageID);
+        MessageData trackingData = getTrackingData(messageID);
         int count = 0;
         if (trackingData != null) {
             count = trackingData.numberOfScheduledDeliveries.decrementAndGet();
@@ -892,7 +583,7 @@ public class OnflightMessageTracker {
             writer.append('\n');
 
             for (Long messageID : msgId2MsgData.keySet()) {
-                MsgData trackingData = msgId2MsgData.get(messageID);
+                MessageData trackingData = msgId2MsgData.get(messageID);
                 writer.append(Long.toString(trackingData.msgID));
                 writer.append(',');
                 writer.append("null");
@@ -910,10 +601,9 @@ public class OnflightMessageTracker {
                 writer.append(Integer.toString(trackingData.numberOfScheduledDeliveries.get()));
                 writer.append(',');
                 String deliveries = "";
-                for (UUID channelID : trackingData.channelToNumOfDeliveries.keySet()) {
+                for (UUID channelID : trackingData.getAllDeliveredChannels()) {
                     deliveries = deliveries + channelID + " >> " + trackingData
-                            .channelToNumOfDeliveries
-                            .get(channelID) + " : ";
+                            .getNumOfDeliveires4Channel(channelID) + " : ";
                 }
                 writer.append(deliveries);
                 writer.append('\n');
@@ -928,72 +618,6 @@ public class OnflightMessageTracker {
         } catch (IOException e) {
             log.error("Error while dumping message status to file", e);
             throw new AndesException("Error while dumping message status to file", e);
-        }
-    }
-
-    /**
-     * Concurrent List like implementation.
-     * This implementation will create thread safe LinkedList.
-     * Two threads won't be able to execute same operation simultaneously
-     * with this LinkedList.
-     *
-     * @param <T> Type of list items
-     *
-     */
-    private static class ConcurrentTrackingList<T> {
-        private final LinkedList<T> dataList;
-        private final ReentrantReadWriteLock lock;
-
-        private ConcurrentTrackingList() {
-            dataList = new LinkedList<T>();
-            lock = new ReentrantReadWriteLock();
-        }
-
-        /**
-         * Returns true if this list contains the specified element.
-         *
-         * @param item
-         *         Ite, whose presence in this list is to be tested
-         * @return true if this list contains the specified element
-         */
-        private boolean contains(T item) {
-            try {
-                lock.readLock().lock();
-                return dataList.contains(item);
-            } finally {
-                lock.readLock().unlock();
-            }
-        }
-
-        /**
-         * Appends the specified element to the end of this list.
-         *
-         * @param item
-         *         Item to be appended to this list
-         */
-        private void add(T item) {
-            try {
-                lock.writeLock().lock();
-                dataList.add(item);
-            } finally {
-                lock.writeLock().unlock();
-            }
-        }
-
-        /**
-         * Removes the first occurrence of the specified element from this list, if it is present.
-         * If this list does not contain the element, it is unchanged.
-         *
-         * @param item
-         *         Item to be removed from this list, if present
-         */
-        private void remove(T item) {
-            try {
-                lock.writeLock().lock();
-                dataList.remove(item);
-            } finally {
-                lock.writeLock().unlock();
-            }
         }
     }
 

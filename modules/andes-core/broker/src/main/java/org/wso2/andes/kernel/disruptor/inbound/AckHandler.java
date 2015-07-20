@@ -21,16 +21,13 @@ package org.wso2.andes.kernel.disruptor.inbound;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesAckData;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesRemovableMetadata;
-import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.OnflightMessageTracker;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.disruptor.BatchEventHandler;
 import org.wso2.andes.store.AndesTranactionRollbackException;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -110,7 +107,9 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
                         ack.getMsgStorageDestination()));
             }
 
-            OnflightMessageTracker.getInstance().decrementNonAckedMessageCount(ack.getChannelID());
+            LocalSubscription subscription = AndesContext.getInstance().getSubscriptionStore()
+                    .getLocalSubscriptionForChannelId(ack.getChannelID());
+            subscription.ackReceived(ack.getMessageID());
             event.clear();
         }
 
