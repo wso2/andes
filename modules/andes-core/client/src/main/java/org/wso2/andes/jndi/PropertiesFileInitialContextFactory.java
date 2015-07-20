@@ -186,6 +186,7 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
 
     /**
      * Resolve carbon secure vault encrypted properties.
+     * @param environment property values which need to construct the InitialContext
      */
     private static void resolveEncryptedProperties(Hashtable environment) {
 
