@@ -26,6 +26,13 @@ import java.util.List;
 public interface ClusterAgent {
 
     /**
+     * Gets address of all the members in the cluster.
+     *
+     * @return A list of address of the nodes in a cluster
+     */
+     List<String> getAllClusterNodeAddresses();
+
+    /**
      * Return all ids of the connected nodes.
      *
      * @return list of member ids
@@ -72,4 +79,6 @@ public interface ClusterAgent {
      * Stop listening to cluster events
      */
     void stop();
+
+
 }

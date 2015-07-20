@@ -18,7 +18,6 @@
 package org.wso2.andes.server.cluster;
 
 
-import com.hazelcast.core.Member;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -30,10 +29,8 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
-import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
@@ -263,7 +260,7 @@ public class ClusterManager {
             String ipAddress = coordinatorDetails.getHostname();
             String port = coordinatorDetails.getPort();
             if (null != ipAddress && null != port) {
-                return ipAddress + ":" + port;
+                return ipAddress + "," + port;
             }
         }
 
@@ -276,14 +273,12 @@ public class ClusterManager {
      * @return A list of address of the nodes in a cluster
      */
     public List<String> getAllClusterNodeAddresses() {
-        List<String> addresses = new ArrayList<>();
+
         if (AndesContext.getInstance().isClusteringEnabled()) {
-            for (Member member : HazelcastAgent.getInstance().getAllClusterMembers()) {
-                InetSocketAddress socket = member.getSocketAddress();
-                addresses.add(socket.getAddress().getHostAddress() + ":" + socket.getPort());
-            }
+            return clusterAgent.getAllClusterNodeAddresses();
         }
-        return addresses;
+
+        return new ArrayList<>();
     }
 
     /**
