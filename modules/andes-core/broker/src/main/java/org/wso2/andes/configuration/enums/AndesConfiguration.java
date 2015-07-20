@@ -392,10 +392,10 @@ public enum AndesConfiguration implements ConfigurationProperty {
     MAX_TRANSACTION_BATCH_SIZE ("transaction/maxBatchSizeInBytes", "10000000", Integer.class),
 
     /**
-     * The number of messages to be handled in a single operation related to browser subscriptions.
+     * The number of messages to be fetched per page when browsing message in management console.
      */
-    MANAGEMENT_CONSOLE_MESSAGE_BATCH_SIZE_FOR_BROWSER_SUBSCRIPTIONS("managementConsole" +
-            "/messageBatchSizeForBrowserSubscriptions", "100", Integer.class),
+    MANAGEMENT_CONSOLE_MESSAGE_BROWSE_PAGE_SIZE("managementConsole" +
+            "/messageBrowsePageSize", "100", Integer.class),
 
     /**
      * This property defines the maximum message content length that can be displayed at the management console when
