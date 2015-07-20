@@ -32,6 +32,8 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.url.BindingURL;
 import org.wso2.andes.url.URLSyntaxException;
 import org.wso2.andes.util.Strings;
+import org.wso2.securevault.SecretResolver;
+import org.wso2.securevault.SecretResolverFactory;
 
 import javax.jms.ConnectionFactory;
 import javax.jms.Destination;
@@ -164,6 +166,8 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
 
     protected void createConnectionFactories(Map data, Hashtable environment) throws ConfigurationException
     {
+        resolveEncryptedProperties(environment);
+
         for (Iterator iter = environment.entrySet().iterator(); iter.hasNext();)
         {
             Map.Entry entry = (Map.Entry) iter.next();
@@ -178,6 +182,41 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
                 }
             }
         }
+    }
+
+    /**
+     * Resolve carbon secure vault encrypted properties.
+     */
+    private static void resolveEncryptedProperties(Hashtable environment) {
+
+        if (environment != null) {
+
+            Map<String, String> envVariables = (Hashtable<String, String>) environment;
+            Properties properties = convertToProperties(envVariables);
+            SecretResolver secretResolver = SecretResolverFactory.create(properties);
+
+            for (Object key : envVariables.keySet()) {
+
+                if (secretResolver != null && secretResolver.isInitialized()) {
+                    if (secretResolver.isTokenProtected(key.toString())) {
+                        environment.put(key.toString(), secretResolver.resolve(key.toString()));
+                    }
+                }
+
+            }
+
+        }
+    }
+
+    private static Properties convertToProperties(Map map) {
+
+        Properties prop = new Properties();
+
+        for (Object key : map.keySet()) {
+            prop.setProperty(key.toString(), (String) map.get(key));
+        }
+
+        return prop;
     }
 
     protected void createDestinations(Map data, Hashtable environment) throws ConfigurationException
