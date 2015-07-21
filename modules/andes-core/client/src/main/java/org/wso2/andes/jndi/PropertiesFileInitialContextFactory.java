@@ -192,11 +192,10 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
 
         if (environment != null) {
 
-            Map<String, String> envVariables = (Hashtable<String, String>) environment;
-            Properties properties = convertToProperties(envVariables);
+            Properties properties = convertToProperties(environment);
             SecretResolver secretResolver = SecretResolverFactory.create(properties);
 
-            for (Object key : envVariables.keySet()) {
+            for (Object key : environment.keySet()) {
 
                 if (secretResolver != null && secretResolver.isInitialized()) {
                     if (secretResolver.isTokenProtected(key.toString())) {
@@ -213,12 +212,12 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
      * Convert Map to Properties object.
      * @param map key value pair details
      */
-    private static Properties convertToProperties(Map map) {
+    private static Properties convertToProperties(Map<String, String> map) {
 
         Properties prop = new Properties();
 
-        for (Object key : map.keySet()) {
-            prop.setProperty(key.toString(), (String) map.get(key));
+        for (Map.Entry entry : map.entrySet()) {
+            prop.setProperty(entry.getKey().toString(), entry.getValue().toString());
         }
 
         return prop;
