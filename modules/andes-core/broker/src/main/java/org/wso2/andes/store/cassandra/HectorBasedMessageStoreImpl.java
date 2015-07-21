@@ -479,25 +479,6 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesMessageMetadata> getMetadataListForStorageQueueFromDLC(String storageQueueName,
-                                                                            String dlcQueueName, long firstMsgId,
-                                                                            long lastMsgId) throws AndesException {
-        throw new NotImplementedException();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<AndesMessageMetadata> getMetadataListFromDLC(String dlcQueueName, long firstMsgId, long lastMsgId)
-            throws AndesException {
-        throw new NotImplementedException();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String queueName,
                                                                        long firstMsgId, int count)
             throws AndesException {

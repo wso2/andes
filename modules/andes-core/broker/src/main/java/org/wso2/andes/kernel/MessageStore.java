@@ -172,31 +172,6 @@ public interface MessageStore extends HealthAwareStore{
                                                       long lastMsgID) throws AndesException;
 
     /**
-     * Method to retrieve a list of messages in the dead letter channel within a given id range for a specific queue
-     *
-     * @param storageQueueName name of the queue messages are stored in
-     * @param dlcQueueName     name of the dlc queue for the message to be retrieved from
-     * @param firstMsgId       first message id of the range
-     * @param lastMsgId        last message id of the range
-     * @return list of metadata
-     * @throws AndesException
-     */
-    public List<AndesMessageMetadata> getMetadataListForStorageQueueFromDLC(String storageQueueName, String
-            dlcQueueName, long firstMsgId, long lastMsgId) throws AndesException;
-
-    /**
-     * Method to retrieve a list of messages in the dead letter channel within a given id range
-     *
-     * @param dlcQueueName name of the dlc queue for the message to be retrieved from
-     * @param firstMsgId   first message id of the range
-     * @param lastMsgId    last message id of the range
-     * @return list of metadata
-     * @throws AndesException
-     */
-    public List<AndesMessageMetadata> getMetadataListFromDLC(String dlcQueueName, long firstMsgId, long lastMsgId)
-            throws AndesException;
-
-    /**
      * read  a metadata list from store specifying a starting message id and a count
      *
      * @param storageQueueName name of the queue

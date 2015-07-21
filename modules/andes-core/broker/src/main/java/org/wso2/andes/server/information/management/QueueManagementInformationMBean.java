@@ -329,11 +329,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                         interruptedByFlowControl = true;
                         break;
                     }
-                    List<AndesMessageMetadata> messageMetadataListForOne = Andes.getInstance()
-                            .getMetaDataListInDLCForQueue(destinationQueueName,
-                                    DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(destinationQueueName),
-                                    messageId, messageId);
-                    AndesMessageMetadata metadata = messageMetadataListForOne.get(0);
+                    AndesMessageMetadata metadata = Andes.getInstance().getMessageMetaData(messageId);
                     String destination = metadata.getDestination();
 
                     // Create a removable metadata to remove the current message
@@ -401,11 +397,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                         break;
                     }
 
-                    List<AndesMessageMetadata> messageMetadataListForOne = Andes.getInstance()
-                            .getMetaDataListInDLCForQueue(destinationQueueName,
-                                    DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(destinationQueueName),
-                                    messageId, messageId);
-                    AndesMessageMetadata metadata = messageMetadataListForOne.get(0);
+                    AndesMessageMetadata metadata = Andes.getInstance().getMessageMetaData(messageId);
 
                     // Create a removable metadata to remove the current message
                     removableMetadataList.add(new AndesRemovableMetadata(messageId, destinationQueueName,

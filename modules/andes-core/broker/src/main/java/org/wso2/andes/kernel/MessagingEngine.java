@@ -522,35 +522,6 @@ public class MessagingEngine {
     }
 
     /**
-     * Get message metadata in dlc for a queue between two message id values
-     *
-     * @param queueName  storage queue name
-     * @param firstMsgId id of the starting id
-     * @param lastMsgID  id of the last id
-     * @return List of message metadata
-     * @throws AndesException
-     */
-    public List<AndesMessageMetadata> getMetaDataListInDLCForQueue(final String queueName, final String dlcQueueName,
-                                                                   long firstMsgId, long lastMsgID) throws
-            AndesException {
-        return messageStore.getMetadataListForStorageQueueFromDLC(queueName, dlcQueueName, firstMsgId, lastMsgID);
-    }
-
-    /**
-     * Get message metadata in DLC between two message id values
-     *
-     * @param dlcQueueName dead letter channel queue name
-     * @param firstMsgId   id of the starting id
-     * @param lastMsgID    id of the last id
-     * @return List of message metadata
-     * @throws AndesException
-     */
-    public List<AndesMessageMetadata> getMetaDataListFromDLC(final String dlcQueueName, long firstMsgId, long
-            lastMsgID) throws AndesException {
-        return messageStore.getMetadataListFromDLC(dlcQueueName, firstMsgId, lastMsgID);
-    }
-
-    /**
      * Get message metadata from queue starting from given id up a given
      * message count
      *

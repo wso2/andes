@@ -263,36 +263,6 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesMessageMetadata> getMetadataListForStorageQueueFromDLC(String storageQueueName,
-                                                                            String dlcQueueName, long firstMsgId,
-                                                                            long lastMsgId) throws AndesException {
-        try {
-            return wrappedInstance.getMetadataListForStorageQueueFromDLC(storageQueueName, dlcQueueName, firstMsgId,
-                    lastMsgId);
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<AndesMessageMetadata> getMetadataListFromDLC(String dlcQueueName, long firstMsgId, long lastMsgId)
-            throws AndesException {
-        try {
-            return wrappedInstance.getMetadataListFromDLC(dlcQueueName, firstMsgId, lastMsgId);
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(String storageQueueName, long firstMsgId,
                                                                        int count) throws AndesException {
         try {
