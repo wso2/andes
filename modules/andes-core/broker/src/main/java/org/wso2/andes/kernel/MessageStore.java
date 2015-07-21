@@ -246,14 +246,6 @@ public interface MessageStore extends HealthAwareStore{
             throws AndesException;
 
     /**
-     * delete message metadata of a list of messages
-     *
-     * @param messagesToRemove ids of the messages to remove
-     * @throws AndesException
-     */
-    public void deleteMessageMetadata(List<Long> messagesToRemove) throws AndesException;
-
-    /**
      * Method to delete a set of messages from the database
      * If deleteAllMetaData is set to true, the storageQueue in the metadata table could be cleared at once
      * and the messages destined to that queue, given by the messagesToRemove list could be deleted from the content

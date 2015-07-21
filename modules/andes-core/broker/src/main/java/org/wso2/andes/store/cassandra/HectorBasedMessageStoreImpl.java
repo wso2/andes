@@ -627,14 +627,6 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessageMetadata(List<Long> messagesToRemove) throws AndesException {
-        throw new NotImplementedException();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void deleteMessages(final String storageQueueName,
                                List<Long> messagesToRemove, boolean deleteAllMetaData)
             throws AndesException {
