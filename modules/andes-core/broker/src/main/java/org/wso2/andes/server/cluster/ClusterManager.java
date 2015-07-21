@@ -100,7 +100,7 @@ public class ClusterManager {
         log.info("Handling cluster gossip: Node " + deletedNodeId + "  left the Cluster");
 
         if(clusterAgent.isCoordinator()) {
-            SlotManagerClusterMode.getInstance().recoverSlots(deletedNodeId);
+            SlotManagerClusterMode.getInstance().deletePublisherNode(deletedNodeId);
 
             //clear persisted states of disappeared node
             clearAllPersistedStatesOfDisappearedNode(deletedNodeId);

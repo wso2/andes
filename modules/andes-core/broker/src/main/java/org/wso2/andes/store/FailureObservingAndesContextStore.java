@@ -18,11 +18,6 @@
 
 package org.wso2.andes.store;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.concurrent.ScheduledFuture;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -32,6 +27,12 @@ import org.wso2.andes.kernel.AndesQueue;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.ScheduledFuture;
 
 /**
  * Implementation of {@link AndesContextStore} which observes failures such is
@@ -623,6 +624,19 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     public void setNodeToLastPublishedId(String nodeId, long messageId) throws AndesException {
         try {
             wrappedInstance.setNodeToLastPublishedId(nodeId, messageId);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void removePublisherNodeId(String nodeId) throws AndesException {
+        try {
+            wrappedInstance.removePublisherNodeId(nodeId);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

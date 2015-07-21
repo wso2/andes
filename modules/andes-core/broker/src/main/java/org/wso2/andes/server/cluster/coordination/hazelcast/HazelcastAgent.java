@@ -587,10 +587,16 @@ public class HazelcastAgent implements SlotAgent {
      * {@inheritDoc}
      */
     @Override
+    public void removePublisherNode(String nodeId) throws AndesException {
+        lastPublishedIDMap.delete(nodeId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public TreeSet<String> getMessagePublishedNodes() throws AndesException {
-        TreeSet<String> messagePublishedNodes = new TreeSet<String>();
-        messagePublishedNodes.addAll(this.lastPublishedIDMap.keySet());
-        return messagePublishedNodes;
+        return new TreeSet<>(this.lastPublishedIDMap.keySet());
     }
 
     /**

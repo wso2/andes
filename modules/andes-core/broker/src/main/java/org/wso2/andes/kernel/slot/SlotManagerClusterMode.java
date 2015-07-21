@@ -556,7 +556,7 @@ public class SlotManagerClusterMode {
      * given time period that queue slot manager will create a slot and capture those messages it self.
      * @param deletedNodeId
      */
-    public void recoverSlots(final String deletedNodeId){
+    public void deletePublisherNode(final String deletedNodeId){
 
         int threadPoolCount = 1; // Single thread is suffice for this task
         ThreadFactory namedThreadFactory =
@@ -582,16 +582,25 @@ public class SlotManagerClusterMode {
                     public void run() {
 
                         long lastId = SlotMessageCounter.getInstance().getCurrentNodeSafeZoneId();
+                        //TODO: Delete if the queue has not progressed
                         for (String queueName : queuesToRecover) {
                             // Trigger a submit slot for each queue so that new slots are created
                             // for queues that have not published any messages after a node crash
                             try {
                                 updateMessageID(queueName, deletedNodeId, lastId - 1, lastId);
                             } catch (AndesException ex) {
-                                log.error("Failed to update message id");
+                                log.error("Failed to update message id", ex);
                             }
                         }
                         slotRecoveryScheduled.set(false);
+                        try {
+                            if (log.isDebugEnabled()) {
+                                log.debug("Removing " + deletedNodeId + " from safe zone calculation.");
+                            }
+                            slotAgent.removePublisherNode(deletedNodeId);
+                        } catch (AndesException e) {
+                            log.error("Failed to remove publisher node ID from safe zone calculation", e);
+                        }
                     }
                 },
                 SlotMessageCounter.getInstance().SLOT_SUBMIT_TIMEOUT,

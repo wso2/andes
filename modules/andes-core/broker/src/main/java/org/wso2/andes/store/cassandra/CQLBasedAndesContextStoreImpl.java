@@ -18,17 +18,6 @@
 
 package org.wso2.andes.store.cassandra;
 
-import static com.datastax.driver.core.querybuilder.QueryBuilder.decr;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.incr;
-import static com.datastax.driver.core.querybuilder.QueryBuilder.set;
-
-import java.util.*;
-
-import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.*;
-import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.kernel.slot.SlotState;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
@@ -39,8 +28,27 @@ import com.datastax.driver.core.exceptions.QueryExecutionException;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 import org.apache.commons.lang.NotImplementedException;
+import org.wso2.andes.configuration.util.ConfigurationProperties;
+import org.wso2.andes.kernel.AndesBinding;
+import org.wso2.andes.kernel.AndesContextStore;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesExchange;
+import org.wso2.andes.kernel.AndesQueue;
+import org.wso2.andes.kernel.DurableStoreConnection;
+import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.kernel.slot.SlotState;
 
-import static com.datastax.driver.core.querybuilder.QueryBuilder.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+
+import static com.datastax.driver.core.querybuilder.QueryBuilder.decr;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.incr;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.set;
 
 /**
  * CQL 3 based AndesContextStore implementation. This is intended to support Cassandra 2.xx series upwards.
@@ -611,6 +619,14 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void setNodeToLastPublishedId(String nodeId, long messageId)
             throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void removePublisherNodeId(String nodeId) throws AndesException {
         throw new NotImplementedException();
     }
 

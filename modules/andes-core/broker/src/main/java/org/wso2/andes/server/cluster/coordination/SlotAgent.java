@@ -24,7 +24,6 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 
-import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -109,6 +108,15 @@ public interface SlotAgent {
 	 * @param lastPublishedId last published id of node
 	 */
 	public void setNodeToLastPublishedId(String nodeId, long lastPublishedId) throws AndesException;
+
+	/**
+	 * Remove entries for a publishing node when it leaves the cluster
+	 *
+	 * @param nodeId
+	 *         id of the leaving node
+	 * @throws AndesException
+	 */
+	public void removePublisherNode(String nodeId) throws AndesException;
 
 	/**
 	 * Get all message published nodes from NodeToLastPublishedId table

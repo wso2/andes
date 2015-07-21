@@ -126,6 +126,14 @@ public class RDBMSAgent implements SlotAgent {
 		andesContextStore.setNodeToLastPublishedId(nodeId, lastPublishedId);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public void removePublisherNode(String nodeId) throws AndesException {
+		andesContextStore.removePublisherNodeId(nodeId);
+	}
+
 
 	/**
 	 * {@inheritDoc}
