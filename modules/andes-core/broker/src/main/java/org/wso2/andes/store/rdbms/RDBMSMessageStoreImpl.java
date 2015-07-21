@@ -1167,14 +1167,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
     /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void deleteMessageMetadata(List<Long> messagesToRemove) throws AndesException {
-
-    }
-
-    /**
      * Helper method to add message metadata, to be deleted, to the batch
      * @param preparedStatement {@link java.sql.PreparedStatement} related to the batch
      * @param queueId queue ID

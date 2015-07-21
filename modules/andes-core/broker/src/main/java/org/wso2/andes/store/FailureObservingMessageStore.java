@@ -351,19 +351,6 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessageMetadata(List<Long> messagesToRemove) throws AndesException {
-        try {
-            wrappedInstance.deleteMessageMetadata(messagesToRemove);
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void deleteMessages(final String storageQueueName,
                                List<Long> messagesToRemove, boolean deleteAllMetaData)
             throws AndesException {
