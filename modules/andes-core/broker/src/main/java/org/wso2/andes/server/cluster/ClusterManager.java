@@ -99,10 +99,8 @@ public class ClusterManager {
     public void memberRemoved(String deletedNodeId) throws AndesException {
         log.info("Handling cluster gossip: Node " + deletedNodeId + "  left the Cluster");
 
-        SlotManagerClusterMode.getInstance().setRemovedNode(deletedNodeId);
-
         if(clusterAgent.isCoordinator()) {
-            SlotManagerClusterMode.getInstance().recoverSlots();
+            SlotManagerClusterMode.getInstance().recoverSlots(deletedNodeId);
 
             //clear persisted states of disappeared node
             clearAllPersistedStatesOfDisappearedNode(deletedNodeId);
