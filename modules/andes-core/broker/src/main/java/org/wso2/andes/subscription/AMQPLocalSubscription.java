@@ -23,6 +23,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.server.AMQChannel;
@@ -76,6 +78,8 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
      */
     private AtomicInteger unAckedMsgCount = new AtomicInteger(0);
 
+    private Integer maxNumberOfUnAckedMessages = 100000;
+
     /**
      * Map to track messages being sent <message id, MsgData reference>
      */
@@ -90,6 +94,9 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
 
         super(subscriptionID, destination, isBoundToTopic, isExclusive, isDurable, subscribedNode, subscribeTime, targetQueue, targetQueueOwner,
                 targetQueueBoundExchange, targetQueueBoundExchangeType, isTargetQueueBoundExchangeAutoDeletable, hasExternalSubscriptions);
+
+        this.maxNumberOfUnAckedMessages = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
 
         setSubscriptionType(SubscriptionType.AMQP);
 
@@ -138,7 +145,20 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
 
     @Override
     public boolean hasRoomToAcceptMessages() {
-        return true;
+
+        int notAcknowledgedMsgCount = unAckedMsgCount.get();
+        if (notAcknowledgedMsgCount < maxNumberOfUnAckedMessages) {
+            return true;
+        } else {
+
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "Not selected. Too much pending acks, subscription = " + this + " pending count =" +
+                                (notAcknowledgedMsgCount));
+            }
+
+            return false;
+        }
     }
 
     @Override
