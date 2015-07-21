@@ -463,7 +463,7 @@ public class AndesConfigurationManager {
             }
         }
 
-        if (StringUtils.isBlank(keyInFile)) {
+        if (!StringUtils.isBlank(keyInFile)) {
 
             // The alias is inferred from the xpath of the property.
             // If the xpath = "transports/amqp/sslConnection/keyStore/password",
