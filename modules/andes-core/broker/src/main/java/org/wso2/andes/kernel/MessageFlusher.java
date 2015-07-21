@@ -405,30 +405,27 @@ public class MessageFlusher {
                 for (int j = 0; j < subscriptions4Queue.size(); j++) {
                     LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
                             subscriptions4Queue);
-                    if (localSubscription.hasRoomToAcceptMessages()) {
+                    if (!message.isTopic()) { //for queue messages and durable topic messages (as they are now queue messages)
+                        if (localSubscription.hasRoomToAcceptMessages()) {
+                            if (log.isDebugEnabled()) {
+                                log.debug("Scheduled to send id = " + message.getMessageID());
+                            }
+
+                            // In a re-queue for delivery scenario we need the correct destination. Hence setting
+                            // it back correctly in AndesMetadata for durable subscription for topics
+                            if (localSubscription.isBoundToTopic()) {
+                                message.setDestination(localSubscription.getSubscribedDestination());
+                            }
+                            deliverMessageAsynchronously(localSubscription, message);
+                            numOfCurrentMsgDeliverySchedules++;
+                            break;
+                        }
+                    } else { //for normal (non-durable) topic messages. We do not consider room
                         if (log.isDebugEnabled()) {
                             log.debug("Scheduled to send id = " + message.getMessageID());
                         }
-
-                        // In a re-queue for delivery scenario we need the correct destination. Hence setting
-                        // it back correctly in AndesMetadata for durable subscription for topics
-                        if (!message.isTopic() && localSubscription.isBoundToTopic()) {
-                            message.setDestination(localSubscription.getSubscribedDestination());
-                        }
-
                         deliverMessageAsynchronously(localSubscription, message);
                         numOfCurrentMsgDeliverySchedules++;
-
-                        //for queue messages and durable topic messages (as they are now queue messages)
-                        // we only send to one selected subscriber if it is a queue message
-                        if (!message.isTopic()) {
-                            break;
-                        }
-                    } else {
-                        if(message.isTopic()) {
-                            log.warn("Subscription " + localSubscription.encodeAsStr() + "will loose message" +
-                                    message.getMessageID() + " as it is too slow to ack");
-                        }
                     }
                 }
 
@@ -444,23 +441,24 @@ public class MessageFlusher {
                     } else {
                         if (log.isDebugEnabled()) {
                             log.debug("All subscriptions for destination " + destination + " have max unacked " +
-                                            "messages " + message.getDestination());
+                                    "messages " + message.getDestination());
                         }
                         //if we continue message order will break
                         break;
                     }
-                } else { //normal topic message. We fire and forget
-                    iterator.remove();
-                    if(numOfCurrentMsgDeliverySchedules == 0) {
-                        AndesRemovableMetadata removableMetadata = new AndesRemovableMetadata(message.getMessageID(),
-                                message.getDestination(), message.getStorageQueueName());
-                        droppedTopicMessagesListRemovable.add(removableMetadata);
-                        droppedTopicMessagesList.add(message);
+                } else { //normal topic message
+                    if (numOfCurrentMsgDeliverySchedules == subscriptions4Queue.size()) {
+                        iterator.remove();
+                        if (log.isDebugEnabled()) {
+                            log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
+                        }
+                        sentMessageCount++;
+                    } else {
+                        log.warn("Could not schedule message delivery to all" +
+                                " subscriptions. May cause message duplication. id= " + message.getMessageID());
+                        //if we continue message order will break
+                        break;
                     }
-                    if (log.isDebugEnabled()) {
-                        log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
-                    }
-                    sentMessageCount++;
                 }
             } catch (NoSuchElementException ex) {
                 // This exception can occur because the iterator of ConcurrentSkipListSet loads the at-the-time snapshot.
