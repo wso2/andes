@@ -44,10 +44,10 @@ import java.util.concurrent.ConcurrentSkipListSet;
  * messages to subscribers There will be one Flusher per Queue Per Node
  */
 public class MessageFlusher {
-    private static Log log = LogFactory.getLog(MessageFlusher.class);
-    private final DisruptorBasedFlusher flusherExecutor;
 
-    private Integer maxNumberOfUnAckedMessages = 100000;
+    private static Log log = LogFactory.getLog(MessageFlusher.class);
+
+    private final DisruptorBasedFlusher flusherExecutor;
 
     //per destination
     private Integer maxNumberOfReadButUndeliveredMessages = 5000;
@@ -66,9 +66,6 @@ public class MessageFlusher {
     private static MessageFlusher messageFlusher = new MessageFlusher();
 
     public MessageFlusher() {
-
-        this.maxNumberOfUnAckedMessages = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
 
         this.maxNumberOfReadButUndeliveredMessages = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_MAX_READ_BUT_UNDELIVERED_MESSAGES);
