@@ -86,6 +86,11 @@ public class AndesConfigurationManager {
     private static final QName SECURE_VAULT_QNAME = new QName("http://org.wso2.securevault/configuration","secretAlias");
 
     /**
+     * Package which contains custom classes that can be parsed by the AndesConfigurationManager.
+     */
+    private static final String CONFIG_MODULE_PACKAGE = "org.wso2.andes.configuration.modules";
+
+    /**
      * Common Error states
      */
     private static final String GENERIC_CONFIGURATION_PARSE_ERROR = "Error occurred when trying to parse " +
@@ -118,7 +123,12 @@ public class AndesConfigurationManager {
      */
     private static CompositeConfiguration compositeConfiguration;
 
-    private static ConcurrentHashMap<String,String> cipherValueMap;
+    /**
+     * This hashmap is used to maintain any properties that were encrypted with ciphertool. key would be the
+     * secretAlias, and the value would be the decrypted value. This will be cross-referenced when reading properties
+     * from broker.xml.
+     */
+    private static ConcurrentHashMap<String, String> cipherValueMap;
 
     /**
      * Decisive configurations coming from carbon.xml that affect the MB configs. e.g port Offset
@@ -168,7 +178,7 @@ public class AndesConfigurationManager {
             log.error(error, e);
             throw new AndesException(error, e);
         } catch (FileNotFoundException e) {
-            String error = "Error occurred when trying to read the configuration file : " + brokerConfigFilePath ;
+            String error = "Error occurred when trying to read the configuration file : " + brokerConfigFilePath;
             log.error(error, e);
             throw new AndesException(error, e);
         } catch (JaxenException e) {
@@ -290,7 +300,7 @@ public class AndesConfigurationManager {
      * @throws ConfigurationException
      */
     public static <T> T deriveValidConfigurationValue(String key, Class<T> dataType,
-                                                       String defaultValue) throws ConfigurationException {
+                                                      String defaultValue) throws ConfigurationException {
 
         if (log.isDebugEnabled()) {
             log.debug("Reading andes configuration value " + key);
@@ -304,7 +314,7 @@ public class AndesConfigurationManager {
             log.warn("Error when trying to read property : " + key + ". Switching to " + "default value : " +
                     defaultValue);
         } else {
-            validValue = overrideWithDecryptedValue(key,readValue);
+            validValue = overrideWithDecryptedValue(key, readValue);
         }
 
         if (log.isDebugEnabled()) {
@@ -325,8 +335,8 @@ public class AndesConfigurationManager {
                 // this will indirectly forces programmer to define enum values in upper case
                 return (T) Enum.valueOf((Class<? extends Enum>) dataType, validValue.toUpperCase(Locale.ENGLISH));
 
-            } else if (dataType.getPackage().getName().equals("org.wso2.andes.configuration.modules")) {
-                // Custom data structures defined within this package only need to root Xpath to extract the other
+            } else if (dataType.getPackage().getName().equals(CONFIG_MODULE_PACKAGE)) {
+                // Custom data structures defined within this package only need the root Xpath to extract the other
                 // required child properties to construct the config object.
                 return dataType.getConstructor(String.class).newInstance(key);
 
@@ -455,6 +465,9 @@ public class AndesConfigurationManager {
 
         if (StringUtils.isBlank(keyInFile)) {
 
+            // The alias is inferred from the xpath of the property.
+            // If the xpath = "transports/amqp/sslConnection/keyStore/password",
+            // secretAlias should be "transports.amqp.sslConnection.keyStore.password"
             String secretAlias = keyInFile.replaceAll("/",".");
 
             if (cipherValueMap.containsKey(secretAlias)) {
