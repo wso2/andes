@@ -84,6 +84,11 @@ public class HazelcastClusterAgent implements ClusterAgent {
      */
     private IMap<Object, Object> thriftServerDetailsMap;
 
+    /**
+     * Attribute name used for storing node id inside hazelcast member
+     */
+    private static final String NODE_ID_ATTRIBUTE = "nodeId";
+
     public HazelcastClusterAgent(HazelcastInstance hazelcastInstance) {
         this.hazelcastInstance = hazelcastInstance;
         this.isCoordinator = new AtomicBoolean(false);
@@ -141,7 +146,7 @@ public class HazelcastClusterAgent implements ClusterAgent {
      * @return id of the node
      */
     public String getIdOfNode(Member node) {
-        return node.getStringAttribute("nodeId");
+        return node.getStringAttribute(NODE_ID_ATTRIBUTE);
     }
 
     /**
@@ -169,7 +174,7 @@ public class HazelcastClusterAgent implements ClusterAgent {
     public void start(ClusterManager manager) {
         this.manager = manager;
 
-        hazelcastInstance.getCluster().getLocalMember().setStringAttribute("nodeId", getLocalNodeIdentifier());
+        hazelcastInstance.getCluster().getLocalMember().setStringAttribute(NODE_ID_ATTRIBUTE, getLocalNodeIdentifier());
 
         // Register listener for membership changes
         listenerRegistrationId = hazelcastInstance.getCluster()
