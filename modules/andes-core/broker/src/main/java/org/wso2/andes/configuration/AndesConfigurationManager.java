@@ -310,7 +310,9 @@ public class AndesConfigurationManager {
 
         String validValue = defaultValue;
 
-        if (StringUtils.isBlank(readValue)) {
+        // If the dataType is a Custom Config Module class, the readValue will be null (since the child properties
+        // are the ones with values.). Therefore the warning is printed only in other situations.
+        if (StringUtils.isBlank(readValue) && !CONFIG_MODULE_PACKAGE.equals(dataType.getPackage().getName())) {
             log.warn("Error when trying to read property : " + key + ". Switching to " + "default value : " +
                     defaultValue);
         } else {
@@ -335,7 +337,7 @@ public class AndesConfigurationManager {
                 // this will indirectly forces programmer to define enum values in upper case
                 return (T) Enum.valueOf((Class<? extends Enum>) dataType, validValue.toUpperCase(Locale.ENGLISH));
 
-            } else if (dataType.getPackage().getName().equals(CONFIG_MODULE_PACKAGE)) {
+            } else if (CONFIG_MODULE_PACKAGE.equals(dataType.getPackage().getName())) {
                 // Custom data structures defined within this package only need the root Xpath to extract the other
                 // required child properties to construct the config object.
                 return dataType.getConstructor(String.class).newInstance(key);
