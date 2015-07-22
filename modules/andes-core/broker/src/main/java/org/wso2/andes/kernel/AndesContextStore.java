@@ -18,12 +18,10 @@
 
 package org.wso2.andes.kernel;
 
-import org.apache.tools.ant.taskdefs.condition.And;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.store.HealthAwareStore;
-
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
+import org.wso2.andes.store.HealthAwareStore;
 
 import java.util.List;
 import java.util.Map;
@@ -332,6 +330,12 @@ public interface AndesContextStore extends HealthAwareStore{
      * @throws AndesException
      */
     public void setNodeToLastPublishedId(String nodeId, long messageId) throws AndesException;
+
+    /**
+     * Remove entries for a given publishing node ID
+     * @param nodeId id of the leaving node
+     */
+    void removePublisherNodeId(String nodeId) throws AndesException;
 
     /**
      * Get all message published nodes

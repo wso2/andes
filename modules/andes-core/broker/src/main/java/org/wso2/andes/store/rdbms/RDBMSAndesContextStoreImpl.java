@@ -20,22 +20,30 @@ package org.wso2.andes.store.rdbms;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesBinding;
+import org.wso2.andes.kernel.AndesContextStore;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesExchange;
+import org.wso2.andes.kernel.AndesQueue;
+import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
-
 import org.wso2.andes.metrics.MetricsConstants;
-import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 import org.wso2.carbon.metrics.manager.Timer.Context;
+
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.SQLNonTransientConnectionException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * ANSI SQL based Andes Context Store implementation. This is used to persist information of
@@ -1410,6 +1418,33 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         } finally {
             close(preparedStatement, RDBMSConstants.TASK_SET_NODE_TO_LAST_PUBLISHED_ID);
             close(connection, RDBMSConstants.TASK_SET_NODE_TO_LAST_PUBLISHED_ID);
+        }
+    }
+
+    @Override
+    public void removePublisherNodeId(String nodeId) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+
+            connection = getConnection();
+            connection.setAutoCommit(false);
+
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_PUBLISHER_ID);
+
+            preparedStatement.setString(1, nodeId);
+
+            preparedStatement.executeUpdate();
+            connection.commit();
+        } catch (SQLException e) {
+            String errMsg =
+                    RDBMSConstants.TASK_DELETE_PUBLISHER_ID+ " node ID: " + nodeId;
+            rollback(connection, RDBMSConstants.TASK_DELETE_MESSAGE_ID);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_DELETE_MESSAGE_ID);
+            close(connection, RDBMSConstants.TASK_DELETE_MESSAGE_ID);
         }
     }
 

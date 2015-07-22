@@ -65,11 +65,6 @@ public class SlotManagerClusterMode {
     //safe zone calculator
     private final SlotDeleteSafeZoneCalc slotDeleteSafeZoneCalc;
 
-    /**
-     * Most recent node that left the cluster.
-     */
-    private String removedNode;
-
     private static final Log log = LogFactory.getLog(SlotManagerClusterMode.class);
 
     //first message id of fresh slot
@@ -108,9 +103,6 @@ public class SlotManagerClusterMode {
             slotAgent = HazelcastAgent.getInstance();
         }
 
-        // Initialize the current node ID as the removed node. This is to avoid slot recovery task adding an empty
-        // node ID to the map used to calculate safe zone.
-        removedNode = AndesContext.getInstance().getClusterAgent().getLocalNodeIdentifier();
         firstMessageId = INITIAL_MESSAGE_ID;
         slotRecoveryScheduled = new AtomicBoolean(false);
 
@@ -292,7 +284,7 @@ public class SlotManagerClusterMode {
             firstMessageId = startMessageIdInTheSlot;
         }
 
-	    if (slotRecoveryScheduled.compareAndSet(true, true)) {
+	    if (slotRecoveryScheduled.get()) {
 		    queuesToRecover.remove(queueName);
 	    }
 
@@ -455,9 +447,7 @@ public class SlotManagerClusterMode {
     }
 
     protected Set<String> getMessagePublishedNodes() throws AndesException{
-        Set<String> publishedNodes;
-        publishedNodes = slotAgent.getMessagePublishedNodes();
-        return publishedNodes;
+        return slotAgent.getMessagePublishedNodes();
     }
 
     /**
@@ -564,8 +554,9 @@ public class SlotManagerClusterMode {
      * <p/>
      * Recover mechanism here will schedule tasks for each queue so that if no message get received within the
      * given time period that queue slot manager will create a slot and capture those messages it self.
+     * @param deletedNodeId
      */
-    public void recoverSlots(){
+    public void deletePublisherNode(final String deletedNodeId){
 
         int threadPoolCount = 1; // Single thread is suffice for this task
         ThreadFactory namedThreadFactory =
@@ -591,16 +582,25 @@ public class SlotManagerClusterMode {
                     public void run() {
 
                         long lastId = SlotMessageCounter.getInstance().getCurrentNodeSafeZoneId();
+                        //TODO: Delete if the queue has not progressed
                         for (String queueName : queuesToRecover) {
                             // Trigger a submit slot for each queue so that new slots are created
                             // for queues that have not published any messages after a node crash
                             try {
-                                updateMessageID(queueName, removedNode, lastId - 1, lastId);
+                                updateMessageID(queueName, deletedNodeId, lastId - 1, lastId);
                             } catch (AndesException ex) {
-                                log.error("Failed to update message id");
+                                log.error("Failed to update message id", ex);
                             }
                         }
                         slotRecoveryScheduled.set(false);
+                        try {
+                            if (log.isDebugEnabled()) {
+                                log.debug("Removing " + deletedNodeId + " from safe zone calculation.");
+                            }
+                            slotAgent.removePublisherNode(deletedNodeId);
+                        } catch (AndesException e) {
+                            log.error("Failed to remove publisher node ID from safe zone calculation", e);
+                        }
                     }
                 },
                 SlotMessageCounter.getInstance().SLOT_SUBMIT_TIMEOUT,
@@ -609,15 +609,6 @@ public class SlotManagerClusterMode {
 
         slotRecoveryScheduled.set(true);
 
-    }
-
-    /**
-     * Set the recently removed node of the cluster
-     *
-     * @param nodeId Node id of the removed node
-     */
-    public void setRemovedNode(String nodeId) {
-        removedNode = nodeId;
     }
 
     /**

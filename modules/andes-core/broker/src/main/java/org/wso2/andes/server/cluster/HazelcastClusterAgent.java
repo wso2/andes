@@ -252,7 +252,6 @@ public class HazelcastClusterAgent implements ClusterAgent {
         thriftServerDetailsMap.put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_IP, thriftCoordinatorServerIP);
         thriftServerDetailsMap.put(SlotCoordinationConstants.THRIFT_COORDINATOR_SERVER_PORT,
                                    Integer.toString(thriftCoordinatorServerPort));
-        SlotManagerClusterMode.getInstance().recoverSlots();
     }
 
     /**

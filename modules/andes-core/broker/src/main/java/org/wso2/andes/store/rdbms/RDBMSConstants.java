@@ -570,6 +570,10 @@ public class RDBMSConstants {
                     MESSAGE_ID + ") " +
                     " VALUES (?,?)";
 
+    protected static final String PS_DELETE_PUBLISHER_ID =
+            "DELETE FROM " + NODE_TO_LAST_PUBLISHED_ID +
+            " WHERE " + NODE_ID + "=?";
+
     protected static final String PS_UPDATE_NODE_TO_LAST_PUBLISHED_ID =
             "UPDATE " + NODE_TO_LAST_PUBLISHED_ID +
                     " SET " + MESSAGE_ID + "=? " +
@@ -807,6 +811,7 @@ public class RDBMSConstants {
     protected static final String TASK_SET_QUEUE_TO_LAST_ASSIGNED_ID = "setting queue to last assigned id";
     protected static final String TASK_GET_NODE_TO_LAST_PUBLISHED_ID = "getting node to last published id";
     protected static final String TASK_SET_NODE_TO_LAST_PUBLISHED_ID = "setting node to last published id";
+    protected static final String TASK_DELETE_PUBLISHER_ID = "deleting publisher id";
     protected static final String TASK_GET_MESSAGE_PUBLISHED_NODES = "getting message published nodes";
     protected static final String TASK_SET_SLOT_STATE = "setting slot state";
     protected static final String TASK_ADD_MESSAGE_ID = "adding message id";
