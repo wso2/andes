@@ -18,15 +18,15 @@
 
 package org.wso2.andes.kernel;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 /**
  * AndesChannel keep track of the states of the local channels
@@ -136,9 +136,7 @@ public class AndesChannel {
         this.messagesOnBuffer = new AtomicInteger(0);
         this.flowControlEnabled = false;
 
-        if(log.isInfoEnabled()) {
-            log.info("Channel created with ID: " + getId());
-        }
+        log.info("Channel created (ID: " + getId() + ")");
     }
 
     /**

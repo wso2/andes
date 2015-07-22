@@ -53,6 +53,4 @@ public interface LocalSubscription extends AndesSubscription {
      * Close subscriber. Here subscriber should release all the resources.
      */
     public void close();
-
-    public LocalSubscription createQueueToListentoTopic();
 }

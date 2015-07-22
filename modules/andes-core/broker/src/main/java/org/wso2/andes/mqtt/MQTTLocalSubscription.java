@@ -17,12 +17,16 @@
  */
 package org.wso2.andes.mqtt;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.wso2.QOSLevel;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesContent;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.ConcurrentTrackingList;
+import org.wso2.andes.kernel.MessageData;
+import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -308,13 +312,7 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
         messageSendingTracker.clear();
         unAckedMsgCount.set(0);
     }
-
-    @Override
-    public LocalSubscription createQueueToListentoTopic() {
-        //mqqtServerChannel.
-        throw new NotImplementedException();
-    }
-
+    
     public boolean equals(Object o) {
         if (o instanceof MQTTLocalSubscription) {
             MQTTLocalSubscription c = (MQTTLocalSubscription) o;

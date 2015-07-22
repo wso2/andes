@@ -335,14 +335,6 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
     }
 
 
-    public LocalSubscription createQueueToListentoTopic() {
-        //todo:hasitha:verify passing null values
-        String subscribedNode = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
-        return new AMQPLocalSubscription(amqQueue,
-                amqpSubscription, subscriptionID, targetQueue, false, isExclusive, true, subscribedNode, System.currentTimeMillis(), amqQueue.getName(),
-                amqQueue.getOwner().toString(), AMQPUtils.DIRECT_EXCHANGE_NAME, DirectExchange.TYPE.toString(), Short.parseShort("0"), true);
-    }
-
     public boolean equals(Object o) {
         if (o instanceof AMQPLocalSubscription) {
             AMQPLocalSubscription c = (AMQPLocalSubscription) o;

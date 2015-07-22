@@ -280,6 +280,8 @@ public class FlowControlManager  implements StoreHealthListener {
      */
     public synchronized void deleteChannel(AndesChannel channel) {
         channels.remove(channel);
+
+        log.info("Channel removed (ID: " + channel.getId() + ")");
     }
 
     /**
