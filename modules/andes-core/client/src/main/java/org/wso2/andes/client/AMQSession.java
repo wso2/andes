@@ -194,7 +194,8 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
      * The default value for immediate flag used by producers created by this session is false. That is, a consumer does
      * not need to be attached to a queue.
      */
-    protected final boolean DEFAULT_IMMEDIATE = Boolean.parseBoolean(System.getProperty("qpid.default_immediate", "false"));
+    protected final boolean DEFAULT_IMMEDIATE = Boolean.parseBoolean(System.getProperty("qpid.default_immediate",
+            "false"));
 
     /**
      * The default value for mandatory flag used by producers created by this session is true. That is, server will not
@@ -208,12 +209,13 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
      * The period to wait while flow controlled before sending a log message confirming that the session is still
      * waiting on flow control being revoked
      */
-    protected final long FLOW_CONTROL_WAIT_PERIOD = Long.getLong("qpid.flow_control_wait_notify_period",5000L);
+    protected final long FLOW_CONTROL_WAIT_PERIOD = Long.getLong("qpid.flow_control_wait_notify_period", 5000L);
 
     /**
      * The period to wait while flow controlled before declaring a failure
      */
-    public static final long DEFAULT_FLOW_CONTROL_WAIT_FAILURE = Long.parseLong(System.getProperty("qpid.flow_control_wait_failure", "120000"));
+    public static final long DEFAULT_FLOW_CONTROL_WAIT_FAILURE = Long
+            .parseLong(System.getProperty("qpid.flow_control_wait_failure", "120000"));
     protected final long FLOW_CONTROL_WAIT_FAILURE = Long.getLong("qpid.flow_control_wait_failure",
                                                                   DEFAULT_FLOW_CONTROL_WAIT_FAILURE);
 
@@ -311,6 +313,15 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
 
     /** ack_wait_time_out value */
     protected long ackWaitTimeOut = 60000;
+
+    /** The effective ack wait timeout
+     *  This is used instead of 'ackWaitTimeOut' when deciding whether it is time reject a message
+     *  The rationale behind using the variable is explained before its usage
+     */
+    private long effectiveAckWaitTimeOut;
+
+    /** fixed delay in seconds for the task that rejects message to run periodically*/
+    private long messageRejectionTaskPeriod = 10;
 
     /** executor to run scheduler task rejecting messages which have passed the ack_wait_time*/
     private ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -541,6 +552,12 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
         if(ackWaitTimeOutAsString != null) {
             this.ackWaitTimeOut = Long.parseLong(ackWaitTimeOutAsString);
         }
+
+        // initialize the effectiveAckWaitTimeOut
+        // the messageRejectionTaskPeriod is in milliseconds, to convert it into seconds
+        // we need to multiply it by 1000
+        effectiveAckWaitTimeOut = ackWaitTimeOut - messageRejectionTaskPeriod * 1000;
+
         //start a separate task that inspect and reject messages for which we have not acked within ack_wait_timeout
         scheduler.scheduleAtFixedRate(new Runnable() {
             @Override
@@ -552,7 +569,15 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                             Map.Entry<Long,Long> entry = iterator.next();
                             Long deliveryTag = entry.getKey();
                             Long deliveredTimeStamp = entry.getValue();
-                            if((System.currentTimeMillis() - deliveredTimeStamp) > ackWaitTimeOut){
+                            // The delivered timestamp read here is updated when dispatching and updating messages
+                            // Therefore, even though we expect the 'deliveredTimeStamp' to be updated right after the
+                            // following if condition gets evaluated to true, there is an inevitable delay
+                            // This will cause 'System.currentTimeMillis() - deliveredTimeStamp' to be slightly less
+                            // than 'messageRejectionTaskPeriod' even though we expect them to be equal
+                            // and will result in an additional iteration
+                            // To avoid this situation, we make it deliberately run 1 iteration before the planned
+                            // execution
+                            if((System.currentTimeMillis() - deliveredTimeStamp) > (effectiveAckWaitTimeOut)){
                                 //reject the message
                                 rejectMessage(deliveryTag,true);
                                 iterator.remove();
@@ -566,7 +591,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                     }
                 }
             }
-        },  5, 10, TimeUnit.SECONDS);
+        },  5, messageRejectionTaskPeriod, TimeUnit.SECONDS);
     }
 
     /**
