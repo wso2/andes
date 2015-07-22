@@ -23,6 +23,7 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.configuration.modules.JKSStore;
 import org.wso2.andes.configuration.qpid.plugins.ConfigurationPlugin;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.registry.ApplicationRegistry;
@@ -511,7 +512,7 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      * @return Port
      */
     public List getPorts() {
-        Integer port = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_PORT);
+        Integer port = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_DEFAULT_CONNECTION_PORT);
 
         return Collections.singletonList(port);
     }
@@ -558,11 +559,12 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
     }
 
     public boolean getEnableSSL() {
-        return getBooleanValue("connector.ssl.enabled");
+        return (Boolean)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_ENABLED);
     }
 
     public boolean getSSLOnly() {
-        return getBooleanValue("connector.ssl.sslOnly");
+        return (Boolean)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_ENABLED) &&
+                !(Boolean)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_DEFAULT_CONNECTION_ENABLED);
     }
 
     /**
@@ -571,17 +573,17 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
      * @return SSL Port List
      */
     public List getSSLPorts() {
-        Integer sslPort = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_PORT);
+        Integer sslPort = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_PORT);
 
         return Collections.singletonList(sslPort);
     }
 
     public String getKeystorePath() {
-        return getStringValue("connector.ssl.keystorePath", "repository/resources/security/wso2carbon.jks");
+        return ((JKSStore)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_KEYSTORE)).getStoreLocation();
     }
 
     public String getKeystorePassword() {
-        return getStringValue("connector.ssl.keystorePassword", "wso2carbon");
+        return ((JKSStore)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_KEYSTORE)).getPassword();
     }
 
     public String getCertType() {

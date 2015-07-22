@@ -17,6 +17,9 @@
  */
 package org.wso2.andes.configuration;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -29,18 +32,36 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.axiom.om.OMElement;
+import org.apache.axiom.om.OMNode;
+import org.apache.axiom.om.impl.builder.StAXOMBuilder;
+import org.apache.axiom.om.impl.llom.OMElementImpl;
+import org.apache.axiom.om.xpath.AXIOMXPath;
 import org.apache.commons.configuration.CompositeConfiguration;
+import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jaxen.JaxenException;
+import org.w3c.dom.Document;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.util.ConfigurationProperty;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.carbon.utils.ServerConstants;
+import org.wso2.securevault.SecretResolver;
+import org.wso2.securevault.SecretResolverFactory;
+import org.wso2.securevault.secret.SecretLoadingModule;
+import org.wso2.securevault.secret.SingleSecretCallback;
+
+import javax.xml.namespace.QName;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.stream.XMLStreamException;
 
 /**
  * This class acts as a singleton access point for all config parameters used within MB.
@@ -60,13 +81,20 @@ public class AndesConfigurationManager {
     private static final String LIST_TYPE = "LIST_";
 
     /**
+     * Namespace and attribute used by secure vault to identify encrypted properties.
+     */
+    private static final QName SECURE_VAULT_QNAME = new QName("http://org.wso2.securevault/configuration","secretAlias");
+
+    /**
+     * Package which contains custom classes that can be parsed by the AndesConfigurationManager.
+     */
+    private static final String CONFIG_MODULE_PACKAGE = "org.wso2.andes.configuration.modules";
+
+    /**
      * Common Error states
      */
     private static final String GENERIC_CONFIGURATION_PARSE_ERROR = "Error occurred when trying to parse " +
             "configuration value {0}.";
-
-    private static final String NO_CHILD_FOR_INDEX_IN_PROPERTY = "There was no child at the given index {0} for the " +
-            "parent property {1}.";
 
     private static final String NO_CHILD_FOR_KEY_IN_PROPERTY = "There was no child at the given key {0} for the " +
             "parent property {1}.";
@@ -96,6 +124,13 @@ public class AndesConfigurationManager {
     private static CompositeConfiguration compositeConfiguration;
 
     /**
+     * This hashmap is used to maintain any properties that were encrypted with ciphertool. key would be the
+     * secretAlias, and the value would be the decrypted value. This will be cross-referenced when reading properties
+     * from broker.xml.
+     */
+    private static ConcurrentHashMap<String, String> cipherValueMap;
+
+    /**
      * Decisive configurations coming from carbon.xml that affect the MB configs. e.g port Offset
      * These are injected as custom logic when reading the configurations.
      */
@@ -108,46 +143,33 @@ public class AndesConfigurationManager {
      * @throws AndesException
      */
     public static void initialize(int portOffset) throws AndesException {
+
+        String brokerConfigFilePath = ROOT_CONFIG_FILE_PATH + ROOT_CONFIG_FILE_NAME;
+        log.info("Main andes configuration located at : " + brokerConfigFilePath);
+
         try {
 
             compositeConfiguration = new CompositeConfiguration();
-
             compositeConfiguration.setDelimiterParsingDisabled(true);
-            
-            log.info("Main andes configuration located at : " + ROOT_CONFIG_FILE_PATH + ROOT_CONFIG_FILE_NAME);
 
-            
             XMLConfiguration rootConfiguration = new XMLConfiguration();
             rootConfiguration.setDelimiterParsingDisabled(true);
-            rootConfiguration.setFileName(ROOT_CONFIG_FILE_PATH + ROOT_CONFIG_FILE_NAME);
+            rootConfiguration.setFileName(brokerConfigFilePath);
             rootConfiguration.setExpressionEngine(new XPathExpressionEngine());
             rootConfiguration.load();
             compositeConfiguration.addConfiguration(rootConfiguration);
-            // Load and combine other configurations linked to broker.xml
-            String[] linkedConfigurations = compositeConfiguration.getStringArray("links/link");
 
-            for (String linkedConfigurationPath : linkedConfigurations) {
+            //Decrypt and maintain secure vault property values in a map for cross-reference.
+            decryptConfigurationFromFile(brokerConfigFilePath);
 
-                log.info("Linked configuration file path : " + ROOT_CONFIG_FILE_PATH + linkedConfigurationPath);
-
-                XMLConfiguration linkedConfiguration = new XMLConfiguration();
-                linkedConfiguration.setDelimiterParsingDisabled(false);
-                linkedConfiguration.setFileName(ROOT_CONFIG_FILE_PATH + linkedConfigurationPath);
-                linkedConfiguration.setExpressionEngine(new XPathExpressionEngine());
-                linkedConfiguration.load();
-                compositeConfiguration.addConfiguration(linkedConfiguration);
-            }
-
-            // derive certain special properties that are not simply specified in
-            // the configuration files.
+            // Derive certain special properties that are not simply specified in the configuration files.
             addDerivedProperties();
 
             // set carbonPortOffset coming from carbon
             AndesConfigurationManager.carbonPortOffset = portOffset;
 
         } catch (ConfigurationException e) {
-            String error = "Error occurred when trying to construct configurations from file at path : " +
-                    ROOT_CONFIG_FILE_PATH + ROOT_CONFIG_FILE_NAME;
+            String error = "Error occurred when trying to construct configurations from file at path : " + brokerConfigFilePath;
             log.error(error, e);
             throw new AndesException(error, e);
 
@@ -155,8 +177,21 @@ public class AndesConfigurationManager {
             String error = "Error occurred when trying to derive the bind address for messaging from configurations.";
             log.error(error, e);
             throw new AndesException(error, e);
+        } catch (FileNotFoundException e) {
+            String error = "Error occurred when trying to read the configuration file : " + brokerConfigFilePath;
+            log.error(error, e);
+            throw new AndesException(error, e);
+        } catch (JaxenException e) {
+            String error = "Error occurred when trying to process cipher text in file : " + brokerConfigFilePath;
+            log.error(error, e);
+            throw new AndesException(error, e);
+        } catch (XMLStreamException e) {
+            String error = "Error occurred when trying to process cipher text in file : " + brokerConfigFilePath;
+            log.error(error, e);
+            throw new AndesException(error, e);
         }
     }
+
 
     /**
      * The sole method exposed to everyone accessing configurations. We can use the relevant
@@ -166,7 +201,6 @@ public class AndesConfigurationManager {
      * @param <T>                   Expected data type of the property
      * @param configurationProperty relevant enum value (e.g.- config.enums.AndesConfiguration)
      * @return Value of config in the expected data type.
-     * @throws org.wso2.andes.kernel.AndesException
      */
     public static <T> T readValue(ConfigurationProperty configurationProperty) {
 
@@ -175,16 +209,12 @@ public class AndesConfigurationManager {
             return (T) readPortValue(configurationProperty);
         }
 
-        String valueInFile = compositeConfiguration.getString(configurationProperty.get()
-                .getKeyInFile());
-
         try {
             // The cast to T is unavoidable. Even though the function returns the same data type,
             // compiler doesn't know about it. We could add the data type as a parameter,
             // but that only complicates the method call.
             return (T) deriveValidConfigurationValue(configurationProperty.get().getKeyInFile(),
-                    configurationProperty.get().getDataType(), configurationProperty.get().getDefaultValue(),
-                    valueInFile);
+                    configurationProperty.get().getDataType(), configurationProperty.get().getDefaultValue());
         } catch (ConfigurationException e) {
 
             log.error(e); // Since the descriptive message is wrapped in exception itself
@@ -194,7 +224,7 @@ public class AndesConfigurationManager {
             // small mistake.
             try {
                 return (T) deriveValidConfigurationValue(configurationProperty.get().getKeyInFile(),
-                        configurationProperty.get().getDataType(), configurationProperty.get().getDefaultValue(), null);
+                        configurationProperty.get().getDataType(), configurationProperty.get().getDefaultValue());
             } catch (ConfigurationException e1) {
                 // It is highly unlikely that this will throw an exception (if defined default values are also invalid).
                 // But if it does, the method will return null.
@@ -203,40 +233,6 @@ public class AndesConfigurationManager {
                 log.error(e); // Since the descriptive message is wrapped in exception itself
                 return null;
             }
-        }
-    }
-
-    /**
-     * Using this method, you can access a singular property of a child.
-     * <p/>
-     * example,
-     * <p/>
-     * <users>
-     * <user userName="testuser1" password="password1" />
-     * <user userName="testuser2" password="password2" />
-     * </users> scenario.
-     *
-     * @param configurationProperty relevant enum value (e.g.- above scenario -> config
-     *                              .enums.AndesConfiguration.TRANSPORTS_MQTT_PASSWORD)
-     * @param index                 index of the child of whom you seek the property (e.g. above scenario -> 1)
-     */
-    public static <T> T readValueOfChildByIndex(AndesConfiguration configurationProperty, int index) {
-
-        String constructedKey = configurationProperty.get().getKeyInFile().replace("{i}", String.valueOf(index));
-
-        String valueInFile = compositeConfiguration.getString(constructedKey);
-
-        // The cast to T is unavoidable. Even though the function returns the same data type,
-        // compiler doesn't know about it. We could add the data type as a parameter,
-        // but that only complicates the method call.
-        try {
-            return (T) deriveValidConfigurationValue(configurationProperty.get().getKeyInFile(),
-                    configurationProperty.get().getDataType(),
-                    configurationProperty.get().getDefaultValue(), valueInFile);
-        } catch (ConfigurationException e) {
-            // This means that there is no child by the given index for the parent property.
-            log.error(MessageFormat.format(NO_CHILD_FOR_INDEX_IN_PROPERTY, index, configurationProperty), e);
-            return null;
         }
     }
 
@@ -259,15 +255,13 @@ public class AndesConfigurationManager {
         String constructedKey = configurationProperty.get().getKeyInFile().replace("{key}",
                 key);
 
-        String valueInFile = compositeConfiguration.getString(constructedKey);
-
         // The cast to T is unavoidable. Even though the function returns the same data type,
         // compiler doesn't know about it. We could add the data type as a parameter,
         // but that only complicates the method call.
         try {
-            return (T) deriveValidConfigurationValue(configurationProperty.get().getKeyInFile(),
+            return (T) deriveValidConfigurationValue(constructedKey,
                     configurationProperty.get().getDataType(),
-                    configurationProperty.get().getDefaultValue(), valueInFile);
+                    configurationProperty.get().getDefaultValue());
         } catch (ConfigurationException e) {
             // This means that there is no child by the given key for the parent property.
             log.error(MessageFormat.format(NO_CHILD_FOR_KEY_IN_PROPERTY, key, configurationProperty), e);
@@ -301,18 +295,18 @@ public class AndesConfigurationManager {
      * @param dataType     Expected data type of the property
      * @param defaultValue This parameter should NEVER be null since we assign a default value to
      *                     every config property.
-     * @param readValue    Value read from the config file
      * @param <T>          Expected data type of the property
      * @return Value of config in the expected data type.
      * @throws ConfigurationException
      */
-    private static <T> T deriveValidConfigurationValue(String key, Class<T> dataType,
-                                                       String defaultValue,
-                                                       String readValue) throws ConfigurationException {
+    public static <T> T deriveValidConfigurationValue(String key, Class<T> dataType,
+                                                      String defaultValue) throws ConfigurationException {
 
         if (log.isDebugEnabled()) {
             log.debug("Reading andes configuration value " + key);
         }
+
+        String readValue = compositeConfiguration.getString(key);
 
         String validValue = defaultValue;
 
@@ -320,7 +314,7 @@ public class AndesConfigurationManager {
             log.warn("Error when trying to read property : " + key + ". Switching to " + "default value : " +
                     defaultValue);
         } else {
-            validValue = readValue;
+            validValue = overrideWithDecryptedValue(key, readValue);
         }
 
         if (log.isDebugEnabled()) {
@@ -340,6 +334,12 @@ public class AndesConfigurationManager {
             } else if (dataType.isEnum()) {
                 // this will indirectly forces programmer to define enum values in upper case
                 return (T) Enum.valueOf((Class<? extends Enum>) dataType, validValue.toUpperCase(Locale.ENGLISH));
+
+            } else if (dataType.getPackage().getName().equals(CONFIG_MODULE_PACKAGE)) {
+                // Custom data structures defined within this package only need the root Xpath to extract the other
+                // required child properties to construct the config object.
+                return dataType.getConstructor(String.class).newInstance(key);
+
             } else {
                 return dataType.getConstructor(String.class).newInstance(validValue);
             }
@@ -397,11 +397,9 @@ public class AndesConfigurationManager {
         }
 
         try {
-            String valueInFile = compositeConfiguration.getString(configurationProperty.get().getKeyInFile());
-
             Integer portFromConfiguration = (Integer) deriveValidConfigurationValue(configurationProperty.get()
                             .getKeyInFile(), configurationProperty.get().getDataType(),
-                    configurationProperty.get().getDefaultValue(), valueInFile);
+                    configurationProperty.get().getDefaultValue());
 
             return portFromConfiguration + carbonPortOffset;
 
@@ -411,6 +409,73 @@ public class AndesConfigurationManager {
             //recover and return default port with offset value.
             return Integer.parseInt(configurationProperty.get().getDefaultValue()) + carbonPortOffset;
         }
+    }
+
+    /**
+     * Decrypt properties with secure vault and maintain on a separate hashmap for cross-reference.
+     * @param filePath File path to the configuration file in question
+     * @throws FileNotFoundException
+     * @throws JaxenException
+     * @throws XMLStreamException
+     */
+    private static void decryptConfigurationFromFile(String filePath) throws FileNotFoundException, JaxenException, XMLStreamException {
+
+        cipherValueMap = new ConcurrentHashMap<String, String>();
+
+        StAXOMBuilder stAXOMBuilder = new StAXOMBuilder(new FileInputStream(new File(filePath)));
+        OMElement dom = stAXOMBuilder.getDocumentElement();
+
+        //Initialize the SecretResolver providing the configuration element.
+        SecretResolver secretResolver = SecretResolverFactory.create(dom, false);
+
+        AXIOMXPath xpathExpression = new AXIOMXPath ("//*[@*[local-name() = 'secretAlias']]");
+        List nodeList = xpathExpression.selectNodes(dom);
+
+        for (Object o : nodeList) {
+
+            String secretAlias = ((OMElement)o).getAttributeValue(SECURE_VAULT_QNAME);
+            String decryptedValue = "";
+
+            if (secretResolver != null && secretResolver.isInitialized()) {
+                if (secretResolver.isTokenProtected(secretAlias)) {
+                    decryptedValue = secretResolver.resolve(secretAlias);
+                }
+            } else {
+                log.warn("Error while trying to decipher secure property with secretAlias : " + secretAlias);
+            }
+
+            cipherValueMap.put(secretAlias,decryptedValue);
+        }
+
+    }
+
+    /**
+     * If the property is contained in the cipherValueMap, replace the raw value with that value.
+     * @param keyInFile xpath expression used to extract the value from file.
+     * @param rawValue The value read from the file without any processing.
+     * @return the decrypted value if the property was encrypted with ciphertool.
+     */
+    private static String overrideWithDecryptedValue(String keyInFile, String rawValue) {
+
+        if (keyInFile.contains("@")) {
+            if (log.isDebugEnabled()) {
+                log.debug("Ciphertool does not operate on xml attributes or lists. ( input key : " + keyInFile + " )");
+            }
+        }
+
+        if (!StringUtils.isBlank(keyInFile)) {
+
+            // The alias is inferred from the xpath of the property.
+            // If the xpath = "transports/amqp/sslConnection/keyStore/password",
+            // secretAlias should be "transports.amqp.sslConnection.keyStore.password"
+            String secretAlias = keyInFile.replaceAll("/",".");
+
+            if (cipherValueMap.containsKey(secretAlias)) {
+                return cipherValueMap.get(secretAlias);
+            }
+        }
+
+        return rawValue;
     }
 
 }

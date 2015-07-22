@@ -18,6 +18,7 @@
 
 package org.wso2.andes.configuration.enums;
 
+import org.wso2.andes.configuration.modules.JKSStore;
 import org.wso2.andes.configuration.util.ConfigurationProperty;
 import org.wso2.andes.configuration.util.ImmutableMetaProperties;
 import org.wso2.andes.configuration.util.MetaProperties;
@@ -75,14 +76,34 @@ public enum AndesConfiguration implements ConfigurationProperty {
     TRANSPORTS_AMQP_ENABLED("transports/amqp/@enabled", "true", Boolean.class),
 
     /**
-     * The port used to listen for amqp messages/commands by the MB server.
+     * The port used to listen for non-secure amqp messages/commands by the MB server.
      */
-    TRANSPORTS_AMQP_PORT("transports/amqp/port", "5672", Integer.class),
+    TRANSPORTS_AMQP_DEFAULT_CONNECTION_PORT("transports/amqp/defaultConnection/@port", "5672", Integer.class),
 
     /**
-     * The SSL port used to listen for amqp messages/commands by the MB server.
+     * Enable/disable the default, non-secure AMQP connection.
      */
-    TRANSPORTS_AMQP_SSL_PORT("transports/amqp/sslPort", "8672", Integer.class),
+    TRANSPORTS_AMQP_DEFAULT_CONNECTION_ENABLED("transports/amqp/defaultConnection/@enabled", "true", Boolean.class),
+
+    /**
+     * Enable/disable the secure AMQP connection.
+     */
+    TRANSPORTS_AMQP_SSL_CONNECTION_ENABLED("transports/amqp/sslConnection/@enabled", "true", Boolean.class),
+
+    /**
+     * The port used to listen for secure amqp messages/commands by the MB server.
+     */
+    TRANSPORTS_AMQP_SSL_CONNECTION_PORT("transports/amqp/sslConnection/@port", "8672", Integer.class),
+
+    /**
+     * The key store used for AMQP SSL connection.
+     */
+    TRANSPORTS_AMQP_SSL_CONNECTION_KEYSTORE("transports/amqp/sslConnection/keyStore", "", JKSStore.class),
+
+    /**
+     * The trust store used for AMQP SSL connection.
+     */
+    TRANSPORTS_AMQP_SSL_CONNECTION_TRUSTSTORE("transports/amqp/sslConnection/trustStore", "", JKSStore.class),
 
     /**
      * By default, expired messages are sent to the Dead Letter Channel for later revival/reference. But,
@@ -114,12 +135,32 @@ public enum AndesConfiguration implements ConfigurationProperty {
     /**
      * The port used to listen for mqtt messages/commands by the MB server.
      */
-    TRANSPORTS_MQTT_PORT("transports/mqtt/port", "1883", Integer.class),
+    TRANSPORTS_MQTT_DEFAULT_CONNECTION_PORT("transports/mqtt/defaultConnection/@port", "1883", Integer.class),
+
+    /**
+     * Enable/disable the default, non-secure MQTT connection.
+     */
+    TRANSPORTS_MQTT_DEFAULT_CONNECTION_ENABLED("transports/mqtt/defaultConnection/@enabled", "true", Boolean.class),
 
     /**
      * The SSL port used to listen for mqtt messages/commands by the MB server.
      */
-    TRANSPORTS_MQTT_SSL_PORT("transports/mqtt/sslPort", "1884", Integer.class),
+    TRANSPORTS_MQTT_SSL_CONNECTION_PORT("transports/mqtt/sslConnection/@port", "8883", Integer.class),
+
+    /**
+     * Enable/disable the secure MQTT connection.
+     */
+    TRANSPORTS_MQTT_SSL_CONNECTION_ENABLED("transports/mqtt/sslConnection/@enabled", "true", Boolean.class),
+
+    /**
+     * The key store used for MQTT SSL connection.
+     */
+    TRANSPORTS_MQTT_SSL_CONNECTION_KEYSTORE("transports/mqtt/sslConnection/keyStore", "", JKSStore.class),
+
+    /**
+     * The trust store used for MQTT SSL connection.
+     */
+    TRANSPORTS_MQTT_SSL_CONNECTION_TRUSTSTORE("transports/mqtt/sslConnection/trustStore", "", JKSStore.class),
 
     /**
      * Ring buffer size of MQTT inbound event Disruptor. Default is set to 32768 (1024 * 32)
