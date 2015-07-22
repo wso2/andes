@@ -1,14 +1,29 @@
+/*
+ * Copyright (c) 2012-2014 The original author or authors
+ * ------------------------------------------------------
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Apache License v2.0 which accompanies this distribution.
+ *
+ * The Eclipse Public License is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * The Apache License v2.0 is available at
+ * http://www.opensource.org/licenses/apache2.0.php
+ *
+ * You may elect to redistribute this code under either of these licenses.
+ */
 package org.dna.mqtt.moquette.proto.messages;
 
 /**
  * The attributes Qos, Dup and Retain aren't used for Connect message
- * 
+ *
  * @author andrea
  */
 public class ConnectMessage extends AbstractMessage {
     String m_protocolName;
     byte m_procotolVersion;
-    
+
     //Connection flags
     boolean m_cleanSession;
     boolean m_willFlag;
@@ -17,14 +32,14 @@ public class ConnectMessage extends AbstractMessage {
     boolean m_passwordFlag;
     boolean m_userFlag;
     int m_keepAlive;
-    
+
     //Variable part
     String m_username;
     String m_password;
     String m_clientID;
     String m_willtopic;
     String m_willMessage;
-    
+
     public ConnectMessage() {
         m_messageType = AbstractMessage.CONNECT;
     }
@@ -140,5 +155,14 @@ public class ConnectMessage extends AbstractMessage {
     public void setWillMessage(String willMessage) {
         this.m_willMessage = willMessage;
     }
-    
+
+    @Override
+    public String toString() {
+        String base = String.format("Connect [clientID: %s, prot: %s, ver: %02X, clean: %b]", m_clientID,
+                m_protocolName, m_procotolVersion, m_cleanSession);
+        if (m_willFlag) {
+            base += String.format(" Will [QoS: %d, retain: %b]", m_willQos, m_willRetain);
+        }
+        return base;
+    }
 }

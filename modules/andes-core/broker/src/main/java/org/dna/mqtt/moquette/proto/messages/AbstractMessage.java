@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2012-2014 The original author or authors
+ * ------------------------------------------------------
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Apache License v2.0 which accompanies this distribution.
+ *
+ * The Eclipse Public License is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * The Apache License v2.0 is available at
+ * http://www.opensource.org/licenses/apache2.0.php
+ *
+ * You may elect to redistribute this code under either of these licenses.
+ */
 package org.dna.mqtt.moquette.proto.messages;
 
 /**
@@ -23,7 +38,7 @@ public abstract class AbstractMessage {
     public static final byte DISCONNECT = 14; //Client is Disconnecting
 
     public static enum QOSType {
-        MOST_ONE(0), LEAST_ONE(1), EXACTLY_ONCE(2), RESERVED(3);
+        MOST_ONE(0), LEAST_ONE(1), EXACTLY_ONCE(2), RESERVED(3), FAILURE(4);
 
         private final int value; //The value can be either 0,1 or 2
 

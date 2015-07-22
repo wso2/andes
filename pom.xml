@@ -382,7 +382,7 @@
             </dependency>
             <!--MQTT Dependencies-->
             <dependency>
-                <groupId>io.netty</groupId>
+                <groupId>io.netty.wso2</groupId>
                 <artifactId>netty-all</artifactId>
                 <version>${netty-all.version}</version>
                 <optional>true</optional>
@@ -610,7 +610,7 @@
         <velocity.version>1.5</velocity.version>
         <xalan.version>2.7.0</xalan.version>
         <ant.version>1.8.1</ant.version>
-        <netty-all.version>4.0.8.Final</netty-all.version>
+        <netty-all.version>4.0.23.wso2v1</netty-all.version>
         <hawtdb.version>1.6</hawtdb.version>
         <hawtbuf.version>1.9</hawtbuf.version>
         <hazelcast.version>3.2.6.wso2v2</hazelcast.version>
