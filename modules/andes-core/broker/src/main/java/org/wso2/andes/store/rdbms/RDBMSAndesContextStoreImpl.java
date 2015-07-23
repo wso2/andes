@@ -1493,9 +1493,9 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             connection.setAutoCommit(false);
 
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SET_SLOT_STATE);
-            preparedStatement.setLong(1, startMessageId);
-            preparedStatement.setLong(2, endMessageId);
-            preparedStatement.setInt(3, slotState.getCode());
+            preparedStatement.setInt(1, slotState.getCode());
+            preparedStatement.setLong(2, startMessageId);
+            preparedStatement.setLong(3, endMessageId);
 
             preparedStatement.executeUpdate();
             connection.commit();
@@ -1529,6 +1529,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             resultSet = preparedStatement.executeQuery();
 
             if(resultSet.next()) {
+                overlappedSlot = new Slot();
                 overlappedSlot
                         .setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
                 overlappedSlot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
