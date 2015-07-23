@@ -20,13 +20,8 @@ package org.wso2.andes.kernel.disruptor.delivery;
 
 import com.lmax.disruptor.EventFactory;
 import org.wso2.andes.kernel.AndesContent;
-import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.LocalSubscription;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Delivery event data holder. This is used to store and retrieve data between different handlers
@@ -43,11 +38,6 @@ public class DeliveryEventData {
     private AndesMessageMetadata metadata;
 
     /**
-     * Used to store message content in memory
-     */
-    private Map<Integer, AndesMessagePart> messagePartCache;
-
-    /**
      * Indicate if any error occurred during processing handlers
      */
     private boolean errorOccurred;
@@ -58,7 +48,6 @@ public class DeliveryEventData {
     private AndesContent andesContent;
 
     public DeliveryEventData() {
-        this.messagePartCache = new HashMap<Integer, AndesMessagePart>();
         this.errorOccurred = false;
     }
 
@@ -72,23 +61,11 @@ public class DeliveryEventData {
     }
 
     /**
-     * Add message part to memory map. This is done by the ContentCacheCreator
-     *
-     * @param index
-     *         Byte index of the message content part
-     * @param messagePart
-     *         Content chunk
-     */
-    public void addMessagePart(int index, AndesMessagePart messagePart) {
-        messagePartCache.put(index, messagePart);
-    }
-
-    /**
      * Clear state data for current instance. This should be called by the last event handler for the ring-buffer
      */
     public void clearData() {
-        messagePartCache.clear();
         errorOccurred = false;
+        andesContent = null;
     }
 
     /**
@@ -130,24 +107,6 @@ public class DeliveryEventData {
     }
 
     /**
-     * Get Message part for byte index
-     *
-     * @param indexToQuery
-     *         Byte index of the content
-     * @return Content chunk
-     */
-    public AndesMessagePart getMessagePart(int indexToQuery) throws AndesException {
-        AndesMessagePart messagePart = messagePartCache.get(indexToQuery);
-
-        if (null == messagePart) {
-            throw new AndesException(
-                    "Content not cached for chunk index " + indexToQuery + " for message ID " + metadata
-                            .getMessageID());
-        }
-        return messagePart;
-    }
-
-    /**
      * Get metadata for current event
      *
      * @return Metadata
@@ -175,8 +134,7 @@ public class DeliveryEventData {
 
     @Override
     public String toString() {
-        return "Message ID: " + metadata.getMessageID() + ", Cache size: " + messagePartCache.size()
-               + ", Error occurred : " + isErrorOccurred();
+        return "Message ID: " + metadata.getMessageID() + ", Error occurred : " + isErrorOccurred();
     }
 
     /**

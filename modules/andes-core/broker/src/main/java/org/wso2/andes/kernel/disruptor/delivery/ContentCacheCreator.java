@@ -18,17 +18,24 @@
 
 package org.wso2.andes.kernel.disruptor.delivery;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import org.apache.log4j.Logger;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
 import org.wso2.andes.kernel.DisruptorCachedContent;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.tools.utils.MessageTracer;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Disruptor handler used to load message content to memory.
@@ -45,48 +52,93 @@ public class ContentCacheCreator {
     private final int maxChunkSize;
 
     /**
-     * Creates a {@link org.wso2.andes.kernel.distruptor.delivery.ContentCacheCreator} object
+     * Guava based cache used to avoid fetching content for same message id in non-durable topics
+     */
+    private final Cache<Long, DisruptorCachedContent> contentCache;
+
+    /**
+     * Creates a {@link org.wso2.andes.kernel.disruptor.delivery.ContentCacheCreator} object
      * @param maxContentChunkSize maximum content chunk size stored in DB
      */
     public ContentCacheCreator(int maxContentChunkSize) {
         this.maxChunkSize = maxContentChunkSize;
+
+        Integer maximumSize = AndesConfigurationManager.readValue(
+                AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_MAXIMUM_SIZE);
+        Integer expiryTime = AndesConfigurationManager.readValue(
+                AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_EXPIRY_TIME);
+
+        contentCache = CacheBuilder.newBuilder().expireAfterWrite(expiryTime, TimeUnit.SECONDS).maximumSize(maximumSize)
+                                   .concurrencyLevel(1).build();
     }
 
     /**
      * Load content for a message in to the memory.
      *
-     * @param eventDataList Event data holder.
-     * @param messageIdList Message IDs of content to be retrieved from.
-     * @throws AndesException Thrown when getting content from the message store.
+     * @param eventDataList
+     *      List of delivery event data
+     * @throws AndesException
+     *         Thrown when getting content from the message store.
      */
-    public void onEvent(List<DeliveryEventData> eventDataList, List<Long> messageIdList)
-                                                                            throws AndesException {
+    public void onEvent(List<DeliveryEventData> eventDataList) throws AndesException {
 
-        Map<Long, List<AndesMessagePart>> contentListMap =
-                                            MessagingEngine.getInstance().getContent(messageIdList);
+        Set<Long> messagesToFetch = new HashSet<>();
+        List<DeliveryEventData> messagesWithoutContent = new ArrayList<>();
 
-        for (DeliveryEventData deliveryEventData : eventDataList) {
+        for (DeliveryEventData deliveryEventData: eventDataList) {
+            AndesMessageMetadata metadata = deliveryEventData.getMetadata();
+            long messageID =  metadata.getMessageID();
+
+            DisruptorCachedContent content = contentCache.getIfPresent(messageID);
+
+            if (null != content) {
+                deliveryEventData.setAndesContent(content);
+
+                if (log.isTraceEnabled()) {
+                    log.trace("Content read from cache for message " + messageID);
+                }
+
+            } else {
+                // Add to the list to fetch later
+                messagesToFetch.add(messageID);
+                messagesWithoutContent.add(deliveryEventData);
+            }
+        }
+
+        Map<Long, List<AndesMessagePart>> contentListMap = MessagingEngine.getInstance().getContent(new ArrayList<>(messagesToFetch));
+
+        for (DeliveryEventData deliveryEventData : messagesWithoutContent) {
 
             AndesMessageMetadata metadata = deliveryEventData.getMetadata();
             long messageID =  metadata.getMessageID();
+
+            // We check again for content put in cache in the previous iteration
+            DisruptorCachedContent content = contentCache.getIfPresent(messageID);
+
+            if (null != content) {
+                deliveryEventData.setAndesContent(content);
+
+                if (log.isTraceEnabled()) {
+                    log.trace("Content read from cache for message " + messageID);
+                }
+
+                continue;
+            }
 
             int contentSize = metadata.getMessageContentLength();
             List<AndesMessagePart> contentList = contentListMap.get(messageID);
 
             if (null != contentList) {
-                for (AndesMessagePart messagePart : contentList) {
-                    deliveryEventData.addMessagePart(messagePart.getOffSet(), messagePart);
+                content = new DisruptorCachedContent(contentList, contentSize, maxChunkSize);
+                contentCache.put(messageID, content);
+                deliveryEventData.setAndesContent(content);
+
+                if (log.isTraceEnabled()) {
+                    log.trace("All content read for message " + messageID);
                 }
             } else if (log.isDebugEnabled()) {
-                log.debug("Empty message parts received while retrieving message content for" +
-                                                                        "message id " + messageID);
-            }
-
-            deliveryEventData.setAndesContent(new DisruptorCachedContent(deliveryEventData,
-                                                                                    contentSize, maxChunkSize));
-
-            if (log.isTraceEnabled()) {
-                log.trace("All content read for message " + messageID);
+                throw new AndesException(
+                        "Empty message parts received while retrieving message content for message id " + messageID);
             }
 
             //Tracing message
