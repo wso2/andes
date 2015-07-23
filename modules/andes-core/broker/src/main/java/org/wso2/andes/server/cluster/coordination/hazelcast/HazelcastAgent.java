@@ -406,10 +406,8 @@ public class HazelcastAgent implements SlotAgent {
                 }
             }
         } catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                throw new AndesException("Failed to delete slot for queue : " +
-                        queueName + " from node " + nodeId, ex);
-            }
+            throw new AndesException("Failed to delete slot for queue : " +
+                    queueName + " from node " + nodeId, ex);
         }
     }
 
@@ -476,10 +474,8 @@ public class HazelcastAgent implements SlotAgent {
                 }
             }
         } catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                throw new AndesException("Failed to delete slot assignment for queue : " +
-                        queueName + " from node " + nodeId, ex);
-            }
+            throw new AndesException("Failed to delete slot assignment for queue : " +
+                    queueName + " from node " + nodeId, ex);
         }
     }
 
@@ -501,10 +497,8 @@ public class HazelcastAgent implements SlotAgent {
                 }
             }
         } catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                throw new AndesException("Failed to get unassigned slot for queue : " +
-                        queueName, ex);
-            }
+            throw new AndesException("Failed to get unassigned slot for queue : " +
+                    queueName, ex);
         }
         return slotToBeAssigned;
     }
@@ -542,10 +536,8 @@ public class HazelcastAgent implements SlotAgent {
                 this.slotAssignmentMap.set(nodeId, wrapper);
             }
         } catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                throw new AndesException("Failed to update slot assignment for queue : " +
-                        queueName + " from node " + nodeId, ex);
-            }
+            throw new AndesException("Failed to update slot assignment for queue : " +
+                    queueName + " from node " + nodeId, ex);
         }
     }
 
@@ -630,10 +622,8 @@ public class HazelcastAgent implements SlotAgent {
                 }
             }
         } catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                throw new AndesException("Failed to getOverlappedSlot for queue : " +
-                        queueName + " from node " + nodeId, ex);
-            }
+            throw new AndesException("Failed to getOverlappedSlot for queue : " +
+                    queueName + " from node " + nodeId, ex);
         }
         return slotToBeAssigned;
     }
@@ -650,10 +640,8 @@ public class HazelcastAgent implements SlotAgent {
             wrapper.setLongTreeSet(messageIdSet);
             this.slotIdMap.set(queueName, wrapper);
         }  catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                throw new AndesException("Failed to addMessageId for queue : " +
-                        queueName, ex);
-            }
+            throw new AndesException("Failed to addMessageId for queue : " +
+                    queueName, ex);
         }
     }
 
@@ -670,10 +658,8 @@ public class HazelcastAgent implements SlotAgent {
                 this.slotIdMap.putIfAbsent(queueName, wrapper);
             }
         }  catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                throw new AndesException("Failed to getMessageIds for queue : " +
-                        queueName, ex);
-            }
+            throw new AndesException("Failed to getMessageIds for queue : " +
+                    queueName, ex);
         }
         return wrapper.getLongTreeSet();
     }
@@ -694,10 +680,8 @@ public class HazelcastAgent implements SlotAgent {
                 this.slotIdMap.set(queueName, wrapper);
             }
         }  catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                throw new AndesException("Failed to deleteMessageId for queue : " +
-                        queueName, ex);
-            }
+            throw new AndesException("Failed to deleteMessageId for queue : " +
+                    queueName, ex);
         }
     }
 
@@ -741,10 +725,8 @@ public class HazelcastAgent implements SlotAgent {
                 }
             }
         } catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                throw new AndesException("Failed to deleteSlotsByQueueName for queue : " +
-                        queueName, ex);
-            }
+            throw new AndesException("Failed to deleteSlotsByQueueName for queue : " +
+                    queueName, ex);
         }
     }
 
@@ -777,10 +759,8 @@ public class HazelcastAgent implements SlotAgent {
                 }
             }
         } catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                throw new AndesException("Failed to deleteSlotsByQueueName for node : " +
-                        nodeId, ex);
-            }
+            throw new AndesException("Failed to deleteSlotsByQueueName for node : " +
+                    nodeId, ex);
         }
         return resultSet;
     }
@@ -840,9 +820,7 @@ public class HazelcastAgent implements SlotAgent {
                 this.unAssignedSlotMap.set(slotToBeReAssigned.getStorageQueueName(), treeSetStringWrapper);
             }
         } catch (HazelcastInstanceNotActiveException ex) {
-            if (AndesKernelBoot.isKernelShuttingDown()) {
-                throw new AndesException("Failed to reAssignSlot", ex);
-            }
+            throw new AndesException("Failed to reAssignSlot", ex);
         }
     }
 
