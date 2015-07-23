@@ -18,6 +18,10 @@
 package org.wso2.andes.server.ack;
 
 import org.wso2.andes.AMQException;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.TopicMessageDeliveryStrategy;
+import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.queue.QueueEntry;
 
 import java.util.Collection;
@@ -37,10 +41,18 @@ public class UnacknowledgedMessageMapImpl implements UnacknowledgedMessageMap
 
     private final int _prefetchLimit;
 
-    public UnacknowledgedMessageMapImpl(int prefetchLimit)
+    public UnacknowledgedMessageMapImpl(int prefetchLimit, AMQChannel amqChannel)
     {
         _prefetchLimit = prefetchLimit;
-        _map = new LinkedHashMap<Long, QueueEntry>(prefetchLimit);
+
+        TopicMessageDeliveryStrategy messageDeliveryStrategy = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_STRATEGY);
+
+        if(messageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_ALLOWED)) {
+            _map = new LimitedSizeQueueEntryHolder(_prefetchLimit, amqChannel);
+        } else {
+            _map = new LinkedHashMap<Long,QueueEntry>(prefetchLimit);
+        }
     }
 
     public void collect(long deliveryTag, boolean multiple, Map<Long, QueueEntry> msgs)

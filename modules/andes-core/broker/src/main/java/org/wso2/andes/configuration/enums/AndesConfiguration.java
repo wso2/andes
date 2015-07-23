@@ -22,6 +22,7 @@ import org.wso2.andes.configuration.modules.JKSStore;
 import org.wso2.andes.configuration.util.ConfigurationProperty;
 import org.wso2.andes.configuration.util.ImmutableMetaProperties;
 import org.wso2.andes.configuration.util.MetaProperties;
+import org.wso2.andes.kernel.TopicMessageDeliveryStrategy;
 
 import java.util.List;
 
@@ -385,6 +386,10 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES("performanceTuning/ackHandling" +
             "/maxUnackedMessages", "1000", Integer.class),
+
+    PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_STRATEGY("performanceTuning/delivery/"
+            + "topicMessageDeliveryStrategy", TopicMessageDeliveryStrategy.DISCARD_NONE.toString() ,
+            TopicMessageDeliveryStrategy.class),
 
     /**
      * Time interval after which the Virtual host syncing Task can sync host details across the cluster.

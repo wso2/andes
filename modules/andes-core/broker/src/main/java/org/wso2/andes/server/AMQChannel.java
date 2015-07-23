@@ -143,7 +143,8 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
     private final MessageStore _messageStore;
 
-    private UnacknowledgedMessageMap _unacknowledgedMessageMap = new UnacknowledgedMessageMapImpl(DEFAULT_PREFETCH);
+    private UnacknowledgedMessageMap _unacknowledgedMessageMap = new UnacknowledgedMessageMapImpl(DEFAULT_PREFETCH,
+            this);
 
     // Set of messages being acknoweledged in the current transaction
     private SortedSet<QueueEntry> _acknowledgedMessages = new TreeSet<QueueEntry>();

@@ -63,12 +63,17 @@ public class MessageFlusher {
 
     private SubscriptionStore subscriptionStore;
 
+    private TopicMessageDeliveryStrategy topicMessageDeliveryStrategy;
+
     private static MessageFlusher messageFlusher = new MessageFlusher();
 
     public MessageFlusher() {
 
         this.maxNumberOfReadButUndeliveredMessages = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_MAX_READ_BUT_UNDELIVERED_MESSAGES);
+
+        this.topicMessageDeliveryStrategy = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_STRATEGY);
 
         this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         flusherExecutor = new DisruptorBasedFlusher();
@@ -332,7 +337,7 @@ public class MessageFlusher {
         Iterator<AndesMessageMetadata> iterator = messages.iterator();
         List<AndesRemovableMetadata> droppedTopicMessagesListRemovable = new ArrayList<AndesRemovableMetadata>();
         List<AndesMessageMetadata> droppedTopicMessagesList = new ArrayList<AndesMessageMetadata>();
-        
+
 
         while (iterator.hasNext()) {
 
@@ -367,7 +372,7 @@ public class MessageFlusher {
                         if (AndesSubscription.SubscriptionType.MQTT == subscription.getSubscriptionType()
                                 && MessageMetaDataType.META_DATA_MQTT != message.getMetaDataType()) {
                             subscriptionIterator.remove();
-                        // Avoid sending if the subscriber is AMQP and message is MQTT
+                            // Avoid sending if the subscriber is AMQP and message is MQTT
                         } else if (AndesSubscription.SubscriptionType.AMQP == subscription.getSubscriptionType()
                                 && MessageMetaDataType.META_DATA_MQTT == message.getMetaDataType()) {
                             subscriptionIterator.remove();
@@ -394,18 +399,17 @@ public class MessageFlusher {
                 }
 
 
-                //check id destination has any subscription for the current message
-
                 int numOfCurrentMsgDeliverySchedules = 0;
 
                 /**
                  * if message is addressed to queues, only ONE subscriber should
                  * get the message. Otherwise, loop for every subscriber
                  */
-                for (int j = 0; j < subscriptions4Queue.size(); j++) {
-                    LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
-                            subscriptions4Queue);
-                    if (!message.isTopic()) { //for queue messages and durable topic messages (as they are now queue messages)
+
+                if (!message.isTopic) { //for queue messages and durable topic messages
+                    for (int j = 0; j < subscriptions4Queue.size(); j++) {
+                        LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
+                                subscriptions4Queue);
                         if (localSubscription.hasRoomToAcceptMessages()) {
                             if (log.isDebugEnabled()) {
                                 log.debug("Scheduled to send id = " + message.getMessageID());
@@ -416,22 +420,16 @@ public class MessageFlusher {
                             if (localSubscription.isBoundToTopic()) {
                                 message.setDestination(localSubscription.getSubscribedDestination());
                             }
+
                             deliverMessageAsynchronously(localSubscription, message);
                             numOfCurrentMsgDeliverySchedules++;
+
+                            //for queue messages and durable topic messages (as they are now queue messages)
+                            // we only send to one selected subscriber if it is a queue message
                             break;
                         }
-                    } else { //for normal (non-durable) topic messages. We do not consider room
-                        if (log.isDebugEnabled()) {
-                            log.debug("Scheduled to send id = " + message.getMessageID());
-                        }
-                        deliverMessageAsynchronously(localSubscription, message);
-                        numOfCurrentMsgDeliverySchedules++;
                     }
-                }
 
-                //remove message after sending to all subscribers
-
-                if (!message.isTopic()) { //queue messages (and durable topic messages)
                     if (numOfCurrentMsgDeliverySchedules == 1) {
                         iterator.remove();
                         if (log.isDebugEnabled()) {
@@ -446,20 +444,62 @@ public class MessageFlusher {
                         //if we continue message order will break
                         break;
                     }
-                } else { //normal topic message
-                    if (numOfCurrentMsgDeliverySchedules == subscriptions4Queue.size()) {
+                } else {
+                    /**
+                     * For normal non-durable topic we pre evaluate room for all subscribers and if all subs has room
+                     * to accept messages we send them. This means we operate to the speed of slowest subscriber (to
+                     * prevent OOM). If it is too slow to make others fast, make that topic subscriber a durable
+                     * topic subscriber.
+                     */
+                    if(topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.SLOWEST_SUB_RATE)) {
+                        boolean allTopicSubscriptionsHasRoom = true;
+                        for (LocalSubscription subscription : subscriptions4Queue) {
+                            if (!subscription.hasRoomToAcceptMessages()) {
+                                allTopicSubscriptionsHasRoom = false;
+                                break;
+                            }
+                        }
+                        if (allTopicSubscriptionsHasRoom) {
+                            //schedule message to all subscribers
+                            for (int j = 0; j < subscriptions4Queue.size(); j++) {
+                                LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
+                                        subscriptions4Queue);
+                                deliverMessageAsynchronously(localSubscription, message);
+                                numOfCurrentMsgDeliverySchedules++;
+                            }
+                            iterator.remove();
+                            if (log.isDebugEnabled()) {
+                                log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
+                            }
+                            sentMessageCount++;
+                        } else {
+                            if (log.isDebugEnabled()) {
+                                log.debug("Some subscriptions for destination " + destination + " have max unacked " +
+                                        "messages " + message.getDestination());
+                            }
+                            //if we continue message order will break
+                            break;
+                        }
+
+                        /**
+                         * In this delivery strategy, we do not discard any message. This might cause OOM if
+                         * subscribers did not ACK to release the resources fast enough.
+                         */
+                    } else if(topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_NONE)) {
+                        for (int j = 0; j < subscriptions4Queue.size(); j++) {
+                            LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
+                                    subscriptions4Queue);
+                            deliverMessageAsynchronously(localSubscription, message);
+                            numOfCurrentMsgDeliverySchedules++;
+                        }
                         iterator.remove();
                         if (log.isDebugEnabled()) {
                             log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
                         }
                         sentMessageCount++;
-                    } else {
-                        log.warn("Could not schedule message delivery to all" +
-                                " subscriptions. May cause message duplication. id= " + message.getMessageID());
-                        //if we continue message order will break
-                        break;
                     }
                 }
+
             } catch (NoSuchElementException ex) {
                 // This exception can occur because the iterator of ConcurrentSkipListSet loads the at-the-time snapshot.
                 // Some records could be deleted by the time the iterator reaches them.
@@ -467,7 +507,7 @@ public class MessageFlusher {
                 // to blindly check for a batch of deleted records.
                 // Given this situation, this loop should break so the sendFlusher can re-trigger it.
                 // for tracing purposes can use this : log.warn("NoSuchElementException thrown",ex);
-                log.warn("NoSuchElementException thrown. ",ex);
+                log.warn("NoSuchElementException thrown. ", ex);
                 break;
             }
         }
