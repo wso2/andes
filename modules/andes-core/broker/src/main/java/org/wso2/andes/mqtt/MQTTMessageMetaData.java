@@ -126,7 +126,7 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
         private void decodeMetaData(ByteBuffer buffer) {
             String information = new String(buffer.array());
             //Will split the Meta Body information
-            String[] message_parts = information.split(":");
+            String[] message_parts = information.split("\\?");
             //Check whether the message parts is split into 2 properly
             if (message_parts.length > 1) {
                 for (String keyValue : message_parts[1].split(",")) {
@@ -145,14 +145,18 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
         @Override
         public MQTTMessageMetaData createMetaData(ByteBuffer buf) {
             decodeMetaData(buf);
+            Long messageID = Long.parseLong(decodedValues.get("MessageID"));
             //TODO intoduce a static class for this
-            return new MQTTMessageMetaData(Long.parseLong(decodedValues.get("MessageID")),
-                    Boolean.parseBoolean(decodedValues.get("Topic")),
+            boolean isTopic = Boolean.parseBoolean(decodedValues.get("Topic"));
+            boolean isPersistant = Boolean.parseBoolean(decodedValues.get("Persistant"));
+            int messageContentLength = Integer.parseInt(decodedValues.get("MessageContentLength"));
+            int qos = Integer.parseInt(decodedValues.get("QOSLevel"));
+            return new MQTTMessageMetaData(messageID,
+                    isTopic,
                     decodedValues.get("Destination"),
-                    Boolean.parseBoolean(decodedValues.get("Persistant")),
-                    Integer.parseInt(decodedValues.get("MessageContentLength")),
-                    Integer.parseInt(decodedValues.get("QOSLevel")));
-
+                    isPersistant,
+                    messageContentLength,qos
+                    );
         }
     }
 }
