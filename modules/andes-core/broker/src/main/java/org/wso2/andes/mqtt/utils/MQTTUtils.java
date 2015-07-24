@@ -94,7 +94,7 @@ public class MQTTUtils {
     public static byte[] encodeMetaInfo(String metaData, long messageID, boolean topic, int qos, String destination,
                                         boolean persistence, int contentLength) {
         byte[] metaInformation;
-        String information = metaData + ":" + MESSAGE_ID + "=" + messageID + "," + TOPIC + "=" + topic +
+        String information = metaData + "?" + MESSAGE_ID + "=" + messageID + "," + TOPIC + "=" + topic +
                 "," + DESTINATION + "=" + destination + "," + PERSISTENCE + "=" + persistence
                 + "," + MESSAGE_CONTENT_LENGTH + "=" + contentLength + "," + QOSLEVEL + "=" + qos;
         metaInformation = information.getBytes();
