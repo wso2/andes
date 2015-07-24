@@ -33,6 +33,7 @@ import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.hazelcast.AndesMembershipListener;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -82,6 +83,11 @@ public class HazelcastClusterAgent implements ClusterAgent {
      * Hold thrift server details
      */
     private IMap<Object, Object> thriftServerDetailsMap;
+
+    /**
+     * Attribute name used for storing node id inside hazelcast member
+     */
+    private static final String NODE_ID_ATTRIBUTE = "nodeId";
 
     public HazelcastClusterAgent(HazelcastInstance hazelcastInstance) {
         this.hazelcastInstance = hazelcastInstance;
@@ -140,7 +146,7 @@ public class HazelcastClusterAgent implements ClusterAgent {
      * @return id of the node
      */
     public String getIdOfNode(Member node) {
-        return getNodeIdentifier(node);
+        return node.getStringAttribute(NODE_ID_ATTRIBUTE);
     }
 
     /**
@@ -167,6 +173,8 @@ public class HazelcastClusterAgent implements ClusterAgent {
     @Override
     public void start(ClusterManager manager) {
         this.manager = manager;
+
+        hazelcastInstance.getCluster().getLocalMember().setStringAttribute(NODE_ID_ATTRIBUTE, getLocalNodeIdentifier());
 
         // Register listener for membership changes
         listenerRegistrationId = hazelcastInstance.getCluster()
@@ -207,7 +215,7 @@ public class HazelcastClusterAgent implements ClusterAgent {
         // If the config value is "default" we must generate the ID
         if (AndesConfiguration.COORDINATION_NODE_ID.get().getDefaultValue().equals(nodeId)) {
             Member localMember = hazelcastInstance.getCluster().getLocalMember();
-            nodeId = getIdOfNode(localMember);
+            nodeId = CoordinationConstants.NODE_NAME_PREFIX + localMember.getSocketAddress();
         }
 
         return nodeId;
@@ -232,7 +240,8 @@ public class HazelcastClusterAgent implements ClusterAgent {
      */
     @Override
     public CoordinatorInformation getCoordinatorDetails() {
-        String ipAddress = coordinatorNodeDetailsMap.get(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP);
+        String ipAddress = coordinatorNodeDetailsMap.get(
+                SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_IP);
         String port = coordinatorNodeDetailsMap.get(SlotCoordinationConstants.CLUSTER_COORDINATOR_SERVER_PORT);
 
         return new CoordinatorInformation(ipAddress, port);
@@ -276,5 +285,23 @@ public class HazelcastClusterAgent implements ClusterAgent {
         } else {
             isCoordinator.set(false);
         }
+    }
+
+
+    /**
+     * Gets address of all the members in the cluster. i.e address:port
+     *
+     * @return A list of address of the nodes in a cluster
+     */
+    public List<String> getAllClusterNodeAddresses() {
+        List<String> addresses = new ArrayList<>();
+        if (AndesContext.getInstance().isClusteringEnabled()) {
+            for (Member member : hazelcastInstance.getCluster().getMembers()) {
+                InetSocketAddress socket = member.getSocketAddress();
+                addresses.add(getIdOfNode(member) + ","
+                              + socket.getAddress().getHostAddress() + "," + socket.getPort());
+            }
+        }
+        return addresses;
     }
 }
