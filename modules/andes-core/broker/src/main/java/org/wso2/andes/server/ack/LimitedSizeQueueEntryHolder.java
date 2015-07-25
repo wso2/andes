@@ -46,11 +46,13 @@ public class LimitedSizeQueueEntryHolder extends LinkedHashMap<Long, QueueEntry>
     }
     @Override
     protected boolean removeEldestEntry(Map.Entry<Long, QueueEntry> eldest) {
-        if(size() > limit) {
+        if(size() > limit && eldest.getValue().isTimelyDisposable()) {
             QueueEntry eldestQueueEntry = eldest.getValue();
+            eldestQueueEntry.getMessage().getArrivalTime();
+            _logger.warn("Simulating Acknowledgement and removing queue entry id= " + eldestQueueEntry.getMessage()
+                    .getMessageNumber() + " as it is "
+                    + "growing");
             simulateAcknowledgement(eldestQueueEntry);
-            _logger.warn("Removing queue entry id= " + eldestQueueEntry.getMessage().getMessageNumber() + " as it is " +
-                    "growing");
             return true;
         } else {
             return false;
@@ -68,7 +70,7 @@ public class LimitedSizeQueueEntryHolder extends LinkedHashMap<Long, QueueEntry>
                     isTopic);
         } catch (AMQException e) {
             _logger.error("Error while simulating acknowledgement for message id= " + queueEntry.getMessage()
-                    .getMessageNumber());
+                    .getMessageNumber(), e);
         }
     }
 }

@@ -81,6 +81,10 @@ public class MockQueueEntry implements QueueEntry
 
     }
 
+    public boolean isTimelyDisposable() {
+        return false;
+    }
+
     public boolean expired() throws AMQException
     {
         return false;

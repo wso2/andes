@@ -20,6 +20,8 @@ package org.wso2.andes.server.queue;
 import org.apache.log4j.Logger;
 
 import org.wso2.andes.AMQException;
+import org.wso2.andes.configuration.AndesConfigurationManager;
+import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.message.AMQMessageHeader;
 import org.wso2.andes.server.message.MessageReference;
@@ -51,6 +53,8 @@ public class QueueEntryImpl implements QueueEntry
     private Set<Subscription> _rejectedBy = null;
 
     private volatile EntryState _state = AVAILABLE_STATE;
+
+    private long creationTime;
 
     private static final
         AtomicReferenceFieldUpdater<QueueEntryImpl, EntryState>
@@ -96,6 +100,8 @@ public class QueueEntryImpl implements QueueEntry
     {
         _queueEntryList = queueEntryList;
 
+        creationTime = System.currentTimeMillis();
+
         _message = message == null ? null : message.newReference();
 
         _entryIdUpdater.set(this, entryId);
@@ -104,6 +110,7 @@ public class QueueEntryImpl implements QueueEntry
     public QueueEntryImpl(SimpleQueueEntryList queueEntryList, ServerMessage message)
     {
         _queueEntryList = queueEntryList;
+        creationTime = System.currentTimeMillis();
         _message = message == null ? null :  message.newReference();
     }
 
@@ -157,6 +164,12 @@ public class QueueEntryImpl implements QueueEntry
     public boolean isAvailable()
     {
         return _state == AVAILABLE_STATE;
+    }
+
+    public boolean isTimelyDisposable() {
+        int deliveryTimeoutInSec = AndesConfigurationManager.readValue(AndesConfiguration
+                .PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_TIMEOUT);
+        return (System.currentTimeMillis() - creationTime) > (deliveryTimeoutInSec * 1000);
     }
 
     public boolean isAcquired()

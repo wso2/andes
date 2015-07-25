@@ -485,7 +485,8 @@ public class MessageFlusher {
                          * In this delivery strategy, we do not discard any message. This might cause OOM if
                          * subscribers did not ACK to release the resources fast enough.
                          */
-                    } else if(topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_NONE)) {
+                    } else if(topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_NONE) ||
+                            topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_ALLOWED)) {
                         for (int j = 0; j < subscriptions4Queue.size(); j++) {
                             LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
                                     subscriptions4Queue);

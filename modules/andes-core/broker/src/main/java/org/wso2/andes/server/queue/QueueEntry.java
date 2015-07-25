@@ -175,6 +175,13 @@ public interface QueueEntry extends Comparable<QueueEntry>, Filterable
 
     boolean isAvailable();
 
+    /**
+     * check if we need to keep queue entry in memory. Broker does not keep
+     * queue entries more than the configured time
+     * @return if disposable by above configuration
+     */
+    boolean isTimelyDisposable();
+
     boolean isAcquired();
 
     boolean acquire();

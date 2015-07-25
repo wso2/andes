@@ -342,6 +342,10 @@ public class AbstractHeadersExchangeTestBase extends InternalBrokerBaseCase
                     return false;  //To change body of implemented methods use File | Settings | File Templates.
                 }
 
+                public boolean isTimelyDisposable() {
+                    return false;
+                }    
+
                 public boolean isAvailable()
                 {
                     return false;  //To change body of implemented methods use File | Settings | File Templates.
