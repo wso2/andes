@@ -22,8 +22,6 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAndesBridge;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.QueueEntry;
@@ -31,22 +29,39 @@ import org.wso2.andes.server.queue.QueueEntry;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * This class provides a modified LinkedHashMap behaviour. It automatically removes
+ * the eldest entry as the new entries are put in if the conditions are met.
+ */
 public class LimitedSizeQueueEntryHolder extends LinkedHashMap<Long, QueueEntry> {
 
     protected static final Logger _logger = Logger.getLogger(LimitedSizeQueueEntryHolder.class);
 
-    private final int limit = AndesConfigurationManager.readValue
-            (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
+    private int growLimit;
 
     private AMQChannel amqChannel;
 
-    public LimitedSizeQueueEntryHolder(int initialCapacity, AMQChannel amqChannel) {
+    /**
+     * Create a LimitedSizeQueueEntryHolder. This has all the functionality of LinkedHashMap.
+     * @param initialCapacity initial capacity of the internal LinkedHashMap
+     * @param growLimit allowed size of the map to grow. After this size is breached eldest entry is considered
+     *                  to be removed
+     * @param amqChannel AMQ channel Queue entry holder is registered.
+     */
+    public LimitedSizeQueueEntryHolder(int initialCapacity, int growLimit, AMQChannel amqChannel) {
         super(initialCapacity);
+        this.growLimit = growLimit;
         this.amqChannel = amqChannel;
     }
+
+    /**
+     * Here we consider to remove the eldest entry of the map judging by inserted order.
+     * @param eldest entry to remove
+     * @return if removed
+     */
     @Override
     protected boolean removeEldestEntry(Map.Entry<Long, QueueEntry> eldest) {
-        if(size() > limit && eldest.getValue().isTimelyDisposable()) {
+        if(size() > growLimit && eldest.getValue().isTimelyDisposable()) {
             QueueEntry eldestQueueEntry = eldest.getValue();
             eldestQueueEntry.getMessage().getArrivalTime();
             _logger.warn("Simulating Acknowledgement and removing queue entry id= " + eldestQueueEntry.getMessage()
@@ -59,6 +74,10 @@ public class LimitedSizeQueueEntryHolder extends LinkedHashMap<Long, QueueEntry>
         }
     }
 
+    /**
+     * Simulate an acknowledgement for the queue entry
+     * @param queueEntry queue entry to simulate the acknowledgement
+     */
     private void simulateAcknowledgement(QueueEntry queueEntry) {
         try {
             boolean isTopic = ((AMQMessage) queueEntry.getMessage()).getMessagePublishInfo()

@@ -24,17 +24,13 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.disruptor.delivery.DisruptorBasedFlusher;
 import org.wso2.andes.kernel.slot.Slot;
-import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.tools.utils.MessageTracer;
-
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 
@@ -63,20 +59,43 @@ public class MessageFlusher {
 
     private SubscriptionStore subscriptionStore;
 
-    private TopicMessageDeliveryStrategy topicMessageDeliveryStrategy;
+    /**
+     * Message flusher for queue message delivery. Depending on the behaviour of the strategy
+     * conditions to push messages to subscribers vary.
+     */
+    private MessageDeliveryStrategy queueMessageFlusher;
+
+    /**
+     * Message flusher for topic message delivery. Depending on the behaviour of the strategy
+     * conditions to push messages to subscribers vary.
+     */
+    private MessageDeliveryStrategy topicMessageFlusher;
+
+
 
     private static MessageFlusher messageFlusher = new MessageFlusher();
 
     public MessageFlusher() {
 
+        this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+        flusherExecutor = new DisruptorBasedFlusher();
+
         this.maxNumberOfReadButUndeliveredMessages = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_DELIVERY_MAX_READ_BUT_UNDELIVERED_MESSAGES);
 
-        this.topicMessageDeliveryStrategy = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_STRATEGY);
+        //set queue message flusher
+        this.queueMessageFlusher = new FlowControlledQueueMessageDeliveryImpl(subscriptionStore);
 
-        this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-        flusherExecutor = new DisruptorBasedFlusher();
+        //set topic message flusher
+        TopicMessageDeliveryStrategy topicMessageDeliveryStrategy = AndesConfigurationManager.readValue
+                (AndesConfiguration.PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_STRATEGY);
+        if(topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_ALLOWED)
+                || topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_NONE)) {
+            this.topicMessageFlusher = new NoLossBurstTopicMessageDeliveryImpl(subscriptionStore);
+        } else if(topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.SLOWEST_SUB_RATE)) {
+            this.topicMessageFlusher = new SlowestSubscriberTopicMessageDeliveryImpl(subscriptionStore);
+        }
+
     }
 
     /**
@@ -157,7 +176,7 @@ public class MessageFlusher {
      * @return subscription to deliver
      * @throws AndesException
      */
-    private LocalSubscription findNextSubscriptionToSent(String destination,
+    public LocalSubscription findNextSubscriptionToSent(String destination,
                                                          Collection<LocalSubscription>
                                                                  subscriptions4Queue)
             throws AndesException {
@@ -329,209 +348,15 @@ public class MessageFlusher {
     public int sendMessagesToSubscriptions(String destination, Set<AndesMessageMetadata> messages)
             throws Exception {
 
-        /**
-         * deliver messages to subscriptions
-         */
-        int sentMessageCount = 0;
-        boolean orphanedSlot = false;
-        Iterator<AndesMessageMetadata> iterator = messages.iterator();
-        List<AndesRemovableMetadata> droppedTopicMessagesListRemovable = new ArrayList<AndesRemovableMetadata>();
-        List<AndesMessageMetadata> droppedTopicMessagesList = new ArrayList<AndesMessageMetadata>();
+        //identify if this messages address queues or topics. There CANNOT be a mix
+        AndesMessageMetadata firstMessage = messages.iterator().next();
+        boolean isTopic = firstMessage.isTopic();
 
-
-        while (iterator.hasNext()) {
-
-            try {
-                AndesMessageMetadata message = iterator.next();
-
-                /**
-                 * get all relevant type of subscriptions. This call does NOT
-                 * return hierarchical subscriptions for the destination. There
-                 * are duplicated messages for each different subscribed destination.
-                 * For durable topic subscriptions this should return queue subscription
-                 * bound to unique queue based on subscription id
-                 */
-                Collection<LocalSubscription> subscriptions4Queue =
-                        subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
-
-                //If this is a topic message, we remove all durable topic subscriptions here.
-                //Because durable topic subscriptions will get messages via queue path.
-                if (message.isTopic()) {
-                    Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
-                    while (subscriptionIterator.hasNext()) {
-                        LocalSubscription subscription = subscriptionIterator.next();
-                        /**
-                         * Here we need to consider the arrival time of the message. Only topic
-                         * subscribers who appeared before publishing this message should receive it
-                         */
-                        if (subscription.isDurable() || (subscription.getSubscribeTime() > message.getArrivalTime())) {
-                            subscriptionIterator.remove();
-                        }
-
-                        // Avoid sending if the subscriber is MQTT and message is not MQTT
-                        if (AndesSubscription.SubscriptionType.MQTT == subscription.getSubscriptionType()
-                                && MessageMetaDataType.META_DATA_MQTT != message.getMetaDataType()) {
-                            subscriptionIterator.remove();
-                            // Avoid sending if the subscriber is AMQP and message is MQTT
-                        } else if (AndesSubscription.SubscriptionType.AMQP == subscription.getSubscriptionType()
-                                && MessageMetaDataType.META_DATA_MQTT == message.getMetaDataType()) {
-                            subscriptionIterator.remove();
-                        }
-                    }
-
-                    if (subscriptions4Queue.size() == 0) {
-                        iterator.remove(); // remove buffer
-                        AndesRemovableMetadata removableMetadata = new AndesRemovableMetadata(message.getMessageID(),
-                                message.getDestination(), message.getStorageQueueName());
-                        droppedTopicMessagesListRemovable.add(removableMetadata);
-                        droppedTopicMessagesList.add(message);
-
-                        continue; // skip this iteration if no subscriptions for the message
-                    }
-
-                } else { // Queue
-                    if (subscriptions4Queue.size() == 0) {
-                        // We don't have subscribers for this message
-                        // Handle orphaned slot created with this no subscription scenario for queue
-                        orphanedSlot = true;
-                        break; // break the loop
-                    }
-                }
-
-
-                int numOfCurrentMsgDeliverySchedules = 0;
-
-                /**
-                 * if message is addressed to queues, only ONE subscriber should
-                 * get the message. Otherwise, loop for every subscriber
-                 */
-
-                if (!message.isTopic) { //for queue messages and durable topic messages
-                    for (int j = 0; j < subscriptions4Queue.size(); j++) {
-                        LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
-                                subscriptions4Queue);
-                        if (localSubscription.hasRoomToAcceptMessages()) {
-                            if (log.isDebugEnabled()) {
-                                log.debug("Scheduled to send id = " + message.getMessageID());
-                            }
-
-                            // In a re-queue for delivery scenario we need the correct destination. Hence setting
-                            // it back correctly in AndesMetadata for durable subscription for topics
-                            if (localSubscription.isBoundToTopic()) {
-                                message.setDestination(localSubscription.getSubscribedDestination());
-                            }
-
-                            deliverMessageAsynchronously(localSubscription, message);
-                            numOfCurrentMsgDeliverySchedules++;
-
-                            //for queue messages and durable topic messages (as they are now queue messages)
-                            // we only send to one selected subscriber if it is a queue message
-                            break;
-                        }
-                    }
-
-                    if (numOfCurrentMsgDeliverySchedules == 1) {
-                        iterator.remove();
-                        if (log.isDebugEnabled()) {
-                            log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
-                        }
-                        sentMessageCount++;
-                    } else {
-                        if (log.isDebugEnabled()) {
-                            log.debug("All subscriptions for destination " + destination + " have max unacked " +
-                                    "messages " + message.getDestination());
-                        }
-                        //if we continue message order will break
-                        break;
-                    }
-                } else {
-                    /**
-                     * For normal non-durable topic we pre evaluate room for all subscribers and if all subs has room
-                     * to accept messages we send them. This means we operate to the speed of slowest subscriber (to
-                     * prevent OOM). If it is too slow to make others fast, make that topic subscriber a durable
-                     * topic subscriber.
-                     */
-                    if(topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.SLOWEST_SUB_RATE)) {
-                        boolean allTopicSubscriptionsHasRoom = true;
-                        for (LocalSubscription subscription : subscriptions4Queue) {
-                            if (!subscription.hasRoomToAcceptMessages()) {
-                                allTopicSubscriptionsHasRoom = false;
-                                break;
-                            }
-                        }
-                        if (allTopicSubscriptionsHasRoom) {
-                            //schedule message to all subscribers
-                            for (int j = 0; j < subscriptions4Queue.size(); j++) {
-                                LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
-                                        subscriptions4Queue);
-                                deliverMessageAsynchronously(localSubscription, message);
-                                numOfCurrentMsgDeliverySchedules++;
-                            }
-                            iterator.remove();
-                            if (log.isDebugEnabled()) {
-                                log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
-                            }
-                            sentMessageCount++;
-                        } else {
-                            if (log.isDebugEnabled()) {
-                                log.debug("Some subscriptions for destination " + destination + " have max unacked " +
-                                        "messages " + message.getDestination());
-                            }
-                            //if we continue message order will break
-                            break;
-                        }
-
-                        /**
-                         * In this delivery strategy, we do not discard any message. This might cause OOM if
-                         * subscribers did not ACK to release the resources fast enough.
-                         */
-                    } else if(topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_NONE) ||
-                            topicMessageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_ALLOWED)) {
-                        for (int j = 0; j < subscriptions4Queue.size(); j++) {
-                            LocalSubscription localSubscription = findNextSubscriptionToSent(destination,
-                                    subscriptions4Queue);
-                            deliverMessageAsynchronously(localSubscription, message);
-                            numOfCurrentMsgDeliverySchedules++;
-                        }
-                        iterator.remove();
-                        if (log.isDebugEnabled()) {
-                            log.debug("Removing Scheduled to send message from buffer. MsgId= " + message.getMessageID());
-                        }
-                        sentMessageCount++;
-                    }
-                }
-
-            } catch (NoSuchElementException ex) {
-                // This exception can occur because the iterator of ConcurrentSkipListSet loads the at-the-time snapshot.
-                // Some records could be deleted by the time the iterator reaches them.
-                // However, this can only happen at the tail of the collection, not in middle, and it would cause the loop
-                // to blindly check for a batch of deleted records.
-                // Given this situation, this loop should break so the sendFlusher can re-trigger it.
-                // for tracing purposes can use this : log.warn("NoSuchElementException thrown",ex);
-                log.warn("NoSuchElementException thrown. ", ex);
-                break;
-            }
+        if(isTopic) {
+            return topicMessageFlusher.deliverMessageToSubscriptions(destination,messages);
+        } else {
+            return queueMessageFlusher.deliverMessageToSubscriptions(destination,messages);
         }
-        // clear all tracking when orphan slot situation
-        if (orphanedSlot) {
-            for (AndesMessageMetadata message : messages) {
-                OnflightMessageTracker.getInstance().clearAllTrackingWhenSlotOrphaned(message.getSlot());
-            }
-            messages.clear();
-        }
-        // 
-        /**
-         * delete topic messages that were dropped due to no subscriptions 
-         * for the message and due to has no room to enqueue the message. Delete
-         * call is blocking and then slot message count is dropped in order
-         */
-        MessagingEngine.getInstance().deleteMessages(droppedTopicMessagesListRemovable,false);
-        
-        for(AndesMessageMetadata messageToRemove : droppedTopicMessagesList) {
-            OnflightMessageTracker.getInstance().decrementMessageCountInSlot(messageToRemove.getSlot());
-        }
-        
-        return sentMessageCount;
     }
 
     /**
@@ -550,7 +375,7 @@ public class MessageFlusher {
      * @param subscription local subscription
      * @param message      metadata of the message
      */
-    private void deliverMessageAsynchronously(LocalSubscription subscription, AndesMessageMetadata message) {
+    public void deliverMessageAsynchronously(LocalSubscription subscription, AndesMessageMetadata message) {
         if(log.isDebugEnabled()) {
             log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
         }

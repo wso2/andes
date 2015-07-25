@@ -49,7 +49,9 @@ public class UnacknowledgedMessageMapImpl implements UnacknowledgedMessageMap
                 (AndesConfiguration.PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_STRATEGY);
 
         if(messageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_ALLOWED)) {
-            _map = new LimitedSizeQueueEntryHolder(_prefetchLimit, amqChannel);
+            int growLimit = AndesConfigurationManager.readValue
+                    (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
+            _map = new LimitedSizeQueueEntryHolder(_prefetchLimit, growLimit, amqChannel);
         } else {
             _map = new LinkedHashMap<Long,QueueEntry>(prefetchLimit);
         }

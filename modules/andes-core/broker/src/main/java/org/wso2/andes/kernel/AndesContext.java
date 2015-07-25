@@ -40,6 +40,7 @@ public class AndesContext {
     private AMQPConstructStore AMQPConstructStore;
     private static AndesContext instance = new AndesContext();
     private MessageStore messageStore;
+    private int deliveryTimeoutForMessage;
 
     /**
      * This is mainly used by Cluster Manager to manger cluster communication
@@ -207,6 +208,24 @@ public class AndesContext {
             storeConfiguration.addContextStoreProperty(contextStoreProperty, (String) AndesConfigurationManager
                     .readValueOfChildByKey(AndesConfiguration.PERSISTENCE_CONTEXT_STORE_PROPERTY,contextStoreProperty));
         }
+    }
+
+    /**
+     * Get delivery time out of a message. If this is breached an ack for the message
+     * will be simulated internally.
+     * @return time out value
+     */
+    public int getDeliveryTimeoutForMessage() {
+        return deliveryTimeoutForMessage;
+    }
+
+    /**
+     * Set delivery time out of a message. If this is breached an ack for the message
+     * will be simulated internally.
+     * @param deliveryTimeoutForMessage time out value to set
+     */
+    public void setDeliveryTimeoutForMessage(int deliveryTimeoutForMessage) {
+        this.deliveryTimeoutForMessage = deliveryTimeoutForMessage;
     }
 
     /**

@@ -19,7 +19,8 @@
 package org.wso2.andes.kernel;
 
 /**
- * Enum to specify message delivery strategies for topic messages
+ * Enum to specify message delivery strategies for topic messages. This is configured
+ * at broker.xml under <delivery>/<topicMessageDeliveryStrategy>
  */
 public enum TopicMessageDeliveryStrategy {
 

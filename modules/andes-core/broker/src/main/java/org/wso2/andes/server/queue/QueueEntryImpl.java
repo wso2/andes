@@ -22,6 +22,7 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.message.AMQMessageHeader;
 import org.wso2.andes.server.message.MessageReference;
@@ -54,6 +55,10 @@ public class QueueEntryImpl implements QueueEntry
 
     private volatile EntryState _state = AVAILABLE_STATE;
 
+    /**
+     * Holds the time the queue entry is created. This also represents
+     * delivery time stamp of a message.
+     */
     private long creationTime;
 
     private static final
@@ -166,9 +171,11 @@ public class QueueEntryImpl implements QueueEntry
         return _state == AVAILABLE_STATE;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public boolean isTimelyDisposable() {
-        int deliveryTimeoutInSec = AndesConfigurationManager.readValue(AndesConfiguration
-                .PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_TIMEOUT);
+        int deliveryTimeoutInSec = AndesContext.getInstance().getDeliveryTimeoutForMessage();
         return (System.currentTimeMillis() - creationTime) > (deliveryTimeoutInSec * 1000);
     }
 
