@@ -22,6 +22,7 @@ import org.wso2.andes.configuration.modules.JKSStore;
 import org.wso2.andes.configuration.util.ConfigurationProperty;
 import org.wso2.andes.configuration.util.ImmutableMetaProperties;
 import org.wso2.andes.configuration.util.MetaProperties;
+import org.wso2.andes.configuration.util.TopicMessageDeliveryStrategy;
 
 import java.util.List;
 
@@ -385,6 +386,21 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES("performanceTuning/ackHandling" +
             "/maxUnackedMessages", "1000", Integer.class),
+
+    /**
+     * When delivering topic messages to multiple topic subscribers a strategy can be chosen.
+     */
+    PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_STRATEGY("performanceTuning/delivery/"
+            + "topicMessageDeliveryStrategy/strategyName", TopicMessageDeliveryStrategy.DISCARD_NONE.toString() ,
+            TopicMessageDeliveryStrategy.class),
+
+    /**
+     * If you choose DISCARD_ALLOWED topic message delivery strategy, we keep messages in memory
+     * until ack is done until this timeout. If an ack is not received under this timeout, ack will
+     * be simulated internally and real acknowledgement is discarded.
+     */
+    PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_TIMEOUT("performanceTuning/delivery/"
+            + "topicMessageDeliveryStrategy/deliveryTimeout", "60" , Integer.class),
 
     /**
      * Time interval after which the Virtual host syncing Task can sync host details across the cluster.

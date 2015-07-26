@@ -51,6 +51,7 @@ import org.jaxen.JaxenException;
 import org.w3c.dom.Document;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.util.ConfigurationProperty;
+import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.carbon.utils.ServerConstants;
 import org.wso2.securevault.SecretResolver;
@@ -167,6 +168,11 @@ public class AndesConfigurationManager {
 
             // set carbonPortOffset coming from carbon
             AndesConfigurationManager.carbonPortOffset = portOffset;
+
+            //set delivery timeout for a message
+            int deliveryTimeoutForMessage = AndesConfigurationManager.readValue(AndesConfiguration
+                    .PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_TIMEOUT);
+            AndesContext.getInstance().setDeliveryTimeoutForMessage(deliveryTimeoutForMessage);
 
         } catch (ConfigurationException e) {
             String error = "Error occurred when trying to construct configurations from file at path : " + brokerConfigFilePath;
