@@ -22,7 +22,7 @@ import org.wso2.andes.configuration.modules.JKSStore;
 import org.wso2.andes.configuration.util.ConfigurationProperty;
 import org.wso2.andes.configuration.util.ImmutableMetaProperties;
 import org.wso2.andes.configuration.util.MetaProperties;
-import org.wso2.andes.kernel.TopicMessageDeliveryStrategy;
+import org.wso2.andes.configuration.util.TopicMessageDeliveryStrategy;
 
 import java.util.List;
 

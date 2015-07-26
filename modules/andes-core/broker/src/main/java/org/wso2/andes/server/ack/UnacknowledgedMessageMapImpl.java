@@ -20,7 +20,7 @@ package org.wso2.andes.server.ack;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.TopicMessageDeliveryStrategy;
+import org.wso2.andes.configuration.util.TopicMessageDeliveryStrategy;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.queue.QueueEntry;
 

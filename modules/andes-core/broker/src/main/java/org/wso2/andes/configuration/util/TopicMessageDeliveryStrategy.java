@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package org.wso2.andes.kernel;
+package org.wso2.andes.configuration.util;
 
 /**
  * Enum to specify message delivery strategies for topic messages. This is configured

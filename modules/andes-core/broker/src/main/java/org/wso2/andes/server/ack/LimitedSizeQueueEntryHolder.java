@@ -37,6 +37,7 @@ public class LimitedSizeQueueEntryHolder extends LinkedHashMap<Long, QueueEntry>
 
     protected static final Logger _logger = Logger.getLogger(LimitedSizeQueueEntryHolder.class);
 
+    //after the map size reach this limit eldest elements are considered to be removed
     private int growLimit;
 
     private AMQChannel amqChannel;

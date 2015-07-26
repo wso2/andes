@@ -64,7 +64,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                 Collection<LocalSubscription> subscriptions4Queue =
                         subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
 
-                if (subscriptions4Queue.size() == 0) {
+                if (subscriptions4Queue.isEmpty()) {
                     // We don't have subscribers for this message
                     // Handle orphaned slot created with this no subscription scenario for queue
                     orphanedSlot = true;
