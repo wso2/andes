@@ -371,6 +371,7 @@ public class MessageFlusher {
                 log.debug("No elements in andes metadata message set.");
             }
 
+            // Since no messages were effected returning 0.
             return 0;
         }
     }
