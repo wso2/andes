@@ -349,14 +349,29 @@ public class MessageFlusher {
     public int sendMessagesToSubscriptions(String destination, Set<AndesMessageMetadata> messages)
             throws Exception {
 
-        //identify if this messages address queues or topics. There CANNOT be a mix
-        AndesMessageMetadata firstMessage = messages.iterator().next();
-        boolean isTopic = firstMessage.isTopic();
+        if(messages.iterator().hasNext()) {
+            //identify if this messages address queues or topics. There CANNOT be a mix
+            AndesMessageMetadata firstMessage = messages.iterator().next();
+            boolean isTopic = firstMessage.isTopic();
 
-        if(isTopic) {
-            return topicMessageFlusher.deliverMessageToSubscriptions(destination,messages);
+            if (isTopic) {
+                return topicMessageFlusher.deliverMessageToSubscriptions(destination, messages);
+            } else {
+                return queueMessageFlusher.deliverMessageToSubscriptions(destination, messages);
+            }
         } else {
-            return queueMessageFlusher.deliverMessageToSubscriptions(destination,messages);
+            if(log.isDebugEnabled()) {
+                // This exception can occur because the iterator of ConcurrentSkipListSet loads the
+                // at-the-time snapshot.
+                // Some records could be deleted by the time the iterator reaches them.
+                // However, this can only happen at the tail of the collection, not in middle, and it
+                // would cause the loop to blindly check for a batch of deleted records.
+                // Given this situation, this loop should break so the sendFlusher can re-trigger it.
+                // for tracing purposes can use this : log.warn("NoSuchElementException thrown",ex);
+                log.debug("No elements in andes metadata message set.");
+            }
+
+            return 0;
         }
     }
 
