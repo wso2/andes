@@ -154,14 +154,6 @@ public class AndesContext {
         return AMQPConstructStore;
     }
 
-    public void setClusteringAgent(ClusteringAgent clusteringAgent){
-      this.clusteringAgent = clusteringAgent;
-    }
-
-    public ClusteringAgent getClusteringAgent() {
-        return clusteringAgent;
-    }
-
     /**
      *  get thrift server host ip
      * @return  thrift server host ip
