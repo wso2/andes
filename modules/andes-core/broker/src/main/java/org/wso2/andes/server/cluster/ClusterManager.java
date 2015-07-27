@@ -29,6 +29,9 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
+import org.wso2.andes.store.FailureObservingStoreManager;
+import org.wso2.andes.store.HealthAwareStore;
+import org.wso2.andes.store.StoreHealthListener;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -39,7 +42,7 @@ import java.util.List;
  * Cluster Manager is responsible for Handling the Broker Cluster Management Tasks like
  * Queue Worker distribution. Fail over handling for cluster nodes. etc.
  */
-public class ClusterManager {
+public class ClusterManager implements StoreHealthListener{
 
     /**
      * Class logger
@@ -62,6 +65,11 @@ public class ClusterManager {
     private ClusterAgent clusterAgent;
 
     /**
+     * This is the cached value of the operational status of the store
+     */
+    private boolean storeOperational;
+
+    /**
      * Create a ClusterManager instance
      */
     public ClusterManager() {
@@ -80,6 +88,12 @@ public class ClusterManager {
         } else {
             initStandaloneMode();
         }
+        // set storeOperational to true since it can be assumed that the store is operational at startup
+        // if it is non-operational, the value will be updated immediately
+        storeOperational = true;
+        // Register this instance to listen to the store health
+        FailureObservingStoreManager.registerStoreHealthListener(this);
+
     }
 
     /**
@@ -287,13 +301,22 @@ public class ClusterManager {
      * @return true if healthy, else false.
      */
     public boolean getStoreHealth() {
-        String myNodeId = getMyNodeID();
+       return storeOperational;
+    }
 
-        boolean isMessageStoreOperational = AndesContext.getInstance().getMessageStore().isOperational(myNodeId,
-                System.currentTimeMillis());
-        boolean isAndesContextStoreOperational = AndesContext.getInstance().getAndesContextStore().isOperational
-                (myNodeId, System.currentTimeMillis());
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void storeNonOperational(HealthAwareStore store, Exception ex) {
+        storeOperational = false;
+    }
 
-        return isMessageStoreOperational && isAndesContextStoreOperational;
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void storeOperational(HealthAwareStore store) {
+        storeOperational = true;
     }
 }
