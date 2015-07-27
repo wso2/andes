@@ -31,6 +31,7 @@ import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -129,7 +130,13 @@ public class ContentCacheCreator {
             List<AndesMessagePart> contentList = contentListMap.get(messageID);
 
             if (null != contentList) {
-                content = new DisruptorCachedContent(contentList, contentSize, maxChunkSize);
+                Map<Integer, AndesMessagePart> messagePartMap = new HashMap<>(contentList.size());
+
+                for (AndesMessagePart messagePart : contentList) {
+                    messagePartMap.put(messagePart.getOffSet(), messagePart);
+                }
+
+                content = new DisruptorCachedContent(messagePartMap, contentSize, maxChunkSize);
                 contentCache.put(messageID, content);
                 deliveryEventData.setAndesContent(content);
 

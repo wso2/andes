@@ -19,7 +19,7 @@
 package org.wso2.andes.kernel;
 
 import java.nio.ByteBuffer;
-import java.util.List;
+import java.util.Map;
 
 /**
  * DisruptorCachedContent has access to content cache built by the disruptor
@@ -28,7 +28,7 @@ public class DisruptorCachedContent implements AndesContent {
     /**
      * Used to store message parts in memory
      */
-    private final List<AndesMessagePart> contentList;
+    private final Map<Integer, AndesMessagePart> contentList;
 
     /**
      * Content length of the message
@@ -46,7 +46,7 @@ public class DisruptorCachedContent implements AndesContent {
      * @param contentLength length of the content to be cached
      * @param maxChunkSize maximum chunk size of the stored content
      */
-    public DisruptorCachedContent(List<AndesMessagePart> contentList, int contentLength, int maxChunkSize) {
+    public DisruptorCachedContent(Map<Integer, AndesMessagePart> contentList, int contentLength, int maxChunkSize) {
         this.contentList = contentList;
         this.contentLength = contentLength;
         this.maxChunkSize = maxChunkSize;
