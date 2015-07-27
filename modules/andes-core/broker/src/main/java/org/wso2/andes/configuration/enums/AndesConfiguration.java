@@ -331,6 +331,19 @@ public enum AndesConfiguration implements ConfigurationProperty {
             Integer.class),
 
     /**
+     * Specify the maximum number of entries the cache may contain
+     */
+    PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_MAXIMUM_SIZE("performanceTuning/delivery/contentCache/maximumSize", "100",
+                                                           Integer.class),
+
+    /**
+     * Specify the time in minutes that each entry should be automatically removed from the cache after the entry's
+     * creation
+     */
+    PERFORMANCE_TUNING_DELIVERY_CONTENT_CACHE_EXPIRY_TIME("performanceTuning/delivery/contentCache/expiryTime", "120",
+                                                          Integer.class),
+
+    /**
      * Number of parallel writers used to write content to message store. Increasing this value will speedup
      * the message receiving mechanism. But the load on the data store will increase.
      */

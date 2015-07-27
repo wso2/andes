@@ -18,19 +18,17 @@
 
 package org.wso2.andes.kernel;
 
-import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.kernel.disruptor.delivery.DeliveryEventData;
-
 import java.nio.ByteBuffer;
+import java.util.List;
 
 /**
  * DisruptorCachedContent has access to content cache built by the disruptor
  */
 public class DisruptorCachedContent implements AndesContent {
     /**
-     * event data holder is used to access cached content
+     * Used to store message parts in memory
      */
-    private final DeliveryEventData eventDataHolder;
+    private final List<AndesMessagePart> contentList;
 
     /**
      * Content length of the message
@@ -44,12 +42,12 @@ public class DisruptorCachedContent implements AndesContent {
 
     /**
      * Create a {@link org.wso2.andes.kernel.DisruptorCachedContent} object
-     * @param eventDataHolder {@link org.wso2.andes.kernel.distruptor.delivery.DeliveryEventData}
+     * @param contentList message part list
      * @param contentLength length of the content to be cached
      * @param maxChunkSize maximum chunk size of the stored content
      */
-    public DisruptorCachedContent(DeliveryEventData eventDataHolder, int contentLength, int maxChunkSize) {
-        this.eventDataHolder = eventDataHolder;
+    public DisruptorCachedContent(List<AndesMessagePart> contentList, int contentLength, int maxChunkSize) {
+        this.contentList = contentList;
         this.contentLength = contentLength;
         this.maxChunkSize = maxChunkSize;
     }
@@ -72,7 +70,7 @@ public class DisruptorCachedContent implements AndesContent {
             int chunkStartByteIndex = chunkNumber * maxChunkSize;
             int positionToReadFromChunk = currentBytePosition - chunkStartByteIndex;
 
-            AndesMessagePart messagePart = eventDataHolder.getMessagePart(chunkStartByteIndex);
+            AndesMessagePart messagePart = getMessagePart(chunkStartByteIndex);
 
             int messagePartSize = messagePart.getDataLength();
             int numOfBytesAvailableToRead = messagePartSize - positionToReadFromChunk;
@@ -100,5 +98,21 @@ public class DisruptorCachedContent implements AndesContent {
     @Override
     public int getContentLength() {
         return contentLength;
+    }
+
+    /**
+     * Get Message part for byte index
+     *
+     * @param indexToQuery
+     *         Byte index of the content
+     * @return Content chunk
+     */
+    private AndesMessagePart getMessagePart(int indexToQuery) throws AndesException {
+        AndesMessagePart messagePart = contentList.get(indexToQuery);
+
+        if (null == messagePart) {
+            throw new AndesException("Content not cached for chunk index " + indexToQuery);
+        }
+        return messagePart;
     }
 }

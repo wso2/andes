@@ -31,9 +31,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 
-
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -133,7 +134,7 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
         DeliveryEventData event = null;
         int totalContentLength = 0;
         List<DeliveryEventData> eventList = new ArrayList<DeliveryEventData>(this.batchSize);
-        List<Long> messageIDList = new ArrayList<Long>();
+        Set<Long> messageIDSet = new HashSet<>();
         long currentTurn;
         long nextSequence = sequence.get() + 1L;
         while (true) {
@@ -143,12 +144,13 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
                 while (nextSequence <= availableSequence) {
                     event = ringBuffer.get(nextSequence);
 
-                    currentTurn = nextSequence % groupCount;
+                    AndesMessageMetadata metadata = event.getMetadata();
+                    long currentMessageID = metadata.getMessageID();
+                    currentTurn = currentMessageID % groupCount;
                     if (turn == currentTurn) {
                         eventList.add(event);
-                        AndesMessageMetadata metadata = event.getMetadata();
                         totalContentLength = totalContentLength + metadata.getMessageContentLength();
-                        messageIDList.add(metadata.getMessageID());
+                        messageIDSet.add(currentMessageID);
                     }
                     if (log.isDebugEnabled()) {
                         log.debug("[ " + nextSequence + " ] Current turn " + currentTurn + ", turn " + turn
@@ -159,14 +161,14 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
                     if (((totalContentLength >= batchSize) || (nextSequence == availableSequence))
                             && !eventList.isEmpty()) {
 
-                        eventHandler.onEvent(eventList, messageIDList);
+                        eventHandler.onEvent(eventList);
                         if (log.isDebugEnabled()) {
-                            log.debug("Event handler called with message id list " + messageIDList );
+                            log.debug("Event handler called with message id list " + messageIDSet );
                         }
 
                         // reset counters and lists
                         eventList.clear();
-                        messageIDList.clear();
+                        messageIDSet.clear();
                         totalContentLength = 0;
                     }
                     nextSequence++;
@@ -184,7 +186,7 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
                 // Dropping events with errors from batch processor. Relevant event handler should take care of
                 // the events. If not cleared next iteration would contain the previous iterations event list
                 eventList.clear();
-                messageIDList.clear();
+                messageIDSet.clear();
                 totalContentLength = 0;
                 nextSequence++;
             }
