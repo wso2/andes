@@ -286,7 +286,7 @@ public class MQTTopicManager {
         int mqttLocalMessageID = 1;
 
         //We need to keep track of the message if the QOS level is > 0
-        if (subscriberQOS > QOSLevel.AT_MOST_ONCE.getValue()) {
+        if (Math.min(publishedQOS,subscriberQOS) > QOSLevel.AT_MOST_ONCE.getValue()) {
             //We need to add the message information to maintain state, in-order to identify the messages
             // once the acks receive
 
