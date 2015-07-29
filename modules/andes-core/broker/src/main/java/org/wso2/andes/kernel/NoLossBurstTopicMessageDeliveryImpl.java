@@ -100,6 +100,22 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                     continue; // skip this iteration if no subscriptions for the message
                 }
 
+                boolean allTopicSubscriptionsSaturated = true;
+                for (LocalSubscription subscription : subscriptions4Queue) {
+                    if (subscription.hasRoomToAcceptMessages()) {
+                        allTopicSubscriptionsSaturated = false;
+                        break;
+                    }
+                }
+
+                /**
+                 * if all topic subscriptions are saturated we skip sending. This is to prevent protocol buffers
+                 * overfilling. These messages will be tried in order in next buff flush.
+                 */
+                if(allTopicSubscriptionsSaturated) {
+                    break;
+                }
+
                 for (int j = 0; j < subscriptions4Queue.size(); j++) {
                     LocalSubscription localSubscription = MessageFlusher.getInstance()
                             .findNextSubscriptionToSent(destination, subscriptions4Queue);
