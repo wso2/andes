@@ -30,11 +30,13 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class will track message delivery by broker
@@ -519,6 +521,28 @@ public class OnflightMessageTracker {
         }
         return numOfSchedules;
     }
+
+    /**
+     * Increment number of times this message is scheduled to be delivered
+     * to different subscribers. This value will be equal to the number
+     * of subscribers expecting the message at that instance.
+     *
+     * @param messageID identifier of the message
+     * @return num of scheduled times after increment
+     */
+    public int incrementNumberOfScheduledDeliveries(long messageID ,int count) {
+        MessageData trackingData = getTrackingData(messageID);
+        int numOfSchedules = 0;
+        if (trackingData != null) {
+            trackingData.addMessageStatus(MessageStatus.SCHEDULED_TO_SEND);
+            numOfSchedules = trackingData.numberOfScheduledDeliveries.addAndGet(count);
+            if (log.isDebugEnabled()) {
+                log.debug("message id= " + messageID + " scheduled. Pending to execute= " + numOfSchedules);
+            }
+        }
+        return numOfSchedules;
+    }
+
 
     /**
      * Decrement number of times this message is scheduled to be delivered.

@@ -383,6 +383,7 @@ public class MessageFlusher {
      */
     public void scheduleMessageForSubscription(LocalSubscription subscription,
                                                final AndesMessageMetadata message) {
+        OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
         deliverMessageAsynchronously(subscription, message);
     }
 
@@ -396,7 +397,6 @@ public class MessageFlusher {
         if(log.isDebugEnabled()) {
             log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
         }
-        OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
         flusherExecutor.submit(subscription, message);
     }
 
