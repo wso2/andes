@@ -450,7 +450,7 @@ public class RDBMSConstants {
                     " VALUES ( ?,? )";
 
     /**
-     * Prepared statements save slot information
+     * Prepared statement to create a new slot in database
      */
     protected static final String PS_INSERT_SLOT =
             "INSERT INTO " + SLOT_TABLE + " (" +
@@ -459,17 +459,26 @@ public class RDBMSConstants {
                     STORAGE_QUEUE_NAME + "," +
                     SLOT_STATE + "," +
                     ASSIGNED_NODE_ID + ")" +
-                    " VALUES (?,?,?,2,?)";
+                    " VALUES (?,?,?," + SlotState.ASSIGNED.getCode() + ",?)";
 
+    /**
+     * Prepared statement to delete a slot from database
+     */
     protected static final String PS_DELETE_SLOT =
             "DELETE FROM " + SLOT_TABLE +
                     " WHERE " + START_MESSAGE_ID + "=?" +
                     " AND " + END_MESSAGE_ID + "=?";
 
+    /**
+     * Prepared statement to delete a slot by queue name
+     */
     protected static final String PS_DELETE_SLOTS_BY_QUEUE_NAME =
             "DELETE FROM " + SLOT_TABLE +
                     " WHERE " + STORAGE_QUEUE_NAME + "=?";
 
+    /**
+     * Prepared statement to assign a slot to node
+     */
     protected static final String PS_INSERT_SLOT_ASSIGNMENT =
             "UPDATE " + SLOT_TABLE +
                     " SET " +
@@ -479,6 +488,9 @@ public class RDBMSConstants {
                     " WHERE " + START_MESSAGE_ID + "=?" +
                     " AND " + END_MESSAGE_ID + "=?";
 
+    /**
+     * Prepared statement to un-assign a slot from node
+     */
     protected static final String PS_DELETE_SLOT_ASSIGNMENT =
             "UPDATE " + SLOT_TABLE +
                     " SET " +
@@ -488,6 +500,9 @@ public class RDBMSConstants {
                     " WHERE " + START_MESSAGE_ID + "=?" +
                     " AND " + END_MESSAGE_ID + "=?";
 
+    /**
+     * Prepared statement to un-assign slots assigned to a given queue
+     */
     protected static final String PS_DELETE_SLOT_ASSIGNMENT_BY_QUEUE_NAME =
             "UPDATE " + SLOT_TABLE +
                     " SET " +
@@ -497,6 +512,9 @@ public class RDBMSConstants {
                     " WHERE " + ASSIGNED_NODE_ID + "= ?" +
                     " AND " + ASSIGNED_QUEUE_NAME + "= ?";
 
+    /**
+     * Prepared statement to get slots assigned to a give node
+     */
     protected static final String PS_GET_ASSIGNED_SLOTS_BY_NODE_ID =
             "SELECT * " +
                     " FROM " + SLOT_TABLE +
@@ -548,22 +566,34 @@ public class RDBMSConstants {
                     " FROM " + QUEUE_TO_LAST_ASSIGNED_ID +
                     " WHERE " + QUEUE_NAME + "=?";
 
+    /**
+     * Prepared statement to insert last assigned id of queue
+     */
     protected static final String PS_INSERT_QUEUE_TO_LAST_ASSIGNED_ID =
             "INSERT INTO " + QUEUE_TO_LAST_ASSIGNED_ID + "(" +
                     QUEUE_NAME + "," +
                     MESSAGE_ID + ")" +
                     " VALUES (?,?)";
 
+    /**
+     * Prepared statement to update last assigned id of queue
+     */
     protected static final String PS_UPDATE_QUEUE_TO_LAST_ASSIGNED_ID =
             "UPDATE " + QUEUE_TO_LAST_ASSIGNED_ID +
                     " SET " + MESSAGE_ID + "=? " +
                     " WHERE " + QUEUE_NAME + "=?";
 
+    /**
+     * Prepared statement to get last published id of node
+     */
     protected static final String PS_SELECT_NODE_TO_LAST_PUBLISHED_ID =
             "SELECT * " +
                     " FROM " + NODE_TO_LAST_PUBLISHED_ID +
                     " WHERE " + NODE_ID + "=?";
 
+    /**
+     * Prepared statement to insert last published id of a node
+     */
     protected static final String PS_INSERT_NODE_TO_LAST_PUBLISHED_ID =
             "INSERT INTO " + NODE_TO_LAST_PUBLISHED_ID + "(" +
                     NODE_ID + "," +
@@ -574,36 +604,56 @@ public class RDBMSConstants {
             "DELETE FROM " + NODE_TO_LAST_PUBLISHED_ID +
             " WHERE " + NODE_ID + "=?";
 
+    /**
+     * Prepared statement to update last published id of a node
+     */
     protected static final String PS_UPDATE_NODE_TO_LAST_PUBLISHED_ID =
             "UPDATE " + NODE_TO_LAST_PUBLISHED_ID +
                     " SET " + MESSAGE_ID + "=? " +
                     " WHERE " + NODE_ID + "=?";
 
+    /**
+     * Prepared statement to get list of message published nodes
+     */
     protected static final String PS_SELECT_MESSAGE_PUBLISHED_NODES =
             "SELECT " + NODE_ID +
                     " FROM " + NODE_TO_LAST_PUBLISHED_ID;
 
+    /**
+     * Prepared statement to insert slot message ids
+     */
     protected static final String PS_INSERT_SLOT_MESSAGE_ID =
             "INSERT INTO " + SLOT_MESSAGE_ID_TABLE + "(" +
                     QUEUE_NAME + "," +
                     MESSAGE_ID + ") " +
                     " VALUES (?,?)";
 
+    /**
+     * Prepared statement to get slot message ids
+     */
     protected static final String PS_GET_MESSAGE_IDS =
             "SELECT * " +
                     "FROM " + SLOT_MESSAGE_ID_TABLE +
                     " WHERE " + QUEUE_NAME + "=?" +
                     " ORDER BY " + MESSAGE_ID;
 
+    /**
+     * Prepared statement to delete slot message ids
+     */
     protected static final String PS_DELETE_MESSAGE_ID =
             "DELETE FROM " + SLOT_MESSAGE_ID_TABLE +
                     " WHERE " + MESSAGE_ID + "=?";
 
+    /**
+     * Prepared statement to delete message ids by queue name
+     */
     protected static final String PS_DELETE_MESSAGE_IDS_BY_QUEUE_NAME =
             "DELETE FROM " + SLOT_MESSAGE_ID_TABLE +
                     " WHERE " + QUEUE_NAME + "=?";
 
-
+    /**
+     * Prepared statement to get all queues
+     */
     protected static final String PS_GET_ALL_QUEUES =
             "SELECT DISTINCT " + STORAGE_QUEUE_NAME +
                 " FROM " + SLOT_TABLE;

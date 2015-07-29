@@ -117,7 +117,7 @@ public class ClusterManager implements StoreHealthListener{
             clearAllPersistedStatesOfDisappearedNode(deletedNodeId);
 
             //Reassign the slot to free slots pool
-            SlotManagerClusterMode.getInstance().reAssignSlotsWhenMemberLeaves(deletedNodeId);
+            SlotManagerClusterMode.getInstance().reassignSlotsWhenMemberLeaves(deletedNodeId);
         }
 
         // Deactivate durable subscriptions belonging to the node

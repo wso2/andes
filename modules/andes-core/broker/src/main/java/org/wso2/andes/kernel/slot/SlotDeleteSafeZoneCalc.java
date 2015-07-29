@@ -68,7 +68,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                 try {
                     nodesWithPublishedMessages = SlotManagerClusterMode.getInstance().getMessagePublishedNodes();
                 } catch (AndesException e) {
-                    log.error("SlotDeleteSafeZoneCalc stopped due to failing to get message published nodes.");
+                    log.error("SlotDeleteSafeZoneCalc stopped due to failing to get message published nodes.", e);
                     this.setLive(false);
                     continue;
                 }
@@ -90,7 +90,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                                 .getLastPublishedIDByNode(nodeID);
                     } catch (AndesException e) {
                         log.error("SlotDeleteSafeZoneCalc stopped due to failing to get last published id for node:" +
-                                nodeID);
+                                nodeID, e);
                         this.setLive(false);
                         continue;
                     }
