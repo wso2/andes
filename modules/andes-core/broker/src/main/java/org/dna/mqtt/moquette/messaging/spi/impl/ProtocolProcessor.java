@@ -26,8 +26,10 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.MQTTUserAuthenticationScheme;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
+import org.wso2.andes.mqtt.MQTTAuthorizationSubject;
 import org.wso2.andes.mqtt.MQTTException;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
+import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -48,6 +50,11 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
     private SubscriptionsStore subscriptions;
     private IStorageService m_storageService;
     private IAuthenticator m_authenticator;
+
+    /**
+     * Keeps client data in memory for authorization of publishing and subscribing later. <ClientID, AuthData>
+     */
+    private Map<String, MQTTAuthorizationSubject> authSubjects = new HashMap<String, MQTTAuthorizationSubject>();
 
     private RingBuffer<ValueEvent> m_ringBuffer;
 
@@ -178,6 +185,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             processPublish(pubEvt);
         }
 
+        MQTTAuthorizationSubject authSubject = new MQTTAuthorizationSubject(msg.getClientID(), msg.isUserFlag());
        
        //Server enforces user authentication but user doesn't supply credentials
        // NOTE: this is just a interim solution for a potential security threat.
@@ -190,17 +198,24 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
        //handle user authentication
         if (msg.isUserFlag()) {
+            String username = msg.getUsername();
             String pwd = null;
             if (msg.isPasswordFlag()) {
                 pwd = msg.getPassword();
             }
-            if (!m_authenticator.checkValid(msg.getUsername(), pwd)) {
+            if (!m_authenticator.checkValid(username, pwd)) {
                 ConnAckMessage okResp = new ConnAckMessage();
                 okResp.setReturnCode(ConnAckMessage.BAD_USERNAME_OR_PASSWORD);
                 session.write(okResp);
                 return;
             }
+
+            // Keep the authorization details in memory to be used while publishing and subscribing
+            // to validate the client
+            authSubject.setTenantDomain(MultitenantUtils.getTenantDomain(username.replace('!', '@')));
         }
+
+        authSubjects.put(msg.getClientID(), authSubject);
 
         subscriptions.activate(msg.getClientID());
 
@@ -283,26 +298,42 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             log.debug("processPublish invoked with " + evt);
         }
         final String topic = evt.getTopic();
-        final AbstractMessage.QOSType qos = evt.getQos();
-        final ByteBuffer message = evt.getMessage();
-        boolean retain = evt.isRetain();
-        //Added to maintain the state of the publishing clients
+
+        // Authorize publish
         String clientID = evt.getClientID();
+        MQTTAuthorizationSubject authSubject = authSubjects.get(clientID);
+        String tenant = MQTTUtils.getTenantFromTopic(topic);
 
-        String publishKey;
-
-        // For QOS 2 send publisher received
-        if (qos == AbstractMessage.QOSType.EXACTLY_ONCE) {
-            publishKey = String.format("%s%d", evt.getClientID(), evt.getMessageID());
-            //store the message in temp store
-            m_storageService.persistQoS2Message(publishKey, evt);
-            sendPubRec(evt.getClientID(), evt.getMessageID());
-            //We do not add the message to andes at this point since the message addition would happen upon the PUBREL
-        }else{
-            AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), evt.getMessage(), evt.isRetain(),
-                    evt.getMessageID(), clientID, this,evt.getSession().getSocketChannel());
-
+        boolean authenticated = true;
+        if (isAuthenticationRequired && (!authSubject.isUserFlag() || !tenant.equals(authSubject.getTenantDomain()))) {
+            // user flas has to be set at this point, else not authenticated
+            authenticated = false;
         }
+
+        if (authenticated) {
+            final AbstractMessage.QOSType qos = evt.getQos();
+
+            String publishKey;
+
+            // For QOS 2 send publisher received
+            if (qos == AbstractMessage.QOSType.EXACTLY_ONCE) {
+                publishKey = String.format("%s%d", evt.getClientID(), evt.getMessageID());
+                //store the message in temp store
+                m_storageService.persistQoS2Message(publishKey, evt);
+                sendPubRec(evt.getClientID(), evt.getMessageID());
+                //We do not add the message to andes at this point since the message addition would happen upon the
+                // PUBREL
+            }else{
+                AndesMQTTBridge.onMessagePublished(topic, qos.ordinal(), evt.getMessage(), evt.isRetain(),
+                        evt.getMessageID(), clientID, this,evt.getSession().getSocketChannel());
+
+            }
+        } else {
+            // Log and continue since there is no method to inform the client about permission failure
+            log.error("Client " + clientID + " does not have permission to publish to tenant : " + tenant);
+        }
+
+
 
     }
 
@@ -598,6 +629,9 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
     }
 
     void processDisconnect(ServerChannel session, String clientID, boolean cleanSession) throws InterruptedException {
+
+        removeAuthorizationSubject(clientID);
+
         if (cleanSession) {
             //cleanup topic subscriptions
             processRemoveAllSubscriptions(clientID);
@@ -619,6 +653,9 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
     }
 
     void proccessConnectionLost(String clientID) {
+
+        removeAuthorizationSubject(clientID);
+
         //If already removed a disconnect message was already processed for this clientID
         if (m_clientIDs.remove(clientID) != null) {
 
@@ -636,6 +673,17 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             }
             // bridge.onSubscriberDisconnection(clientID);
         }
+    }
+
+    /**
+     * Remove authorization data for a client.
+     *
+     * Each client when disconnected or connection is log this method should be called to clear the in memory data.
+     *
+     * @param clientID The client ID to remove data for.
+     */
+    private void removeAuthorizationSubject(String clientID) {
+        authSubjects.remove(clientID);
     }
 
     /**
@@ -673,7 +721,22 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             log.debug("processSubscribe invoked from client " + clientID + " with msgID " + msg.getMessageID());
         }
 
+        // Authorize publish
+        MQTTAuthorizationSubject authSubject = authSubjects.get(clientID);
+
         for (SubscribeMessage.Couple req : msg.subscriptions()) {
+
+            // Authorize subscribe
+            String tenant = MQTTUtils.getTenantFromTopic(req.getTopic());
+            if (isAuthenticationRequired && (!authSubject.isUserFlag() ||
+                            !tenant.equals(authSubject.getTenantDomain()))) {
+                // User flag has to be set at this point, else not authenticated
+                // Log and continue since there is no method to inform the client about permission failure
+                log.error("Client " + clientID + " does not have permission to subscribe to topic : " +  req.getTopic());
+
+                continue;
+            }
+
             AbstractMessage.QOSType qos = AbstractMessage.QOSType.values()[req.getQos()];
             Subscription newSubscription = new Subscription(clientID, req.getTopic(), qos, cleanSession);
             subscribeSingleTopic(newSubscription);
@@ -688,7 +751,6 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             }
         }
 
-        //ack the client
         SubAckMessage ackMessage = new SubAckMessage();
         ackMessage.setMessageID(msg.getMessageID());
 
