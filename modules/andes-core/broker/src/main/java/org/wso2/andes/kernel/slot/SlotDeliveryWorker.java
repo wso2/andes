@@ -140,7 +140,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                                 }
                             } else {
                                 if (log.isDebugEnabled()) {
-                                    log.debug("Received slot for queue " + storageQueueName + " " +
+                                    log.debug("Received slot for storage queue " + storageQueueName + " " +
                                             "is: " + currentSlot.getStartMessageId() +
                                             " - " + currentSlot.getEndMessageId() +
                                             "Thread Id:" + Thread.currentThread().getId());
@@ -156,7 +156,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                                         log.debug("Number of messages read from slot " +
                                                 currentSlot.getStartMessageId() + " - " +
                                                 currentSlot.getEndMessageId() + " is " +
-                                                messagesRead.size() + " queue= " + storageQueueName);
+                                                messagesRead.size() + " storage queue= " + storageQueueName);
                                     }
                                     MessageFlusher.getInstance().sendMessageToBuffer(
                                             messagesRead, currentSlot);
