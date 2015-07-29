@@ -18,6 +18,8 @@
 
 package org.wso2.andes.server.cluster;
 
+import org.wso2.andes.kernel.AndesException;
+
 import java.util.List;
 
 /**
@@ -73,7 +75,7 @@ public interface ClusterAgent {
      * @param manager
      *         Cluster manager for the current node
      */
-    void start(ClusterManager manager);
+    void start(ClusterManager manager) throws AndesException;
 
     /**
      * Stop listening to cluster events

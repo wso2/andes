@@ -29,7 +29,6 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.slot.SlotCoordinationConstants;
-import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.cluster.coordination.CoordinationConstants;
 import org.wso2.andes.server.cluster.coordination.hazelcast.AndesMembershipListener;
 
@@ -171,10 +170,21 @@ public class HazelcastClusterAgent implements ClusterAgent {
      * {@inheritDoc}
      */
     @Override
-    public void start(ClusterManager manager) {
+    public void start(ClusterManager manager) throws AndesException{
         this.manager = manager;
 
         hazelcastInstance.getCluster().getLocalMember().setStringAttribute(NODE_ID_ATTRIBUTE, getLocalNodeIdentifier());
+
+        //Checking for duplicate node ids in cluster
+        Set<Member> members = hazelcastInstance.getCluster().getMembers();
+        for (Member member : members) {
+            if (getIdOfNode(member).equals(getLocalNodeIdentifier()) &&
+                member != hazelcastInstance.getCluster().getLocalMember()) {
+                throw new AndesException(
+                        "Another node with the same node id: " + getLocalNodeIdentifier() +
+                        " found in the cluster. Cannot start the node.");
+            }
+        }
 
         // Register listener for membership changes
         listenerRegistrationId = hazelcastInstance.getCluster()
