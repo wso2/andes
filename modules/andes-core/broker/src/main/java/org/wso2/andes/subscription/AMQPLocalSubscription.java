@@ -325,6 +325,8 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
                 throw new AndesException("Unexpected Subscription type for message with ID : " + msgHeaderStringID);
             }
         } catch (AMQException e) {
+            //TODO: we need to remove from sending tracker if we could not send
+
             // The error is not logged here since this will be caught safely higher up in the execution plan :
             // MessageFlusher.deliverAsynchronously. If we have more context, its better to log here too,
             // but since this is a general explanation of many possible errors, no point in logging at this state.

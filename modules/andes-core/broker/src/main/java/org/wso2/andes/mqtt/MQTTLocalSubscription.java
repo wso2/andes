@@ -222,6 +222,7 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
                             this.getStorageQueueName(), getChannelID());
                 }
             } catch (MQTTException e) {
+                //TODO: we need to remove from sending tracker if we could not send
                 unAckedMsgCount.decrementAndGet();
                 final String error = "Error occurred while delivering message to the subscriber for message :" +
                         messageMetadata.getMessageID();

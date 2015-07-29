@@ -198,9 +198,9 @@ public class OnflightMessageTracker {
     public void incrementMessageCountInSlot(Slot slot, int amount) {
         AtomicInteger pendingMessageCount = pendingMessagesBySlot.get(slot);
         if (null == pendingMessageCount) {
-            pendingMessagesBySlot.putIfAbsent(slot, new AtomicInteger());
+            pendingMessageCount = new AtomicInteger();
+            pendingMessagesBySlot.putIfAbsent(slot, pendingMessageCount);
         }
-        pendingMessageCount = pendingMessagesBySlot.get(slot);
         pendingMessageCount.addAndGet(amount);
     }
 
@@ -239,6 +239,8 @@ public class OnflightMessageTracker {
                     log.debug("OK to remove message from store as all acks are received id= " + messageID);
                 }
             }
+        } else {
+            log.error("Could not find tracking data for message id " + messageID + " and channel " + channel);
         }
 
         return isOKToDeleteMessage;
