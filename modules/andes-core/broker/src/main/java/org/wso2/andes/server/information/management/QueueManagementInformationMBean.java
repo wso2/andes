@@ -84,7 +84,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     // OpenMBean data types for viewMessageContent method
     private static CompositeType _msgContentType = null;
-    private static OpenType[] _msgContentAttributeTypes = new OpenType[13];
+    private static OpenType[] _msgContentAttributeTypes = new OpenType[9];
 
     /**
      * Publisher Acknowledgements are disabled for this MBean
@@ -178,15 +178,11 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         _msgContentAttributeTypes[1] = SimpleType.STRING; // For content type
         _msgContentAttributeTypes[2] = new ArrayType(1, SimpleType.STRING); // For message content
         _msgContentAttributeTypes[3] = SimpleType.STRING; // For JMS message id
-        _msgContentAttributeTypes[4] = SimpleType.STRING; // For JMS correlation Id
-        _msgContentAttributeTypes[5] = SimpleType.STRING; // For JMS type
-        _msgContentAttributeTypes[6] = SimpleType.BOOLEAN; // For redelivered
-        _msgContentAttributeTypes[7] = SimpleType.INTEGER; // For delivered mode
-        _msgContentAttributeTypes[8] = SimpleType.INTEGER; // For JMS priority
-        _msgContentAttributeTypes[9] = SimpleType.LONG; // For JMS timeStamp
-        _msgContentAttributeTypes[10] = SimpleType.LONG; // For JMS expiration
-        _msgContentAttributeTypes[11] = SimpleType.STRING; // For dlc message destination
-        _msgContentAttributeTypes[12] = SimpleType.LONG; // For andes message metadata id
+        _msgContentAttributeTypes[4] = SimpleType.BOOLEAN; // For redelivered
+        _msgContentAttributeTypes[5] = SimpleType.INTEGER; // For delivered mode
+        _msgContentAttributeTypes[6] = SimpleType.LONG; // For JMS timeStamp
+        _msgContentAttributeTypes[7] = SimpleType.STRING; // For dlc message destination
+        _msgContentAttributeTypes[8] = SimpleType.LONG; // For andes message metadata id
         _msgContentType = new CompositeType("Message Content", "Message content for queue browse",
                 VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.toArray(new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]),
                 VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.toArray(new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]),
@@ -833,20 +829,12 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 String contentType = properties.getContentTypeAsString();
                 //get message id
                 String messageId = properties.getMessageIdAsString();
-                //get message correlation id
-                String correlationId = properties.getCorrelationIdAsString();
-                //get type of message
-                String type = properties.getTypeAsString();
                 //get redelivered
                 Boolean redelivered = andesMessageMetadata.getRedelivered();
                 //get delivery mode
                 Integer deliveredMode = (int) properties.getDeliveryMode();
-                //get priority
-                Integer priority = (int) properties.getPriority();
                 //get timestamp
                 Long timeStamp = properties.getTimestamp();
-                //get expiration
-                Long expiration = properties.getExpiration();
                 //get destination
                 String destination = andesMessageMetadata.getDestination();
                 //get AndesMessageMetadata id
@@ -920,8 +908,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 contentType = getReadableNameForMessageContentType(contentType);
 
                 //set CompositeData of message
-                Object[] itemValues = {msgProperties, contentType, content, messageId, correlationId, type, redelivered,
-                        deliveredMode, priority, timeStamp, expiration, destination, andesMessageMetadataId};
+                Object[] itemValues = {msgProperties, contentType, content, messageId, redelivered,
+                        deliveredMode, timeStamp, destination, andesMessageMetadataId};
                 CompositeDataSupport support = new CompositeDataSupport(_msgContentType,
                         VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.toArray(
                                 new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]), itemValues);
