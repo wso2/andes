@@ -156,7 +156,7 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
         MessagingEngine.getInstance().deleteMessages(droppedTopicMessagesListRemovable, false);
 
         for (AndesMessageMetadata messageToRemove : droppedTopicMessagesList) {
-            OnflightMessageTracker.getInstance().decrementMessageCountInSlot(messageToRemove.getSlot());
+            OnflightMessageTracker.getInstance().decrementMessageCountInSlot(messageToRemove.getSlot(), messageToRemove.getMessageID());
         }
 
         return sentMessageCount;

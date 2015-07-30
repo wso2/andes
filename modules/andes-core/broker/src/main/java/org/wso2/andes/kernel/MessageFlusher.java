@@ -278,7 +278,7 @@ public class MessageFlusher {
                     MessageTracer.trace(message, MessageTracer.METADATA_BUFFERED_FOR_DELIVERY);
                     //increment the message count in the slot
                 } else {
-                    OnflightMessageTracker.getInstance().decrementMessageCountInSlot(slot);
+                    OnflightMessageTracker.getInstance().decrementMessageCountInSlot(slot, message.getMessageID());
                     log.warn("Tracker rejected message id= " + message.getMessageID() + " from buffering " +
                              "to deliver. This is an already buffered message");
                     //todo: this message is previously buffered. Should be removed from slot

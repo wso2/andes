@@ -30,6 +30,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -85,6 +86,12 @@ public class OnflightMessageTracker {
      */
     private final ConcurrentHashMap<Slot, AtomicInteger> pendingMessagesBySlot = new
             ConcurrentHashMap<Slot, AtomicInteger>();
+
+    /**
+     * Map to keep track of message counts pending to read
+     */
+    private final ConcurrentHashMap<Slot, List<Long>> ackedMessagesBySlot = new
+            ConcurrentHashMap<>();
 
     /**
      * Map to keep track of subscription to slots map.
@@ -171,11 +178,13 @@ public class OnflightMessageTracker {
      * Decrement message count in slot and if it is zero prepare for slot deletion
      *
      * @param slot Slot whose message count is decremented
+     * @param messageID
      * @throws AndesException
      */
-    public void decrementMessageCountInSlot(Slot slot)
+    public void decrementMessageCountInSlot(Slot slot, long messageID)
             throws AndesException {
         AtomicInteger pendingMessageCount = pendingMessagesBySlot.get(slot);
+        ackedMessagesBySlot.putIfAbsent(slot, new ArrayList<Long>()).add(messageID);
         int messageCount = pendingMessageCount.decrementAndGet();
         if (messageCount == 0) {
             /*
@@ -187,6 +196,7 @@ public class OnflightMessageTracker {
             if (log.isDebugEnabled()) {
                 log.debug("Slot has no pending messages. Now re-checking slot for messages");
             }
+            log.error("Messages acked: " + ackedMessagesBySlot.remove(slot));
             slot.setSlotInActive();
             slotWorker.deleteSlot(slot);
         }
@@ -372,7 +382,7 @@ public class OnflightMessageTracker {
     public void updateMessageDeliveryInSlot(List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
         for (AndesRemovableMetadata message : messagesToRemove) {
             MessageData trackingData = getTrackingData(message.getMessageID());
-            decrementMessageCountInSlot(trackingData.slot);
+            decrementMessageCountInSlot(trackingData.slot, message.getMessageID());
         }
     }
 
@@ -498,7 +508,7 @@ public class OnflightMessageTracker {
 
         releaseMessageBufferingFromTracking(slot, messageID);
 
-        decrementMessageCountInSlot(slot);
+        decrementMessageCountInSlot(slot, messageID);
     }
 
     /**
