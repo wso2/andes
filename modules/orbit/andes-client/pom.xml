@@ -98,6 +98,7 @@
                         <Import-Package>
                             org.slf4j.*;version="1.6.1",
                             org.apache.commons.logging.*,
+                            org.wso2.securevault.*,
                             org.ietf.jgss*,
                             javax.*,
                             com.google.common.util.concurrent;version="[14.0,15)"
