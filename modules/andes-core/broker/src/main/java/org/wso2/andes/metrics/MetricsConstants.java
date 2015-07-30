@@ -23,6 +23,9 @@ package org.wso2.andes.metrics;
  */
 public class MetricsConstants {
 
+    /**
+     * Prefix will be used to distinguish MB specific metrics
+     */
     public static final String PREFIX = "org.wso2.mb.";
 
     /*DB OPERATIONS*/

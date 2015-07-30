@@ -24,7 +24,6 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
-import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.cluster.coordination.SlotAgent;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
@@ -83,11 +82,8 @@ public class SlotManagerClusterMode {
 
     private SlotAgent slotAgent;
 
-    private AndesContextStore andesContextStore;
-
     private SlotManagerClusterMode() {
 
-        andesContextStore = AndesContext.getInstance().getAndesContextStore();
         nodeInformedSlotDeletionSafeZones = new HashMap<>();
 
         //start a thread to calculate slot delete safe zone
@@ -363,7 +359,7 @@ public class SlotManagerClusterMode {
      *
      * @param nodeId node ID of the leaving node
      */
-    public void reAssignSlotsWhenMemberLeaves(String nodeId) throws AndesException{
+    public void reassignSlotsWhenMemberLeaves(String nodeId) throws AndesException{
 
         TreeSet<Slot> assignedSlotsSet;
         //Get all assigned nodes by node id
@@ -510,25 +506,33 @@ public class SlotManagerClusterMode {
         // The requirement here is to clear slot associations for the queue on all nodes.
         List<String> nodeIDs = AndesContext.getInstance().getClusterAgent().getAllNodeIdentifiers();
         TreeSet<Slot> slotListForQueueOnNode;
-        TreeSet<Slot> overlappedSlots = new TreeSet<Slot>();
+        TreeSet<Slot> overlappedSlots = new TreeSet<>();
 
         for (String nodeID : nodeIDs) {
             String lockKey = nodeID + SlotManagerClusterMode.class;
-            TreeSet<Slot> overlappingSlotsOnNode = new TreeSet<Slot>();
+            TreeSet<Slot> overlappingSlotsOnNode = new TreeSet<>();
 
             synchronized (lockKey.intern()) {
+	            // Get all slots assigned to given node id and queue name
                 slotListForQueueOnNode = slotAgent.getAllSlotsByQueueName(nodeID, queueName);
+
+	            // Check each slot for overlapped slots
                 if (null != slotListForQueueOnNode) {
                     for (Slot slot : slotListForQueueOnNode) {
-                        if (endMsgID < slot.getStartMessageId())
-                            continue; // skip this one, its below our range
-                        if (startMsgID > slot.getEndMessageId())
-                            continue; // skip this one, its above our range
+                        if (endMsgID < slot.getStartMessageId()) {
+	                        continue; // skip this one, its below our range
+                        }
+                        if (startMsgID > slot.getEndMessageId()) {
+	                        continue; // skip this one, its above our range
+                        }
+	                    // Set slot as overlapped if not skipped
                         slot.setAnOverlappingSlot(true);
                         if (log.isDebugEnabled()) {
                             log.debug("Marked already assigned slot as an overlapping" +
                                     " slot. Slot= " + slot);
                         }
+
+	                    //Add to overlapped slots on node map
                         overlappingSlotsOnNode.add(slot);
 
                         if (log.isDebugEnabled()) {
@@ -554,7 +558,7 @@ public class SlotManagerClusterMode {
      * <p/>
      * Recover mechanism here will schedule tasks for each queue so that if no message get received within the
      * given time period that queue slot manager will create a slot and capture those messages it self.
-     * @param deletedNodeId
+     * @param deletedNodeId node id of delete node
      */
     public void deletePublisherNode(final String deletedNodeId){
 
