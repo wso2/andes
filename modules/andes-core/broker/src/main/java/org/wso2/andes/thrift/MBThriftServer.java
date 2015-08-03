@@ -65,8 +65,13 @@ public class MBThriftServer {
     public void start(final String hostName,
                       final int port,
                       final String taskName) throws AndesException {
+        /**
+         * Stop node if 0.0.0.0 used as thrift server host in broker.xml
+         */
+        if ("0.0.0.0".equals(hostName)) {
+            throw new RuntimeException("Invalid thrift server host 0.0.0.0");
+        }
         try {
-
             TServerSocket socket = new TServerSocket(new InetSocketAddress(hostName, port));
             SlotManagementService.Processor<SlotManagementServiceImpl> processor =
                     new SlotManagementService.Processor<SlotManagementServiceImpl>(slotManagementServerHandler);
