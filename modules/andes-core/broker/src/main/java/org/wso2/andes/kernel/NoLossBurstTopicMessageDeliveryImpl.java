@@ -116,6 +116,7 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                     break;
                 }
 
+                OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID(), subscriptions4Queue.size());
                 for (int j = 0; j < subscriptions4Queue.size(); j++) {
                     LocalSubscription localSubscription = MessageFlusher.getInstance()
                             .findNextSubscriptionToSent(destination, subscriptions4Queue);
