@@ -710,62 +710,6 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
 
     /**
      * {@inheritDoc}
-     */
-    @Override
-    public int deleteAllMessagesFromDLCForStorageQueue(String storageQueueName, String dlcQueueName) throws
-            AndesException {
-
-        List<Long> messageIDsInDLCForQueue = new ArrayList<>();
-        try {
-
-            Long lastProcessedID = 0l;
-            // In case paginated data fetching is slow for some reason,
-            // this can be set to Integer.MAX..
-            // This is set to paginate so that a big data read wont cause continuous timeouts.
-            Integer pageSize = HectorDataAccessHelper.STANDARD_PAGE_SIZE;
-
-            Boolean allRecordsRetrieved = false;
-
-            while (!allRecordsRetrieved) {
-
-                List<AndesMessageMetadata> metadataList = HectorDataAccessHelper
-                        .getMessagesFromQueue(dlcQueueName,
-                                HectorConstants.META_DATA_COLUMN_FAMILY,
-                                keyspace, lastProcessedID,
-                                Long.MAX_VALUE, pageSize, true);
-
-                if (metadataList.size() == 0) {
-                    // This means that there are no more messages to be retrieved for this queue
-                    allRecordsRetrieved = true;
-                } else {
-                    for (AndesMessageMetadata amm : metadataList) {
-                        if (amm.getDestination().equals(storageQueueName)) {
-                            //add the message id to the list of messages in the dlc that are addressed to the storage
-                            // queue
-                            messageIDsInDLCForQueue.add(amm.getMessageID());
-                        }
-                    }
-
-                    lastProcessedID = metadataList.get(metadataList.size() - 1).getMessageID();
-
-                    if (metadataList.size() < pageSize) {
-                        // again means there are no more metadata to be retrieved
-                        allRecordsRetrieved = true;
-                    }
-                }
-
-            }
-            deleteMessages(dlcQueueName, messageIDsInDLCForQueue, false);
-
-        } catch (CassandraDataAccessException e) {
-            throw new AndesException("Error while getting messages in DLC for queue : " + storageQueueName, e);
-        }
-
-        return messageIDsInDLCForQueue.size();
-    }
-
-    /**
-     * {@inheritDoc}
      * @param storageQueueName name of the storage queue.
      * @return List<Long> message ID list that is contained within given storage queues.
      * @throws AndesException
