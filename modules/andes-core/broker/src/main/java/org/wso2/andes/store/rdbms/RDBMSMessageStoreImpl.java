@@ -2040,7 +2040,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             close(preparedStatementForTopicSelect, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPICS);
             close(connection, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPICS);
             contextRead.stop();
-            close(preparedStatementForTopicSelect, "reading all retained topics");
         }
 
         return topicList;
