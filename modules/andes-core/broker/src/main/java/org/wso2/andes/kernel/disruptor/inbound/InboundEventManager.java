@@ -179,6 +179,8 @@ public class InboundEventManager {
         event.setEventType(MESSAGE_EVENT);
         event.getMessageList().add(message);
         event.pubAckHandler = pubAckHandler;
+	    //Set associate destination name in channel
+	    andesChannel.setDestination(message.getMetadata().getDestination());
         event.setChannel(andesChannel);
         // make the event available to EventProcessors
         ringBuffer.publish(sequence);

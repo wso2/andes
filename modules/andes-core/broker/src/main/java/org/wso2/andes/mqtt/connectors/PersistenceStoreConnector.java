@@ -94,6 +94,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
                 publisherTopicCorrelate.put(messageContext.getPublisherID(), publisher);
                 //Finally will register the publisher channel for flow controlling
                 AndesChannel publisherChannel = Andes.getInstance().createChannel(publisher);
+                publisherChannel.setClientSocket(messageContext.getChannel().remoteAddress().toString().substring(1));
                 publisher.setChannel(publisherChannel);
             }
 
@@ -115,6 +116,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
             // Publish to Andes core
             AndesMessage andesMessage = new MQTTMessage(messageHeader);
             andesMessage.addMessagePart(messagePart);
+
             Andes.getInstance().messageReceived(andesMessage, publisher.getChannel(), messageContext.getPubAckHandler());
             if (log.isDebugEnabled()) {
                 log.debug(" Message added with message id " + messageContext.getMqttLocalMessageID());
