@@ -22,6 +22,7 @@ import org.dna.mqtt.wso2.MQTTPingRequest;
 import org.dna.mqtt.wso2.MQTTSubscriptionStore;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.disruptor.LogExceptionHandler;
 
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
@@ -73,12 +74,13 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
                 AndesConfiguration.TRANSPORTS_MQTT_INBOUND_BUFFER_SIZE);
 
         disruptor = new Disruptor<ValueEvent>( ValueEvent.EVENT_FACTORY, ringBufferSize, executor);
-        
-        disruptor.handleExceptionsWith(new IgnoreExceptionHandler());
+        //Added by WSO2, we do not want to ignore the exception here
+        disruptor.handleExceptionsWith(new LogExceptionHandler());
         SequenceBarrier barrier = disruptor.getRingBuffer().newBarrier();
         BatchEventProcessor<ValueEvent> eventProcessor = new BatchEventProcessor<ValueEvent>(
                 disruptor.getRingBuffer(), barrier, this);
-        
+        //Added by WSO2, we need to make sure the exceptions aren't ignored
+        eventProcessor.setExceptionHandler(new LogExceptionHandler());
         disruptor.handleEventsWith(eventProcessor);
         m_ringBuffer = disruptor.start();
         
@@ -164,7 +166,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
             } else if (message instanceof UnsubscribeMessage) {
                 UnsubscribeMessage unsubMsg = (UnsubscribeMessage) message;
                 String clientID = (String) session.getAttribute(Constants.ATTR_CLIENTID);
-                mqttProcessor.processUnsubscribe(session, clientID, unsubMsg.topics(), unsubMsg.getMessageID());
+                mqttProcessor.processUnsubscribe(session, clientID, unsubMsg.topicFilters(), unsubMsg.getMessageID());
             } else if (message instanceof SubscribeMessage) {
                 String clientID = (String) session.getAttribute(Constants.ATTR_CLIENTID);
                 boolean cleanSession = (Boolean) session.getAttribute(Constants.CLEAN_SESSION);

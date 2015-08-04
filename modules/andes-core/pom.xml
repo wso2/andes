@@ -295,7 +295,7 @@
         </dependency>
         <!--MQTT Dependencies-->
         <dependency>
-            <groupId>io.netty</groupId>
+            <groupId>io.netty.wso2</groupId>
             <artifactId>netty-all</artifactId>
             <optional>true</optional>
         </dependency>

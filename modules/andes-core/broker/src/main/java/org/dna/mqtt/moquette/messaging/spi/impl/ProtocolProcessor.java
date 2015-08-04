@@ -16,15 +16,18 @@ import org.dna.mqtt.moquette.messaging.spi.impl.events.OutputMessagingEvent;
 import org.dna.mqtt.moquette.messaging.spi.impl.events.PublishEvent;
 import org.dna.mqtt.moquette.messaging.spi.impl.subscriptions.Subscription;
 import org.dna.mqtt.moquette.messaging.spi.impl.subscriptions.SubscriptionsStore;
+import org.dna.mqtt.moquette.parser.netty.Utils;
 import org.dna.mqtt.moquette.proto.messages.*;
 import org.dna.mqtt.moquette.server.ConnectionDescriptor;
 import org.dna.mqtt.moquette.server.Constants;
 import org.dna.mqtt.moquette.server.IAuthenticator;
 import org.dna.mqtt.moquette.server.ServerChannel;
+import org.dna.mqtt.moquette.server.netty.NettyChannel;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.MQTTUserAuthenticationScheme;
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.disruptor.LogExceptionHandler;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTAuthorizationSubject;
 import org.wso2.andes.mqtt.MQTTException;
@@ -95,12 +98,13 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                 RingBufferSize,
                 executor);
 
-        //TODO after veryfying the stability add log exception handler here
-        disruptor.handleExceptionsWith(new IgnoreExceptionHandler());
+        //Added by WSO2, we do not want to ignore the exception here
+        disruptor.handleExceptionsWith(new LogExceptionHandler());
         SequenceBarrier barrier = disruptor.getRingBuffer().newBarrier();
         BatchEventProcessor<ValueEvent> m_eventProcessor = new BatchEventProcessor<ValueEvent>(
                 disruptor.getRingBuffer(), barrier, this);
-
+        //Added by WSO2, we do not want to ignore the exception here
+        m_eventProcessor.setExceptionHandler(new LogExceptionHandler());
         disruptor.handleEventsWith(m_eventProcessor);
 
         m_ringBuffer = disruptor.start();
@@ -128,20 +132,26 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
     }
 
+    /**
+     * Added as an upgrade for 3.1.1 specification, This is adopted by WSO2 from Moquette
+     * @param session the server session which has channel information
+     * @param msg connect message
+     */
     void processConnect(ServerChannel session, ConnectMessage msg) {
         if (log.isDebugEnabled()) {
             log.debug("processConnect for client " + msg.getClientID());
         }
-        if (msg.getProcotolVersion() != 0x03) {
-            log.warn("processConnect sent bad proto ConnAck");
+
+        if (msg.getProcotolVersion() != Utils.VERSION_3_1 && msg.getProcotolVersion() != Utils.VERSION_3_1_1) {
             ConnAckMessage badProto = new ConnAckMessage();
             badProto.setReturnCode(ConnAckMessage.UNNACEPTABLE_PROTOCOL_VERSION);
+            log.warn("processConnect sent bad proto ConnAck");
             session.write(badProto);
             session.close(false);
             return;
         }
 
-        if (msg.getClientID() == null || msg.getClientID().length() > 23) {
+        if (msg.getClientID() == null || msg.getClientID().length() == 0) {
             ConnAckMessage okResp = new ConnAckMessage();
             okResp.setReturnCode(ConnAckMessage.IDENTIFIER_REJECTED);
             session.write(okResp);
@@ -166,7 +176,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                 //cleanup topic subscriptions
                 processRemoveAllSubscriptions(msg.getClientID());
             }
-
+            oldSession.close(false);
             m_clientIDs.get(msg.getClientID()).getSession().close(false);
         }
 
@@ -242,6 +252,21 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             republishStored(msg.getClientID());
         }
     }
+
+
+    /**
+     * Added as an upgrade for 3.1.1 specification, This is adopted by WSO2 from Moquette
+     *
+     * @param session the server session which holds channel information
+     */
+    private void failedCredentials(ServerChannel session) {
+        ConnAckMessage okResp = new ConnAckMessage();
+        okResp.setReturnCode(ConnAckMessage.BAD_USERNAME_OR_PASSWORD);
+        session.write(okResp);
+        session.close(false);
+    }
+
+
 
     private void republishStored(String clientID) {
         if (log.isTraceEnabled()) {
@@ -727,7 +752,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         for (SubscribeMessage.Couple req : msg.subscriptions()) {
 
             // Authorize subscribe
-            String tenant = MQTTUtils.getTenantFromTopic(req.getTopic());
+            String tenant = MQTTUtils.getTenantFromTopic(req.getTopicFilter());
             if ((!isAuthenticationRequired && !authSubject.isUserFlag())
                 || (authSubject.isUserFlag() && tenant.equals(authSubject.getTenantDomain()))) {
 
@@ -735,18 +760,19 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             } else {
                 // User flag has to be set at this point, else not authenticated
                 // Log and continue since there is no method to inform the client about permission failure
-                log.error("Client " + clientID + " does not have permission to subscribe to topic : " + req.getTopic());
+                log.error("Client " + clientID + " does not have permission to subscribe to topic : " +
+                        req.getTopicFilter());
 
                 continue;
             }
 
             AbstractMessage.QOSType qos = AbstractMessage.QOSType.values()[req.getQos()];
-            Subscription newSubscription = new Subscription(clientID, req.getTopic(), qos, cleanSession);
+            Subscription newSubscription = new Subscription(clientID, req.getTopicFilter(), qos, cleanSession);
             subscribeSingleTopic(newSubscription);
             //Will connect with the bridge to notify on the topic
             //Andes Specific
             try {
-                AndesMQTTBridge.getBridgeInstance().onTopicSubscription(req.getTopic(), clientID, qos, cleanSession);
+                AndesMQTTBridge.getBridgeInstance().onTopicSubscription(req.getTopicFilter(), clientID, qos, cleanSession);
             } catch (Exception e) {
                 final String message = "Error when registering the subscriber ";
                 log.error(message + e.getMessage(), e);

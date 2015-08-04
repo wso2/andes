@@ -20,16 +20,19 @@ public class NettyChannel implements ServerChannel {
     private ChannelHandlerContext m_channel;
     
     private Map<Object, AttributeKey<Object>> m_attributesKeys = new HashMap<Object, AttributeKey<Object>>();
+    public static final String ATTR_USERNAME = "username";
     
     private static final AttributeKey<Object> ATTR_KEY_KEEPALIVE = new AttributeKey<Object>(Constants.KEEP_ALIVE);
     private static final AttributeKey<Object> ATTR_KEY_CLEANSESSION = new AttributeKey<Object>(Constants.CLEAN_SESSION);
     private static final AttributeKey<Object> ATTR_KEY_CLIENTID = new AttributeKey<Object>(Constants.ATTR_CLIENTID);
+    public static final AttributeKey<Object> ATTR_KEY_USERNAME = AttributeKey.valueOf(ATTR_USERNAME);
 
     NettyChannel(ChannelHandlerContext ctx) {
         m_channel = ctx;
         m_attributesKeys.put(Constants.KEEP_ALIVE, ATTR_KEY_KEEPALIVE);
         m_attributesKeys.put(Constants.CLEAN_SESSION, ATTR_KEY_CLEANSESSION);
         m_attributesKeys.put(Constants.ATTR_CLIENTID, ATTR_KEY_CLIENTID);
+        m_attributesKeys.put(ATTR_USERNAME,ATTR_KEY_USERNAME);
     }
 
     public Object getAttribute(Object key) {
@@ -38,7 +41,7 @@ public class NettyChannel implements ServerChannel {
     }
 
     public void setAttribute(Object key, Object value) {
-        Attribute<Object> attr = m_channel.attr(mapKey(key));
+        Attribute<Object> attr = m_channel.attr(mapKey(key.toString()));
         attr.set(value);
     }
     
