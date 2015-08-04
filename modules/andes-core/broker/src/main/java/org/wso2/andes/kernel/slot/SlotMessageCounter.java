@@ -28,7 +28,6 @@ import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
@@ -131,7 +130,6 @@ public class SlotMessageCounter {
      * @param messageList AndesMessage list to be record
      */
     public void recordMetadataCountInSlot(Collection<AndesMessage> messageList) {
-        //If metadata list is null this method is called from time out thread
         for (AndesMessage message : messageList) {
             recordMetadataCountInSlot(message.getMetadata());
         }
@@ -194,22 +192,26 @@ public class SlotMessageCounter {
     /**
      * Submit last message ID in the slot to SlotManager.
      *
-     * @param storageQueueName name of the queue which this slot belongs to
+     * @param storageQueueName
+     *         name of the queue which this slot belongs to
      */
-    public void submitSlot(String storageQueueName) throws AndesException {
+    public synchronized void submitSlot(String storageQueueName) throws AndesException {
         Slot slot = queueToSlotMap.get(storageQueueName);
         if (null != slot) {
-            try {
-                slotCoordinator.updateMessageId(storageQueueName, slot.getStartMessageId(),
-                        slot.getEndMessageId());
-                queueToSlotMap.remove(storageQueueName);
-                slotTimeOutMap.remove(storageQueueName);
+            Long slotStartTime = slotTimeOutMap.get(storageQueueName);
 
-            } catch (ConnectionException e) {
-                 /* we only log here since this thread will be run every 3
-                seconds*/
-                log.error("Error occurred while connecting to the thrift coordinator " + e
-                        .getMessage(), e);
+            // Check if the number of messages in slot is greater than or equal to slot window size or slot timeout
+            // has reached. This is to avoid timer task or disruptor creating smaller/overlapping slots.
+            if (slot.getMessageCount() >= slotWindowSize
+                || System.currentTimeMillis() - slotStartTime >= timeOutForMessagesInQueue) {
+                try {
+                    slotCoordinator.updateMessageId(storageQueueName, slot.getStartMessageId(), slot.getEndMessageId());
+                    queueToSlotMap.remove(storageQueueName);
+                    slotTimeOutMap.remove(storageQueueName);
+                } catch (ConnectionException e) {
+                    // we only log here since this is called again from timer task if previous attempt failed
+                    log.error("Error occurred while connecting to the thrift coordinator.", e);
+                }
             }
         }
     }
