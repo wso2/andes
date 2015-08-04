@@ -32,8 +32,6 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.url.BindingURL;
 import org.wso2.andes.url.URLSyntaxException;
 import org.wso2.andes.util.Strings;
-import org.wso2.securevault.SecretResolver;
-import org.wso2.securevault.SecretResolverFactory;
 
 import javax.jms.ConnectionFactory;
 import javax.jms.Destination;
@@ -166,8 +164,6 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
 
     protected void createConnectionFactories(Map data, Hashtable environment) throws ConfigurationException
     {
-        resolveEncryptedProperties(environment);
-
         for (Iterator iter = environment.entrySet().iterator(); iter.hasNext();)
         {
             Map.Entry entry = (Map.Entry) iter.next();
@@ -182,45 +178,6 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
                 }
             }
         }
-    }
-
-    /**
-     * Resolve carbon secure vault encrypted properties.
-     * @param environment property values which need to construct the InitialContext
-     */
-    private static void resolveEncryptedProperties(Hashtable environment) {
-
-        if (environment != null) {
-
-            Properties properties = convertToProperties(environment);
-            SecretResolver secretResolver = SecretResolverFactory.create(properties);
-
-            for (Object key : environment.keySet()) {
-
-                if (secretResolver != null && secretResolver.isInitialized()) {
-                    if (secretResolver.isTokenProtected(key.toString())) {
-                        environment.put(key.toString(), secretResolver.resolve(key.toString()));
-                    }
-                }
-
-            }
-
-        }
-    }
-
-    /**
-     * Convert Map to Properties object.
-     * @param map key value pair details
-     */
-    private static Properties convertToProperties(Map<String, String> map) {
-
-        Properties prop = new Properties();
-
-        for (Map.Entry entry : map.entrySet()) {
-            prop.setProperty(entry.getKey().toString(), entry.getValue().toString());
-        }
-
-        return prop;
     }
 
     protected void createDestinations(Map data, Hashtable environment) throws ConfigurationException
