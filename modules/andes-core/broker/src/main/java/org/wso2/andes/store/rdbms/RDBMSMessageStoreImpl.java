@@ -122,7 +122,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         try {
 
             connection = getConnection();
-            connection.setAutoCommit(false);
 
             preparedStatement = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
 
@@ -306,7 +305,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         try {
             connection = getConnection();
-            connection.setAutoCommit(false);
             preparedStatement = connection.prepareStatement(PS_INSERT_METADATA);
 
             for (AndesMessageMetadata metadata : metadataList) {
@@ -349,7 +347,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         try {
             connection = getConnection();
-            connection.setAutoCommit(false);
             preparedStatement = connection.prepareStatement(PS_INSERT_METADATA);
 
             addMetadataToBatch(preparedStatement, metadata, metadata.getStorageQueueName());
@@ -398,7 +395,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         try {
 
             connection = getConnection();
-            connection.setAutoCommit(false);
 
             storeMetadataPS = connection.prepareStatement(PS_INSERT_METADATA);
             storeContentPS = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
@@ -441,7 +437,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         try {
             connection = getConnection();
-            connection.setAutoCommit(false);
             preparedStatement = connection.prepareStatement(PS_INSERT_METADATA);
 
             // add to metadata table
@@ -492,7 +487,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         try {
             connection = getConnection();
-            connection.setAutoCommit(false);
             preparedStatement = connection.prepareStatement(PS_INSERT_METADATA);
 
             for (AndesMessageMetadata md : metadataList) {
@@ -534,7 +528,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         try {
             connection = getConnection();
-            connection.setAutoCommit(false);
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_UPDATE_METADATA_QUEUE);
 
             preparedStatement.setInt(1, getCachedQueueID(targetQueueName));
@@ -570,7 +563,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         try {
             connection = getConnection();
-            connection.setAutoCommit(false);
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_MOVE_METADATA_TO_DLC);
 
             preparedStatement.setInt(1, getCachedQueueID(dlcQueueName));
@@ -605,7 +597,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         try {
             connection = getConnection();
-            connection.setAutoCommit(false);
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_MOVE_METADATA_TO_DLC);
             for (Long messageId : messageIds) {
                 preparedStatement.setInt(1, getCachedQueueID(dlcQueueName));
@@ -642,7 +633,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         try {
             connection = getConnection();
-            connection.setAutoCommit(false);
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_UPDATE_METADATA);
 
             for (AndesMessageMetadata metadata : metadataList) {
@@ -717,6 +707,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_EXPIRY_DATA);
                 addExpiryTableEntryToBatch(preparedStatement, metadata);
                 preparedStatement.executeBatch();
+                connection.commit();
             }
         } finally {
             contextWrite.stop();
@@ -746,6 +737,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 }
             }
             preparedStatement.executeBatch();
+            connection.commit();
         } finally {
             contextWrite.stop();
             close(preparedStatement, "adding list to expiry table");
@@ -1033,7 +1025,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             int queueID = getCachedQueueID(storageQueueName);
 
             connection = getConnection();
-            connection.setAutoCommit(false);
             preparedStatement = connection
                     .prepareStatement(RDBMSConstants.PS_DELETE_METADATA_FROM_QUEUE);
             for (Long messageID : messagesToRemove) {
@@ -1094,7 +1085,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             int queueID = getCachedQueueID(storageQueueName);
 
             connection = getConnection();
-            connection.setAutoCommit(false);
 
             //If all metadata is not be removed, add metadata of each message to delete
             //else, add all metadata for the queue to delete
@@ -1231,7 +1221,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         try {
             connection = getConnection();
-            connection.setAutoCommit(false);
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_EXPIRY_DATA);
             for (Long mid : messagesToRemove) {
                 preparedStatement.setLong(1, mid);
@@ -1342,12 +1331,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
-            boolean isAutoCommit = connection.getAutoCommit();
-            // This has been changed to a transaction since in H2 Database this call asynchronously
-            // returns if transactions are not used, leading to inconsistent DB. this is done to avoid
-            // that.
-            connection.setAutoCommit(false);
-
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_QUEUE);
             preparedStatement.setString(1, destinationQueueName);
             preparedStatement.executeUpdate();
@@ -1355,8 +1338,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             connection.commit();
             preparedStatement.close();
 
-            // set the auto commit value back to its previous value
-            connection.setAutoCommit(isAutoCommit);
         } catch (SQLException e) {
             log.error("Error occurred while inserting destination queue [" + destinationQueueName +
                     "] to database ");
@@ -1387,7 +1368,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     protected void close(Connection connection, String task) {
         try {
             if (connection != null && !connection.isClosed()) {
-                connection.setAutoCommit(true);
                 connection.close();
             }
         } catch (SQLException e) {
@@ -1507,8 +1487,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             int queueID = getCachedQueueID(dlcQueueName);
 
             connection = getConnection();
-            connection.setAutoCommit(false);
-
             preparedStatement = connection
                     .prepareStatement(RDBMSConstants.PS_CLEAR_DLC_QUEUE);
             preparedStatement.setInt(1, queueID);
@@ -1737,7 +1715,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         try {
             connection = getConnection();
-            connection.setAutoCommit(false);
 
             updateMetadataPreparedStatement = connection.prepareStatement(
                     RDBMSConstants.PS_UPDATE_RETAINED_METADATA);
