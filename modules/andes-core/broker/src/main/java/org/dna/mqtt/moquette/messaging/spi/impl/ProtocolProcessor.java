@@ -158,19 +158,6 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             return;
         }
 
-        //handle user authentication
-        if (msg.isUserFlag()) {
-            String pwd = null;
-            if (msg.isPasswordFlag()) {
-                pwd = msg.getPassword();
-            }
-            if (!m_authenticator.checkValid(msg.getUsername(), pwd)) {
-                failedCredentials(session);
-                return;
-            }
-            session.setAttribute(NettyChannel.ATTR_KEY_USERNAME, msg.getUsername());
-        }
-
         //Server enforces user authentication but user doesn't supply credentials
         // NOTE: this is just a interim solution for a potential security threat.
         if ( isAuthenticationRequired && (! msg.isUserFlag())) {
@@ -765,7 +752,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         for (SubscribeMessage.Couple req : msg.subscriptions()) {
 
             // Authorize subscribe
-            String tenant = MQTTUtils.getTenantFromTopic(req.getTopic());
+            String tenant = MQTTUtils.getTenantFromTopic(req.getTopicFilter());
             if ((!isAuthenticationRequired && !authSubject.isUserFlag())
                 || (authSubject.isUserFlag() && tenant.equals(authSubject.getTenantDomain()))) {
 
@@ -773,7 +760,8 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             } else {
                 // User flag has to be set at this point, else not authenticated
                 // Log and continue since there is no method to inform the client about permission failure
-                log.error("Client " + clientID + " does not have permission to subscribe to topic : " + req.getTopic());
+                log.error("Client " + clientID + " does not have permission to subscribe to topic : " +
+                        req.getTopicFilter());
 
                 continue;
             }
