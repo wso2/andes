@@ -209,8 +209,10 @@ public class InboundEventManager {
         ringBuffer.publish(sequence);
 
         //Tracing message
-        MessageTracer.trace(ackData.getMessageID(), ackData.getDestination(),
-                            MessageTracer.ACK_PUBLISHED_TO_DISRUPTOR);
+        if (MessageTracer.isEnabled()) {
+            MessageTracer.trace(ackData.getMessageID(), ackData.getDestination(),
+                                MessageTracer.ACK_PUBLISHED_TO_DISRUPTOR);
+        }
 
         if (log.isDebugEnabled()) {
             log.debug("[ sequence: " + sequence + " ] Message acknowledgement published to disruptor. Message id " +
