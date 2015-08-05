@@ -3,11 +3,9 @@ package org.dna.mqtt.moquette.messaging.spi.impl;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.IgnoreExceptionHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.dsl.Disruptor;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.IStorageService;
@@ -17,12 +15,21 @@ import org.dna.mqtt.moquette.messaging.spi.impl.events.PublishEvent;
 import org.dna.mqtt.moquette.messaging.spi.impl.subscriptions.Subscription;
 import org.dna.mqtt.moquette.messaging.spi.impl.subscriptions.SubscriptionsStore;
 import org.dna.mqtt.moquette.parser.netty.Utils;
-import org.dna.mqtt.moquette.proto.messages.*;
+import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
+import org.dna.mqtt.moquette.proto.messages.ConnAckMessage;
+import org.dna.mqtt.moquette.proto.messages.ConnectMessage;
+import org.dna.mqtt.moquette.proto.messages.PubAckMessage;
+import org.dna.mqtt.moquette.proto.messages.PubCompMessage;
+import org.dna.mqtt.moquette.proto.messages.PubRecMessage;
+import org.dna.mqtt.moquette.proto.messages.PubRelMessage;
+import org.dna.mqtt.moquette.proto.messages.PublishMessage;
+import org.dna.mqtt.moquette.proto.messages.SubAckMessage;
+import org.dna.mqtt.moquette.proto.messages.SubscribeMessage;
+import org.dna.mqtt.moquette.proto.messages.UnsubAckMessage;
 import org.dna.mqtt.moquette.server.ConnectionDescriptor;
 import org.dna.mqtt.moquette.server.Constants;
 import org.dna.mqtt.moquette.server.IAuthenticator;
 import org.dna.mqtt.moquette.server.ServerChannel;
-import org.dna.mqtt.moquette.server.netty.NettyChannel;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.MQTTUserAuthenticationScheme;
@@ -48,6 +55,8 @@ import static org.wso2.andes.configuration.enums.AndesConfiguration.TRANSPORTS_M
 public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandler {
 
     private static Log log = LogFactory.getLog(ProtocolProcessor.class);
+
+    public static final String CARBON_SUPER_TENANT_DOMAIN = "carbon.super";
 
     private Map<String, ConnectionDescriptor> m_clientIDs = new HashMap<String, ConnectionDescriptor>();
     private SubscriptionsStore subscriptions;
@@ -330,8 +339,11 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         String tenant = MQTTUtils.getTenantFromTopic(topic);
 
         boolean authenticated = false;
-        if ((!isAuthenticationRequired && !authSubject.isUserFlag())
-            || (authSubject.isUserFlag() && tenant.equals(authSubject.getTenantDomain()))) {
+        // Currently we avoid domain check for super tenant users
+        // TODO: Need to implement a proper authentication model for tenant users to work with hierarchical topics
+        if ((!isAuthenticationRequired && !authSubject.isUserFlag()) || (authSubject.isUserFlag() && (
+                CARBON_SUPER_TENANT_DOMAIN.equals(authSubject.getTenantDomain())
+                || tenant.equals(authSubject.getTenantDomain())))) {
             // user flag has to be set at this point, else not authenticated
             authenticated = true;
         }
@@ -753,15 +765,19 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
             // Authorize subscribe
             String tenant = MQTTUtils.getTenantFromTopic(req.getTopicFilter());
-            if ((!isAuthenticationRequired && !authSubject.isUserFlag())
-                || (authSubject.isUserFlag() && tenant.equals(authSubject.getTenantDomain()))) {
+
+            // Currently we avoid domain check for super tenant users
+            // TODO: Need to implement a proper authentication model for tenant users to work with hierarchical topics
+            if ((!isAuthenticationRequired && !authSubject.isUserFlag()) || (authSubject.isUserFlag() && (
+                    CARBON_SUPER_TENANT_DOMAIN.equals(authSubject.getTenantDomain())
+                    || tenant.equals(authSubject.getTenantDomain())))) {
 
                 authenticatedForOneOrMore = true;
             } else {
                 // User flag has to be set at this point, else not authenticated
                 // Log and continue since there is no method to inform the client about permission failure
                 log.error("Client " + clientID + " does not have permission to subscribe to topic : " +
-                        req.getTopicFilter());
+                          req.getTopicFilter());
 
                 continue;
             }
