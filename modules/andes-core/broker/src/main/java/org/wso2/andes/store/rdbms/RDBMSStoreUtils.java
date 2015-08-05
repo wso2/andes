@@ -29,6 +29,7 @@ import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.SQLInvalidAuthorizationSpecException;
 import java.sql.SQLNonTransientConnectionException;
+import java.sql.SQLTimeoutException;
 import java.sql.SQLTransactionRollbackException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
@@ -137,7 +138,8 @@ public class RDBMSStoreUtils {
         if (SQLNonTransientConnectionException.class.isInstance(sqlException) ||
             SQLTransientConnectionException.class.isInstance(sqlException) ||
             SQLInvalidAuthorizationSpecException.class.isInstance(sqlException) ||
-            SQLClientInfoException.class.isInstance(sqlException)) {
+            SQLClientInfoException.class.isInstance(sqlException) || 
+            SQLTimeoutException.class.isInstance(sqlException)){
 
             String sqlState = extractSqlState(sqlException);
             convertedException = new AndesStoreUnavailableException(message, sqlState, sqlException);
