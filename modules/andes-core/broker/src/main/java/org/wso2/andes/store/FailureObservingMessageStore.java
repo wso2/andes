@@ -411,20 +411,6 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public int deleteAllMessagesFromDLCForStorageQueue(String storageQueueName, String dlcQueueName) throws
-            AndesException {
-        try {
-            return wrappedInstance.deleteAllMessagesFromDLCForStorageQueue(storageQueueName, dlcQueueName);
-        } catch (AndesStoreUnavailableException exception) {
-            notifyFailures(exception);
-            throw exception;
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public List<Long> getMessageIDsAddressedToQueue(String storageQueueName, Long startMessageID) throws AndesException {
         try {
             return wrappedInstance.getMessageIDsAddressedToQueue(storageQueueName, startMessageID);

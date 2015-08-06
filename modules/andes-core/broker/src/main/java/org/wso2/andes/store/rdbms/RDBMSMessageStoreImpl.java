@@ -397,7 +397,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         try {
 
-            connection = rdbmsConnection.getDataSource().getConnection();
+            connection = getConnection();
             connection.setAutoCommit(false);
 
             storeMetadataPS = connection.prepareStatement(PS_INSERT_METADATA);
@@ -570,12 +570,14 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         try {
             connection = getConnection();
+            connection.setAutoCommit(false);
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_MOVE_METADATA_TO_DLC);
 
             preparedStatement.setInt(1, getCachedQueueID(dlcQueueName));
             preparedStatement.setLong(2, messageId);
 
             preparedStatement.execute();
+            connection.commit();
 
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
@@ -868,10 +870,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
 
-
         Context nextMetaRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants.GET_NEXT_MESSAGE_METADATA_FROM_QUEUE).start();
         Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
-
 
         try {
             connection = getConnection();
@@ -921,7 +921,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
-
 
         Context nextMetaRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants
                 .GET_NEXT_MESSAGE_METADATA_IN_DLC_FOR_QUEUE).start();
@@ -1178,7 +1177,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             }
             return list;
         } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_RETRIEVING_EXPIRED_MESSAGES);
             throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving expired messages.", e);
         } finally {
             contextRead.stop();
@@ -1470,12 +1468,14 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             int queueID = getCachedQueueID(storageQueueName);
 
             connection = getConnection();
+            connection.setAutoCommit(false);
+
             preparedStatement = connection
                     .prepareStatement(RDBMSConstants.PS_CLEAR_QUEUE_FROM_METADATA);
-
             preparedStatement.setInt(1, queueID);
 
             deletedMessagecount = preparedStatement.executeUpdate();
+            connection.commit();
             if (log.isDebugEnabled()) {
                 log.debug("DELETED all message metadata from " + storageQueueName +
                         " with queue ID " + queueID);
@@ -1489,8 +1489,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             String task = RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName;
             close(preparedStatement, task);
             close(connection, task);
-            return deletedMessagecount;
         }
+        return deletedMessagecount;
     }
 
     /**
@@ -1507,12 +1507,15 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             int queueID = getCachedQueueID(dlcQueueName);
 
             connection = getConnection();
+            connection.setAutoCommit(false);
+
             preparedStatement = connection
                     .prepareStatement(RDBMSConstants.PS_CLEAR_DLC_QUEUE);
-
             preparedStatement.setInt(1, queueID);
 
             deletedMessagecount = preparedStatement.executeUpdate();
+            connection.commit();
+
             if (log.isDebugEnabled()) {
                 log.debug("DELETED all message metadata for dlc queue " + dlcQueueName +
                         " with queue ID " + queueID);
@@ -1526,8 +1529,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             String task = RDBMSConstants.TASK_CLEARING_DLC_QUEUE + dlcQueueName;
             close(preparedStatement, task);
             close(connection, task);
-            return deletedMessagecount;
         }
+        return deletedMessagecount;
     }
 
     /**
@@ -1550,7 +1553,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             preparedStatement = connection
                     .prepareStatement(RDBMSConstants.PS_SELECT_MESSAGE_IDS_FROM_METADATA_FOR_QUEUE);
-
             preparedStatement.setInt(1, getCachedQueueID(storageQueueName));
 
             results = preparedStatement.executeQuery();
@@ -1601,7 +1603,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             while (results.next()) {
                 messageCount = results.getLong(RDBMSConstants.PS_ALIAS_FOR_COUNT);
             }
-
 
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException("Error while getting message count from queue " +
@@ -1714,55 +1715,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     @Override
     public void decrementMessageCountForQueue(String destinationQueueName, long decrementBy) throws AndesException {
         // Message count is taken from DB itself. No need to implement this
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int deleteAllMessagesFromDLCForStorageQueue(String storageQueueName, String dlcQueueName) throws
-            AndesException {
-
-        Context context = MetricManager.timer(Level.INFO, MetricsConstants.DELETE_MESSAGES_FOR_QUEUE_FROM_DLC).start();
-
-        List<Long> messageIDsInDLCForQueue = new ArrayList<>();
-
-        long lastProcessedID = 0l;
-
-        int pageSize = STANDARD_PAGE_SIZE;
-
-        boolean allRecordsReceived = false;
-        while (!allRecordsReceived) {
-
-            List<AndesMessageMetadata> metadataList = getNextNMessageMetadataFromQueue
-                    (dlcQueueName, lastProcessedID, pageSize);
-            if (metadataList.isEmpty()) {
-                // This means that there are no more messages to be retrieved for this queue
-                allRecordsReceived = true;
-            } else {
-                for (AndesMessageMetadata amm : metadataList) {
-                    if (storageQueueName.equals(amm.getDestination())) {
-                        messageIDsInDLCForQueue.add(amm.getMessageID());
-                    }
-                }
-
-                lastProcessedID = metadataList.get(metadataList.size() - 1).getMessageID();
-
-                if (metadataList.size() < pageSize) {
-                    // again means there are no more metadata to be retrieved
-                    allRecordsReceived = true;
-                }
-            }
-        }
-        //delete all the messages
-        this.deleteMessages(dlcQueueName, messageIDsInDLCForQueue, false);
-
-        if (log.isDebugEnabled()) {
-            log.debug("Removed. " + messageIDsInDLCForQueue +
-                    " messages from DLC for destination " + storageQueueName);
-        }
-        context.stop();
-        return messageIDsInDLCForQueue.size();
     }
 
     /**
@@ -2024,7 +1976,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
             connection = getConnection();
-            connection.setAutoCommit(false);
 
             preparedStatementForTopicSelect = connection.prepareStatement(RDBMSConstants.PS_SELECT_ALL_RETAINED_TOPICS);
             results = preparedStatementForTopicSelect.executeQuery();
@@ -2124,6 +2075,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             throw rdbmsStoreUtils.convertSQLException("Error occurred while retrieving retained message content from DB" +
                     " [msg_id=" + messageID + "]", e);
         } finally {
+            contextRead.stop();
             close(results, RDBMSConstants.TASK_RETRIEVING_RETAINED_MESSAGE_PARTS);
             close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_RETAINED_MESSAGE_PARTS);
             close(connection, RDBMSConstants.TASK_RETRIEVING_RETAINED_MESSAGE_PARTS);
