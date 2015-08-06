@@ -92,7 +92,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
-        Map<String, List<String>> subscriberMap = new HashMap<String, List<String>>();
+        Map<String, List<String>> subscriberMap = new HashMap<>();
         Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
@@ -109,7 +109,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
                 // if no entry in map create list and put into map
                 if (subscriberList == null) {
-                    subscriberList = new ArrayList<String>();
+                    subscriberList = new ArrayList<>();
                     subscriberMap.put(destinationId, subscriberList);
                 }
                 // add subscriber data to list
@@ -274,7 +274,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
-        Map<String, String> nodeInfoMap = new HashMap<String, String>();
+        Map<String, String> nodeInfoMap = new HashMap<>();
         Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
@@ -611,8 +611,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         ResultSet resultSet = null;
 
         try {
-            preparedStatement = connection.prepareStatement(RDBMSConstants
-                    .PS_SELECT_EXCHANGE);
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_EXCHANGE);
 
             preparedStatement.setString(1, exchangeName);
             resultSet = preparedStatement.executeQuery();
@@ -637,7 +636,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         ResultSet resultSet = null;
         Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         try {
-            List<AndesExchange> exchangeList = new ArrayList<AndesExchange>();
+            List<AndesExchange> exchangeList = new ArrayList<>();
 
             connection = getConnection();
             preparedStatement = connection
@@ -736,7 +735,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_ALL_QUEUE_INFO);
             resultSet = preparedStatement.executeQuery();
 
-            List<AndesQueue> queueList = new ArrayList<AndesQueue>();
+            List<AndesQueue> queueList = new ArrayList<>();
             // iterate through the result set and add to queue list
             while (resultSet.next()) {
                 AndesQueue andesQueue = new AndesQueue(
@@ -833,7 +832,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
 
         try {
-            List<AndesBinding> bindingList = new ArrayList<AndesBinding>();
+            List<AndesBinding> bindingList = new ArrayList<>();
             connection = getConnection();
 
             preparedStatement = connection.prepareStatement(RDBMSConstants
@@ -1425,7 +1424,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
-        TreeSet<String> nodeList = new TreeSet<String>();
+        TreeSet<String> nodeList = new TreeSet<>();
 
         try {
             connection = getConnection();
@@ -1553,7 +1552,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
-        TreeSet<Long> messageIdSet = new TreeSet<Long>();
+        TreeSet<Long> messageIdSet = new TreeSet<>();
 
         try {
             connection = getConnection();
@@ -1612,7 +1611,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
-        TreeSet<Slot> assignedSlotSet = new TreeSet<Slot>();
+        TreeSet<Slot> assignedSlotSet = new TreeSet<>();
 
         try {
             connection = getConnection();
@@ -1650,7 +1649,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
-        TreeSet<Slot> slotSet = new TreeSet<Slot>();
+        TreeSet<Slot> slotSet = new TreeSet<>();
 
         try {
             connection = getConnection();
@@ -1714,15 +1713,46 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     }
 
     /**
+     * Clear and reset slot storage
+     *
+     * @throws AndesException
+     */
+    @Override
+    public void clearSlotStorage() throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_CLEAR_SLOT_TABLE);
+            preparedStatement.executeUpdate();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_CLEAR_SLOT_MESSAGE_ID_TABLE);
+            preparedStatement.executeUpdate();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_CLEAR_NODE_TO_LAST_PUBLISHED_ID);
+            preparedStatement.executeUpdate();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_CLEAR_QUEUE_TO_LAST_ASSIGNED_ID);
+            preparedStatement.executeUpdate();
+            connection.commit();
+        } catch (SQLException e) {
+            String errMsg = RDBMSConstants.TASK_CLEAR_SLOT_TABLES;
+            rollback(connection, RDBMSConstants.TASK_CLEAR_SLOT_TABLES);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+        } finally {
+            close(preparedStatement, RDBMSConstants.TASK_CLEAR_SLOT_TABLES);
+            close(connection, RDBMSConstants.TASK_CLEAR_SLOT_TABLES);
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
     public boolean isOperational(String testString, long testTime) {
         try {
-            // Here oder is important
-            return rdbmsStoreUtils.testInsert(getConnection(), testString, testTime) &&
-                   rdbmsStoreUtils.testRead(getConnection(), testString, testTime) && 
-                   rdbmsStoreUtils.testDelete(getConnection(), testString, testTime);
+            // Here order is important
+            return rdbmsStoreUtils.testInsert(getConnection(), testString, testTime)
+                   && rdbmsStoreUtils.testRead(getConnection(), testString, testTime)
+                   && rdbmsStoreUtils.testDelete(getConnection(), testString, testTime);
         } catch (SQLException e) {
             return false;
         }

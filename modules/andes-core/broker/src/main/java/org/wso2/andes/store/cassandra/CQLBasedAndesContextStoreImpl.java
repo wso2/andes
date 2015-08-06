@@ -748,6 +748,14 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
+    public void clearSlotStorage() throws AndesException {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean isOperational(String testString, long testTime) {
         return cqlUtils.isReachable(cqlConnection) && 
                cqlUtils.testInsert(cqlConnection, config, testString, testTime) && 

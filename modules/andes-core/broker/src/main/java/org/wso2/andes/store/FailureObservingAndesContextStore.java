@@ -795,4 +795,18 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
         }
     }
 
+    /**
+     * Clear and reset slot storage
+     *
+     * @throws AndesException
+     */
+    @Override
+    public void clearSlotStorage() throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.clearSlotStorage();
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
 }
