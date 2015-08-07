@@ -30,12 +30,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -85,13 +82,6 @@ public class OnflightMessageTracker {
      */
     private final ConcurrentHashMap<Slot, AtomicInteger> pendingMessagesBySlot = new
             ConcurrentHashMap<Slot, AtomicInteger>();
-
-    /**
-     * Map to keep track of subscription to slots map.
-     * There was no provision to remove messageBufferingTracker when last subscriber close before receive all messages in slot.
-     * We use this map to delete remaining tracking when last subscriber close in particular destination.
-     */
-    private final ConcurrentMap<String, Set<Slot>> subscriptionSlotTracker = new ConcurrentHashMap<String, Set<Slot>>();
 
     /**
      * Class to keep tracking data of a message
@@ -283,17 +273,6 @@ public class OnflightMessageTracker {
         if (messagesOfSlot == null) {
             messagesOfSlot = new ConcurrentHashMap<Long, MessageData>();
             messageBufferingTracker.put(slotID, messagesOfSlot);
-            // track destination to slot
-            // use this map to remove messageBufferingTracker when subscriber close before receive all messages in slot
-            Set<Slot> subscriptionSlots = subscriptionSlotTracker.get(slot.getDestinationOfMessagesInSlot());
-            if(subscriptionSlots == null) {
-                Set<Slot> newTrackedSlots = new HashSet<Slot>();
-                newTrackedSlots.add(slot);
-                subscriptionSlotTracker.put(slot.getDestinationOfMessagesInSlot(), newTrackedSlots);
-            } else {
-                subscriptionSlots.add(slot);
-                subscriptionSlotTracker.put(slot.getDestinationOfMessagesInSlot(), subscriptionSlots);
-            }
         }
         MessageData trackingData = messagesOfSlot.get(messageID);
         if (trackingData == null) {
@@ -404,7 +383,6 @@ public class OnflightMessageTracker {
                 msgId2MsgData.remove(messageId);
             }
         }
-        subscriptionSlotTracker.remove(slot);
     }
 
     /**
@@ -464,14 +442,6 @@ public class OnflightMessageTracker {
      */
     public MessageData getTrackingData(long messageID) {
         return msgId2MsgData.get(messageID);
-    }
-
-    /**
-     * Get destination to slot
-     * @return map of destination slot tracker
-     */
-    public ConcurrentMap<String, Set<Slot>> getSubscriptionSlotTracker() {
-        return subscriptionSlotTracker;
     }
 
     /**

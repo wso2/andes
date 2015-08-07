@@ -22,7 +22,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.subscription.SubscriptionStore;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Set;
 
 /**
  * Strategy definition for queue message delivery
@@ -44,7 +47,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
             AndesException {
 
         int sentMessageCount = 0;
-        boolean orphanedSlot = false;
+        boolean noSubscribersForDestination = false;
         Iterator<AndesMessageMetadata> iterator = messages.iterator();
 
 
@@ -67,7 +70,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                 if (subscriptions4Queue.isEmpty()) {
                     // We don't have subscribers for this message
                     // Handle orphaned slot created with this no subscription scenario for queue
-                    orphanedSlot = true;
+                    noSubscribersForDestination = true;
                     break; // break the loop
                 }
 
@@ -128,10 +131,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
             }
         }
         // clear all tracking when orphan slot situation
-        if (orphanedSlot) {
-            for (AndesMessageMetadata message : messages) {
-                OnflightMessageTracker.getInstance().clearAllTrackingWhenSlotOrphaned(message.getSlot());
-            }
+        if (noSubscribersForDestination) {
             messages.clear();
         }
 

@@ -28,14 +28,11 @@ import org.wso2.andes.kernel.AndesKernelBoot;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.kernel.SubscriptionListener;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Collection;
-import java.util.Set;
 import java.util.TimerTask;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -92,7 +89,7 @@ public class OrphanedSlotHandler implements SubscriptionListener {
             Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
                     .getActiveLocalSubscribers(destination, false);
             if (localSubscribersForQueue.size() == 0) {
-                scheduleSlotToReassign(subscription.getTargetQueue());
+                scheduleSlotToReassign(subscription.getStorageQueueName());
             }
         }
     }
@@ -100,47 +97,50 @@ public class OrphanedSlotHandler implements SubscriptionListener {
     /**
      * Schedule to re-assign slots of the node related to a particular queue when last subscriber leaves
      *
-     * @param queueName
-     *         Name of the queue
+     * @param storageQueue
+     *         Name of the storageQueue
      */
-    public void scheduleSlotToReassign(String queueName) {
-        executor.submit(new SlotReAssignTimerTask(queueName));
+    public void scheduleSlotToReassign(String storageQueue) {
+        executor.submit(new SlotReAssignTask(storageQueue));
     }
 
     /**
      * This class is a scheduler class to schedule re-assignment of slots when last subscriber leaves a particular
      * queue
      */
-    private class SlotReAssignTimerTask extends TimerTask {
+    private class SlotReAssignTask extends TimerTask {
 
-        private String queueName;
-        private OnflightMessageTracker messageTracker;
+        /**
+         * Storage queue handled by this task
+         */
+        private String storageQueue;
 
-        public SlotReAssignTimerTask(String queueName) {
-            this.queueName = queueName;
-            messageTracker = OnflightMessageTracker.getInstance();
+        /**
+         * Manger used to notify of the stale storage queue
+         */
+        private SlotDeliveryWorkerManager slotDeliveryWorkerManager;
+
+        public SlotReAssignTask(String storageQueue) {
+            this.storageQueue = storageQueue;
+            slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
         }
 
         public void run() {
             if (log.isDebugEnabled()) {
-                log.debug("Trying to reAssign slots for queue " + queueName);
+                log.debug("Trying to reAssign slots for queue " + storageQueue);
             }
             try {
-                MessagingEngine.getInstance().getSlotCoordinator().reAssignSlotWhenNoSubscribers(queueName);
+                MessagingEngine.getInstance().getSlotCoordinator().reAssignSlotWhenNoSubscribers(storageQueue);
+
+                if (log.isDebugEnabled()) {
+                    log.debug("Re-assigned slots for queue: " + storageQueue);
+                }
+
                 //remove tracking when orphan slot situation only when node up and running
                 if (!AndesKernelBoot.isKernelShuttingDown()) {
-                    ConcurrentMap<String, Set<Slot>> subscriptionSlotTracker = messageTracker
-                            .getSubscriptionSlotTracker();
-                    Set<Slot> slotsToRemoveTrackingIfOrphaned = subscriptionSlotTracker.get(queueName);
-                    if (slotsToRemoveTrackingIfOrphaned != null) {
-                        for (Slot slot : slotsToRemoveTrackingIfOrphaned) {
-                            OnflightMessageTracker.getInstance().clearAllTrackingWhenSlotOrphaned(slot);
-                        }
-                    }
+                    slotDeliveryWorkerManager.stopDeliveryForDestination(storageQueue);
                 }
-                if (log.isDebugEnabled()) {
-                    log.debug("Re-assigned slots for queue: " + queueName);
-                }
+
             } catch (ConnectionException e) {
                 log.error("Error occurred while re-assigning the slot to slot manager", e);
             }
