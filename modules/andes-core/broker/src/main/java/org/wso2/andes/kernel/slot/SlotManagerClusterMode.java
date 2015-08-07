@@ -90,8 +90,7 @@ public class SlotManagerClusterMode {
         slotDeleteSafeZoneCalc = new SlotDeleteSafeZoneCalc(SAFE_ZONE_EVALUATION_INTERVAL);
         new Thread(slotDeleteSafeZoneCalc).start();
 
-        if(AndesConfigurationManager.readValue(AndesConfiguration.SLOT_MANAGEMENT_STORAGE) != null &&
-            AndesConfigurationManager.readValue(AndesConfiguration.SLOT_MANAGEMENT_STORAGE).equals("RDBMS")) {
+        if ("RDBMS".equals(AndesConfigurationManager.readValue(AndesConfiguration.SLOT_MANAGEMENT_STORAGE))) {
             //Use RDBMS slot information storing
             slotAgent = new RDBMSAgent();
         } else {
@@ -304,7 +303,7 @@ public class SlotManagerClusterMode {
                 TreeSet<Slot> overlappingSlots = getOverlappedAssignedSlots(queueName, startMessageIdInTheSlot,
                         lastMessageIdInTheSlot);
 
-                if (overlappingSlots.size() > 0) {
+                if (!overlappingSlots.isEmpty()) {
 
                     if (log.isDebugEnabled()) {
                         log.debug("Found " + overlappingSlots.size() + " overlapping slots.");
@@ -573,11 +572,12 @@ public class SlotManagerClusterMode {
         Set<String> concurrentSet;
 
         try {
-            concurrentSet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>(slotAgent.getAllQueues().size()));
+            concurrentSet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>
+                                                              (slotAgent.getAllQueues().size()));
             concurrentSet.addAll(slotAgent.getAllQueues());
             queuesToRecover = concurrentSet;
         } catch (AndesException ex ) {
-            log.error("Failed to get all queue names");
+            log.error("Failed to get all queue names", ex);
         }
 
         recoverSlotScheduler.schedule(
