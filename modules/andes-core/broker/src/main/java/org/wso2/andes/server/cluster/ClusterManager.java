@@ -164,6 +164,19 @@ public class ClusterManager implements StoreHealthListener{
     }
 
     /**
+     * Perform cleanup tasks before startup the server.
+     * This method will clean non-persistent subscriptions
+     * subscribed to this node while start up.
+     *
+     */
+    public void prepareLocalNodeForStartUp() throws AndesException {
+        //clear stored node IDS and mark subscriptions of node as closed
+        log.info("this node id : " + nodeId);
+        clearAllPersistedStatesOfDisappearedNode(nodeId);
+    }
+
+
+    /**
      * Initialize the node in stand alone mode without hazelcast.
      *
      * @throws AndesException, UnknownHostException

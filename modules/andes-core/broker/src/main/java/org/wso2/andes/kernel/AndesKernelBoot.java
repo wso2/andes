@@ -433,10 +433,16 @@ public class AndesKernelBoot {
      * @throws Exception
      */
     public static void syncNodeWithClusterState() throws AndesException {
+
+        // Clean non-persistent subscriptions during startup
+        ClusterResourceHolder.getInstance().getClusterManager()
+                             .prepareLocalNodeForStartUp();
+
         //at the startup reload exchanges/queues/bindings and subscriptions
         log.info("Syncing exchanges, queues, bindings and subscriptions");
         ClusterResourceHolder.getInstance().getAndesRecoveryTask()
                              .recoverExchangesQueuesBindingsSubscriptions();
+
     }
 
     /**
