@@ -34,7 +34,11 @@ import org.wso2.andes.store.StoreHealthListener;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ExecutionException;
 
@@ -49,6 +53,13 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      * keeps storage queue name vs actual destination it represent
      */
     private ConcurrentSkipListMap<String, String> storageQueueNameToDestinationMap;
+
+    /**
+     * Map to keep track of subscription to slots map.
+     * There was no provision to remove messageBufferingTracker when last subscriber close before receive all messages in slot.
+     * We use this map to delete remaining tracking when last subscriber close in particular destination.
+     */
+    private final ConcurrentMap<String, Set<Slot>> subscriptionSlotTracker = new ConcurrentHashMap<>();
 
     private SubscriptionStore subscriptionStore;
     private static Log log = LogFactory.getLog(SlotDeliveryWorker.class);
@@ -158,6 +169,14 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                                                 currentSlot.getEndMessageId() + " is " +
                                                 messagesRead.size() + " storage queue= " + storageQueueName);
                                     }
+
+                                    subscriptionSlotTracker.putIfAbsent(storageQueueName,new HashSet<Slot>());
+
+                                    Set<Slot> subscriptionSlots = subscriptionSlotTracker
+                                            .get(storageQueueName);
+
+                                    subscriptionSlots.add(currentSlot);
+
                                     MessageFlusher.getInstance().sendMessageToBuffer(
                                             messagesRead, currentSlot);
                                     MessageFlusher.getInstance().sendMessagesInBuffer(
@@ -205,6 +224,14 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
             }
         }
 
+    }
+
+    public void stopDeliveryForQueue(String storageQueue) {
+        Set<Slot> orphanedSlots = subscriptionSlotTracker.remove(storageQueue);
+
+        for (Slot slot:orphanedSlots) {
+            OnflightMessageTracker.getInstance().clearAllTrackingWhenSlotOrphaned(slot);
+        }
     }
 
     /**
@@ -370,6 +397,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
     public void deleteSlot(Slot slot) {
         SlotDeletionExecutor.getInstance().executeSlotDeletion(slot);
         OnflightMessageTracker.getInstance().releaseAllMessagesOfSlotFromTracking(slot);
+        subscriptionSlotTracker.get(slot.getStorageQueueName()).remove(slot);
     }
 
     /**

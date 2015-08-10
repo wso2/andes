@@ -19,36 +19,50 @@
 package org.wso2.andes.kernel.slot;
 
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesKernelBoot;
+import org.wso2.andes.kernel.AndesSubscription;
+import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.SubscriptionListener;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Collection;
-import java.util.Set;
-import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 /**
  * This class will reassign the slots own by this node when its last subscriber leaves
  */
 public class OrphanedSlotHandler implements SubscriptionListener {
 
-    private static Log log = LogFactory
-            .getLog(OrphanedSlotHandler.class);
+    private static Log log = LogFactory.getLog(OrphanedSlotHandler.class);
+
+    /**
+     * Used for asynchronously execute slot reassign task
+     */
+    private final ExecutorService executor;
+
+    public OrphanedSlotHandler() {
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+                .setNameFormat("AndesReassignSlotTaskExecutor").build();
+        executor = Executors.newSingleThreadExecutor(namedThreadFactory);
+    }
 
     @Override
-    public void handleClusterSubscriptionsChanged(AndesSubscription subscription,
-                                                  SubscriptionChange changeType)
+    public void handleClusterSubscriptionsChanged(AndesSubscription subscription, SubscriptionChange changeType)
             throws AndesException {
-
         //Cluster wise changes are not necessary
     }
 
     @Override
-    public void handleLocalSubscriptionsChanged(LocalSubscription subscription,
-                                                SubscriptionChange changeType)
+    public void handleLocalSubscriptionsChanged(LocalSubscription subscription, SubscriptionChange changeType)
             throws AndesException {
         switch (changeType) {
             case DELETED:
@@ -60,82 +74,76 @@ public class OrphanedSlotHandler implements SubscriptionListener {
         }
     }
 
-
     /**
      * Re-assign slots back to the slot manager if this is the last subscriber of this node.
      *
-     * @param subscription current subscription fo the leaving node
+     * @param subscription
+     *         current subscription fo the leaving node
      * @throws AndesException
      */
     private void reAssignSlotsIfNeeded(AndesSubscription subscription) throws AndesException {
         if (subscription.isDurable()) {
             // Problem happens only with Queues
-            SubscriptionStore subscriptionStore = AndesContext
-                    .getInstance().getSubscriptionStore();
-            String destination = subscription
-                    .getSubscribedDestination();
+            SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+            String destination = subscription.getSubscribedDestination();
             Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
                     .getActiveLocalSubscribers(destination, false);
             if (localSubscribersForQueue.size() == 0) {
-                scheduleSlotToReassign(subscription.getTargetQueue());
+                scheduleSlotToReassign(subscription.getStorageQueueName());
             }
-
         }
     }
 
     /**
-     * Schedule to re-assign slots of the node related to a particular queue when last subscriber
-     * leaves
-     * @param queueName Name of the queue
+     * Schedule to re-assign slots of the node related to a particular queue when last subscriber leaves
+     *
+     * @param storageQueue
+     *         Name of the storageQueue
      */
-    public void scheduleSlotToReassign(String queueName) {
-        Timer timer = new Timer();
-        long deleteRetryInterval = 2000;
-        SlotReAssignTimerTask timerTask = new SlotReAssignTimerTask(timer, queueName);
-        timer.schedule(timerTask, 0, deleteRetryInterval);
+    public void scheduleSlotToReassign(String storageQueue) {
+        executor.submit(new SlotReAssignTask(storageQueue));
     }
 
     /**
-     * This class is a scheduler class to schedule re-assignment of slots when last subscriber
-     * leaves a particular queue
+     * This class is a scheduler class to schedule re-assignment of slots when last subscriber leaves a particular
+     * queue
      */
-    private class SlotReAssignTimerTask extends TimerTask {
+    private class SlotReAssignTask extends TimerTask {
 
-        private Timer timer;
-        private String queueName;
+        /**
+         * Storage queue handled by this task
+         */
+        private String storageQueue;
 
-        public SlotReAssignTimerTask(Timer timer, String queueName) {
-            this.timer = timer;
-            this.queueName = queueName;
+        /**
+         * Manger used to notify of the stale storage queue
+         */
+        private SlotDeliveryWorkerManager slotDeliveryWorkerManager;
+
+        public SlotReAssignTask(String storageQueue) {
+            this.storageQueue = storageQueue;
+            slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
         }
 
         public void run() {
             if (log.isDebugEnabled()) {
-                log.debug("Trying to reAssign slots for queue " + queueName);
+                log.debug("Trying to reAssign slots for queue " + storageQueue);
             }
             try {
-                MessagingEngine.getInstance().getSlotCoordinator()
-                        .reAssignSlotWhenNoSubscribers(queueName);
+                MessagingEngine.getInstance().getSlotCoordinator().reAssignSlotWhenNoSubscribers(storageQueue);
+
+                if (log.isDebugEnabled()) {
+                    log.debug("Re-assigned slots for queue: " + storageQueue);
+                }
+
                 //remove tracking when orphan slot situation only when node up and running
                 if (!AndesKernelBoot.isKernelShuttingDown()) {
-                    ConcurrentMap<String, Set<Slot>> subscriptionSlotTracker = OnflightMessageTracker.getInstance()
-                            .getSubscriptionSlotTracker();
-                    Set<Slot> slotsToRemoveTrackingIfOrphaned = subscriptionSlotTracker
-                            .get(queueName);
-                    if (slotsToRemoveTrackingIfOrphaned != null) {
-                        for (Slot slot : slotsToRemoveTrackingIfOrphaned) {
-                            OnflightMessageTracker.getInstance().clearAllTrackingWhenSlotOrphaned(slot);
-                        }
-                    }
+                    slotDeliveryWorkerManager.stopDeliveryForDestination(storageQueue);
                 }
-                timer.cancel();
-                if (log.isDebugEnabled()) {
-                    log.debug("Re-assigned slots for queue: " + queueName);
-                }
+
             } catch (ConnectionException e) {
                 log.error("Error occurred while re-assigning the slot to slot manager", e);
             }
-
         }
     }
 }

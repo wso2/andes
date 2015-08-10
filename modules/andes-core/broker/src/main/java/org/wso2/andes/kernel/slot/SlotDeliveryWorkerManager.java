@@ -114,6 +114,18 @@ public class SlotDeliveryWorkerManager {
         return Math.abs(queueName.hashCode() % numberOfThreads);
     }
 
+    /**
+     * Stop delivery task for the given storage queue locally. This is normally called when all the subscribers for a
+     * destination leave the local node.
+     *
+     * @param storageQueueName
+     *         Name of the Storage queue
+     */
+    public void stopDeliveryForDestination(String storageQueueName) {
+        SlotDeliveryWorker slotWorker = getSlotWorker(storageQueueName);
+        slotWorker.stopDeliveryForQueue(storageQueueName);
+    }
+
 
     /**
      * Stop all stop delivery workers in the thread pool
