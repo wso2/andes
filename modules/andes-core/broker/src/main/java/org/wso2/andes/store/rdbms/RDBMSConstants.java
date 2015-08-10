@@ -549,8 +549,8 @@ public class RDBMSConstants {
     protected static final String PS_SELECT_UNASSIGNED_SLOT =
             "SELECT * " +
                     " FROM " + SLOT_TABLE +
-                    " WHERE " + SLOT_STATE + " = " + SlotState.RETURNED.getCode() +
-                    " AND " + STORAGE_QUEUE_NAME + " =? " +
+                    " WHERE " + STORAGE_QUEUE_NAME + " =? " +
+                    " AND " + SLOT_STATE + " = " + SlotState.RETURNED.getCode() +
                     " ORDER BY " + SLOT_ID;
 
     /**
@@ -559,8 +559,8 @@ public class RDBMSConstants {
     protected static final String PS_SELECT_OVERLAPPED_SLOT =
             "SELECT * " +
                     " FROM " + SLOT_TABLE +
-                    " WHERE " + SLOT_STATE + "=" + SlotState.OVERLAPPED.getCode() +
-                    " AND " + STORAGE_QUEUE_NAME + "=?"  +
+                    " WHERE " + STORAGE_QUEUE_NAME + "=?"  +
+                    " AND " + SLOT_STATE + "=" + SlotState.OVERLAPPED.getCode() +
                     " ORDER BY " + SLOT_ID;
 
     /**
