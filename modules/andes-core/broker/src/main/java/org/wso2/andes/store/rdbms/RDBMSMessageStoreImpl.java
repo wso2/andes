@@ -102,7 +102,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     /**
      * Default cache size if user has not specified in configuration ( this is 256 Mega bytes)
      */
-    private static final String CACHE_SIZE_256_MEGA_BYTES = "268435456";
+    private static final String CACHE_SIZE_256_MEGA_BYTES = "256";
 
     
     public RDBMSMessageStoreImpl() {
@@ -122,22 +122,21 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         // read data source name from config and use
         this.rdbmsConnection.initialize(connectionProperties);
         this.rdbmsStoreUtils = new RDBMSStoreUtils(connectionProperties);
-        long cacheSize =
+        long cacheSizeInMegaBytes =
                         Long.parseLong(connectionProperties.getProperty(RDBMSConstants.CACHE_SIZE,
                                                                           CACHE_SIZE_256_MEGA_BYTES));
         
         // Create the cache.
         this.globalMessageCache =
-                CacheBuilder.newBuilder().concurrencyLevel(10)
-                            .maximumWeight(cacheSize).weigher(new Weigher<Long, AndesMessage>() {
-                                @Override
-                                public int weigh(Long l, AndesMessage m) {
+                                  CacheBuilder.newBuilder().concurrencyLevel(10)
+                                              .maximumWeight(cacheSizeInMegaBytes * 1024 * 1024)
+                                              .weigher(new Weigher<Long, AndesMessage>() {
+                                                  @Override
+                                                  public int weigh(Long l, AndesMessage m) {
 
-                                    return m.getMetadata().getMessageContentLength();
-                                }
-                            }).build();
-
-        
+                                                      return m.getMetadata().getMessageContentLength();
+                                                  }
+                                              }).build();        
         
         log.info("Message Store initialised");
         return rdbmsConnection;
