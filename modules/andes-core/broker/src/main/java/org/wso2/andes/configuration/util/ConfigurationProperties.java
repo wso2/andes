@@ -51,11 +51,26 @@ public class ConfigurationProperties {
      * @return value for the property, empty string for invalid property
      */
     public String getProperty(String propertyName) {
+        
+        return getProperty(propertyName, "");
+        
+    }
+
+    /**
+     * Returns a value for the given property
+     * 
+     * @param propertyName
+     *            property name
+     * @param defaultValue
+     *            value to return if the property was not found.
+     * @return value for the property, default value if the property is not
+     *         found
+     */
+    public String getProperty(String propertyName, String defaultValue) {
         String value = propertyValueMap.get(propertyName);
-        if(value == null) {
-            value = "";
+        if (null  == value) {
+            value = defaultValue;
         }
         return value;
     }
-
 }
