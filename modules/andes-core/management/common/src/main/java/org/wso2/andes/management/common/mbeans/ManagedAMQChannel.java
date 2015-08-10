@@ -6,8 +6,6 @@ public interface ManagedAMQChannel {
 
     static final String TYPE = "AMQChannel";
 
-    void thresholdExceeded(int count) throws Exception;
-
     @MBeanAttribute(name = "Name", description = TYPE + " Name")
     String getName();
 
