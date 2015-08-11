@@ -31,12 +31,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.commons.collections.ListUtils;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -203,10 +201,13 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         Context messageContentRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants.GET_CONTENT).start();
         try {
-            messagePart = getContentFromCache(messageId, offsetValue);
+            //There is an issue in getting messages with an offset
+            //Thus, the following code is commented until the issue is addressed
+            /*messagePart = getContentFromCache(messageId, offsetValue);
             if (null == messagePart) {
                 messagePart = getContentFromStorage(messageId, offsetValue);
-            }
+            }*/
+            messagePart = getContentFromStorage(messageId, offsetValue);
         } finally {
             messageContentRetrievalContext.stop();
         }
@@ -262,20 +263,20 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         Map<Long, List<AndesMessagePart>> contentList = new HashMap<>(messageIDList.size());
 
-        Context messageContentRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants.GET_CONTENT_BATCH).start();
+        Context messageContentRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants.GET_CONTENT_BATCH)
+                .start();
 
         try {
             if (messageIDList.isEmpty()) {
                 return contentList;
             }
 
-            fillContentFromCache(messageIDList, contentList);
+            List<Long> remainingIds = fillContentFromCache(messageIDList, contentList);
 
-            if (! messageIDList.isEmpty()) {
-                fillContentFromStorage(messageIDList, contentList);
+            if (! remainingIds.isEmpty()) {
+                fillContentFromStorage(remainingIds, contentList);
             }
 
-            
         } finally {
             messageContentRetrievalContext.stop();
         }
@@ -296,7 +297,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
-        
+
         Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         
          try {
@@ -2186,21 +2187,22 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     
     /**
      * Get the list of messages found from the cache.
-     * <b> This method modifies the provided messageIDList </b>
-     * 
+     *
      * @param messageIDList
      *            message id to be found in cache.
      * @param contentList
      *            the list the fill
      */
-    private void fillContentFromCache(List<Long> messageIDList, Map<Long, List<AndesMessagePart>> contentList) {
+    private List<Long> fillContentFromCache(List<Long> messageIDList, Map<Long, List<AndesMessagePart>> contentList) {
         Map<Long, AndesMessage> fromCache = globalMessageCache.getAllPresent(messageIDList);
         
-        messageIDList.removeAll(fromCache.keySet());
-        
+        List<Long> remainingIds = ListUtils.removeAll(messageIDList, fromCache.keySet());
+
         for ( Map.Entry<Long, AndesMessage> cachedMessage : fromCache.entrySet()){
             contentList.put(cachedMessage.getKey(), cachedMessage.getValue().getContentChunkList());
         }
+
+        return remainingIds;
     }
     
     /**
