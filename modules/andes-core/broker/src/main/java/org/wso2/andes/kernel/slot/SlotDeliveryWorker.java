@@ -183,7 +183,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                                             currentSlot.getDestinationOfMessagesInSlot());
                                 } else {
                                     currentSlot.setSlotInActive();
-                                    deleteSlot(currentSlot);
+                                    SlotDeletionExecutor.getInstance().executeSlotDeletion(currentSlot);
                                 }
                             }
 
