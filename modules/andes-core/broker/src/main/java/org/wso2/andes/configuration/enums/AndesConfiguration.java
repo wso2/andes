@@ -503,26 +503,6 @@ public enum AndesConfiguration implements ConfigurationProperty {
     FLOW_CONTROL_GLOBAL_HIGH_LIMIT("flowControl/global" +
                                          "/highLimit", "8000", Integer.class),
 
-     /**
-     * The time interval at which the server should check for memory consumption and apply flow control to recover.
-     */
-    FLOW_CONTROL_MEMORY_BASED_MEMORY_CHECK_INTERVAL("flowControl/memoryBased" +
-            "/memoryCheckInterval", "20000", Long.class),
-
-    /**
-     * The maximum ratio of memory allowed to be used by the server.
-     * Specified as a decimal between 0 and 1. (Safe-Memory-Limit/Allocated-Memory)
-     */
-    FLOW_CONTROL_MEMORY_BASED_GLOBAL_MEMORY_THRESHOLD_RATIO("flowControl/memoryBased" +
-            "/globalMemoryThresholdRatio", "0.4", Double.class),
-
-    /**
-     * The ratio at which the server should apply flow control to recover.
-     * Specified as a decimal between 0 and 1. (Used-Memory/Allocated-Memory)
-     */
-    FLOW_CONTROL_MEMORY_BASED_GLOBAL_MEMORY_RECOVERY_THRESHOLD_RATIO("flowControl/memoryBased" +
-            "/globalMemoryRecoveryThresholdRatio", "0.5", Double.class),
-
     /**
      * This allows you to apply flow control based on the message count on a given connection.
      * NOT USED FOR NOW.

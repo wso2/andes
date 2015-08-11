@@ -17,13 +17,6 @@
  */
 package org.wso2.andes.server.handler;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
-
-import org.wso2.andes.transport.flow.control.FlowControlEventFilter;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.ChannelOpenBody;
@@ -40,7 +33,13 @@ import org.wso2.andes.server.state.AMQStateManager;
 import org.wso2.andes.server.state.StateAwareMethodListener;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 
-import javax.management.*;
+import javax.management.MBeanServer;
+import javax.management.MBeanServerFactory;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
 
 public class ChannelOpenHandler implements StateAwareMethodListener<ChannelOpenBody>
 {
