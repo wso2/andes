@@ -39,6 +39,10 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Flow control is typically employed in controlling fast producers from overloading slow consumers in
+ * producer-consumer scenarios. Flow control manager handles flow controlling by blocking and unblocking channels.
+ */
 public class FlowControlManager  implements StoreHealthListener {
     /**
      * Class logger
