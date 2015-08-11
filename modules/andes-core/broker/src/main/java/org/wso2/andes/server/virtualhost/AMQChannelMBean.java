@@ -21,11 +21,9 @@ package org.wso2.andes.server.virtualhost;
 import org.wso2.andes.management.common.mbeans.ManagedAMQChannel;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.management.AMQManagedObject;
-import org.wso2.andes.transport.flow.control.FlowControlConstants;
 
 import javax.management.MBeanNotificationInfo;
 import javax.management.NotCompliantMBeanException;
-import javax.management.Notification;
 import javax.management.ObjectName;
 import javax.management.monitor.MonitorNotification;
 
@@ -60,18 +58,6 @@ public class AMQChannelMBean extends AMQManagedObject implements ManagedAMQChann
 
     private AMQChannel getAMQChannel() {
         return channel;
-    }
-
-    @Override
-    public void thresholdExceeded(int count) throws Exception {
-        _broadcaster.sendNotification(
-                new Notification(
-                        FlowControlConstants.FLOW_CONTROL_PER_CONNECTION_MESSAGE_THRESHOLD_EXCEEDED,
-                        this,
-                        ++notificationSequence,
-                        "Per connection message threshold exceeded"
-                )
-        );
     }
 
     @Override

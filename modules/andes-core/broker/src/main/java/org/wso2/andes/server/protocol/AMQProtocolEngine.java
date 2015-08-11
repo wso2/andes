@@ -25,7 +25,27 @@ import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.codec.AMQCodecFactory;
 import org.wso2.andes.codec.AMQDecoder;
 import org.wso2.andes.common.ClientProperties;
-import org.wso2.andes.framing.*;
+import org.wso2.andes.configuration.qpid.ConfigStore;
+import org.wso2.andes.configuration.qpid.ConfiguredObject;
+import org.wso2.andes.configuration.qpid.ConnectionConfig;
+import org.wso2.andes.configuration.qpid.ConnectionConfigType;
+import org.wso2.andes.framing.AMQBody;
+import org.wso2.andes.framing.AMQDataBlock;
+import org.wso2.andes.framing.AMQFrame;
+import org.wso2.andes.framing.AMQMethodBody;
+import org.wso2.andes.framing.AMQProtocolHeaderException;
+import org.wso2.andes.framing.AMQShortString;
+import org.wso2.andes.framing.ChannelCloseBody;
+import org.wso2.andes.framing.ChannelCloseOkBody;
+import org.wso2.andes.framing.ConnectionCloseBody;
+import org.wso2.andes.framing.ContentBody;
+import org.wso2.andes.framing.ContentHeaderBody;
+import org.wso2.andes.framing.FieldTable;
+import org.wso2.andes.framing.HeartbeatBody;
+import org.wso2.andes.framing.MethodDispatcher;
+import org.wso2.andes.framing.MethodRegistry;
+import org.wso2.andes.framing.ProtocolInitiation;
+import org.wso2.andes.framing.ProtocolVersion;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.pool.Job;
 import org.wso2.andes.pool.ReferenceCountingExecutorService;
@@ -34,11 +54,6 @@ import org.wso2.andes.protocol.AMQMethodEvent;
 import org.wso2.andes.protocol.AMQMethodListener;
 import org.wso2.andes.protocol.ProtocolEngine;
 import org.wso2.andes.server.AMQChannel;
-import org.wso2.andes.server.Broker;
-import org.wso2.andes.configuration.qpid.ConfigStore;
-import org.wso2.andes.configuration.qpid.ConfiguredObject;
-import org.wso2.andes.configuration.qpid.ConnectionConfig;
-import org.wso2.andes.configuration.qpid.ConnectionConfigType;
 import org.wso2.andes.server.handler.ServerMethodDispatcherImpl;
 import org.wso2.andes.server.logging.LogActor;
 import org.wso2.andes.server.logging.LogSubject;
@@ -59,7 +74,6 @@ import org.wso2.andes.server.stats.StatisticsCounter;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.server.virtualhost.VirtualHostRegistry;
 import org.wso2.andes.transport.Sender;
-import org.wso2.andes.transport.flow.control.FlowControlEventObserver;
 import org.wso2.andes.transport.network.NetworkConnection;
 
 import javax.management.JMException;
@@ -81,7 +95,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocolSession, ConnectionConfig, FlowControlEventObserver
+public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocolSession, ConnectionConfig
 {
     private static final Logger _logger = Logger.getLogger(AMQProtocolEngine.class);
 
@@ -162,8 +176,6 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
     private final NetworkConnection _network;
     private final Sender<ByteBuffer> _sender;
 
-    private AtomicBoolean isFlowControlled = new AtomicBoolean(false);
-
     public ManagedObject getManagedObject()
     {
         return _managedObject;
@@ -190,11 +202,6 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
 
         _registry = virtualHostRegistry.getApplicationRegistry();
         initialiseStatistics();
-
-        /* Register the AMQChannel as a flow control event listener to be able to receive flow
-        control related flags */
-        //EventDispatcher.getInstance().addObserver(this);
-        Broker.getEventDispatcher().addObserver(this);
     }
 
     private AMQProtocolSessionMBean createMBean() throws JMException
@@ -751,8 +758,6 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
                 {
                     task.doTask(this);
                 }
-
-                Broker.getEventDispatcher().removeObserver(this);
 
                 synchronized(this)
                 {
@@ -1369,66 +1374,4 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
         _statisticsEnabled = enabled;
     }
 
-    @Override
-    public void update(FlowControlState state) throws Exception {
-        switch (state) {
-            case MEMORY_THRESHOLD_EXCEEDED:
-                if (isFlowControlled.compareAndSet(Boolean.FALSE, Boolean.TRUE)) {
-
-                    for (Map.Entry<Integer, AMQChannel> entry : _channelMap.entrySet()) {
-                        AMQChannel channel = entry.getValue();
-                        if (channel != null) {
-                            if(channel.isSubscriptionChannel()) {
-                                return;
-                            }
-                            channel.blockChannel();
-
-                        }
-                    }
-                    _network.block();
-                    _logger.warn("Memory Threshold Exceeded. Session '" + getId().toString() +
-                                "' Will Be Flow Controlled" );
-                }
-            case PER_CONNECTION_MESSAGE_THRESHOLD_EXCEEDED:
-                if (isFlowControlled.compareAndSet(Boolean.FALSE, Boolean.TRUE)) {
-                    for (Map.Entry<Integer, AMQChannel> entry : _channelMap.entrySet()) {
-                        AMQChannel channel = entry.getValue();
-                        if (channel != null) {
-                            channel.blockChannel();
-                        }
-                    }
-                }
-                break;
-            case MEMORY_THRESHOLD_RECOVERED:
-                if (isFlowControlled.compareAndSet(Boolean.TRUE, Boolean.FALSE)) {
-                    if (_logger.isDebugEnabled()) {
-                        _logger.debug("Memory Threshold Is Recovered. Session '" +
-                                getId().toString() + "' Is Continued");
-                    }
-                    _network.unblock();
-                    for (Map.Entry<Integer, AMQChannel> entry : _channelMap.entrySet()) {
-                        AMQChannel channel = entry.getValue();
-                        if (channel != null) {
-                            channel.unblockChannel();
-                        }
-                    }
-                }
-                break;
-            case PER_CONNECTION_MESSAGE_THRESHOLD_RECOVERED:
-                if (isFlowControlled.compareAndSet(Boolean.TRUE, Boolean.FALSE)) {
-                    for (Map.Entry<Integer, AMQChannel> entry : _channelMap.entrySet()) {
-                        AMQChannel channel = entry.getValue();
-                        if (channel != null) {
-                            channel.unblockChannel();
-                        }
-                    }
-                }
-                break;
-            default:
-                if (_logger.isDebugEnabled()) {
-                    _logger.debug("Unknown Flow Control State Received. Session '" +
-                            getId().toString() + "' continues uninterrupted");
-                }
-        }
-    }
 }
