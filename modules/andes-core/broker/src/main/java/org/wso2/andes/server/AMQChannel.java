@@ -411,10 +411,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
                 //Set channel details
                 //Substring to remove leading slash character from address
-                try {
+                if (null != ((AMQProtocolEngine) this._session).getAddress()) {
                     andesChannel.setIdentifier(
                             ((AMQProtocolEngine) this._session).getAddress().substring(1));
-                } catch (NullPointerException e) {
+                } else {
                     andesChannel.setIdentifier("AMQP-Unknown");
                 }
                 andesChannel.setDestination(this._currentMessage.getRoutingKey());

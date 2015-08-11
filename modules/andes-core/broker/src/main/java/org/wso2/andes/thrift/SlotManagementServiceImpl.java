@@ -79,7 +79,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
             try {
                 result = slotManager.deleteSlot(queueName, slot, nodeId);
             } catch (AndesException e) {
-                throw new TException("Failed to delete slot for queue:" + queueName);
+                throw new TException("Failed to delete slot for queue:" + queueName, e);
             }
             return result;
         } else {
@@ -93,7 +93,8 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
             try {
                 slotManager.reAssignSlotWhenNoSubscribers(nodeId, queueName);
             } catch (AndesException e) {
-                throw new TException("Failed to reAssign slot for node:" + nodeId + " queue:" + queueName);
+                throw new TException("Failed to reAssign slot for node:" + nodeId + " queue:"
+                                     + queueName, e);
             }
         } else {
             throw new TException("This node is not the slot coordinator right now");
@@ -117,7 +118,7 @@ public class SlotManagementServiceImpl implements SlotManagementService.Iface {
             try {
                 slotManager.clearAllActiveSlotRelationsToQueue(queueName);
             } catch (AndesException e) {
-                throw new TException("Failed to clear active slots for queue:" + queueName);
+                throw new TException("Failed to clear active slots for queue:" + queueName, e);
             }
         } else {
             throw new TException("This node is not the slot coordinator right now");

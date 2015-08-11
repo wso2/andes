@@ -107,7 +107,7 @@ public class HazelcastAgent implements SlotAgent {
      * To keep track of slots that overlap with already assigned slots (in slotAssignmentMap). This is to ensure that
      * messages assigned to a specific assigned slot are only handled by that node itself.
      */
-    private IMap<String, HashmapStringTreeSetWrapper> overLappedSlotMap;
+    private IMap<String, HashmapStringTreeSetWrapper> overlappedSlotMap;
 
     /**
      *distributed Map to store last assigned ID against queue name
@@ -223,7 +223,7 @@ public class HazelcastAgent implements SlotAgent {
         lastAssignedIDMap = hazelcastInstance.getMap(CoordinationConstants.LAST_ASSIGNED_ID_MAP_NAME);
         lastPublishedIDMap = hazelcastInstance.getMap(CoordinationConstants.LAST_PUBLISHED_ID_MAP_NAME);
         slotAssignmentMap = hazelcastInstance.getMap(CoordinationConstants.SLOT_ASSIGNMENT_MAP_NAME);
-        overLappedSlotMap = hazelcastInstance.getMap(CoordinationConstants.OVERLAPPED_SLOT_MAP_NAME);
+        overlappedSlotMap = hazelcastInstance.getMap(CoordinationConstants.OVERLAPPED_SLOT_MAP_NAME);
 
         /**
          * Initialize hazelcast map fot thrift server details
@@ -373,9 +373,9 @@ public class HazelcastAgent implements SlotAgent {
             if (null != wrapper) {
                 queueToSlotMap = wrapper.getStringListHashMap();
             }
-            if (queueToSlotMap != null) {
+            if (null != queueToSlotMap) {
                 TreeSet<Slot> currentSlotList = queueToSlotMap.get(queueName);
-                if (currentSlotList != null) {
+                if (null != currentSlotList) {
                     // com.google.gson.Gson gson = new GsonBuilder().create();
                     //get the actual reference of the slot to be removed
                     Slot slotInAssignmentMap = null; //currentSlotList.ceiling(emptySlot);
@@ -414,9 +414,9 @@ public class HazelcastAgent implements SlotAgent {
             if (null != wrapper) {
                 queueToSlotMap = wrapper.getStringListHashMap();
             }
-            if (queueToSlotMap != null) {
+            if (null != queueToSlotMap) {
                 TreeSet<Slot> assignedSlotList = queueToSlotMap.remove(queueName);
-                if(assignedSlotList != null) {
+                if (null != assignedSlotList) {
                     slotListToReturn.addAll(assignedSlotList);
                 }
                 wrapper.setStringListHashMap(queueToSlotMap);
@@ -425,22 +425,22 @@ public class HazelcastAgent implements SlotAgent {
 
             //Get overlapped slots from Hazelcast, delete all belonging to queue and
             //set back
-            HashmapStringTreeSetWrapper overlappedSlotWrapper = this.overLappedSlotMap.get(nodeId);
+            HashmapStringTreeSetWrapper overlappedSlotWrapper = this.overlappedSlotMap.get(nodeId);
             HashMap<String, TreeSet<Slot>> queueToOverlappedSlotMap = null;
             if (null != overlappedSlotWrapper) {
                 queueToOverlappedSlotMap = overlappedSlotWrapper.getStringListHashMap();
             }
-            if (queueToOverlappedSlotMap != null) {
+            if (null != queueToOverlappedSlotMap) {
                 TreeSet<Slot> assignedOverlappedSlotList = queueToOverlappedSlotMap.remove(queueName);
-                if(assignedOverlappedSlotList != null) {
+                if (null != assignedOverlappedSlotList) {
                     slotListToReturn.addAll(assignedOverlappedSlotList);
                 }
                 overlappedSlotWrapper.setStringListHashMap(queueToOverlappedSlotMap);
-                this.overLappedSlotMap.set(nodeId, overlappedSlotWrapper);
+                this.overlappedSlotMap.set(nodeId, overlappedSlotWrapper);
             }
 
             //add the deleted slots to un-assigned slot map, so that they can be assigned again.
-            if (!slotListToReturn.isEmpty()) {
+            if (!(slotListToReturn.isEmpty())) {
                 TreeSetSlotWrapper treeSetStringWrapper = unAssignedSlotMap.get(queueName);
                 TreeSet<Slot> unAssignedSlotSet = new TreeSet<>();
                 if (null != treeSetStringWrapper) {
@@ -448,12 +448,12 @@ public class HazelcastAgent implements SlotAgent {
                 } else {
                     treeSetStringWrapper = new TreeSetSlotWrapper();
                 }
-                if (unAssignedSlotSet == null) {
+                if (null == unAssignedSlotSet) {
                     unAssignedSlotSet = new TreeSet<>();
                 }
                 for (Slot returnSlot : slotListToReturn) {
                     //Reassign only if the slot is not empty
-                    if (!SlotUtils.checkSlotEmptyFromMessageStore(returnSlot)) {
+                    if (!(SlotUtils.checkSlotEmptyFromMessageStore(returnSlot))) {
                         if (returnSlot.addState(SlotState.RETURNED)) {
                             unAssignedSlotSet.add(returnSlot);
                         }
@@ -478,7 +478,7 @@ public class HazelcastAgent implements SlotAgent {
             TreeSetSlotWrapper unAssignedSlotWrapper = unAssignedSlotMap.get(queueName);
             if (null != unAssignedSlotWrapper) {
                 TreeSet<Slot> slotsFromUnassignedSlotMap = unAssignedSlotWrapper.getSlotTreeSet();
-                if (slotsFromUnassignedSlotMap != null && !slotsFromUnassignedSlotMap.isEmpty()) {
+                if (null != slotsFromUnassignedSlotMap && !(slotsFromUnassignedSlotMap.isEmpty())) {
                     //Get and remove slot and update hazelcast map
                     slotToBeAssigned = slotsFromUnassignedSlotMap.pollFirst();
                     unAssignedSlotWrapper.setSlotTreeSet(slotsFromUnassignedSlotMap);
@@ -502,7 +502,7 @@ public class HazelcastAgent implements SlotAgent {
 
         try {
             HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.get(nodeId);
-            if (wrapper == null) {
+            if (null == wrapper) {
                 wrapper = new HashmapStringTreeSetWrapper();
                 queueToSlotMap = new HashMap<>();
                 wrapper.setStringListHashMap(queueToSlotMap);
@@ -511,7 +511,7 @@ public class HazelcastAgent implements SlotAgent {
             wrapper = this.slotAssignmentMap.get(nodeId);
             queueToSlotMap = wrapper.getStringListHashMap();
             currentSlotList = queueToSlotMap.get(queueName);
-            if (currentSlotList == null) {
+            if (null == currentSlotList) {
                 currentSlotList = new TreeSet<>();
             }
 
@@ -587,7 +587,8 @@ public class HazelcastAgent implements SlotAgent {
      */
     @Override
     public void setSlotState(long startMessageId, long endMessageId, SlotState slotState) throws AndesException {
-
+        // In hazelcast slot state is already stored in slot object. This method is used only in
+        // database slot management.
     }
 
     /**
@@ -599,17 +600,17 @@ public class HazelcastAgent implements SlotAgent {
         TreeSet<Slot> currentSlotList;
         HashMap<String, TreeSet<Slot>> queueToSlotMap;
         try {
-            HashmapStringTreeSetWrapper wrapper = this.overLappedSlotMap.get(nodeId);
+            HashmapStringTreeSetWrapper wrapper = this.overlappedSlotMap.get(nodeId);
             if (null != wrapper) {
                 queueToSlotMap = wrapper.getStringListHashMap();
                 currentSlotList = queueToSlotMap.get(queueName);
-                if (null != currentSlotList && !currentSlotList.isEmpty()) {
+                if (null != currentSlotList && !(currentSlotList.isEmpty())) {
                     //get and remove slot
                     slotToBeAssigned = currentSlotList.pollFirst();
                     queueToSlotMap.put(queueName, currentSlotList);
                     //update hazelcast map
                     wrapper.setStringListHashMap(queueToSlotMap);
-                    this.overLappedSlotMap.set(nodeId, wrapper);
+                    this.overlappedSlotMap.set(nodeId, wrapper);
                 }
             }
         } catch (HazelcastInstanceNotActiveException ex) {
@@ -644,7 +645,7 @@ public class HazelcastAgent implements SlotAgent {
         TreeSetLongWrapper wrapper = null;
         try {
             wrapper = this.slotIdMap.get(queueName);
-            if (wrapper == null) {
+            if (null == wrapper) {
                 wrapper = new TreeSetLongWrapper();
                 this.slotIdMap.putIfAbsent(queueName, wrapper);
             }
@@ -664,7 +665,7 @@ public class HazelcastAgent implements SlotAgent {
             TreeSetLongWrapper wrapper = this.slotIdMap.get(queueName);
             TreeSet<Long> messageIDSet;
             messageIDSet = wrapper.getLongTreeSet();
-            if (messageIDSet != null && !messageIDSet.isEmpty()) {
+            if (null != messageIDSet && !(messageIDSet.isEmpty())) {
                 messageIDSet.pollFirst();
                 //set modified published ID map to hazelcast
                 wrapper.setLongTreeSet(messageIDSet);
@@ -695,23 +696,23 @@ public class HazelcastAgent implements SlotAgent {
                 if (null != wrapper) {
                     queueToSlotMap = wrapper.getStringListHashMap();
                 }
-                if (queueToSlotMap != null) {
+                if (null != queueToSlotMap) {
                     queueToSlotMap.remove(queueName);
                     wrapper.setStringListHashMap(queueToSlotMap);
                     slotAssignmentMap.set(nodeID, wrapper);
                 }
 
                 //clear overlapped slot map
-                HashmapStringTreeSetWrapper overlappedSlotsWrapper = overLappedSlotMap.get(nodeID);
+                HashmapStringTreeSetWrapper overlappedSlotsWrapper = overlappedSlotMap.get(nodeID);
                 if (null != overlappedSlotsWrapper) {
                     HashMap<String, TreeSet<Slot>> queueToOverlappedSlotMap = null;
                     if (null != wrapper) {
                         queueToOverlappedSlotMap = overlappedSlotsWrapper.getStringListHashMap();
                     }
-                    if (queueToSlotMap != null) {
+                    if (null != queueToSlotMap) {
                         queueToOverlappedSlotMap.remove(queueName);
                         overlappedSlotsWrapper.setStringListHashMap(queueToOverlappedSlotMap);
-                        overLappedSlotMap.set(nodeID, overlappedSlotsWrapper);
+                        overlappedSlotMap.set(nodeID, overlappedSlotsWrapper);
                     }
                 }
             }
@@ -743,10 +744,10 @@ public class HazelcastAgent implements SlotAgent {
             if (null != wrapper) {
                 queueToSlotMap = wrapper.getStringListHashMap();
             }
-            if (queueToSlotMap != null) {
+            if (null != queueToSlotMap) {
                 for (Map.Entry<String, TreeSet<Slot>> entry : queueToSlotMap.entrySet()) {
-                    TreeSet<Slot> slotsToBeReAssigned = entry.getValue();
-                    resultSet.addAll(slotsToBeReAssigned);
+                    TreeSet<Slot> slotsToBeReassigned = entry.getValue();
+                    resultSet.addAll(slotsToBeReassigned);
                 }
             }
         } catch (HazelcastInstanceNotActiveException ex) {
@@ -767,21 +768,21 @@ public class HazelcastAgent implements SlotAgent {
 
         TreeSet<Slot> resultSet = new TreeSet<>();
         HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
-        if (!overLappedSlotMap.containsKey(nodeId)) {
-            overLappedSlotMap.put(nodeId, new HashmapStringTreeSetWrapper());
+        if (!(overlappedSlotMap.containsKey(nodeId))) {
+            overlappedSlotMap.put(nodeId, new HashmapStringTreeSetWrapper());
         }
-        HashmapStringTreeSetWrapper olWrapper = overLappedSlotMap.get(nodeId);
+        HashmapStringTreeSetWrapper olWrapper = overlappedSlotMap.get(nodeId);
         HashMap<String, TreeSet<Slot>> olSlotMap = olWrapper.getStringListHashMap();
-        if (!olSlotMap.containsKey(queueName)) {
+        if (!(olSlotMap.containsKey(queueName))) {
             olSlotMap.put(queueName, new TreeSet<Slot>());
             olWrapper.setStringListHashMap(olSlotMap);
-            overLappedSlotMap.set(nodeId, olWrapper);
+            overlappedSlotMap.set(nodeId, olWrapper);
         }
         if (null != wrapper) {
             HashMap<String, TreeSet<Slot>> queueToSlotMap = wrapper.getStringListHashMap();
             if (queueToSlotMap != null) {
                 TreeSet<Slot> slotListForQueueOnNode = queueToSlotMap.get(queueName);
-                if(null != slotListForQueueOnNode ) {
+                if (null != slotListForQueueOnNode) {
                     resultSet.addAll(slotListForQueueOnNode);
                 }
             }
@@ -793,25 +794,25 @@ public class HazelcastAgent implements SlotAgent {
      * {@inheritDoc}
      */
     @Override
-    public void reAssignSlot(Slot slotToBeReAssigned) throws AndesException {
+    public void reassignSlot(Slot slotToBeReassigned) throws AndesException {
         try {
             TreeSet<Slot> freeSlotTreeSet = new TreeSet<>();
             TreeSetSlotWrapper treeSetStringWrapper = new TreeSetSlotWrapper();
 
             treeSetStringWrapper.setSlotTreeSet(freeSlotTreeSet);
 
-            this.unAssignedSlotMap.putIfAbsent(slotToBeReAssigned.getStorageQueueName(),
+            this.unAssignedSlotMap.putIfAbsent(slotToBeReassigned.getStorageQueueName(),
                     treeSetStringWrapper);
 
-            if (slotToBeReAssigned.addState(SlotState.RETURNED)) {
-                treeSetStringWrapper = this.unAssignedSlotMap.get(slotToBeReAssigned.getStorageQueueName());
+            if (slotToBeReassigned.addState(SlotState.RETURNED)) {
+                treeSetStringWrapper = this.unAssignedSlotMap.get(slotToBeReassigned.getStorageQueueName());
                 freeSlotTreeSet = treeSetStringWrapper.getSlotTreeSet();
-                freeSlotTreeSet.add(slotToBeReAssigned);
+                freeSlotTreeSet.add(slotToBeReassigned);
                 treeSetStringWrapper.setSlotTreeSet(freeSlotTreeSet);
-                this.unAssignedSlotMap.set(slotToBeReAssigned.getStorageQueueName(), treeSetStringWrapper);
+                this.unAssignedSlotMap.set(slotToBeReassigned.getStorageQueueName(), treeSetStringWrapper);
             }
         } catch (HazelcastInstanceNotActiveException ex) {
-            throw new AndesException("Failed to reAssignSlot", ex);
+            throw new AndesException("Failed to reassign slot", ex);
         }
     }
 
@@ -820,7 +821,7 @@ public class HazelcastAgent implements SlotAgent {
      */
     @Override
     public void deleteOverlappedSlots(String nodeId) throws AndesException {
-        this.overLappedSlotMap.remove(nodeId);
+        this.overlappedSlotMap.remove(nodeId);
     }
 
     /**
@@ -830,14 +831,14 @@ public class HazelcastAgent implements SlotAgent {
     public void updateOverlappedSlots(String nodeId, String queueName, TreeSet<Slot> overlappedSlots) throws AndesException {
         HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
         HashMap<String, TreeSet<Slot>> queueToSlotMap = new HashMap<>();
-        if(null == wrapper) {
+        if (null == wrapper) {
             wrapper = new HashmapStringTreeSetWrapper();
         } else {
             queueToSlotMap = wrapper.getStringListHashMap();
         }
-        HashmapStringTreeSetWrapper olWrapper = overLappedSlotMap.get(nodeId);
+        HashmapStringTreeSetWrapper olWrapper = overlappedSlotMap.get(nodeId);
         HashMap<String, TreeSet<Slot>> olSlotMap = olWrapper.getStringListHashMap();
-        for(Slot slot : overlappedSlots) {
+        for (Slot slot : overlappedSlots) {
             //Add to global overlappedSlotMap
             olSlotMap.get(queueName).remove(slot);
             olSlotMap.get(queueName).add(slot);
@@ -846,7 +847,7 @@ public class HazelcastAgent implements SlotAgent {
         slotAssignmentMap.set(nodeId, wrapper);
         // Add all marked slots collected into the olSlot to global overlappedSlotsMap.
         olWrapper.setStringListHashMap(olSlotMap);
-        overLappedSlotMap.set(nodeId, olWrapper);
+        overlappedSlotMap.set(nodeId, olWrapper);
     }
 
     /**

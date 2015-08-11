@@ -18,8 +18,9 @@
 
 package org.wso2.andes.tools.utils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 
@@ -28,7 +29,7 @@ import org.wso2.andes.kernel.AndesMessageMetadata;
  */
 public class MessageTracer {
 
-    private static Logger log = LoggerFactory.getLogger(MessageTracer.class);
+    private static Log log = LogFactory.getLog(MessageTracer.class);
 
     public static final String REACHED_ANDES_CORE = "reached andes core";
     public static final String PUBLISHED_TO_INBOUND_DISRUPTOR = "submitted to inbound disruptor";
@@ -86,7 +87,7 @@ public class MessageTracer {
 	 * @param content message activity
 	 */
     public static void trace(AndesMessageMetadata metadata, String content) {
-        trace(metadata.getMessageID(), metadata.getStorageQueueName(), content);
+        trace(metadata.getMessageID(), metadata.getDestination(), content);
     }
 
 	/**

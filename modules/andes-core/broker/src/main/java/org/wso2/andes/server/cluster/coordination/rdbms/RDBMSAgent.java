@@ -235,8 +235,9 @@ public class RDBMSAgent implements SlotAgent {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void reAssignSlot(Slot slotToBeReAssigned) throws AndesException {
-        andesContextStore.deleteSlotAssignment(slotToBeReAssigned.getStartMessageId(), slotToBeReAssigned.getEndMessageId());
+	public void reassignSlot(Slot slotToBeReassigned) throws AndesException {
+        andesContextStore.deleteSlotAssignment(slotToBeReassigned.getStartMessageId(),
+                                               slotToBeReassigned.getEndMessageId());
 	}
 
 	/**

@@ -1221,8 +1221,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             if(resultSet.next()) {
                 unAssignedSlot = new Slot();
-                unAssignedSlot
-                        .setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
+                unAssignedSlot.setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
                 unAssignedSlot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
                 unAssignedSlot.setStorageQueueName(
                         resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
@@ -1500,16 +1499,14 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             if(resultSet.next()) {
                 overlappedSlot = new Slot();
-                overlappedSlot
-                        .setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
+                overlappedSlot.setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
                 overlappedSlot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
                 overlappedSlot.setStorageQueueName(
                         resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
             }
             return overlappedSlot;
         } catch (SQLException e) {
-            String errMsg =
-                    RDBMSConstants.TASK_GET_OVERLAPPED_SLOT + " queueName: " + queueName;
+            String errMsg = RDBMSConstants.TASK_GET_OVERLAPPED_SLOT + " queueName: " + queueName;
             logger.error("Error occurred while " + errMsg, e);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
         } finally {

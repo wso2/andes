@@ -131,7 +131,7 @@ public interface SlotAgent {
 	 * @param slotToBeReAssigned
 	 * @throws AndesException
 	 */
-	public void reAssignSlot(Slot slotToBeReAssigned) throws AndesException;
+	public void reassignSlot(Slot slotToBeReAssigned) throws AndesException;
 
 	/**
 	 * Update slot state in database

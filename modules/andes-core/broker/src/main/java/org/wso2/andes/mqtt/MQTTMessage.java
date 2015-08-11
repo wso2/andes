@@ -18,6 +18,7 @@
 
 package org.wso2.andes.mqtt;
 
+import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesSubscription;
@@ -39,8 +40,8 @@ public class MQTTMessage extends AndesMessage {
 
         // Avoid adding QOS 0 MQTT messages to clean session = false subscribers if disconnected
         if (subscription.isDurable()
-                && !subscription.hasExternalSubscriptions()
-                && 0 == this.getMetadata().getQosLevel()) {
+                && !(subscription.hasExternalSubscriptions())
+                && QOSLevel.AT_MOST_ONCE.getValue() == this.getMetadata().getQosLevel()) {
             return false;
         }
 
