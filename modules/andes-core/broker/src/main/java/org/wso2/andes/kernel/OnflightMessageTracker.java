@@ -65,23 +65,10 @@ public class OnflightMessageTracker {
     private final ConcurrentHashMap<Long, MessageData> msgId2MsgData;
 
     /**
-     * Map to track messages being buffered to be sent <Id of the slot, messageID, MsgData
-     * reference>
-     */
-    private final ConcurrentHashMap<String, ConcurrentHashMap<Long, MessageData>> messageBufferingTracker
-            = new ConcurrentHashMap<String, ConcurrentHashMap<Long, MessageData>>();
-
-    /**
-     * Map to track messages being sent <channel id, message id, MsgData reference>
-     */
-    private final ConcurrentHashMap<UUID, ConcurrentHashMap<Long, MessageData>> messageSendingTracker
-            = new ConcurrentHashMap<UUID, ConcurrentHashMap<Long, MessageData>>();
-
-    /**
      * Map to keep track of message counts pending to read
      */
     private final ConcurrentHashMap<Slot, AtomicInteger> pendingMessagesBySlot = new
-            ConcurrentHashMap<Slot, AtomicInteger>();
+            ConcurrentHashMap<>();
 
     /**
      * Class to keep tracking data of a message
@@ -262,83 +249,15 @@ public class OnflightMessageTracker {
      * @param andesMessageMetadata metadata to buffer
      * @return eligibility to buffer
      */
-    public boolean addMessageToBufferingTracker(Slot slot, AndesMessageMetadata andesMessageMetadata) {
+    public void addMessageToTracker(Slot slot, AndesMessageMetadata andesMessageMetadata) {
         long messageID = andesMessageMetadata.getMessageID();
-        boolean isOKToBuffer;
         if (log.isDebugEnabled()) {
             log.debug("Buffering message id = " + messageID + " slot = " + slot.toString());
         }
-        String slotID = slot.getId();
-        ConcurrentHashMap<Long, MessageData> messagesOfSlot = messageBufferingTracker.get(slotID);
-        if (messagesOfSlot == null) {
-            messagesOfSlot = new ConcurrentHashMap<Long, MessageData>();
-            messageBufferingTracker.put(slotID, messagesOfSlot);
-        }
-        MessageData trackingData = messagesOfSlot.get(messageID);
-        if (trackingData == null) {
-            trackingData = new MessageData(messageID, slot,
-                    slot.getDestinationOfMessagesInSlot(),
-                    System.currentTimeMillis(),
-                    andesMessageMetadata.getExpirationTime(),
-                    MessageStatus.BUFFERED, andesMessageMetadata.getArrivalTime());
-            msgId2MsgData.put(messageID, trackingData);
-            messagesOfSlot.put(messageID, trackingData);
-            isOKToBuffer = true;
-        } else {
-            if (log.isDebugEnabled()) {
-                log.debug("Buffering rejected message id = " + messageID);
-            }
-            isOKToBuffer = false;
-        }
-        return isOKToBuffer;
-    }
-
-    /**
-     * Check if a message is already buffered without adding it to the buffer
-     *
-     * @param slot      slot of the message
-     * @param messageID id of the message
-     * @return if message is already been buffered
-     */
-    public boolean checkIfMessageIsAlreadyBuffered(Slot slot, long messageID) {
-        boolean isAlreadyBuffered = false;
-        String slotID = slot.getId();
-        MessageData trackingData = messageBufferingTracker.get(slotID).get(messageID);
-        if (trackingData != null) {
-            isAlreadyBuffered = true;
-        }
-        return isAlreadyBuffered;
-    }
-
-    /**
-     * Release tracking of all messages belonging to a slot. i.e called when slot is removed. This will remove all
-     * buffering tracking of messages and tracking objects. But tracking objects will remain until delivery cycle
-     * completed
-     *
-     * @param slot
-     *         slot to release
-     */
-    public void releaseAllMessagesOfSlotFromTracking(Slot slot) {
-        //remove all actual msgData objects
-        if (log.isDebugEnabled()) {
-            log.debug("Releasing tracking of messages for slot " + slot.toString());
-        }
-        String slotID = slot.getId();
-        ConcurrentHashMap<Long, MessageData> messagesOfSlot = messageBufferingTracker.remove(slotID);
-        if (messagesOfSlot != null) {
-            for (Long messageId : messagesOfSlot.keySet()) {
-                MessageData msgData = getTrackingData(messageId);
-                msgData.addMessageStatus(MessageStatus.SLOT_REMOVED);
-                if (checkIfReadyToRemoveFromTracking(messageId)) {
-                    if (log.isDebugEnabled()) {
-                        log.debug("removing tracking object from memory id " + messageId);
-                    }
-                } else {
-                    log.error("Tracking data for message id " + messageId + " removed while in an invalid state. (" + msgData.getStatusHistory() + ")");
-                }
-                msgId2MsgData.remove(messageId);
-            }
-        }
+        MessageData trackingData = new MessageData(messageID, slot, slot.getDestinationOfMessagesInSlot(),
+                                                   System.currentTimeMillis(), andesMessageMetadata.getExpirationTime(),
+                                                   MessageStatus.BUFFERED, andesMessageMetadata.getArrivalTime());
+        msgId2MsgData.put(messageID, trackingData);
     }
 
     /**
@@ -355,49 +274,8 @@ public class OnflightMessageTracker {
         }
     }
 
-    /**
-     * Remove tracking object from memory for a message if this returns true
-     *
-     * @param messageID id of the message to evaluate
-     * @return eligibility to delete tracking object
-     */
-    private boolean checkIfReadyToRemoveFromTracking(long messageID) {
-        MessageData messageTrackingData = getTrackingData(messageID);
-        return MessageStatus.isOKToRemove(messageTrackingData.messageStatus);
-    }
-
-    /**
-     * Clear all tracking when orphan slot situation i.e. call when no active subscription but buffered messages are
-     * sent to subscription
-     *
-     * @param slot slot to release
-     */
-    public void clearAllTrackingWhenSlotOrphaned(Slot slot) {
-        if (log.isDebugEnabled()) {
-            log.debug("Orphan slot situation and clear tracking of messages for slot = " + slot);
-        }
-        String slotID = slot.getId();
-        ConcurrentHashMap<Long, MessageData> messagesOfSlot = messageBufferingTracker.remove(slotID);
-        if (messagesOfSlot != null) {
-            for (Long messageId : messagesOfSlot.keySet()) {
-                msgId2MsgData.remove(messageId);
-            }
-        }
-    }
-
-    /**
-     * Release tracking that this message is buffered.
-     * This will delete reference to tracking object only
-     *
-     * @param slot      slot message belongs
-     * @param messageId id of the message
-     */
-    public void releaseMessageBufferingFromTracking(Slot slot, long messageId) {
-        if (log.isDebugEnabled()) {
-            log.debug("Releasing message buffering tacking id= " + messageId);
-        }
-        String slotID = slot.getId();
-        messageBufferingTracker.get(slotID).remove(messageId);
+    public void removeMessageFromTracker(Long messageID) {
+        msgId2MsgData.remove(messageID);
     }
 
     /**
@@ -465,8 +343,6 @@ public class OnflightMessageTracker {
                 subscription.msgRejectReceived(messageID);
             }
         }
-
-        releaseMessageBufferingFromTracking(slot, messageID);
 
         decrementMessageCountInSlot(slot);
     }
