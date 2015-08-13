@@ -27,6 +27,7 @@ import org.wso2.andes.kernel.disruptor.delivery.DisruptorBasedFlusher;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.tools.utils.MessageTracer;
+
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -250,10 +251,7 @@ public class MessageFlusher {
      * @param slot
      *         these messages are belonged to
      */
-    public void sendMessageToBuffer(List<AndesMessageMetadata> messagesRead,
-                                    Slot slot) {
-
-
+    public void sendMessageToBuffer(List<AndesMessageMetadata> messagesRead, Slot slot) {
         try {
             OnflightMessageTracker.getInstance().incrementMessageCountInSlot(slot, messagesRead.size());
             for (AndesMessageMetadata message : messagesRead) {
@@ -269,20 +267,10 @@ public class MessageFlusher {
                 MessageDeliveryInfo messageDeliveryInfo = getMessageDeliveryInfo(destination);
                 //check and buffer message
                 //stamp this message as buffered
-                boolean isOKToBuffer = OnflightMessageTracker.getInstance()
-                                                             .addMessageToBufferingTracker(slot,
-                                                                                           message);
-                if (isOKToBuffer) {
-                    messageDeliveryInfo.readButUndeliveredMessages.add(message);
-                    //Tracing message
-                    MessageTracer.trace(message, MessageTracer.METADATA_BUFFERED_FOR_DELIVERY);
-                    //increment the message count in the slot
-                } else {
-                    OnflightMessageTracker.getInstance().decrementMessageCountInSlot(slot);
-                    log.warn("Tracker rejected message id= " + message.getMessageID() + " from buffering " +
-                             "to deliver. This is an already buffered message");
-                    //todo: this message is previously buffered. Should be removed from slot
-                }
+                OnflightMessageTracker.getInstance().addMessageToTracker(slot, message);
+                messageDeliveryInfo.readButUndeliveredMessages.add(message);
+                //Tracing message
+                MessageTracer.trace(message, MessageTracer.METADATA_BUFFERED_FOR_DELIVERY);
             }
         } catch (Throwable e) {
             log.fatal("Error scheduling messages for delivery", e);

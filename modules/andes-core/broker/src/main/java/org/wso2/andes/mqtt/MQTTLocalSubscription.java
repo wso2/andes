@@ -33,7 +33,6 @@ import org.wso2.andes.server.ClusterResourceHolder;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
@@ -61,13 +60,6 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
      * Count sent but not acknowledged message count for channel of the subscriber
      */
     private AtomicInteger unAckedMsgCount = new AtomicInteger(0);
-
-
-    /**
-     * Map to track messages being sent <message id, MsgData reference>
-     */
-    private final ConcurrentHashMap<Long, MessageData> messageSendingTracker
-            = new ConcurrentHashMap<Long, MessageData>();
 
     /**
      * Track messages sent as retained messages
@@ -259,12 +251,9 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
             log.debug("Adding message to sending tracker channel id = " + getChannelID() + " message id = "
                     + messageID);
         }
-        MessageData messageData = messageSendingTracker.get(messageID);
 
-        if (null == messageData) {
-            messageData = OnflightMessageTracker.getInstance().getTrackingData(messageID);
-            messageSendingTracker.put(messageID, messageData);
-        }
+        MessageData messageData = OnflightMessageTracker.getInstance().getTrackingData(messageID);
+
         // increase delivery count
         int numOfCurrentDeliveries = messageData.incrementDeliveryCount(getChannelID());
 
@@ -296,7 +285,6 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
 
     @Override
     public void ackReceived(long messageID) {
-        messageSendingTracker.remove(messageID);
         unAckedMsgCount.decrementAndGet();
         // Remove if received acknowledgment message id contains in retained message list.
         retainedMessageList.remove(messageID);
@@ -304,13 +292,11 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
 
     @Override
     public void msgRejectReceived(long messageID) {
-        messageSendingTracker.remove(messageID);
         unAckedMsgCount.decrementAndGet();
     }
 
     @Override
     public void close() {
-        messageSendingTracker.clear();
         unAckedMsgCount.set(0);
     }
     
