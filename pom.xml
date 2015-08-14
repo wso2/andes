@@ -440,6 +440,11 @@
                 <scope>test</scope>
             </dependency>
             <dependency>
+                <groupId>org.wso2.securevault</groupId>
+                <artifactId>org.wso2.securevault</artifactId>
+                <version>${securevault.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>mysql</groupId>
                 <artifactId>mysql-connector-java</artifactId>
                 <version>${mysql-connector-java.version}</version>
@@ -621,6 +626,7 @@
         <naming-resources.version>5.5.15</naming-resources.version>
         <mysql-connector-java.version>5.1.31</mysql-connector-java.version>
         <gson.version>2.2.4</gson.version>
+        <securevault.version>1.0.0-wso2v2</securevault.version>
     </properties>
 
     <mailingLists>
