@@ -66,6 +66,12 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                 Collection<LocalSubscription> subscriptions4Queue =
                         subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
 
+                if (log.isDebugEnabled()) {
+                    log.debug("DURABLE_MESSAGE_FLOW : Processing Message ID : " + message.getMessageID() + ". Number " +
+                            "of Active Subscribers for topic : \"" + destination + "\" : " + subscriptions4Queue.size
+                            ());
+                }
+
                 //If this is a topic message, we remove all durable topic subscriptions here.
                 //Because durable topic subscriptions will get messages via queue path.
                 Iterator<LocalSubscription> subscriptionIterator = subscriptions4Queue.iterator();
@@ -76,6 +82,12 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                      * subscribers who appeared before publishing this message should receive it
                      */
                     if (subscription.isDurable() || (subscription.getSubscribeTime() > message.getArrivalTime())) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("DURABLE_MESSAGE_FLOW : Message with ID " + message.getMessageID() + "arrived " +
+                                    "at : " + message.getArrivalTime() + " after the subscription with ID : " +
+                                    subscription.toString() + " was created at : " + subscription.getSubscribeTime()
+                                    + ".");
+                        }
                         subscriptionIterator.remove();
                     }
 
@@ -113,6 +125,9 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                  * overfilling. These messages will be tried in order in next buff flush.
                  */
                 if(allTopicSubscriptionsSaturated) {
+                    if (log.isDebugEnabled()) {
+                    log.debug("DURABLE_MESSAGE_FLOW : Processing Message ID : " + message.getMessageID() + ". All Subscription buffers (" + subscriptions4Queue.size() + ") are full. Will be retried later." );
+                    }
                     break;
                 }
 
@@ -120,6 +135,9 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                 for (int j = 0; j < subscriptions4Queue.size(); j++) {
                     LocalSubscription localSubscription = MessageFlusher.getInstance()
                             .findNextSubscriptionToSent(destination, subscriptions4Queue);
+                    if (log.isDebugEnabled()) {
+                        log.debug("DURABLE_MESSAGE_FLOW : Processing Message ID : " + message.getMessageID() + ". Sending to subscription : " + localSubscription.toString());
+                    }
                     MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);
                 }
                 iterator.remove();
