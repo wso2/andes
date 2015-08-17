@@ -69,7 +69,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
 
                 if (log.isDebugEnabled()) {
                     log.debug("DURABLE_MESSAGE_FLOW : Processing Message ID : " + message.getMessageID() + ". Number " +
-                            "of Active Subscribers for topic : \"" + destination + "\" : " + subscriptions4Queue.size
+                            "of Active Subscribers for topic : \"" + message.getDestination() + "\" : with clientID : " + destination + "\" : " + subscriptions4Queue.size
                             ());
                 }
 
@@ -104,7 +104,8 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
 
                         if (log.isDebugEnabled()) {
                             log.debug("DURABLE_MESSAGE_FLOW : Processing Message ID : " + message.getMessageID() + "." +
-                                    " Sending to subscription : " + localSubscription.toString());
+                                    " Sending to subscription : " + localSubscription.toString() + " with clientID "
+                                    + localSubscription.getStorageQueueName());
                         }
 
                         MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);
@@ -115,8 +116,10 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                         break;
                     } else {
                         if (log.isDebugEnabled()) {
-                            log.debug("DURABLE_MESSAGE_FLOW : Processing Message ID : " + message.getMessageID() + ". All" +
-                                    " Subscription buffers (" + subscriptions4Queue.size() + ") are full. Will be retried" +
+                            log.debug("DURABLE_MESSAGE_FLOW : Processing Message ID : " + message.getMessageID() + " " +
+                                    "for topic : " + message.getDestination() + ". All" +
+                                    " Subscription buffers (" + subscriptions4Queue.size() + ") are full. Will be " +
+                                    "retried" +
                                     " later.");
                         }
                     }
