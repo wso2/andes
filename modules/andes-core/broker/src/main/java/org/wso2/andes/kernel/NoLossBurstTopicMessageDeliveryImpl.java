@@ -126,7 +126,9 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                  */
                 if(allTopicSubscriptionsSaturated) {
                     if (log.isDebugEnabled()) {
-                    log.debug("DURABLE_MESSAGE_FLOW : Processing Message ID : " + message.getMessageID() + ". All Subscription buffers (" + subscriptions4Queue.size() + ") are full. Will be retried later." );
+                        log.debug("DURABLE_MESSAGE_FLOW : Processing Message ID : " + message.getMessageID() + ". All" +
+                                " Subscription buffers (" + subscriptions4Queue.size() + ") are full. Will be retried" +
+                                " later.");
                     }
                     break;
                 }
