@@ -140,7 +140,11 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
 
     @Override
     public UUID getChannelID() {
-        return channel.getId();
+        UUID channelID = null;
+        if(null != channel) {
+            channelID =  channel.getId();
+        }
+        return channelID;
     }
 
     @Override

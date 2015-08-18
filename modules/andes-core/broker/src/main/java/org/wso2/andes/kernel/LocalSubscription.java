@@ -26,6 +26,10 @@ public interface LocalSubscription extends AndesSubscription {
 
     public boolean isActive();
 
+    /**
+     * Get the ID of the underlying channel.
+     * @return Id of the channel. Null if there is no underlying channel (mock subscription)
+     */
     public UUID getChannelID();
 
     /**
