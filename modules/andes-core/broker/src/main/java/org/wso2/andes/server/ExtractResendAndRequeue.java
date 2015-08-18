@@ -17,14 +17,15 @@
  */
 package org.wso2.andes.server;
 
-import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
-import org.wso2.andes.server.queue.QueueEntry;
-import org.wso2.andes.server.subscription.Subscription;
-import org.wso2.andes.server.store.TransactionLog;
-import org.wso2.andes.server.txn.ServerTransaction;
-import org.wso2.andes.server.txn.AutoCommitTransaction;
-import org.wso2.andes.AMQException;
 import org.apache.log4j.Logger;
+import org.wso2.andes.AMQException;
+import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
+import org.wso2.andes.server.queue.DLCQueueUtils;
+import org.wso2.andes.server.queue.QueueEntry;
+import org.wso2.andes.server.store.TransactionLog;
+import org.wso2.andes.server.subscription.Subscription;
+import org.wso2.andes.server.txn.AutoCommitTransaction;
+import org.wso2.andes.server.txn.ServerTransaction;
 
 import java.util.Map;
 
@@ -83,7 +84,7 @@ public class ExtractResendAndRequeue implements UnacknowledgedMessageMap.Visitor
                 {
 
                     dequeueEntry(message);
-                    _log.info("No DeadLetter Queue and requeue not requested so dropping message:" + message);
+                    DLCQueueUtils.addToDeadLetterChannel(message);
                 }
             }
             else

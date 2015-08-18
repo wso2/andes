@@ -27,10 +27,14 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.kernel.AndesConstants;
+import org.wso2.andes.server.message.ServerMessage;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.registry.IApplicationRegistry;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This class centralises the management of Dead Letter Queues by creating Dead Letter Queues when
@@ -129,6 +133,35 @@ public class DLCQueueUtils {
                     (mockSubscription, SubscriptionListener.SubscriptionChange.ADDED);
 
             log.info(dlcQueueName + " Queue Created as Dead Letter Channel");
+        }
+    }
+
+    /**
+     * Add message to DLC
+     *
+     * @param message
+     *         Message to be moved to DLC
+     */
+    public static void addToDeadLetterChannel(QueueEntry message) {
+        ServerMessage amqMessage = message.getMessage();
+        Long messageID = amqMessage.getMessageNumber();
+        String storageQueue = amqMessage.getRoutingKey();
+        AndesRemovableMetadata removableMessage = new AndesRemovableMetadata(messageID, storageQueue, storageQueue);
+
+        List<AndesRemovableMetadata> messageToMoveToDLC = new ArrayList<>();
+        messageToMoveToDLC.add(removableMessage);
+
+        try {
+            if (log.isDebugEnabled()) {
+                log.debug("Moving message to Dead Letter Channel. Message ID " + messageID);
+            }
+            Andes.getInstance().deleteMessages(messageToMoveToDLC, true);
+        } catch (AndesException dlcException) {
+            // If an exception occur in this level, it means that there is a message store level error.
+            // There's a possibility that we might lose this message
+            // If the message is not removed the slot will not get removed which will lead to an
+            // inconsistency
+            log.error("Error moving message " + messageID + " to dead letter channel.", dlcException);
         }
     }
 }
