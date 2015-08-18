@@ -133,7 +133,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
         }
 
         try {
-            messagingEngine.deleteMessages(removableMetadata, false);
+            messagingEngine.deleteMessages(removableMetadata);
             OnflightMessageTracker.getInstance().updateMessageDeliveryInSlot(removableMetadata);
 
             if (log.isTraceEnabled()) {

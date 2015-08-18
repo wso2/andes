@@ -80,7 +80,12 @@ public class InboundDeleteMessagesEvent implements AndesInboundStateEvent {
     public void updateState() throws AndesException {
         switch (eventType) {
             case DELETE_MESSAGES_EVENT:
-                messagingEngine.deleteMessages(messagesToRemove, moveToDLC);
+                if (!moveToDLC) {
+                    messagingEngine.deleteMessages(messagesToRemove);
+                }
+                else{
+                    messagingEngine.moveMessagesToDeadLetterChannel(messagesToRemove);
+                }
                 break;
             default:
                 log.error("Event type not set properly " + eventType);

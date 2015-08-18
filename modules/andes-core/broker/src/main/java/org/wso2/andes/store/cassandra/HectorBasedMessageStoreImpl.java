@@ -607,9 +607,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessages(final String storageQueueName,
-                               List<Long> messagesToRemove, boolean deleteAllMetaData)
-            throws AndesException {
+    public void deleteMessages(final String storageQueueName, List<Long> messagesToRemove) throws AndesException {
         Context context = MetricManager.timer(Level.INFO, MetricsConstants.DELETE_MESSAGE_META_DATA_AND_CONTENT)
                 .start();
         try {
@@ -624,23 +622,13 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                     HectorConstants.stringSerializer);
 
             List<String> rows2Remove = new ArrayList<String>();
-            //if all metadata is not be removed, add metadata and content of each message to delete
-            //else, add content of each message and all metadata for the queue to delete
-            if (!deleteAllMetaData) {
-                for (Long messageID : messagesToRemove) {
-                    HectorDataAccessHelper
-                            .deleteLongColumnFromRaw(
-                                    HectorConstants.META_DATA_COLUMN_FAMILY,
-                                    storageQueueName, messageID.longValue(), mutator, false);
-                    rows2Remove.add(MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX +
-                            messageID.longValue());
-                }
-            } else {
-                mutator.addDeletion(storageQueueName, HectorConstants.META_DATA_COLUMN_FAMILY);
-                for (Long messageID : messagesToRemove) {
-                    rows2Remove.add(MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX +
-                            messageID.longValue());
-                }
+            for (Long messageID : messagesToRemove) {
+                HectorDataAccessHelper
+                        .deleteLongColumnFromRaw(
+                                HectorConstants.META_DATA_COLUMN_FAMILY,
+                                storageQueueName, messageID.longValue(), mutator, false);
+                rows2Remove.add(MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX +
+                                messageID.longValue());
             }
             if (!rows2Remove.isEmpty()) {
                 HectorDataAccessHelper.deleteIntegerRowListFromColumnFamily(

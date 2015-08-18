@@ -1143,9 +1143,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessages(final String storageQueueName,
-                               List<Long> messagesToRemove, boolean deleteAllMetaData)
-            throws AndesException {
+    public void deleteMessages(final String storageQueueName,List<Long> messagesToRemove) throws AndesException {
         Connection connection = null;
         PreparedStatement metadataRemovalPreparedStatement = null;
 
@@ -1153,39 +1151,25 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 .DELETE_MESSAGE_META_DATA_AND_CONTENT).start();
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
-        
-        
-        
         try {
             
             removeFromCache(messagesToRemove);
 
-            int queueID = getCachedQueueID(storageQueueName);
-
             connection = getConnection();
 
-            //If all metadata is not be removed, add metadata of each message to delete
-            //else, add all metadata for the queue to delete
             //Since referential integrity is imposed on the two tables: message content and metadata,
             //deleting message metadata will cause message content to be automatically deleted
-            if (!deleteAllMetaData) {
-                metadataRemovalPreparedStatement = connection
-                        .prepareStatement(RDBMSConstants.PS_DELETE_METADATA);
+            metadataRemovalPreparedStatement = connection
+                    .prepareStatement(RDBMSConstants.PS_DELETE_METADATA);
 
-                for (Long messageID : messagesToRemove) {
-                    //add parameters to delete metadata
-                    metadataRemovalPreparedStatement.setLong(1, messageID);
-                    metadataRemovalPreparedStatement.addBatch();
+            for (Long messageID : messagesToRemove) {
+                //add parameters to delete metadata
+                metadataRemovalPreparedStatement.setLong(1, messageID);
+                metadataRemovalPreparedStatement.addBatch();
 
-                }
-                metadataRemovalPreparedStatement.executeBatch();
-
-            } else {
-                metadataRemovalPreparedStatement = connection
-                        .prepareStatement(RDBMSConstants.PS_CLEAR_QUEUE_FROM_METADATA);
-                metadataRemovalPreparedStatement.setInt(1, queueID);
-                metadataRemovalPreparedStatement.execute();
             }
+            metadataRemovalPreparedStatement.executeBatch();
+
             connection.commit();
 
             if (log.isDebugEnabled()) {
@@ -1528,7 +1512,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             int queueID = getCachedQueueID(storageQueueName);
 
             connection = getConnection();
-            connection.setAutoCommit(false);
 
             preparedStatement = connection
                     .prepareStatement(RDBMSConstants.PS_CLEAR_QUEUE_FROM_METADATA);
