@@ -49,7 +49,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 	// if it is non-operational, the value will be updated immediately
 	AtomicBoolean isContextStoreOperational = new AtomicBoolean(true);
 
-	private static Log log = LogFactory.getLog(AndesRecoveryTask.class);
+	private static final Log log = LogFactory.getLog(AndesRecoveryTask.class);
 
 	public AndesRecoveryTask() {
 
@@ -66,7 +66,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 
 	@Override
 	public void run() {
-		if(isContextStoreOperational.get()) {
+		if (isContextStoreOperational.get()) {
 			try {
 				reloadExchangesFromDB();
 				reloadQueuesFromDB();
@@ -76,7 +76,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 				log.error("Error in running andes recovery task", e);
 			}
 		} else {
-			log.info("AndesRecoveryTask was paused due to non-operational context store.");
+			log.warn("AndesRecoveryTask was paused due to non-operational context store.");
 		}
 	}
 
@@ -87,18 +87,18 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 	 * @throws AndesException
 	 */
 	public void recoverExchangesQueuesBindingsSubscriptions() throws AndesException {
-		if(isContextStoreOperational.get()) {
+		if (isContextStoreOperational.get()) {
 			reloadExchangesFromDB();
 			reloadQueuesFromDB();
 			reloadBindingsFromDB();
 			reloadSubscriptions();
 		} else {
-			log.info("AndesRecoveryTask was paused due to non-operational context store.");
+			log.warn("AndesRecoveryTask was paused due to non-operational context store.");
 		}
 	}
 
 	private void reloadExchangesFromDB() throws AndesException {
-		if(isContextStoreOperational.get()) {
+		if (isContextStoreOperational.get()) {
 			List<AndesExchange> exchangesStored = andesContextStore.getAllExchangesStored();
 			List<AndesExchange> exchangeList = amqpConstructStore.getExchanges();
 			List<AndesExchange> duplicatedExchanges = new ArrayList<>(exchangesStored);
@@ -108,7 +108,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 				for (ExchangeListener listener : exchangeListeners) {
 					log.warn("Recovering node. Adding exchange " + exchange.toString());
 					listener.handleClusterExchangesChanged(exchange,
-														   ExchangeListener.ExchangeChange.Added);
+					                                       ExchangeListener.ExchangeChange.Added);
 				}
 			}
 
@@ -117,16 +117,16 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 				for (ExchangeListener listener : exchangeListeners) {
 					log.warn("Recovering node. Removing exchange " + exchange.toString());
 					listener.handleClusterExchangesChanged(exchange,
-														   ExchangeListener.ExchangeChange.Deleted);
+					                                       ExchangeListener.ExchangeChange.Deleted);
 				}
 			}
 		} else {
-			log.info("Failed to recover exchanges from database due to non-operational context store.");
+			log.warn("Failed to recover exchanges from database due to non-operational context store.");
 		}
 	}
 
 	private void reloadQueuesFromDB() throws AndesException {
-		if(isContextStoreOperational.get()) {
+		if (isContextStoreOperational.get()) {
 			List<AndesQueue> queuesStored = andesContextStore.getAllQueuesStored();
 			List<AndesQueue> queueList = amqpConstructStore.getQueues();
 			List<AndesQueue> duplicatedQueues = new ArrayList<>(queuesStored);
@@ -147,12 +147,12 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 				}
 			}
 		} else {
-			log.info("Failed to recover queues from database due to non-operational context store.");
+			log.warn("Failed to recover queues from database due to non-operational context store.");
 		}
 	}
 
 	private void reloadBindingsFromDB() throws AndesException {
-		if(isContextStoreOperational.get()) {
+		if (isContextStoreOperational.get()) {
 			List<AndesExchange> exchanges = andesContextStore.getAllExchangesStored();
 			for (AndesExchange exchange : exchanges) {
 				List<AndesBinding> bindingsStored =
@@ -165,7 +165,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 					for (BindingListener listener : bindingListeners) {
 						log.warn("Recovering node. Adding binding " + binding.toString());
 						listener.handleClusterBindingsChanged(binding,
-															  BindingListener.BindingEvent.ADDED);
+						                                      BindingListener.BindingEvent.ADDED);
 					}
 				}
 
@@ -174,21 +174,21 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 					for (BindingListener listener : bindingListeners) {
 						log.warn("Recovering node. removing binding " + binding.toString());
 						listener.handleClusterBindingsChanged(binding,
-															  BindingListener.BindingEvent.DELETED);
+						                                      BindingListener.BindingEvent.DELETED);
 					}
 				}
 			}
 		} else {
-			log.info("Failed to recover bindings from database due to non-operational context store.");
+			log.warn("Failed to recover bindings from database due to non-operational context store.");
 		}
 	}
 
 	private void reloadSubscriptions() throws AndesException {
-		if(isContextStoreOperational.get()) {
+		if (isContextStoreOperational.get()) {
 			ClusterResourceHolder.getInstance().getSubscriptionManager()
-								 .reloadSubscriptionsFromStorage();
+			                     .reloadSubscriptionsFromStorage();
 		} else {
-			log.info("Failed to recover subscriptions from database due to non-operational context store.");
+			log.warn("Failed to recover subscriptions from database due to non-operational context store.");
 		}
 	}
 
@@ -196,10 +196,11 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 	 * Invoked when specified store becomes non-operational
 	 *
 	 * @param store the store which went offline.
-	 * @param ex exception
+	 * @param ex    exception
 	 */
-	@Override public void storeNonOperational(HealthAwareStore store, Exception ex) {
-		if(store.getClass().getSuperclass().isInstance(AndesContextStore.class)) {
+	@Override
+	public void storeNonOperational(HealthAwareStore store, Exception ex) {
+		if (store.getClass().getSuperclass().isInstance(AndesContextStore.class)) {
 			isContextStoreOperational.set(false);
 			log.info("AndesRecoveryTask paused due to non-operational context store.");
 		}
@@ -210,8 +211,9 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 	 *
 	 * @param store Reference to the operational store
 	 */
-	@Override public void storeOperational(HealthAwareStore store) {
-		if(store.getClass().getSuperclass().isInstance(AndesContextStore.class)) {
+	@Override
+	public void storeOperational(HealthAwareStore store) {
+		if (store.getClass().getSuperclass().isInstance(AndesContextStore.class)) {
 			isContextStoreOperational.set(true);
 			log.info("AndesRecoveryTask became operational.");
 		}

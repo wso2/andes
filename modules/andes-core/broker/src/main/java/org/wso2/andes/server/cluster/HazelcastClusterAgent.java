@@ -177,9 +177,10 @@ public class HazelcastClusterAgent implements ClusterAgent {
 
         //Checking for duplicate node ids in cluster
         Set<Member> members = hazelcastInstance.getCluster().getMembers();
+        Member localMember = hazelcastInstance.getCluster().getLocalMember();
         for (Member member : members) {
             if (getIdOfNode(member).equals(getLocalNodeIdentifier()) &&
-                member != hazelcastInstance.getCluster().getLocalMember()) {
+                localMember != member) {
                 throw new AndesException(
                         "Another node with the same node id: " + getLocalNodeIdentifier() +
                         " found in the cluster. Cannot start the node.");

@@ -219,8 +219,7 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
             int latency = (int) (System.currentTimeMillis() - start);
 
             if (latency > 1000) {
-                log.warn("Cassandra writing took " + latency + " millisecoonds for batch of " +
-                         metadataList.size());
+                log.warn("Cassandra writing took " + latency + " millisecoonds for batch of " + metadataList.size());
             }
 
         } catch (CassandraDataAccessException e) {

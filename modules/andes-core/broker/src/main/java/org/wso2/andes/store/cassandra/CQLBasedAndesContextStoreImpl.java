@@ -27,7 +27,6 @@ import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.schemabuilder.SchemaBuilder;
-import org.apache.commons.lang.NotImplementedException;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -176,14 +175,14 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
                 setConsistencyLevel(config.getReadConsistencyLevel());
 
         ResultSet resultSet = execute(statement, "retrieving all durable subscriptions");
-        Map<String, List<String>> subscriberMap = new HashMap<String, List<String>>();
+        Map<String, List<String>> subscriberMap = new HashMap<>();
         for (Row row : resultSet) {
             String destinationId = row.getString(DESTINATION_IDENTIFIER);
             List<String> subscriberList = subscriberMap.get(destinationId);
 
             // if no entry in map create list and put into map
             if (subscriberList == null) {
-                subscriberList = new ArrayList<String>();
+                subscriberList = new ArrayList<>();
                 subscriberMap.put(destinationId, subscriberList);
             }
             // add subscriber data to list
@@ -268,7 +267,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
 
         ResultSet resultSet = execute(statement, "retrieving all stored node information");
 
-        Map<String, String> nodeInfoMap = new HashMap<String, String>();
+        Map<String, String> nodeInfoMap = new HashMap<>();
         for (Row row : resultSet) {
             nodeInfoMap.put(row.getString(QUEUE_EXCHANGE_NODE_IDENTIFIER),
                     row.getString(QUEUE_EXCHANGE_NODE_DETAIL));
@@ -408,7 +407,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
 
         ResultSet resultSet = execute(statement, "retrieving all exchange information");
 
-        List<AndesExchange> exchangeList = new ArrayList<AndesExchange>();
+        List<AndesExchange> exchangeList = new ArrayList<>();
         for (Row row : resultSet) {
             exchangeList.add(new AndesExchange(row.getString(QUEUE_EXCHANGE_NODE_DETAIL)));
         }
@@ -459,7 +458,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
 
         ResultSet resultSet = execute(statement, "retrieving all queues stored");
 
-        List<AndesQueue> andesQueueList = new ArrayList<AndesQueue>();
+        List<AndesQueue> andesQueueList = new ArrayList<>();
         for (Row row : resultSet) {
             andesQueueList.add(new AndesQueue(row.getString(QUEUE_EXCHANGE_NODE_DETAIL)));
         }
@@ -511,7 +510,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
 
         ResultSet resultSet = execute(statement, "retrieving binding list for exchange " + exchangeName);
 
-        List<AndesBinding> andesBindingList = new ArrayList<AndesBinding>();
+        List<AndesBinding> andesBindingList = new ArrayList<>();
         for (Row row : resultSet) {
             andesBindingList.add(new AndesBinding(row.getString(BINDING_INFO)));
         }
@@ -568,7 +567,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void createSlot(long startMessageId, long endMessageId,
                            String storageQueueName, String assignedNodeId) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -577,7 +576,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void createSlotAssignment(String nodeId, String queueName, long startMsgId,
                                                long endMsgId) {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -585,7 +584,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public Slot selectUnAssignedSlot(String queueName) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -593,7 +592,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public long getQueueToLastAssignedId(String queueName) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -602,7 +601,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void setQueueToLastAssignedId(String queueName, long messageId)
             throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -610,7 +609,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public long getNodeToLastPublishedId(String nodeId) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -619,7 +618,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void setNodeToLastPublishedId(String nodeId, long messageId)
             throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -627,7 +626,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public void removePublisherNodeId(String nodeId) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -635,7 +634,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public TreeSet<String> getMessagePublishedNodes() throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -644,7 +643,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void deleteSlotAssignment(long startMessageId, long endMessageId)
             throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -653,7 +652,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void deleteSlotAssignmentByQueueName(String nodeId, String queueName)
             throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -662,7 +661,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void setSlotState(long startMessageId, long endMessageId, SlotState slotState)
             throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -670,7 +669,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public Slot getOverlappedSlot(String queueName) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -678,7 +677,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public void addMessageId(String queueName, long messageId) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -686,7 +685,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public TreeSet<Long> getMessageIds(String queueName) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -694,7 +693,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public void deleteMessageId(long messageId) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -702,7 +701,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public void deleteSlot(long startMessageId, long endMessageId) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -710,7 +709,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public void deleteSlotsByQueueName(String queueName) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -718,7 +717,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public void deleteMessageIdsByQueueName(String queueName) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -726,7 +725,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public TreeSet<Slot> getAssignedSlotsByNodeId(String nodeId) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -734,7 +733,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public TreeSet<Slot> getAllSlotsByQueueName(String queueName) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -742,7 +741,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public Set<String> getAllQueues() throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**

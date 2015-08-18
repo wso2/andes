@@ -754,7 +754,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
 
         Context metaAdditionToBatchContext = MetricManager.timer(Level.INFO, MetricsConstants.ADD_META_DATA_TO_BATCH).start();
-        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         try {
             preparedStatement.setLong(1, metadata.getMessageID());
             preparedStatement.setInt(2, getCachedQueueID(queueName));
@@ -762,7 +761,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatement.addBatch();
         } finally {
             metaAdditionToBatchContext.stop();
-            contextWrite.stop();
         }
 
 

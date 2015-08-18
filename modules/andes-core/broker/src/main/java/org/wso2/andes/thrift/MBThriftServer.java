@@ -69,7 +69,7 @@ public class MBThriftServer {
          * Stop node if 0.0.0.0 used as thrift server host in broker.xml
          */
         if ("0.0.0.0".equals(hostName)) {
-            throw new RuntimeException("Invalid thrift server host 0.0.0.0");
+            throw new AndesException("Invalid thrift server host 0.0.0.0");
         }
         try {
             TServerSocket socket = new TServerSocket(new InetSocketAddress(hostName, port));

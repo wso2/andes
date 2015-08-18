@@ -22,7 +22,6 @@ import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.beans.ColumnSlice;
 import me.prettyprint.hector.api.beans.HColumn;
-import org.apache.commons.lang.NotImplementedException;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesBinding;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -200,7 +199,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public Map<String, String> getAllStoredNodeData() throws AndesException {
         try {
-            Map<String, String> nodeDetails = new HashMap<String, String>();
+            Map<String, String> nodeDetails = new HashMap<>();
             ColumnSlice<String, String> values = HectorDataAccessHelper
                     .getStringTypeColumnsInARow(NODE_DETAIL_ROW, NODE_DETAIL_COLUMN_FAMILY,
                             keyspace, Integer.MAX_VALUE);
@@ -340,7 +339,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public List<AndesExchange> getAllExchangesStored() throws AndesException {
         try {
-            List<AndesExchange> exchanges = new ArrayList<AndesExchange>();
+            List<AndesExchange> exchanges = new ArrayList<>();
 
             ColumnSlice<String, String> columns = HectorDataAccessHelper.
                     getStringTypeColumnsInARow(EXCHANGE_ROW, EXCHANGE_COLUMN_FAMILY, keyspace,
@@ -392,7 +391,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public List<AndesQueue> getAllQueuesStored() throws AndesException {
         try {
-            List<AndesQueue> queues = new ArrayList<AndesQueue>();
+            List<AndesQueue> queues = new ArrayList<>();
             ColumnSlice<String, String> columns = HectorDataAccessHelper.
                     getStringTypeColumnsInARow(QUEUE_ROW, QUEUE_COLUMN_FAMILY, keyspace,
                             Integer.MAX_VALUE);
@@ -446,7 +445,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
     public List<AndesBinding> getBindingsStoredForExchange(String exchangeName) throws
             AndesException {
         try {
-            List<AndesBinding> bindings = new ArrayList<AndesBinding>();
+            List<AndesBinding> bindings = new ArrayList<>();
             ColumnSlice<String, String> columns = HectorDataAccessHelper.
                     getStringTypeColumnsInARow(exchangeName, BINDING_COLUMN_FAMILY, keyspace,
                             Integer.MAX_VALUE);
@@ -485,7 +484,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void createSlot(long startMessageId, long endMessageId,
                            String storageQueueName, String assignedNodeId) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -495,7 +494,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
     public void createSlotAssignment(String nodeId, String queueId, long startMsgId,
                                                long endMsgId)
             throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -503,7 +502,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public Slot selectUnAssignedSlot(String queueName) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -511,7 +510,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public long getQueueToLastAssignedId(String queueName) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -520,7 +519,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void setQueueToLastAssignedId(String queueName, long messageId)
             throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -528,7 +527,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public long getNodeToLastPublishedId(String nodeId) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -537,7 +536,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void setNodeToLastPublishedId(String nodeId, long messageId)
             throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -545,7 +544,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public void removePublisherNodeId(String nodeId) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -553,7 +552,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public TreeSet<String> getMessagePublishedNodes() throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -562,7 +561,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void deleteSlotAssignment(long startMessageId, long endMessageId)
             throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -571,7 +570,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void deleteSlotAssignmentByQueueName(String nodeId, String queueName)
             throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -580,7 +579,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
     @Override
     public void setSlotState(long startMessageId, long endMessageId, SlotState slotState)
             throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -588,7 +587,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public Slot getOverlappedSlot(String queueName) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -596,7 +595,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public void addMessageId(String queueName, long messageId) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -604,7 +603,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public TreeSet<Long> getMessageIds(String queueName) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -612,7 +611,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public void deleteMessageId(long messageId) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -620,7 +619,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public void deleteSlot(long startMessageId, long endMessageId) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -628,7 +627,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public void deleteSlotsByQueueName(String queueName) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -636,7 +635,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public void deleteMessageIdsByQueueName(String queueName) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -644,7 +643,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public TreeSet<Slot> getAssignedSlotsByNodeId(String nodeId) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -652,7 +651,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public TreeSet<Slot> getAllSlotsByQueueName(String queueName) throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -668,7 +667,7 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
      */
     @Override
     public Set<String> getAllQueues() throws AndesException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     /**
