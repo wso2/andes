@@ -275,6 +275,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         clone.arrivalTime = arrivalTime;
         clone.metaDataType = metaDataType;
         clone.propertyMap = propertyMap;
+        clone.messageContentLength = messageContentLength;
         return clone;
     }
 
@@ -396,7 +397,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         return messageContentLength;
     }
 
-    public void setMessageContentLength(int messageContentLength) {
+    public void setMessageContentLength(int messageContentLength){
         this.messageContentLength = messageContentLength;
     }
 

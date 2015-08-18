@@ -328,6 +328,11 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                     AndesMessageMetadata metadata = Andes.getInstance().getMessageMetaData(messageId);
                     String destination = metadata.getDestination();
 
+                    //Durable topic subscriptions are handled through internal queues
+                    //Therefore, we need to add the messages that are being restored to the respective queues
+                    //For that, set Topic should be set to false
+                    metadata.setTopic(false);
+
                     // Create a removable metadata to remove the current message
                     removableMetadataList.add(new AndesRemovableMetadata(messageId, destinationQueueName,
                             destinationQueueName));
