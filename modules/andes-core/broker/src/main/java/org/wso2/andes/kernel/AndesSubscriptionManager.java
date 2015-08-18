@@ -99,8 +99,13 @@ public class AndesSubscriptionManager {
                     //delete the above subscription
                     LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription
                             (matchingSubscription);
-                    subscriptionStore.createDisconnectOrRemoveLocalSubscription(mockSubscription,
-                            SubscriptionListener.SubscriptionChange.DELETED);
+                    LocalSubscription removedSubscription = subscriptionStore.removeLocalSubscription
+                            (mockSubscription);
+                    /** removed subscription is returned. If removed subscription is null this is not a actual local
+                    subscription. We need to directly remove it. */
+                    if(null == removedSubscription) {
+                        subscriptionStore.removeSubscriptionDirectly(mockSubscription);
+                    }
                     notifyLocalSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange.DELETED);
 
 

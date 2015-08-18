@@ -592,12 +592,28 @@ public class SubscriptionStore {
     }
 
     /**
+     * Directly remove a subscription from store
+     * @param subscriptionToRemove subscription to remove
+     * @throws AndesException on an exception dealing with store
+     */
+    public void removeSubscriptionDirectly(AndesSubscription subscriptionToRemove) throws AndesException {
+        String destination = getDestination(subscriptionToRemove);
+        String destinationIdentifier = (subscriptionToRemove.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destination;
+        andesContextStore.removeDurableSubscription(destinationIdentifier, subscriptionToRemove.getSubscribedNode() +
+                "_" + subscriptionToRemove.getSubscriptionID());
+        if(log.isDebugEnabled()) {
+            log.debug("Directly removed cluster subscription subscription identifier = " + destinationIdentifier + " " +
+                    "destination = " + destination);
+        }
+    }
+
+    /**
      * To remove the local subscription
      * @param subscription Subscription to be removed
      * @return the removed local subscription
      * @throws AndesException
      */
-    private LocalSubscription removeLocalSubscription(AndesSubscription subscription) throws AndesException {
+    public LocalSubscription removeLocalSubscription(AndesSubscription subscription) throws AndesException {
         ((LocalSubscription)subscription).close();
         String destination = getDestination(subscription);
         String subscriptionID = subscription.getSubscriptionID();
@@ -640,8 +656,9 @@ public class SubscriptionStore {
         if (null != subscriptionToRemove) {
             String destinationIdentifier = (subscriptionToRemove.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destination;
             andesContextStore.removeDurableSubscription(destinationIdentifier, subscription.getSubscribedNode() + "_" + subscriptionID);
-            if (log.isDebugEnabled())
+            if (log.isDebugEnabled()) {
                 log.debug("Subscription Removed Locally for  " + destination + "@" + subscriptionID + " " + subscriptionToRemove);
+            }
         } else {
             log.warn("Could not find an subscription ID " + subscriptionID + " under destination " + destination);
         }
