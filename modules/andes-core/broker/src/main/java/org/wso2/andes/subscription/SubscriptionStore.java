@@ -525,59 +525,12 @@ public class SubscriptionStore {
      * @param subscription subscription to add/disconnect or remove
      * @param type         type of change
      * @throws AndesException
-     * @throws org.wso2.andes.kernel.SubscriptionAlreadyExistsException
      */
     public synchronized void createDisconnectOrRemoveLocalSubscription(LocalSubscription subscription,
                                                                        SubscriptionChange type)
-            throws AndesException, SubscriptionAlreadyExistsException {
+            throws AndesException {
 
-        Boolean allowSharedSubscribers = AndesConfigurationManager.readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
-        //We need to handle durable topic subscriptions
-        boolean durableSubExists = false;
-        boolean hasExternalSubscriptions = false;
-        if (subscription.isDurable()) {
 
-            // Check if an active durable subscription already in place. If so we should not accept the subscription
-            // Scan all the destinations as the subscription can come for different topic
-            for (Entry<String, Set<AndesSubscription>> entry : clusterTopicSubscriptionMap.entrySet()) {
-                Set<AndesSubscription> existingSubscriptions = entry.getValue();
-                if (existingSubscriptions != null && !existingSubscriptions.isEmpty()) {
-                    for (AndesSubscription sub : existingSubscriptions) {
-                        // Queue is durable and target queues are matched
-                        if (sub.isDurable() && sub.getTargetQueue().equals(subscription.getTargetQueue())) {
-                            durableSubExists = true;
-                            // Target queue for durable topic subscription has an active subscriber
-                            if (subscription.isBoundToTopic() && sub.hasExternalSubscriptions()) {
-                                hasExternalSubscriptions = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (hasExternalSubscriptions) {
-                    break;
-                }
-            }
-
-            if (!hasExternalSubscriptions && type == SubscriptionChange.DISCONNECTED) {
-                //when there are multiple subscribers possible with same clientID we keep only one
-                //topic subscription record for all of them. Thus when closing there can be no subscriber
-                //to close in multiple durable topic subscription case
-                if (!allowSharedSubscribers) {
-                    // We cannot guarantee that the subscription has not been removed before,
-                    // if the server is in shutting down state. No need to throw this exception. Warning is enough.
-                    log.warn("There is no active subscriber to close subscribed to " + subscription
-                            .getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
-                }
-            } else if (hasExternalSubscriptions && type == SubscriptionChange.ADDED) {
-                if (!allowSharedSubscribers) {
-                    //not permitted
-                    throw new SubscriptionAlreadyExistsException("A subscription already exists for Durable subscriptions on " +
-                            subscription.getSubscribedDestination() + " with the queue " + subscription.getTargetQueue());
-                }
-            }
-
-        }
 
         if (type == SubscriptionChange.ADDED || type == SubscriptionChange.DISCONNECTED) {
 
@@ -587,10 +540,10 @@ public class SubscriptionStore {
             String destinationIdentifier = (subscription.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destinationQueue;
             String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
 
-            if (type == SubscriptionChange.ADDED && !durableSubExists) {
+            if (type == SubscriptionChange.ADDED) {
                 andesContextStore.storeDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
                 log.info("New local subscription " + type + " " + subscription.toString());
-            } else {
+            } else { // @DISCONNECT
                 andesContextStore.updateDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
                 log.info("New local subscription " + type + " " + subscription.toString());
             }
@@ -629,9 +582,29 @@ public class SubscriptionStore {
         if (type == SubscriptionChange.ADDED) {
             channelIdMap.put(subscription.getChannelID(), subscription);
         } else {
-            channelIdMap.remove(subscription.getChannelID());
+            UUID channelIDOfSubscription = subscription.getChannelID();
+            //when we delete the mock durable topic subscription it has no underlying channel
+            if(null != channelIDOfSubscription) {
+                channelIdMap.remove(channelIDOfSubscription);
+            }
         }
 
+    }
+
+    /**
+     * Directly remove a subscription from store
+     * @param subscriptionToRemove subscription to remove
+     * @throws AndesException on an exception dealing with store
+     */
+    public void removeSubscriptionDirectly(AndesSubscription subscriptionToRemove) throws AndesException {
+        String destination = getDestination(subscriptionToRemove);
+        String destinationIdentifier = (subscriptionToRemove.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destination;
+        andesContextStore.removeDurableSubscription(destinationIdentifier, subscriptionToRemove.getSubscribedNode() +
+                "_" + subscriptionToRemove.getSubscriptionID());
+        if(log.isDebugEnabled()) {
+            log.debug("Directly removed cluster subscription subscription identifier = " + destinationIdentifier + " " +
+                    "destination = " + destination);
+        }
     }
 
     /**
@@ -640,7 +613,7 @@ public class SubscriptionStore {
      * @return the removed local subscription
      * @throws AndesException
      */
-    private LocalSubscription removeLocalSubscription(AndesSubscription subscription) throws AndesException {
+    public LocalSubscription removeLocalSubscription(AndesSubscription subscription) throws AndesException {
         ((LocalSubscription)subscription).close();
         String destination = getDestination(subscription);
         String subscriptionID = subscription.getSubscriptionID();
@@ -683,8 +656,9 @@ public class SubscriptionStore {
         if (null != subscriptionToRemove) {
             String destinationIdentifier = (subscriptionToRemove.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destination;
             andesContextStore.removeDurableSubscription(destinationIdentifier, subscription.getSubscribedNode() + "_" + subscriptionID);
-            if (log.isDebugEnabled())
+            if (log.isDebugEnabled()) {
                 log.debug("Subscription Removed Locally for  " + destination + "@" + subscriptionID + " " + subscriptionToRemove);
+            }
         } else {
             log.warn("Could not find an subscription ID " + subscriptionID + " under destination " + destination);
         }
