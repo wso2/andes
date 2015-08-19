@@ -99,6 +99,7 @@ public class AndesSubscriptionManager {
                     //delete the above subscription
                     LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription
                             (matchingSubscription);
+                    mockSubscription.close();
                     LocalSubscription removedSubscription = subscriptionStore.removeLocalSubscription
                             (mockSubscription);
                     /** removed subscription is returned. If removed subscription is null this is not a actual local
@@ -157,16 +158,19 @@ public class AndesSubscriptionManager {
         if (!activeSubscriptions.isEmpty()) {
             for (AndesSubscription sub : activeSubscriptions) {
                 if (!(sub.isDurable() && sub.isBoundToTopic())) {
+
+                    LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription(sub);
+                    mockSubscription.close();
+
                     /**
                      * Close and notify. This is like closing local subscribers of that node thus we need to notify
                      * to cluster.
                      */
+                    LocalSubscription removedSubscription = subscriptionStore.removeLocalSubscription(mockSubscription);
 
-                    LocalSubscription removedSubscription = subscriptionStore.removeLocalSubscription(sub);
                     if(null == removedSubscription) {
                         subscriptionStore.removeSubscriptionDirectly(sub);
                     }
-                    LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription(sub);
                     notifyLocalSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange.DELETED);
                 }
             }
@@ -264,6 +268,7 @@ public class AndesSubscriptionManager {
             changeType = SubscriptionListener.SubscriptionChange.DELETED;
         }
 
+        subscription.close();
         subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, changeType);
         notifyLocalSubscriptionHasChanged(subscription, changeType);
     }
@@ -277,6 +282,7 @@ public class AndesSubscriptionManager {
         Set<LocalSubscription> subscriptionsOfQueue = subscriptionStore.getListOfLocalSubscriptionsBoundToQueue(
                 boundQueueName);
         for(LocalSubscription subscription : subscriptionsOfQueue) {
+            subscription.close();
             subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, SubscriptionListener.SubscriptionChange.DELETED);
             notifyLocalSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.DELETED);
         }
