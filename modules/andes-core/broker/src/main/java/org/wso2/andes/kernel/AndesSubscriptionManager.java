@@ -179,6 +179,31 @@ public class AndesSubscriptionManager {
 
 
     /**
+     * Closing all subscriptions locally except for durable subscriptions.
+     *
+     * @param nodeID id of the node
+     * @throws AndesException
+     */
+    public void closeAllLocalSubscriptionsOfNode(String nodeID) throws AndesException {
+
+        Set<AndesSubscription> activeSubscriptions = subscriptionStore.getActiveClusterSubscribersForNode(nodeID, true);
+        activeSubscriptions.addAll(subscriptionStore.getActiveClusterSubscribersForNode(nodeID, false));
+
+        if (!activeSubscriptions.isEmpty()) {
+            for (AndesSubscription sub : activeSubscriptions) {
+                if (!(sub.isDurable() && sub.isBoundToTopic())) {
+
+                    LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription(sub);
+                    mockSubscription.close();
+                    subscriptionStore.removeSubscriptionDirectly(sub);
+                    notifyClusterSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange.DELETED);
+                }
+            }
+        }
+    }
+
+
+    /**
      * Close all active local subscribers in the local node
      *
      * @throws AndesException

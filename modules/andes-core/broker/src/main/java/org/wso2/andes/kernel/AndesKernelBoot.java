@@ -437,6 +437,14 @@ public class AndesKernelBoot {
         log.info("Syncing exchanges, queues, bindings and subscriptions");
         ClusterResourceHolder.getInstance().getAndesRecoveryTask()
                              .recoverExchangesQueuesBindingsSubscriptions();
+
+        // All non-durable subscriptions subscribed from this node will be deleted since, there
+        // can't be any non-durable subscriptions as node just started.
+        // closeAllClusterSubscriptionsOfNode() should only be called after
+        // recoverExchangesQueuesBindingsSubscriptions() executed.
+        String myNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        ClusterResourceHolder.getInstance().getSubscriptionManager()
+                             .closeAllLocalSubscriptionsOfNode(myNodeId);
     }
 
     /**
