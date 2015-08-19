@@ -440,19 +440,6 @@ public class AndesKernelBoot {
     }
 
     /**
-     * clean up broker states and notify the cluster
-     *
-     * @throws AndesException
-     */
-    private static void cleanUpAndNotifyCluster() throws AndesException {
-        //at the shutDown close all localSubscriptions and notify cluster
-
-        ClusterResourceHolder.getInstance().getSubscriptionManager().closeAllLocalSubscriptionsOfNode();
-        // notify cluster this MB node is shutting down. For other nodes to do recovery tasks
-        ClusterResourceHolder.getInstance().getClusterManager().prepareLocalNodeForShutDown();
-    }
-
-    /**
      * start andes house keeping threads for the broker
      *
      * @throws AndesException

@@ -157,12 +157,17 @@ public class AndesSubscriptionManager {
         if (!activeSubscriptions.isEmpty()) {
             for (AndesSubscription sub : activeSubscriptions) {
                 if (!(sub.isDurable() && sub.isBoundToTopic())) {
-                    //close and notify
-                    subscriptionStore.createDisconnectOrRemoveClusterSubscription(sub, SubscriptionListener
-                            .SubscriptionChange.DELETED);
-                    //this is like closing local subscribers of that node thus we need to notify
-                    // to cluster
-                    notifyClusterSubscriptionHasChanged(sub, SubscriptionListener.SubscriptionChange.DELETED);
+                    /**
+                     * Close and notify. This is like closing local subscribers of that node thus we need to notify
+                     * to cluster.
+                     */
+
+                    LocalSubscription removedSubscription = subscriptionStore.removeLocalSubscription(sub);
+                    if(null == removedSubscription) {
+                        subscriptionStore.removeSubscriptionDirectly(sub);
+                    }
+                    LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription(sub);
+                    notifyLocalSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange.DELETED);
                 }
             }
         }
