@@ -791,8 +791,7 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessages(final String storageQueueName, List<Long> messagesToRemove, boolean deleteAllMetaData)
-            throws AndesException {
+    public void deleteMessages(final String storageQueueName, List<Long> messagesToRemove) throws AndesException {
         Context context = MetricManager.timer(Level.INFO, MetricsConstants.DELETE_MESSAGE_META_DATA_AND_CONTENT)
                 .start();
 
@@ -800,26 +799,13 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             //create separate batch statements to delete metadata and content
             BatchStatement batchStatement = new BatchStatement();
             batchStatement.setConsistencyLevel(config.getWriteConsistencyLevel());
-            //if all metadata is not be removed, add metadata and content of each message to delete
-            //else, add content of each message and all metadata for the queue to delete
-            if (!deleteAllMetaData) {
-                for (Long messageID : messagesToRemove) {
-                    batchStatement.add(psDeleteMetadata.bind(
-                            storageQueueName,
-                            messageID
-                    ));
-                    batchStatement.add(psDeleteMessagePart.bind(messageID));
-                }
-            } else {
-                batchStatement.add(QueryBuilder.delete().from(config.getKeyspace(), CQLConstants.METADATA_TABLE).
-                        where(eq(CQLConstants.QUEUE_NAME, storageQueueName)).
-                        setConsistencyLevel(config.getWriteConsistencyLevel()));
-                for (Long messageID : messagesToRemove) {
-                    batchStatement.add(psDeleteMessagePart.bind(messageID));
-                }
+
+            for (Long messageID : messagesToRemove) {
+                batchStatement.add(psDeleteMetadata.bind(storageQueueName, messageID));
+                batchStatement.add(psDeleteMessagePart.bind(messageID));
             }
-            execute(batchStatement, "deleting metadata and content list from " + storageQueueName +
-                    " list size " + messagesToRemove.size());
+            execute(batchStatement, "deleting metadata and content list from " + storageQueueName + " list size "
+                    + messagesToRemove.size());
         } finally {
             context.stop();
         }

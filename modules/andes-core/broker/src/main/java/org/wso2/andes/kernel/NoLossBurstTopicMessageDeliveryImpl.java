@@ -153,7 +153,7 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
          * for the message and due to has no room to enqueue the message. Delete
          * call is blocking and then slot message count is dropped in order
          */
-        MessagingEngine.getInstance().deleteMessages(droppedTopicMessagesListRemovable, false);
+        MessagingEngine.getInstance().deleteMessages(droppedTopicMessagesListRemovable);
 
         for (AndesMessageMetadata messageToRemove : droppedTopicMessagesList) {
             OnflightMessageTracker.getInstance().decrementMessageCountInSlot(messageToRemove.getSlot());

@@ -222,17 +222,12 @@ public interface MessageStore extends HealthAwareStore{
 
     /**
      * Method to delete a set of messages from the database
-     * If deleteAllMetaData is set to true, the storageQueue in the metadata table could be cleared at once
-     * and the messages destined to that queue, given by the messagesToRemove list could be deleted from the content
-     * table
-     * Else, the messages in the list 'messagesToRemove' will be deleted
      *
      * @param storageQueueName  name of the queue
      * @param messagesToRemove  the list of messages to remove
-     * @param deleteAllMetaData whether to delete all metadata destined to the storageQueue
      * @throws AndesException
      */
-    public void deleteMessages(final String storageQueueName, List<Long> messagesToRemove, boolean deleteAllMetaData)
+    public void deleteMessages(final String storageQueueName, List<Long> messagesToRemove)
             throws AndesException;
 
     /**

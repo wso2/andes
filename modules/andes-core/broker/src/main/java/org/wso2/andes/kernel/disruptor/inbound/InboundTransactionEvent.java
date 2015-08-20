@@ -328,7 +328,7 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
                     );
                 }
 
-                messagingEngine.deleteMessages(removableMetadataList, false);
+                messagingEngine.deleteMessages(removableMetadataList);
                 messagesStoredNotCommitted = false;
             }
 
