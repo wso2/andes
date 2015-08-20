@@ -1116,7 +1116,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     .prepareStatement(RDBMSConstants.PS_DELETE_METADATA_FROM_QUEUE);
             for (Long messageID : messagesToRemove) {
                 preparedStatement.setInt(1, queueID);
-                preparedStatement.setLong(2, messageID.longValue());
+                preparedStatement.setLong(2, messageID);
                 preparedStatement.addBatch();
             }
             preparedStatement.executeBatch();
@@ -1159,8 +1159,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             //Since referential integrity is imposed on the two tables: message content and metadata,
             //deleting message metadata will cause message content to be automatically deleted
-            metadataRemovalPreparedStatement = connection
-                    .prepareStatement(RDBMSConstants.PS_DELETE_METADATA);
+            metadataRemovalPreparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_METADATA);
 
             for (Long messageID : messagesToRemove) {
                 //add parameters to delete metadata
@@ -1173,14 +1172,14 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             connection.commit();
 
             if (log.isDebugEnabled()) {
-                log.debug("Metadata and content removed. " + messagesToRemove.size() +
-                        " for destination queue" + storageQueueName);
+                log.debug("Metadata and content removed. " + messagesToRemove.size()
+                          + " for destination queue" + storageQueueName);
             }
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName
-                    + " and " + RDBMSConstants.TASK_DELETING_MESSAGE_PARTS);
-            throw rdbmsStoreUtils.convertSQLException("error occurred while deleting message metadata and content for queue ",
-                    e);
+                     + " and " + RDBMSConstants.TASK_DELETING_MESSAGE_PARTS);
+            throw rdbmsStoreUtils.convertSQLException("error occurred while deleting message metadata and content for "
+                                                      + "queue ", e);
         } finally {
 
             messageDeletionContext.stop();

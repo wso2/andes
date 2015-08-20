@@ -801,14 +801,11 @@ public class CQLBasedMessageStoreImpl implements MessageStore {
             batchStatement.setConsistencyLevel(config.getWriteConsistencyLevel());
 
             for (Long messageID : messagesToRemove) {
-                batchStatement.add(psDeleteMetadata.bind(
-                        storageQueueName,
-                        messageID
-                ));
+                batchStatement.add(psDeleteMetadata.bind(storageQueueName, messageID));
                 batchStatement.add(psDeleteMessagePart.bind(messageID));
             }
-            execute(batchStatement, "deleting metadata and content list from " + storageQueueName +
-                                    " list size " + messagesToRemove.size());
+            execute(batchStatement, "deleting metadata and content list from " + storageQueueName + " list size "
+                    + messagesToRemove.size());
         } finally {
             context.stop();
         }

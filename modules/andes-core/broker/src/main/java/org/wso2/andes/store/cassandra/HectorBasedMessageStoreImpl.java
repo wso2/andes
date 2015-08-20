@@ -618,22 +618,17 @@ public class HectorBasedMessageStoreImpl implements MessageStore {
                 }
                 log.trace(messagesToRemove.size() + " messages removed : " + messageIDsString);
             }
-            Mutator<String> mutator = HFactory.createMutator(keyspace,
-                    HectorConstants.stringSerializer);
+            Mutator<String> mutator = HFactory.createMutator(keyspace, HectorConstants.stringSerializer);
 
             List<String> rows2Remove = new ArrayList<String>();
             for (Long messageID : messagesToRemove) {
-                HectorDataAccessHelper
-                        .deleteLongColumnFromRaw(
-                                HectorConstants.META_DATA_COLUMN_FAMILY,
-                                storageQueueName, messageID.longValue(), mutator, false);
-                rows2Remove.add(MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX +
-                                messageID.longValue());
+                HectorDataAccessHelper.deleteLongColumnFromRaw(HectorConstants.META_DATA_COLUMN_FAMILY,
+                                                               storageQueueName, messageID.longValue(), mutator, false);
+                rows2Remove.add(MESSAGE_CONTENT_CASSANDRA_ROW_NAME_PREFIX + messageID.longValue());
             }
             if (!rows2Remove.isEmpty()) {
                 HectorDataAccessHelper.deleteIntegerRowListFromColumnFamily(
-                        HectorConstants.MESSAGE_CONTENT_COLUMN_FAMILY, rows2Remove,
-                        mutator, false);
+                        HectorConstants.MESSAGE_CONTENT_COLUMN_FAMILY, rows2Remove, mutator, false);
             }
 
             //batch execute

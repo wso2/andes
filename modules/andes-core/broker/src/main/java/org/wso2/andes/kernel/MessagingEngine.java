@@ -433,8 +433,7 @@ public class MessagingEngine {
                 separateMessagesToStorageQueues(messagesToRemove);
 
         //delete message content along with metadata and update the message count for the queues
-        for (Map.Entry<String, AndesRemovableMetadataDTO> entry : storageSeparatedAndesRemovableMetadataDTOs
-                .entrySet()) {
+        for (Map.Entry<String, AndesRemovableMetadataDTO> entry : storageSeparatedAndesRemovableMetadataDTOs.entrySet()) {
             messageStore.deleteMessages(entry.getKey(), entry.getValue().messagesToRemove);
             decrementQueueCount(entry.getKey(), entry.getValue().msgCount);
         }
@@ -808,7 +807,7 @@ public class MessagingEngine {
                 storageSeparatedAndesRemovableMetadataDTOs.put(message.getStorageDestination(), dto);
             }
             dto.messagesToRemove.add(message.getMessageID());
-            dto.msgCount = dto.msgCount++;
+            dto.msgCount++;
         }
 
         return storageSeparatedAndesRemovableMetadataDTOs;
