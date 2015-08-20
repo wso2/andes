@@ -410,7 +410,13 @@ public interface AndesContextStore extends HealthAwareStore{
     Set<String> getAllQueues() throws AndesException;
 
     /**
-     * Close the context store.
+     * Clear and reset slot storage
+     * @throws AndesException
+     */
+    void clearSlotStorage() throws AndesException;
+
+    /**
+     * Close the context store
      */
     void close();
 

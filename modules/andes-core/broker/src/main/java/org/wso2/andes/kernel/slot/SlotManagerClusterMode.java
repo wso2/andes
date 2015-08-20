@@ -27,7 +27,7 @@ import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.cluster.coordination.SlotAgent;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.server.cluster.coordination.rdbms.RDBMSAgent;
+import org.wso2.andes.server.cluster.coordination.rdbms.DatabaseSlotAgent;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -91,7 +91,7 @@ public class SlotManagerClusterMode {
 
 		if ("RDBMS".equals(AndesConfigurationManager.readValue(AndesConfiguration.SLOT_MANAGEMENT_STORAGE))) {
 			//Use RDBMS slot information storing
-			slotAgent = new RDBMSAgent();
+			slotAgent = new DatabaseSlotAgent();
 		} else {
 			//Use Hazelcast slot information storing
 			slotAgent = HazelcastAgent.getInstance();
@@ -155,7 +155,7 @@ public class SlotManagerClusterMode {
 	 * Create a new slot from store
 	 *
 	 * @param queueName name of the queue
-	 * @param nodeId    id of the node
+	 * @param nodeId id of the node
 	 * @return slot object
 	 */
 	private Slot getFreshSlot(String queueName, String nodeId) throws AndesException {
@@ -454,7 +454,7 @@ public class SlotManagerClusterMode {
 	 * Record safe zone by node. This ping comes from nodes as messages are not published by them
 	 * so that safe zone value keeps moving ahead.
 	 *
-	 * @param nodeID         ID of the node
+	 * @param nodeID ID of the node
 	 * @param safeZoneOfNode safe zone value of the node
 	 * @return current calculated safe zone
 	 */
@@ -616,6 +616,14 @@ public class SlotManagerClusterMode {
 	 */
 	public Long getLastAssignedSlotMessageIdInClusterMode(String queueName) throws AndesException {
 		return slotAgent.getQueueToLastAssignedId(queueName);
+	}
+
+	/**
+	 * Clear and reset slot storage
+	 * @throws AndesException
+	 */
+	public void clearSlotStorage() throws AndesException {
+		slotAgent.clearSlotStorage();
 	}
 
 }

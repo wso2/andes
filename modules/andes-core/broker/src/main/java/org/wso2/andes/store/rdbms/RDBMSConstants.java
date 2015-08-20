@@ -455,6 +455,22 @@ public class RDBMSConstants {
                     " VALUES ( ?,? )";
 
     /**
+     * Prepared statements to clear slot storage tables
+     */
+
+    protected static final String PS_CLEAR_SLOT_TABLE =
+            "DELETE FROM " + SLOT_TABLE;
+
+    protected static final String PS_CLEAR_SLOT_MESSAGE_ID_TABLE =
+            "DELETE FROM " + SLOT_MESSAGE_ID_TABLE;
+
+    protected static final String PS_CLEAR_QUEUE_TO_LAST_ASSIGNED_ID =
+            "DELETE FROM " + QUEUE_TO_LAST_ASSIGNED_ID;
+
+    protected static final String PS_CLEAR_NODE_TO_LAST_PUBLISHED_ID =
+            "DELETE FROM " + NODE_TO_LAST_PUBLISHED_ID;
+
+    /**
      * Prepared statement to create a new slot in database
      */
     protected static final String PS_INSERT_SLOT =
@@ -876,6 +892,7 @@ public class RDBMSConstants {
     protected static final String TASK_GET_ALL_SLOTS_BY_QUEUE_NAME = "getting all slots by queue name";
     protected static final String TASK_GET_OVERLAPPED_SLOT = "getting overlapped slot";
     protected static final String TASK_GET_ALL_QUEUES = "getting all queues";
+    protected static final String TASK_CLEAR_SLOT_TABLES = "clearing slot tables";
 
     /**
      * Messages related to checking message store is operational.

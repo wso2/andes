@@ -29,17 +29,9 @@ import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import java.util.Set;
 import java.util.TreeSet;
 
-public class RDBMSAgent implements SlotAgent {
+public class DatabaseSlotAgent implements SlotAgent {
 
 	private AndesContextStore andesContextStore = AndesContext.getInstance().getAndesContextStore();
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public static SlotAgent getInstance() {
-		return new RDBMSAgent();
-	}
-
 
 	/**
 	 * {@inheritDoc}
@@ -264,5 +256,13 @@ public class RDBMSAgent implements SlotAgent {
 	@Override
 	public Set<String> getAllQueues() throws AndesException{
 		return andesContextStore.getAllQueues();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public void clearSlotStorage() throws AndesException {
+		andesContextStore.clearSlotStorage();
 	}
 }

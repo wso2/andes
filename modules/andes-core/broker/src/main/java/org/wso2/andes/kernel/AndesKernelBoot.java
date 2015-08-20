@@ -137,8 +137,8 @@ public class AndesKernelBoot {
      *
      * First we acquire the slot initialization lock and check if the cluster is already
      * initialized using a distributed variable. Then if the cluster is not initialized, the
-     * server will iterate through all the queues available in the context store and inform the
-     * slot manager to recreate the slot mapping. Finally the distribute variable is updated to
+     * server will reset slot storage and iterate through all the queues available in the
+     * context store and inform the the slot mapping. Finally the distribute variable is updated to
      * indicate the success and the lock is released.
      *
      * @throws AndesException
@@ -154,6 +154,7 @@ public class AndesKernelBoot {
             try {
                 hazelcastAgent.acquireInitializationLock();
                 if (!hazelcastAgent.isClusterInitializedSuccessfully()) {
+                    clearSlotStorage();
                     recoverMapsForEachQueue();
                     hazelcastAgent.indicateSuccessfulInitilization();
                 }
@@ -368,7 +369,7 @@ public class AndesKernelBoot {
         MessageStore messageStoreInConfig = messageStoreClass.newInstance();
 
         messageStoreInConfig.initializeMessageStore(andesContextStore,
-                andesConfiguration.getMessageStoreProperties());
+                                                    andesConfiguration.getMessageStoreProperties());
         
         log.info("Andes MessageStore initialised with " + messageStoreClassName);
         return messageStoreInConfig;
@@ -457,7 +458,8 @@ public class AndesKernelBoot {
         AndesRecoveryTask andesRecoveryTask = new AndesRecoveryTask();
         Integer scheduledPeriod = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL);
-        andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod, scheduledPeriod, TimeUnit.SECONDS);
+        andesRecoveryTaskScheduler.scheduleAtFixedRate(andesRecoveryTask, scheduledPeriod,
+                                                       scheduledPeriod, TimeUnit.SECONDS);
         ClusterResourceHolder.getInstance().setAndesRecoveryTask(andesRecoveryTask);
     }
 
@@ -526,7 +528,8 @@ public class AndesKernelBoot {
                 AndesContext.getInstance().getStoreConfiguration();
         AndesContextStore andesContextStore = AndesContext.getInstance().getAndesContextStore();
         andesContextStore.init(virtualHostsConfiguration.getContextStoreProperties());
-        messageStore.initializeMessageStore(andesContextStore, virtualHostsConfiguration.getMessageStoreProperties());
+        messageStore.initializeMessageStore(andesContextStore,
+                                            virtualHostsConfiguration.getMessageStoreProperties());
     }
 
     /**
@@ -600,5 +603,15 @@ public class AndesKernelBoot {
             firstMessageId = messageId;
         }
         return firstMessageId;
+    }
+
+    /**
+     * First node in the cluster clear and reset slot storage
+     * This will clear slot related records in database which were created in previous session.
+     * @throws AndesException
+     */
+    private static void clearSlotStorage() throws AndesException {
+        SlotManagerClusterMode.getInstance().clearSlotStorage();
+        log.info("Slots stored in last session were cleared to avoid duplicates when recovering.");
     }
 }

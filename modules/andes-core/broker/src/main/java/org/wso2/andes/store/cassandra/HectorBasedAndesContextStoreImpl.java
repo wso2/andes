@@ -671,6 +671,13 @@ public class HectorBasedAndesContextStoreImpl implements AndesContextStore {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override public void clearSlotStorage() throws AndesException {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * TODO: implementation.
      */
     @Override
