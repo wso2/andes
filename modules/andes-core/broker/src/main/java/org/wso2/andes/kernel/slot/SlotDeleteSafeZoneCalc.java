@@ -42,6 +42,8 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
 
     private int seekInterval;
 
+    private static final int TIME_TO_SLEEP_ON_ERROR = 15 * 1000;
+
 
     /**
      * Define a safe zone calculator. This will run once seekInterval
@@ -68,8 +70,13 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                 try {
                     nodesWithPublishedMessages = SlotManagerClusterMode.getInstance().getMessagePublishedNodes();
                 } catch (AndesException e) {
-                    log.error("SlotDeleteSafeZoneCalc stopped due to failing to get message published nodes.", e);
-                    this.setLive(false);
+                    log.error("SlotDeleteSafeZoneCalc stopped due to failing to get message published nodes. "
+                           + "Retrying after 15 seconds" ,e);
+                    try {
+                        Thread.sleep(TIME_TO_SLEEP_ON_ERROR);
+                    } catch (InterruptedException e1) {
+                        setLive(false);
+                    }
                     continue;
                 }
                 Map<String, Long> nodeInformedSafeZones =
@@ -84,14 +91,18 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                     long safeZoneValue = Long.MAX_VALUE;
 
                     //get the maximum message id published by node so far
-                    Long safeZoneByPublishedMessages = null;
+                    Long safeZoneByPublishedMessages;
                     try {
                         safeZoneByPublishedMessages = SlotManagerClusterMode.getInstance()
                                 .getLastPublishedIDByNode(nodeID);
                     } catch (AndesException e) {
                         log.error("SlotDeleteSafeZoneCalc stopped due to failing to get last published id for node:" +
-                                nodeID, e);
-                        this.setLive(false);
+                                nodeID + ". Retrying after 15 seconds", e);
+                        try {
+                            Thread.sleep(TIME_TO_SLEEP_ON_ERROR);
+                        } catch (InterruptedException e1) {
+                            setLive(false);
+                        }
                         continue;
                     }
 
@@ -133,13 +144,13 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                 try {
                     Thread.sleep(seekInterval);
                 } catch (InterruptedException e) {
-                    //silently ignore
+                    setLive(false);
                 }
             } else {
                 try {
-                    Thread.sleep(15 * 1000);
+                    Thread.sleep(TIME_TO_SLEEP_ON_ERROR);
                 } catch (InterruptedException e) {
-                    //silently ignore
+                    setLive(false);
                 }
             }
         }
