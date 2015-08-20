@@ -67,6 +67,12 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                 Collection<LocalSubscription> subscriptions4Queue =
                         subscriptionStore.getActiveLocalSubscribers(destination, message.isTopic());
 
+                if (log.isDebugEnabled()) {
+                    log.debug("DURABLE_MESSAGE_FLOW : Processing Message ID : " + message.getMessageID() + ". Number " +
+                            "of Active Subscribers for topic : \"" + message.getDestination() + "\" : with clientID : " + destination + "\" : " + subscriptions4Queue.size
+                            ());
+                }
+
                 if (subscriptions4Queue.isEmpty()) {
                     // We don't have subscribers for this message
                     // Handle orphaned slot created with this no subscription scenario for queue
@@ -95,12 +101,27 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                         }
 
                         OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
+
+                        if (log.isDebugEnabled()) {
+                            log.debug("DURABLE_MESSAGE_FLOW : Processing Message ID : " + message.getMessageID() + "." +
+                                    " Sending to subscription : " + localSubscription.toString() + " with clientID "
+                                    + localSubscription.getStorageQueueName());
+                        }
+
                         MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);
                         numOfCurrentMsgDeliverySchedules++;
 
                         //for queue messages and durable topic messages (as they are now queue messages)
                         // we only send to one selected subscriber if it is a queue message
                         break;
+                    } else {
+                        if (log.isDebugEnabled()) {
+                            log.debug("DURABLE_MESSAGE_FLOW : Processing Message ID : " + message.getMessageID() + " " +
+                                    "for topic : " + message.getDestination() + ". All" +
+                                    " Subscription buffers (" + subscriptions4Queue.size() + ") are full. Will be " +
+                                    "retried" +
+                                    " later.");
+                        }
                     }
                 }
 
