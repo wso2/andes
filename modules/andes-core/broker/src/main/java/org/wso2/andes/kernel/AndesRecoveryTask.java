@@ -72,7 +72,7 @@ public class AndesRecoveryTask implements Runnable, StoreHealthListener {
 				reloadQueuesFromDB();
 				reloadBindingsFromDB();
 				reloadSubscriptions();
-			} catch (AndesException e) {
+			} catch (Throwable e) {
 				log.error("Error in running andes recovery task", e);
 			}
 		} else {

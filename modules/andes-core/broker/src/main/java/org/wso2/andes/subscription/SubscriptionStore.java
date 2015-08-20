@@ -353,6 +353,21 @@ public class SubscriptionStore {
     }
 
     /**
+     * Get all (ACTIVE/INACTIVE) CLUSTER subscriptions for a queue/topic. This call returns the object as it is
+     * without matching wildcards
+     * @param destination queue/topic name
+     * @param isTopic TRUE if checking topics
+     * @return Set of subscriptions
+     * @throws AndesException
+     */
+    public Set<AndesSubscription> getAllClusterSubscriptionsWithoutWildcards(String destination, boolean isTopic)
+            throws AndesException {
+        Map<String, Set<AndesSubscription>> subscriptionMap = isTopic ? clusterTopicSubscriptionMap :
+                clusterQueueSubscriptionMap;
+        return subscriptionMap.get(destination);
+    }
+
+    /**
      * get all ACTIVE CLUSTER subscriptions for a queue/topic. For topics this will return
      * subscriptions whose destination is exactly matching to the given destination only.
      * (hierarchical mapping not considered)
@@ -537,7 +552,7 @@ public class SubscriptionStore {
             String destinationQueue = getDestination(subscription);
             String destinationTopic = subscription.getSubscribedDestination();
             //Store the subscription
-            String destinationIdentifier = (subscription.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destinationQueue;
+            String destinationIdentifier = (subscription.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destinationTopic;
             String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
 
             if (type == SubscriptionChange.ADDED) {
@@ -597,7 +612,7 @@ public class SubscriptionStore {
      * @throws AndesException on an exception dealing with store
      */
     public void removeSubscriptionDirectly(AndesSubscription subscriptionToRemove) throws AndesException {
-        String destination = getDestination(subscriptionToRemove);
+        String destination = subscriptionToRemove.getSubscribedDestination();
         String destinationIdentifier = (subscriptionToRemove.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destination;
         andesContextStore.removeDurableSubscription(destinationIdentifier, subscriptionToRemove.getSubscribedNode() +
                 "_" + subscriptionToRemove.getSubscriptionID());
@@ -654,6 +669,10 @@ public class SubscriptionStore {
             }
         }
         if (null != subscriptionToRemove) {
+            //if a topic subscription destination identifier for DB must be topic
+            if(subscriptionToRemove.isBoundToTopic()) {
+                destination = subscriptionToRemove.getSubscribedDestination();
+            }
             String destinationIdentifier = (subscriptionToRemove.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destination;
             andesContextStore.removeDurableSubscription(destinationIdentifier, subscription.getSubscribedNode() + "_" + subscriptionID);
             if (log.isDebugEnabled()) {
@@ -715,7 +734,7 @@ public class SubscriptionStore {
 
                     // Updating the context store by the coordinator
                     if (isCoordinator) {
-                        String destinationQueue = getDestination(subscription);
+                        String destinationQueue = subscription.getSubscribedDestination();
                         String destinationIdentifier = (subscription.isBoundToTopic() ?
                                                         TOPIC_PREFIX : QUEUE_PREFIX) +
                                                        destinationQueue;
