@@ -28,11 +28,8 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
 import org.wso2.andes.subscription.BasicSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+
+import java.util.*;
 
 public class AndesSubscriptionManager {
 
@@ -116,28 +113,22 @@ public class AndesSubscriptionManager {
                         //not permitted
                         throw new SubscriptionAlreadyExistsException("A subscription already exists for Durable subscriptions on " +
                                 matchingSubscription.getSubscribedDestination() + " with the queue " + matchingSubscription.getTargetQueue());
-                    } else {
-                        //add the new subscription
-                    }
+                    }//else add the new subscription
 
                 }
-            } else if(matchingSubscriptions.size() > 1){
-
-                //there are active subscriptions. just create a new one
-
-            } else {
-
-                //this is the very first subscription for the cluster. Just create one
-
             }
+            // else if(matchingSubscriptions.size() > 1) there are active subscriptions. just create a new one
+            // else this is the very first subscription for the cluster. Just create one
         }
 
         //store subscription in context store
-        subscriptionStore.createDisconnectOrRemoveLocalSubscription(localSubscription, SubscriptionListener.SubscriptionChange.ADDED);
+        subscriptionStore.createDisconnectOrRemoveLocalSubscription(localSubscription,
+                SubscriptionListener.SubscriptionChange.ADDED);
 
         //start a slot delivery worker on the destination (or topicQueue) subscription refers
         SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
-        slotDeliveryWorkerManager.startSlotDeliveryWorker(localSubscription.getStorageQueueName(), subscriptionStore.getDestination(localSubscription));
+        slotDeliveryWorkerManager.startSlotDeliveryWorker(localSubscription.getStorageQueueName(),
+                subscriptionStore.getDestination(localSubscription));
 
         //notify the local subscription change to listeners
         notifyLocalSubscriptionHasChanged(localSubscription, SubscriptionListener.SubscriptionChange.ADDED);
@@ -332,52 +323,91 @@ public class AndesSubscriptionManager {
                 .getAllStoredDurableSubscriptions();
 
         for (Map.Entry<String, List<String>> entry : results.entrySet()) {
-            String destination = entry.getKey();
-            Set<AndesSubscription> dbSubscriptions = new HashSet<>();
-            Set<AndesSubscription> memorySubscriptions = new HashSet<>();
-
-            if (destination.startsWith(QUEUE_PREFIX)) {
-                String destinationQueueName = destination.replace(QUEUE_PREFIX, "");
-                memorySubscriptions.addAll(subscriptionStore.getClusterSubscribersForDestination
-                        (destinationQueueName, false, AndesSubscription.SubscriptionType.AMQP));
-            } else {
-                String topicName = destination.replace(TOPIC_PREFIX, "");
-                // Get all the subscriptions for the destination available in memory
-                memorySubscriptions.addAll(subscriptionStore.getClusterSubscribersForDestination(topicName, true,
-                        AndesSubscription.SubscriptionType.AMQP));
-                memorySubscriptions.addAll(subscriptionStore.getClusterSubscribersForDestination(topicName, true,
-                        AndesSubscription.SubscriptionType.MQTT));
-            }
 
             // Check for db subscriptions that are not available in memory and add them
             for (String subscriptionAsStr : entry.getValue()) {
                 BasicSubscription subscription = new BasicSubscription(subscriptionAsStr);
-                dbSubscriptions.add(subscription);
 
-                boolean subscriptionAvailable = subscriptionStore.isSubscriptionAvailable(subscription);
-
-                if (!subscriptionAvailable) {
-                    // Subscription not available in subscription store, need to add
-                    log.warn("Cluster Subscriptions are not in sync. Subscription not available in subscription store" +
-                            " but exists in DB. Thus adding " + subscription);
-                    subscriptionStore.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
-                            .SubscriptionChange.ADDED);
-
-                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.ADDED);
-                }
-            }
-
-            // Check for subscriptions in memory that are not available in db and remove them
-            for (AndesSubscription subscription : memorySubscriptions) {
-                if (!dbSubscriptions.contains(subscription)) {
-                    log.warn("Cluster Subscriptions are not in sync. Subscriptions exist in memory that are not " +
-                            "available in db. Thus adding to DB " + subscription);
+                //for durable topic subscriptions we need to delete and put whatever in DB. This is
+                //done because hasExternalSubscription field might have been updated in DB
+                if(subscription.isDurable() && subscription.isBoundToTopic()) {
                     subscriptionStore.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
                             .SubscriptionChange.DELETED);
-                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.DELETED);
+                    subscriptionStore.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
+                            .SubscriptionChange.ADDED);
+                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.ADDED);
+                } else {
+                    boolean subscriptionAvailable = subscriptionStore.isSubscriptionAvailable(subscription);
+
+                    if (!subscriptionAvailable) {
+                        // Subscription not available in subscription store, need to add
+                        log.warn("Cluster Subscriptions are not in sync. Subscription not available in subscription store" +
+                                " but exists in DB. Thus adding " + subscription);
+                        subscriptionStore.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
+                                .SubscriptionChange.ADDED);
+
+                        notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.ADDED);
+                    }
                 }
             }
         }
+
+        // Check for subscriptions in memory that are not available in db and remove them
+        //queues
+        Set<String> queues = subscriptionStore.getAllDestinationsOfSubscriptions(false);
+        for (String queue : queues) {
+            Set<AndesSubscription> memorySubscriptions = subscriptionStore.getAllClusterSubscriptionsWithoutWildcards
+                    (queue, false);
+            Set<AndesSubscription> dbSubscriptions = new HashSet<>();
+            List<String> encodedDBSubscriptions = results.get(QUEUE_PREFIX + queue);
+            if(encodedDBSubscriptions != null) {
+                for (String subscriptionAsStr : encodedDBSubscriptions) {
+                    BasicSubscription subscription = new BasicSubscription(subscriptionAsStr);
+                    dbSubscriptions.add(subscription);
+                }
+            }
+            //check if each memory subscription is in DB. If not remove from memory
+            Iterator<AndesSubscription> memSubIterator = memorySubscriptions.iterator();
+            while (memSubIterator.hasNext()) {
+                AndesSubscription currentSubscription = memSubIterator.next();
+                if (!dbSubscriptions.contains(currentSubscription)) {
+                    log.warn("Cluster Subscriptions are not in sync. Subscriptions exist in memory that are not " +
+                            "available in db. Thus removing from memory " + currentSubscription);
+                    subscriptionStore.createDisconnectOrRemoveClusterSubscription(currentSubscription, SubscriptionListener
+                            .SubscriptionChange.DELETED);
+                    notifyClusterSubscriptionHasChanged(currentSubscription, SubscriptionListener.SubscriptionChange.DELETED);
+                }
+            }
+
+        }
+        //topics
+        Set<String> topics = subscriptionStore.getAllDestinationsOfSubscriptions(true);
+        for (String topic : topics) {
+            Set<AndesSubscription> memorySubscriptions = subscriptionStore.getAllClusterSubscriptionsWithoutWildcards
+                    (topic, true);
+            Set<AndesSubscription> dbSubscriptions = new HashSet<>();
+            List<String> encodedDBSubscriptions = results.get(TOPIC_PREFIX + topic);
+            if(encodedDBSubscriptions != null) {
+                for (String subscriptionAsStr : encodedDBSubscriptions) {
+                    BasicSubscription subscription = new BasicSubscription(subscriptionAsStr);
+                    dbSubscriptions.add(subscription);
+                }
+            }
+            //check if each memory subscription is in DB. If not remove from memory
+            Iterator<AndesSubscription> memSubIterator = memorySubscriptions.iterator();
+            while (memSubIterator.hasNext()) {
+                AndesSubscription currentSubscription = memSubIterator.next();
+                if (!dbSubscriptions.contains(currentSubscription)) {
+                    log.warn("Cluster Subscriptions are not in sync. Subscriptions exist in memory that are not " +
+                            "available in db. Thus removing from memory " + currentSubscription);
+                    subscriptionStore.createDisconnectOrRemoveClusterSubscription(currentSubscription, SubscriptionListener
+                            .SubscriptionChange.DELETED);
+                    notifyClusterSubscriptionHasChanged(currentSubscription, SubscriptionListener.SubscriptionChange.DELETED);
+                }
+            }
+
+        }
+
     }
 
     private void notifyLocalSubscriptionHasChanged(final LocalSubscription subscription, final SubscriptionListener.SubscriptionChange change) throws AndesException {

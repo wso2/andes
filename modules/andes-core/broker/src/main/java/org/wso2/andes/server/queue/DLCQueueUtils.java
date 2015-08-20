@@ -129,6 +129,7 @@ public class DLCQueueUtils {
                             System.currentTimeMillis(), dlcQueueName, tenantOwner,
                             ExchangeDefaults.DIRECT_EXCHANGE_NAME.toString(), "DIRECT", null, false);
 
+            //TODO: review why we need a subscription for DLC at startup
             AndesContext.getInstance().getSubscriptionStore().createDisconnectOrRemoveClusterSubscription
                     (mockSubscription, SubscriptionListener.SubscriptionChange.ADDED);
 
