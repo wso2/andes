@@ -42,7 +42,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
 
     private int seekInterval;
 
-    private final int timeToSleepOnError;
+    private static final int TIME_TO_SLEEP_ON_ERROR = 15 * 1000;
 
 
     /**
@@ -55,7 +55,6 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
         this.seekInterval = seekInterval;
         this.running = true;
         this.isLive = true;
-        this.timeToSleepOnError = 15 * 1000;
         this.slotDeleteSafeZone = new AtomicLong(Long.MAX_VALUE);
         
     }
@@ -74,9 +73,9 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                     log.error("SlotDeleteSafeZoneCalc stopped due to failing to get message published nodes. "
                            + "Retrying after 15 seconds" ,e);
                     try {
-                        Thread.sleep(timeToSleepOnError);
+                        Thread.sleep(TIME_TO_SLEEP_ON_ERROR);
                     } catch (InterruptedException e1) {
-                        //ignore
+                        setLive(false);
                     }
                     continue;
                 }
@@ -100,9 +99,9 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                         log.error("SlotDeleteSafeZoneCalc stopped due to failing to get last published id for node:" +
                                 nodeID + ". Retrying after 15 seconds", e);
                         try {
-                            Thread.sleep(timeToSleepOnError);
+                            Thread.sleep(TIME_TO_SLEEP_ON_ERROR);
                         } catch (InterruptedException e1) {
-                            //ignore
+                            setLive(false);
                         }
                         continue;
                     }
@@ -145,13 +144,13 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                 try {
                     Thread.sleep(seekInterval);
                 } catch (InterruptedException e) {
-                    //silently ignore
+                    setLive(false);
                 }
             } else {
                 try {
-                    Thread.sleep(timeToSleepOnError);
+                    Thread.sleep(TIME_TO_SLEEP_ON_ERROR);
                 } catch (InterruptedException e) {
-                    //silently ignore
+                    setLive(false);
                 }
             }
         }
