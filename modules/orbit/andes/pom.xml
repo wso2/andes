@@ -159,7 +159,9 @@
                             org.apache.commons.lang.*;version="2.3",
                             org.apache.commons.logging.*,
                             com.datastax.driver.core.*;version="2.1.5",
-                            com.google.common.util.concurrent;version="[14.0,15)",
+                            com.google.common.base;version="18.0.0",
+                            com.google.common.util.concurrent;version="18.0.0",
+                            com.google.common.cache;version="18.0.0",
                             org.wso2.carbon.andes.authentication.andes,
                             me.prettyprint.hector.api.*;version="2.0-0",
                             *;resolution:=optional
