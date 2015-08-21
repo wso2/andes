@@ -61,6 +61,11 @@ public class MessageData {
      */
     public Slot slot;
 
+    /**
+     * Number of acks pending for the message
+     */
+    private AtomicInteger pendingAckCount;
+
     public MessageData(long msgID, Slot slot, String destination, long timestamp,
                     long expirationTime, MessageStatus messageStatus,
                     long arrivalTime) {
@@ -73,6 +78,7 @@ public class MessageData {
         this.messageStatus = Collections.synchronizedList(new ArrayList<MessageStatus>());
         this.messageStatus.add(messageStatus);
         this.numberOfScheduledDeliveries = new AtomicInteger(0);
+        this.pendingAckCount = new AtomicInteger(0);
         this.arrivalTime = arrivalTime;
     }
 
@@ -125,6 +131,7 @@ public class MessageData {
     }
 
     public int decrementDeliveryCount(UUID channelID) {
+        decrementPendingAckCount();
         Integer numOfDeliveries = channelToNumOfDeliveries.get(channelID);
         numOfDeliveries--;
         if (numOfDeliveries > 0) {
@@ -147,7 +154,29 @@ public class MessageData {
         }
     }
 
+    /**
+     * Increment pending ack count
+     *
+     * @param count
+     *         number of acks pending
+     */
+    public void incrementPendingAckCount(int count) {
+        pendingAckCount.addAndGet(count);
+    }
+
+    /**
+     * Decrement pending ack count
+     */
+    public void decrementPendingAckCount() {
+        pendingAckCount.decrementAndGet();
+    }
+
+    /**
+     * Check if  all acks were received for the message
+     *
+     * @return True if all the acks were received or else False
+     */
     public boolean allAcksReceived() {
-        return channelToNumOfDeliveries.isEmpty();
+        return pendingAckCount.get() == 0;
     }
 }

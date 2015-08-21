@@ -210,7 +210,7 @@ public class OnflightMessageTracker {
             trackingData.addMessageStatus(MessageStatus.ACKED);
 
             //we consider ack is received if all acks came for channels message was sent
-            if (trackingData.allAcksReceived() && getNumberOfScheduledDeliveries(messageID) == 0) {
+            if (trackingData.allAcksReceived()) {
                 trackingData.addMessageStatus(MessageStatus.ACKED_BY_ALL);
 
                 isOKToDeleteMessage = true;
@@ -360,6 +360,7 @@ public class OnflightMessageTracker {
         int numOfSchedules = 0;
         if (trackingData != null) {
             trackingData.addMessageStatus(MessageStatus.SCHEDULED_TO_SEND);
+            trackingData.incrementPendingAckCount(1);
             numOfSchedules = trackingData.numberOfScheduledDeliveries.incrementAndGet();
             if (log.isDebugEnabled()) {
                 log.debug("message id= " + messageID + " scheduled. Pending to execute= " + numOfSchedules);
@@ -381,6 +382,7 @@ public class OnflightMessageTracker {
         int numOfSchedules = 0;
         if (trackingData != null) {
             trackingData.addMessageStatus(MessageStatus.SCHEDULED_TO_SEND);
+            trackingData.incrementPendingAckCount(count);
             numOfSchedules = trackingData.numberOfScheduledDeliveries.addAndGet(count);
             if (log.isDebugEnabled()) {
                 log.debug("message id= " + messageID + " scheduled. Pending to execute= " + numOfSchedules);
