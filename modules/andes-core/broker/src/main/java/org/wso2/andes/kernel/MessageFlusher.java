@@ -365,6 +365,14 @@ public class MessageFlusher {
     }
 
     /**
+     * Clear up all the buffered messages for delivery
+     * @param destination destination of messages to delete
+     */
+    public void clearUpAllBufferedMessagesForDelivery(String destination) {
+        subscriptionCursar4QueueMap.remove(destination);
+    }
+
+    /**
      * Schedule to deliver message for the subscription
      * @param subscription subscription to send
      * @param message message to send
@@ -390,12 +398,19 @@ public class MessageFlusher {
 
     //TODO: in multiple subscription case this can cause message duplication
     /**
-     * Will be responsible in placing the message back at the queue if delivery fails
+     * Will be responsible in placing the message back at the queue if delivery fails. It re-queue the message
+     * only if there are active local subscribers
      * @param message the message which was scheduled for delivery to its subscribers
      */
-    public void reQueueUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message) {
+    public void reQueueUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message)
+            throws AndesException {
         String destination = message.getDestination();
-        subscriptionCursar4QueueMap.get(destination).readButUndeliveredMessages.add(message);
+            SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
+                    .getActiveLocalSubscribers(destination, false);
+            if (localSubscribersForQueue.size() > 0) {
+                subscriptionCursar4QueueMap.get(destination).readButUndeliveredMessages.add(message);
+            }
     }
 
     public static MessageFlusher getInstance() {
