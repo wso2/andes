@@ -49,14 +49,13 @@ import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.store.cache.AndesMessageCache;
-import org.wso2.andes.store.cache.DisabledMessageCache;
-import org.wso2.andes.store.cache.GuavaBasedMessageCache;
+import org.wso2.andes.store.cache.DisabledMessageCacheImpl;
+import org.wso2.andes.store.cache.GuavaBasedMessageCacheImpl;
+import org.wso2.andes.store.cache.MessageCacheFactory;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 import org.wso2.carbon.metrics.manager.Timer.Context;
-
-import com.google.common.cache.Cache;
 
 /**
  * ANSI SQL based message store implementation. Message persistence related methods are implemented
@@ -93,11 +92,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     " FROM " + CONTENT_TABLE +
                     " WHERE " + MESSAGE_ID + " IN (";
 
-    /**
-     * Default cache size if user has not specified in configuration ( this is 256 Mega bytes)
-     */
-    private static final String CACHE_SIZE_256_MEGA_BYTES = "256";
-
+   
     
     public RDBMSMessageStoreImpl() {
         queueMap = new ConcurrentHashMap<String, Integer>();
@@ -116,17 +111,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         // read data source name from config and use
         this.rdbmsConnection.initialize(connectionProperties);
         this.rdbmsStoreUtils = new RDBMSStoreUtils(connectionProperties);
-        long cacheSizeInMegaBytes =
-                        Long.parseLong(connectionProperties.getProperty(RDBMSConstants.CACHE_SIZE,
-                                                                          CACHE_SIZE_256_MEGA_BYTES));
         
-        // Create the cache.
-        if (cacheSizeInMegaBytes <= 0) {
-            this.messageCache = new DisabledMessageCache();
-        } else {
-            this.messageCache = new GuavaBasedMessageCache(cacheSizeInMegaBytes * 1024 * 1024);
-        }          
-        
+        this.messageCache = (new MessageCacheFactory()).create();
         log.info("Message Store initialised");
         return rdbmsConnection;
     }
