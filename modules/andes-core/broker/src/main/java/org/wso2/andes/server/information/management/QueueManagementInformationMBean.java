@@ -30,12 +30,22 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.BasicContentHeaderProperties;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.Andes;
+import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.AndesRemovableMetadata;
+import org.wso2.andes.kernel.AndesSubscription;
+import org.wso2.andes.kernel.AndesUtils;
+import org.wso2.andes.kernel.DisablePubAckImpl;
+import org.wso2.andes.kernel.FlowControlListener;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
 import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.exchange.ExchangeType;
 import org.wso2.andes.server.management.AMQManagedObject;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -454,12 +464,6 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
             List<AndesMessageMetadata> nextNMessageMetadataFromQueue;
             if (!DLCQueueUtils.isDeadLetterQueue(queueName)) {
-                if (nextMsgId == 0) {
-                    nextMsgId = Andes.getInstance().getLastAssignedSlotMessageId(queueName);
-                    if (nextMsgId == 0) {
-                        nextMsgId = AndesKernelBoot.getFirstRecoveredMessageId(queueName);
-                    }
-                }
                 nextNMessageMetadataFromQueue = Andes.getInstance()
                         .getNextNMessageMetadataFromQueue(queueName, nextMsgId, maxMsgCount);
             } else {
