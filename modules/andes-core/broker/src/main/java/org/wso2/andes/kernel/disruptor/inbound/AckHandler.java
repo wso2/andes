@@ -21,13 +21,18 @@ package org.wso2.andes.kernel.disruptor.inbound;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesRemovableMetadata;
+import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.kernel.disruptor.BatchEventHandler;
 import org.wso2.andes.store.AndesTranactionRollbackException;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
-import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -134,7 +139,6 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
 
         try {
             messagingEngine.deleteMessages(removableMetadata);
-            OnflightMessageTracker.getInstance().updateMessageDeliveryInSlot(removableMetadata);
 
             if (log.isTraceEnabled()) {
                 StringBuilder messageIDsString = new StringBuilder();

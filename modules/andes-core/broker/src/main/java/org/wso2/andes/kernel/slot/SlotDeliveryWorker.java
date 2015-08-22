@@ -181,8 +181,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
 
                                     subscriptionSlotTracker.putIfAbsent(storageQueueName,new HashSet<Slot>());
 
-                                    Set<Slot> subscriptionSlots = subscriptionSlotTracker
-                                            .get(storageQueueName);
+                                    Set<Slot> subscriptionSlots = subscriptionSlotTracker.get(storageQueueName);
 
                                     subscriptionSlots.add(currentSlot);
 

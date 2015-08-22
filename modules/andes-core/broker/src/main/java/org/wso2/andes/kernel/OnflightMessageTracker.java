@@ -30,7 +30,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -224,6 +223,15 @@ public class OnflightMessageTracker {
 
         return isOKToDeleteMessage;
     }
+    
+    public void handleAckReceived(long messageID) throws AndesException {
+        //release delivery tracing
+        MessageData trackingData = getTrackingData(messageID);
+
+        if (trackingData.allAcksReceived()) {
+            decrementMessageCountInSlot(trackingData.slot);
+        }
+    }
 
     /**
      * Track reject of the message
@@ -258,20 +266,6 @@ public class OnflightMessageTracker {
                                                    System.currentTimeMillis(), andesMessageMetadata.getExpirationTime(),
                                                    MessageStatus.BUFFERED, andesMessageMetadata.getArrivalTime());
         msgId2MsgData.put(messageID, trackingData);
-    }
-
-    /**
-     * Report delivered messages for slot state update
-     *
-     * @param messagesToRemove
-     *         List messages removed from store
-     * @throws AndesException
-     */
-    public void updateMessageDeliveryInSlot(List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
-        for (AndesRemovableMetadata message : messagesToRemove) {
-            MessageData trackingData = getTrackingData(message.getMessageID());
-            decrementMessageCountInSlot(trackingData.slot);
-        }
     }
 
     public void removeMessageFromTracker(Long messageID) {

@@ -22,8 +22,10 @@ import com.lmax.disruptor.EventHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -64,6 +66,8 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
                     updateSlotsAndQueueCounts(event);
                     event.getChannel().recordRemovalFromBuffer(AndesChannel.getTotalChunkCount(event.getMessageList()));
                     break;
+                case ACKNOWLEDGEMENT_EVENT:
+                    updateTrackerWithAck(event);
                 case SAFE_ZONE_DECLARE_EVENT:
                     updateSlotDeleteSafeZone(event);
                     break;
@@ -78,6 +82,10 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
             // previous iterations.
             event.clear();
         }
+    }
+
+    private void updateTrackerWithAck(InboundEventContainer event) throws AndesException {
+        OnflightMessageTracker.getInstance().handleAckReceived(event.ackData.getMessageID());
     }
 
     /**
