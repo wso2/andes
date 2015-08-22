@@ -71,7 +71,7 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
     /**
      * List of Delivery Rules to evaluate
      */
-    private List<DeliveryRule> deliveryRulesList = new ArrayList<DeliveryRule>();
+    private List<DeliveryRule> deliveryRulesList = new ArrayList<>();
 
     /**
      * Count sent but not acknowledged message count for channel of the subscriber
@@ -79,12 +79,6 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
     private AtomicInteger unAckedMsgCount = new AtomicInteger(0);
 
     private Integer maxNumberOfUnAckedMessages = 100000;
-
-    /**
-     * Map to track messages being sent <message id, MsgData reference>
-     */
-    private final ConcurrentHashMap<Long, MessageData> messageSendingTracker
-            = new ConcurrentHashMap<Long, MessageData>();
 
     public AMQPLocalSubscription(AMQQueue amqQueue, Subscription amqpSubscription, String subscriptionID, String destination,
                                  boolean isBoundToTopic, boolean isExclusive, boolean isDurable,
@@ -167,19 +161,16 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
 
     @Override
     public void ackReceived(long messageID) {
-        messageSendingTracker.remove(messageID);
         unAckedMsgCount.decrementAndGet();
     }
 
     @Override
     public void msgRejectReceived(long messageID) {
-        messageSendingTracker.remove(messageID);
         unAckedMsgCount.decrementAndGet();
     }
 
     @Override
     public void close() {
-        messageSendingTracker.clear();
         unAckedMsgCount.set(0);
     }
 
@@ -190,17 +181,11 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
     public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata, AndesContent content)
             throws AndesException {
         AMQMessage message = AMQPUtils.getAMQMessageForDelivery(messageMetadata, content);
-        sendAMQMessageToSubscriber(message);
-    }
-
-    /**
-     * send message to the internal subscription
-     *
-     * @param message      message to send
-     * @throws AndesException
-     */
-    private void sendAMQMessageToSubscriber(AMQMessage message) throws AndesException {
         QueueEntry messageToSend = AMQPUtils.convertAMQMessageToQueueEntry(message, amqQueue);
+
+        if(messageMetadata.getRedelivered(getChannelID())) {
+            messageToSend.setRedelivered();
+        }
 
         if (evaluateDeliveryRules(messageToSend)) {
 
@@ -218,11 +203,11 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
             // Move message to DLC
             // All the Queues and Durable Topics related messages are adding to DLC
             if (!isBoundToTopic || isDurable){
-                messageSendingTracker.remove(message.getMessageId());
                 MessagingEngine.getInstance().moveMessageToDeadLetterChannel(message.getMessageId(), destinationQueue);
             }
         }
     }
+
 
     /**
      * Evaluating Delivery rules before sending the messages
@@ -253,40 +238,6 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
         sendMessage(message);
     }
 
-
-    /**
-     * Stamp a message as sent. This method also evaluate if the
-     * message is being redelivered
-     *
-     * @param messageID id of the message
-     * @return if message is redelivered
-     */
-    private boolean addMessageToSendingTracker(long messageID) {
-
-        if (log.isDebugEnabled()) {
-            log.debug("Adding message to sending tracker channel id = " + getChannelID() + " message id = "
-                    + messageID);
-        }
-
-        MessageData messageData = messageSendingTracker.get(messageID);
-
-        if (null == messageData) {
-            messageData = OnflightMessageTracker.getInstance().getTrackingData(messageID);
-            messageSendingTracker.put(messageID, messageData);
-        }
-        // increase delivery count
-        int numOfCurrentDeliveries = messageData.incrementDeliveryCount(getChannelID());
-
-
-        if (log.isDebugEnabled()) {
-            log.debug("Number of current deliveries for message id= " + messageID + " to Channel " + getChannelID()
-                    + " is " + numOfCurrentDeliveries);
-        }
-
-        //check if this is a redelivered message
-        return  messageData.isRedelivered(getChannelID());
-    }
-
     /**
      * write message to channel
      *
@@ -295,22 +246,13 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
      */
     private void sendMessage(QueueEntry queueEntry) throws AndesException {
 
-        String msgHeaderStringID = "";
-        Long messageNumber = null;
-
-        if (queueEntry != null) {
-            msgHeaderStringID = (String) queueEntry.getMessageHeader().
-                    getHeader("msgID");
-            messageNumber = queueEntry.getMessage().getMessageNumber();
-        }
+        String msgHeaderStringID;
+        msgHeaderStringID = (String) queueEntry.getMessageHeader().getHeader("msgID");
+        Long messageNumber = queueEntry.getMessage().getMessageNumber();
 
         try {
-
-            //record message as sent to this subscriber (channel)
-            boolean isRedelivery = addMessageToSendingTracker(messageNumber);
             //set redelivery header
-            if(isRedelivery) {
-                queueEntry.setRedelivered();
+            if(queueEntry.isRedelivered()) {
                 onflightMessageTracker.setMessageStatus(MessageStatus.RESENT, messageNumber);
             } else {
                 onflightMessageTracker.setMessageStatus(MessageStatus.SENT, messageNumber);
@@ -334,8 +276,6 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
             // The error is not logged here since this will be caught safely higher up in the execution plan :
             // MessageFlusher.deliverAsynchronously. If we have more context, its better to log here too,
             // but since this is a general explanation of many possible errors, no point in logging at this state.
-            throw new AndesException("Error occurred while delivering message with ID : " + msgHeaderStringID, e);
-        } catch (AndesException e) {
             throw new AndesException("Error occurred while delivering message with ID : " + msgHeaderStringID, e);
         }
     }

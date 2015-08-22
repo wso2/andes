@@ -64,6 +64,8 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      */
     UUID channelId;
 
+    private Map<UUID, Boolean> redeliveryInfoMap;
+
     /**
      * Destination (routing key) of message
      */
@@ -129,8 +131,9 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     private boolean retain;
 
     public AndesMessageMetadata() {
-        propertyMap = new HashMap<String, Object>();
+        propertyMap = new HashMap<>();
         this.retain = false;
+        this.redeliveryInfoMap = new HashMap<>();
     }
 
     /**
@@ -145,9 +148,10 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
     public AndesMessageMetadata(long messageID, byte[] metadata, boolean parse) {
         super();
-        propertyMap = new HashMap<String, Object>();
+        propertyMap = new HashMap<>();
         this.messageID = messageID;
         this.metadata = metadata;
+        this.redeliveryInfoMap = new HashMap<>();
         if (parse) {
             parseMetaData();
         }
@@ -294,12 +298,33 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         log.debug("updated andes message metadata id= " + messageID + " new destination = " + newDestination);
     }
 
-    public void setRedelivered() {
-        this.reDelivered = true;
+    /**
+     * Set message as redelivered to channel
+     * @param channelId Id of the channel
+     */
+    public void setRedelivered(UUID channelId) {
+        if(null != channelId) {
+          redeliveryInfoMap.put(channelId, true);
+        }
     }
 
-    public boolean getRedelivered() {
-        return reDelivered;
+    /**
+     * Get if message is Redelivered
+     * @param channelId Id of the channel message is delivered to
+     * @return true if a redelivered message
+     */
+    public boolean getRedelivered(UUID channelId) {
+        boolean isRedelivered = false;
+        if(null != channelId) {
+            Boolean result = redeliveryInfoMap.get(channelId);
+            if(null == result) {
+                redeliveryInfoMap.put(channelId, false);
+                isRedelivered = false;
+            } else {
+                isRedelivered = result;
+            }
+        }
+        return isRedelivered;
     }
 
     public boolean isExpired() {

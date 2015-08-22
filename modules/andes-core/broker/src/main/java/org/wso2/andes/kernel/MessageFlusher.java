@@ -34,6 +34,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 
@@ -390,8 +391,17 @@ public class MessageFlusher {
      * @param message      metadata of the message
      */
     public void deliverMessageAsynchronously(LocalSubscription subscription, AndesMessageMetadata message) {
+        long messageID = message.getMessageID();
+        UUID channelID = subscription.getChannelID();
         if(log.isDebugEnabled()) {
             log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
+        }
+        MessageData messageData = OnflightMessageTracker.getInstance().getTrackingData(messageID);
+
+        // increase delivery count and set redelivery
+        messageData.incrementDeliveryCount(channelID);
+        if(messageData.isRedelivered(channelID)) {
+            message.setRedelivered(subscription.getChannelID());
         }
         flusherExecutor.submit(subscription, message);
     }

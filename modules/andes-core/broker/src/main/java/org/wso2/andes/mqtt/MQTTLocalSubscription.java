@@ -25,8 +25,6 @@ import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.ConcurrentTrackingList;
-import org.wso2.andes.kernel.MessageData;
-import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
@@ -200,7 +198,7 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
         //Will publish the message to the respective queue
         if (null != mqqtServerChannel) {
             try {
-                addMessageToSendingTracker(messageMetadata.getMessageID());
+                checkIfMessageRedelivered(messageMetadata);
                 unAckedMsgCount.incrementAndGet();
                 mqqtServerChannel.distributeMessageToSubscriber(this.getStorageQueueName(),
                         this.getSubscribedDestination(), message, messageMetadata.getMessageID(),
@@ -235,36 +233,18 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
     }
 
     /**
-     * Stamp a message as sent. This method also evaluate if the
-     * message is being redelivered
-     *
-     * @param messageID id of the message
+     * Check if a message is redelivered
+     * @param message message to add
      * @return if message is redelivered
      */
-    private boolean addMessageToSendingTracker(long messageID) {
-
+    private boolean checkIfMessageRedelivered(AndesMessageMetadata message) {
+        long messageID = message.getMessageID();
         if (retainedMessageList.contains(messageID)) {
             return false;
         }
 
-        if (log.isDebugEnabled()) {
-            log.debug("Adding message to sending tracker channel id = " + getChannelID() + " message id = "
-                    + messageID);
-        }
-
-        MessageData messageData = OnflightMessageTracker.getInstance().getTrackingData(messageID);
-
-        // increase delivery count
-        int numOfCurrentDeliveries = messageData.incrementDeliveryCount(getChannelID());
-
-
-        if (log.isDebugEnabled()) {
-            log.debug("Number of current deliveries for message id= " + messageID + " to Channel " + getChannelID()
-                    + " is " + numOfCurrentDeliveries);
-        }
-
         //check if this is a redelivered message
-        return  messageData.isRedelivered(getChannelID());
+        return  message.getRedelivered(getChannelID());
     }
 
 
