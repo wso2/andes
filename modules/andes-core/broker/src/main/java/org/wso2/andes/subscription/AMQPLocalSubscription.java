@@ -183,18 +183,21 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
         AMQMessage message = AMQPUtils.getAMQMessageForDelivery(messageMetadata, content);
         QueueEntry messageToSend = AMQPUtils.convertAMQMessageToQueueEntry(message, amqQueue);
 
+        //set the kernel message metadata reference
+        messageToSend.setAndesMessageReference(messageMetadata);
+
         if(messageMetadata.getRedelivered(getChannelID())) {
             messageToSend.setRedelivered();
         }
 
         if (evaluateDeliveryRules(messageToSend)) {
 
-            onflightMessageTracker.setMessageStatus(MessageStatus.DELIVERY_OK, message.getMessageId());
-
+            messageMetadata.getTrackingData().addMessageStatus(MessageStatus.DELIVERY_OK);
             sendQueueEntryToSubscriber(messageToSend);
+
         } else {
             //Set message status to reject
-            onflightMessageTracker.setMessageStatus(MessageStatus.DELIVERY_REJECT, message.getMessageId());
+            messageMetadata.getTrackingData().addMessageStatus(MessageStatus.DELIVERY_REJECT);
             /**
              * Message tracker rejected this message from sending. Hence moving
              * to dead letter channel
@@ -253,9 +256,9 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
         try {
             //set redelivery header
             if(queueEntry.isRedelivered()) {
-                onflightMessageTracker.setMessageStatus(MessageStatus.RESENT, messageNumber);
+                queueEntry.getAndesMessageReference().getTrackingData().addMessageStatus(MessageStatus.RESENT);
             } else {
-                onflightMessageTracker.setMessageStatus(MessageStatus.SENT, messageNumber);
+                queueEntry.getAndesMessageReference().getTrackingData().addMessageStatus(MessageStatus.SENT);
             }
             unAckedMsgCount.incrementAndGet();
 

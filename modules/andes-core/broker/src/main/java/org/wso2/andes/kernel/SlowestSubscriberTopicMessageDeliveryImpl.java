@@ -117,7 +117,7 @@ public class SlowestSubscriberTopicMessageDeliveryImpl implements MessageDeliver
                     }
                 }
                 if (allTopicSubscriptionsHasRoom) {
-                    OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID(), subscriptions4Queue.size());
+                    OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message, subscriptions4Queue.size());
 
                     //schedule message to all subscribers
                     for (int j = 0; j < subscriptions4Queue.size(); j++) {

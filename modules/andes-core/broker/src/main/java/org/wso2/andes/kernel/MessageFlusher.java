@@ -370,7 +370,8 @@ public class MessageFlusher {
      * @param destination destination of messages to delete
      */
     public void clearUpAllBufferedMessagesForDelivery(String destination) {
-        subscriptionCursar4QueueMap.remove(destination);
+        subscriptionCursar4QueueMap.get(destination).clearReadButUndeliveredMessages();
+
     }
 
     /**
@@ -380,7 +381,7 @@ public class MessageFlusher {
      */
     public void scheduleMessageForSubscription(LocalSubscription subscription,
                                                final AndesMessageMetadata message) {
-        OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
+        OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message);
         deliverMessageAsynchronously(subscription, message);
     }
 
@@ -391,12 +392,11 @@ public class MessageFlusher {
      * @param message      metadata of the message
      */
     public void deliverMessageAsynchronously(LocalSubscription subscription, AndesMessageMetadata message) {
-        long messageID = message.getMessageID();
         UUID channelID = subscription.getChannelID();
         if(log.isDebugEnabled()) {
             log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
         }
-        MessageData messageData = OnflightMessageTracker.getInstance().getTrackingData(messageID);
+        MessageData messageData = message.getTrackingData();
 
         // increase delivery count and set redelivery
         messageData.incrementDeliveryCount(channelID);

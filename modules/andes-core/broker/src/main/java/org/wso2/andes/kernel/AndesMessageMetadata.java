@@ -36,6 +36,7 @@ import java.util.UUID;
 
 public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
+    private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
 
     /**
      * Unique identifier of the message
@@ -64,6 +65,7 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      */
     UUID channelId;
 
+
     private Map<UUID, Boolean> redeliveryInfoMap;
 
     /**
@@ -86,7 +88,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      * True if the message has been delivered more than once.
      */
     private boolean reDelivered;
-    private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
 
     /**
      * Added for MQTT usage
@@ -98,6 +99,11 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      * slotID which this metadata belongs
      */
     private Slot slot;
+
+    /**
+     * Bean to keep delivery information about message
+     */
+    private MessageData trackingData;
 
     /**
      * The meta data type which specify which protocol this meta data belongs to``
@@ -174,6 +180,22 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
     public void setMessageID(long messageID) {
         this.messageID = messageID;
+    }
+
+    /**
+     * Set message delivery information tracking bean
+     * @param trackingData bean object to set
+     */
+    public void setTrackingData(MessageData trackingData) {
+        this.trackingData = trackingData;
+    }
+
+    /**
+     * Get message delivery information bean
+     * @return MessageData with delivery information
+     */
+    public MessageData getTrackingData() {
+        return this.trackingData;
     }
 
     /**

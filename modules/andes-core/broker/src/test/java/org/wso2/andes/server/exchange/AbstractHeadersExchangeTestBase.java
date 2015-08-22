@@ -30,6 +30,7 @@ import org.wso2.andes.framing.ContentHeaderBody;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.framing.FieldTableFactory;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.binding.BindingFactory;
 import org.wso2.andes.server.message.AMQMessage;
@@ -320,6 +321,16 @@ public class AbstractHeadersExchangeTestBase extends InternalBrokerBaseCase
                 public AMQQueue getQueue()
                 {
                     return null;  //To change body of implemented methods use File | Settings | File Templates.
+                }
+
+                @Override
+                public AndesMessageMetadata getAndesMessageReference() {
+                    return null;
+                }
+
+                @Override
+                public void setAndesMessageReference(AndesMessageMetadata andesMessageReference) {
+
                 }
 
                 public AMQMessage getMessage()

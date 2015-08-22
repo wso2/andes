@@ -21,6 +21,7 @@
 package org.wso2.andes.server.queue;
 
 import org.wso2.andes.AMQException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.message.AMQMessageHeader;
 import org.wso2.andes.server.message.AMQMessage;
@@ -113,6 +114,16 @@ public class MockQueueEntry implements QueueEntry
     public AMQQueue getQueue()
     {
         return null;
+    }
+
+    @Override
+    public AndesMessageMetadata getAndesMessageReference() {
+        return null;
+    }
+
+    @Override
+    public void setAndesMessageReference(AndesMessageMetadata andesMessageReference) {
+
     }
 
     public long getSize()
