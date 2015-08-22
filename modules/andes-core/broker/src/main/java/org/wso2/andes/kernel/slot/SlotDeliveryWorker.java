@@ -239,8 +239,11 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
     public void stopDeliveryForQueue(String storageQueue) {
         Set<Slot> orphanedSlots = subscriptionSlotTracker.remove(storageQueue);
 
-        for (Slot slot:orphanedSlots) {
-            clearAllTrackingWhenSlotOrphaned(slot);
+        // Check if there are any orphaned slots
+        if (null != orphanedSlots) {
+            for (Slot slot:orphanedSlots) {
+                clearAllTrackingWhenSlotOrphaned(slot);
+            }
         }
     }
 
