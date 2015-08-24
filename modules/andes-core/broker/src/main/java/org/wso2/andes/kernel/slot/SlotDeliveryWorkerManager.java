@@ -123,7 +123,11 @@ public class SlotDeliveryWorkerManager {
      */
     public void stopDeliveryForDestination(String storageQueueName) {
         SlotDeliveryWorker slotWorker = getSlotWorker(storageQueueName);
-        slotWorker.stopDeliveryForQueue(storageQueueName);
+
+        // Check if there is a slot delivery worker for the storageQueueName
+        if (null != slotWorker) {
+            slotWorker.stopDeliveryForQueue(storageQueueName);
+        }
     }
 
 

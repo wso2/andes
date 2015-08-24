@@ -24,7 +24,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesKernelBoot;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.MessagingEngine;
@@ -49,10 +48,16 @@ public class OrphanedSlotHandler implements SubscriptionListener {
      */
     private final ExecutorService executor;
 
+    /**
+     * Manger used to notify of the stale storage queue
+     */
+    private SlotDeliveryWorkerManager slotDeliveryWorkerManager;
+
     public OrphanedSlotHandler() {
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("AndesReassignSlotTaskExecutor").build();
         executor = Executors.newSingleThreadExecutor(namedThreadFactory);
+        slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
     }
 
     @Override
@@ -101,6 +106,7 @@ public class OrphanedSlotHandler implements SubscriptionListener {
      *         Name of the storageQueue
      */
     public void scheduleSlotToReassign(String storageQueue) {
+        slotDeliveryWorkerManager.stopDeliveryForDestination(storageQueue);
         executor.submit(new SlotReAssignTask(storageQueue));
     }
 
@@ -115,14 +121,8 @@ public class OrphanedSlotHandler implements SubscriptionListener {
          */
         private String storageQueue;
 
-        /**
-         * Manger used to notify of the stale storage queue
-         */
-        private SlotDeliveryWorkerManager slotDeliveryWorkerManager;
-
         public SlotReAssignTask(String storageQueue) {
             this.storageQueue = storageQueue;
-            slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
         }
 
         public void run() {
@@ -134,11 +134,6 @@ public class OrphanedSlotHandler implements SubscriptionListener {
 
                 if (log.isDebugEnabled()) {
                     log.debug("Re-assigned slots for queue: " + storageQueue);
-                }
-
-                //remove tracking when orphan slot situation only when node up and running
-                if (!AndesKernelBoot.isKernelShuttingDown()) {
-                    slotDeliveryWorkerManager.stopDeliveryForDestination(storageQueue);
                 }
 
             } catch (ConnectionException e) {
