@@ -23,6 +23,7 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.exchange.Exchange;
 import org.wso2.andes.server.message.AMQMessageHeader;
 import org.wso2.andes.server.message.MessageReference;
@@ -52,6 +53,12 @@ public class QueueEntryImpl implements QueueEntry
     private MessageReference _message;
 
     private Set<Subscription> _rejectedBy = null;
+
+    /**
+     * Holds Andes message metadata reference for the message. This has all kernel side
+     * delivery stats
+     */
+    private AndesMessageMetadata andesMessageReference;
 
     private volatile EntryState _state = AVAILABLE_STATE;
 
@@ -132,6 +139,16 @@ public class QueueEntryImpl implements QueueEntry
     public AMQQueue getQueue()
     {
         return _queueEntryList.getQueue();
+    }
+
+    @Override
+    public AndesMessageMetadata getAndesMessageReference() {
+        return andesMessageReference;
+    }
+
+    @Override
+    public void setAndesMessageReference(AndesMessageMetadata messageReference) {
+        this.andesMessageReference = messageReference;
     }
 
     public ServerMessage getMessage()

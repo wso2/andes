@@ -110,7 +110,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                 log.error("Error while delivering message. Message id " + message.getMessageID(), e);
                 handleSendError(message);
             } finally {
-                OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message.getMessageID());
+                OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message);
                 deliveryEventData.clearData();
             }
         }

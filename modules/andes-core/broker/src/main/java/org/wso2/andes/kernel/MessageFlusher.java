@@ -34,6 +34,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 
@@ -365,13 +366,22 @@ public class MessageFlusher {
     }
 
     /**
+     * Clear up all the buffered messages for delivery
+     * @param destination destination of messages to delete
+     */
+    public void clearUpAllBufferedMessagesForDelivery(String destination) {
+        subscriptionCursar4QueueMap.get(destination).clearReadButUndeliveredMessages();
+
+    }
+
+    /**
      * Schedule to deliver message for the subscription
      * @param subscription subscription to send
      * @param message message to send
      */
     public void scheduleMessageForSubscription(LocalSubscription subscription,
                                                final AndesMessageMetadata message) {
-        OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
+        OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message);
         deliverMessageAsynchronously(subscription, message);
     }
 
@@ -382,20 +392,35 @@ public class MessageFlusher {
      * @param message      metadata of the message
      */
     public void deliverMessageAsynchronously(LocalSubscription subscription, AndesMessageMetadata message) {
+        UUID channelID = subscription.getChannelID();
         if(log.isDebugEnabled()) {
             log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
+        }
+        MessageData messageData = message.getTrackingData();
+
+        // increase delivery count and set redelivery
+        messageData.incrementDeliveryCount(channelID);
+        if(messageData.isRedelivered(channelID)) {
+            message.setRedelivered(subscription.getChannelID());
         }
         flusherExecutor.submit(subscription, message);
     }
 
     //TODO: in multiple subscription case this can cause message duplication
     /**
-     * Will be responsible in placing the message back at the queue if delivery fails
+     * Will be responsible in placing the message back at the queue if delivery fails. It re-queue the message
+     * only if there are active local subscribers
      * @param message the message which was scheduled for delivery to its subscribers
      */
-    public void reQueueUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message) {
+    public void reQueueUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message)
+            throws AndesException {
         String destination = message.getDestination();
-        subscriptionCursar4QueueMap.get(destination).readButUndeliveredMessages.add(message);
+            SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
+            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
+                    .getActiveLocalSubscribers(destination, false);
+            if (localSubscribersForQueue.size() > 0) {
+                subscriptionCursar4QueueMap.get(destination).readButUndeliveredMessages.add(message);
+            }
     }
 
     public static MessageFlusher getInstance() {

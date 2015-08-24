@@ -36,6 +36,7 @@ import java.util.UUID;
 
 public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
+    private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
 
     /**
      * Unique identifier of the message
@@ -64,6 +65,9 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      */
     UUID channelId;
 
+
+    private Map<UUID, Boolean> redeliveryInfoMap;
+
     /**
      * Destination (routing key) of message
      */
@@ -84,7 +88,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      * True if the message has been delivered more than once.
      */
     private boolean reDelivered;
-    private static Log log = LogFactory.getLog(AndesMessageMetadata.class);
 
     /**
      * Added for MQTT usage
@@ -96,6 +99,11 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
      * slotID which this metadata belongs
      */
     private Slot slot;
+
+    /**
+     * Bean to keep delivery information about message
+     */
+    private MessageData trackingData;
 
     /**
      * The meta data type which specify which protocol this meta data belongs to``
@@ -129,8 +137,9 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
     private boolean retain;
 
     public AndesMessageMetadata() {
-        propertyMap = new HashMap<String, Object>();
+        propertyMap = new HashMap<>();
         this.retain = false;
+        this.redeliveryInfoMap = new HashMap<>();
     }
 
     /**
@@ -145,9 +154,10 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
     public AndesMessageMetadata(long messageID, byte[] metadata, boolean parse) {
         super();
-        propertyMap = new HashMap<String, Object>();
+        propertyMap = new HashMap<>();
         this.messageID = messageID;
         this.metadata = metadata;
+        this.redeliveryInfoMap = new HashMap<>();
         if (parse) {
             parseMetaData();
         }
@@ -170,6 +180,22 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
 
     public void setMessageID(long messageID) {
         this.messageID = messageID;
+    }
+
+    /**
+     * Set message delivery information tracking bean
+     * @param trackingData bean object to set
+     */
+    public void setTrackingData(MessageData trackingData) {
+        this.trackingData = trackingData;
+    }
+
+    /**
+     * Get message delivery information bean
+     * @return MessageData with delivery information
+     */
+    public MessageData getTrackingData() {
+        return this.trackingData;
     }
 
     /**
@@ -294,12 +320,33 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         log.debug("updated andes message metadata id= " + messageID + " new destination = " + newDestination);
     }
 
-    public void setRedelivered() {
-        this.reDelivered = true;
+    /**
+     * Set message as redelivered to channel
+     * @param channelId Id of the channel
+     */
+    public void setRedelivered(UUID channelId) {
+        if(null != channelId) {
+          redeliveryInfoMap.put(channelId, true);
+        }
     }
 
-    public boolean getRedelivered() {
-        return reDelivered;
+    /**
+     * Get if message is Redelivered
+     * @param channelId Id of the channel message is delivered to
+     * @return true if a redelivered message
+     */
+    public boolean getRedelivered(UUID channelId) {
+        boolean isRedelivered = false;
+        if(null != channelId) {
+            Boolean result = redeliveryInfoMap.get(channelId);
+            if(null == result) {
+                redeliveryInfoMap.put(channelId, false);
+                isRedelivered = false;
+            } else {
+                isRedelivered = result;
+            }
+        }
+        return isRedelivered;
     }
 
     public boolean isExpired() {

@@ -79,7 +79,7 @@ public class OnflightMessageTracker {
         // Load factor set to default value 0.75
         // Concurrency level set to 6. Currently SlotDeliveryWorker, AckHandler AckSubscription, DeliveryEventHandler,
         // MessageFlusher access this. To be on the safe side set to 6.
-        msgId2MsgData = new ConcurrentHashMap<Long, MessageData>(16, 0.75f, 6);
+        msgId2MsgData = new ConcurrentHashMap<>(16, 0.75f, 6);
 
     }
 
@@ -95,52 +95,7 @@ public class OnflightMessageTracker {
         if (log.isDebugEnabled()) {
             log.debug("message was rejected by client id= " + messageId + " channel= " + channelId);
         }
-        stampMessageAsRejected(channelId, messageId);
-    }
-
-    /**
-     * To get number of deliveries to a particular channel for a particular message
-     *
-     * @param messageID MessageID id of the message
-     * @param channelID ChannelID id of the subscriber's channel
-     * @return Number of message deliveries for this particular channel
-     */
-    public int getNumOfMsgDeliveriesForChannel(long messageID, UUID channelID) {
-        if (null != getTrackingData(messageID)) {
-            return getTrackingData(messageID).getNumOfDeliveires4Channel(channelID);
-        } else {
-            return 0;
-        }
-    }
-
-    /**
-     * To get arrival time of the message
-     *
-     * @param messageID Id of the message
-     * @return Message arrival time
-     */
-    public long getMsgArrivalTime(long messageID) {
-        return getTrackingData(messageID).arrivalTime;
-    }
-
-    /**
-     * To check whether message is expired or not
-     *
-     * @param messageID Id of the message
-     * @return Msg is expired or not (boolean value)
-     */
-    public boolean isMsgExpired(long messageID) {
-        return getTrackingData(messageID).isExpired();
-    }
-
-    /**
-     * To get destination of the message
-     *
-     * @param messageID Id of the message
-     * @return Destination of the message
-     */
-    public String getMsgDestination(long messageID) {
-        return getTrackingData(messageID).destination;
+        stampMessageAsRejected(channelId, metadata);
     }
 
     /**
@@ -158,8 +113,9 @@ public class OnflightMessageTracker {
             All the Acks for the slot has bee received. Check the slot again for unsend
             messages and if there are any send them and delete the slot.
              */
-            SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance()
-                                                                     .getSlotWorker(slot.getStorageQueueName());
+            SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager
+                    .getInstance().getSlotWorker(slot.getStorageQueueName());
+
             if (log.isDebugEnabled()) {
                 log.debug("Slot has no pending messages. Now re-checking slot for messages");
             }
@@ -237,13 +193,13 @@ public class OnflightMessageTracker {
      * Track reject of the message
      *
      * @param channel   channel of the message reject
-     * @param messageID id of the message reject represent
+     * @param message metadata of the message reject represent
      */
-    public void stampMessageAsRejected(UUID channel, long messageID) {
+    public void stampMessageAsRejected(UUID channel, AndesMessageMetadata message) {
         if (log.isDebugEnabled()) {
-            log.debug("stamping message as rejected id = " + messageID);
+            log.debug("stamping message as rejected id = " + message.getMessageID());
         }
-        MessageData trackingData = getTrackingData(messageID);
+        MessageData trackingData = message.getTrackingData();
         if (trackingData != null) {
             trackingData.timestamp = System.currentTimeMillis();
             trackingData.addMessageStatus(MessageStatus.REJECTED_AND_BUFFERED);
@@ -265,44 +221,12 @@ public class OnflightMessageTracker {
         MessageData trackingData = new MessageData(messageID, slot, slot.getDestinationOfMessagesInSlot(),
                                                    System.currentTimeMillis(), andesMessageMetadata.getExpirationTime(),
                                                    MessageStatus.BUFFERED, andesMessageMetadata.getArrivalTime());
+        andesMessageMetadata.setTrackingData(trackingData);
         msgId2MsgData.put(messageID, trackingData);
     }
 
     public void removeMessageFromTracker(Long messageID) {
         msgId2MsgData.remove(messageID);
-    }
-
-    /**
-     * Set message status for a message.
-     * This can be buffered, sent, rejected etc
-     *
-     * @param messageStatus status of the message
-     * @param messageID Id of the message to set expired
-     */
-    public void setMessageStatus(MessageStatus messageStatus, long messageID) {
-        MessageData trackingData = getTrackingData(messageID);
-        if (null != trackingData) {
-            trackingData.addMessageStatus(messageStatus);
-        }
-    }
-
-    /**
-     * Set message status as expired
-     *
-     * @param messageID id of the message to set expired
-     */
-    public void stampMessageAsExpired(long messageID) {
-        getTrackingData(messageID).addMessageStatus(MessageStatus.EXPIRED);
-    }
-
-    /**
-     * Get the current status of the message in delivery pipeline
-     *
-     * @param messageID id of the message to get status
-     * @return status of the message
-     */
-    public MessageStatus getMessageStatus(long messageID) {
-        return getTrackingData(messageID).getLatestState();
     }
 
     /**
@@ -346,18 +270,18 @@ public class OnflightMessageTracker {
      * to different subscribers. This value will be equal to the number
      * of subscribers expecting the message at that instance.
      *
-     * @param messageID identifier of the message
+     * @param message metadata of the message
      * @return num of scheduled times after increment
      */
-    public int incrementNumberOfScheduledDeliveries(long messageID) {
-        MessageData trackingData = getTrackingData(messageID);
+    public int incrementNumberOfScheduledDeliveries(AndesMessageMetadata message) {
+        MessageData trackingData = message.getTrackingData();
         int numOfSchedules = 0;
         if (trackingData != null) {
             trackingData.addMessageStatus(MessageStatus.SCHEDULED_TO_SEND);
             trackingData.incrementPendingAckCount(1);
             numOfSchedules = trackingData.numberOfScheduledDeliveries.incrementAndGet();
             if (log.isDebugEnabled()) {
-                log.debug("message id= " + messageID + " scheduled. Pending to execute= " + numOfSchedules);
+                log.debug("message id= " + message.getMessageID() + " scheduled. Pending to execute= " + numOfSchedules);
             }
         }
         return numOfSchedules;
@@ -368,18 +292,18 @@ public class OnflightMessageTracker {
      * to different subscribers. This value will be equal to the number
      * of subscribers expecting the message at that instance.
      *
-     * @param messageID identifier of the message
+     * @param message metadata of the message
      * @return num of scheduled times after increment
      */
-    public int incrementNumberOfScheduledDeliveries(long messageID ,int count) {
-        MessageData trackingData = getTrackingData(messageID);
+    public int incrementNumberOfScheduledDeliveries(AndesMessageMetadata message ,int count) {
+        MessageData trackingData = message.getTrackingData();
         int numOfSchedules = 0;
         if (trackingData != null) {
             trackingData.addMessageStatus(MessageStatus.SCHEDULED_TO_SEND);
             trackingData.incrementPendingAckCount(count);
             numOfSchedules = trackingData.numberOfScheduledDeliveries.addAndGet(count);
             if (log.isDebugEnabled()) {
-                log.debug("message id= " + messageID + " scheduled. Pending to execute= " + numOfSchedules);
+                log.debug("message id= " + message.getMessageID() + " scheduled. Pending to execute= " + numOfSchedules);
             }
         }
         return numOfSchedules;
@@ -390,11 +314,12 @@ public class OnflightMessageTracker {
      * Decrement number of times this message is scheduled to be delivered.
      * If message is actually sent to the subscriber this is decreased.
      *
-     * @param messageID identifier of the message
+     * @param message metadata of the message involved
      * @return num of scheduled times after decrement
      */
-    public int decrementNumberOfScheduledDeliveries(long messageID) {
-        MessageData trackingData = getTrackingData(messageID);
+    public int decrementNumberOfScheduledDeliveries(AndesMessageMetadata message) {
+        long messageID = message.getMessageID();
+        MessageData trackingData = message.getTrackingData();
         int count = 0;
         if (trackingData != null) {
             count = trackingData.numberOfScheduledDeliveries.decrementAndGet();
@@ -413,11 +338,11 @@ public class OnflightMessageTracker {
      * There will be this number of executables ready to
      * send the message.
      *
-     * @param messageID identifier of the message
+     * @param message metadata of the message
      * @return number of schedules
      */
-    public int getNumberOfScheduledDeliveries(long messageID) {
-        return getTrackingData(messageID).numberOfScheduledDeliveries.get();
+    public int getNumberOfScheduledDeliveries(AndesMessageMetadata message) {
+        return message.getTrackingData().numberOfScheduledDeliveries.get();
     }
 
     /**

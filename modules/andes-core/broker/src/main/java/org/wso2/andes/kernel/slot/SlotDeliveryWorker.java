@@ -237,6 +237,8 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
     }
 
     public void stopDeliveryForQueue(String storageQueue) {
+        MessageFlusher.getInstance().clearUpAllBufferedMessagesForDelivery
+                (storageQueueNameToDestinationMap.get(storageQueue));
         Set<Slot> orphanedSlots = subscriptionSlotTracker.remove(storageQueue);
 
         // Check if there are any orphaned slots

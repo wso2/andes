@@ -19,6 +19,7 @@
 package org.wso2.andes.server.queue;
 
 import org.wso2.andes.AMQException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.message.ServerMessage;
 
@@ -164,6 +165,10 @@ public interface QueueEntry extends Comparable<QueueEntry>, Filterable
 
 
     AMQQueue getQueue();
+
+    AndesMessageMetadata getAndesMessageReference();
+
+    void setAndesMessageReference(AndesMessageMetadata andesMessageReference);
 
     ServerMessage getMessage();
 

@@ -94,7 +94,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                             message.setDestination(localSubscription.getSubscribedDestination());
                         }
 
-                        OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message.getMessageID());
+                        OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message);
                         MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);
                         numOfCurrentMsgDeliverySchedules++;
 

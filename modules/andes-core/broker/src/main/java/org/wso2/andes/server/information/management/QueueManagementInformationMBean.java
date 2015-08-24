@@ -839,7 +839,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 //get message id
                 String messageId = properties.getMessageIdAsString();
                 //get redelivered
-                Boolean redelivered = andesMessageMetadata.getRedelivered();
+                Boolean redelivered = andesMessageMetadata.getRedelivered(null);
                 //get delivery mode
                 Integer deliveredMode = (int) properties.getDeliveryMode();
                 //get timestamp
