@@ -70,6 +70,23 @@ public class MessageData {
      */
     private AtomicInteger pendingAckCount;
 
+    /**
+     * Indicate if the metadata should not be used.
+     */
+    private boolean stale;
+
+    /**
+     * Check if metadata is stale
+     * @return true if message is stale
+     */
+    public boolean isStale() {
+        return stale;
+    }
+
+    public void markAsStale() {
+        stale = true;
+    }
+
     public MessageData(long msgID, Slot slot, String destination, long timestamp,
                     long expirationTime, MessageStatus messageStatus,
                     long arrivalTime) {
@@ -84,6 +101,7 @@ public class MessageData {
         this.numberOfScheduledDeliveries = new AtomicInteger(0);
         this.pendingAckCount = new AtomicInteger(0);
         this.arrivalTime = arrivalTime;
+        this.stale = false;
     }
 
     public boolean isExpired() {
