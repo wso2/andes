@@ -133,13 +133,17 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
                 log.debug(currentMessageList.size() + " messages received from disruptor.");
             }
 
-            if (log.isTraceEnabled()) {
+            if (MessageTracer.isEnabled()) {
+                for (AndesMessage message : currentMessageList) {
+                    //Tracing message
+                    MessageTracer.trace(message, MessageTracer.CONTENT_WRITTEN_TO_DB);
+                }
+            }
+
+            if(log.isTraceEnabled()) {
                 StringBuilder messageIDsString = new StringBuilder();
                 for (AndesMessage message : currentMessageList) {
                     messageIDsString.append(message.getMetadata().getMessageID()).append(" , ");
-
-                    //Tracing message
-                    MessageTracer.trace(message, MessageTracer.CONTENT_WRITTEN_TO_DB);
                 }
                 log.trace(currentMessageList.size() + " messages written : " + messageIDsString);
             }
