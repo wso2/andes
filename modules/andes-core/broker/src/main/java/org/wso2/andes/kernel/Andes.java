@@ -394,17 +394,6 @@ public class Andes {
     }
 
     /**
-     * Schedule message for subscription
-     *
-     * @param messageMetadata message to be scheduled
-     * @param subscription    subscription to send
-     * @throws AndesException
-     */
-    public void reQueueMessage(AndesMessageMetadata messageMetadata, LocalSubscription subscription) throws AndesException {
-        MessagingEngine.getInstance().reQueueMessage(messageMetadata, subscription);
-    }
-
-    /**
      * Move the messages meta data in the given message to the Dead Letter Channel.
      *
      * @param messageId            The message Id to be removed

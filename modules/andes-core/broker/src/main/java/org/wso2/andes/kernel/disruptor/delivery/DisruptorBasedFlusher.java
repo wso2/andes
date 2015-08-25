@@ -24,6 +24,8 @@ import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesMessageMetadata;
@@ -41,6 +43,8 @@ import java.util.concurrent.ThreadFactory;
  * Disruptor based message flusher. This use a ring buffer to deliver message to subscribers
  */
 public class DisruptorBasedFlusher {
+
+    private static Log log = LogFactory.getLog(DisruptorBasedFlusher.class);
 
     /**
      * Disruptor instance used in the flusher

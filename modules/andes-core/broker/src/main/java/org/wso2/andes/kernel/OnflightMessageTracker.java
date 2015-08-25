@@ -203,6 +203,7 @@ public class OnflightMessageTracker {
         if (trackingData != null) {
             trackingData.timestamp = System.currentTimeMillis();
             trackingData.addMessageStatus(MessageStatus.REJECTED_AND_BUFFERED);
+            trackingData.decrementDeliveryCount(channel);
         }
     }
 
