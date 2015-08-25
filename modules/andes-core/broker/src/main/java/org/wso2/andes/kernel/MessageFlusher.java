@@ -166,7 +166,7 @@ public class MessageFlusher {
         public void setLastPurgedTimestamp(Long lastPurgedTimestamp) {
             this.lastPurgedTimestamp = lastPurgedTimestamp;
         }
-    }
+        }
 
     /**
      * Get the next subscription for the given destination. If at end of the subscriptions, it circles
@@ -293,8 +293,7 @@ public class MessageFlusher {
         if (log.isDebugEnabled()) {
             for (String dest : subscriptionCursar4QueueMap.keySet()) {
                 log.debug("Queue size of destination " + dest + " is :"
-                        + subscriptionCursar4QueueMap.get(dest).readButUndeliveredMessages
-                        .size());
+                        + subscriptionCursar4QueueMap.get(dest).readButUndeliveredMessages.size());
             }
 
         }
@@ -302,8 +301,7 @@ public class MessageFlusher {
             if(log.isDebugEnabled()) {
                 log.debug(
                         "Sending messages from buffer num of msg = " + messageDeliveryInfo
-                                .readButUndeliveredMessages
-                                .size());
+                                .readButUndeliveredMessages.size());
             }
             sendMessagesToSubscriptions(messageDeliveryInfo.destination,
                     messageDeliveryInfo.readButUndeliveredMessages);

@@ -25,11 +25,18 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesContent;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.DeliveryRule;
+import org.wso2.andes.kernel.HasInterestRule;
+import org.wso2.andes.kernel.MaximumNumOfDeliveryRule;
+import org.wso2.andes.kernel.MessagePurgeRule;
+import org.wso2.andes.kernel.MessageStatus;
+import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.NoLocalRule;
 import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.server.AMQChannel;
-import org.wso2.andes.server.ClusterResourceHolder;
-import org.wso2.andes.server.exchange.DirectExchange;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
@@ -39,7 +46,6 @@ import org.wso2.andes.server.subscription.SubscriptionImpl;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -64,10 +70,7 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
      * Whether subscription is durable or not
      */
     private boolean isDurable;
-    /**
-     * OnflightMessageTracker stores message information, using it to get message information
-     */
-    private OnflightMessageTracker onflightMessageTracker;
+
     /**
      * List of Delivery Rules to evaluate
      */
@@ -98,7 +101,6 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
         this.amqpSubscription = amqpSubscription;
         this.isBoundToTopic = isBoundToTopic;
         this.isDurable = isDurable;
-        onflightMessageTracker = OnflightMessageTracker.getInstance();
 
         if (amqpSubscription != null && amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
             channel = ((SubscriptionImpl.AckSubscription) amqpSubscription).getChannel();

@@ -142,8 +142,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                                 if (log.isDebugEnabled()) {
                                     log.debug("Received an empty slot from slot manager");
                                 }
-                                boolean sentFromMessageBuffer = sendFromMessageBuffer(
-                                        destinationOfMessagesInQueue);
+                                boolean sentFromMessageBuffer = sendFromMessageBuffer(destinationOfMessagesInQueue);
                                 if (!sentFromMessageBuffer) {
                                     //No available free slots
                                     idleQueueCounter++;
