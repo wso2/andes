@@ -182,6 +182,11 @@ public class MessagePreProcessor implements EventHandler<InboundEventContainer> 
                     //updated (but internal metadata will have topic name as usual)
                     clonedMessage.getMetadata().setStorageQueueName(subscription.getStorageQueueName());
 
+                    if (MessageTracer.isEnabled()) {
+                        MessageTracer.trace(message, MessageTracer.MESSAGE_CLONED + clonedMessage.getMetadata()
+                                .getMessageID() + " for " + clonedMessage.getMetadata().getStorageQueueName());
+                    }
+
                     if (subscription.isDurable()) {
                         /**
                          * For durable topic subscriptions we must update the routing key

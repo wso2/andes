@@ -34,6 +34,7 @@ public class MessageTracer {
     public static final String REACHED_ANDES_CORE = "reached andes core";
     public static final String PUBLISHED_TO_INBOUND_DISRUPTOR = "submitted to inbound disruptor";
     public static final String MESSAGE_ID_MAPPED = "mapped to andes message";
+    public static final String MESSAGE_CLONED = "cloned with message id";
     public static final String CONTENT_WRITTEN_TO_DB = "content written to database";
     public static final String SLOT_INFO_UPDATED = "slot information updated";
     public static final String PUBLISHED_TO_OUTBOUND_DISRUPTOR = "submitted to outbound disruptor";
