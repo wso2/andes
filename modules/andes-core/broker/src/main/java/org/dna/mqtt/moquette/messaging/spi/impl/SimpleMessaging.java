@@ -3,26 +3,39 @@ package org.dna.mqtt.moquette.messaging.spi.impl;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.IgnoreExceptionHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.dsl.Disruptor;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.IMessaging;
 import org.dna.mqtt.moquette.messaging.spi.IStorageService;
-import org.dna.mqtt.moquette.messaging.spi.impl.events.*;
+import org.dna.mqtt.moquette.messaging.spi.impl.events.DisconnectEvent;
+import org.dna.mqtt.moquette.messaging.spi.impl.events.InitEvent;
+import org.dna.mqtt.moquette.messaging.spi.impl.events.LostConnectionEvent;
+import org.dna.mqtt.moquette.messaging.spi.impl.events.MessagingEvent;
+import org.dna.mqtt.moquette.messaging.spi.impl.events.ProtocolEvent;
+import org.dna.mqtt.moquette.messaging.spi.impl.events.PublishEvent;
+import org.dna.mqtt.moquette.messaging.spi.impl.events.StopEvent;
 import org.dna.mqtt.moquette.messaging.spi.impl.subscriptions.SubscriptionsStore;
-import org.dna.mqtt.moquette.proto.messages.*;
+import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
+import org.dna.mqtt.moquette.proto.messages.ConnectMessage;
+import org.dna.mqtt.moquette.proto.messages.DisconnectMessage;
+import org.dna.mqtt.moquette.proto.messages.PubAckMessage;
+import org.dna.mqtt.moquette.proto.messages.PubCompMessage;
+import org.dna.mqtt.moquette.proto.messages.PubRecMessage;
+import org.dna.mqtt.moquette.proto.messages.PubRelMessage;
+import org.dna.mqtt.moquette.proto.messages.PublishMessage;
+import org.dna.mqtt.moquette.proto.messages.SubscribeMessage;
+import org.dna.mqtt.moquette.proto.messages.UnsubscribeMessage;
 import org.dna.mqtt.moquette.server.Constants;
 import org.dna.mqtt.moquette.server.IAuthenticator;
 import org.dna.mqtt.moquette.server.ServerChannel;
+import org.dna.mqtt.wso2.MQTTLogExceptionHandler;
 import org.dna.mqtt.wso2.MQTTPingRequest;
 import org.dna.mqtt.wso2.MQTTSubscriptionStore;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.disruptor.LogExceptionHandler;
 
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
@@ -75,12 +88,12 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
 
         disruptor = new Disruptor<ValueEvent>( ValueEvent.EVENT_FACTORY, ringBufferSize, executor);
         //Added by WSO2, we do not want to ignore the exception here
-        disruptor.handleExceptionsWith(new LogExceptionHandler());
+        disruptor.handleExceptionsWith(new MQTTLogExceptionHandler());
         SequenceBarrier barrier = disruptor.getRingBuffer().newBarrier();
         BatchEventProcessor<ValueEvent> eventProcessor = new BatchEventProcessor<ValueEvent>(
                 disruptor.getRingBuffer(), barrier, this);
         //Added by WSO2, we need to make sure the exceptions aren't ignored
-        eventProcessor.setExceptionHandler(new LogExceptionHandler());
+        eventProcessor.setExceptionHandler(new MQTTLogExceptionHandler());
         disruptor.handleEventsWith(eventProcessor);
         m_ringBuffer = disruptor.start();
         
