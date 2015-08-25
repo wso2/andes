@@ -18,6 +18,8 @@
 
 package org.wso2.andes.kernel;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.slot.Slot;
 
 import java.util.*;
@@ -28,6 +30,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * This class represents a bean where message delivery statistics are kept
  */
 public class MessageData {
+
+    private static Log log = LogFactory.getLog(MessageData.class);
 
     public final long msgID;
 
