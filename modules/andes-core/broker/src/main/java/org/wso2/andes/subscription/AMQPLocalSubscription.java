@@ -164,11 +164,13 @@ public class AMQPLocalSubscription extends InboundSubscriptionEvent {
     @Override
     public void ackReceived(long messageID) {
         unAckedMsgCount.decrementAndGet();
+        removeUnackedMessage(messageID);
     }
 
     @Override
     public void msgRejectReceived(long messageID) {
         unAckedMsgCount.decrementAndGet();
+        removeUnackedMessage(messageID);
     }
 
     @Override

@@ -166,7 +166,7 @@ public class MessageFlusher {
         public void setLastPurgedTimestamp(Long lastPurgedTimestamp) {
             this.lastPurgedTimestamp = lastPurgedTimestamp;
         }
-        }
+    }
 
     /**
      * Get the next subscription for the given destination. If at end of the subscriptions, it circles
@@ -274,6 +274,28 @@ public class MessageFlusher {
                 MessageTracer.trace(message, MessageTracer.METADATA_BUFFERED_FOR_DELIVERY);
             }
         } catch (Throwable e) {
+            log.fatal("Error scheduling messages for delivery", e);
+        }
+    }
+
+    /**
+     * Send the messages to deliver
+     *
+     * @param destination
+     *         message destination
+     * @param messages
+     *         message to add
+     */
+    public void addAlreadyTrackedMessagesToBuffer(String destination, List<AndesMessageMetadata> messages) {
+        try {
+            MessageDeliveryInfo messageDeliveryInfo = getMessageDeliveryInfo(destination);
+
+            for (AndesMessageMetadata metadata : messages) {
+                messageDeliveryInfo.readButUndeliveredMessages.add(metadata);
+                //Tracing message
+                MessageTracer.trace(metadata, MessageTracer.METADATA_BUFFERED_FOR_DELIVERY);
+            }
+        } catch (AndesException e) {
             log.fatal("Error scheduling messages for delivery", e);
         }
     }

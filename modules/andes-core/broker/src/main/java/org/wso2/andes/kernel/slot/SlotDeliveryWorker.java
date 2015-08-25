@@ -102,6 +102,11 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
+    public void rescheduleMessagesForDelivery(String storageQueueName, List<AndesMessageMetadata> messages) {
+        String destination = storageQueueNameToDestinationMap.get(storageQueueName);
+        MessageFlusher.getInstance().addAlreadyTrackedMessagesToBuffer(destination, messages);
+    }
+
     @Override
     public void run() {
         /**

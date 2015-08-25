@@ -19,6 +19,8 @@
 package org.wso2.andes.kernel;
 
 
+import java.util.List;
+
 public interface AndesSubscription {
 
     /**
@@ -130,4 +132,19 @@ public interface AndesSubscription {
      * @return Subscription type
      */
     public SubscriptionType getSubscriptionType();
+
+    /**
+     * Get a list of all the unacked messages
+     *
+     * @return list of unacked messages
+     */
+    List<AndesMessageMetadata> getUnackedMessages();
+
+    /**
+     * Add unacked message to tracking. This is called when the message is dispatched for delivery.
+     *
+     * @param message
+     *         message dispatched for delivery
+     */
+    void addUnackedMessage(AndesMessageMetadata message);
 }

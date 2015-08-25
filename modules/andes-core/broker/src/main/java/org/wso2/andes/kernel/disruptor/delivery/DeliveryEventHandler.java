@@ -89,6 +89,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                 }
                 if (subscription.isActive()) {
                     subscription.sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
+                    subscription.addUnackedMessage(message);
 
                     //Tracing Message
                     MessageTracer.trace(message, MessageTracer.DISPATCHED_TO_PROTOCOL);

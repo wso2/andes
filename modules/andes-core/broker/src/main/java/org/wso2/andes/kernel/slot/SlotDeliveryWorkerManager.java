@@ -23,7 +23,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -70,6 +72,14 @@ public class SlotDeliveryWorkerManager {
      */
     public static SlotDeliveryWorkerManager getInstance() {
         return slotDeliveryWorkerManagerManager;
+    }
+
+    public void rescheduleMessagesForDelivery(String storageQueueName, List<AndesMessageMetadata> messages) {
+        SlotDeliveryWorker slotWorker = getSlotWorker(storageQueueName);
+
+        if (null != slotWorker) {
+            slotWorker.rescheduleMessagesForDelivery(storageQueueName, messages);
+        }
     }
 
     /**
