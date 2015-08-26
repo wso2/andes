@@ -93,19 +93,21 @@ public class AndesSubscriptionManager {
             if(matchingSubscriptions.size() == 1) {
                 AndesSubscription matchingSubscription = matchingSubscriptions.get(0);
                 if(!matchingSubscription.hasExternalSubscriptions()) {
-                    //delete the above subscription
-                    LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription
-                            (matchingSubscription);
-                    mockSubscription.close();
-                    LocalSubscription removedSubscription = subscriptionStore.removeLocalSubscription
-                            (mockSubscription);
-                    /** removed subscription is returned. If removed subscription is null this is not a actual local
-                    subscription. We need to directly remove it. */
-                    if(null == removedSubscription) {
-                        subscriptionStore.removeSubscriptionDirectly(mockSubscription);
+                    //delete the above subscription (only if subscription is activated from a different node -
+                    // decided looking at subscription ID)
+                    if(!matchingSubscription.getSubscriptionID().equals(localSubscription.getSubscriptionID())) {
+                        LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription
+                                (matchingSubscription);
+                        mockSubscription.close();
+                        LocalSubscription removedSubscription = subscriptionStore.removeLocalSubscription
+                                (mockSubscription);
+                        /** removed subscription is returned. If removed subscription is null this is not a actual local
+                         subscription. We need to directly remove it. */
+                        if(null == removedSubscription) {
+                            subscriptionStore.removeSubscriptionDirectly(mockSubscription);
+                        }
+                        notifyLocalSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange.DELETED);
                     }
-                    notifyLocalSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange.DELETED);
-
 
                 } else {
                     //An active subscription already exists
@@ -121,7 +123,7 @@ public class AndesSubscriptionManager {
             // else this is the very first subscription for the cluster. Just create one
         }
 
-        //store subscription in context store
+        //store subscription in context store.
         subscriptionStore.createDisconnectOrRemoveLocalSubscription(localSubscription,
                 SubscriptionListener.SubscriptionChange.ADDED);
 
@@ -130,7 +132,8 @@ public class AndesSubscriptionManager {
         slotDeliveryWorkerManager.startSlotDeliveryWorker(localSubscription.getStorageQueueName(),
                 subscriptionStore.getDestination(localSubscription));
 
-        //notify the local subscription change to listeners
+        //notify the local subscription change to listeners. For durable topic subscriptions this will update
+        // existing inactive one if it matches
         notifyLocalSubscriptionHasChanged(localSubscription, SubscriptionListener.SubscriptionChange.ADDED);
 
     }
@@ -335,7 +338,6 @@ public class AndesSubscriptionManager {
                             .SubscriptionChange.DELETED);
                     subscriptionStore.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
                             .SubscriptionChange.ADDED);
-                    notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.ADDED);
                 } else {
                     boolean subscriptionAvailable = subscriptionStore.isSubscriptionAvailable(subscription);
 
@@ -345,8 +347,6 @@ public class AndesSubscriptionManager {
                                 " but exists in DB. Thus adding " + subscription);
                         subscriptionStore.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
                                 .SubscriptionChange.ADDED);
-
-                        notifyClusterSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.ADDED);
                     }
                 }
             }
@@ -375,7 +375,6 @@ public class AndesSubscriptionManager {
                             "available in db. Thus removing from memory " + currentSubscription);
                     subscriptionStore.createDisconnectOrRemoveClusterSubscription(currentSubscription, SubscriptionListener
                             .SubscriptionChange.DELETED);
-                    notifyClusterSubscriptionHasChanged(currentSubscription, SubscriptionListener.SubscriptionChange.DELETED);
                 }
             }
 

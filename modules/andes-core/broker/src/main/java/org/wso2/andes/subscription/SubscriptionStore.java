@@ -476,6 +476,8 @@ public class SubscriptionStore {
                 wildCardSubscription = MQTTUtils.isWildCardSubscription(destination);
             }
 
+            //TODO: do not delete and add subscriptions during an update. Have we considered wildcard durable topic
+            // subs?
             if (wildCardSubscription) {
                 if (SubscriptionChange.ADDED == type) {
                     clusterSubscriptionProcessor.addWildCardSubscription(subscription);
@@ -492,23 +494,42 @@ public class SubscriptionStore {
 
         if (!wildCardSubscription) {
             Set<AndesSubscription> subscriptionList = clusterSubscriptionMap.get(destination);
-
-            boolean subscriptionNotAvailable = true;
-
             if (null == subscriptionList) {
-                subscriptionList = new LinkedHashSet<AndesSubscription>();
-            } else {
-                subscriptionNotAvailable = false;
+                subscriptionList = new LinkedHashSet<>();
+            }
+            //TODO: need to use a MAP here instead of a SET. Here we assume a subscription is not updated and added.
+            if(SubscriptionChange.ADDED == type) {
+                boolean subscriptionAdded = subscriptionList.add(subscription);
+                if(!subscriptionAdded) {
+                    Iterator<AndesSubscription> subscriptionIterator = subscriptionList.iterator();
+                    while(subscriptionIterator.hasNext()) {
+                        AndesSubscription andesSubscription = subscriptionIterator.next();
+                        if(subscription.equals(andesSubscription)) {
+                            andesSubscription.setHasExternalSubscriptions(true);
+                            break;
+                        }
+                    }
+                }
+            } else if(SubscriptionChange.DISCONNECTED == type) {
+                boolean subscriptionAdded = subscriptionList.add(subscription);
+                if (!subscriptionAdded){
+                    Iterator<AndesSubscription> subscriptionIterator = subscriptionList.iterator();
+                    while(subscriptionIterator.hasNext()) {
+                        AndesSubscription andesSubscription = subscriptionIterator.next();
+                        if(subscription.equals(andesSubscription)) {
+                            andesSubscription.setHasExternalSubscriptions(false);
+                            break;
+                        }
+                    }
+                } else {
+                    log.warn("Cannot disconnect non-existing subscription");
+                }
+
+            } else if(SubscriptionChange.DELETED == type) {
                 subscriptionList.remove(subscription);
             }
 
-            if (SubscriptionChange.ADDED == type || SubscriptionChange.DISCONNECTED == type) {
-                subscriptionList.add(subscription);
-
-                if (subscriptionNotAvailable) {
-                    clusterSubscriptionMap.put(destination, subscriptionList);
-                }
-            }
+            clusterSubscriptionMap.put(destination, subscriptionList);
 
         }
 
