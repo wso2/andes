@@ -18,13 +18,13 @@
 
 package org.wso2.andes.configuration.enums;
 
+import java.util.List;
+
 import org.wso2.andes.configuration.modules.JKSStore;
 import org.wso2.andes.configuration.util.ConfigurationProperty;
 import org.wso2.andes.configuration.util.ImmutableMetaProperties;
 import org.wso2.andes.configuration.util.MetaProperties;
 import org.wso2.andes.configuration.util.TopicMessageDeliveryStrategy;
-
-import java.util.List;
 
 /**
  * All Andes specific config properties directly defined in broker.xml (plus any linked configuration files) are
@@ -72,7 +72,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     TRANSPORTS_AMQP_BIND_ADDRESS("transports/amqp/bindAddress", "*", String.class),
 
     /**
-     * Enable this to support JMS messaging with added AMQP behaviour.
+     * Enable this to support JMS messaging with added AMQP behavior.
      */
     TRANSPORTS_AMQP_ENABLED("transports/amqp/@enabled", "true", Boolean.class),
 
@@ -231,6 +231,42 @@ public enum AndesConfiguration implements ConfigurationProperty {
      */
     PERSISTENCE_CONTEXT_STORE_PROPERTY("persistence/contextStore/property[@name = '{key}']", "", String.class),
 
+    /**
+     * Size of the messages cache in MBs. Setting '0' will disable the cache. defaults to 256 MB.
+     */
+    PERSISTENCE_CACHE_SIZE("persistence/cache/size", "256", Integer.class),
+    
+    /**
+     * Expected concurrency for the cache (4 is guava default)
+     */
+    PERSISTENCE_CACHE_CONCURRENCY_LEVEL("persistence/cache/concurrencyLevel", "4", Integer.class),
+    
+    /**
+     * Number of seconds cache will keep messages after they are
+     * added (unless they are consumed and deleted).
+     */
+    PERSISTENCE_CACHE_EXPIRY_SECONDS("persistence/cache/expirySeconds", "2", Integer.class),
+
+    /**
+     * Reference type used to hold messages in memory.
+     * 
+     * <p>
+     * <ul>
+     *  <li>weak   - Using java weak references ( - results higher cache misses)</li>
+     *  <li>strong - ordinary references ( - higher cache hits, but not good if
+     *               server is going to run with limited heap size + under severe load).
+     *  </li>
+     * </ul>
+     * </p>
+     */
+    PERSISTENCE_CACHE_VALUE_REFERENCE_TYPE("persistence/cache/valueReferenceType", "strong", String.class),
+
+    /**
+     * Indicates weather print cache related statistics in 2 minutes interval in carbon log.
+     */
+    PERSISTENCE_CACHE_PRINT_STATS("persistence/cache/printStats", "false", Boolean.class),
+
+    
     /**
      * The ID generation class that is used to maintain unique IDs for each message that arrives at the server.
      */
@@ -519,7 +555,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     /**
      * Enable RDBMS slot information store
      */
-    SLOT_MANAGEMENT_STORAGE("slotManagement/storage", "Hazelcast",
+    SLOT_MANAGEMENT_STORAGE("slotManagement/storage", "RDBMS",
                                                   String.class);
 
 

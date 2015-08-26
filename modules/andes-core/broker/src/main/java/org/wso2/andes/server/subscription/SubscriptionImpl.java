@@ -285,7 +285,8 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                 }
 
                 sendToClient(entry, deliveryTag);
-
+                entry.dispose();
+                
             } catch (Exception e) {
 
                 // Try and shed more light about the exact context of the error (only in debug mode)

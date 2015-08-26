@@ -83,12 +83,6 @@ public class RDBMSConstants {
     
     protected static final String TRANSACTION_ROLLBACK_ERROR_SQL_STATE_CLASSES = "transactionRollbackSQLStateClasses";
     
-    /**
-     * Configuration name used to specify the size of the Cache in mega bytes.
-     * (configured in broker.xml: persistence/messageStore/)
-     */
-    protected static final String CACHE_SIZE = "cacheSize";
-    
     // Message Store tables
     protected static final String CONTENT_TABLE = "MB_CONTENT";
     protected static final String METADATA_TABLE = "MB_METADATA";

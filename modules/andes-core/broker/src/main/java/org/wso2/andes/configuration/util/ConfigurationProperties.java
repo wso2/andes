@@ -73,4 +73,49 @@ public class ConfigurationProperties {
         }
         return value;
     }
+    
+    /**
+     * Returns a value for the given property
+     * 
+     * @param propertyName
+     *            property name
+     * @param defaultValue
+     *            value to return if the property was not found.
+     * @return value for the property, default value if the property is not
+     *         found
+     */
+    public int getProperty(String propertyName, int defaultValue) {
+        String valueFromConfig = propertyValueMap.get(propertyName);
+        int value = 0;
+        
+        if (null  == valueFromConfig) {
+            value = defaultValue;
+        } else {
+            value = Integer.parseInt(valueFromConfig);
+        }
+        return value;
+    }
+    
+    /**
+     * Returns a value for the given property
+     * 
+     * @param propertyName
+     *            property name
+     * @param defaultValue
+     *            value to return if the property was not found.
+     * @return value for the property, default value if the property is not
+     *         found
+     */
+    public boolean getProperty(String propertyName, boolean defaultValue) {
+        String valueFromConfig = propertyValueMap.get(propertyName);
+        boolean value = false;
+        
+        if (null  == valueFromConfig) {
+            value = defaultValue;
+        } else {
+            value = Boolean.parseBoolean(valueFromConfig);
+        }
+        return value;
+    }
+    
 }
