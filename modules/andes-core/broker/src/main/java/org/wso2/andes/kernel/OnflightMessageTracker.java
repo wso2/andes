@@ -228,7 +228,10 @@ public class OnflightMessageTracker {
     }
 
     public void removeMessageFromTracker(Long messageID) {
-        msgId2MsgData.remove(messageID);
+        MessageData deletedMessage = msgId2MsgData.remove(messageID);
+        if (null != deletedMessage) {
+            deletedMessage.markAsStale();
+        }
     }
 
     /**
