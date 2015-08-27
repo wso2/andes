@@ -115,7 +115,6 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
             LocalSubscription subscription = AndesContext.getInstance().getSubscriptionStore()
                     .getLocalSubscriptionForChannelId(ack.getChannelID());
             subscription.ackReceived(ack.getMessageID());
-            event.clear();
         }
 
         /*
