@@ -370,8 +370,10 @@ public class MessageFlusher {
      * @param destination destination of messages to delete
      */
     public void clearUpAllBufferedMessagesForDelivery(String destination) {
-        subscriptionCursar4QueueMap.get(destination).clearReadButUndeliveredMessages();
-
+        //if subscriptions exist for the given destination, clear buffered messages
+        if (null != subscriptionCursar4QueueMap.get(destination)) {
+            subscriptionCursar4QueueMap.get(destination).clearReadButUndeliveredMessages();
+        }
     }
 
     /**
