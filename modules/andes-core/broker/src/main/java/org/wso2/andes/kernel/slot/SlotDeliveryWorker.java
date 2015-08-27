@@ -32,11 +32,14 @@ import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
 import org.wso2.andes.subscription.SubscriptionStore;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -60,7 +63,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      * There was no provision to remove messageBufferingTracker when last subscriber close before receive all messages in slot.
      * We use this map to delete remaining tracking when last subscriber close in particular destination.
      */
-    private final ConcurrentMap<String, Set<Slot>> subscriptionSlotTracker = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Map<String, Slot>> subscriptionSlotTracker = new ConcurrentHashMap<>();
 
     /**
      * Map to track messages being buffered to be sent <Id of the slot, messageID, MsgData reference>. We have to
@@ -183,17 +186,24 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                                                 messagesRead.size() + " storage queue= " + storageQueueName);
                                     }
 
-                                    subscriptionSlotTracker.putIfAbsent(storageQueueName,new HashSet<Slot>());
+                                    subscriptionSlotTracker.putIfAbsent(storageQueueName,new HashMap<String, Slot>());
 
-                                    Set<Slot> subscriptionSlots = subscriptionSlotTracker.get(storageQueueName);
+                                    Map<String, Slot> subscriptionSlots = subscriptionSlotTracker.get(storageQueueName);
 
-                                    subscriptionSlots.add(currentSlot);
+                                    Slot trackedSlot = subscriptionSlots.get(currentSlot.getId());
+                                    if (trackedSlot == null) {
+                                        subscriptionSlots.put(currentSlot.getId(), currentSlot);
+                                        trackedSlot = currentSlot;
+                                    } else {
+                                        if (log.isDebugEnabled()) {
+                                            log.debug("Overlapped slot received. Slot ID " + trackedSlot.getId());
+                                        }
+                                    }
 
-                                    filterOverlappedMessages(currentSlot, messagesRead);
-
-                                    MessageFlusher.getInstance().sendMessageToBuffer(messagesRead, currentSlot);
+                                    filterOverlappedMessages(trackedSlot, messagesRead);
+                                    MessageFlusher.getInstance().sendMessageToBuffer(messagesRead, trackedSlot);
                                     MessageFlusher.getInstance()
-                                                  .sendMessagesInBuffer(currentSlot
+                                                  .sendMessagesInBuffer(trackedSlot
                                                                                 .getDestinationOfMessagesInSlot());
                                 } else {
                                     currentSlot.setSlotInActive();
@@ -243,11 +253,11 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
     public void stopDeliveryForQueue(String storageQueue) {
         MessageFlusher.getInstance().clearUpAllBufferedMessagesForDelivery
                 (storageQueueNameToDestinationMap.get(storageQueue));
-        Set<Slot> orphanedSlots = subscriptionSlotTracker.remove(storageQueue);
+        Map<String, Slot> orphanedSlots = subscriptionSlotTracker.remove(storageQueue);
 
         // Check if there are any orphaned slots
         if (null != orphanedSlots) {
-            for (Slot slot:orphanedSlots) {
+            for (Slot slot : orphanedSlots.values()) {
                 clearAllTrackingWhenSlotOrphaned(slot);
             }
         }
@@ -442,7 +452,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
     public void deleteSlot(Slot slot) {
         SlotDeletionExecutor.getInstance().executeSlotDeletion(slot);
         releaseAllMessagesOfSlotFromTracking(slot);
-        subscriptionSlotTracker.get(slot.getStorageQueueName()).remove(slot);
+        subscriptionSlotTracker.get(slot.getStorageQueueName()).remove(slot.getId());
     }
 
     /**

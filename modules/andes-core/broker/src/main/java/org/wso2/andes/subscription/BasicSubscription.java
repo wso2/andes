@@ -117,6 +117,7 @@ public class BasicSubscription implements AndesSubscription {
             }
         }
 
+        this.unackedMessages = new ConcurrentSkipListMap<>();
         setStorageQueueName();
     }
 

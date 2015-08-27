@@ -291,6 +291,7 @@ public class MessageFlusher {
             MessageDeliveryInfo messageDeliveryInfo = getMessageDeliveryInfo(destination);
 
             for (AndesMessageMetadata metadata : messages) {
+                metadata.getTrackingData().decrementPendingAckCount();
                 messageDeliveryInfo.readButUndeliveredMessages.add(metadata);
                 //Tracing message
                 MessageTracer.trace(metadata, MessageTracer.METADATA_BUFFERED_FOR_DELIVERY);

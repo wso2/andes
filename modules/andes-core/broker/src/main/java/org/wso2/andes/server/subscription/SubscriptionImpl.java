@@ -21,17 +21,18 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.common.AMQPFilterTypes;
 import org.wso2.andes.common.ClientProperties;
-import org.wso2.andes.configuration.qpid.*;
+import org.wso2.andes.configuration.qpid.ConfigStore;
+import org.wso2.andes.configuration.qpid.ConfiguredObject;
+import org.wso2.andes.configuration.qpid.SessionConfig;
+import org.wso2.andes.configuration.qpid.SubscriptionConfig;
+import org.wso2.andes.configuration.qpid.SubscriptionConfigType;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.AndesUtils;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
-import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.server.filter.FilterManager;
 import org.wso2.andes.server.filter.FilterManagerFactory;
 import org.wso2.andes.server.flow.FlowCreditManager;
@@ -41,12 +42,11 @@ import org.wso2.andes.server.logging.actors.CurrentActor;
 import org.wso2.andes.server.logging.actors.SubscriptionActor;
 import org.wso2.andes.server.logging.messages.SubscriptionMessages;
 import org.wso2.andes.server.logging.subjects.SubscriptionLogSubject;
-import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.output.ProtocolOutputConverter;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
-import org.wso2.andes.kernel.AndesUtils;
+
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -261,20 +261,11 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                 // be resent
                 // when channel is available
                 if (getChannel().isClosing()) {
-                    
-                    
-                    
-                    
-                    AndesMessageMetadata message = AMQPUtils
-                            .convertAMQMessageToAndesMetadata((AMQMessage) entry.getMessage(), getChannel().getId());
 
                     if ( log.isDebugEnabled()){
-                        log.debug("channel getting closed therefore, not trying to deliver : " + message.getMessageID());
+                        log.debug("channel getting closed therefore, not trying to deliver : " + entry.getMessage().getMessageNumber()  );
                         
                     }
-
-                    
-                    MessagingEngine.getInstance().messageRejected(message);
                     return;
                 }
 

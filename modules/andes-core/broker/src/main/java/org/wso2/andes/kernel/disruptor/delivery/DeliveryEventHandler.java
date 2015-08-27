@@ -25,7 +25,6 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesRemovableMetadata;
 import org.wso2.andes.kernel.LocalSubscription;
-import org.wso2.andes.kernel.MessageFlusher;
 import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -90,24 +89,17 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                 if (!message.getTrackingData().isStale()) {
                     if (subscription.isActive()) {
                         subscription.sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
-                        subscription.addUnackedMessage(message);
-                        
+
                         //Tracing Message
                         MessageTracer.trace(message, MessageTracer.DISPATCHED_TO_PROTOCOL);
 
                         //Adding metrics meter for ack rate
                         Meter messageMeter = MetricManager.meter(Level.INFO, MetricsConstants.MSG_SENT_RATE);
                         messageMeter.mark();
-
-                    } else {
-                        //destination would be target queue if it is durable topic, otherwise it is queue or non durable topic
-                        if(subscription.isBoundToTopic() && subscription.isDurable()){
-                            message.setDestination(subscription.getTargetQueue());
-                        } else {
-                            message.setDestination(subscription.getSubscribedDestination());
-                        }
-                        MessageFlusher.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
                     }
+
+                    // We need to add the message to unacked list to requeue messages even if the client is not active.
+                    subscription.addUnackedMessage(message);
                 } // else we do not need to requeue since this is a stale message
             } catch (Throwable e) {
                 log.error("Error while delivering message. Message id " + message.getMessageID(), e);
