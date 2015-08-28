@@ -19,10 +19,14 @@
 package org.wso2.andes.subscription;
 
 import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.AndesUtils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
  * This represents Basic Andes Subscription. Any type of subscription
@@ -60,6 +64,11 @@ public class BasicSubscription implements AndesSubscription {
 
     // The subscription type the basic subscription belongs to, basically this represents the protocol - OPTIONAL
     private SubscriptionType subscriptionType;
+
+    /**
+     * List of messages scheduled to send but not acked
+     */
+    private ConcurrentSkipListMap<Long, AndesMessageMetadata> unackedMessages;
 
 
     /**
@@ -108,6 +117,7 @@ public class BasicSubscription implements AndesSubscription {
             }
         }
 
+        this.unackedMessages = new ConcurrentSkipListMap<>();
         setStorageQueueName();
     }
 
@@ -152,6 +162,7 @@ public class BasicSubscription implements AndesSubscription {
         this.targetQueueBoundExchangeType = targetQueueBoundExchangeType;
         this.isTargetQueueBoundExchangeAutoDeletable = isTargetQueueBoundExchangeAutoDeletable;
         this.hasExternalSubscriptions = hasExternalSubscriptions;
+        this.unackedMessages = new ConcurrentSkipListMap<>();
         setStorageQueueName();
     }
 
@@ -169,6 +180,26 @@ public class BasicSubscription implements AndesSubscription {
     @Override
     public SubscriptionType getSubscriptionType() {
         return subscriptionType;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AndesMessageMetadata> getUnackedMessages() {
+        return new ArrayList<>(unackedMessages.values());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addUnackedMessage(AndesMessageMetadata message) {
+        unackedMessages.put(message.getMessageID(), message);
+    }
+
+    protected void removeUnackedMessage(Long messageId) {
+        unackedMessages.remove(messageId);
     }
 
     /**

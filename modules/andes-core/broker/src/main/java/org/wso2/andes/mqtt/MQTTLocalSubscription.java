@@ -266,6 +266,7 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
     @Override
     public void ackReceived(long messageID) {
         unAckedMsgCount.decrementAndGet();
+        removeUnackedMessage(messageID);
         // Remove if received acknowledgment message id contains in retained message list.
         retainedMessageList.remove(messageID);
     }
@@ -273,6 +274,7 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
     @Override
     public void msgRejectReceived(long messageID) {
         unAckedMsgCount.decrementAndGet();
+        removeUnackedMessage(messageID);
     }
 
     @Override

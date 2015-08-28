@@ -279,6 +279,29 @@ public class MessageFlusher {
     }
 
     /**
+     * Send the messages to deliver
+     *
+     * @param destination
+     *         message destination
+     * @param messages
+     *         message to add
+     */
+    public void addAlreadyTrackedMessagesToBuffer(String destination, List<AndesMessageMetadata> messages) {
+        try {
+            MessageDeliveryInfo messageDeliveryInfo = getMessageDeliveryInfo(destination);
+
+            for (AndesMessageMetadata metadata : messages) {
+                metadata.getTrackingData().decrementPendingAckCount();
+                messageDeliveryInfo.readButUndeliveredMessages.add(metadata);
+                //Tracing message
+                MessageTracer.trace(metadata, MessageTracer.METADATA_BUFFERED_FOR_DELIVERY);
+            }
+        } catch (AndesException e) {
+            log.fatal("Error scheduling messages for delivery", e);
+        }
+    }
+
+    /**
      * Read messages from the buffer and send messages to subscribers
      */
     public void sendMessagesInBuffer(String subDestination) throws AndesException {
@@ -293,8 +316,7 @@ public class MessageFlusher {
         if (log.isDebugEnabled()) {
             for (String dest : subscriptionCursar4QueueMap.keySet()) {
                 log.debug("Queue size of destination " + dest + " is :"
-                        + subscriptionCursar4QueueMap.get(dest).readButUndeliveredMessages
-                        .size());
+                        + subscriptionCursar4QueueMap.get(dest).readButUndeliveredMessages.size());
             }
 
         }
@@ -302,8 +324,7 @@ public class MessageFlusher {
             if(log.isDebugEnabled()) {
                 log.debug(
                         "Sending messages from buffer num of msg = " + messageDeliveryInfo
-                                .readButUndeliveredMessages
-                                .size());
+                                .readButUndeliveredMessages.size());
             }
             sendMessagesToSubscriptions(messageDeliveryInfo.destination,
                     messageDeliveryInfo.readButUndeliveredMessages);

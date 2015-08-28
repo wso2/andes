@@ -32,6 +32,7 @@ import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Collection;
 import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -49,6 +50,12 @@ public class OrphanedSlotHandler implements SubscriptionListener {
     private final ExecutorService executor;
 
     /**
+     * This is used to get the matching local subscription when it leaves. Currently the object references returned
+     * for ADDED and DISCONNECTED are not the same even when it is actually the same subscriber.
+     */
+    private final ConcurrentHashMap<String, LocalSubscription> trackedSubscriptions;
+
+    /**
      * Manger used to notify of the stale storage queue
      */
     private SlotDeliveryWorkerManager slotDeliveryWorkerManager;
@@ -58,6 +65,7 @@ public class OrphanedSlotHandler implements SubscriptionListener {
                 .setNameFormat("AndesReassignSlotTaskExecutor").build();
         executor = Executors.newSingleThreadExecutor(namedThreadFactory);
         slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
+        trackedSubscriptions = new ConcurrentHashMap<>();
     }
 
     @Override
@@ -70,11 +78,17 @@ public class OrphanedSlotHandler implements SubscriptionListener {
     public void handleLocalSubscriptionsChanged(LocalSubscription subscription, SubscriptionChange changeType)
             throws AndesException {
         switch (changeType) {
-            case DELETED:
-                reAssignSlotsIfNeeded(subscription);
+            case ADDED:
+                trackedSubscriptions.put(subscription.getSubscriptionID(), subscription);
                 break;
+            case DELETED:
             case DISCONNECTED:
-                reAssignSlotsIfNeeded(subscription);
+                LocalSubscription matchingSubscription = trackedSubscriptions.remove(subscription.getSubscriptionID());
+                if (null != matchingSubscription) {
+                    reAssignSlotsIfNeeded(matchingSubscription);
+                } else {
+                    log.error("Deleting or disconnection a subscription which was not added previously");
+                }
                 break;
         }
     }
@@ -95,6 +109,9 @@ public class OrphanedSlotHandler implements SubscriptionListener {
                     .getActiveLocalSubscribers(destination, false);
             if (localSubscribersForQueue.size() == 0) {
                 scheduleSlotToReassign(subscription.getStorageQueueName());
+            } else {
+                slotDeliveryWorkerManager.rescheduleMessagesForDelivery(subscription.getStorageQueueName(),
+                                                                        subscription.getUnackedMessages());
             }
         }
     }
