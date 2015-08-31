@@ -322,7 +322,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
 
         if (null != andesMetadataIDs) {
-            List<Long> andesMessageIdList = Arrays.asList(ArrayUtils.toObject(andesMetadataIDs));
+            List<Long> andesMessageIdList = new ArrayList<>(Arrays.asList(ArrayUtils.toObject(andesMetadataIDs)));
             List<AndesRemovableMetadata> removableMetadataList = new ArrayList<>(andesMessageIdList.size());
 
             try {
@@ -394,7 +394,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
         if (null != andesMetadataIDs) {
 
-            List<Long> andesMessageIdList = Arrays.asList(ArrayUtils.toObject(andesMetadataIDs));
+            List<Long> andesMessageIdList = new ArrayList<>(Arrays.asList(ArrayUtils.toObject(andesMetadataIDs)));
             List<AndesRemovableMetadata> removableMetadataList = new ArrayList<>(andesMessageIdList.size());
 
             try {
