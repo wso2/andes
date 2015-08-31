@@ -436,12 +436,9 @@ public class MessageFlusher {
     public void reQueueUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message)
             throws AndesException {
         String destination = message.getDestination();
-            SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
-            Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
-                    .getActiveLocalSubscribers(destination, false);
-            if (localSubscribersForQueue.size() > 0) {
-                subscriptionCursar4QueueMap.get(destination).readButUndeliveredMessages.add(message);
-            }
+        message.getTrackingData().decrementPendingAckCount();
+
+        subscriptionCursar4QueueMap.get(destination).readButUndeliveredMessages.add(message);
     }
 
     public static MessageFlusher getInstance() {
