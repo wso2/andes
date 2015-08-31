@@ -110,6 +110,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
                 }
                 removableMetadata.add(new AndesRemovableMetadata(ack.getMessageID(), ack.getDestination(),
                         ack.getMsgStorageDestination()));
+                ack.makeRemovable();
             }
 
             LocalSubscription subscription = AndesContext.getInstance().getSubscriptionStore()

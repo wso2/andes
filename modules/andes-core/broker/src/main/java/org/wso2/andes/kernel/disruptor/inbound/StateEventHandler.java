@@ -85,7 +85,9 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
     }
 
     private void updateTrackerWithAck(InboundEventContainer event) throws AndesException {
-        OnflightMessageTracker.getInstance().handleAckReceived(event.ackData.getMessageID());
+        if (event.ackData.isRemovable()) {
+            OnflightMessageTracker.getInstance().decrementMessageCountInSlot(event.ackData.getMessageID());
+        }
     }
 
     /**
