@@ -69,13 +69,23 @@ public class GuavaBasedMessageCacheImpl implements AndesMessageCache {
      * Flag indicating guava cache statistics should be printed on logs
      */
     private final boolean printStats;
+
+    /**
+     * Max chunk size of the stored content in Andes. This is needed to count the index
+     * of a particular chunk in the chunk list when the offset is given.
+     *
+     */
+    private static int DEFAULT_CONTENT_CHUNK_SIZE;
     
     
     
     public GuavaBasedMessageCacheImpl(){
 
-        long cacheSizeInBytes =
-                                1024L * 1024L * ( (int) AndesConfigurationManager.readValue(AndesConfiguration.PERSISTENCE_CACHE_SIZE));
+        DEFAULT_CONTENT_CHUNK_SIZE = AndesConfigurationManager.readValue(AndesConfiguration
+                                                                         .PERFORMANCE_TUNING_MAX_CONTENT_CHUNK_SIZE);
+
+        long cacheSizeInBytes = 1024L * 1024L * ( (int) AndesConfigurationManager.readValue(AndesConfiguration
+                                                                                            .PERSISTENCE_CACHE_SIZE));
 
         int cacheConcurrency =
                 AndesConfigurationManager.readValue(AndesConfiguration.PERSISTENCE_CACHE_CONCURRENCY_LEVEL);
@@ -83,7 +93,8 @@ public class GuavaBasedMessageCacheImpl implements AndesMessageCache {
         int cacheExpirySeconds =
                 AndesConfigurationManager.readValue(AndesConfiguration.PERSISTENCE_CACHE_EXPIRY_SECONDS);
 
-        String valueRefType = AndesConfigurationManager.readValue(AndesConfiguration.PERSISTENCE_CACHE_VALUE_REFERENCE_TYPE);
+        String valueRefType = AndesConfigurationManager.readValue(AndesConfiguration
+                                                                  .PERSISTENCE_CACHE_VALUE_REFERENCE_TYPE);
         printStats = AndesConfigurationManager.readValue(AndesConfiguration.PERSISTENCE_CACHE_PRINT_STATS);
 
         CacheBuilder<Long, AndesMessage> builder = CacheBuilder.newBuilder().concurrencyLevel(cacheConcurrency)
@@ -190,17 +201,13 @@ public class GuavaBasedMessageCacheImpl implements AndesMessageCache {
         AndesMessage cachedMessage = getMessageFromCache(messageId);
         AndesMessagePart part = null;
         if (null != cachedMessage) {
-            part = cachedMessage.getContentChunkList().get(offsetValue);
-            if (null == part) {
-                for (AndesMessagePart currentPart : cachedMessage.getContentChunkList()) {
-                    if (currentPart.getOffSet() == offsetValue) {
-                        part = currentPart;
-                    }
-                }
-            }
+            //the offset comes as a multiple of DEFAULT_CONTENT_CHUNK_SIZE after being converted in method
+            //'fillBufferFromContent' in {@link org.wso2.andes.amqp.AMQPUtils}
+            //therefore, offsetValue / DEFAULT_CONTENT_CHUNK_SIZE gives the correct index of a particular chunk
+            // in the content chunk list
+            part = getMessageFromCache(messageId).getContentChunkList().get(offsetValue / DEFAULT_CONTENT_CHUNK_SIZE);
         }
         return part;
-
     }
 
 }

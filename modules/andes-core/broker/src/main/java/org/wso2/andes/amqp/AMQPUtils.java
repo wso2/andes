@@ -279,7 +279,7 @@ public class AMQPUtils {
      * @return Written byte count
      * @throws AndesException
      */
-    public static int getMessageContentChunkConvertedCorrectly(long messageId, int offsetValue, ByteBuffer dst) throws AndesException {
+    public static int fillBufferFromContent(long messageId, int offsetValue, ByteBuffer dst) throws AndesException {
         int written = 0;
         int initialBufferSize = dst.remaining();
         int currentOffsetValue = offsetValue;
