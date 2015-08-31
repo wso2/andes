@@ -31,6 +31,11 @@ public class AndesAckData {
     private boolean isTopic;
     private UUID channelID;
 
+    /**
+     * Indicate if this is a removable ack data.
+     */
+    private boolean isRemovable;
+
     public AndesAckData(){}
 
     public AndesAckData(UUID channelID, long messageID, String destination, String msgStorageDestination, boolean isTopic) {
@@ -39,6 +44,7 @@ public class AndesAckData {
         this.destination = destination;
         this.msgStorageDestination = msgStorageDestination;
         this.isTopic = isTopic;
+        this.isRemovable = false;
     }
 
     public AndesRemovableMetadata convertToRemovableMetaData() {
@@ -85,4 +91,19 @@ public class AndesAckData {
         this.channelID = channelID;
     }
 
+    /**
+     * Mark ack data as removable
+     */
+    public void makeRemovable() {
+        isRemovable = true;
+    }
+
+    /**
+     * Check if the ack data can be removed
+     *
+     * @return True if ack data can be removed
+     */
+    public boolean isRemovable() {
+        return isRemovable;
+    }
 }

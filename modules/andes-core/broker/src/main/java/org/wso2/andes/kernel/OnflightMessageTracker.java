@@ -180,13 +180,11 @@ public class OnflightMessageTracker {
         return isOKToDeleteMessage;
     }
     
-    public void handleAckReceived(long messageID) throws AndesException {
+    public void decrementMessageCountInSlot(long messageID) throws AndesException {
         //release delivery tracing
         MessageData trackingData = getTrackingData(messageID);
 
-        if (trackingData.allAcksReceived()) {
-            decrementMessageCountInSlot(trackingData.slot);
-        }
+        decrementMessageCountInSlot(trackingData.slot);
     }
 
     /**
