@@ -39,8 +39,17 @@ public class AndesSubscriptionManager {
 
     private SubscriptionStore subscriptionStore;
 
+    /**
+     * listeners who are interested in local subscription changes
+     */
     private List<SubscriptionListener> subscriptionListeners = new ArrayList<>();
 
+    /**
+     * this lock is to ensure that there is no concurrent cluster subscription
+     * modifications happen. AndesRecoveryTask and Hazelcast notification based
+     * subscription modifications can happen in parallel.
+     * Fixing: https://wso2.org/jira/browse/MB-1213
+     */
     private final ReadWriteLock clusterSubscriptionModifyLock = new ReentrantReadWriteLock();
 
 
@@ -163,7 +172,7 @@ public class AndesSubscriptionManager {
                         LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription(sub);
                         mockSubscription.close();
 
-                        /**
+                        /*
                          * Close and notify. This is like closing local subscribers of that node thus we need to notify
                          * to cluster.
                          */
@@ -407,13 +416,11 @@ public class AndesSubscriptionManager {
                 }
                 //check if each memory subscription is in DB. If not remove from memory
                 if(null != memorySubscriptions) {
-                    Iterator<AndesSubscription> memSubIterator = memorySubscriptions.iterator();
-                    while (memSubIterator.hasNext()) {
-                        AndesSubscription currentSubscription = memSubIterator.next();
-                        if (!dbSubscriptions.contains(currentSubscription)) {
+                    for (AndesSubscription memorySubscription : memorySubscriptions) {
+                        if (!dbSubscriptions.contains(memorySubscription)) {
                             log.warn("Cluster Subscriptions are not in sync. Subscriptions exist in memory that are not " +
-                                    "available in db. Thus removing from memory " + currentSubscription);
-                            subscriptionsToRemove.add(currentSubscription);
+                                    "available in db. Thus removing from memory " + memorySubscription);
+                            subscriptionsToRemove.add(memorySubscription);
                         }
                     }
                 }
@@ -433,13 +440,11 @@ public class AndesSubscriptionManager {
                 }
                 //check if each memory subscription is in DB. If not remove from memory
                 if(null != memorySubscriptions) {
-                    Iterator<AndesSubscription> memSubIterator = memorySubscriptions.iterator();
-                    while (memSubIterator.hasNext()) {
-                        AndesSubscription currentSubscription = memSubIterator.next();
-                        if (!dbSubscriptions.contains(currentSubscription)) {
+                    for (AndesSubscription memorySubscription : memorySubscriptions) {
+                        if (!dbSubscriptions.contains(memorySubscription)) {
                             log.warn("Cluster Subscriptions are not in sync. Subscriptions exist in memory that are not " +
-                                    "available in db. Thus removing from memory " + currentSubscription);
-                            subscriptionsToRemove.add(currentSubscription);
+                                    "available in db. Thus removing from memory " + memorySubscription);
+                            subscriptionsToRemove.add(memorySubscription);
                         }
                     }
                 }
