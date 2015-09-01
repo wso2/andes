@@ -612,6 +612,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 .start();
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
+        //Remove the message from cache
+        removeFromCache(messageId);
+
         try {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_MOVE_METADATA_TO_DLC);
@@ -645,6 +648,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Context moveMetadataToDLCContext = MetricManager.timer(Level.INFO, MetricsConstants.MOVE_METADATA_TO_DLC)
                 .start();
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
+
+        //remove messages from cache
+        removeFromCache(messageIds);
 
         try {
             connection = getConnection();
@@ -2133,6 +2139,15 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     private void removeFromCache(List<Long> messagesToRemove) {
         messageCache.removeFromCache(messagesToRemove);
+    }
+
+    /**
+     * Removes a message with a given Id from the cache
+     *
+     * @param messageToRemove message Id of the message to be removed
+     */
+    private void removeFromCache(long messageToRemove) {
+        messageCache.removeFromCache(messageToRemove);
     }
 
     /**

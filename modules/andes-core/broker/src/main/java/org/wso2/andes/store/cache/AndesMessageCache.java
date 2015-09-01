@@ -50,6 +50,13 @@ public interface AndesMessageCache {
     abstract void removeFromCache(List<Long> messagesToRemove);
 
     /**
+     * Removes a message with a given id from the cache
+     *
+     * @param messagesToRemove list of message Ids
+     */
+    abstract void removeFromCache(long messageToRemove);
+
+    /**
      * Returns a message if found in cache
      * 
      * @param messageId
