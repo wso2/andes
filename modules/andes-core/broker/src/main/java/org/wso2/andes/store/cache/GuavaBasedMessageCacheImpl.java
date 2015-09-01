@@ -149,6 +149,15 @@ public class GuavaBasedMessageCacheImpl implements AndesMessageCache {
      *
      */
     @Override
+    public void removeFromCache(long messageToRemove) {
+        cache.invalidate(messageToRemove);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     */
+    @Override
     public AndesMessage getMessageFromCache(long messageId) {
 
         return cache.getIfPresent(messageId);

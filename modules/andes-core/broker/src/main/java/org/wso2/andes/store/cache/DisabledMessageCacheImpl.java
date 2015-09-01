@@ -50,6 +50,13 @@ public class DisabledMessageCacheImpl implements AndesMessageCache {
      * {@inheritDoc}
      */
     @Override
+    public void removeFromCache(long messageToRemove) {
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public AndesMessage getMessageFromCache(long messageId) {
 
         return null;
