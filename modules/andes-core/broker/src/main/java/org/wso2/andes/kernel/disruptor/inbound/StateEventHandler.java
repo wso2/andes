@@ -68,6 +68,7 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
                     break;
                 case ACKNOWLEDGEMENT_EVENT:
                     updateTrackerWithAck(event);
+                    break;
                 case SAFE_ZONE_DECLARE_EVENT:
                     updateSlotDeleteSafeZone(event);
                     break;
