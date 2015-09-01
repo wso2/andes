@@ -578,10 +578,10 @@ public class SubscriptionStore {
 
             if (type == SubscriptionChange.ADDED) {
                 andesContextStore.storeDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
-                log.info("New local subscription " + type + " " + subscription.toString());
+                log.info("Local subscription " + type + " " + subscription.toString());
             } else { // @DISCONNECT
                 andesContextStore.updateDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
-                log.info("New local subscription " + type + " " + subscription.toString());
+                log.info("Local subscription " + type + " " + subscription.toString());
             }
 
             //add or update local subscription map
@@ -612,7 +612,7 @@ public class SubscriptionStore {
 
         } else if (type == SubscriptionChange.DELETED) {
             removeLocalSubscription(subscription);
-            log.info("Local Subscription Removed " + subscription.toString());
+            log.info("Local Subscription "  + type + " " + subscription.toString());
         }
         // Update channel id map
         if (type == SubscriptionChange.ADDED) {
