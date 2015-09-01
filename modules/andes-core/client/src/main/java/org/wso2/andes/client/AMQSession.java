@@ -3146,11 +3146,13 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                    (expiryTime == 0L ? (expiryTime = System.currentTimeMillis() + FLOW_CONTROL_WAIT_FAILURE)
                                      : expiryTime) >= System.currentTimeMillis() )
             {
-                //Check if failover already started, if true, then return
+                //Check if failover already started, if true, then throw an exception and return
                 //otherwise this cause timeout of publisher because failover thread waiting on lock
                 //which acquired by flow control thread
                 if(getAMQConnection()._protocolHandler.getIsFailoverStart().get()) {
-                    return false;
+                    String errorMessage = "Flow control enable while failover.";
+                    log.error(errorMessage);
+                    throw new JMSException(errorMessage);
                 }
                 flowControlIndicator.wait(FLOW_CONTROL_WAIT_PERIOD);
                 log.info("Message send delayed by " + (System.currentTimeMillis() +
