@@ -48,12 +48,12 @@ public class ConnectionSettings
     
     // SSL props
     boolean useSSL;
-    String keyStorePath = System.getProperty("javax.net.ssl.keyStore");
-    String keyStorePassword = System.getProperty("javax.net.ssl.keyStorePassword");
-    String keyStoreCertType = System.getProperty("qpid.ssl.keyStoreCertType","SunX509");;
-    String trustStoreCertType = System.getProperty("qpid.ssl.trustStoreCertType","SunX509");;
-    String trustStorePath = System.getProperty("javax.net.ssl.trustStore");;
-    String trustStorePassword = System.getProperty("javax.net.ssl.trustStorePassword");;
+    String keyStorePath;
+    String keyStorePassword;
+    String keyStoreCertType;
+    String trustStoreCertType;
+    String trustStorePath;
+    String trustStorePassword;
     String certAlias;
     boolean verifyHostname;
     
@@ -153,6 +153,15 @@ public class ConnectionSettings
     public void setUseSSL(boolean useSSL)
     {
         this.useSSL = useSSL;
+
+        if (useSSL) {
+            keyStorePath = System.getProperty("javax.net.ssl.keyStore");
+            keyStorePassword = System.getProperty("javax.net.ssl.keyStorePassword");
+            keyStoreCertType = System.getProperty("qpid.ssl.keyStoreCertType","SunX509");;
+            trustStoreCertType = System.getProperty("qpid.ssl.trustStoreCertType","SunX509");;
+            trustStorePath = System.getProperty("javax.net.ssl.trustStore");;
+            trustStorePassword = System.getProperty("javax.net.ssl.trustStorePassword");;
+        }
     }
 
     public boolean isUseSASLEncryption()

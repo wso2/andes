@@ -163,19 +163,19 @@ public class SSLUtil
         InputStream in = null;
         try
         {
-            File f = new File(storePath);
-            if (f.exists())
-            {
-                in = new FileInputStream(f);
+
+            in = Thread.currentThread().getContextClassLoader().getResourceAsStream(storePath);
+
+            if (null == in) { // Resource was not found in the classpath. Try to load it from the file system.
+                File f = new File(storePath);
+                if (f.exists())
+                {
+                    in = new FileInputStream(f);
+                } else {
+                    throw new IOException("Unable to load keystore resource: " + storePath);
+                }
             }
-            else 
-            {
-                in = Thread.currentThread().getContextClassLoader().getResourceAsStream(storePath);
-            }
-            if (in == null)
-            {
-                throw new IOException("Unable to load keystore resource: " + storePath);
-            }
+
             ks.load(in, storePassword.toCharArray());
         }
         finally

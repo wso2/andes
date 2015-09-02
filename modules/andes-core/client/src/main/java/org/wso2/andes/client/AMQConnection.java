@@ -25,6 +25,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
 import java.nio.channels.UnresolvedAddressException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -270,7 +272,7 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
         else
         {
             // use the default value set for all connections
-            _maxPrefetch = Integer.parseInt(System.getProperties().getProperty(ClientProperties.MAX_PREFETCH_PROP_NAME,
+            _maxPrefetch = Integer.parseInt(System.getProperty(ClientProperties.MAX_PREFETCH_PROP_NAME,
                     ClientProperties.MAX_PREFETCH_DEFAULT));
         }
 
@@ -323,7 +325,13 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
             _useLegacyMapMessageFormat = Boolean.getBoolean(ClientProperties.USE_LEGACY_MAP_MESSAGE_FORMAT);
         }
 
-        String amqpVersion = System.getProperty((ClientProperties.AMQP_VERSION), "0-10");
+        // Requires permission java.util.PropertyPermission "qpid.amqp.version", "write"
+        String amqpVersion = AccessController.doPrivileged(new PrivilegedAction<String>() {
+            public String run() {
+                return System.getProperty((ClientProperties.AMQP_VERSION), "0-10");
+            }
+        });
+
         _logger.debug("AMQP version " + amqpVersion);
 
         _failoverPolicy = new FailoverPolicy(connectionURL, this);
@@ -610,14 +618,53 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
         return false;
     }
 
-    public ProtocolVersion makeBrokerConnection(BrokerDetails brokerDetail) throws IOException, AMQException
+    public ProtocolVersion makeBrokerConnection(final BrokerDetails brokerDetail) throws IOException, AMQException
     {
-        return _delegate.makeBrokerConnection(brokerDetail);
+        // Requires permission java.lang.RuntimePermission "modifyThreadGroup"
+        Object returnObject = AccessController.doPrivileged(new PrivilegedAction() {
+            public Object run() {
+                try {
+                    return _delegate.makeBrokerConnection(brokerDetail);
+                } catch (IOException | AMQException e) {
+                    return e;
+                }
+            }
+        });
+
+        if (returnObject instanceof ProtocolVersion) {
+            return (ProtocolVersion) returnObject;
+        } else if (returnObject instanceof IOException) {
+            throw (IOException) returnObject;
+        } else if (returnObject instanceof AMQException) {
+            throw (AMQException) returnObject;
+        } else {
+            return null;
+        }
+
     }
 
-    public <T, E extends Exception> T executeRetrySupport(FailoverProtectedOperation<T,E> operation) throws E
+    public <T, E extends Exception> T executeRetrySupport(final FailoverProtectedOperation<T,E> operation) throws E
     {
-        return _delegate.executeRetrySupport(operation);
+        // Requires permission java.lang.RuntimePermission "modifyThreadGroup"
+        Object returnObject = AccessController.doPrivileged(new PrivilegedAction() {
+            public Object run() {
+                try {
+                    return _delegate.executeRetrySupport(operation);
+                } catch (Exception e) {
+                    return e;
+                }
+
+
+            }
+        });
+
+        if (returnObject instanceof Exception) {
+            // Assuming all exception in above method are caught
+            throw (E) returnObject;
+        } else {
+            return (T) returnObject;
+        }
+
     }
 
     /**
@@ -880,8 +927,14 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
 
 	                    closeAllSessions(null, timeout, startCloseTime);
 
-                        //This MUST occur after we have successfully closed all Channels/Sessions
-                        _taskPool.shutdown();
+                        // Requires permission java.lang.RuntimePermission "modifyThread"
+                        AccessController.doPrivileged(new PrivilegedAction() {
+                            public Object run() {
+                                //This MUST occur after we have successfully closed all Channels/Sessions
+                                _taskPool.shutdown();
+                                return null; // nothing to return
+                            }
+                        });
 
                         if (!_taskPool.isTerminated())
                         {

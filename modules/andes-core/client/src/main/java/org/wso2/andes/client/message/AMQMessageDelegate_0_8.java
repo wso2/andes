@@ -57,7 +57,7 @@ public class AMQMessageDelegate_0_8 extends AbstractAMQMessageDelegate
     private Destination _destination;
     private JMSHeaderAdapter _headerAdapter;
     private static final boolean STRICT_AMQP_COMPLIANCE =
-            Boolean.parseBoolean(System.getProperties().getProperty(AMQSession.STRICT_AMQP, AMQSession.STRICT_AMQP_DEFAULT));
+            Boolean.parseBoolean(System.getProperty(AMQSession.STRICT_AMQP, AMQSession.STRICT_AMQP_DEFAULT));
 
     private ContentHeaderProperties _contentHeaderProperties;
     /** If the acknowledge mode is CLIENT_ACKNOWLEDGE the session is required */
