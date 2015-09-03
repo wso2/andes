@@ -201,7 +201,7 @@ public class QpidAndesBridge {
     public static int getMessageContentChunk(long messageID, int offsetInMessage, ByteBuffer dst) throws AMQException {
         int contentLenWritten;
         try {
-            contentLenWritten = AMQPUtils.getMessageContentChunkConvertedCorrectly(messageID, offsetInMessage, dst);
+            contentLenWritten = AMQPUtils.fillBufferFromContent(messageID, offsetInMessage, dst);
         } catch (AndesException e) {
             log.error("Error in getting message content", e);
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error in getting message content chunk messageID " + messageID + " offset=" + offsetInMessage, e);
