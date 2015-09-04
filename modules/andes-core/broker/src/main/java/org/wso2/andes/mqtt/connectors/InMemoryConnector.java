@@ -23,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTException;
@@ -52,7 +53,7 @@ public class InMemoryConnector implements MQTTConnector {
      * {@inheritDoc}
      */
     @Override
-    public void messageAck(long messageID, String topicName, String storageName, UUID subChannelID)
+    public void messageAck(long messageID,UUID subChannelID)
             throws AndesException {
         //Fully in-memory mode will only be compatible for messages with QoS 0 therefore a message ack will not be,
         //received
@@ -60,7 +61,7 @@ public class InMemoryConnector implements MQTTConnector {
     }
 
     @Override
-    public void messageNack(AndesMessageMetadata metadata) {
+    public void messageNack(DeliverableAndesMetadata metadata, UUID channelID) {
 
     }
 
@@ -153,8 +154,9 @@ public class InMemoryConnector implements MQTTConnector {
             try {
                 //We allow only QoS 0 messages to be exchanged in-memory
                 int memoryQoSLevel = 0;
-                MQTTopicManager.getInstance().distributeMessageToSubscriber(topic,topic, messages, messageID,
-                        memoryQoSLevel, retain, subChannel, memoryQoSLevel,new AndesMessageMetadata());
+                MQTTopicManager.getInstance().distributeMessageToSubscriber(topic, messages, messageID,
+                        memoryQoSLevel, retain, subChannel, memoryQoSLevel,new DeliverableAndesMetadata(null,0L,
+                                null,false));
                 if (log.isDebugEnabled()) {
                     log.debug("Message " + messageID + " Delivered to subscription " + subChannel + " to topic " + topic);
                 }

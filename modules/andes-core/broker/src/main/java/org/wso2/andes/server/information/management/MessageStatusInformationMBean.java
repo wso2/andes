@@ -1,6 +1,7 @@
 package org.wso2.andes.server.information.management;
 
 import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.management.common.mbeans.MessageStatusInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanConstructor;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
@@ -10,6 +11,7 @@ import org.wso2.andes.server.management.AMQManagedObject;
 import javax.management.JMException;
 import java.io.File;
 import java.io.IOException;
+import java.util.Collection;
 
 public class MessageStatusInformationMBean extends AMQManagedObject
         implements MessageStatusInformation {
@@ -38,7 +40,11 @@ public class MessageStatusInformationMBean extends AMQManagedObject
             fileToWriteMessageStatus.getParentFile().mkdirs();
             fileToWriteMessageStatus.createNewFile();
 
-            OnflightMessageTracker.getInstance().dumpMessageStatusToFile(fileToWriteMessageStatus);
+            Collection<DeliverableAndesMetadata> trackingData = OnflightMessageTracker.getInstance()
+                                                                                         .getAllTrackingData();
+            for (DeliverableAndesMetadata deliverableAndesMetadata : trackingData) {
+                deliverableAndesMetadata.dumpMessageStatusToFile(fileToWriteMessageStatus);
+            }
         } catch (AndesException e) {
             throw new RuntimeException("Internal error while dumping message status", e);
         } catch (IOException e) {

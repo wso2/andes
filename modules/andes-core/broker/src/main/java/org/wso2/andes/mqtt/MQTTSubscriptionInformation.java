@@ -18,6 +18,7 @@
 package org.wso2.andes.mqtt;
 
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
 
 /**
  * Holds information relevant to a message which is on the fly
@@ -30,18 +31,18 @@ public class MQTTSubscriptionInformation {
      * This data is required, if a message is not acked by a given time frame the rejection handle will be called
      * {@link org.wso2.andes.kernel.Andes#messageRejected(org.wso2.andes.kernel.AndesMessageMetadata)}
      */
-    private AndesMessageMetadata metadata;
+    private DeliverableAndesMetadata metadata;
 
     /**
      * The reference to the local message id generated to represent the cluster message
      */
     private Integer localMessageID;
 
-    public AndesMessageMetadata getMetadata() {
+    public DeliverableAndesMetadata getMetadata() {
         return metadata;
     }
 
-    public void setMetadata(AndesMessageMetadata metadata) {
+    public void setMetadata(DeliverableAndesMetadata metadata) {
         this.metadata = metadata;
     }
 

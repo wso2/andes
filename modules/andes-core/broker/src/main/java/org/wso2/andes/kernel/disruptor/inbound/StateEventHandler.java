@@ -87,7 +87,7 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
 
     private void updateTrackerWithAck(InboundEventContainer event) throws AndesException {
         if (event.ackData.isRemovable()) {
-            OnflightMessageTracker.getInstance().decrementMessageCountInSlot(event.ackData.getMessageID());
+            event.ackData.getAcknowledgedMessage().getSlot().decrementPendingMessageCount();
         }
     }
 

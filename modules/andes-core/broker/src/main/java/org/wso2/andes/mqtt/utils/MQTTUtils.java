@@ -125,7 +125,6 @@ public class MQTTUtils {
         messageHeader.setDestination(topic);
         messageHeader.setPersistent(true);
         messageHeader.setRetain(retain);
-        messageHeader.setChannelId(publisher.getClusterID());
         messageHeader.setMessageContentLength(messageContentLength);
         messageHeader.setStorageQueueName(topic);
         messageHeader.setMetaDataType(MessageMetaDataType.META_DATA_MQTT);

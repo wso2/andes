@@ -20,6 +20,8 @@ package org.wso2.andes.mqtt;
 
 import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
+
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,10 +44,7 @@ public class MQTTSubscription {
      * Specifies the channel id of the subscriber
      */
     private String subscriberChannelID;
-    /**
-     * Specifies the storage identifier of the subscription
-     */
-    private String storageIdentifier;
+
     /**
      * Specifies the subscription channel
      */
@@ -72,7 +71,7 @@ public class MQTTSubscription {
      * value - message information {@link org.wso2.andes.mqtt.MQTTSubscriptionInformation}
      */
     private Map<Long, MQTTSubscriptionInformation> clusterMessageToMessageInformation =
-            new ConcurrentHashMap<Long, MQTTSubscriptionInformation>();
+            new ConcurrentHashMap<>();
 
     /**
      * Will add the details of the message that will be delivered among the topicOccurrences
@@ -81,7 +80,7 @@ public class MQTTSubscription {
      * @param mid              a locally generated id for the subscriber
      * @param metaInfo         holds message information relevant to the message
      */
-    public void markSent(long clusterMessageID, int mid, AndesMessageMetadata metaInfo) {
+    public void markSent(long clusterMessageID, int mid, DeliverableAndesMetadata metaInfo) {
         localMessageToClusterMessage.put(mid, clusterMessageID);
 
         MQTTSubscriptionInformation subscriptionInfo = new MQTTSubscriptionInformation();
@@ -130,7 +129,7 @@ public class MQTTSubscription {
      * @param localID the local message id generated before dispatching the message to its subscriptions
      * @return the meta information relevant for the message
      */
-    public AndesMessageMetadata getMessageMetaInformation(Integer localID){
+    public DeliverableAndesMetadata getMessageMetaInformation(Integer localID){
         long clusterID = localMessageToClusterMessage.get(localID);
 
         MQTTSubscriptionInformation mqttSubscriptionInformation = clusterMessageToMessageInformation.get(clusterID);
@@ -164,23 +163,6 @@ public class MQTTSubscription {
         this.subscriptionChannel = subscriptionChannel;
     }
 
-    /**
-     * The storage representation of the message
-     *
-     * @return the storage name where the message would be represented
-     */
-    public String getStorageIdentifier() {
-        return storageIdentifier;
-    }
-
-    /**
-     * The storage representation of the subscription
-     *
-     * @param storageIdentifier the identification of the storage representation
-     */
-    public void setStorageIdentifier(String storageIdentifier) {
-        this.storageIdentifier = storageIdentifier;
-    }
 
     /**
      * Will allow retrieval of the unique identifier of the subscriber

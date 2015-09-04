@@ -20,6 +20,7 @@ package org.wso2.andes.server.queue;
 
 
 import org.apache.log4j.Logger;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.*;
@@ -27,11 +28,14 @@ import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.kernel.AndesConstants;
+import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.message.ServerMessage;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.registry.IApplicationRegistry;
 import org.wso2.andes.server.virtualhost.VirtualHost;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
+import org.wso2.andes.subscription.LocalSubscription;
+import org.wso2.andes.subscription.OutboundSubscription;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -103,7 +107,7 @@ public class DLCQueueUtils {
 
         String dlcQueueName;
 
-        if (org.wso2.carbon.base.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME == tenantName) {
+        if (org.wso2.carbon.base.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equals(tenantName)) {
             dlcQueueName = AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
         } else {
             dlcQueueName = tenantName + AndesConstants.TENANT_SEPARATOR + AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
@@ -123,11 +127,12 @@ public class DLCQueueUtils {
                     .getInstance());
             queueListener.handleLocalQueuesChanged(andesQueue, QueueListener.QueueEvent.ADDED);
             String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
-            LocalSubscription mockSubscription =
-                    new AMQPLocalSubscription(queueRegistry.getQueue(new AMQShortString(dlcQueueName)),
-                            null, "0", dlcQueueName, false, false, true, nodeID,
-                            System.currentTimeMillis(), dlcQueueName, tenantOwner,
-                            ExchangeDefaults.DIRECT_EXCHANGE_NAME.toString(), "DIRECT", null, false);
+            OutboundSubscription protocolSub = new AMQPLocalSubscription(queueRegistry.getQueue(new AMQShortString
+                    (dlcQueueName)), null, true, false);
+
+            LocalSubscription mockSubscription = new LocalSubscription(protocolSub, "0", dlcQueueName, false, false,
+                    true, nodeID, System.currentTimeMillis(), dlcQueueName, tenantOwner,
+                    ExchangeDefaults.DIRECT_EXCHANGE_NAME.toString(), "DIRECT", null, false);
 
             //TODO: review why we need a subscription for DLC at startup
             AndesContext.getInstance().getSubscriptionStore().createDisconnectOrRemoveClusterSubscription
@@ -144,25 +149,29 @@ public class DLCQueueUtils {
      *         Message to be moved to DLC
      */
     public static void addToDeadLetterChannel(QueueEntry message) {
-        ServerMessage amqMessage = message.getMessage();
+        try {
+
+        AMQMessage amqMessage = (AMQMessage)message.getMessage();
         Long messageID = amqMessage.getMessageNumber();
         String storageQueue = amqMessage.getRoutingKey();
-        AndesRemovableMetadata removableMessage = new AndesRemovableMetadata(messageID, storageQueue, storageQueue);
+        AndesMessageMetadata messageToMove = AMQPUtils.convertAMQMessageToAndesMetadata(amqMessage);
+        messageToMove.setStorageQueueName(storageQueue);
 
-        List<AndesRemovableMetadata> messageToMoveToDLC = new ArrayList<>();
-        messageToMoveToDLC.add(removableMessage);
+        List<AndesMessageMetadata> messageToMoveToDLC = new ArrayList<>();
+        messageToMoveToDLC.add(messageToMove);
 
-        try {
-            if (log.isDebugEnabled()) {
-                log.debug("Moving message to Dead Letter Channel. Message ID " + messageID);
-            }
-            Andes.getInstance().deleteMessages(messageToMoveToDLC, true);
+        if (log.isDebugEnabled()) {
+            log.debug("Moving message to Dead Letter Channel. Message ID " + messageID);
+        }
+
+        Andes.getInstance().deleteMessages(messageToMoveToDLC, true);
+
         } catch (AndesException dlcException) {
             // If an exception occur in this level, it means that there is a message store level error.
             // There's a possibility that we might lose this message
             // If the message is not removed the slot will not get removed which will lead to an
             // inconsistency
-            log.error("Error moving message " + messageID + " to dead letter channel.", dlcException);
+            log.error("Error moving message " + message.getMessage().getMessageNumber() + " to dead letter channel.", dlcException);
         }
     }
 }

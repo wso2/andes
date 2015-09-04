@@ -30,6 +30,7 @@ import com.lmax.disruptor.Sequencer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -144,7 +145,7 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
                 while (nextSequence <= availableSequence) {
                     event = ringBuffer.get(nextSequence);
 
-                    AndesMessageMetadata metadata = event.getMetadata();
+                    DeliverableAndesMetadata metadata = event.getMetadata();
                     long currentMessageID = metadata.getMessageID();
                     currentTurn = currentMessageID % groupCount;
                     if (turn == currentTurn) {

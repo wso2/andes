@@ -21,15 +21,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.kernel.Andes;
-import org.wso2.andes.kernel.AndesAckData;
-import org.wso2.andes.kernel.AndesChannel;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessage;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
+import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
 import org.wso2.andes.mqtt.MQTTException;
 import org.wso2.andes.mqtt.MQTTLocalSubscription;
 import org.wso2.andes.mqtt.MQTTMessage;
@@ -38,6 +32,7 @@ import org.wso2.andes.mqtt.MQTTPublisherChannel;
 import org.wso2.andes.mqtt.MQTTopicManager;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.subscription.LocalSubscription;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -53,32 +48,29 @@ import java.util.UUID;
 public class PersistenceStoreConnector implements MQTTConnector {
 
     private static Log log = LogFactory.getLog(PersistenceStoreConnector.class);
-    private static final String MQTT_TOPIC_DESTINATION = "destination";
-    private static final String MQTT_QUEUE_IDENTIFIER = "targetQueue";
 
     /**
      * Will maintain the relation between the publisher client identifiers vs the id generated cluster wide
      * Key of the map would be the mqtt specific client id and the value would be the cluster uuid
      */
-    //TODO state the usage of a hashmap instead of using concurrent hashmap
+    //TODO state the usage of a hash-map instead of using concurrent hashmap
     private Map<String, MQTTPublisherChannel> publisherTopicCorrelate = new HashMap<>();
 
 
     /**
      * {@inheritDoc}
      */
-    public void messageAck(long messageID, String topicName, String storageName, UUID subChannelID)
+    public void messageAck(long messageID, UUID channelID)
             throws AndesException {
-        AndesAckData andesAckData = new AndesAckData(subChannelID, messageID,
-                topicName, storageName, true);
+        AndesAckData andesAckData = AndesUtils.generateAndesAckMessage(channelID, messageID);
         Andes.getInstance().ackReceived(andesAckData);
     }
 
     /**
      * {@inheritDoc}
      */
-    public void messageNack(AndesMessageMetadata metadata) throws AndesException{
-        Andes.getInstance().messageRejected(metadata);
+    public void messageNack(DeliverableAndesMetadata metadata, UUID channelID) throws AndesException{
+        Andes.getInstance().messageRejected(metadata, channelID);
     }
 
     /**
@@ -141,16 +133,13 @@ public class PersistenceStoreConnector implements MQTTConnector {
                               boolean isCleanSession, QOSLevel qos, UUID subscriptionChannelID)
             throws MQTTException, SubscriptionAlreadyExistsException {
 
-        MQTTLocalSubscription mqttTopicSubscriber;
-        //Should indicate the record in the cluster
+        //create a MQTTLocalSubscription wrapping underlying channel
+        MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, mqttClientID, qos.getValue(),
+                subscriptionChannelID, true);
+
         try {
-            if (isCleanSession) {
-                mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
-                        true, qos.getValue(), subscriptionChannelID, topic, true, true, false);
-            } else {
-                //For clean session topics we need to provide the queue name for the queue identifier
-                mqttTopicSubscriber = createSubscription(channel, topic, clientID, mqttClientID,
-                        false, qos.getValue(), subscriptionChannelID, clientID, true, true, false);
+
+            if (!isCleanSession) {
                 //We need to create a queue in-order to preserve messages relevant for the durable subscription
                 String queueUser = "admin";
                 InboundQueueEvent createQueueEvent = new InboundQueueEvent(clientID, queueUser, false, true);
@@ -159,9 +148,17 @@ public class PersistenceStoreConnector implements MQTTConnector {
 
             //Will notify the creation of the client connection
             Andes.getInstance().clientConnectionCreated(subscriptionChannelID);
+
             //Once the connection is created we register subscription
-            Andes.getInstance().openLocalSubscription(mqttTopicSubscriber);
-            //First will register the subscription as a queue
+            LocalSubscription localSubscription = createLocalSubscription(mqttTopicSubscriber, isCleanSession,
+                    topic, clientID);
+
+            //create open subscription event
+            InboundSubscriptionEvent openSubscriptionEvent = new InboundSubscriptionEvent(localSubscription);
+
+            //notify subscription create event
+            Andes.getInstance().openLocalSubscription(openSubscriptionEvent);
+
             if (log.isDebugEnabled()) {
                 log.debug("Subscription registered to the " + topic + " with channel id " + clientID);
             }
@@ -191,18 +188,24 @@ public class PersistenceStoreConnector implements MQTTConnector {
             String queueUser = "admin";
 
             //Here we hard code the QoS level since for subscription removal that doesn't matter
-            MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscribedTopic,
-                    subscriptionChannelID, subscriptionChannelID,
-                    true, 0, subscriberChannel, subscribedTopic, true, false, false);
+            MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscriptionChannelID, 0,
+                    subscriberChannel, true);
 
             //This will be similar to a durable subscription of AMQP
             //There could be two types of events one is the disconnection due to the lost of the connection
             //The other is un-subscription, if is the case of un-subscription the subscription should be removed
             InboundQueueEvent queueChange = new InboundQueueEvent(queueIdentifier, queueUser, false, true);
             Andes.getInstance().deleteQueue(queueChange);
-            Andes.getInstance().closeLocalSubscription(mqttTopicSubscriber);
+
+            //create a close subscription event
+            LocalSubscription localSubscription = createLocalSubscription(mqttTopicSubscriber, isCleanSession,
+                    subscribedTopic, mqttClientID);
+            InboundSubscriptionEvent subscriptionCloseEvent = new InboundSubscriptionEvent(localSubscription);
+            Andes.getInstance().closeLocalSubscription(subscriptionCloseEvent);
+
             //Will indicate the closure of the subscription connection
             Andes.getInstance().clientConnectionClosed(subscriberChannel);
+
             if (log.isDebugEnabled()) {
                 log.debug("Disconnected subscriber from topic " + subscribedTopic);
             }
@@ -224,29 +227,26 @@ public class PersistenceStoreConnector implements MQTTConnector {
 
             String queueIdentifier = MQTTUtils.generateTopicSpecficClientID(mqttClientID);
             String queueUser = "admin";
-            if (isCleanSession) {
-                //Here we hard code the QoS level since for subscription removal that doesn't matter
-                MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscribedTopic,
-                        subscriptionChannelID, subscriptionChannelID,
-                        true, 0, subscriberChannel, subscribedTopic, true, false, false);
-                Andes.getInstance().closeLocalSubscription(mqttTopicSubscriber);
-            } else {
-                //This will be similar to a durable subscription of AMQP
-                //There could be two types of events one is the disconnection due to the lost of the connection
-                MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscribedTopic,
-                        subscriptionChannelID, subscriptionChannelID,
-                        false, 0, subscriberChannel, queueIdentifier, true, false, false);
+
+            if (!isCleanSession) {
                 //This will be similar to a durable subscription of AMQP
                 //There could be two types of events one is the disconnection due to the lost of the connection
                 //The other is un-subscription, if is the case of un-subscription the subscription should be removed
                 //Will need to delete the relevant queue mapping out
                 InboundQueueEvent queueChange = new InboundQueueEvent(queueIdentifier, queueUser, false, true);
                 Andes.getInstance().deleteQueue(queueChange);
-                Andes.getInstance().closeLocalSubscription(mqttTopicSubscriber);
-
             }
-            //Will indicate the closure of the subscription connection
-            Andes.getInstance().clientConnectionClosed(subscriberChannel);
+
+            //Here we hard code the QoS level since for subscription removal that doesn't matter
+            MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscriptionChannelID, 0,
+                    subscriberChannel, true);
+
+            //create a close subscription event
+            LocalSubscription localSubscription = createLocalSubscription(mqttTopicSubscriber, isCleanSession,
+                    subscribedTopic, mqttClientID);
+            InboundSubscriptionEvent subscriptionCloseEvent = new InboundSubscriptionEvent(localSubscription);
+            Andes.getInstance().closeLocalSubscription(subscriptionCloseEvent);
+
             if (log.isDebugEnabled()) {
                 log.debug("Disconnected subscriber from topic " + subscribedTopic);
             }
@@ -275,51 +275,71 @@ public class PersistenceStoreConnector implements MQTTConnector {
      * non durable subscriptions. As well as creating the subscription object for removal
      *
      * @param channel               the chanel the data communication should be done at
-     * @param topic                 the name of the destination
-     * @param clientID              the identifier which is unique across the cluster
      * @param mqttClientID          the id of the client which is provided by the protocol
-     * @param isCleanSession        should this be treated as a durable subscription
      * @param qos                   the level in which the messages would be exchanged this will be either 0,1 or 2
      * @param subscriptionChannelID the id of the channel that would be unique across the cluster
-     * @param queueIdentifier       the identifier which will represent the queue will be applicable only when durable
-     * @param isTopicBound          should the representation of the object a queue or a topic
      * @param isActive              is the subscription active it will be inactive during removal
      * @return the andes specific object that will be registered in the cluster
      * @throws MQTTException
      */
-    private MQTTLocalSubscription createSubscription(MQTTopicManager channel, String topic, String clientID,
-                                                     String mqttClientID, boolean isCleanSession, int qos,
-                                                     UUID subscriptionChannelID, String queueIdentifier,
-                                                     boolean isTopicBound, boolean isActive, boolean hasExternal)
+    private MQTTLocalSubscription createSubscription(MQTTopicManager channel, String mqttClientID, int qos,
+                                                     UUID subscriptionChannelID, boolean isActive)
             throws MQTTException {
-        //Will create a new local subscription object
-        final String isBoundToTopic = "isBoundToTopic";
-        final String subscribedNode = "subscribedNode";
-        final String isDurable = "isDurable";
-        final String hasExternalSubscription = "hasExternalSubscriptions";
 
-        final String myNodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
-        MQTTLocalSubscription localTopicSubscription = new MQTTLocalSubscription(MQTT_TOPIC_DESTINATION + "=" + topic
-                                                                                 + "," + MQTT_QUEUE_IDENTIFIER + "=" + queueIdentifier + "," + isBoundToTopic + "=" + isTopicBound + "," +
-                                                                                 subscribedNode + "=" + myNodeID + "," + isDurable + "=" + !isCleanSession + "," + hasExternalSubscription+
-                                                                                 "="+ hasExternal);
-        localTopicSubscription.setIsTopic(isTopicBound);
-        if (!isCleanSession) {
-            //For subscriptions with clean session = false we need to make a queue in andes
-            localTopicSubscription.setTargetBoundExchange(AMQPUtils.DIRECT_EXCHANGE_NAME);
-        } else {
-            localTopicSubscription.setTargetBoundExchange(AMQPUtils.TOPIC_EXCHANGE_NAME);
-        }
+        MQTTLocalSubscription localTopicSubscription = new  MQTTLocalSubscription(subscriptionChannelID, isActive);
+
         localTopicSubscription.setMqqtServerChannel(channel);
-        localTopicSubscription.setChannelID(subscriptionChannelID);
-        localTopicSubscription.setTopic(topic);
-        localTopicSubscription.setSubscriptionID(clientID);
         localTopicSubscription.setMqttSubscriptionID(mqttClientID);
         localTopicSubscription.setSubscriberQOS(qos);
-        localTopicSubscription.setIsActive(isActive);
 
         return localTopicSubscription;
 
+    }
+
+    /**
+     * Generate a local subscription object using MQTT subscription information
+     * @param mqttLocalSubscription instance of underlying mqtt local subscriber
+     * @param isCleanSession is MQTT session is a clean session
+     * @param topic subscribed topic name
+     * @param clientID valid only when isCleanSession = false. A unique id should be given
+     * @return Local subscription object representing a subscription in Andes kernel
+     */
+    private LocalSubscription createLocalSubscription(MQTTLocalSubscription mqttLocalSubscription, boolean
+            isCleanSession, String topic, String clientID) {
+
+        boolean isDurable = (!isCleanSession);
+        String subscribedNode = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
+        long subscribedTime = System.currentTimeMillis();
+        String targetQueue;
+        String targetQueueOwner = "";
+        String targetQueueBoundExchange;
+        String targetQueueBoundExchangeType = "";
+        Short isTargetQueueBoundAutoDeletable;
+        boolean hasExternalSubscriptions = true;
+
+        if (isCleanSession) {
+
+            //create a andes core LocalSubscription without giving queue names
+            targetQueue = topic;
+            targetQueueBoundExchange = AMQPUtils.TOPIC_EXCHANGE_NAME;
+            isTargetQueueBoundAutoDeletable = 1;
+
+
+        } else {
+
+            //For clean session topics we need to provide the queue name for the queue identifier
+            targetQueue = clientID;
+            targetQueueBoundExchange = AMQPUtils.DIRECT_EXCHANGE_NAME;
+            isTargetQueueBoundAutoDeletable = 0;
+
+        }
+
+        LocalSubscription localSubscription = AndesUtils.createLocalSubscription(mqttLocalSubscription, clientID,
+                topic, true, true, isDurable, subscribedNode, subscribedTime, targetQueue, targetQueueOwner,
+                targetQueueBoundExchange, targetQueueBoundExchangeType, isTargetQueueBoundAutoDeletable,
+                hasExternalSubscriptions);
+
+        return localSubscription;
     }
 
 }

@@ -23,7 +23,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
 
 import java.util.List;
 import java.util.Map;
@@ -74,7 +74,7 @@ public class SlotDeliveryWorkerManager {
         return slotDeliveryWorkerManagerManager;
     }
 
-    public void rescheduleMessagesForDelivery(String storageQueueName, List<AndesMessageMetadata> messages) {
+    public void rescheduleMessagesForDelivery(String storageQueueName, List<DeliverableAndesMetadata> messages) {
         SlotDeliveryWorker slotWorker = getSlotWorker(storageQueueName);
 
         if (null != slotWorker) {

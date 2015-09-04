@@ -22,6 +22,7 @@ package org.wso2.andes.kernel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.server.store.MessageMetaDataType;
+import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.*;
@@ -43,18 +44,17 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
      * {@inheritDoc}
      */
     @Override
-    public int deliverMessageToSubscriptions(String destination, Set<AndesMessageMetadata> messages) throws
+    public int deliverMessageToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages) throws
             AndesException {
         int sentMessageCount = 0;
-        Iterator<AndesMessageMetadata> iterator = messages.iterator();
-        List<AndesRemovableMetadata> droppedTopicMessagesListRemovable = new ArrayList<AndesRemovableMetadata>();
-        List<AndesMessageMetadata> droppedTopicMessagesList = new ArrayList<AndesMessageMetadata>();
+        Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
+        List<DeliverableAndesMetadata> droppedTopicMessagesList = new ArrayList<>();
 
 
         while (iterator.hasNext()) {
 
             try {
-                AndesMessageMetadata message = iterator.next();
+                DeliverableAndesMetadata message = iterator.next();
 
                 /**
                  * get all relevant type of subscriptions. This call does NOT
@@ -92,9 +92,6 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
 
                 if (subscriptions4Queue.size() == 0) {
                     iterator.remove(); // remove buffer
-                    AndesRemovableMetadata removableMetadata = new AndesRemovableMetadata(message.getMessageID(),
-                            message.getDestination(), message.getStorageQueueName());
-                    droppedTopicMessagesListRemovable.add(removableMetadata);
                     droppedTopicMessagesList.add(message);
 
                     continue; // skip this iteration if no subscriptions for the message
@@ -116,7 +113,8 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
                     break;
                 }
 
-                OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message, subscriptions4Queue.size());
+                message.markAsScheduledToDeliver(subscriptions4Queue);
+
                 for (int j = 0; j < subscriptions4Queue.size(); j++) {
                     LocalSubscription localSubscription = MessageFlusher.getInstance()
                             .findNextSubscriptionToSent(destination, subscriptions4Queue);
@@ -142,22 +140,17 @@ public class NoLossBurstTopicMessageDeliveryImpl implements MessageDeliveryStrat
         }
 
 
-        /**
+        /*
          * Here we do not need to have orphaned slot scenario (return slot). If there are no subscribers
          * slot will be consumed and metadata will be removed. We duplicate topic messages per node
          */
 
 
-        /**
+        /*
          * delete topic messages that were dropped due to no subscriptions
-         * for the message and due to has no room to enqueue the message. Delete
-         * call is blocking and then slot message count is dropped in order
+         * for the message and due to has no room to enqueue the message.
          */
-        MessagingEngine.getInstance().deleteMessages(droppedTopicMessagesListRemovable);
-
-        for (AndesMessageMetadata messageToRemove : droppedTopicMessagesList) {
-            OnflightMessageTracker.getInstance().decrementMessageCountInSlot(messageToRemove.getSlot());
-        }
+        MessagingEngine.getInstance().deleteMessages(droppedTopicMessagesList);
 
         return sentMessageCount;
     }

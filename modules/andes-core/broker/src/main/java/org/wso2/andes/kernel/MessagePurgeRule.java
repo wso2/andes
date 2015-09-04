@@ -19,22 +19,15 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.QueueEntry;
 
 /**
  * This class represents message purging Delivery Rule
  */
 public class MessagePurgeRule implements DeliveryRule {
+
     private static Log log = LogFactory.getLog(MessagePurgeRule.class);
-
-    /**
-     * Used to get message information
-     */
-    private OnflightMessageTracker onflightMessageTracker;
-
-    public MessagePurgeRule() {
-        onflightMessageTracker = OnflightMessageTracker.getInstance();
-    }
 
     /**
      * Evaluating the message purge delivery rule
@@ -45,16 +38,21 @@ public class MessagePurgeRule implements DeliveryRule {
     @Override
     public boolean evaluate(QueueEntry message) throws AndesException {
         long messageID = message.getMessage().getMessageNumber();
+        DeliverableAndesMetadata andesMetadata = ((AMQMessage)message.getMessage()).getAndesMetadataReference();
         // Get last purged timestamp of the destination queue.
-        String messageDestination = message.getAndesMessageReference().getTrackingData().destination;
-        long lastPurgedTimestampOfQueue = MessageFlusher.getInstance().
-                getMessageDeliveryInfo(messageDestination).getLastPurgedTimestamp();
-        long arrivalTime = message.getAndesMessageReference().getTrackingData().arrivalTime;
-        if (arrivalTime <= lastPurgedTimestampOfQueue) {
-            log.warn("Message was sent at " + arrivalTime + "before last purge event at "
-                    + lastPurgedTimestampOfQueue + ". Therefore, it will not be sent. id= "
+        long lastPurgedTimestampOfQueue =
+                MessageFlusher.getInstance().getMessageDeliveryInfo(andesMetadata.getDestination())
+                        .getLastPurgedTimestamp();
+
+        if (andesMetadata.getArrivalTime() <= lastPurgedTimestampOfQueue) {
+
+            log.warn("Message was sent at " + andesMetadata.getArrivalTime()
+                    + " before last purge event at " + lastPurgedTimestampOfQueue
+                    + ". Therefore, it will not be sent. id= "
                     + messageID);
-            message.getAndesMessageReference().getTrackingData().addMessageStatus(MessageStatus.PURGED);
+            if(!andesMetadata.isPurgedOrDeletedOrExpired()) {
+                andesMetadata.markAsPurgedMessage();
+            }
             return false;
         } else {
             return true;

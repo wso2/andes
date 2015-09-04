@@ -22,6 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 
 import java.util.List;
@@ -42,8 +43,9 @@ public class SlotUtils {
      */
     public static boolean checkSlotEmptyFromMessageStore(Slot slot) {
         try {
-            List<AndesMessageMetadata> messagesReturnedFromCassandra =
-                    MessagingEngine.getInstance().getMetaDataList(slot.getStorageQueueName(), slot.getStartMessageId(),
+            List<DeliverableAndesMetadata> messagesReturnedFromCassandra =
+                    MessagingEngine.getInstance().getMetaDataList(slot, slot.getStorageQueueName(), slot
+                                    .getStartMessageId(),
                             slot.getEndMessageId());
             return messagesReturnedFromCassandra == null || messagesReturnedFromCassandra.isEmpty();
         } catch (AndesException e) {

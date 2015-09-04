@@ -25,71 +25,29 @@ import java.util.UUID;
  */
 public class AndesAckData {
 
-    private long messageID;
-    private String destination;
-    private String msgStorageDestination;
-    private boolean isTopic;
+    private DeliverableAndesMetadata acknowledgedMessage;
     private UUID channelID;
-
     /**
      * Indicate if this is a removable ack data.
      */
     private boolean isRemovable;
 
-    public AndesAckData(){}
-
-    public AndesAckData(UUID channelID, long messageID, String destination, String msgStorageDestination, boolean isTopic) {
+    public AndesAckData(UUID channelID, DeliverableAndesMetadata acknowledgedMessage) {
+        this.acknowledgedMessage = acknowledgedMessage;
         this.channelID = channelID;
-        this.messageID = messageID;
-        this.destination = destination;
-        this.msgStorageDestination = msgStorageDestination;
-        this.isTopic = isTopic;
         this.isRemovable = false;
+        
     }
 
-    public AndesRemovableMetadata convertToRemovableMetaData() {
-        return new AndesRemovableMetadata(this.messageID, this.msgStorageDestination, this.destination);
-    }
 
-    public long getMessageID() {
-        return messageID;
-    }
-
-    public void setMessageID(long messageID) {
-        this.messageID = messageID;
-    }
-
-    public String getDestination() {
-        return destination;
-    }
-
-    public void setDestination(String destination) {
-        this.destination = destination;
-    }
-
-    public String getMsgStorageDestination() {
-        return msgStorageDestination;
-    }
-
-    public void setMsgStorageDestination(String msgStorageDestination) {
-        this.msgStorageDestination = msgStorageDestination;
-    }
-
-    public boolean isTopic() {
-        return isTopic;
-    }
-
-    public void setTopic(boolean isTopic) {
-        this.isTopic = isTopic;
+    public DeliverableAndesMetadata getAcknowledgedMessage() {
+        return acknowledgedMessage;
     }
 
     public UUID getChannelID() {
         return channelID;
     }
 
-    public void setChannelID(UUID channelID) {
-        this.channelID = channelID;
-    }
 
     /**
      * Mark ack data as removable
