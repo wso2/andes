@@ -25,9 +25,10 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.AndesRemovableMetadata;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
+import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.store.cache.AndesMessageCache;
 import org.wso2.andes.store.cache.MessageCacheFactory;
@@ -639,7 +640,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void moveMetadataToDLC(List<Long> messageIds, String dlcQueueName) throws AndesException {
+    public void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
 
@@ -647,17 +648,21 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 .start();
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
-        //remove messages from cache
-        removeFromCache(messageIds);
+        List<Long> messageIDsToRemoveFromCache = new ArrayList<>(messages.size());
+
 
         try {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_MOVE_METADATA_TO_DLC);
-            for (Long messageId : messageIds) {
+            for (AndesMessageMetadata message : messages) {
+                messageIDsToRemoveFromCache.add(message.getMessageID());
                 preparedStatement.setInt(1, getCachedQueueID(dlcQueueName));
-                preparedStatement.setLong(2, messageId);
+                preparedStatement.setLong(2, message.getMessageID());
                 preparedStatement.addBatch();
             }
+
+            //remove messages from cache
+            removeFromCache(messageIDsToRemoveFromCache);
 
             preparedStatement.execute();
             connection.commit();
@@ -863,10 +868,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesMessageMetadata> getMetadataList(final String storageQueueName, long firstMsgId,
+    public List<DeliverableAndesMetadata> getMetadataList(Slot slot, final String storageQueueName, long firstMsgId,
                                                       long lastMsgID) throws AndesException {
 
-        List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>();
+        List<DeliverableAndesMetadata> metadataList = new ArrayList<>();
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
@@ -884,7 +889,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
             resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
-                AndesMessageMetadata md = new AndesMessageMetadata(
+                DeliverableAndesMetadata md = new DeliverableAndesMetadata(slot,
                         resultSet.getLong(RDBMSConstants.MESSAGE_ID),
                         resultSet.getBytes(RDBMSConstants.METADATA),
                         true
@@ -1079,7 +1084,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public void deleteMessageMetadataFromQueue(final String storageQueueName,
-                                               List<Long> messagesToRemove)
+                                               List<AndesMessageMetadata> messagesToRemove)
             throws AndesException {
 
         Connection connection = null;
@@ -1094,9 +1099,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             connection = getConnection();
             preparedStatement = connection
                     .prepareStatement(RDBMSConstants.PS_DELETE_METADATA_FROM_QUEUE);
-            for (Long messageID : messagesToRemove) {
+            for (AndesMessageMetadata messageID : messagesToRemove) {
                 preparedStatement.setInt(1, queueID);
-                preparedStatement.setLong(2, messageID);
+                preparedStatement.setLong(2, messageID.getMessageID());
                 preparedStatement.addBatch();
             }
             preparedStatement.executeBatch();
@@ -1123,7 +1128,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessages(final String storageQueueName,List<Long> messagesToRemove) throws AndesException {
+    public void deleteMessages(final String storageQueueName,
+                               List<AndesMessageMetadata> messagesToRemove)
+            throws AndesException {
         Connection connection = null;
         PreparedStatement metadataRemovalPreparedStatement = null;
 
@@ -1132,8 +1139,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
-            
-            removeFromCache(messagesToRemove);
+
+            List<Long> messageIDsToRemoveFromCache = new ArrayList<>(messagesToRemove.size());
 
             connection = getConnection();
 
@@ -1141,12 +1148,15 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             //deleting message metadata will cause message content to be automatically deleted
             metadataRemovalPreparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_METADATA);
 
-            for (Long messageID : messagesToRemove) {
-                //add parameters to delete metadata
-                metadataRemovalPreparedStatement.setLong(1, messageID);
-                metadataRemovalPreparedStatement.addBatch();
+                for (AndesMessageMetadata message : messagesToRemove) {
+                    //add parameters to delete metadata
+                    messageIDsToRemoveFromCache.add(message.getMessageID());
+                    metadataRemovalPreparedStatement.setLong(1, message.getMessageID());
+                    metadataRemovalPreparedStatement.addBatch();
 
             }
+
+            removeFromCache(messageIDsToRemoveFromCache);
             metadataRemovalPreparedStatement.executeBatch();
 
             connection.commit();
@@ -1177,11 +1187,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException {
+    public List<AndesMessageMetadata> getExpiredMessages(int limit) throws AndesException {
 
         // todo: can't we just delete expired messages?
         Connection connection = null;
-        List<AndesRemovableMetadata> list = new ArrayList<AndesRemovableMetadata>(limit);
+        List<AndesMessageMetadata> list = new ArrayList<>(limit);
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
 
@@ -1200,12 +1210,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 if (resultCount == limit) {
                     break;
                 }
-                list.add(new AndesRemovableMetadata(
-                                resultSet.getLong(RDBMSConstants.MESSAGE_ID),
-                                resultSet.getString(RDBMSConstants.DESTINATION_QUEUE),
-                                resultSet.getString(RDBMSConstants.DESTINATION_QUEUE)
-                        )
-                );
+                AndesMessageMetadata metadata = new AndesMessageMetadata(
+                        resultSet.getLong(RDBMSConstants.MESSAGE_ID),
+                        resultSet.getBytes(RDBMSConstants.METADATA),
+                        true);
+                metadata.setStorageQueueName(null);
+                list.add(metadata);
                 resultCount++;
             }
             return list;
@@ -1235,13 +1245,13 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * @throws SQLException
      */
     private void deleteFromExpiryQueue(Connection connection,
-                                       List<AndesRemovableMetadata> messagesToRemove)
+                                       List<AndesMessageMetadata> messagesToRemove)
             throws SQLException {
 
         PreparedStatement preparedStatement = null;
         try {
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_EXPIRY_DATA);
-            for (AndesRemovableMetadata md : messagesToRemove) {
+            for (AndesMessageMetadata md : messagesToRemove) {
                 preparedStatement.setLong(1, md.getMessageID());
                 preparedStatement.addBatch();
             }
@@ -2020,8 +2030,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public AndesMessageMetadata getRetainedMetadata(String destination) throws AndesException {
-        AndesMessageMetadata metadata = null;
+    public DeliverableAndesMetadata getRetainedMetadata(String destination) throws AndesException {
+        DeliverableAndesMetadata metadata = null;
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
@@ -2041,7 +2051,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             if (results.next()) {
                 byte[] b = results.getBytes(RDBMSConstants.METADATA);
                 long messageId = results.getLong(RDBMSConstants.MESSAGE_ID);
-                metadata = new AndesMessageMetadata(messageId, b, true);
+                metadata = new DeliverableAndesMetadata(null, messageId, b, true);
             }
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving retained message " +
@@ -2133,7 +2143,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * Removes given list of messages/ids from the cache
      * 
      * @param messagesToRemove
-     *            list of message Ids
+     *            list of messages
      */
     private void removeFromCache(List<Long> messagesToRemove) {
         messageCache.removeFromCache(messagesToRemove);

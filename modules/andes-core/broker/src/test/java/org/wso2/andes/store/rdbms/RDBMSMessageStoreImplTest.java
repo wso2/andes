@@ -40,11 +40,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
-import org.wso2.andes.kernel.AndesContextStore;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.AndesRemovableMetadata;
-import org.wso2.andes.kernel.MessageStore;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.store.rdbms.h2.H2MemAndesContextStoreImpl;
 
 public class RDBMSMessageStoreImplTest {
@@ -354,7 +350,7 @@ public class RDBMSMessageStoreImplTest {
         messageStore.addMetadata(RDBMSTestHelper.getMetadataList(destQueue_2, 5, 10));
 
         // Retrieve
-        List<AndesMessageMetadata> list = messageStore.getMetadataList(destQueue_1, 0, 5);
+        List<DeliverableAndesMetadata> list = messageStore.getMetadataList(null, destQueue_1, 0, 5);
         // Test
         Assert.assertEquals(5, list.size());
         for (AndesMessageMetadata andesMessageMetadata : list) {
@@ -362,7 +358,7 @@ public class RDBMSMessageStoreImplTest {
         }
 
         // Retrieve
-        list = messageStore.getMetadataList(destQueue_2, 5, 10);
+        list = messageStore.getMetadataList(null, destQueue_2, 5, 10);
         // Test
         Assert.assertEquals(5, list.size());
         for (AndesMessageMetadata andesMessageMetadata : list) {
@@ -385,15 +381,15 @@ public class RDBMSMessageStoreImplTest {
         Thread.sleep(500);
 
         // get first batch
-        List<AndesRemovableMetadata> list = messageStore.getExpiredMessages(5);
+        List<AndesMessageMetadata> list = messageStore.getExpiredMessages(5);
         Assert.assertEquals(5, list.size());
 
         list = messageStore.getExpiredMessages(3);
         Assert.assertEquals(3, list.size());
         for (int i = 0; i < list.size(); i++) {
-            AndesRemovableMetadata md = list.get(i);
+            AndesMessageMetadata md = list.get(i);
             Assert.assertEquals(i * 2, md.getMessageID());
-            Assert.assertEquals(destQueue_1, md.getStorageDestination());
+            Assert.assertEquals(destQueue_1, md.getStorageQueueName());
         }
 
         // delete them
@@ -403,13 +399,13 @@ public class RDBMSMessageStoreImplTest {
         list = messageStore.getExpiredMessages(2);
         Assert.assertEquals(2, list.size());
 
-        AndesRemovableMetadata md = list.get(0);
+        AndesMessageMetadata md = list.get(0);
         Assert.assertEquals(6, md.getMessageID());
-        Assert.assertEquals(destQueue_2, md.getStorageDestination());
+        Assert.assertEquals(destQueue_2, md.getStorageQueueName());
 
         md = list.get(1);
         Assert.assertEquals(8, md.getMessageID());
-        Assert.assertEquals(destQueue_2, md.getStorageDestination());
+        Assert.assertEquals(destQueue_2, md.getStorageQueueName());
 
     }
 

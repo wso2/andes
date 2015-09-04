@@ -25,6 +25,7 @@ import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.configuration.util.TopicMessageDeliveryStrategy;
 import org.wso2.andes.kernel.disruptor.delivery.DisruptorBasedFlusher;
 import org.wso2.andes.kernel.slot.Slot;
+import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.tools.utils.MessageTracer;
 
@@ -34,7 +35,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 
@@ -109,8 +109,8 @@ public class MessageFlusher {
 
         Iterator<LocalSubscription> iterator;
         //in-memory message list scheduled to be delivered
-        Set<AndesMessageMetadata> readButUndeliveredMessages = new
-                ConcurrentSkipListSet<AndesMessageMetadata>();
+        Set<DeliverableAndesMetadata> readButUndeliveredMessages = new
+                ConcurrentSkipListSet<>();
 
         /***
          * In case of a purge, we must store the timestamp when the purge was called.
@@ -252,10 +252,10 @@ public class MessageFlusher {
      * @param slot
      *         these messages are belonged to
      */
-    public void sendMessageToBuffer(List<AndesMessageMetadata> messagesRead, Slot slot) {
+    public void sendMessageToBuffer(List<DeliverableAndesMetadata> messagesRead, Slot slot) {
         try {
-            OnflightMessageTracker.getInstance().incrementMessageCountInSlot(slot, messagesRead.size());
-            for (AndesMessageMetadata message : messagesRead) {
+            slot.incrementPendingMessageCount(messagesRead.size());
+            for (DeliverableAndesMetadata message : messagesRead) {
 
                 /**
                  * Rather than destination of the message, we get the destination of
@@ -264,11 +264,12 @@ public class MessageFlusher {
                  * (games.cricket.* Not games.cricket.SriLanka)
                  */
                 String destination = slot.getDestinationOfMessagesInSlot();
-                message.setSlot(slot);
                 MessageDeliveryInfo messageDeliveryInfo = getMessageDeliveryInfo(destination);
                 //check and buffer message
                 //stamp this message as buffered
-                OnflightMessageTracker.getInstance().addMessageToTracker(slot, message);
+                OnflightMessageTracker.getInstance()
+                                      .addMessageToTracker(message);
+                message.markAsBuffered();
                 messageDeliveryInfo.readButUndeliveredMessages.add(message);
                 //Tracing message
                 MessageTracer.trace(message, MessageTracer.METADATA_BUFFERED_FOR_DELIVERY);
@@ -286,12 +287,11 @@ public class MessageFlusher {
      * @param messages
      *         message to add
      */
-    public void addAlreadyTrackedMessagesToBuffer(String destination, List<AndesMessageMetadata> messages) {
+    public void addAlreadyTrackedMessagesToBuffer(String destination, List<DeliverableAndesMetadata> messages) {
         try {
             MessageDeliveryInfo messageDeliveryInfo = getMessageDeliveryInfo(destination);
 
-            for (AndesMessageMetadata metadata : messages) {
-                metadata.getTrackingData().decrementPendingAckCount();
+            for (DeliverableAndesMetadata metadata : messages) {
                 messageDeliveryInfo.readButUndeliveredMessages.add(metadata);
                 //Tracing message
                 MessageTracer.trace(metadata, MessageTracer.METADATA_BUFFERED_FOR_DELIVERY);
@@ -356,12 +356,12 @@ public class MessageFlusher {
      * @return how many messages sent
      * @throws Exception
      */
-    public int sendMessagesToSubscriptions(String destination, Set<AndesMessageMetadata> messages)
+    public int sendMessagesToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages)
             throws Exception {
 
         if(messages.iterator().hasNext()) {
             //identify if this messages address queues or topics. There CANNOT be a mix
-            AndesMessageMetadata firstMessage = messages.iterator().next();
+            DeliverableAndesMetadata firstMessage = messages.iterator().next();
             boolean isTopic = firstMessage.isTopic();
 
             if (isTopic) {
@@ -401,8 +401,7 @@ public class MessageFlusher {
      * @param message message to send
      */
     public void scheduleMessageForSubscription(LocalSubscription subscription,
-                                               final AndesMessageMetadata message) {
-        OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message);
+                                               final DeliverableAndesMetadata message) {
         deliverMessageAsynchronously(subscription, message);
     }
 
@@ -412,32 +411,21 @@ public class MessageFlusher {
      * @param subscription local subscription
      * @param message      metadata of the message
      */
-    public void deliverMessageAsynchronously(LocalSubscription subscription, AndesMessageMetadata message) {
-        UUID channelID = subscription.getChannelID();
+    public void deliverMessageAsynchronously(LocalSubscription subscription, DeliverableAndesMetadata message) {
         if(log.isDebugEnabled()) {
             log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
-        }
-        MessageData messageData = message.getTrackingData();
-
-        // increase delivery count and set redelivery
-        messageData.incrementDeliveryCount(channelID);
-        if(messageData.isRedelivered(channelID)) {
-            message.setRedelivered(subscription.getChannelID());
         }
         flusherExecutor.submit(subscription, message);
     }
 
-    //TODO: in multiple subscription case this can cause message duplication
     /**
-     * Will be responsible in placing the message back at the queue if delivery fails. It re-queue the message
-     * only if there are active local subscribers
-     * @param message the message which was scheduled for delivery to its subscribers
+     * Re-queue message to andes core. This message will be delivered to
+     * any eligible subscriber to receive later. in multiple subscription case this
+     * can cause message duplication.
+     * @param message message to reschedule
      */
-    public void reQueueUndeliveredMessagesDueToInactiveSubscriptions(AndesMessageMetadata message)
-            throws AndesException {
+    public void reQueueMessage(DeliverableAndesMetadata message) {
         String destination = message.getDestination();
-        message.getTrackingData().decrementPendingAckCount();
-
         subscriptionCursar4QueueMap.get(destination).readButUndeliveredMessages.add(message);
     }
 

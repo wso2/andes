@@ -27,6 +27,7 @@ import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
 import org.wso2.andes.subscription.BasicSubscription;
+import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.*;
@@ -513,10 +514,9 @@ public class AndesSubscriptionManager {
         Short isTargetQueueAutoDeletable = clusterSubscription.ifTargetQueueBoundExchangeAutoDeletable();
         boolean hasExternalSubscriptions = clusterSubscription.hasExternalSubscriptions();
 
-        return new AMQPLocalSubscription(null, null, subscriptionID, destination,
-                isBoundToTopic, isExclusive, isDurable, subscribedNode, subscribedTime, targetQueue,
-                targetQueueOwner, targetQueueBoundExchange, targetQueueBoundExchangeType,isTargetQueueAutoDeletable,
-                hasExternalSubscriptions);
+        return new LocalSubscription(null,subscriptionID, destination, isBoundToTopic, isExclusive, isDurable,
+                subscribedNode, subscribedTime, targetQueue, targetQueueOwner, targetQueueBoundExchange,
+                targetQueueBoundExchangeType, isTargetQueueAutoDeletable, hasExternalSubscriptions);
 
     }
 }

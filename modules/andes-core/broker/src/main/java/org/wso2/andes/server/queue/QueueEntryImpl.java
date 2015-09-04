@@ -54,12 +54,6 @@ public class QueueEntryImpl implements QueueEntry
 
     private Set<Subscription> _rejectedBy = null;
 
-    /**
-     * Holds Andes message metadata reference for the message. This has all kernel side
-     * delivery stats
-     */
-    private AndesMessageMetadata andesMessageReference;
-
     private volatile EntryState _state = AVAILABLE_STATE;
 
     /**
@@ -139,16 +133,6 @@ public class QueueEntryImpl implements QueueEntry
     public AMQQueue getQueue()
     {
         return _queueEntryList.getQueue();
-    }
-
-    @Override
-    public AndesMessageMetadata getAndesMessageReference() {
-        return andesMessageReference;
-    }
-
-    @Override
-    public void setAndesMessageReference(AndesMessageMetadata messageReference) {
-        this.andesMessageReference = messageReference;
     }
 
     public ServerMessage getMessage()

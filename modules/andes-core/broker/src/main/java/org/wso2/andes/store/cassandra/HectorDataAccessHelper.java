@@ -51,10 +51,8 @@ import me.prettyprint.hector.api.query.RangeSlicesQuery;
 import me.prettyprint.hector.api.query.SliceQuery;
 
 import org.apache.commons.lang.StringUtils;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.MessageExpirationWorker;
+import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.store.AndesStoreUnavailableException;
 
 import java.nio.ByteBuffer;
@@ -509,7 +507,7 @@ public class HectorDataAccessHelper {
      * @param count            max message count limit
      * @throws CassandraDataAccessException
      */
-    public static List<AndesMessageMetadata> getMessagesFromQueue(String rowName,
+    public static List<DeliverableAndesMetadata> getMessagesFromQueue(Slot slot, String rowName,
                                                                   String columnFamilyName,
                                                                   Keyspace keyspace,
                                                                   long firstID,
@@ -536,11 +534,11 @@ public class HectorDataAccessHelper {
             sliceQuery.setColumnFamily(columnFamilyName);
             QueryResult<ColumnSlice<Long, byte[]>> result = sliceQuery.execute();
             ColumnSlice<Long, byte[]> columnSlice = result.get();
-            List<AndesMessageMetadata> metadataList = new ArrayList<AndesMessageMetadata>();
+            List<DeliverableAndesMetadata> metadataList = new ArrayList<>();
 
             for (Object column : columnSlice.getColumns()) {
                 if (column instanceof HColumn) {
-                    AndesMessageMetadata metadata = new AndesMessageMetadata(((HColumn<Long,
+                    DeliverableAndesMetadata metadata = new DeliverableAndesMetadata(slot, ((HColumn<Long,
                             byte[]>) column).getName(), ((HColumn<Long,
                             byte[]>) column).getValue(), parse);
                     if (!MessageExpirationWorker.isExpired(metadata.getExpirationTime())) {

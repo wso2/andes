@@ -18,6 +18,8 @@
 
 package org.wso2.andes.kernel;
 
+import org.wso2.andes.subscription.LocalSubscription;
+
 /**
  * Subscription Listener Interface. This has methods related to local subscription changes
  * and cluster subscription changes. Any handler handling a subscription change should implement

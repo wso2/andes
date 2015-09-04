@@ -34,6 +34,6 @@ public interface MessageDeliveryStrategy {
      * @return number of messages sent
      * @throws AndesException in case of a delivery failure
      */
-    public int deliverMessageToSubscriptions(String destination, Set<AndesMessageMetadata> messages) throws
+    public int deliverMessageToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages) throws
             AndesException;
 }
