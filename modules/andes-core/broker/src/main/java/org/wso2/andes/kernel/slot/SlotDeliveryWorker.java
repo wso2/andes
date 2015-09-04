@@ -32,18 +32,16 @@ import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
 import org.wso2.andes.subscription.SubscriptionStore;
-import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -70,7 +68,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      * keep
      * this in a map instead of the slot object due to overlapping slots
      */
-    private final ConcurrentHashMap<String, Set<Long>> messageBufferingTracker
+    private final ConcurrentHashMap<String, ConcurrentSkipListSet<Long>> messageBufferingTracker
             = new ConcurrentHashMap<>();
 
     private SubscriptionStore subscriptionStore;
@@ -270,8 +268,8 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      * @param messages
      */
     private void filterOverlappedMessages(Slot slot, List<AndesMessageMetadata> messages) {
-        messageBufferingTracker.putIfAbsent(slot.getId(), new HashSet<Long>());
-        Set<Long> slotMessages = messageBufferingTracker.get(slot.getId());
+        messageBufferingTracker.putIfAbsent(slot.getId(), new ConcurrentSkipListSet<Long>());
+        ConcurrentSkipListSet<Long> slotMessages = messageBufferingTracker.get(slot.getId());
 
         Iterator<AndesMessageMetadata> readMessageIterator = messages.iterator();
 
@@ -471,7 +469,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
             log.debug("Releasing tracking of messages for slot " + slot.toString());
         }
         String slotID = slot.getId();
-        Set<Long> messagesOfSlot = messageBufferingTracker.remove(slotID);
+        ConcurrentSkipListSet<Long> messagesOfSlot = messageBufferingTracker.remove(slotID);
         if (messagesOfSlot != null) {
             for (Long messageId : messagesOfSlot) {
                 OnflightMessageTracker.getInstance().removeMessageFromTracker(messageId);
@@ -491,7 +489,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
             log.debug("Orphan slot situation and clear tracking of messages for slot = " + slot);
         }
         String slotID = slot.getId();
-        Set<Long> messagesOfSlot = messageBufferingTracker.remove(slotID);
+        ConcurrentSkipListSet<Long> messagesOfSlot = messageBufferingTracker.remove(slotID);
         if (messagesOfSlot != null) {
             for (Long messageId : messagesOfSlot) {
                 OnflightMessageTracker.getInstance().removeMessageFromTracker(messageId);
