@@ -17,21 +17,14 @@
  */
 package org.wso2.andes.mqtt;
 
-import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.wso2.QOSLevel;
-import org.wso2.andes.kernel.AndesContent;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.ConcurrentTrackingList;
-import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
-import org.wso2.andes.server.ClusterResourceHolder;
-
+import org.wso2.andes.subscription.OutboundSubscription;
 import java.nio.ByteBuffer;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
@@ -41,23 +34,24 @@ import java.util.concurrent.atomic.AtomicInteger;
  * The subscriber will contain a reference to the relevant bridge connection where the bridge will notify the protocol
  * engine to inform the relevant subscriptions which are channel bound
  */
-public class MQTTLocalSubscription extends InboundSubscriptionEvent {
+public class MQTTLocalSubscription implements OutboundSubscription {
     //Will log the flows in relevant for this class
     private static Log log = LogFactory.getLog(MQTTLocalSubscription.class);
+
     //The reference to the bridge object
     private MQTTopicManager mqqtServerChannel;
+
     //Will store the MQTT channel id
     private String mqttSubscriptionID;
+
     //Will set unique uuid as the channel of the subscription this will be used to track the delivery of messages
     private UUID channelID;
 
     //The QOS level the subscription is bound to
     private int subscriberQOS;
 
-    /**
-     * Count sent but not acknowledged message count for channel of the subscriber
-     */
-    private AtomicInteger unAckedMsgCount = new AtomicInteger(0);
+    //keep if the underlying subscription is active
+    private boolean isActive;
 
     /**
      * Track messages sent as retained messages
@@ -84,16 +78,7 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
 
 
     /**
-     * Sets a channel identifier which is unique for each subscription, this will be used to tack delivery of message
-     *
-     * @param channelID the unique identifier of a channel specific to a subscription
-     */
-    public void setChannelID(UUID channelID) {
-        this.channelID = channelID;
-    }
-
-    /**
-     * Retrival of the subscription id
+     * Retrieval of the subscription id
      *
      * @return the id of the subscriber
      */
@@ -111,17 +96,15 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
     }
 
     /**
-     * The relevant subscription will be registered
+     *  The relevant subscription will be registered
      *
-     * @param mqttTopicSubscription the name of the topic the subscription will be bound to
+     * @param channelID ID of the underlying subscription channel
+     * @param isActive true if subscription is active (TCP connection is live)
      */
-    public MQTTLocalSubscription(String mqttTopicSubscription) {
-        super(mqttTopicSubscription);
-        setSubscriptionType(SubscriptionType.MQTT);
-        //setTargetBoundExchange();
-        setIsTopic(true);
-        setNodeInfo();
-        setIsActive(true);
+    public MQTTLocalSubscription(UUID channelID, boolean isActive) {
+
+        this.channelID = channelID;
+        this.isActive = isActive;
     }
 
     /**
@@ -134,60 +117,13 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
     }
 
     /**
-     * Will include the destination topic name the message should be given to
-     *
-     * @param dest the destination the message should be delivered to
-     */
-    public void setTopic(String dest) {
-        this.destination = dest;
-    }
-
-    /**
-     * Will set the unique identification for the subscription reference
-     *
-     * @param id the identity of the subscriber
-     */
-    public void setSubscriptionID(String id) {
-        this.subscriptionID = id;
-    }
-
-    /**
-     * Will set the target bound exchange
-     */
-    public void setTargetBoundExchange(String exchange) {
-        this.targetQueueBoundExchange = exchange;
-    }
-
-    /**
-     * In MQTT all the messages will be exchanged through topics
-     * So will override the is bound to always have the value true
-     */
-    public void setIsTopic(boolean isTopic) {
-        this.isBoundToTopic = isTopic;
-    }
-
-    /**
-     * Should inform the particular node the subscriber is bound to, This method would set the node id to the current
-     */
-    public void setNodeInfo() {
-        this.subscribedNode = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
-    }
-
-    /**
-     * Will indicate whether the given request is to active the subscription or deactivate it
-     *
-     * @param isActive the connection status
-     */
-    public void setIsActive(boolean isActive) {
-        this.hasExternalSubscriptions = isActive;
-    }
-
-    /**
      * {@inheritDoc}
      */
     @Override
-    public void sendMessageToSubscriber(AndesMessageMetadata messageMetadata, AndesContent content)
+    public boolean sendMessageToSubscriber(DeliverableAndesMetadata messageMetadata, AndesContent content)
             throws AndesException {
+
+        boolean sendSuccess;
 
         if(messageMetadata.isRetain()) {
             recordRetainedMessage(messageMetadata.getMessageID());
@@ -198,28 +134,30 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
         //Will publish the message to the respective queue
         if (null != mqqtServerChannel) {
             try {
-                checkIfMessageRedelivered(messageMetadata);
-                unAckedMsgCount.incrementAndGet();
-                mqqtServerChannel.distributeMessageToSubscriber(this.getStorageQueueName(),
-                        this.getSubscribedDestination(), message, messageMetadata.getMessageID(),
-                        messageMetadata.getQosLevel(), messageMetadata.isPersistent(), getMqttSubscriptionID(),
+                //TODO:review - instead of getSubscribedDestination() used message destination
+                mqqtServerChannel.distributeMessageToSubscriber(messageMetadata.getDestination(), message,
+                        messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
+                        messageMetadata.isPersistent(), getMqttSubscriptionID(),
                         getSubscriberQOS(), messageMetadata);
+
                 //We will indicate the ack to the kernel at this stage
                 //For MQTT QOS 0 we do not get ack from subscriber, hence will be implicitly creating an ack
                 if (QOSLevel.AT_MOST_ONCE.getValue() == getSubscriberQOS() ||
                         QOSLevel.AT_MOST_ONCE.getValue() == messageMetadata.getQosLevel()) {
-                    mqqtServerChannel.implicitAck(getSubscribedDestination(), messageMetadata.getMessageID(),
-                            this.getStorageQueueName(), getChannelID());
+                    mqqtServerChannel.implicitAck(messageMetadata.getMessageID(), getChannelID());
                 }
+                sendSuccess = true;
             } catch (MQTTException e) {
-                //TODO: we need to remove from sending tracker if we could not send
-                unAckedMsgCount.decrementAndGet();
                 final String error = "Error occurred while delivering message to the subscriber for message :" +
                         messageMetadata.getMessageID();
                 log.error(error, e);
                 throw new AndesException(error, e);
             }
+        } else {
+            sendSuccess = false;
         }
+
+        return sendSuccess;
     }
 
     /**
@@ -230,21 +168,6 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
      */
     public void recordRetainedMessage(long messageID) {
         retainedMessageList.add(messageID);
-    }
-
-    /**
-     * Check if a message is redelivered
-     * @param message message to add
-     * @return if message is redelivered
-     */
-    private boolean checkIfMessageRedelivered(AndesMessageMetadata message) {
-        long messageID = message.getMessageID();
-        if (retainedMessageList.contains(messageID)) {
-            return false;
-        }
-
-        //check if this is a redelivered message
-        return  message.getRedelivered(getChannelID());
     }
 
 
@@ -258,49 +181,9 @@ public class MQTTLocalSubscription extends InboundSubscriptionEvent {
         return channelID != null ? channelID : null;
     }
 
-    @Override
-    public boolean hasRoomToAcceptMessages() {
-        return true;
-    }
-
-    @Override
+    //TODO: decide how to call this
     public void ackReceived(long messageID) {
-        unAckedMsgCount.decrementAndGet();
-        removeUnackedMessage(messageID);
         // Remove if received acknowledgment message id contains in retained message list.
         retainedMessageList.remove(messageID);
-    }
-
-    @Override
-    public void msgRejectReceived(long messageID) {
-        unAckedMsgCount.decrementAndGet();
-        removeUnackedMessage(messageID);
-    }
-
-    @Override
-    public void close() {
-        unAckedMsgCount.set(0);
-    }
-    
-    public boolean equals(Object o) {
-        if (o instanceof MQTTLocalSubscription) {
-            MQTTLocalSubscription c = (MQTTLocalSubscription) o;
-            if (this.subscriptionID.equals(c.subscriptionID) &&
-                    this.getSubscribedNode().equals(c.getSubscribedNode()) &&
-                    this.targetQueue.equals(c.targetQueue) &&
-                    this.targetQueueBoundExchange.equals(c.targetQueueBoundExchange)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public int hashCode() {
-        return new HashCodeBuilder(17, 31).
-                append(subscriptionID).
-                append(getSubscribedNode()).
-                append(targetQueue).
-                append(targetQueueBoundExchange).
-                toHashCode();
     }
 }

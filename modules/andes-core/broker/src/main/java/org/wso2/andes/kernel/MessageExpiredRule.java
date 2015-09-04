@@ -19,6 +19,7 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.QueueEntry;
 
 /**
@@ -36,9 +37,9 @@ public class MessageExpiredRule implements DeliveryRule {
     @Override
     public boolean evaluate(QueueEntry message) {
         long messageID = message.getMessage().getMessageNumber();
+        DeliverableAndesMetadata andesMetadata = ((AMQMessage)message.getMessage()).getAndesMetadataReference();
         //Check if destination entry has expired. Any expired message will not be delivered
-        boolean isMessageExpired = message.getAndesMessageReference().getTrackingData().isExpired();
-        if (isMessageExpired) {
+        if (andesMetadata.isExpired()) {
             log.warn("Message is expired. Routing Message to DLC : id= " + messageID);
             return false;
         } else {

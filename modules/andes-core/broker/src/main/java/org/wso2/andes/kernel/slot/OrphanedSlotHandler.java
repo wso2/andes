@@ -25,9 +25,9 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
-import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.SubscriptionListener;
+import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Collection;
@@ -100,7 +100,7 @@ public class OrphanedSlotHandler implements SubscriptionListener {
      *         current subscription fo the leaving node
      * @throws AndesException
      */
-    private void reAssignSlotsIfNeeded(AndesSubscription subscription) throws AndesException {
+    private void reAssignSlotsIfNeeded(LocalSubscription subscription) throws AndesException {
         if (subscription.isDurable()) {
             // Problem happens only with Queues
             SubscriptionStore subscriptionStore = AndesContext.getInstance().getSubscriptionStore();

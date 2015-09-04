@@ -47,6 +47,7 @@ public class HasInterestRule implements DeliveryRule {
         /*All we have to do is to find any subscription interest is to call this method.
         This hasInterest method was implemented by QPid developers to identify subscriber's interest from the protocol layer.
         It was implemented according to AMQP spec to support filters like jms selectors */
+
         if (amqpSubscription.hasInterest(message)) {
             return true;
         } else {

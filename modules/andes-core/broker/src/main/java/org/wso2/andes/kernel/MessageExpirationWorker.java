@@ -64,7 +64,7 @@ public class MessageExpirationWorker extends Thread {
                 try {
                     //Get Expired message IDs from the database with the massageBatchSize as the limit
                     // we cannot delegate a cascaded delete to cassandra since it doesn't maintain associations between columnfamilies.
-                    List<AndesRemovableMetadata> expiredMessages = MessagingEngine.getInstance().getExpiredMessages(messageBatchSize);
+                    List<AndesMessageMetadata> expiredMessages = MessagingEngine.getInstance().getExpiredMessages(messageBatchSize);
 
                     if (expiredMessages == null || expiredMessages.size() == 0 )  {
                         sleepForWaitInterval(workerWaitInterval);
@@ -78,7 +78,7 @@ public class MessageExpirationWorker extends Thread {
 
                             String messagesQueuedForExpiry = "";
 
-                            for (AndesRemovableMetadata arm : expiredMessages) {
+                            for (AndesMessageMetadata arm : expiredMessages) {
                                 messagesQueuedForExpiry += arm.getMessageID() + ",";
                             }
                             log.trace("Expired messages queued for deletion : " + messagesQueuedForExpiry);

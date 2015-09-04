@@ -28,7 +28,6 @@ import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.AndesSubscription.SubscriptionType;
-import org.wso2.andes.kernel.LocalSubscription;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
 import org.wso2.andes.metrics.MetricsConstants;

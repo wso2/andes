@@ -23,11 +23,7 @@ import com.google.common.cache.CacheBuilder;
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.DisruptorCachedContent;
-import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
@@ -87,7 +83,7 @@ public class ContentCacheCreator {
         List<DeliveryEventData> messagesWithoutContent = new ArrayList<>();
 
         for (DeliveryEventData deliveryEventData: eventDataList) {
-            AndesMessageMetadata metadata = deliveryEventData.getMetadata();
+            DeliverableAndesMetadata metadata = deliveryEventData.getMetadata();
             long messageID =  metadata.getMessageID();
 
             DisruptorCachedContent content = contentCache.getIfPresent(messageID);
@@ -110,7 +106,7 @@ public class ContentCacheCreator {
 
         for (DeliveryEventData deliveryEventData : messagesWithoutContent) {
 
-            AndesMessageMetadata metadata = deliveryEventData.getMetadata();
+            DeliverableAndesMetadata metadata = deliveryEventData.getMetadata();
             long messageID =  metadata.getMessageID();
 
             // We check again for content put in cache in the previous iteration

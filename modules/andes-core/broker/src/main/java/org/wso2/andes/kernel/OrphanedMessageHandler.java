@@ -22,6 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
+import org.wso2.andes.subscription.LocalSubscription;
 
 /**
  * This class will handle removing messages depending on subscription behavior

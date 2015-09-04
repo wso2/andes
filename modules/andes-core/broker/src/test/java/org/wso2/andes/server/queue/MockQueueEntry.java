@@ -116,16 +116,6 @@ public class MockQueueEntry implements QueueEntry
         return null;
     }
 
-    @Override
-    public AndesMessageMetadata getAndesMessageReference() {
-        return null;
-    }
-
-    @Override
-    public void setAndesMessageReference(AndesMessageMetadata andesMessageReference) {
-
-    }
-
     public long getSize()
     {
         return 0;

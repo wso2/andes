@@ -24,6 +24,7 @@ import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.slot.ConnectionException;
+import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotCoordinator;
 import org.wso2.andes.kernel.slot.SlotCoordinatorCluster;
 import org.wso2.andes.kernel.slot.SlotCoordinatorStandalone;
@@ -37,14 +38,17 @@ import org.wso2.andes.server.cluster.coordination.MessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.TimeStampBasedMessageIdGenerator;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.queue.DLCQueueUtils;
+import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.thrift.MBThriftClient;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
@@ -223,61 +227,55 @@ public class MessagingEngine {
     /**
      * Message is rejected
      *
-     * @param metadata message that is rejected. It must bare id of channel reject came from
+     * @param andesMetadata message that is rejected.
+     * @param channelID ID of the channel reject received
      * @throws AndesException
      */
-    public void messageRejected(AndesMessageMetadata metadata) throws AndesException {
+    public void messageRejected(DeliverableAndesMetadata andesMetadata, UUID channelID) throws AndesException {
 
-        OnflightMessageTracker.getInstance().handleFailure(metadata);
-        LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId(metadata.getChannelId());
+        LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId(channelID);
         if (subToResend != null) {
-            subToResend.msgRejectReceived(metadata.messageID);
-            reQueueMessage(metadata, subToResend);
+            andesMetadata.markAsRejectedByClient(channelID);
+            subToResend.msgRejectReceived(andesMetadata.messageID);
+            reQueueMessageToSubscriber(andesMetadata, subToResend);
         } else {
-            log.warn("Cannot handle reject. Subscription not found for channel " + metadata.getChannelId()
-                    + "Dropping message id= " + metadata.getMessageID());
+            log.warn("Cannot handle reject. Subscription not found for channel " + channelID
+                    + "Dropping message id= " + andesMetadata.getMessageID());
+            andesMetadata.removeScheduledDeliveryChannel(channelID);
         }
-
         //Tracing message activity
-        MessageTracer.trace(metadata, MessageTracer.MESSAGE_REJECTED);
+        MessageTracer.trace(andesMetadata, MessageTracer.MESSAGE_REJECTED);
     }
 
     /**
-     * Schedule message for subscription
+     * Schedule message for subscription. Slot Returned and slot removed messages
+     * are not scheduled
      *
      * @param messageMetadata message to be scheduled
      * @param subscription    subscription to send
      * @throws AndesException
      */
-    public void reQueueMessage(AndesMessageMetadata messageMetadata, LocalSubscription subscription)
+    public void reQueueMessageToSubscriber(DeliverableAndesMetadata messageMetadata, LocalSubscription subscription)
             throws AndesException {
-        MessageFlusher.getInstance().scheduleMessageForSubscription(subscription, messageMetadata);
 
-	    //Tracing message activity
-	    MessageTracer.trace(messageMetadata, MessageTracer.MESSAGE_REQUEUED);
+        if(!messageMetadata.isOKToDispose()) {
+            MessageFlusher.getInstance().scheduleMessageForSubscription(subscription, messageMetadata);
+            //Tracing message activity
+            MessageTracer.trace(messageMetadata, MessageTracer.MESSAGE_REQUEUED);
+        }
     }
 
+
     /**
-     * Move messages meta data in the given message list to the Dead Letter Channel.
-     *
-     * @param messagesToMove The messages to be moved to DLC
-     * @throws AndesException
+     * Re-queue message to andes core. This message will be delivered to
+     * any eligible subscriber to receive later. This also check message status before
+     * re-schedule
+     * @param messageMetadata message to reschedule
+     * @throws AndesException in case of an error
      */
-    public void moveMessagesToDeadLetterChannel(List<AndesRemovableMetadata> messagesToMove) throws AndesException {
-
-        //Separate the messages by their storage queues
-        Map<String, AndesRemovableMetadataDTO> storageSeparatedAndesRemovableMetadataDTOs =
-                separateMessagesToStorageQueues(messagesToMove);
-
-        //For each queue, move messages to DLC and update the queues with the correct message counts
-        for (Map.Entry<String, AndesRemovableMetadataDTO> entry : storageSeparatedAndesRemovableMetadataDTOs
-                .entrySet()) {
-
-            String dlcQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(entry.getKey());
-            messageStore.moveMetadataToDLC(entry.getValue().messagesToRemove, dlcQueueName);
-            int messageCount = entry.getValue().msgCount;
-            decrementQueueCount(entry.getKey(), messageCount);
-            incrementQueueCount(dlcQueueName, messageCount);
+    public void reQueueMessage(DeliverableAndesMetadata messageMetadata) throws AndesException {
+        if(!messageMetadata.isOKToDispose()) {
+            MessageFlusher.getInstance().reQueueMessage(messageMetadata);
         }
     }
 
@@ -285,26 +283,25 @@ public class MessagingEngine {
      * Move the messages meta data in the given message to the Dead Letter Channel and
      * remove those meta data from the original queue.
      *
-     * @param messageId            The message Id to be removed
+     * @param messageToRemove      Message to be removed
      * @param destinationQueueName The original destination queue of the message
      * @throws AndesException
      */
-    public void moveMessageToDeadLetterChannel(long messageId, String destinationQueueName)
+    public void moveMessageToDeadLetterChannel(DeliverableAndesMetadata messageToRemove, String destinationQueueName)
             throws AndesException {
         String deadLetterQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(destinationQueueName);
 
-        messageStore.moveMetadataToDLC(messageId, deadLetterQueueName);
+        messageStore.moveMetadataToDLC(messageToRemove.getMessageID(), deadLetterQueueName);
 
         // Increment count by 1 in DLC and decrement by 1 in original queue
         incrementQueueCount(deadLetterQueueName, 1);
         decrementQueueCount(destinationQueueName, 1);
 
-        //remove tracking of the message
-        OnflightMessageTracker.getInstance()
-                .stampMessageAsDLCAndRemoveFromTacking(messageId);
+        messageToRemove.markAsDLCMessage();
+        messageToRemove.getSlot().decrementPendingMessageCount();
 
 	    //Tracing message activity
-	    MessageTracer.trace(messageId, destinationQueueName, MessageTracer.MOVED_TO_DLC);
+	    MessageTracer.trace(messageToRemove.getMessageID(), destinationQueueName, MessageTracer.MOVED_TO_DLC);
     }
 
     /**
@@ -407,37 +404,142 @@ public class MessagingEngine {
     }
 
     /**
-     * A utility class to hold a list of message ids and mesage counts.
-     * With use of this class implementation of {@link #deleteMessages} was made simple.
-     */
-    private class AndesRemovableMetadataDTO{
-        
-        public AndesRemovableMetadataDTO(){
-            messagesToRemove = new ArrayList<Long>();
-        }
-        List<Long> messagesToRemove;
-        int msgCount;
-    }
-
-
-    /**
-     * Delete messages from store.
+     * Delete messages from store. No message state changes are involved here.
      *
-     * @param messagesToRemove List of messages to remove
+     * @param messagesToRemove list of messages to remove
      * @throws AndesException
      */
-    public void deleteMessages(List<AndesRemovableMetadata> messagesToRemove) throws AndesException {
+    public void deleteMessages(Collection<AndesMessageMetadata> messagesToRemove) throws
+            AndesException {
+        Map<String, List<AndesMessageMetadata>> storageSeparatedMessages =
+                new HashMap<>();
 
-        //Separate the message according to their storage queues
-        Map<String, AndesRemovableMetadataDTO> storageSeparatedAndesRemovableMetadataDTOs =
-                separateMessagesToStorageQueues(messagesToRemove);
-
-        //delete message content along with metadata and update the message count for the queues
-        for (Map.Entry<String, AndesRemovableMetadataDTO> entry : storageSeparatedAndesRemovableMetadataDTOs.entrySet()) {
-            messageStore.deleteMessages(entry.getKey(), entry.getValue().messagesToRemove);
-            decrementQueueCount(entry.getKey(), entry.getValue().msgCount);
+        for (AndesMessageMetadata message : messagesToRemove) {
+            List<AndesMessageMetadata> messagesOfStorageQueue = storageSeparatedMessages.get(message
+                    .getStorageQueueName());
+            if (null == messagesOfStorageQueue) {
+                messagesOfStorageQueue = new ArrayList<>();
+            }
+            messagesOfStorageQueue.add(message);
+            storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
         }
 
+        //delete message content along with metadata
+        for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages
+                .entrySet()) {
+            messageStore.deleteMessages(entry.getKey(), entry.getValue());
+            decrementQueueCount(entry.getKey(), entry.getValue().size());
+        }
+        for (AndesMessageMetadata message : messagesToRemove) {
+            //Message might be still tracked in delivery side. mark messages as deleted
+            DeliverableAndesMetadata deliverableMessage = OnflightMessageTracker.getInstance().getTrackingData
+                    (message.getMessageID());
+            deliverableMessage.markAsDeletedMessage();
+            deliverableMessage.getSlot().decrementPendingMessageCount();
+        }
+    }
+
+    /**
+     * Delete messages from store. Optionally move to dead letter channel.  Delete
+     * call is blocking and then slot message count is dropped in order. Message state
+     * is updated.
+     *
+     * @param messagesToRemove        List of messages to remove
+     * @throws AndesException
+     */
+    public void deleteMessages(List<DeliverableAndesMetadata> messagesToRemove) throws
+            AndesException {
+
+        Map<String, List<AndesMessageMetadata>> storageSeparatedMessages =
+                new HashMap<>();
+
+        for (DeliverableAndesMetadata message : messagesToRemove) {
+            List<AndesMessageMetadata> messagesOfStorageQueue = storageSeparatedMessages.get(message
+                    .getStorageQueueName());
+            if (null == messagesOfStorageQueue) {
+                messagesOfStorageQueue = new ArrayList<>();
+            }
+            messagesOfStorageQueue.add(message);
+            storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
+        }
+
+        //delete message content along with metadata
+        for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages
+                .entrySet()) {
+            messageStore.deleteMessages(entry.getKey(), entry.getValue());
+            decrementQueueCount(entry.getKey(), entry.getValue().size());
+        }
+        for (DeliverableAndesMetadata message : messagesToRemove) {
+            //mark messages as deleted
+            message.markAsDeletedMessage();
+            message.getSlot().decrementPendingMessageCount();
+        }
+
+    }
+
+    public void moveMessageToDeadLetterChannel(List<DeliverableAndesMetadata> messagesToMove) throws AndesException {
+        Map<String, List<AndesMessageMetadata>> storageSeparatedMessages = new HashMap<>();
+        for (DeliverableAndesMetadata message : messagesToMove) {
+            List<AndesMessageMetadata> messagesOfStorageQueue = storageSeparatedMessages.get(message
+                    .getStorageQueueName());
+            if(null == messagesOfStorageQueue) {
+                messagesOfStorageQueue = new ArrayList<>();
+            }
+            messagesOfStorageQueue.add(message);
+            storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
+        }
+
+        for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages
+                .entrySet()) {
+            //move messages to dead letter channel
+            String dlcQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(entry.getKey());
+            messageStore.moveMetadataToDLC(entry.getValue(), dlcQueueName);
+
+            int messageCount = entry.getValue().size();
+            decrementQueueCount(entry.getKey(), messageCount);
+            incrementQueueCount(dlcQueueName, messageCount);
+        }
+
+        //mark the messages as DLC messages
+        for(DeliverableAndesMetadata message : messagesToMove) {
+            message.markAsDLCMessage();
+            message.getSlot().decrementPendingMessageCount();
+        }
+    }
+
+    public void moveMessageToDeadLetterChannel(Collection<AndesMessageMetadata> messagesToMove)
+            throws AndesException {
+        Map<String, List<AndesMessageMetadata>> storageSeparatedMessages =
+                new HashMap<>();
+
+        for (AndesMessageMetadata message : messagesToMove) {
+            List<AndesMessageMetadata> messagesOfStorageQueue = storageSeparatedMessages.get(message
+                    .getStorageQueueName());
+            if(null == messagesOfStorageQueue) {
+                messagesOfStorageQueue = new ArrayList<>();
+            }
+            messagesOfStorageQueue.add(message);
+            storageSeparatedMessages.put(message.getStorageQueueName(), messagesOfStorageQueue);
+        }
+        for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages
+                .entrySet()) {
+            //move messages to dead letter channel
+            String dlcQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(entry.getKey());
+            messageStore.moveMetadataToDLC(entry.getValue(), dlcQueueName);
+
+            int messageCount = entry.getValue().size();
+            decrementQueueCount(entry.getKey(), messageCount);
+            incrementQueueCount(dlcQueueName, messageCount);
+        }
+
+        //mark the messages as DLC messages
+        for(AndesMessageMetadata message : messagesToMove) {
+            //Message might be still tracked in delivery side. mark messages as deleted
+            DeliverableAndesMetadata deliverableMessage = OnflightMessageTracker.getInstance().getTrackingData
+                    (message.getMessageID());
+            deliverableMessage.markAsDLCMessage();
+            deliverableMessage.getSlot().decrementPendingMessageCount();
+        }
     }
 
     /**
@@ -513,8 +615,9 @@ public class MessagingEngine {
      * @return List of message metadata
      * @throws AndesException
      */
-    public List<AndesMessageMetadata> getMetaDataList(final String queueName, long firstMsgId, long lastMsgID) throws AndesException {
-        return messageStore.getMetadataList(queueName, firstMsgId, lastMsgID);
+    public List<DeliverableAndesMetadata> getMetaDataList(final Slot slot, final String queueName,
+                                                      long firstMsgId, long lastMsgID) throws AndesException {
+        return messageStore.getMetadataList(slot, queueName, firstMsgId, lastMsgID);
     }
 
     /**
@@ -527,7 +630,8 @@ public class MessagingEngine {
      * @return List of message metadata
      * @throws AndesException
      */
-    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId, int count) throws AndesException {
+    public List<AndesMessageMetadata> getNextNMessageMetadataFromQueue(final String queueName, long firstMsgId, int count) throws
+            AndesException {
         return messageStore.getNextNMessageMetadataFromQueue(queueName, firstMsgId, count);
     }
 
@@ -568,7 +672,7 @@ public class MessagingEngine {
      * @return AndesRemovableMetadata
      * @throws AndesException
      */
-    public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException {
+    public List<AndesMessageMetadata> getExpiredMessages(int limit) throws AndesException {
         return messageStore.getExpiredMessages(limit);
     }
 
@@ -731,8 +835,8 @@ public class MessagingEngine {
      * @return AndesMessageMetadata
      * @throws AndesException
      */
-    public List<AndesMessageMetadata> getRetainedMessageByTopic(String subscriptionTopicName) throws AndesException {
-        List<AndesMessageMetadata> retainMessageList = new ArrayList<AndesMessageMetadata>();
+    public List<DeliverableAndesMetadata> getRetainedMessageByTopic(String subscriptionTopicName) throws AndesException {
+        List<DeliverableAndesMetadata> retainMessageList = new ArrayList<>();
         List<String> topicList = messageStore.getAllRetainedTopics();
 
         for (String topicName : topicList) {
@@ -782,34 +886,5 @@ public class MessagingEngine {
             lastMessageId = lastAssignedSlotMessageId - messageIdDifference;
         }
         return lastMessageId;
-    }
-
-    /**
-     * Method to separate a list of messages into a Map<storage queue, list of messages>.
-     *
-     * @param messageMetadataList List of removable metadata to be separated
-     * @return Map of removable metadata separated by storage queue names
-     */
-    private Map<String, AndesRemovableMetadataDTO> separateMessagesToStorageQueues(List<AndesRemovableMetadata>
-            messageMetadataList) {
-
-        Map<String, AndesRemovableMetadataDTO> storageSeparatedAndesRemovableMetadataDTOs =
-                new HashMap<>(messageMetadataList.size());
-
-        for (AndesRemovableMetadata message : messageMetadataList) {
-            //update <storageQueue, dtos> map
-            AndesRemovableMetadataDTO dto = storageSeparatedAndesRemovableMetadataDTOs.get(message
-                    .getStorageDestination());
-            if (null == dto) {
-                dto = new AndesRemovableMetadataDTO();
-            }
-            if (null != message.getStorageDestination()) {
-                storageSeparatedAndesRemovableMetadataDTOs.put(message.getStorageDestination(), dto);
-            }
-            dto.messagesToRemove.add(message.getMessageID());
-            dto.msgCount++;
-        }
-
-        return storageSeparatedAndesRemovableMetadataDTOs;
     }
 }

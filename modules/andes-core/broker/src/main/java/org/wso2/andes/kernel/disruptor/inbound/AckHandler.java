@@ -24,15 +24,16 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesAckData;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesRemovableMetadata;
-import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.kernel.disruptor.BatchEventHandler;
-import org.wso2.andes.store.AndesTranactionRollbackException;
+import org.wso2.andes.store.AndesTransactionRollbackException;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
+import org.wso2.andes.subscription.LocalSubscription;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +48,8 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
     private static Log log = LogFactory.getLog(AckHandler.class);
     
     private final MessagingEngine messagingEngine;
+
+    private final SubscriptionStore subscriptionStore;
     
     /**
      * Indicates and provides a barrier if messages stores become offline.
@@ -58,12 +61,13 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
     /**
      * Keeps message meta-data that needs to be removed from the message store.
      */
-    List<AndesRemovableMetadata> removableMetadata;
+    List<DeliverableAndesMetadata> messagesToRemove;
     
     AckHandler(MessagingEngine messagingEngine) {
         this.messagingEngine = messagingEngine;
+        this.subscriptionStore = AndesContext.getInstance().getSubscriptionStore();
         this.messageStoresUnavailable = null;
-        this.removableMetadata = new ArrayList<>();
+        this.messagesToRemove = new ArrayList<>();
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
@@ -72,7 +76,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
         if (log.isTraceEnabled()) {
             StringBuilder messageIDsString = new StringBuilder();
             for (InboundEventContainer inboundEvent : eventList) {
-                messageIDsString.append(inboundEvent.ackData.getMessageID()).append(" , ");
+                messageIDsString.append(inboundEvent.ackData.getAcknowledgedMessage().getMessageID()).append(" , ");
             }
             log.trace(eventList.size() + " messages received : " + messageIDsString);
         }
@@ -102,20 +106,19 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
 
             AndesAckData ack = event.ackData;
             // For topics message is shared. If all acknowledgements are received only we should remove message
-            boolean deleteMessage = OnflightMessageTracker.getInstance()
-                    .handleAckReceived(ack.getChannelID(), ack.getMessageID());
+            boolean deleteMessage = ack.getAcknowledgedMessage().markAsAcknowledgedByChannel(ack.getChannelID());
+
+            LocalSubscription subscription = subscriptionStore.getLocalSubscriptionForChannelId(ack.getChannelID());
+            subscription.ackReceived(ack.getAcknowledgedMessage().getMessageID());
+
             if (deleteMessage) {
                 if (log.isDebugEnabled()) {
-                    log.debug("Ok to delete message id " + ack.getMessageID());
+                    log.debug("Ok to delete message id " + ack.getAcknowledgedMessage().getMessageID());
                 }
-                removableMetadata.add(new AndesRemovableMetadata(ack.getMessageID(), ack.getDestination(),
-                        ack.getMsgStorageDestination()));
+                messagesToRemove.add(ack.getAcknowledgedMessage());
                 ack.makeRemovable();
             }
-
-            LocalSubscription subscription = AndesContext.getInstance().getSubscriptionStore()
-                    .getLocalSubscriptionForChannelId(ack.getChannelID());
-            subscription.ackReceived(ack.getMessageID());
+            
         }
 
         /*
@@ -127,37 +130,37 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
 
                 log.info("Message store has become unavailable therefore waiting until store becomes available");
                 messageStoresUnavailable.get();
-                log.info("Message store became available. resuming ack hander");
+                log.info("Message store became available. Resuming ack handler");
                 messageStoresUnavailable = null; // we are passing the blockade
                                                  // (therefore clear the it).
             } catch (InterruptedException e) {
                 throw new AndesException("Thread interrupted while waiting for message stores to come online", e);
             } catch (ExecutionException e) {
-                throw new AndesException("Error occured while waiting for message stores to come online", e);
+                throw new AndesException("Error occurred while waiting for message stores to come online", e);
             }
         }
 
         try {
-            messagingEngine.deleteMessages(removableMetadata);
+            messagingEngine.deleteMessages(messagesToRemove);
 
             if (log.isTraceEnabled()) {
                 StringBuilder messageIDsString = new StringBuilder();
-                for (AndesRemovableMetadata metadata : removableMetadata) {
+                for (DeliverableAndesMetadata metadata : messagesToRemove) {
                     messageIDsString.append(metadata.getMessageID()).append(" , ");
                 }
                 log.trace(eventList.size() + " message ok to remove : " + messageIDsString);
             }
-            removableMetadata.clear();
-        } catch (AndesTranactionRollbackException txrollback) {
+            messagesToRemove.clear();
+        } catch (AndesTransactionRollbackException txRollback) {
             log.warn(
-               String.format("unable to delete messages, due to trasaction roll back : %d, "
-                             + "operation will be attempted again",
-                             removableMetadata.size()));
+               String.format("unable to delete messages, due to transaction roll back : %d, "
+                               + "operation will be attempted again",
+                       messagesToRemove.size()));
         } catch (AndesException ex) {
             log.warn(
                String.format("unable to delete messages, probably due to errors in message stores."
-                             + "messages count : %d, operation will be attempted again",
-                             removableMetadata.size()));
+                               + "messages count : %d, operation will be attempted again",
+                       messagesToRemove.size()));
             throw ex;
         }
     }
@@ -170,7 +173,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
     @Override
     public void storeNonOperational(HealthAwareStore store, Exception ex) {
         log.info(String.format("Message store became not operational. messages to delete : %d",
-                               removableMetadata.size()));
+                messagesToRemove.size()));
         messageStoresUnavailable = SettableFuture.create();
     }
 
@@ -183,7 +186,7 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
     @Override
     public void storeOperational(HealthAwareStore store) {
         log.info(String.format("Message store became operational. messages to delete : %d",
-                               removableMetadata.size()));
+                messagesToRemove.size()));
         messageStoresUnavailable.set(false);
     }
 }

@@ -22,16 +22,14 @@ import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
-import org.wso2.andes.mqtt.MQTTLocalSubscription;
-import org.wso2.andes.subscription.BasicSubscription;
-
+import org.wso2.andes.subscription.LocalSubscription;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 /**
  * Class to hold information relevant to open and close subscription
  */
-public abstract class InboundSubscriptionEvent extends BasicSubscription implements AndesInboundStateEvent, LocalSubscription {
+public class InboundSubscriptionEvent implements AndesInboundStateEvent {
 
     private static Log log = LogFactory.getLog(InboundSubscriptionEvent.class);
 
@@ -63,6 +61,11 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
     private AndesSubscriptionManager subscriptionManager;
 
     /**
+     * Local subscription reference related to subscription event
+     */
+    private LocalSubscription localSubscription;
+
+    /**
      * Future to wait for subscription open/close event to be completed. Disruptor based async call will become a 
      * blocking call by waiting on this future. 
      * This will assure ordered event processing through Disruptor plus synchronous behaviour through future get call
@@ -70,19 +73,9 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
      */
     private SettableFuture<Boolean> future = SettableFuture.create();
 
-    public InboundSubscriptionEvent(String subscriptionAsStr) {
-        super(subscriptionAsStr);
-    }
 
-    public InboundSubscriptionEvent(String subscriptionID, String destination, boolean isBoundToTopic, 
-                                    boolean isExclusive, boolean isDurable, String subscribedNode, 
-                                    long subscribeTime, String targetQueue, String targetQueueOwner, 
-                                    String targetQueueBoundExchange, String targetQueueBoundExchangeType, 
-                                    Short isTargetQueueBoundExchangeAutoDeletable, boolean hasExternalSubscriptions) {
-        
-        super(subscriptionID, destination, isBoundToTopic, isExclusive, isDurable, subscribedNode, subscribeTime, 
-                targetQueue, targetQueueOwner, targetQueueBoundExchange, targetQueueBoundExchangeType, 
-                isTargetQueueBoundExchangeAutoDeletable, hasExternalSubscriptions);
+    public InboundSubscriptionEvent(LocalSubscription subscription) {
+        this.localSubscription = subscription;
     }
 
     @Override
@@ -103,12 +96,12 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
     private void handleCloseSubscriptionEvent() {
         boolean isComplete = false;
         try {
-            subscriptionManager.closeLocalSubscription(this);
+            subscriptionManager.closeLocalSubscription(localSubscription);
             isComplete = true;
         } catch (AndesException e) {
             future.setException(e);
             log.error("Error occurred while closing subscription. Subscription id "
-                    + getSubscriptionID(), e);
+                    + localSubscription.getSubscriptionID(), e);
         } finally {
             future.set(isComplete);
         }
@@ -118,12 +111,12 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
         boolean isComplete = false;
 
         try {
-            subscriptionManager.addSubscription(this);
+            subscriptionManager.addSubscription(localSubscription);
             isComplete = true;
         } catch (AndesException e) {
             future.setException(e);
             log.error("Error occurred while adding subscription. Subscription id "
-                    + getSubscriptionID(), e);
+                    + localSubscription.getSubscriptionID(), e);
         } catch (SubscriptionAlreadyExistsException e) {
             // exception will be handled by receiver
             future.setException(e);
@@ -134,17 +127,17 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
         // Send retained message if available
         try {
 
-            if (this instanceof MQTTLocalSubscription) {
+            if (localSubscription.getSubscriptionType().equals(AndesSubscription.SubscriptionType.MQTT)) {
                 // Before sending a retain message for given subscription event, have to
                 // verify if the given subscription bound to a topic and is not durable.
-                if (!this.isDurable() && this.isBoundToTopic()) {
-                    List<AndesMessageMetadata> metadataList = MessagingEngine.getInstance().getRetainedMessageByTopic(
-                            this.getSubscribedDestination());
+                if (!localSubscription.isDurable() && localSubscription.isBoundToTopic()) {
+                    List<DeliverableAndesMetadata> metadataList = MessagingEngine.getInstance().getRetainedMessageByTopic(
+                            localSubscription.getSubscribedDestination());
 
-                    for (AndesMessageMetadata metadata : metadataList) {
+                    for (DeliverableAndesMetadata metadata : metadataList) {
                         AndesContent content = MessagingEngine.getInstance().getRetainedMessageContent(metadata);
                         metadata.setRetain(true);
-                        this.sendMessageToSubscriber(metadata, content);
+                        localSubscription.sendMessageToSubscriber(metadata, content);
                     }
                 }
             }
@@ -180,7 +173,7 @@ public abstract class InboundSubscriptionEvent extends BasicSubscription impleme
             } else {
                 // No point in throwing an exception here and disrupting the server. A warning is sufficient.
                 log.warn("Error occurred while processing event '" + eventType  + "' for subscription id "
-                        + getSubscriptionID());
+                        + localSubscription.getSubscriptionID());
             }
         }
         return false;

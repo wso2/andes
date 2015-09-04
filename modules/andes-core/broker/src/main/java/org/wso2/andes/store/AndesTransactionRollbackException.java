@@ -24,7 +24,7 @@ import org.wso2.andes.kernel.AndesException;
  * Indicates an error situation occurred when a attempted transaction was rejected/rollbacked by database
  * 
  */
-public class AndesTranactionRollbackException extends AndesException {
+public class AndesTransactionRollbackException extends AndesException {
 
     /**
      * The serial version id.
@@ -37,7 +37,7 @@ public class AndesTranactionRollbackException extends AndesException {
      * @param errorCode one of the above defined constants that classifies the error.
      * @param cause reference to the exception for reference.
      */
-    public AndesTranactionRollbackException(String message, String errorCode, Throwable cause){
+    public AndesTransactionRollbackException(String message, String errorCode, Throwable cause){
         super(message, errorCode, cause);
     }
     
@@ -47,7 +47,7 @@ public class AndesTranactionRollbackException extends AndesException {
      * @param message descriptive message
      * @param cause reference to the exception for reference.
      */
-    public AndesTranactionRollbackException(String message, Throwable cause) {
+    public AndesTransactionRollbackException(String message, Throwable cause) {
         super(message, cause);
     }
 

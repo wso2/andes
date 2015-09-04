@@ -23,10 +23,12 @@ import com.google.gson.GsonBuilder;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesException;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This class stores all the data related to a slot
@@ -75,12 +77,17 @@ public class Slot implements Serializable, Comparable<Slot> {
      */
     private String destinationOfMessagesInSlot;
 
+    /**
+     * Track the number of undelivered messages in the slot
+     */
+    private AtomicInteger pendingMessageCount;
 
     public Slot() {
         isSlotActive = true;
         isAnOverlappingSlot = false;
         this.slotStates = new ArrayList<>();
         addState(SlotState.CREATED);
+        pendingMessageCount = new AtomicInteger();
     }
 
     public Slot(long start, long end, String destinationOfMessagesInSlot) {
@@ -256,5 +263,32 @@ public class Slot implements Serializable, Comparable<Slot> {
         } else {
             return this.getStartMessageId() > other.getStartMessageId() ? 1 : -1;
         }
+    }
+
+    /**
+     * Decrement message count in slot and if it is zero prepare for slot deletion
+     */
+    public void decrementPendingMessageCount() throws AndesException {
+        int messageCount = pendingMessageCount.decrementAndGet();
+        if (messageCount == 0) {
+            /*
+            All the Acks for the slot has bee received. Check the slot again for unsend
+            messages and if there are any send them and delete the slot.
+             */
+            SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance()
+                                                                     .getSlotWorker(getStorageQueueName());
+            if (log.isDebugEnabled()) {
+                log.debug("Slot has no pending messages. Now re-checking slot for messages");
+            }
+            setSlotInActive();
+            slotWorker.deleteSlot(this);
+        }
+    }
+
+    /**
+     * Increment the pending message count in a slot
+     */
+    public void incrementPendingMessageCount(int amount) {
+        pendingMessageCount.addAndGet(amount);
     }
 }
