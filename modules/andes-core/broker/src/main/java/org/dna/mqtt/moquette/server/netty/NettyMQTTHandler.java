@@ -15,7 +15,16 @@ import org.dna.mqtt.wso2.MQTTPingRequest;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.dna.mqtt.moquette.proto.messages.AbstractMessage.*;
+import static org.dna.mqtt.moquette.proto.messages.AbstractMessage.CONNECT;
+import static org.dna.mqtt.moquette.proto.messages.AbstractMessage.DISCONNECT;
+import static org.dna.mqtt.moquette.proto.messages.AbstractMessage.PINGREQ;
+import static org.dna.mqtt.moquette.proto.messages.AbstractMessage.PUBACK;
+import static org.dna.mqtt.moquette.proto.messages.AbstractMessage.PUBCOMP;
+import static org.dna.mqtt.moquette.proto.messages.AbstractMessage.PUBLISH;
+import static org.dna.mqtt.moquette.proto.messages.AbstractMessage.PUBREC;
+import static org.dna.mqtt.moquette.proto.messages.AbstractMessage.PUBREL;
+import static org.dna.mqtt.moquette.proto.messages.AbstractMessage.SUBSCRIBE;
+import static org.dna.mqtt.moquette.proto.messages.AbstractMessage.UNSUBSCRIBE;
 
 /**
  * @author andrea
