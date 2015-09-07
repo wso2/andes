@@ -180,11 +180,11 @@ public class Andes {
      * @throws AndesException
      */
     public void ackReceived(AndesAckData ackData) throws AndesException {
-        inboundEventManager.ackReceived(ackData);
-
         //Tracing Message
         MessageTracer.trace(ackData.getMessageID(), ackData.getDestination(),
-                            MessageTracer.ACK_RECEIVED_FROM_PROTOCOL);
+                MessageTracer.ACK_RECEIVED_FROM_PROTOCOL);
+
+        inboundEventManager.ackReceived(ackData);
 
         //Adding metrics meter for ack rate
         Meter ackMeter = MetricManager.meter(Level.INFO, MetricsConstants.ACK_RECEIVE_RATE);
