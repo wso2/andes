@@ -22,14 +22,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.subscription.LocalSubscription;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This class represents the message metadata and all the delivery aspects of it to the subscribers (outbound path).
@@ -37,10 +31,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class DeliverableAndesMetadata extends AndesMessageMetadata{
 
-    /**
-     * Number of scheduled deliveries. concurrently modified whenever the message is scheduled to be delivered.
-     */
-    private AtomicInteger numberOfScheduledDeliveries;
     /**
      * Map to keep message status and delivery information of this message to vivid channels
      */
@@ -68,7 +58,6 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
         this.channelDeliveryInfo = new ConcurrentHashMap<>();
         this.messageStatus = Collections.synchronizedList(new ArrayList<MessageStatus>());
         this.messageStatus.add(MessageStatus.READ);
-        this.numberOfScheduledDeliveries = new AtomicInteger(0);
     }
 
     /**
@@ -339,7 +328,8 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
             ChannelMessageStatus channelMessageStatus = channelInfoEntry.getValue().getLatestMessageStatus();
             if(null == channelMessageStatus
                     || !(channelMessageStatus.equals(ChannelMessageStatus.SENT)
-                    || channelMessageStatus.equals(ChannelMessageStatus.RESENT))) {
+                    || channelMessageStatus.equals(ChannelMessageStatus.RESENT)
+                    || channelMessageStatus.equals(ChannelMessageStatus.ACKED))) {
                 isDelivered = false;
                 break;
             }
@@ -404,7 +394,6 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
                 log.warn("Invalid message state transition from " + messageStatus.get
                         (messageStatus.size() - 1) + " suggested: " + state + " Message ID: " + messageID + "Status " +
                         "Message Status History >> " + messageStatus);
-
             }
         }
 
@@ -423,59 +412,45 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
 
 
     /**
-     * Dump message info to a csv file
+     * Get message status history as a string.
      *
-     * @param fileToWrite file to dump info
      * @throws AndesException
      */
-    public void dumpMessageStatusToFile(File fileToWrite) throws AndesException {
+    public String dumpMessageStatus() throws AndesException {
 
-        try {
-            FileWriter writer = new FileWriter(fileToWrite);
+        StringBuilder information = new StringBuilder();
 
-            writer.append("Message ID ");
-                writer.append(Long.toString(messageID));
-                writer.append(',');
-            writer.append("Message Header ");
-                writer.append("null");
-                writer.append(',');
-            writer.append("Destination ");
-                writer.append(getDestination());
-                writer.append(',');
-            writer.append("Message status ");
-                writer.append(getStatusHistoryAsString());
-                writer.append(',');
-            writer.append("Slot Info ");
-                writer.append(slot.toString());
-                writer.append(',');
-            writer.append("Timestamp ");
-                writer.append(Long.toString(timeMessageIsRead));
-                writer.append(',');
-            writer.append("Expiration time ");
-                writer.append(Long.toString(expirationTime));
-                writer.append(',');
-            writer.append("NumOfScheduledDeliveries ");
-                writer.append(Integer.toString(numberOfScheduledDeliveries.get()));
-                writer.append(',');
-            writer.append("Channels sent ");
-                String deliveries = "";
-                for (UUID channelID : getAllDeliveredChannels()) {
-                    deliveries = deliveries + channelID + " >> " + channelDeliveryInfo.get(channelID)
-                            .getMessageStatusHistoryForChannel() + " : ";
-                }
-                writer.append(deliveries);
-                writer.append('\n');
-
-            writer.flush();
-            writer.close();
-
-        } catch (FileNotFoundException e) {
-            log.error("File to write is not found", e);
-            throw new AndesException("File to write is not found", e);
-        } catch (IOException e) {
-            log.error("Error while dumping message status to file", e);
-            throw new AndesException("Error while dumping message status to file", e);
+        information.append("Message ID ");
+        information.append(Long.toString(messageID));
+        information.append(',');
+        information.append("Message Header ");
+        information.append("null");
+        information.append(',');
+        information.append("Destination ");
+        information.append(getDestination());
+        information.append(',');
+        information.append("Message status ");
+        information.append(getStatusHistoryAsString());
+        information.append(',');
+        information.append("Slot Info ");
+        information.append(slot.toString());
+        information.append(',');
+        information.append("Timestamp ");
+        information.append(Long.toString(timeMessageIsRead));
+        information.append(',');
+        information.append("Expiration time ");
+        information.append(Long.toString(expirationTime));
+        information.append(',');
+        information.append("Channels sent ");
+        String deliveries = "";
+        for (UUID channelID : getAllDeliveredChannels()) {
+            deliveries = deliveries + channelID + " >> " + channelDeliveryInfo.get(channelID)
+                    .getMessageStatusHistoryForChannel() + " : ";
         }
+        information.append(deliveries);
+        information.append('\n');
+
+        return information.toString();
     }
 
     /**

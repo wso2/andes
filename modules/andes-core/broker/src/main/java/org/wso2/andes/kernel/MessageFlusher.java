@@ -265,10 +265,6 @@ public class MessageFlusher {
                  */
                 String destination = slot.getDestinationOfMessagesInSlot();
                 MessageDeliveryInfo messageDeliveryInfo = getMessageDeliveryInfo(destination);
-                //check and buffer message
-                //stamp this message as buffered
-                OnflightMessageTracker.getInstance()
-                                      .addMessageToTracker(message);
                 message.markAsBuffered();
                 messageDeliveryInfo.readButUndeliveredMessages.add(message);
                 //Tracing message
