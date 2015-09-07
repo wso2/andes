@@ -26,7 +26,6 @@ import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.kernel.disruptor.BatchEventHandler;
 import org.wso2.andes.store.AndesTransactionRollbackException;
 import org.wso2.andes.store.FailureObservingStoreManager;
@@ -115,8 +114,9 @@ public class AckHandler implements BatchEventHandler, StoreHealthListener {
                 if (log.isDebugEnabled()) {
                     log.debug("Ok to delete message id " + ack.getAcknowledgedMessage().getMessageID());
                 }
+                //it is a must to set this to event container. Otherwise, multiple event handlers will see the status
+                event.ackData.setBaringMessageRemovable();
                 messagesToRemove.add(ack.getAcknowledgedMessage());
-                ack.makeRemovable();
             }
             
         }
