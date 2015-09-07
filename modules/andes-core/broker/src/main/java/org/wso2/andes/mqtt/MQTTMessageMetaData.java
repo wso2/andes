@@ -116,14 +116,13 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
     }
 
     private static class MetaDataFactory implements MessageMetaDataType.Factory<MQTTMessageMetaData> {
-
-        private Map<String, String> decodedValues = new HashMap<String, String>();
-
         /**
          * Will decode the message meata data from the given buffer
          * @param buffer the message information which will be provided
          */
-        private void decodeMetaData(ByteBuffer buffer) {
+        private Map<String, String> decodeMetaData(ByteBuffer buffer) {
+            Map<String, String> decodedValues = new HashMap<>();
+
             String information = new String(buffer.array());
             //Will split the Meta Body information
             String[] message_parts = information.split("\\?");
@@ -135,6 +134,7 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
                 }
             }
 
+            return decodedValues;
         }
 
         /**
@@ -144,7 +144,7 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
          */
         @Override
         public MQTTMessageMetaData createMetaData(ByteBuffer buf) {
-            decodeMetaData(buf);
+            Map<String, String> decodedValues = decodeMetaData(buf);
             Long messageID = Long.parseLong(decodedValues.get("MessageID"));
             //TODO intoduce a static class for this
             boolean isTopic = Boolean.parseBoolean(decodedValues.get("Topic"));

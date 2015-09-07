@@ -18,25 +18,6 @@
 
 package org.wso2.andes.store.rdbms;
 
-import static org.wso2.andes.store.rdbms.RDBMSConstants.CONTENT_TABLE;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_CONTENT;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_ID;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_MESSAGE_PART;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_METADATA;
-import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
-
-import java.sql.BatchUpdateException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesContextStore;
@@ -55,6 +36,25 @@ import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 import org.wso2.carbon.metrics.manager.Timer.Context;
+
+import java.sql.BatchUpdateException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static org.wso2.andes.store.rdbms.RDBMSConstants.CONTENT_TABLE;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_CONTENT;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.MESSAGE_ID;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.MSG_OFFSET;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_MESSAGE_PART;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.PS_INSERT_METADATA;
+import static org.wso2.andes.store.rdbms.RDBMSConstants.TASK_RETRIEVING_CONTENT_FOR_MESSAGES;
 
 /**
  * ANSI SQL based message store implementation. Message persistence related methods are implemented
