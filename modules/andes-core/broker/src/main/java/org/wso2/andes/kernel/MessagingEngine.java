@@ -336,7 +336,6 @@ public class MessagingEngine {
     public int purgeMessages(String destination, String ownerName, boolean isTopic,Long startMessageID) throws AndesException {
 
         // The timestamp is recorded to track messages that came before the purge event.
-        // Refer OnflightMessageTracker:evaluateDeliveryRules method for more details.
         Long purgedTimestamp = System.currentTimeMillis();
         String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         String storageQueueName = AndesUtils.getStorageQueueForDestination(destination, nodeID, isTopic);
@@ -430,13 +429,8 @@ public class MessagingEngine {
             messageStore.deleteMessages(entry.getKey(), entry.getValue());
             decrementQueueCount(entry.getKey(), entry.getValue().size());
         }
-        for (AndesMessageMetadata message : messagesToRemove) {
-            //Message might be still tracked in delivery side. mark messages as deleted
-            DeliverableAndesMetadata deliverableMessage = OnflightMessageTracker.getInstance().getTrackingData
-                    (message.getMessageID());
-            deliverableMessage.markAsDeletedMessage();
-            deliverableMessage.getSlot().decrementPendingMessageCount();
-        }
+
+        //TODO:message can be in delivery path. If so we need to decrement slot message count
     }
 
     /**
@@ -472,7 +466,6 @@ public class MessagingEngine {
         for (DeliverableAndesMetadata message : messagesToRemove) {
             //mark messages as deleted
             message.markAsDeletedMessage();
-            message.getSlot().decrementPendingMessageCount();
         }
 
     }
@@ -532,14 +525,7 @@ public class MessagingEngine {
             incrementQueueCount(dlcQueueName, messageCount);
         }
 
-        //mark the messages as DLC messages
-        for(AndesMessageMetadata message : messagesToMove) {
-            //Message might be still tracked in delivery side. mark messages as deleted
-            DeliverableAndesMetadata deliverableMessage = OnflightMessageTracker.getInstance().getTrackingData
-                    (message.getMessageID());
-            deliverableMessage.markAsDLCMessage();
-            deliverableMessage.getSlot().decrementPendingMessageCount();
-        }
+        //TODO:message can be in delivery path. If so we need to decrement slot message count
     }
 
     /**

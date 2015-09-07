@@ -25,43 +25,63 @@ import java.util.UUID;
  */
 public class AndesAckData {
 
-    private DeliverableAndesMetadata acknowledgedMessage;
-    private UUID channelID;
     /**
-     * Indicate if this is a removable ack data.
+     * Acknowledged message
      */
-    private boolean isRemovable;
+    private DeliverableAndesMetadata acknowledgedMessage;
 
+    /**
+     * ID of the channel acknowledge is received
+     */
+    private UUID channelID;
+
+    /**
+     * Holds if acknowledged message is ready to be removed. If all channels
+     * acknowledged it becomes removable. Message reference cannot be used here
+     * as we need to keep it in disruptor data holder
+     */
+    private boolean isBaringMessageRemovable = false;
+
+    /**
+     * Generate AndesAckData object. This holds acknowledge event in disruptor
+     * @param channelID ID of the channel ack is received
+     * @param acknowledgedMessage message being acknowledged
+     */
     public AndesAckData(UUID channelID, DeliverableAndesMetadata acknowledgedMessage) {
         this.acknowledgedMessage = acknowledgedMessage;
         this.channelID = channelID;
-        this.isRemovable = false;
-        
     }
 
-
+    /**
+     * Get the reference of the message being acknowledged
+     * @return Metadata of the acknowledged message
+     */
     public DeliverableAndesMetadata getAcknowledgedMessage() {
         return acknowledgedMessage;
     }
 
+    /**
+     * Get ID of the channel acknowledgement is received
+     * @return channel ID
+     */
     public UUID getChannelID() {
         return channelID;
     }
 
-
     /**
-     * Mark ack data as removable
+     * Check if message being acknowledged is ready to be removed
+     * @return true if removable
      */
-    public void makeRemovable() {
-        isRemovable = true;
+    public boolean isBaringMessageRemovable() {
+        return isBaringMessageRemovable;
     }
 
     /**
-     * Check if the ack data can be removed
-     *
-     * @return True if ack data can be removed
+     * Set message being acknowledged is ready to be removed. This happens
+     * if acknowledgements are received from all channels
      */
-    public boolean isRemovable() {
-        return isRemovable;
+    public void setBaringMessageRemovable() {
+        this.isBaringMessageRemovable = true;
     }
+
 }
