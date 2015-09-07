@@ -402,40 +402,14 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
                 .createMetaData(buf);
 
         byte[] underlying;
-        MetaDataHandler handler;
         //TODO need to implement factory pattern here
         if (type.equals(MessageMetaDataType.META_DATA_MQTT)) {
-            handler = new MQTTMetaDataHandler();
+            underlying = MQTTMetaDataHandler.constructMetadata(routingKey, buf, original_mdt, exchangeName);
             //This needs to be set to the latest queue name
             setStorageQueueName(routingKey);
         } else {
-            handler = new AMQPMetaDataHandler();
+            underlying = AMQPMetaDataHandler.constructMetadata(routingKey, buf, original_mdt, exchangeName);
         }
-
-        underlying = handler.constructMetadata(routingKey, buf, original_mdt, exchangeName);
-        //TODO uncomment this once the logic is confirmed - Hasitha to review the change
-/*		ContentHeaderBody contentHeaderBody = ((MessageMetaData) original_mdt)
-                .getContentHeaderBody();
-		int contentChunkCount = ((MessageMetaData) original_mdt)
-				.getContentChunkCount();
-		long arrivalTime = ((MessageMetaData) original_mdt).getArrivalTime();
-
-		// modify routing key to the binding name
-		MessagePublishInfo messagePublishInfo = new CustomMessagePublishInfo(
-				original_mdt);
-		messagePublishInfo.setRoutingKey(new AMQShortString(routingKey));
-        messagePublishInfo.setExchange(new AMQShortString(exchangeName));
-		MessageMetaData modifiedMetaData = new MessageMetaData(
-				messagePublishInfo, contentHeaderBody, contentChunkCount,
-				arrivalTime);
-
-		final int bodySize = 1 + modifiedMetaData.getStorableSize();
-		byte[] underlying = new byte[bodySize];
-		underlying[0] = (byte) modifiedMetaData.getType().ordinal();
-		buf = java.nio.ByteBuffer.wrap(underlying);
-		buf.position(1);
-		buf = buf.slice();
-		modifiedMetaData.writeToBuffer(0, buf);*/
 
         return underlying;
     }

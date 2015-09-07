@@ -17,7 +17,6 @@
  */
 package org.wso2.andes.mqtt;
 
-import org.wso2.andes.kernel.MetaDataHandler;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 
@@ -26,17 +25,15 @@ import java.nio.ByteBuffer;
 /**
  * Will be used to clone meta information of MQTT related topic messages recived
  */
-public class MQTTMetaDataHandler implements MetaDataHandler {
-    @Override
-    public byte[] constructMetadata(String routingKey, ByteBuffer buf, StorableMessageMetaData originalMeataData,
-                                    String exchange) {
+public class MQTTMetaDataHandler {
+    public static byte[] constructMetadata(String routingKey, ByteBuffer buf, StorableMessageMetaData originalMeataData,
+                                           String exchange) {
 
         //For MQTT we just need to take a copy
         MQTTMessageMetaData metaInformation = (MQTTMessageMetaData) originalMeataData;
         //Will re-encode the bytes
         return MQTTUtils.encodeMetaInfo(MQTTUtils.MQTT_META_INFO, metaInformation.getMessageID(), false,
-                metaInformation.getQosLevel(), routingKey, metaInformation.isPersistent(),
-                metaInformation.getContentSize());
-
+                                        metaInformation.getQosLevel(), routingKey, metaInformation.isPersistent(),
+                                        metaInformation.getContentSize());
     }
 }
