@@ -88,23 +88,25 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                     handleSendError(message);
                     return;
                 }
-                if (subscription.isActive()) {
-                    subscription.sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
+                if (!message.isStale()) {
+                    if (subscription.isActive()) {
+                        subscription.sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
 
-                    //Tracing Message
-                    MessageTracer.trace(message, MessageTracer.DISPATCHED_TO_PROTOCOL);
+                        //Tracing Message
+                        MessageTracer.trace(message, MessageTracer.DISPATCHED_TO_PROTOCOL);
 
-                    //Adding metrics meter for ack rate
-                    Meter messageMeter = MetricManager.meter(Level.INFO, MetricsConstants.MSG_SENT_RATE);
-                    messageMeter.mark();
+                        //Adding metrics meter for ack rate
+                        Meter messageMeter = MetricManager.meter(Level.INFO, MetricsConstants.MSG_SENT_RATE);
+                        messageMeter.mark();
 
-                } else {
-                    if(subscription.isDurable()) {
-                        //re-queue message to andes core so that it can find other subscriber to deliver
-                        MessagingEngine.getInstance().reQueueMessage(message);
                     } else {
-                        if(!message.isOKToDispose()) {
-                            log.warn("Cannot send message id= " + message.getMessageID() + " as subscriber is closed");
+                        if(subscription.isDurable()) {
+                            //re-queue message to andes core so that it can find other subscriber to deliver
+                            MessagingEngine.getInstance().reQueueMessage(message);
+                        } else {
+                            if(!message.isOKToDispose()) {
+                                log.warn("Cannot send message id= " + message.getMessageID() + " as subscriber is closed");
+                            }
                         }
                     }
                 }
