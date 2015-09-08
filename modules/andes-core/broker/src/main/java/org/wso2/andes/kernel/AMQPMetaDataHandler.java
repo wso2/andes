@@ -29,25 +29,21 @@ import java.nio.ByteBuffer;
 /**
  * Will handle cloning of meta data at an even where AMQP message is published
  */
-public class AMQPMetaDataHandler implements MetaDataHandler {
+public class AMQPMetaDataHandler {
 
-    @Override
-    public byte[] constructMetadata(String routingKey, ByteBuffer buf, StorableMessageMetaData originalMeataData,
-                                    String exchange) {
-        ContentHeaderBody contentHeaderBody = ((MessageMetaData) originalMeataData)
-                .getContentHeaderBody();
-        int contentChunkCount = ((MessageMetaData) originalMeataData)
-                .getContentChunkCount();
+    public static byte[] constructMetadata(String routingKey, ByteBuffer buf, StorableMessageMetaData originalMeataData,
+                                           String exchange) {
+        ContentHeaderBody contentHeaderBody = ((MessageMetaData) originalMeataData).getContentHeaderBody();
+        int contentChunkCount = ((MessageMetaData) originalMeataData).getContentChunkCount();
         long arrivalTime = ((MessageMetaData) originalMeataData).getArrivalTime();
         long sessionID = ((MessageMetaData) originalMeataData).getPublisherSessionID();
 
         // modify routing key to the binding name
-        MessagePublishInfo messagePublishInfo = new CustomMessagePublishInfo(
-                originalMeataData);
+        MessagePublishInfo messagePublishInfo = new CustomMessagePublishInfo(originalMeataData);
         messagePublishInfo.setRoutingKey(new AMQShortString(routingKey));
         messagePublishInfo.setExchange(new AMQShortString(exchange));
-        MessageMetaData modifiedMetaData =
-                new MessageMetaData(messagePublishInfo, contentHeaderBody, sessionID, contentChunkCount, arrivalTime);
+        MessageMetaData modifiedMetaData = new MessageMetaData(messagePublishInfo, contentHeaderBody, sessionID,
+                                                               contentChunkCount, arrivalTime);
 
         final int bodySize = 1 + modifiedMetaData.getStorableSize();
         byte[] underlying = new byte[bodySize];
