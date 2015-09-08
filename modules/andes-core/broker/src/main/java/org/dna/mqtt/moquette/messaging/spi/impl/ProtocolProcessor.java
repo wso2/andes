@@ -234,6 +234,15 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             authSubject.setTenantDomain(MultitenantUtils.getTenantDomain(username.replace('!', '@')));
         }
 
+        // Checking whether a client already exists with the same client ID. If so, do not allow.
+        if (authSubjects.containsKey(msg.getClientID())) {
+            log.error("Subscription with client ID as '" + msg.getClientID() + "' already exists.");
+            ConnAckMessage okResp = new ConnAckMessage();
+            okResp.setReturnCode(ConnAckMessage.IDENTIFIER_REJECTED);
+            session.write(okResp);
+            return;
+        }
+
         authSubjects.put(msg.getClientID(), authSubject);
 
         subscriptions.activate(msg.getClientID());
