@@ -18,6 +18,8 @@
 
 package org.wso2.andes.subscription;
 
+import com.ctc.wstx.util.StringUtil;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesSubscription;
@@ -330,10 +332,14 @@ public class BasicSubscription implements AndesSubscription {
                 .append(",isExclusive=").append(isExclusive)
                 .append(",isDurable=").append(isDurable)
                 .append(",targetQueue=").append(targetQueue)
-                .append(",targetQueueOwner=").append(targetQueueOwner)
-                .append(",targetQueueBoundExchange=").append(targetQueueBoundExchange)
-                .append(",targetQueueBoundExchangeType=").append(targetQueueBoundExchangeType)
-                .append(",isTargetQueueBoundExchangeAutoDeletable=").append(isTargetQueueBoundExchangeAutoDeletable)
+                .append(",targetQueueOwner=")
+                .append(StringUtils.isBlank(targetQueueOwner) ? "null" : targetQueueOwner)
+                .append(",targetQueueBoundExchange=")
+                .append(StringUtils.isBlank(targetQueueBoundExchange) ? "null" : targetQueueBoundExchange)
+                .append(",targetQueueBoundExchangeType=")
+                .append(StringUtils.isBlank(targetQueueBoundExchangeType) ? "null" : targetQueueBoundExchangeType)
+                .append(",isTargetQueueBoundExchangeAutoDeletable=")
+                .append(isTargetQueueBoundExchangeAutoDeletable == null ? "null" : isTargetQueueBoundExchangeAutoDeletable)
                 .append(",subscribedNode=").append(subscribedNode)
                 .append(",subscribedTime=").append(subscribeTime)
                 .append(",hasExternalSubscriptions=").append(hasExternalSubscriptions);

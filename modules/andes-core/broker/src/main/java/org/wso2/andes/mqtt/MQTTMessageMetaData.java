@@ -17,6 +17,7 @@
  */
 package org.wso2.andes.mqtt;
 
+import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.store.MessageMetaDataType;
 import org.wso2.andes.server.store.StorableMessageMetaData;
 
@@ -32,6 +33,8 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
 
     //Will store the following information as meta data of the message
     private long messageID;
+    //Time message has arrived (published) to broker
+    private long messageArrivalTime;
     //By default this will be true in the case of MQTT, since all the transactions are made through topics
     private boolean isTopic;
     //The destination of the message, this will be the name of the topic
@@ -48,13 +51,16 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
      * Will create a metadat object through this method
      *
      * @param mid           meta data identification
+     * @param messageArrivalTime time message has arrived to broker
      * @param topic         the name of the topic the message has being published
      * @param destination   the detination the message should be sent to
      * @param persistance   does it require the message to be persisted even after the delivery of the message
      * @param messageLength the length of the message which was recived
      */
-    public MQTTMessageMetaData(long mid, boolean topic, String destination, boolean persistance, int messageLength,int qos) {
+    public MQTTMessageMetaData(long mid, long messageArrivalTime, boolean topic, String destination, boolean
+            persistance, int messageLength,int qos) {
         this.messageID = mid;
+        this.messageArrivalTime = messageArrivalTime;
         this.isTopic = topic;
         this.destination = destination;
         this.isPersistance = persistance;
@@ -89,6 +95,14 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
 
     public long getMessageID() {
         return messageID;
+    }
+
+    /**
+     * Get time message has arrived to the broker
+     * @return time in milli seconds
+     */
+    public long getMessageArrivalTime() {
+        return messageArrivalTime;
     }
 
     public int getQosLevel() {
@@ -151,7 +165,9 @@ public class MQTTMessageMetaData implements StorableMessageMetaData {
             boolean isPersistant = Boolean.parseBoolean(decodedValues.get("Persistant"));
             int messageContentLength = Integer.parseInt(decodedValues.get("MessageContentLength"));
             int qos = Integer.parseInt(decodedValues.get("QOSLevel"));
+            long messageArrivalTime = Long.parseLong(decodedValues.get(MQTTUtils.ARRIVAL_TIME));
             return new MQTTMessageMetaData(messageID,
+                    messageArrivalTime,
                     isTopic,
                     decodedValues.get("Destination"),
                     isPersistant,

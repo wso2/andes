@@ -81,13 +81,7 @@ public class LimitedSizeQueueEntryHolder extends LinkedHashMap<Long, QueueEntry>
      */
     private void simulateAcknowledgement(QueueEntry queueEntry) {
         try {
-            boolean isTopic = ((AMQMessage) queueEntry.getMessage()).getMessagePublishInfo()
-                    .getExchange()
-                    .equals(AMQPUtils
-                            .TOPIC_EXCHANGE_NAME);
-            QpidAndesBridge.ackReceived(amqChannel.getId(), queueEntry.getMessage().getMessageNumber(),
-                    queueEntry.getMessage().getRoutingKey(),
-                    isTopic);
+            QpidAndesBridge.ackReceived(amqChannel.getId(), queueEntry.getMessage().getMessageNumber());
         } catch (AMQException e) {
             _logger.error("Error while simulating acknowledgement for message id= " + queueEntry.getMessage()
                     .getMessageNumber(), e);

@@ -134,7 +134,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
             throws MQTTException, SubscriptionAlreadyExistsException {
 
         //create a MQTTLocalSubscription wrapping underlying channel
-        MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, mqttClientID, qos.getValue(),
+        MQTTLocalSubscription mqttTopicSubscriber = createSubscription(topic, channel, mqttClientID, qos.getValue(),
                 subscriptionChannelID, true);
 
         try {
@@ -188,8 +188,8 @@ public class PersistenceStoreConnector implements MQTTConnector {
             String queueUser = "admin";
 
             //Here we hard code the QoS level since for subscription removal that doesn't matter
-            MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscriptionChannelID, 0,
-                    subscriberChannel, true);
+            MQTTLocalSubscription mqttTopicSubscriber = createSubscription(subscribedTopic,channel,
+                    subscriptionChannelID, 0, subscriberChannel, true);
 
             //This will be similar to a durable subscription of AMQP
             //There could be two types of events one is the disconnection due to the lost of the connection
@@ -225,25 +225,28 @@ public class PersistenceStoreConnector implements MQTTConnector {
             throws MQTTException {
         try {
 
-            String queueIdentifier = MQTTUtils.generateTopicSpecficClientID(mqttClientID);
             String queueUser = "admin";
+            String subscriptionID = mqttClientID;
 
             if (!isCleanSession) {
                 //This will be similar to a durable subscription of AMQP
                 //There could be two types of events one is the disconnection due to the lost of the connection
                 //The other is un-subscription, if is the case of un-subscription the subscription should be removed
                 //Will need to delete the relevant queue mapping out
+                String queueIdentifier = MQTTUtils.generateTopicSpecficClientID(mqttClientID);
+                subscriptionID = queueIdentifier;
                 InboundQueueEvent queueChange = new InboundQueueEvent(queueIdentifier, queueUser, false, true);
                 Andes.getInstance().deleteQueue(queueChange);
             }
 
             //Here we hard code the QoS level since for subscription removal that doesn't matter
-            MQTTLocalSubscription mqttTopicSubscriber = createSubscription(channel, subscriptionChannelID, 0,
-                    subscriberChannel, true);
+            MQTTLocalSubscription mqttTopicSubscriber = createSubscription(subscribedTopic, channel,
+                    subscriptionChannelID, 0, subscriberChannel, true);
 
             //create a close subscription event
             LocalSubscription localSubscription = createLocalSubscription(mqttTopicSubscriber, isCleanSession,
-                    subscribedTopic, mqttClientID);
+                    subscribedTopic, subscriptionID);
+            localSubscription.setHasExternalSubscriptions(false);
             InboundSubscriptionEvent subscriptionCloseEvent = new InboundSubscriptionEvent(localSubscription);
             Andes.getInstance().closeLocalSubscription(subscriptionCloseEvent);
 
@@ -282,17 +285,19 @@ public class PersistenceStoreConnector implements MQTTConnector {
      * @return the andes specific object that will be registered in the cluster
      * @throws MQTTException
      */
-    private MQTTLocalSubscription createSubscription(MQTTopicManager channel, String mqttClientID, int qos,
+    private MQTTLocalSubscription createSubscription(String wildcardDestination, MQTTopicManager channel,
+                                                     String mqttClientID, int qos,
                                                      UUID subscriptionChannelID, boolean isActive)
             throws MQTTException {
 
-        MQTTLocalSubscription localTopicSubscription = new  MQTTLocalSubscription(subscriptionChannelID, isActive);
+        MQTTLocalSubscription outBoundTopicSubscription = new MQTTLocalSubscription
+                (wildcardDestination, subscriptionChannelID, isActive);
 
-        localTopicSubscription.setMqqtServerChannel(channel);
-        localTopicSubscription.setMqttSubscriptionID(mqttClientID);
-        localTopicSubscription.setSubscriberQOS(qos);
+        outBoundTopicSubscription.setMqqtServerChannel(channel);
+        outBoundTopicSubscription.setMqttSubscriptionID(mqttClientID);
+        outBoundTopicSubscription.setSubscriberQOS(qos);
 
-        return localTopicSubscription;
+        return outBoundTopicSubscription;
 
     }
 

@@ -32,8 +32,9 @@ public class MQTTMetaDataHandler {
         //For MQTT we just need to take a copy
         MQTTMessageMetaData metaInformation = (MQTTMessageMetaData) originalMeataData;
         //Will re-encode the bytes
-        return MQTTUtils.encodeMetaInfo(MQTTUtils.MQTT_META_INFO, metaInformation.getMessageID(), false,
-                                        metaInformation.getQosLevel(), routingKey, metaInformation.isPersistent(),
-                                        metaInformation.getContentSize());
+        return MQTTUtils.encodeMetaInfo(MQTTUtils.MQTT_META_INFO, metaInformation.getMessageID(), metaInformation
+                        .getMessageArrivalTime(),false, metaInformation.getQosLevel(), routingKey,
+                        metaInformation.isPersistent(), metaInformation.getContentSize());
+
     }
 }

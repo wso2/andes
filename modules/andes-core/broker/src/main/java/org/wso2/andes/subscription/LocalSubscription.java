@@ -278,12 +278,16 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
     }
 
     public boolean equals(Object o) {
-        LocalSubscription c = (LocalSubscription) o;
-        if (this.subscriptionID.equals(c.subscriptionID) &&
-                this.getSubscribedNode().equals(c.getSubscribedNode()) &&
-                this.targetQueue.equals(c.targetQueue) &&
-                this.targetQueueBoundExchange.equals(c.targetQueueBoundExchange)) {
-            return true;
+        if (o instanceof LocalSubscription) {
+            LocalSubscription c = (LocalSubscription) o;
+            if (this.subscriptionID.equals(c.subscriptionID) &&
+                    this.getSubscribedNode().equals(c.getSubscribedNode()) &&
+                    this.targetQueue.equals(c.targetQueue) &&
+                    this.targetQueueBoundExchange.equals(c.targetQueueBoundExchange)) {
+                return true;
+            } else {
+                return false;
+            }
         } else {
             return false;
         }

@@ -204,6 +204,9 @@ public class MQTTopicManager {
     public void removeOrDisconnectTopicSubscription(String mqttClientChannelID, String unSubscribedTopic,
                                                     SubscriptionEvent action) throws MQTTException {
 
+
+        log.info("Disconnecting subscriber channel = " + mqttClientChannelID);
+
         Collection<MQTTSubscription> topicSubscriptionList;
         MQTTopics mqtTopics = topicSubscriptions.get(mqttClientChannelID);
 
@@ -270,6 +273,7 @@ public class MQTTopicManager {
     /**
      * Will notify to the subscribers who are bound to the topic
      *
+     * @param destination   destination of the subscription (with wildcards)
      * @param message       the message content
      * @param messageID     the identifier of the message
      * @param publishedQOS  the level of qos the message was published
@@ -305,7 +309,7 @@ public class MQTTopicManager {
                         shouldRetain, mid, channelID);
             } else {
                 throw new MQTTException("The subscriber with id " + channelID +
-                        " has disconnected hence message will not be published to " + messageID);
+                        " has disconnected hence message will not be published. Message ID= " + messageID);
             }
         } else {
             getBridgeInstance().distributeMessageToSubscriptions(destination, publishedQOS, message,
