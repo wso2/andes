@@ -312,7 +312,7 @@
         </dependency>
         <!--Hzelcast Dependencies-->
         <dependency>
-            <groupId>com.hazelcast.wso2</groupId>
+            <groupId>org.wso2.orbit.com.hazelcast</groupId>
             <artifactId>hazelcast</artifactId>
         </dependency>
         <dependency>

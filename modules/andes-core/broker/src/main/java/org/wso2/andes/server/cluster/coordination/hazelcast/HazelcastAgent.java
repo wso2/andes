@@ -17,6 +17,9 @@
  */
 package org.wso2.andes.server.cluster.coordination.hazelcast;
 
+import com.hazelcast.config.ReliableTopicConfig;
+import com.hazelcast.config.RingbufferConfig;
+import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.HazelcastInstanceNotActiveException;
 import com.hazelcast.core.IAtomicLong;
@@ -144,8 +147,41 @@ public class HazelcastAgent implements SlotAgent {
 
     /**
      * Hazelcast based cluster agent
-      */
+     */
     private HazelcastClusterAgent clusterAgent;
+
+    /**
+     * Defines the maximum number of messages that will be read at a single try from a Hazelcast reliable topic.
+     * This value is set to a very low number since these reliable topics only handle cluster notifications on
+     * subscription changes, exchange changes, etc.
+     * and the frequency of messages being published is very low.
+     */
+    private final int HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE = 5;
+
+    /**
+     * Defines the maximum number of messages that can be stored in the ring buffer associated with a
+     * Hazelcast Reliable Topic. The buffer could be initialized with a somewhat low number since these reliable topics
+     * only handle cluster notifications on subscription changes, exchange changes, etc. which are a very not so
+     * frequent. But, there could be extreme and rare situations where subscriptions, bindings, etc. change at a very
+     * high rate and to be able to tolerate that, the capacity is kept at 1000.
+     */
+    private final int HAZELCAST_RING_BUFFER_CAPACITY = 1000;
+
+    /**
+     * Defines the time it takes for a message published to a Hazelcast reliable topic to be expired.
+     * The messages that are published to these topics should ideally be read at the same time. One instance where this
+     * would not happen is when a node gets disconnected. Since all the messages that are published to these topics are
+     * stored in the database, this situation is handled by synchronizing the information in
+     * the databases when the node recovers. Therefore, we do not need undelivered messages to delivered after a while.
+     * Therefore, we need messages to be held in the buffer onle for a very little time
+     */
+    private final int HAZELCAST_RING_BUFFER_TTL = 1;
+
+    /**
+     * Disables statistics on the messages published to Hazelcast Reliable Topics.
+     * We don't need statistics on the messages that are published, therefore, we have disabled statistics.
+     */
+    private final boolean ENABLE_STATISTICS = false;
 
     /**
      * Private constructor.
@@ -180,9 +216,17 @@ public class HazelcastAgent implements SlotAgent {
         /**
          * subscription changes
          */
-        this.subscriptionChangedNotifierChannel = this.hazelcastInstance.getTopic(
+        //configure Hazelcast ring buffer and reliable topic for subscription changes
+        addReliableTopicConfig(CoordinationConstants.HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME,
+                               ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE);
+        addRingBufferConfig(CoordinationConstants.HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME,
+                            HAZELCAST_RING_BUFFER_CAPACITY, HAZELCAST_RING_BUFFER_TTL);
+
+        //add listener for subscription changes
+        this.subscriptionChangedNotifierChannel = this.hazelcastInstance.getReliableTopic(
                 CoordinationConstants.HAZELCAST_SUBSCRIPTION_CHANGED_NOTIFIER_TOPIC_NAME);
-        ClusterSubscriptionChangedListener clusterSubscriptionChangedListener = new ClusterSubscriptionChangedListener();
+        ClusterSubscriptionChangedListener clusterSubscriptionChangedListener = new
+                ClusterSubscriptionChangedListener();
         clusterSubscriptionChangedListener.addSubscriptionListener(new ClusterCoordinationHandler(this));
         this.subscriptionChangedNotifierChannel.addMessageListener(clusterSubscriptionChangedListener);
 
@@ -190,7 +234,15 @@ public class HazelcastAgent implements SlotAgent {
         /**
          * exchange changes
          */
-        this.exchangeChangeNotifierChannel = this.hazelcastInstance.getTopic(
+
+        //configure Hazelcast ring buffer and reliable topic for exchange changes
+        addReliableTopicConfig(CoordinationConstants.HAZELCAST_EXCHANGE_CHANGED_NOTIFIER_TOPIC_NAME,
+                               ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE);
+        addRingBufferConfig(CoordinationConstants.HAZELCAST_EXCHANGE_CHANGED_NOTIFIER_TOPIC_NAME,
+                            HAZELCAST_RING_BUFFER_CAPACITY, HAZELCAST_RING_BUFFER_TTL);
+
+        //add listener for exchange changes
+        this.exchangeChangeNotifierChannel = this.hazelcastInstance.getReliableTopic(
                 CoordinationConstants.HAZELCAST_EXCHANGE_CHANGED_NOTIFIER_TOPIC_NAME);
         ClusterExchangeChangedListener clusterExchangeChangedListener = new ClusterExchangeChangedListener();
         clusterExchangeChangedListener.addExchangeListener(new ClusterCoordinationHandler(this));
@@ -200,7 +252,15 @@ public class HazelcastAgent implements SlotAgent {
         /**
          * queue changes
          */
-        this.queueChangedNotifierChannel = this.hazelcastInstance.getTopic(
+
+        //configure Hazelcast ring buffer and reliable topic for queue changes
+        addReliableTopicConfig(CoordinationConstants.HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME,
+                               ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE);
+        addRingBufferConfig(CoordinationConstants.HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME,
+                            HAZELCAST_RING_BUFFER_CAPACITY, HAZELCAST_RING_BUFFER_TTL);
+
+        //add listener for queue changes
+        this.queueChangedNotifierChannel = this.hazelcastInstance.getReliableTopic(
                 CoordinationConstants.HAZELCAST_QUEUE_CHANGED_NOTIFIER_TOPIC_NAME);
         ClusterQueueChangedListener clusterQueueChangedListener = new ClusterQueueChangedListener();
         clusterQueueChangedListener.addQueueListener(new ClusterCoordinationHandler(this));
@@ -209,7 +269,15 @@ public class HazelcastAgent implements SlotAgent {
         /**
          * binding changes
          */
-        this.bindingChangeNotifierChannel = this.hazelcastInstance.getTopic(
+
+        //configure Hazelcast ring buffer and reliable topic for binding changes
+        addReliableTopicConfig(CoordinationConstants.HAZELCAST_BINDING_CHANGED_NOTIFIER_TOPIC_NAME,
+                               ENABLE_STATISTICS, HAZELCAST_RELIABLE_TOPIC_READ_BACH_SIZE);
+        addRingBufferConfig(CoordinationConstants.HAZELCAST_BINDING_CHANGED_NOTIFIER_TOPIC_NAME,
+                            HAZELCAST_RING_BUFFER_CAPACITY, HAZELCAST_RING_BUFFER_TTL);
+
+        //add listener for binding changes
+        this.bindingChangeNotifierChannel = this.hazelcastInstance.getReliableTopic(
                 CoordinationConstants.HAZELCAST_BINDING_CHANGED_NOTIFIER_TOPIC_NAME);
         ClusterBindingChangedListener clusterBindingChangedListener = new ClusterBindingChangedListener();
         clusterBindingChangedListener.addBindingListener(new ClusterCoordinationHandler(this));
@@ -247,8 +315,10 @@ public class HazelcastAgent implements SlotAgent {
         try {
             this.subscriptionChangedNotifierChannel.publish(clusterNotification);
         } catch (Exception ex) {
-            log.error("Error while sending subscription change notification : " + clusterNotification.getEncodedObjectAsString(), ex);
-            throw new AndesException("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), ex);
+            log.error("Error while sending subscription change notification : "
+                      + clusterNotification.getEncodedObjectAsString(), ex);
+            throw new AndesException("Error while sending queue change notification : "
+                                     + clusterNotification.getEncodedObjectAsString(), ex);
         }
 
     }
@@ -261,8 +331,10 @@ public class HazelcastAgent implements SlotAgent {
         try {
             this.queueChangedNotifierChannel.publish(clusterNotification);
         } catch (Exception e) {
-            log.error("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), e);
-            throw new AndesException("Error while sending queue change notification : " + clusterNotification.getEncodedObjectAsString(), e);
+            log.error("Error while sending queue change notification : "
+                      + clusterNotification.getEncodedObjectAsString(), e);
+            throw new AndesException("Error while sending queue change notification : "
+                                     + clusterNotification.getEncodedObjectAsString(), e);
         }
     }
 
@@ -273,8 +345,10 @@ public class HazelcastAgent implements SlotAgent {
         try {
             this.exchangeChangeNotifierChannel.publish(clusterNotification);
         } catch (Exception e) {
-            log.error("Error while sending exchange change notification" + clusterNotification.getEncodedObjectAsString(), e);
-            throw new AndesException("Error while sending exchange change notification" + clusterNotification.getEncodedObjectAsString(), e);
+            log.error("Error while sending exchange change notification"
+                      + clusterNotification.getEncodedObjectAsString(), e);
+            throw new AndesException("Error while sending exchange change notification"
+                                     + clusterNotification.getEncodedObjectAsString(), e);
         }
     }
 
@@ -285,8 +359,10 @@ public class HazelcastAgent implements SlotAgent {
         try {
             this.bindingChangeNotifierChannel.publish(clusterNotification);
         } catch (Exception e) {
-            log.error("Error while sending binding change notification" + clusterNotification.getEncodedObjectAsString(), e);
-            throw new AndesException("Error while sending binding change notification" + clusterNotification.getEncodedObjectAsString(), e);
+            log.error("Error while sending binding change notification"
+                      + clusterNotification.getEncodedObjectAsString(), e);
+            throw new AndesException("Error while sending binding change notification"
+                                     + clusterNotification.getEncodedObjectAsString(), e);
         }
     }
 
@@ -366,7 +442,8 @@ public class HazelcastAgent implements SlotAgent {
      * {@inheritDoc}
      */
     @Override
-    public void deleteSlot(String nodeId, String queueName, long startMessageId, long endMessageId) throws AndesException {
+    public void deleteSlot(String nodeId, String queueName, long startMessageId, long endMessageId)
+            throws AndesException {
         try {
             HashMap<String, TreeSet<Slot>> queueToSlotMap = null;
             HashmapStringTreeSetWrapper wrapper = this.slotAssignmentMap.get(nodeId);
@@ -828,7 +905,8 @@ public class HazelcastAgent implements SlotAgent {
      * {@inheritDoc}
      */
     @Override
-    public void updateOverlappedSlots(String nodeId, String queueName, TreeSet<Slot> overlappedSlots) throws AndesException {
+    public void updateOverlappedSlots(String nodeId, String queueName, TreeSet<Slot> overlappedSlots)
+            throws AndesException {
         HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
         HashMap<String, TreeSet<Slot>> queueToSlotMap = new HashMap<>();
         if (null == wrapper) {
@@ -864,5 +942,47 @@ public class HazelcastAgent implements SlotAgent {
     @Override
     public void clearSlotStorage() throws AndesException {
         // Maps will be automatically cleared.
+    }
+
+    /**
+     * Method to configure a given reliable topic of the Hazelcast instance. Refer to Hazelcast Reliable
+     * Topic Configurations for more information on the configuration parameters
+     *
+     * @param reliableTopicName the name of the reliable topic. The configuration will be stored under the same name
+     * @param enableStatistics  whether to enable statistics
+     * @param readBatchSize     the maximum number of items that will be read at a single try. If the number of items
+     *                          that are present is less than the readBatchSize, the available items will be read
+     */
+    private void addReliableTopicConfig(String reliableTopicName, boolean enableStatistics, int readBatchSize) {
+        Config config = hazelcastInstance.getConfig();
+
+        // Create a new Hazelcast reliable topic configuration with the given values
+        ReliableTopicConfig topicConfig = new ReliableTopicConfig(reliableTopicName);
+        topicConfig.setStatisticsEnabled(enableStatistics);
+        topicConfig.setReadBatchSize(readBatchSize);
+
+        // Add the current reliable topic configuration to the configurations of the Hazelcast instance
+        config.addReliableTopicConfig(topicConfig);
+    }
+
+    /**
+     * Method to configure a given ring buffer of the Hazelcast instance. Refer to Hazelcast Ring Buffer
+     * configurations for more information on the configuration parameters
+     *
+     * @param ringBufferName the name from which the ring buffer should be created.
+     *                       Same as the associated reliable topic name
+     * @param capacity       the size of the ring buffer. Defines the number of messages that will be stored
+     * @param timeToLive     the time it takes for a message published to a reliable topic to expire
+     */
+    private void addRingBufferConfig(String ringBufferName, int capacity, int timeToLive) {
+        Config config = hazelcastInstance.getConfig();
+
+        // Create a new ring buffer configuration with the given name and values
+        RingbufferConfig ringConfig = new RingbufferConfig(ringBufferName);
+        ringConfig.setCapacity(capacity);
+        ringConfig.setTimeToLiveSeconds(timeToLive);
+
+        // Add the current ring buffer configuration to the configurations of the Hazelcast instance
+        config.addRingBufferConfig(ringConfig);
     }
 }
