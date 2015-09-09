@@ -205,9 +205,9 @@ public class SlotMessageCounter {
             if (slot.getMessageCount() >= slotWindowSize
                 || System.currentTimeMillis() - slotStartTime >= timeOutForMessagesInQueue) {
                 try {
-                    slotCoordinator.updateMessageId(storageQueueName, slot.getStartMessageId(), slot.getEndMessageId());
-                    queueToSlotMap.remove(storageQueueName);
                     slotTimeOutMap.remove(storageQueueName);
+                    queueToSlotMap.remove(storageQueueName);
+                    slotCoordinator.updateMessageId(storageQueueName, slot.getStartMessageId(), slot.getEndMessageId());
                 } catch (ConnectionException e) {
                     // we only log here since this is called again from timer task if previous attempt failed
                     log.error("Error occurred while connecting to the thrift coordinator.", e);
