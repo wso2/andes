@@ -97,7 +97,7 @@ public class ClusterManager implements StoreHealthListener{
     }
 
     /**
-     * Handles changes needs to be done in current node when a node joins to the cluster
+     * Handles changes needs to be done in current node when a node joins to the cluster.
      *
      * @param addedNodeId An ID for the newly added node. This is does not refer to the correct node ID. I.E its not a
      *                    reference to the member's node ID attribute.
