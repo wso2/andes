@@ -68,11 +68,11 @@ public interface MQTTConnector {
      *
      * @param channel               the bridge connection as the channel
      * @param topic                 the name of the topic which has subscriber/s
-     * @param clientID              the id which will distinguish the topic channel
+     * @param clientID              the id which will distinguish the topic channel (prefixed for cleanSession=false)
      * @param mqttClientID          the subscription id which is local to the subscriber
-     * @param isCleanSession         should the connection be durable
+     * @param isCleanSession        should the connection be durable
      * @param qos                   the subscriber specific qos this can be either 0,1 or 2
-     * @param subscriptionChannelID will hold the unique identifier of the subscription
+     * @param subscriptionChannelID will hold the unique identifier of the subscription channel (for Andes)
      * @throws MQTTException
      */
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
