@@ -201,7 +201,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
 
             //create a close subscription event
             LocalSubscription localSubscription = createLocalSubscription(mqttTopicSubscriber, isCleanSession,
-                    subscribedTopic, queueIdentifier);
+                    subscribedTopic, mqttClientID);
             InboundSubscriptionEvent subscriptionCloseEvent = new InboundSubscriptionEvent(localSubscription);
             Andes.getInstance().closeLocalSubscription(subscriptionCloseEvent);
 
