@@ -136,10 +136,12 @@ public class PersistenceStoreConnector implements MQTTConnector {
         //create a MQTTLocalSubscription wrapping underlying channel
         MQTTLocalSubscription mqttTopicSubscriber = createSubscription(topic, channel, mqttClientID, qos.getValue(),
                 subscriptionChannelID, true);
+        String subscriptionID = mqttClientID;
 
         try {
 
             if (!isCleanSession) {
+                subscriptionID = clientID;
                 //We need to create a queue in-order to preserve messages relevant for the durable subscription
                 String queueUser = "admin";
                 InboundQueueEvent createQueueEvent = new InboundQueueEvent(clientID, queueUser, false, true);
@@ -151,7 +153,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
 
             //Once the connection is created we register subscription
             LocalSubscription localSubscription = createLocalSubscription(mqttTopicSubscriber, isCleanSession,
-                    topic, clientID);
+                    topic, subscriptionID);
 
             //create open subscription event
             InboundSubscriptionEvent openSubscriptionEvent = new InboundSubscriptionEvent(localSubscription);
@@ -199,7 +201,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
 
             //create a close subscription event
             LocalSubscription localSubscription = createLocalSubscription(mqttTopicSubscriber, isCleanSession,
-                    subscribedTopic, mqttClientID);
+                    subscribedTopic, queueIdentifier);
             InboundSubscriptionEvent subscriptionCloseEvent = new InboundSubscriptionEvent(localSubscription);
             Andes.getInstance().closeLocalSubscription(subscriptionCloseEvent);
 
