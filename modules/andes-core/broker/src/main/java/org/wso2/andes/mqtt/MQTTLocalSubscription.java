@@ -50,6 +50,8 @@ public class MQTTLocalSubscription implements OutboundSubscription {
     //The QOS level the subscription is bound to
     private int subscriberQOS;
 
+    private String wildcardDestination;
+
     //keep if the underlying subscription is active
     private boolean isActive;
 
@@ -101,10 +103,11 @@ public class MQTTLocalSubscription implements OutboundSubscription {
      * @param channelID ID of the underlying subscription channel
      * @param isActive true if subscription is active (TCP connection is live)
      */
-    public MQTTLocalSubscription(UUID channelID, boolean isActive) {
+    public MQTTLocalSubscription(String wildCardDestination, UUID channelID, boolean isActive) {
 
         this.channelID = channelID;
         this.isActive = isActive;
+        this.wildcardDestination = wildCardDestination;
     }
 
     /**
@@ -134,8 +137,12 @@ public class MQTTLocalSubscription implements OutboundSubscription {
         //Will publish the message to the respective queue
         if (null != mqqtServerChannel) {
             try {
+
+                //Mark the message as sent to the subscriber
+                messageMetadata.markAsDeliveredToChannel(getChannelID());
+
                 //TODO:review - instead of getSubscribedDestination() used message destination
-                mqqtServerChannel.distributeMessageToSubscriber(messageMetadata.getDestination(), message,
+                mqqtServerChannel.distributeMessageToSubscriber(wildcardDestination, message,
                         messageMetadata.getMessageID(), messageMetadata.getQosLevel(),
                         messageMetadata.isPersistent(), getMqttSubscriptionID(),
                         getSubscriberQOS(), messageMetadata);

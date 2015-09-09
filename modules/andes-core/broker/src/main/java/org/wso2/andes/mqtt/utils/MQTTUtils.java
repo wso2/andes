@@ -46,6 +46,7 @@ public class MQTTUtils {
     private static Log log = LogFactory.getLog(MQTTUtils.class);
     public static final String MESSAGE_ID = "MessageID";
     private static final String TOPIC = "Topic";
+    public static final String ARRIVAL_TIME = "ArrivalTime";
     private static final String DESTINATION = "Destination";
     private static final String PERSISTENCE = "Persistent";
     private static final String MESSAGE_CONTENT_LENGTH = "MessageContentLength";
@@ -93,12 +94,12 @@ public class MQTTUtils {
      * @param qos           the level of qos the message was published at
      * @return the collective information as a bytes object
      */
-    public static byte[] encodeMetaInfo(String metaData, long messageID, boolean topic, int qos, String destination,
-                                        boolean persistence, int contentLength) {
+    public static byte[] encodeMetaInfo(String metaData, long messageID, long arrivalTime, boolean topic, int qos,
+                                        String destination, boolean persistence, int contentLength) {
         byte[] metaInformation;
-        String information = metaData + "?" + MESSAGE_ID + "=" + messageID + "," + TOPIC + "=" + topic +
-                "," + DESTINATION + "=" + destination + "," + PERSISTENCE + "=" + persistence
-                + "," + MESSAGE_CONTENT_LENGTH + "=" + contentLength + "," + QOSLEVEL + "=" + qos;
+        String information = metaData + "?" + MESSAGE_ID + "=" + messageID + "," + ARRIVAL_TIME + "=" + arrivalTime
+                + "," +TOPIC + "=" + topic + "," + DESTINATION + "=" + destination + "," + PERSISTENCE
+                + "=" + persistence + "," + MESSAGE_CONTENT_LENGTH + "=" + contentLength + "," + QOSLEVEL + "=" + qos;
         metaInformation = information.getBytes();
         return metaInformation;
     }
@@ -136,8 +137,10 @@ public class MQTTUtils {
                     + " and retain flag set to " + retain + " was created");
         }
 
-        byte[] andesMetaData = encodeMetaInfo(MQTT_META_INFO, messageHeader.getMessageID(), messageHeader.isTopic(),
-                qosLevel, messageHeader.getDestination(), messageHeader.isPersistent(), messageContentLength);
+        byte[] andesMetaData = encodeMetaInfo(MQTT_META_INFO, messageHeader.getMessageID(), receivedTime,
+                messageHeader.isTopic(), qosLevel, messageHeader.getDestination(), messageHeader.isPersistent(),
+                messageContentLength);
+
         messageHeader.setMetadata(andesMetaData);
         return messageHeader;
     }

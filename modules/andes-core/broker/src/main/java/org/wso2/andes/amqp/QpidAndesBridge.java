@@ -210,7 +210,7 @@ public class QpidAndesBridge {
         return contentLenWritten;
     }
 
-    public static void ackReceived(UUID channelID, long messageID, String routingKey, boolean isTopic)
+    public static void ackReceived(UUID channelID, long messageID)
             throws AMQException {
         try {
             if (log.isDebugEnabled()) {
@@ -218,8 +218,10 @@ public class QpidAndesBridge {
             }
             //This can be different from routing key in hierarchical topic case
             AndesAckData andesAckData = AndesUtils.generateAndesAckMessage(channelID, messageID);
+            if(null == andesAckData) {
+                return;
+            }
             Andes.getInstance().ackReceived(andesAckData);
-
         } catch (AndesException e) {
             log.error("Exception occurred while handling ack", e);
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error in getting handling ack for " + messageID, e);
