@@ -948,13 +948,7 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             /**
              * When the message is acknowledged it is informed to Andes Kernel
              */
-            boolean isTopic = ((AMQMessage) entry.getMessage()).getMessagePublishInfo()
-                                                               .getExchange()
-                                                               .equals(AMQPUtils
-                                                                               .TOPIC_EXCHANGE_NAME);
-            QpidAndesBridge.ackReceived(this.getId(), entry.getMessage().getMessageNumber(),
-                    entry.getMessage().getRoutingKey(),
-                    isTopic);
+            QpidAndesBridge.ackReceived(this.getId(), entry.getMessage().getMessageNumber());
         }
 
         updateTransactionalActivity();
