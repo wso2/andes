@@ -31,7 +31,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -191,6 +190,7 @@ public class Slot implements Serializable, Comparable<Slot> {
      */
     public void markMessagesOfSlotAsReturned() {
         for (DeliverableAndesMetadata andesMetadata : messagesOfSlot.values()) {
+            andesMetadata.markAsStale();
             andesMetadata.addMessageStatus(MessageStatus.SLOT_RETURNED);
         }
         messagesOfSlot.clear();

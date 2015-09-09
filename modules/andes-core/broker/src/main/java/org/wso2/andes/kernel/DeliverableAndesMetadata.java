@@ -49,6 +49,11 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
      */
     private long timeMessageIsRead;
 
+    /**
+     * Indicate if the metadata should not be used.
+     */
+    private boolean stale;
+
     private static Log log = LogFactory.getLog(DeliverableAndesMetadata.class);
 
     public DeliverableAndesMetadata(Slot slot, long messageID, byte[] metadata, boolean parse) {
@@ -263,6 +268,19 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
      */
     public void markAsDeletedMessage() {
         addMessageStatus(MessageStatus.DELETED);
+    }
+
+    /**
+     * Check if metadata is stale
+     *
+     * @return true if message is stale
+     */
+    public boolean isStale() {
+        return stale;
+    }
+
+    public void markAsStale() {
+        stale = true;
     }
 
     /**
