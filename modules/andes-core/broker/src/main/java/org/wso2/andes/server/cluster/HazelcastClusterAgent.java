@@ -111,7 +111,7 @@ public class HazelcastClusterAgent implements ClusterAgent {
      */
     public void memberAdded(Member member) {
         checkAndNotifyCoordinatorChange();
-        manager.memberAdded(getNodeIdentifier(member));
+        manager.memberAdded(CoordinationConstants.NODE_NAME_PREFIX + member.getSocketAddress());
     }
 
     /**
@@ -123,18 +123,7 @@ public class HazelcastClusterAgent implements ClusterAgent {
      */
     public void memberRemoved(Member member) throws AndesException {
         checkAndNotifyCoordinatorChange();
-        manager.memberRemoved(getNodeIdentifier(member));
-    }
-
-    /**
-     * Get the node id for the given hazelcast member
-     *
-     * @param member
-     *         Hazelcast member node
-     * @return ID of the node
-     */
-    private String getNodeIdentifier(Member member) {
-        return CoordinationConstants.NODE_NAME_PREFIX + member.getSocketAddress();
+        manager.memberRemoved(getIdOfNode(member));
     }
 
     /**
