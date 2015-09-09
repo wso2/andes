@@ -286,9 +286,8 @@ public enum AndesConfiguration implements ConfigurationProperty {
             Integer.class),
 
     /**
-     * Published message information is sent to slot coordinator by the node when it either reaches the
-     * slot window size or the window creation timeout. This configures the timeout for slot window creation
-     * task.
+     * Published message information is sent to slot coordinator by the node when it either reaches the slot window
+     * size or the window creation timeout in milliseconds. This configures the timeout for slot window creation task.
      * <p>
      * In a slow message publishing scenario, this is the delay for each message for delivery.
      * For instance if we publish one message per minute then each message will have to wait
@@ -422,38 +421,20 @@ public enum AndesConfiguration implements ConfigurationProperty {
     PERFORMANCE_TUNING_FAILOVER_VHOST_SYNC_TASK_INTERVAL("performanceTuning/failover" +
             "/vHostSyncTaskInterval", "3600", Integer.class),
 
-    /**
-     * Time interval after which the server will remove message content from the store in the background. If the
-     * message rate is very high users can set this to a lower value.
-     * Specified in seconds.
-     */
-    PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TASK_INTERVAL
-            ("performanceTuning/messageDeletion/contentRemovalTaskInterval", "600", Integer.class),
 
      /**
      * Since server startup, whenever this interval elapses, the expired messages will be cleared from the store.
+      * This messageExpiration configuration was disabled in the broker.xml configuration file. This is for future use.
      */
     PERFORMANCE_TUNING_MESSAGE_EXPIRATION_CHECK_INTERVAL
             ("performanceTuning/messageExpiration/checkInterval", "10000", Integer.class),
 
     /**
      * The number of expired messages to be cleared in one store operation.
+     * This messageExpiration configuration was disabled in the broker.xml configuration file. This is for future use.
      */
     PERFORMANCE_TUNING_MESSAGE_EXPIRATION_BATCH_SIZE
             ("performanceTuning/messageExpiration/messageBatchSize", "1000", Integer.class),
-
-    /**
-     * Message counter tasks delay between the termination of one execution and the commencement of the next in seconds
-     */
-    PERFORMANCE_TUNING_MESSAGE_COUNTER_TASK_INTERVAL
-            ("performanceTuning/messageCounter/counterTaskInterval", "15", Integer.class),
-
-    /**
-     * Message count is updated in batches. Once the count exceed the batch size message count update is given to
-     * message count update task.
-     */
-    PERFORMANCE_TUNING_MESSAGE_COUNTER_UPDATE_BATCH_SIZE
-            ("performanceTuning/messageCounter/countUpdateBatchSize", "100", Integer.class),
 
     /**
      * Maximum batch size (Messages) for a transaction. Exceeding this limit will result in a failure in the subsequent

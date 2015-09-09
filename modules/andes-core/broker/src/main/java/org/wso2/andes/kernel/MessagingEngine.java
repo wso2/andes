@@ -135,14 +135,6 @@ public class MessagingEngine {
 
         configureMessageIDGenerator();
 
-        // message count will be flushed to DB in these interval in seconds
-        Integer messageCountFlushInterval = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_COUNTER_TASK_INTERVAL);
-        Integer messageCountFlushNumberGap = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_MESSAGE_COUNTER_UPDATE_BATCH_SIZE);
-        Integer schedulerPeriod = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_DELETION_CONTENT_REMOVAL_TASK_INTERVAL);
-
         this.messageStore = messageStore;
         this.subscriptionStore = subscriptionStore;
 
@@ -157,14 +149,6 @@ public class MessagingEngine {
                 new ThreadFactoryBuilder().setNameFormat("MessagingEngine-AsyncStoreTasksSchedulerPool")
                                           .build();
         asyncStoreTasksScheduler = Executors.newScheduledThreadPool(threadPoolCount , namedThreadFactory);
-
-        // This task will periodically flush message count value to the store
-        messageCountFlusher = new MessageCountFlusher(messageStore, messageCountFlushNumberGap);
-
-        asyncStoreTasksScheduler.scheduleWithFixedDelay(messageCountFlusher,
-                messageCountFlushInterval,
-                messageCountFlushInterval,
-                TimeUnit.SECONDS);
 
         /*
         Initialize the SlotCoordinator
