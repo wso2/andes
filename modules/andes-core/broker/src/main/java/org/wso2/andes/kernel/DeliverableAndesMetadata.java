@@ -50,7 +50,8 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     private long timeMessageIsRead;
 
     /**
-     * Indicate if the metadata should not be used.
+     * This flag is used to mark a message already in the outbound disruptor as stale when all the subscribers for
+     * message destination leaves (i.e. when the slot becomes orphaned). This is to avoid messages being duplicated.
      */
     private boolean stale;
 
