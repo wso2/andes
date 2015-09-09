@@ -1663,8 +1663,8 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                 Slot slot = new Slot();
                 slot.setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
                 slot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
-                slot.setStorageQueueName(
-                        resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
+                slot.setStorageQueueName(resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
+                slot.addState(SlotState.ASSIGNED);
                 slotSet.add(slot);
             }
             return slotSet;
