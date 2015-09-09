@@ -21,6 +21,7 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.framing.ContentHeaderBody;
 import org.wso2.andes.framing.abstraction.MessagePublishInfo;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.server.store.StoredMessage;
@@ -59,6 +60,8 @@ public class AMQMessage implements ServerMessage
 
     private final long _size;
 
+    private DeliverableAndesMetadata andesMetadataRef;
+
     private Object _sessionIdentifier;
     private static final byte IMMEDIATE_AND_DELIVERED = (byte) (IMMEDIATE | DELIVERED_TO_CONSUMER);
 
@@ -89,6 +92,13 @@ public class AMQMessage implements ServerMessage
         _channelRef = channelRef;
     }
 
+    public void setAndesMetadataReference(DeliverableAndesMetadata andesMetadataReference) {
+        this.andesMetadataRef = andesMetadataReference;
+    }
+
+    public DeliverableAndesMetadata getAndesMetadataReference() {
+        return andesMetadataRef;
+    }
 
     public String debugIdentity()
     {

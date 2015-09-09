@@ -47,7 +47,7 @@ import org.wso2.andes.store.AndesBatchUpdateException;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import org.wso2.andes.store.AndesDataException;
 import org.wso2.andes.store.AndesStoreUnavailableException;
-import org.wso2.andes.store.AndesTranactionRollbackException;
+import org.wso2.andes.store.AndesTransactionRollbackException;
 
 import com.google.common.base.Splitter;
 
@@ -149,7 +149,7 @@ public class RDBMSStoreUtils {
             convertedException = new AndesDataIntegrityViolationException(message, sqlState, sqlException);
         } else if (SQLTransactionRollbackException.class.isInstance(sqlException)) {
             String sqlState = extractSqlState(sqlException);
-            convertedException = new AndesTranactionRollbackException(message, sqlState, sqlException);
+            convertedException = new AndesTransactionRollbackException(message, sqlState, sqlException);
         } else if (DataTruncation.class.isInstance(sqlException) ||
                    SQLDataException.class.isInstance(sqlException)) {
             String sqlState = extractSqlState(sqlException);
@@ -171,7 +171,7 @@ public class RDBMSStoreUtils {
         } else if (dataIntegrityViolationSQLStateClassCodes.contains(sqlStateClassCode)) {
             convertedException = new AndesDataIntegrityViolationException(message, sqlState, sqlException);
         } else if (transactionRollbackSQLStateClassCodes.contains(sqlStateClassCode)) {
-            convertedException = new AndesTranactionRollbackException(message, sqlState, sqlException);
+            convertedException = new AndesTransactionRollbackException(message, sqlState, sqlException);
         } else if (dataErrorSQLStateClassCodes.contains(sqlStateClassCode)) {
             convertedException = new AndesDataException(message, sqlState, sqlException);
         }

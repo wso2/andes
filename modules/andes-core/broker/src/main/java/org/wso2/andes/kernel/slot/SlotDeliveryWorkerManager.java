@@ -23,8 +23,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
 
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -74,7 +76,7 @@ public class SlotDeliveryWorkerManager {
         return slotDeliveryWorkerManagerManager;
     }
 
-    public void rescheduleMessagesForDelivery(String storageQueueName, List<AndesMessageMetadata> messages) {
+    public void rescheduleMessagesForDelivery(String storageQueueName, List<DeliverableAndesMetadata> messages) {
         SlotDeliveryWorker slotWorker = getSlotWorker(storageQueueName);
 
         if (null != slotWorker) {
@@ -183,5 +185,16 @@ public class SlotDeliveryWorkerManager {
      */
     public SlotDeliveryWorker getSlotWorker(String queueName) {
         return slotDeliveryWorkerMap.get(getIdForSlotDeliveryWorker(queueName));
+    }
+
+    /**
+     * Dump all message status of the slots owned by this slot delivery worker
+     * @param fileToWrite file to dump
+     * @throws AndesException
+     */
+    public void dumpAllSlotInformationToFile(File fileToWrite) throws AndesException{
+        for (SlotDeliveryWorker slotDeliveryWorker : slotDeliveryWorkerMap.values()) {
+            slotDeliveryWorker.dumpAllSlotInformationToFile(fileToWrite);
+        }
     }
 }

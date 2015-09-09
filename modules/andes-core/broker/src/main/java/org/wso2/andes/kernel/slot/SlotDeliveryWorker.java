@@ -24,15 +24,19 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.LocalSubscription;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessageFlusher;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
+import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -41,7 +45,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -61,15 +64,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      * There was no provision to remove messageBufferingTracker when last subscriber close before receive all messages in slot.
      * We use this map to delete remaining tracking when last subscriber close in particular destination.
      */
-    private final ConcurrentMap<String, Map<String, Slot>> subscriptionSlotTracker = new ConcurrentHashMap<>();
-
-    /**
-     * Map to track messages being buffered to be sent <Id of the slot, messageID, MsgData reference>. We have to
-     * keep
-     * this in a map instead of the slot object due to overlapping slots
-     */
-    private final ConcurrentHashMap<String, ConcurrentSkipListSet<Long>> messageBufferingTracker
-            = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Map<String,Slot>> storageQueueToSlotTracker = new ConcurrentHashMap<>();
 
     private SubscriptionStore subscriptionStore;
     private static Log log = LogFactory.getLog(SlotDeliveryWorker.class);
@@ -103,7 +98,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
         FailureObservingStoreManager.registerStoreHealthListener(this);
     }
 
-    public void rescheduleMessagesForDelivery(String storageQueueName, List<AndesMessageMetadata> messages) {
+    public void rescheduleMessagesForDelivery(String storageQueueName, List<DeliverableAndesMetadata> messages) {
         String destination = storageQueueNameToDestinationMap.get(storageQueueName);
         MessageFlusher.getInstance().addAlreadyTrackedMessagesToBuffer(destination, messages);
     }
@@ -134,7 +129,6 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                             //get a slot from coordinator.
                             Slot currentSlot = requestSlot(storageQueueName);
                             currentSlot.setDestinationOfMessagesInSlot(destinationOfMessagesInQueue);
-                            
                             
                             /**
                              * If the slot is empty
@@ -170,23 +164,19 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                                             " - " + currentSlot.getEndMessageId() +
                                             "Thread Id:" + Thread.currentThread().getId());
                                 }
-                                List<AndesMessageMetadata> messagesRead =
-                                                                          getMetaDataListBySlot(storageQueueName,
+                                List<DeliverableAndesMetadata> messagesRead = getMetaDataListBySlot(storageQueueName,
                                                                                                 currentSlot);
 
-
-                                if (messagesRead != null &&
-                                        !messagesRead.isEmpty()) {
+                                if (messagesRead != null && !messagesRead.isEmpty()) {
                                     if (log.isDebugEnabled()) {
-                                        log.debug("Number of messages read from slot " +
-                                                currentSlot.getStartMessageId() + " - " +
-                                                currentSlot.getEndMessageId() + " is " +
-                                                messagesRead.size() + " storage queue= " + storageQueueName);
+                                        log.debug("Number of messages read from slot " + currentSlot.getStartMessageId()
+                                                  + " - " + currentSlot.getEndMessageId() + " is " + messagesRead.size()
+                                                  + " storage queue= " + storageQueueName);
                                     }
 
-                                    subscriptionSlotTracker.putIfAbsent(storageQueueName,new HashMap<String, Slot>());
+                                    storageQueueToSlotTracker.putIfAbsent(storageQueueName,new HashMap<String, Slot>());
 
-                                    Map<String, Slot> subscriptionSlots = subscriptionSlotTracker.get(storageQueueName);
+                                    Map<String, Slot> subscriptionSlots = storageQueueToSlotTracker.get(storageQueueName);
 
                                     Slot trackedSlot = subscriptionSlots.get(currentSlot.getId());
                                     if (trackedSlot == null) {
@@ -202,7 +192,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
                                     MessageFlusher.getInstance().sendMessageToBuffer(messagesRead, trackedSlot);
                                     MessageFlusher.getInstance()
                                                   .sendMessagesInBuffer(trackedSlot
-                                                                                .getDestinationOfMessagesInSlot());
+                                                          .getDestinationOfMessagesInSlot());
                                 } else {
                                     currentSlot.setSlotInActive();
                                     SlotDeletionExecutor.getInstance().executeSlotDeletion(currentSlot);
@@ -248,46 +238,45 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
 
     }
 
-    public void stopDeliveryForQueue(String storageQueue) {
-        MessageFlusher.getInstance().clearUpAllBufferedMessagesForDelivery
-                (storageQueueNameToDestinationMap.get(storageQueue));
-        Map<String, Slot> orphanedSlots = subscriptionSlotTracker.remove(storageQueue);
-
-        // Check if there are any orphaned slots
-        if (null != orphanedSlots) {
-            for (Slot slot : orphanedSlots.values()) {
-                clearAllTrackingWhenSlotOrphaned(slot);
-            }
-        }
-    }
-
     /**
      * This will remove already buffered messages from the messagesRead list. This is to avoid resending a message.
      *
      * @param slot
+     *         Slot which contains the given messages
      * @param messages
+     *         Messages of the given slots
      */
-    private void filterOverlappedMessages(Slot slot, List<AndesMessageMetadata> messages) {
-        messageBufferingTracker.putIfAbsent(slot.getId(), new ConcurrentSkipListSet<Long>());
-        ConcurrentSkipListSet<Long> slotMessages = messageBufferingTracker.get(slot.getId());
-
-        Iterator<AndesMessageMetadata> readMessageIterator = messages.iterator();
+    private void filterOverlappedMessages(Slot slot, List<DeliverableAndesMetadata> messages) {
+        Iterator<DeliverableAndesMetadata> readMessageIterator = messages.iterator();
 
         // Filter already read messages
         while (readMessageIterator.hasNext()) {
-            AndesMessageMetadata currentMessage = readMessageIterator.next();
-            if (slotMessages.contains(currentMessage.getMessageID())) {
-                if(log.isDebugEnabled()) {
-                    log.debug("Tracker rejected message id= " + currentMessage.getMessageID() + " from buffering " +
-                            "to deliver. This is an already buffered message");
-                }
+            DeliverableAndesMetadata currentMessage = readMessageIterator.next();
+            if (slot.checkIfMessageIsAlreadyAdded(currentMessage.getMessageID())) {
+                log.warn("Tracker rejected message id= " + currentMessage.getMessageID() + " from buffering " +
+                         "to deliver. This is an already buffered message");
                 readMessageIterator.remove();
             } else {
-                slotMessages.add(currentMessage.getMessageID());
+                slot.addMessageToSlotIfAbsent(currentMessage);
             }
         }
     }
 
+    public void stopDeliveryForQueue(String storageQueue) {
+        MessageFlusher.getInstance().clearUpAllBufferedMessagesForDelivery
+                (storageQueueNameToDestinationMap.get(storageQueue));
+        Map<String, Slot> orphanedSlots = storageQueueToSlotTracker.remove(storageQueue);
+
+        // Check if there are any orphaned slots
+        if (null != orphanedSlots) {
+            for (Slot slot : orphanedSlots.values()) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Orphan slot situation and clear tracking of messages for slot = " + slot);
+                }
+                slot.markMessagesOfSlotAsReturned();
+            }
+        }
+    }
 
     /**
      * Returns a list of {@link AndesMessageMetadata} in specified slot
@@ -296,7 +285,7 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      * @return a list of {@link AndesMessageMetadata}
      * @throws AndesException an exception if there are errors at message store level.
      */
-    private List<AndesMessageMetadata> getMetaDataListBySlot(String storageQueueName, 
+    private List<DeliverableAndesMetadata> getMetaDataListBySlot(String storageQueueName,
                                                              Slot slot) throws AndesException {
         return getMetadataListBySlot(storageQueueName, slot, 0);
     }
@@ -309,11 +298,11 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      * @return return a list of {@link org.wso2.andes.kernel.AndesMessageMetadata}
      * @throws AndesException
      */
-    private List<AndesMessageMetadata> getMetadataListBySlot(String storageQueueName,
+    private List<DeliverableAndesMetadata> getMetadataListBySlot(String storageQueueName,
                                                              Slot slot,
                                                              int numberOfRetriesBefore) throws AndesException {
 
-        List<AndesMessageMetadata> messagesRead;
+        List<DeliverableAndesMetadata> messagesRead;
                
         if ( messageStoresUnavailable != null){
             try {
@@ -336,13 +325,12 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
             long firstMsgId = slot.getStartMessageId();
             long lastMsgId = slot.getEndMessageId();
             //Read messages in the slot
-            messagesRead =
-                    MessagingEngine.getInstance().getMetaDataList(
+            messagesRead = MessagingEngine.getInstance().getMetaDataList(slot,
                             storageQueueName, firstMsgId, lastMsgId);
             
             if (log.isDebugEnabled()) {
                 StringBuilder messageIDString = new StringBuilder();
-                for (AndesMessageMetadata metadata : messagesRead) {
+                for (DeliverableAndesMetadata metadata : messagesRead) {
                     messageIDString.append(metadata.getMessageID()).append(" , ");
                 }
                 log.debug("Messages Read: " + messageIDString);
@@ -451,52 +439,50 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      */
     public void deleteSlot(Slot slot) {
         SlotDeletionExecutor.getInstance().executeSlotDeletion(slot);
-        releaseAllMessagesOfSlotFromTracking(slot);
-        subscriptionSlotTracker.get(slot.getStorageQueueName()).remove(slot.getId());
-    }
-
-    /**
-     * Release tracking of all messages belonging to a slot. i.e called when slot is removed. This will remove all
-     * buffering tracking of messages and tracking objects. But tracking objects will remain until delivery cycle
-     * completed
-     *
-     * @param slot
-     *         slot to release
-     */
-    public void releaseAllMessagesOfSlotFromTracking(Slot slot) {
-        //remove all actual msgData objects
         if (log.isDebugEnabled()) {
             log.debug("Releasing tracking of messages for slot " + slot.toString());
         }
-        String slotID = slot.getId();
-        ConcurrentSkipListSet<Long> messagesOfSlot = messageBufferingTracker.remove(slotID);
-        if (messagesOfSlot != null) {
-            for (Long messageId : messagesOfSlot) {
-                OnflightMessageTracker.getInstance().removeMessageFromTracker(messageId);
-            }
-        }
+        slot.deleteAllMessagesInSlot();
+        storageQueueToSlotTracker.get(slot.getStorageQueueName()).remove(slot.getId());
     }
 
     /**
-     * Clear all tracking when orphan slot situation i.e. call when no active subscription but buffered messages are
-     * sent to subscription
-     *
-     * @param slot
-     *         slot to release
+     * Dump all message status of the slots owned by this slot delivery worker
+     * @param fileToWrite file to dump
+     * @throws AndesException
      */
-    public void clearAllTrackingWhenSlotOrphaned(Slot slot) {
-        if (log.isDebugEnabled()) {
-            log.debug("Orphan slot situation and clear tracking of messages for slot = " + slot);
-        }
-        String slotID = slot.getId();
-        ConcurrentSkipListSet<Long> messagesOfSlot = messageBufferingTracker.remove(slotID);
-        if (messagesOfSlot != null) {
-            for (Long messageId : messagesOfSlot) {
-                OnflightMessageTracker.getInstance().removeMessageFromTracker(messageId);
-            }
-        }
-    }
+    public void dumpAllSlotInformationToFile(File fileToWrite) throws AndesException {
+        try {
+            FileWriter information = new FileWriter(fileToWrite);
+            for (Map.Entry<String, Map<String, Slot>> storageQueueToSlotEntry : storageQueueToSlotTracker.entrySet()) {
+                information.append(storageQueueToSlotEntry.getKey()).append(" : \n");
+                Map<String, Slot> slotIdToSlotMap = storageQueueToSlotEntry.getValue();
+                for (Map.Entry<String, Slot> slotEntry : slotIdToSlotMap.entrySet()) {
+                    information.append("\t").append(slotEntry.getKey()).append(": \n");
+                    List<DeliverableAndesMetadata> messagesOfSlot = slotEntry.getValue().getAllMessagesOfSlot();
+                    if(!messagesOfSlot.isEmpty()) {
 
+                        for(DeliverableAndesMetadata message : messagesOfSlot) {
+                            information.append("\t\t").append(message.dumpMessageStatus())
+                                    .append("\n");
+                        }
+                    }
+                    information.flush();
+                }
+            }
+
+            information.flush();
+            information.close();
+
+        } catch (FileNotFoundException e) {
+            log.error("File to write is not found", e);
+            throw new AndesException("File to write is not found", e);
+        } catch (IOException e) {
+            log.error("Error while dumping message status to file", e);
+            throw new AndesException("Error while dumping message status to file", e);
+        }
+
+    }
 
     /**
      * {@inheritDoc}

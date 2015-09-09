@@ -24,8 +24,9 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.MessageStatus;
 import org.wso2.andes.kernel.MessagingEngine;
-import org.wso2.andes.kernel.OnflightMessageTracker;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -86,8 +87,11 @@ public class StateEventHandler implements EventHandler<InboundEventContainer> {
     }
 
     private void updateTrackerWithAck(InboundEventContainer event) throws AndesException {
-        if (event.ackData.isRemovable()) {
-            OnflightMessageTracker.getInstance().decrementMessageCountInSlot(event.ackData.getMessageID());
+        DeliverableAndesMetadata acknowledgedMessage = event.ackData.getAcknowledgedMessage();
+        //we need both conditions to prevent multiple events seeing that message is deleted
+        if (acknowledgedMessage.getLatestState().equals(MessageStatus.DELETED)
+                && event.ackData.isBaringMessageRemovable()) {
+            acknowledgedMessage.getSlot().decrementPendingMessageCount();
         }
     }
 

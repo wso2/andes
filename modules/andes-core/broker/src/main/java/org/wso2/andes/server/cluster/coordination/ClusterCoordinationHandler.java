@@ -23,6 +23,7 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.subscription.BasicSubscription;
+import org.wso2.andes.subscription.LocalSubscription;
 
 public class ClusterCoordinationHandler implements QueueListener, ExchangeListener, BindingListener, SubscriptionListener {
 

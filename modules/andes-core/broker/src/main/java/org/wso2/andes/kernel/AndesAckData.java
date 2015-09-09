@@ -25,85 +25,63 @@ import java.util.UUID;
  */
 public class AndesAckData {
 
-    private long messageID;
-    private String destination;
-    private String msgStorageDestination;
-    private boolean isTopic;
+    /**
+     * Acknowledged message
+     */
+    private DeliverableAndesMetadata acknowledgedMessage;
+
+    /**
+     * ID of the channel acknowledge is received
+     */
     private UUID channelID;
 
     /**
-     * Indicate if this is a removable ack data.
+     * Holds if acknowledged message is ready to be removed. If all channels
+     * acknowledged it becomes removable. Message reference cannot be used here
+     * as we need to keep it in disruptor data holder
      */
-    private boolean isRemovable;
+    private boolean isBaringMessageRemovable = false;
 
-    public AndesAckData(){}
-
-    public AndesAckData(UUID channelID, long messageID, String destination, String msgStorageDestination, boolean isTopic) {
+    /**
+     * Generate AndesAckData object. This holds acknowledge event in disruptor
+     * @param channelID ID of the channel ack is received
+     * @param acknowledgedMessage message being acknowledged
+     */
+    public AndesAckData(UUID channelID, DeliverableAndesMetadata acknowledgedMessage) {
+        this.acknowledgedMessage = acknowledgedMessage;
         this.channelID = channelID;
-        this.messageID = messageID;
-        this.destination = destination;
-        this.msgStorageDestination = msgStorageDestination;
-        this.isTopic = isTopic;
-        this.isRemovable = false;
     }
 
-    public AndesRemovableMetadata convertToRemovableMetaData() {
-        return new AndesRemovableMetadata(this.messageID, this.msgStorageDestination, this.destination);
+    /**
+     * Get the reference of the message being acknowledged
+     * @return Metadata of the acknowledged message
+     */
+    public DeliverableAndesMetadata getAcknowledgedMessage() {
+        return acknowledgedMessage;
     }
 
-    public long getMessageID() {
-        return messageID;
-    }
-
-    public void setMessageID(long messageID) {
-        this.messageID = messageID;
-    }
-
-    public String getDestination() {
-        return destination;
-    }
-
-    public void setDestination(String destination) {
-        this.destination = destination;
-    }
-
-    public String getMsgStorageDestination() {
-        return msgStorageDestination;
-    }
-
-    public void setMsgStorageDestination(String msgStorageDestination) {
-        this.msgStorageDestination = msgStorageDestination;
-    }
-
-    public boolean isTopic() {
-        return isTopic;
-    }
-
-    public void setTopic(boolean isTopic) {
-        this.isTopic = isTopic;
-    }
-
+    /**
+     * Get ID of the channel acknowledgement is received
+     * @return channel ID
+     */
     public UUID getChannelID() {
         return channelID;
     }
 
-    public void setChannelID(UUID channelID) {
-        this.channelID = channelID;
+    /**
+     * Check if message being acknowledged is ready to be removed
+     * @return true if removable
+     */
+    public boolean isBaringMessageRemovable() {
+        return isBaringMessageRemovable;
     }
 
     /**
-     * Mark ack data as removable
+     * Set message being acknowledged is ready to be removed. This happens
+     * if acknowledgements are received from all channels
      */
-    public void makeRemovable() {
-        isRemovable = true;
+    public void setBaringMessageRemovable() {
+        this.isBaringMessageRemovable = true;
     }
 
-    /**
-     * Check if the ack data can be removed
-     *
-     * @return True if ack data can be removed
-     */
-    public boolean isRemovable() {
-        return isRemovable;
-    }
 }

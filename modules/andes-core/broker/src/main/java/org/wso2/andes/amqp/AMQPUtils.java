@@ -22,12 +22,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.framing.AMQShortString;
-import org.wso2.andes.kernel.AndesAckData;
-import org.wso2.andes.kernel.AndesContent;
-import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
@@ -48,6 +43,9 @@ import org.wso2.andes.server.store.StorableMessageMetaData;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
+import org.wso2.andes.subscription.LocalSubscription;
+import org.wso2.andes.subscription.OutboundSubscription;
+import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -122,12 +120,9 @@ public class AMQPUtils {
      */
     public static AMQMessage getAMQMessageFromAndesMetaData(AndesMessageMetadata metadata) {
         long messageId = metadata.getMessageID();
-        Slot slot = metadata.getSlot();
-
         StorableMessageMetaData metaData = convertAndesMetadataToAMQMetadata(metadata);
         //create message with meta data. This has access to message content
         StoredAMQPMessage message = new StoredAMQPMessage(messageId, metaData);
-        message.setSlot(slot);
         AMQMessage amqMessage = new AMQMessage(message);
         return amqMessage;
     }
@@ -141,16 +136,15 @@ public class AMQPUtils {
      *         Content object which has access to the message content
      * @return AMQMessage
      */
-    public static AMQMessage getAMQMessageForDelivery(AndesMessageMetadata metadata, AndesContent content) {
+    public static AMQMessage getAMQMessageForDelivery(DeliverableAndesMetadata metadata, AndesContent content) {
         long messageId = metadata.getMessageID();
-        Slot slot = metadata.getSlot();
-
         //create message with meta data. This has access to message content
         StorableMessageMetaData metaData = convertAndesMetadataToAMQMetadata(metadata);
         QpidStoredMessage<MessageMetaData> message = new QpidStoredMessage<MessageMetaData>(
                 new StoredAMQPMessage(messageId, metaData), content);
-        message.setSlot(slot);
-        return new AMQMessage(message);
+        AMQMessage amqMessage = new AMQMessage(message);
+        amqMessage.setAndesMetadataReference(metadata);
+        return amqMessage;
     }
 
     /**
@@ -187,7 +181,7 @@ public class AMQPUtils {
      * @return andes message metadata
      * @throws AndesException
      */
-    public static AndesMessageMetadata convertAMQMessageToAndesMetadata(AMQMessage amqMessage, UUID channelID) throws AndesException {
+    public static AndesMessageMetadata convertAMQMessageToAndesMetadata(AMQMessage amqMessage) throws AndesException {
         MessageMetaData amqMetadata = amqMessage.getMessageMetaData();
         String queue = amqMetadata.getMessagePublishInfo().getRoutingKey().toString();
 
@@ -200,8 +194,6 @@ public class AMQPUtils {
         amqMetadata.writeToBuffer(0, buf);
 
         AndesMessageMetadata metadata = new AndesMessageMetadata(amqMessage.getMessageId(),underlying,true);
-        metadata.setChannelId(channelID);
-        metadata.setSlot(amqMessage.getSlot());
         metadata.setExpirationTime(amqMessage.getExpiration());
         metadata.setArrivalTime(amqMessage.getArrivalTime());
         metadata.setMessageContentLength(amqMetadata.getContentSize());
@@ -219,7 +211,8 @@ public class AMQPUtils {
      * @throws AndesException
      */
     //in order to tell if this is a queue subscription or a topic subscription, binding is needed
-    public static InboundSubscriptionEvent createAMQPLocalSubscription(AMQQueue queue, Subscription subscription, Binding b) throws AndesException {
+    public static LocalSubscription createAMQPLocalSubscription(AMQQueue queue, Subscription subscription, Binding b) throws
+            AndesException {
 
         String subscriptionID = String.valueOf(subscription.getSubscriptionID());
         Exchange exchange = b.getExchange();
@@ -263,9 +256,13 @@ public class AMQPUtils {
             subscriptionID = queue.getName();
         }
 
-        AMQPLocalSubscription localSubscription = new AMQPLocalSubscription(queue,
-                subscription, subscriptionID, destination, isBoundToTopic, queue.isExclusive(), queue.isDurable(),
-                subscribedNode, subscribeTime, queue.getName(), queueOwner, queueBoundExchangeName, queueBoundExchangeType, isqueueBoundExchangeAutoDeletable, subscription.isActive());
+        OutboundSubscription amqpDeliverySubscription = new AMQPLocalSubscription(queue, subscription, queue
+                .isDurable(), isBoundToTopic);
+
+        LocalSubscription localSubscription = AndesUtils.createLocalSubscription(amqpDeliverySubscription,
+                subscriptionID, destination, isBoundToTopic, queue.isExclusive(), queue.isDurable(),
+                subscribedNode, subscribeTime, queue.getName(), queueOwner, queueBoundExchangeName,
+                queueBoundExchangeType, isqueueBoundExchangeAutoDeletable, subscription.isActive());
 
         return localSubscription;
     }
@@ -360,19 +357,6 @@ public class AMQPUtils {
         }
 
         return messagePart;
-    }
-
-    /**
-     * create andes ack data message
-     * @param channelID id of the connection message was received
-     * @param messageID id of the message
-     * @param destination  destination subscription who sent this ack is bound
-     * @param storageDestination store destination of subscriber from which ack came from
-     * @param isTopic is ack comes from a topic subscriber
-     * @return Andes Ack Data
-     */
-    public static AndesAckData generateAndesAckMessage(UUID channelID, long messageID, String destination, String storageDestination, boolean isTopic) {
-        return new AndesAckData(channelID, messageID,destination,storageDestination,isTopic);
     }
 
     /**

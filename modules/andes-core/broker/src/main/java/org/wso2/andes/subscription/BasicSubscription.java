@@ -18,6 +18,8 @@
 
 package org.wso2.andes.subscription;
 
+import com.ctc.wstx.util.StringUtil;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesSubscription;
@@ -64,11 +66,6 @@ public class BasicSubscription implements AndesSubscription {
 
     // The subscription type the basic subscription belongs to, basically this represents the protocol - OPTIONAL
     private SubscriptionType subscriptionType;
-
-    /**
-     * List of messages scheduled to send but not acked
-     */
-    private ConcurrentSkipListMap<Long, AndesMessageMetadata> unackedMessages;
 
 
     /**
@@ -117,7 +114,6 @@ public class BasicSubscription implements AndesSubscription {
             }
         }
 
-        this.unackedMessages = new ConcurrentSkipListMap<>();
         setStorageQueueName();
     }
 
@@ -162,7 +158,6 @@ public class BasicSubscription implements AndesSubscription {
         this.targetQueueBoundExchangeType = targetQueueBoundExchangeType;
         this.isTargetQueueBoundExchangeAutoDeletable = isTargetQueueBoundExchangeAutoDeletable;
         this.hasExternalSubscriptions = hasExternalSubscriptions;
-        this.unackedMessages = new ConcurrentSkipListMap<>();
         setStorageQueueName();
     }
 
@@ -180,26 +175,6 @@ public class BasicSubscription implements AndesSubscription {
     @Override
     public SubscriptionType getSubscriptionType() {
         return subscriptionType;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<AndesMessageMetadata> getUnackedMessages() {
-        return new ArrayList<>(unackedMessages.values());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void addUnackedMessage(AndesMessageMetadata message) {
-        unackedMessages.put(message.getMessageID(), message);
-    }
-
-    protected void removeUnackedMessage(Long messageId) {
-        unackedMessages.remove(messageId);
     }
 
     /**
@@ -357,10 +332,14 @@ public class BasicSubscription implements AndesSubscription {
                 .append(",isExclusive=").append(isExclusive)
                 .append(",isDurable=").append(isDurable)
                 .append(",targetQueue=").append(targetQueue)
-                .append(",targetQueueOwner=").append(targetQueueOwner)
-                .append(",targetQueueBoundExchange=").append(targetQueueBoundExchange)
-                .append(",targetQueueBoundExchangeType=").append(targetQueueBoundExchangeType)
-                .append(",isTargetQueueBoundExchangeAutoDeletable=").append(isTargetQueueBoundExchangeAutoDeletable)
+                .append(",targetQueueOwner=")
+                .append(StringUtils.isBlank(targetQueueOwner) ? "null" : targetQueueOwner)
+                .append(",targetQueueBoundExchange=")
+                .append(StringUtils.isBlank(targetQueueBoundExchange) ? "null" : targetQueueBoundExchange)
+                .append(",targetQueueBoundExchangeType=")
+                .append(StringUtils.isBlank(targetQueueBoundExchangeType) ? "null" : targetQueueBoundExchangeType)
+                .append(",isTargetQueueBoundExchangeAutoDeletable=")
+                .append(isTargetQueueBoundExchangeAutoDeletable == null ? "null" : isTargetQueueBoundExchangeAutoDeletable)
                 .append(",subscribedNode=").append(subscribedNode)
                 .append(",subscribedTime=").append(subscribeTime)
                 .append(",hasExternalSubscriptions=").append(hasExternalSubscriptions);

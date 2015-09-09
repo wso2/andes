@@ -22,12 +22,10 @@ import com.lmax.disruptor.EventHandler;
 import org.apache.log4j.Logger;
 import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.AndesRemovableMetadata;
-import org.wso2.andes.kernel.LocalSubscription;
-import org.wso2.andes.kernel.MessageFlusher;
-import org.wso2.andes.kernel.OnflightMessageTracker;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.metrics.MetricsConstants;
+import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.Meter;
@@ -35,6 +33,7 @@ import org.wso2.carbon.metrics.manager.MetricManager;
 
 import java.util.ArrayList;
 import java.util.List;
+
 
 /**
  * Disruptor handler used to send the message. This the final event handler of the ring-buffer
@@ -73,6 +72,8 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
      */
     @Override
     public void onEvent(DeliveryEventData deliveryEventData, long sequence, boolean endOfBatch) throws Exception {
+
+        //TODO - Asanka - revisit and do "stale message" change
         LocalSubscription subscription = deliveryEventData.getLocalSubscription();
         
         // Taking the absolute value since hashCode can be a negative value
@@ -80,17 +81,16 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
 
         // Filter tasks assigned to this handler
         if (channelModulus == ordinal) {
-            AndesMessageMetadata message = deliveryEventData.getMetadata();
+            DeliverableAndesMetadata message = deliveryEventData.getMetadata();
 
             try {
                 if (deliveryEventData.isErrorOccurred()) {
                     handleSendError(message);
                     return;
                 }
-                if (!message.getTrackingData().isStale()) {
+                if (!message.isStale()) {
                     if (subscription.isActive()) {
                         subscription.sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
-                        subscription.addUnackedMessage(message);
 
                         //Tracing Message
                         MessageTracer.trace(message, MessageTracer.DISPATCHED_TO_PROTOCOL);
@@ -98,22 +98,22 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                         //Adding metrics meter for ack rate
                         Meter messageMeter = MetricManager.meter(Level.INFO, MetricsConstants.MSG_SENT_RATE);
                         messageMeter.mark();
+
                     } else {
-                        //destination would be target queue if it is durable topic, otherwise it is queue or non
-                        // durable topic
-                        if (subscription.isBoundToTopic() && subscription.isDurable()) {
-                            message.setDestination(subscription.getTargetQueue());
+                        if(subscription.isDurable()) {
+                            //re-queue message to andes core so that it can find other subscriber to deliver
+                            MessagingEngine.getInstance().reQueueMessage(message);
                         } else {
-                            message.setDestination(subscription.getSubscribedDestination());
+                            if(!message.isOKToDispose()) {
+                                log.warn("Cannot send message id= " + message.getMessageID() + " as subscriber is closed");
+                            }
                         }
-                        MessageFlusher.getInstance().reQueueUndeliveredMessagesDueToInactiveSubscriptions(message);
                     }
-                } // else we do not need to requeue since this is a stale message
+                }
             } catch (Throwable e) {
                 log.error("Error while delivering message. Message id " + message.getMessageID(), e);
                 handleSendError(message);
             } finally {
-                OnflightMessageTracker.getInstance().decrementNumberOfScheduledDeliveries(message);
                 deliveryEventData.clearData();
             }
         }
@@ -125,16 +125,14 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
      * @param message
      *         Meta data for the message
      */
-    private void handleSendError(AndesMessageMetadata message) {
+    private void handleSendError(DeliverableAndesMetadata message) {
         // If message is a queue message we move the message to the Dead Letter Channel
         // since topics doesn't have a Dead Letter Channel
         if (!message.isTopic()) {
-            log.info("Moving message to Dead Letter Channel. Message ID " + message.getMessageID());
-            AndesRemovableMetadata removableMessage = new AndesRemovableMetadata(message.getMessageID(),
-                                                                                 message.getDestination(),
-                                                                                 message.getStorageQueueName());
-            List<AndesRemovableMetadata> messageToMoveToDLC = new ArrayList<AndesRemovableMetadata>();
-            messageToMoveToDLC.add(removableMessage);
+            log.info("Moving message to Dead Letter Channel Due to Send Error. Message ID " + message.getMessageID());
+            List<DeliverableAndesMetadata> messageToMoveToDLC = new ArrayList<>();
+            messageToMoveToDLC.add(message);
+
             try {
                 Andes.getInstance().deleteMessages(messageToMoveToDLC, true);
             } catch (AndesException dlcException) {
@@ -144,6 +142,8 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                 // inconsistency
                 log.error("Error moving message " + message.getMessageID() + " to dead letter channel.", dlcException);
             }
+        } else {
+            //TODO: do we need to reschedule message for topic?
         }
     }
 }

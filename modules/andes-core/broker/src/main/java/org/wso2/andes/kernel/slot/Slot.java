@@ -23,10 +23,15 @@ import com.google.gson.GsonBuilder;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.MessageStatus;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This class stores all the data related to a slot
@@ -49,6 +54,12 @@ public class Slot implements Serializable, Comparable<Slot> {
      * End message ID of the slot
      */
     private long endMessageId;
+
+    /**
+     * Keep messages read from the message ranges of the slot. Messages are unique and
+     * kept until slot is deleted
+     */
+    private ConcurrentHashMap<Long, DeliverableAndesMetadata> messagesOfSlot;
 
     /**
      * QueueName which the slot belongs to. This is set when the slot is assigned to a subscriber
@@ -75,12 +86,18 @@ public class Slot implements Serializable, Comparable<Slot> {
      */
     private String destinationOfMessagesInSlot;
 
+    /**
+     * Track the number of undelivered messages in the slot
+     */
+    private AtomicInteger pendingMessageCount;
 
     public Slot() {
         isSlotActive = true;
         isAnOverlappingSlot = false;
         this.slotStates = new ArrayList<>();
         addState(SlotState.CREATED);
+        pendingMessageCount = new AtomicInteger();
+        messagesOfSlot = new ConcurrentHashMap<>();
     }
 
     public Slot(long start, long end, String destinationOfMessagesInSlot) {
@@ -139,6 +156,77 @@ public class Slot implements Serializable, Comparable<Slot> {
         if(isAnOverlappingSlot) {
             addState(SlotState.OVERLAPPED);
         }
+    }
+
+    /**
+     * Add a message to messages read by slot if it is not already there
+     * @param metadata metadata of the message to add
+     */
+    public void addMessageToSlotIfAbsent(DeliverableAndesMetadata metadata) {
+        messagesOfSlot.putIfAbsent(metadata.getMessageID(), metadata);
+    }
+
+    /**
+     * Get all messages read from the slot
+     * @return list of metadata of messages
+     */
+    public List<DeliverableAndesMetadata> getAllMessagesOfSlot() {
+        return new ArrayList<>(messagesOfSlot.values());
+    }
+
+    /**
+     * Remove a message read from slot. Deprecated as we remove all tracking
+     * at once when slot is deleted
+     * @param messageID ID of the message to remove from slot
+     */
+    @Deprecated
+    public void removeMessageFromSlot(long messageID) {
+        messagesOfSlot.remove(messageID);
+    }
+
+    /**
+     * Mark all messages read by this slot as SLOT_RETURNED. Also clear
+     * messages in slot
+     */
+    public void markMessagesOfSlotAsReturned() {
+        for (DeliverableAndesMetadata andesMetadata : messagesOfSlot.values()) {
+            andesMetadata.markAsStale();
+            andesMetadata.addMessageStatus(MessageStatus.SLOT_RETURNED);
+        }
+        messagesOfSlot.clear();
+    }
+
+    /**
+     * Remove all messages in slot
+     */
+    public void deleteAllMessagesInSlot() {
+        for (DeliverableAndesMetadata messageMetadata : messagesOfSlot.values()) {
+            long messageId = messageMetadata.getMessageID();
+            messageMetadata.markAsSlotRemoved();
+            if (messageMetadata.isOKToDispose()) {
+                if (log.isDebugEnabled()) {
+                    log.debug("removing tracking object from memory id " + messageId);
+                }
+            } else {
+                log.error("Tracking data for message id " + messageId
+                        + " removed while in an invalid state. ("
+                        + messageMetadata.getStatusHistory() + ")");
+            }
+        }
+        messagesOfSlot.clear();
+    }
+
+    /**
+     * Check if message is already added to messages read by slot.
+     * @param messageID ID of the new message to add
+     * @return true if message is already added
+     */
+    public boolean checkIfMessageIsAlreadyAdded(long messageID) {
+        boolean messageExists = false;
+        if(null != messagesOfSlot.get(messageID)) {
+            messageExists = true;
+        }
+        return messageExists;
     }
 
     public String getDestinationOfMessagesInSlot() {
@@ -256,5 +344,32 @@ public class Slot implements Serializable, Comparable<Slot> {
         } else {
             return this.getStartMessageId() > other.getStartMessageId() ? 1 : -1;
         }
+    }
+
+    /**
+     * Decrement message count in slot and if it is zero prepare for slot deletion
+     */
+    public void decrementPendingMessageCount() throws AndesException {
+        int messageCount = pendingMessageCount.decrementAndGet();
+        if (messageCount == 0) {
+            /*
+            All the Acks for the slot has bee received. Check the slot again for unsend
+            messages and if there are any send them and delete the slot.
+             */
+            SlotDeliveryWorker slotWorker = SlotDeliveryWorkerManager.getInstance()
+                                                                     .getSlotWorker(getStorageQueueName());
+            if (log.isDebugEnabled()) {
+                log.debug("Slot has no pending messages. Now re-checking slot for messages");
+            }
+            setSlotInActive();
+            slotWorker.deleteSlot(this);
+        }
+    }
+
+    /**
+     * Increment the pending message count in a slot
+     */
+    public void incrementPendingMessageCount(int amount) {
+        pendingMessageCount.addAndGet(amount);
     }
 }

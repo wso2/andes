@@ -27,7 +27,7 @@ import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.disruptor.BatchEventHandler;
 import org.wso2.andes.store.AndesBatchUpdateException;
-import org.wso2.andes.store.AndesTranactionRollbackException;
+import org.wso2.andes.store.AndesTransactionRollbackException;
 import org.wso2.andes.store.FailureObservingStoreManager;
 import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
@@ -167,7 +167,7 @@ public class MessageWriter implements BatchEventHandler, StoreHealthListener {
             //currentMessageList.removeAll(batchInsertEx.getFailedInserts());
             handleStoreFailure();
             throw batchInsertEx;
-        } catch (AndesTranactionRollbackException transRollbackEx){
+        } catch (AndesTransactionRollbackException transRollbackEx){
             // Transaction failed therefore we will re-attempt this batch with next batch insertion.
             log.warn("Unable to store messages, since transaction rollback. " +
                      "opertation will be reattempted. messages count : " +

@@ -22,6 +22,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.server.AMQChannel;
+import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.QueueEntry;
 
 import java.util.UUID;
@@ -39,14 +40,8 @@ public class MaximumNumOfDeliveryRule implements DeliveryRule {
     private int maximumRedeliveryTimes = (Integer) AndesConfigurationManager
             .readValue(AndesConfiguration.TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS);
 
-    /**
-     * Used to get message information
-     */
-    private OnflightMessageTracker onflightMessageTracker;
-
     public MaximumNumOfDeliveryRule(AMQChannel channel) {
         this.amqChannelID = channel.getId();
-        onflightMessageTracker = OnflightMessageTracker.getInstance();
     }
 
     /**
@@ -59,11 +54,10 @@ public class MaximumNumOfDeliveryRule implements DeliveryRule {
     public boolean evaluate(QueueEntry message) throws AndesException {
         long messageID = message.getMessage().getMessageNumber();
         //Check if number of redelivery tries has breached.
-        //we should allow a number of delivery attempts that is equal to the maximumRedeliveryTries + 1
-        //since we set the limit on maxRedeliveryTries rather than maxDeliveryTries
-        Integer numOfDeliveriesOfCurrentMsg = message.getAndesMessageReference().getTrackingData()
-                .getNumOfDeliveires4Channel(amqChannelID);
-        if (numOfDeliveriesOfCurrentMsg > maximumRedeliveryTimes + 1) {
+        DeliverableAndesMetadata andesMetadata = ((AMQMessage)message.getMessage()).getAndesMetadataReference();
+        int numOfDeliveriesOfCurrentMsg = andesMetadata.getNumOfDeliveries4Channel(amqChannelID);
+
+        if (numOfDeliveriesOfCurrentMsg > maximumRedeliveryTimes) {
             log.warn("Number of Maximum Redelivery Tries Has Breached. Routing Message to DLC : id= " + messageID);
             return false;
         } else {

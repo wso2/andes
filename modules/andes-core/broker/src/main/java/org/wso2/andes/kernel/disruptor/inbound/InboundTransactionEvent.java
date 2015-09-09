@@ -24,7 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesChannel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
-import org.wso2.andes.kernel.AndesRemovableMetadata;
+import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.slot.SlotMessageCounter;
 
@@ -319,16 +319,11 @@ public class InboundTransactionEvent implements AndesInboundStateEvent {
     private void executeRollbackEvent() throws AndesException {
         try {
             if(messagesStoredNotCommitted) {
-                List<AndesRemovableMetadata> removableMetadataList = new ArrayList<>();
+                List<AndesMessageMetadata> messagesToRemove = new ArrayList<>();
                 for (AndesMessage message : messageQueue) {
-                    removableMetadataList.add(
-                            new AndesRemovableMetadata(message.getMetadata().getMessageID(),
-                                    message.getMetadata().getDestination(),
-                                    message.getMetadata().getStorageQueueName())
-                    );
+                    messagesToRemove.add(message.getMetadata());
                 }
-
-                messagingEngine.deleteMessages(removableMetadataList);
+                messagingEngine.deleteMessages(messagesToRemove);
                 messagesStoredNotCommitted = false;
             }
 

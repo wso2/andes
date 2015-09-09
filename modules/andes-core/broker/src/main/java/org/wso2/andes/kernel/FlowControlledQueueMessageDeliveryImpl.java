@@ -20,6 +20,7 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.util.Collection;
@@ -43,19 +44,19 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
      * {@inheritDoc}
      */
     @Override
-    public int deliverMessageToSubscriptions(String destination, Set<AndesMessageMetadata> messages) throws
+    public int deliverMessageToSubscriptions(String destination, Set<DeliverableAndesMetadata> messages) throws
             AndesException {
 
         int sentMessageCount = 0;
         boolean noSubscribersForDestination = false;
-        Iterator<AndesMessageMetadata> iterator = messages.iterator();
+        Iterator<DeliverableAndesMetadata> iterator = messages.iterator();
 
 
         while (iterator.hasNext()) {
 
             try {
 
-                AndesMessageMetadata message = iterator.next();
+                DeliverableAndesMetadata message = iterator.next();
 
                 /**
                  * get all relevant type of subscriptions. This call does NOT
@@ -94,7 +95,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                             message.setDestination(localSubscription.getSubscribedDestination());
                         }
 
-                        OnflightMessageTracker.getInstance().incrementNumberOfScheduledDeliveries(message);
+                        message.markAsScheduledToDeliver(localSubscription);
                         MessageFlusher.getInstance().deliverMessageAsynchronously(localSubscription, message);
                         numOfCurrentMsgDeliverySchedules++;
 

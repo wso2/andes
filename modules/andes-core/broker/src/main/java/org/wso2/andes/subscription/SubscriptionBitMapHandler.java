@@ -19,7 +19,6 @@
 package org.wso2.andes.subscription;
 
 import org.wso2.andes.kernel.AndesSubscription;
-import org.wso2.andes.kernel.LocalSubscription;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;

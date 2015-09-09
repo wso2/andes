@@ -28,9 +28,10 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessage;
 import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.AndesMessagePart;
-import org.wso2.andes.kernel.AndesRemovableMetadata;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
+import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.tools.utils.MessageTracer;
 
 /**
@@ -209,9 +210,9 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void moveMetadataToDLC(List<Long> messageIds, String dlcQueueName) throws AndesException {
+    public void moveMetadataToDLC(List<AndesMessageMetadata> messages, String dlcQueueName) throws AndesException {
         try {
-            wrappedInstance.moveMetadataToDLC(messageIds, dlcQueueName);
+            wrappedInstance.moveMetadataToDLC(messages, dlcQueueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -249,10 +250,10 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesMessageMetadata> getMetadataList(String storageQueueName, long firstMsgId, long lastMsgID)
-                                                                                                               throws AndesException {
+    public List<DeliverableAndesMetadata> getMetadataList(Slot slot, String storageQueueName, long firstMsgId, long
+            lastMsgID) throws AndesException {
         try {
-            return wrappedInstance.getMetadataList(storageQueueName, firstMsgId, lastMsgID);
+            return wrappedInstance.getMetadataList(slot, storageQueueName, firstMsgId, lastMsgID);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
@@ -307,7 +308,7 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessageMetadataFromQueue(String storageQueueName, List<Long> messagesToRemove)
+    public void deleteMessageMetadataFromQueue(String storageQueueName, List<AndesMessageMetadata> messagesToRemove)
             throws AndesException {
         try {
             wrappedInstance.deleteMessageMetadataFromQueue(storageQueueName, messagesToRemove);
@@ -321,14 +322,15 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public void deleteMessages(final String storageQueueName, List<Long> messagesToRemove) throws AndesException {
+    public void deleteMessages(final String storageQueueName, List<AndesMessageMetadata> messagesToRemove)
+            throws AndesException {
         try {
             wrappedInstance.deleteMessages(storageQueueName, messagesToRemove);
 
             //Tracing message activity
             if (MessageTracer.isEnabled()) {
-                for (long messageId : messagesToRemove) {
-                    MessageTracer.trace(messageId, storageQueueName, MessageTracer.MESSAGE_DELETED);
+                for (AndesMessageMetadata message : messagesToRemove) {
+                    MessageTracer.trace(message.getMessageID(), storageQueueName, MessageTracer.MESSAGE_DELETED);
                 }
             }
 
@@ -343,7 +345,7 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public List<AndesRemovableMetadata> getExpiredMessages(int limit) throws AndesException {
+    public List<AndesMessageMetadata> getExpiredMessages(int limit) throws AndesException {
         try {
             return wrappedInstance.getExpiredMessages(limit);
         } catch (AndesStoreUnavailableException exception) {
@@ -565,7 +567,7 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public AndesMessageMetadata getRetainedMetadata(String destination) throws AndesException {
+    public DeliverableAndesMetadata getRetainedMetadata(String destination) throws AndesException {
         try {
             return wrappedInstance.getRetainedMetadata(destination);
         } catch (AndesStoreUnavailableException exception) {

@@ -20,13 +20,17 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.QueueEntry;
+import org.wso2.andes.subscription.LocalSubscription;
+import org.wso2.andes.subscription.OutboundSubscription;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.ByteBuffer;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -133,4 +137,53 @@ public class AndesUtils {
         }
         return storageQueueName;
     }
+
+    public static LocalSubscription createLocalSubscription(OutboundSubscription subscription,
+                                                            String subscriptionID, String destination,
+                                                            boolean isBoundToTopic, boolean isExclusive,
+                                                            boolean isDurable, String subscribedNode,
+                                                            long subscribeTime, String targetQueue,
+                                                            String targetQueueOwner, String targetQueueBoundExchange,
+                                                            String targetQueueBoundExchangeType,
+                                                            Short isTargetQueueBoundExchangeAutoDeletable,
+                                                            boolean hasExternalSubscriptions) {
+
+        return new LocalSubscription(subscription, subscriptionID, destination, isBoundToTopic, isExclusive,
+                isDurable, subscribedNode, subscribeTime, targetQueue, targetQueueOwner, targetQueueBoundExchange,
+                targetQueueBoundExchangeType, isTargetQueueBoundExchangeAutoDeletable, hasExternalSubscriptions);
+
+    }
+
+    /**
+     * create andes ack data message
+     * @param channelID id of the connection message was received
+     * @param messageID id of the message
+     * @return Andes Ack Data
+     */
+    public static AndesAckData generateAndesAckMessage(UUID channelID, long messageID) throws AndesException {
+        LocalSubscription localSubscription = AndesContext.getInstance().
+                getSubscriptionStore().getLocalSubscriptionForChannelId(channelID);
+        if(null == localSubscription) {
+            log.error("Cannot handle acknowledgement for message ID = " + messageID + " as subscription is closed "
+                    + "channelID= " + "" + channelID);
+            return null;
+        }
+        DeliverableAndesMetadata metadata = localSubscription.getMessageByMessageID(messageID);
+        return new AndesAckData(channelID, metadata);
+    }
+
+    /**
+     * Get DeliverableAndesMetadata reference of a delivered message
+     * @param messageID ID of the message
+     * @param channelID ID of the channel message is delivered
+     * @return DeliverableAndesMetadata reference
+     * @throws AndesException
+     */
+    public static DeliverableAndesMetadata lookupDeliveredMessage(long messageID, UUID channelID) throws
+            AndesException {
+        LocalSubscription localSubscription = AndesContext.getInstance().getSubscriptionStore()
+                .getLocalSubscriptionForChannelId(channelID);
+        return localSubscription.getMessageByMessageID(messageID);
+    }
+
 }

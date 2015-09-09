@@ -20,6 +20,7 @@ package org.wso2.andes.mqtt.connectors;
 import org.dna.mqtt.wso2.QOSLevel;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTException;
@@ -37,19 +38,19 @@ public interface MQTTConnector {
      * The acked messages will be informed to the kernel
      *
      * @param messageID   the identifier of the message
-     * @param topicName   the name of the topic the message was published
-     * @param storageName the storage name representation of the topic
+     * @param subChannelID   the channel topic the message was published
      * @throws org.wso2.andes.kernel.AndesException if the ack was not processed properly
      */
-    public void messageAck(long messageID, String topicName, String storageName, UUID subChannelID)
+    public void messageAck(long messageID, UUID subChannelID)
             throws AndesException;
 
     /**
      * Triggers when a rejection ack is be initiated, this will be done as a result of ping request
      * @param metadata the meta information of the message being rejected
+     * @param channelID the ID of the channel reject message is received
      * @throws org.wso2.andes.kernel.AndesException
      */
-    public void messageNack(AndesMessageMetadata metadata) throws AndesException;
+    public void messageNack(DeliverableAndesMetadata metadata, UUID channelID) throws AndesException;
 
     /**
      * Adds message to the connector to handle an incoming message
@@ -67,11 +68,11 @@ public interface MQTTConnector {
      *
      * @param channel               the bridge connection as the channel
      * @param topic                 the name of the topic which has subscriber/s
-     * @param clientID              the id which will distinguish the topic channel
+     * @param clientID              the id which will distinguish the topic channel (prefixed for cleanSession=false)
      * @param mqttClientID          the subscription id which is local to the subscriber
-     * @param isCleanSession         should the connection be durable
+     * @param isCleanSession        should the connection be durable
      * @param qos                   the subscriber specific qos this can be either 0,1 or 2
-     * @param subscriptionChannelID will hold the unique identifier of the subscription
+     * @param subscriptionChannelID will hold the unique identifier of the subscription channel (for Andes)
      * @throws MQTTException
      */
     public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
