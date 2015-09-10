@@ -22,6 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.*;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -74,6 +75,7 @@ public class InboundDeleteMessagesEvent implements AndesInboundStateEvent {
      */
     public InboundDeleteMessagesEvent(List<DeliverableAndesMetadata> messagesToRemove, boolean moveToDLC) {
         this.deliverableAndesMetadataList = messagesToRemove;
+        this.andesMessageMetadataList = new ArrayList<>(0);
         this.moveToDLC = moveToDLC;
     }
 
@@ -83,6 +85,7 @@ public class InboundDeleteMessagesEvent implements AndesInboundStateEvent {
      * @param moveToDLC whether move deleted messages to DLC
      */
     public InboundDeleteMessagesEvent(Collection<AndesMessageMetadata> messagesToRemove, boolean moveToDLC) {
+        this.deliverableAndesMetadataList = new ArrayList<>(0);
         this.andesMessageMetadataList = messagesToRemove;
         this.moveToDLC = moveToDLC;
     }
