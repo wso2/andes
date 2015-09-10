@@ -328,8 +328,8 @@ public class RDBMSConstants {
                     " VALUES (?,?)";
 
     protected static final String PS_SELECT_ALL_NODE_INFO =
-            "SELECT * " +
-                    "FROM " + NODE_INFO_TABLE;
+            "SELECT " + NODE_ID + "," + NODE_INFO +
+                    " FROM " + NODE_INFO_TABLE;
 
     protected static final String PS_DELETE_NODE_INFO =
             "DELETE FROM " + NODE_INFO_TABLE +
@@ -531,7 +531,7 @@ public class RDBMSConstants {
      * Prepared statement to get slots assigned to a give node
      */
     protected static final String PS_GET_ASSIGNED_SLOTS_BY_NODE_ID =
-            "SELECT * " +
+            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME +
                     " FROM " + SLOT_TABLE +
                     " WHERE " + ASSIGNED_NODE_ID + "=?" +
                     " AND " + SLOT_STATE + "=" + SlotState.ASSIGNED.getCode() +
@@ -551,13 +551,14 @@ public class RDBMSConstants {
      */
 
     protected static final String PS_SELECT_ALL_SLOTS_BY_QUEUE_NAME =
-            "SELECT * FROM " + SLOT_TABLE +
+            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME +
+                    " FROM " + SLOT_TABLE +
                     " WHERE " + STORAGE_QUEUE_NAME + " =? " +
                     " AND " + SLOT_STATE + " = " + SlotState.ASSIGNED.getCode() +
                     " ORDER BY " + SLOT_ID;
 
     protected static final String PS_SELECT_UNASSIGNED_SLOT =
-            "SELECT * " +
+            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME +
                     " FROM " + SLOT_TABLE +
                     " WHERE " + STORAGE_QUEUE_NAME + " =? " +
                     " AND " + SLOT_STATE + " = " + SlotState.RETURNED.getCode() +
@@ -567,7 +568,7 @@ public class RDBMSConstants {
      * Prepared statement for selecting oldest overlapped slot
      */
     protected static final String PS_SELECT_OVERLAPPED_SLOT =
-            "SELECT * " +
+            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME +
                     " FROM " + SLOT_TABLE +
                     " WHERE " + STORAGE_QUEUE_NAME + "=?"  +
                     " AND " + SLOT_STATE + "=" + SlotState.OVERLAPPED.getCode() +
@@ -577,7 +578,7 @@ public class RDBMSConstants {
      * Prepared statement for getting last assigned id for queue
      */
     protected static final String PS_SELECT_QUEUE_TO_LAST_ASSIGNED_ID =
-            "SELECT * " +
+            "SELECT " + MESSAGE_ID +
                     " FROM " + QUEUE_TO_LAST_ASSIGNED_ID +
                     " WHERE " + QUEUE_NAME + "=?";
 
@@ -602,7 +603,7 @@ public class RDBMSConstants {
      * Prepared statement to get last published id of node
      */
     protected static final String PS_SELECT_NODE_TO_LAST_PUBLISHED_ID =
-            "SELECT * " +
+            "SELECT " + MESSAGE_ID +
                     " FROM " + NODE_TO_LAST_PUBLISHED_ID +
                     " WHERE " + NODE_ID + "=?";
 
@@ -647,8 +648,8 @@ public class RDBMSConstants {
      * Prepared statement to get slot message ids
      */
     protected static final String PS_GET_MESSAGE_IDS =
-            "SELECT * " +
-                    "FROM " + SLOT_MESSAGE_ID_TABLE +
+            "SELECT " + MESSAGE_ID +
+                    " FROM " + SLOT_MESSAGE_ID_TABLE +
                     " WHERE " + QUEUE_NAME + "=?" +
                     " ORDER BY " + MESSAGE_ID;
 
