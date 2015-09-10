@@ -22,6 +22,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dna.mqtt.moquette.messaging.spi.impl.ProtocolProcessor;
 import org.dna.mqtt.moquette.proto.messages.AbstractMessage;
+import org.wso2.andes.kernel.Andes;
+import org.wso2.andes.kernel.AndesContent;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTException;
 import org.wso2.andes.mqtt.MQTTMessageContext;
@@ -29,7 +32,7 @@ import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.mqtt.MQTTopicManager;
 
 import java.nio.ByteBuffer;
-
+import java.util.List;
 
 
 /**
@@ -239,4 +242,39 @@ public final class AndesMQTTBridge {
         }
         MQTTopicManager.getInstance().processPingRequest(clientID);
     }
+
+
+    /**
+     * Sends retain messages if exist upon MQTT subscription.
+     *
+     * @param topicName topic name of the subscription.
+     * @param clientID subscription client id
+     */
+    public void sendRetainMessageToSubscriber(String topicName, String clientID) {
+
+        // Send retained message if available
+        try {
+            List<DeliverableAndesMetadata> metadataList = Andes.getInstance().getRetainedMetadataByTopic(topicName);
+
+            for (DeliverableAndesMetadata metadata : metadataList) {
+                AndesContent content = Andes.getInstance().getRetainedMessageContent(metadata);
+                //Should get the message from the list
+                ByteBuffer message = MQTTUtils.getContentFromMetaInformation(content);
+
+                //Need to set do a re position of bytes for writing to the buffer
+                //Since the buffer needs to be initialized for reading before sending out
+                final int bytesPosition = 0;
+
+                message.position(bytesPosition);
+                metadata.setRetain(true);
+
+                mqttProtocolHandlingEngine.publishToSubscriber(topicName, AbstractMessage.QOSType.valueOf(metadata.getQosLevel()),
+                                    message,metadata.isRetain(), (int) metadata.getMessageID(), clientID);
+            }
+        } catch (Exception e) {
+            log.error("Error occurred while sending retained messages to new subscription.", e);
+        }
+    }
+
+
 }

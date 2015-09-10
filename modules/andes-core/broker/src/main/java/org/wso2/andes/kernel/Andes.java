@@ -678,5 +678,21 @@ public class Andes {
                 MAX_TX_BATCH_SIZE, channel);
     }
 
+    /**
+     * Get deliverable metadata if exist for the given topic
+     *
+     * @param topicName topic name
+     * @return List of retain deliverable metadata
+     * @throws AndesException
+     */
+    public List<DeliverableAndesMetadata> getRetainedMetadataByTopic(String topicName) throws AndesException {
+        return MessagingEngine.getInstance().getRetainedMessageByTopic(topicName);
+    }
+
+
+    public AndesContent getRetainedMessageContent(AndesMessageMetadata metadata) throws AndesException {
+        return MessagingEngine.getInstance().getRetainedMessageContent(metadata);
+    }
+
 }
 

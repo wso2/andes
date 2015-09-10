@@ -33,10 +33,7 @@ import org.dna.mqtt.moquette.server.ServerChannel;
 import org.dna.mqtt.wso2.AndesMQTTBridge;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.MQTTUserAuthenticationScheme;
-import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.DeliverableAndesMetadata;
-import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.disruptor.LogExceptionHandler;
 import org.wso2.andes.kernel.disruptor.inbound.PubAckHandler;
 import org.wso2.andes.mqtt.MQTTAuthorizationSubject;
@@ -827,42 +824,13 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
         // Added by WSO2.
         // Retain messages will handled inside ProtocolProcessor.
-        for (SubscribeMessage.Couple req : msg.subscriptions()) {
-            sendRetainMessageToSubscriber(req.getTopicFilter(), clientID);
-        }
-    }
-
-    /**
-     * Sends retain messages if exist upon subscription.
-     * Method written by WSO2.
-     *
-     * @param topicName topic name of the subscription.
-     * @param clientID subscription client id
-     */
-    private void sendRetainMessageToSubscriber(String topicName, String clientID) {
-
-        // Send retained message if available
         try {
-
-            List<DeliverableAndesMetadata> metadataList = MessagingEngine.getInstance().getRetainedMessageByTopic(topicName);
-
-            for (DeliverableAndesMetadata metadata : metadataList) {
-                AndesContent content = MessagingEngine.getInstance().getRetainedMessageContent(metadata);
-                //Should get the message from the list
-                ByteBuffer message = MQTTUtils.getContentFromMetaInformation(content);
-
-                //Need to set do a re position of bytes for writing to the buffer
-                //Since the buffer needs to be initialized for reading before sending out
-                final int bytesPosition = 0;
-
-                message.position(bytesPosition);
-                metadata.setRetain(true);
-
-                publishToSubscriber(topicName, AbstractMessage.QOSType.valueOf(metadata.getQosLevel()),
-                                    message,metadata.isRetain(), (int) metadata.getMessageID(), clientID);
+            for (SubscribeMessage.Couple req : msg.subscriptions()) {
+                    AndesMQTTBridge.getBridgeInstance().sendRetainMessageToSubscriber(req.getTopicFilter(), clientID);
             }
-        } catch (Exception e) {
-            log.error("Error occurred while sending retained messages to new subscription.", e);
+        } catch (MQTTException e) {
+            log.error("Error occurred while sending retained messages to new subscription. subscription client id : "
+                      + clientID, e);
         }
     }
 
