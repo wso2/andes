@@ -36,8 +36,10 @@ import org.wso2.andes.subscription.LocalSubscription;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 
@@ -58,6 +60,12 @@ public class PersistenceStoreConnector implements MQTTConnector {
     //TODO state the usage of a hash-map instead of using concurrent hashmap
     private Map<String, MQTTPublisherChannel> publisherTopicCorrelate = new HashMap<>();
 
+    /**
+     * Will maintain retain message identification (message id + channel id) until ack received
+     * by the subscriber.
+     * Retain message acks will not handle in andes level.
+     */
+    private Set<String> retainMessageIdSet = new HashSet<>();
 
     /**
      * {@inheritDoc}
@@ -65,7 +73,13 @@ public class PersistenceStoreConnector implements MQTTConnector {
     public void messageAck(long messageID, UUID channelID)
             throws AndesException {
         AndesAckData andesAckData = AndesUtils.generateAndesAckMessage(channelID, messageID);
-        Andes.getInstance().ackReceived(andesAckData);
+
+        // Remove retain message ack upon receive from retain message metadata map
+        if(retainMessageIdSet.contains(messageID + channelID.toString())) {
+            retainMessageIdSet.remove(messageID + channelID.toString());
+        } else {
+            Andes.getInstance().ackReceived(andesAckData);
+        }
     }
 
     /**
@@ -183,7 +197,9 @@ public class PersistenceStoreConnector implements MQTTConnector {
     /**
      * {@inheritDoc}
      */
-    public void sendRetainedMessagesToSubscriber(String topic,String subscriptionID, QOSLevel qos) {
+    public void sendRetainedMessagesToSubscriber(String topic,String subscriptionID, QOSLevel qos,
+                                                 UUID subscriptionChannelID)
+            throws MQTTException {
 
         // Send retained message if available to the subscriber.
         // Retain message should send before register topic subscription in cluster. This will ensure
@@ -191,6 +207,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
         try {
             List<DeliverableAndesMetadata> metadataList = Andes.getInstance().getRetainedMetadataByTopic(topic);
 
+            // Looped through metadata list as there can be multiple messages (due to wildcards) per single subscriber.
             for (DeliverableAndesMetadata metadata : metadataList) {
                 AndesContent content = Andes.getInstance().getRetainedMessageContent(metadata);
                 // get the message byte buffer from content
@@ -204,11 +221,20 @@ public class PersistenceStoreConnector implements MQTTConnector {
                 metadata.setRetain(true);
 
                 MQTTopicManager.getInstance().distributeMessageToSubscriber(topic,message,metadata.getMessageID(),
-                                                                            metadata.getQosLevel(), metadata.isRetain(), subscriptionID,
-                                                                            qos.getValue(), metadata);
+                                                                            metadata.getQosLevel(), metadata.isRetain(),
+                                                                            subscriptionID, qos.getValue(), metadata);
+
+                // keep retain metadata in a map to handle acks.
+                // After sending a retain message, metadata will stored until ack received from subscriber.
+                retainMessageIdSet.add(metadata.getMessageID() + subscriptionChannelID.toString());
             }
-        } catch (Exception e) {
-            log.error("Error occurred while sending retained messages to new subscription.", e);
+        } catch (AndesException e) {
+            final String message = "Error occurred while fetching MQTT retained metadata/content for topic " + topic;
+            log.error(message, e);
+        } catch (MQTTException e) {
+            String message = "Error occurred while sending retained messages to new subscription.";
+            log.error(message, e);
+            throw e;
         }
     }
 

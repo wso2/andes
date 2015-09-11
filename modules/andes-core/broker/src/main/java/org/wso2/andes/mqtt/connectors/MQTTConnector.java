@@ -125,5 +125,6 @@ public interface MQTTConnector {
      * @param subscriptionID subscription id
      * @param qos subscriber qos level
      */
-    public void sendRetainedMessagesToSubscriber(String topic,String subscriptionID, QOSLevel qos);
+    public void sendRetainedMessagesToSubscriber(String topic,String subscriptionID, QOSLevel qos, UUID subscriptionChannelID)
+            throws MQTTException;
 }

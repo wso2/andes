@@ -821,7 +821,6 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
         } else {
             log.error("Not sending sub ack message since client " + clientID + " does not have permission to subscribe to all given subscriptions.");
         }
-
     }
 
     private void subscribeSingleTopic(Subscription newSubscription) {

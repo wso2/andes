@@ -31,6 +31,7 @@ import org.wso2.andes.mqtt.MQTTopicManager;
 import java.nio.ByteBuffer;
 
 
+
 /**
  * The class will be responsible to mediate between the MQTT library and the Andes kernal.
  * When writing methods all the connecting logic between the MQTT protocol engine and kernal
@@ -238,5 +239,4 @@ public final class AndesMQTTBridge {
         }
         MQTTopicManager.getInstance().processPingRequest(clientID);
     }
-
 }

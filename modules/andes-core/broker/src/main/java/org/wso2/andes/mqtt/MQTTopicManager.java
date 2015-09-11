@@ -180,7 +180,7 @@ public class MQTTopicManager {
                     topicName);
 
             // Send retained message for the subscriber if retained message exist.
-            connector.sendRetainedMessagesToSubscriber(topicName,mqttClientChannelID,qos);
+            connector.sendRetainedMessagesToSubscriber(topicName,mqttClientChannelID,qos, subscriptionChannelID);
 
         } catch (SubscriptionAlreadyExistsException ignore) {
             //We do not throw this any further, the process should not stop due to this
