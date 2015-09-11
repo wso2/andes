@@ -546,7 +546,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <carbon.kernel.version>4.4.1</carbon.kernel.version>
-        <project.scm.id>my-scm-server</project.scm.id>
+        <project.scm.id>wso2-scm-server</project.scm.id>
         <andes.version>2.6.1</andes.version>
         <commons-cli.version>1.0</commons-cli.version>
         <commons-configuration.version>1.10</commons-configuration.version>
