@@ -690,6 +690,13 @@ public class Andes {
     }
 
 
+    /**
+     * Get andes content for given message metadata
+     *
+     * @param metadata message metadata
+     * @return Andes content of given metadata
+     * @throws AndesException
+     */
     public AndesContent getRetainedMessageContent(AndesMessageMetadata metadata) throws AndesException {
         return MessagingEngine.getInstance().getRetainedMessageContent(metadata);
     }

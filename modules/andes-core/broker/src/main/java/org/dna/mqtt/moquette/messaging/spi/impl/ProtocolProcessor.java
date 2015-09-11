@@ -822,16 +822,6 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             log.error("Not sending sub ack message since client " + clientID + " does not have permission to subscribe to all given subscriptions.");
         }
 
-        // Added by WSO2.
-        // Retain messages will handled inside ProtocolProcessor.
-        try {
-            for (SubscribeMessage.Couple req : msg.subscriptions()) {
-                    AndesMQTTBridge.getBridgeInstance().sendRetainMessageToSubscriber(req.getTopicFilter(), clientID);
-            }
-        } catch (MQTTException e) {
-            log.error("Error occurred while sending retained messages to new subscription. subscription client id : "
-                      + clientID, e);
-        }
     }
 
     private void subscribeSingleTopic(Subscription newSubscription) {

@@ -34,7 +34,9 @@ import org.wso2.andes.mqtt.utils.MQTTUtils;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.subscription.LocalSubscription;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -175,7 +177,41 @@ public class PersistenceStoreConnector implements MQTTConnector {
             throw new MQTTException(message, e);
         }
 
+
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void sendRetainedMessagesToSubscriber(String topic,String subscriptionID, QOSLevel qos) {
+
+        // Send retained message if available to the subscriber.
+        // Retain message should send before register topic subscription in cluster. This will ensure
+        // retain message is received prior to any other topic message to the subscriber.
+        try {
+            List<DeliverableAndesMetadata> metadataList = Andes.getInstance().getRetainedMetadataByTopic(topic);
+
+            for (DeliverableAndesMetadata metadata : metadataList) {
+                AndesContent content = Andes.getInstance().getRetainedMessageContent(metadata);
+                // get the message byte buffer from content
+                ByteBuffer message = MQTTUtils.getContentFromMetaInformation(content);
+
+                // Need to set do a re position of bytes for writing to the buffer
+                // Since the buffer needs to be initialized for reading before sending out
+                final int bytesPosition = 0;
+
+                message.position(bytesPosition);
+                metadata.setRetain(true);
+
+                MQTTopicManager.getInstance().distributeMessageToSubscriber(topic,message,metadata.getMessageID(),
+                                                                            metadata.getQosLevel(), metadata.isRetain(), subscriptionID,
+                                                                            qos.getValue(), metadata);
+            }
+        } catch (Exception e) {
+            log.error("Error occurred while sending retained messages to new subscription.", e);
+        }
+    }
+
 
     /**
      * {@inheritDoc}
