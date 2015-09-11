@@ -354,6 +354,7 @@ public class Andes {
     public void createQueue(InboundQueueEvent queueEvent) throws AndesException {
         queueEvent.prepareForCreateQueue(contextInformationManager);
         inboundEventManager.publishStateEvent(queueEvent);
+        queueEvent.waitForCompletion();
     }
 
     /**

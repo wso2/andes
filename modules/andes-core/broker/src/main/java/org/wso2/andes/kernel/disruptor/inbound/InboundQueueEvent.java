@@ -88,13 +88,17 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
      * InboundQueueEvent#getPurgedCount method to get the purged count from this async event. 
      * InboundQueueEvent#getPurgedCount method is a blocking call.  
      */
-    SettableFuture<Integer> purgedCount;
+    private SettableFuture<Integer> purgedCount;
 
     /**
-     * Future is used to retrieve the value set when by State event handler based state change event.
-     * By calling the get method on this future, caller of the method can wait till the operation is done
+     * Each event is associated with a particular task. An InboundQueueEvent object could be of any of the types: Queue
+     * addition, queue deletion, purge, etc. Even though these operations are processed asynchronously through the
+     * disruptor, there are situations where it is needed to wait until the event is processed.
+     * <p/>
+     * A settable future object is to block the thread until the process is complete. By calling the method get on the
+     * variable, the caller will have to wait until the operation is complete
      */
-    SettableFuture<Boolean> isQueueDeletable;
+    private SettableFuture<Boolean> isEventComplete;
 
     /**
      * create an instance of andes queue
@@ -107,7 +111,7 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
     public InboundQueueEvent(String queueName, String queueOwner, boolean isExclusive, boolean isDurable) {
         super(queueName, queueOwner, isExclusive, isDurable);
         purgedCount = SettableFuture.create();
-        isQueueDeletable = SettableFuture.create();
+        isEventComplete = SettableFuture.create();
         isTopic = false;
     }
 
@@ -119,6 +123,7 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
     public InboundQueueEvent(String queueAsStr) {
         super(queueAsStr);
         purgedCount = SettableFuture.create();
+        isEventComplete = SettableFuture.create();
         isTopic = false;
     }
 
@@ -127,6 +132,8 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
         switch (eventType) {
             case CREATE_QUEUE_EVENT:
                 contextInformationManager.createQueue(this);
+                //mark the completion of the queue addition operation
+                isEventComplete.set(true);
                 break;
             case DELETE_QUEUE_EVENT:
                 contextInformationManager.deleteQueue(queueName);
@@ -153,10 +160,10 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
         try {
             queueDeletable = contextInformationManager.checkIfQueueDeletable(queueName);
         } catch (AndesException e) {
-            isQueueDeletable.setException(e);
+            isEventComplete.setException(e);
         } finally {
             // For other exceptions value will be set to false
-            isQueueDeletable.set(queueDeletable);
+            isEventComplete.set(queueDeletable);
         }
     }
 
@@ -235,19 +242,41 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
     }
 
     /**
-     * Returns whether the queue can be deletable on not 
-     * @return True if deletable and wise versa
+     * Returns whether the queue can be deleted or not
+     *
+     * @return True if deletable and vice versa
      * @throws AndesException
      */
     public boolean IsQueueDeletable() throws AndesException {
         try {
-            return isQueueDeletable.get();
+            return isEventComplete.get(1000, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (ExecutionException e) {
-            throw new AndesException("Error occurred while checking is queue deletable", e);
+            throw new AndesException("Error occurred while checking is queue: " + queueName + " deletable", e);
+        } catch (TimeoutException e) {
+            throw new AndesException("Error occurred while checking is queue: " + queueName + " deletable", e);
         }
         return false;
+    }
+
+    /**
+     * Wait until the queue is added
+     */
+    public void waitForCompletion() throws AndesException {
+        try {
+            //stay blocked until the queue addition is complete
+            isEventComplete.get(1000, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException e) {
+            // No point in throwing an exception here and disrupting the server. A warning is sufficient.
+            log.warn("Error occurred while processing event " + eventType + " queue: " + queueName);
+        } catch (TimeoutException e) {
+            // The timeout means that the processing of the even did not complete as expected. At such times we do not
+            // want to proceed
+            throw new AndesException("Error occurred while checking if queue: " + queueName + " is added", e);
+        }
     }
 
 }
