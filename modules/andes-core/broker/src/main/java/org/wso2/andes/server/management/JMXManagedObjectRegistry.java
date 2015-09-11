@@ -81,7 +81,7 @@ public class JMXManagedObjectRegistry implements ManagedObjectRegistry
 
     public JMXManagedObjectRegistry() throws AMQException
     {
-        _log.info("Initialising managed object registry using platform MBean server");
+        _log.info("Initialising managed object registry using jplatform MBean server");
         IApplicationRegistry appRegistry = ApplicationRegistry.getInstance();
 
         // Retrieve the config parameters

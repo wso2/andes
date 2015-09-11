@@ -452,9 +452,6 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             if (!DLCQueueUtils.isDeadLetterQueue(queueName)) {
                 if (nextMsgId == 0) {
                     nextMsgId = Andes.getInstance().getLastAssignedSlotMessageId(queueName);
-                    if (nextMsgId == 0) {
-                        nextMsgId = AndesKernelBoot.getFirstRecoveredMessageId(queueName);
-                    }
                 }
                 nextNMessageMetadataFromQueue = Andes.getInstance()
                         .getNextNMessageMetadataFromQueue(queueName, nextMsgId, maxMsgCount);

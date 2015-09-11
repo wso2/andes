@@ -207,10 +207,15 @@ public class Broker
                 }
 
                 if (serverConfig.getEnableSSL()) {
-                    JKSStore keyStore = AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_KEYSTORE);
+                    JKSStore keyStore = AndesConfigurationManager
+                            .readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_KEYSTORE);
+                    JKSStore trustStore = AndesConfigurationManager
+                            .readValue(AndesConfiguration.TRANSPORTS_AMQP_SSL_CONNECTION_TRUSTSTORE);
+
                     String certType = serverConfig.getCertType();
                     SSLContextFactory sslFactory =
-                            new SSLContextFactory(keyStore.getStoreLocation(), keyStore.getPassword(), certType);
+                            new SSLContextFactory(trustStore.getStoreLocation(), trustStore.getPassword(), certType,
+                                                  keyStore.getStoreLocation(), keyStore.getPassword(), certType);
 
                     for(int sslPort : sslPorts)
                     {
