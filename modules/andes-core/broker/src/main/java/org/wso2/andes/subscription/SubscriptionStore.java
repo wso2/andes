@@ -70,14 +70,27 @@ public class SubscriptionStore {
 
     private ClusterSubscriptionProcessor clusterSubscriptionProcessor;
 
-    // To store active exclusive consumer for each queue
+    /**
+     * To store active exclusive consumer for each queue
+     * Key  : queue name
+     * Value :  exclusive consumer for the queue
+     */
     private Map<String, LocalSubscription> activeExclusiveConsumersForQueue = new HashMap<String, LocalSubscription>();
 
-    // To store all the subscribers, subscribed for exclusive consumer feature enabled queues
+    /**
+     * To store all the subscribers, subscribed for exclusive consumer feature enabled queues
+     * Key : queue name
+     * Value : all the subscribers subscribed to that queue
+     */
     private Map<String, TreeSet<LocalSubscription>> allExclusiveSubscribers = new HashMap<String, TreeSet<LocalSubscription>>();
 
 
+    // Use to sort the subscribers based on the subscribed time
     class SubscriptionComparator implements Comparator<LocalSubscription> {
+
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public int compare(LocalSubscription sub1, LocalSubscription sub2) {
             long timeSub1 = sub1.getSubscribeTime();
@@ -210,26 +223,29 @@ public class SubscriptionStore {
 
     /**
      * @param destination queue name
-     * @param isTopic     FALSE if checking queues
-     * @return the excluisve consumer or list of active local subscribers for the destination
+     * @param isTopic     whether the destination is a topic or a queue
+     * @return the exclusive consumer or list of active local subscribers for the destination
      * @throws AndesException
      */
     public Collection<LocalSubscription> getSubscriptionsForDeliver(String destination,
                                                                     boolean isTopic)
             throws AndesException {
 
+        Collection<LocalSubscription> subscribers;
+
         if (null != activeExclusiveConsumersForQueue.get(destination) && !isTopic) {
             LocalSubscription exclusiveSubscriber = activeExclusiveConsumersForQueue.get(destination);
-            ArrayList<LocalSubscription> subscribers = new ArrayList<LocalSubscription>();
+            subscribers = new ArrayList<LocalSubscription>();
             subscribers.add(exclusiveSubscriber);
-            return subscribers;
         } else {
-            return this.getActiveLocalSubscribers(destination, isTopic);
+            subscribers = this.getActiveLocalSubscribers(destination, isTopic);
         }
+        return subscribers;
     }
 
     /**
-     * Remove the mapping for the queue name (exclusive enabled), when the queue get deleted and if there are no subscribers for that queue
+     * Remove the mapping for the queue name (exclusive enabled), when the queue get deleted
+     * and if there are no subscribers for that queue
      *
      * @param destination queue name
      * @param isTopic     FALSE if the destination is queue
@@ -675,7 +691,8 @@ public class SubscriptionStore {
 
         List<AndesQueue> allQueuesStored = andesContextStore.getAllQueuesStored();
         for (AndesQueue andesQueue : allQueuesStored) {
-            if (subscription.isDurable() && !subscription.isBoundToTopic() && andesQueue.isExclusiveConsumer && andesQueue.queueName.equalsIgnoreCase(subscription.getTargetQueue())) {
+            if (subscription.isDurable() && !subscription.isBoundToTopic() && andesQueue.isExclusiveConsumer &&
+                    andesQueue.queueName.equalsIgnoreCase(subscription.getTargetQueue())) {
                 if (SubscriptionChange.ADDED == type) {
                     if (!activeExclusiveConsumersForQueue.containsKey(subscription.getTargetQueue())) {
                         activeExclusiveConsumersForQueue.put(subscription.getTargetQueue(), subscription);
