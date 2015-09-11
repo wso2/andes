@@ -155,7 +155,7 @@ public enum MessageStatus {
         SCHEDULED_TO_SEND.next = EnumSet.of(SENT_TO_ALL, SLOT_RETURNED);
         SCHEDULED_TO_SEND.previous = EnumSet.of(BUFFERED);
 
-        SENT_TO_ALL.next = EnumSet.of(ACKED_BY_ALL, SLOT_RETURNED);
+        SENT_TO_ALL.next = EnumSet.of(SCHEDULED_TO_SEND, ACKED_BY_ALL, SLOT_RETURNED);
         SENT_TO_ALL.previous = EnumSet.of(SCHEDULED_TO_SEND);
 
         ACKED_BY_ALL.next = EnumSet.of(DELETED, SLOT_RETURNED);

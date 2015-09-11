@@ -22,7 +22,11 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AndesContent;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.MessageStatus;
+import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.mqtt.MQTTLocalSubscription;
 
 import java.util.ArrayList;
@@ -127,6 +131,7 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
             //Send failed. Rollback changes done that assumed send would be success
             messageMetadata.markDeliveryFailureOfASentMessage(getChannelID());
             unAcknowledgedMsgCount.decrementAndGet();
+            messageMetadata.removeScheduledDeliveryChannel(getChannelID());
             messageSendingTracker.remove(messageMetadata.getMessageID());
 
             //TODO: this is wrong
@@ -224,7 +229,6 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      * {@inheritDoc}
      */
     public void msgRejectReceived(long messageID) throws AndesException{
-        messageSendingTracker.remove(messageID);
         if(log.isDebugEnabled()) {
             log.debug("Reject. Removed message reference. Message Id = "
                     + messageID + " subscriptionID= " + subscriptionID);
@@ -249,8 +253,6 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
                 }
             }
         }
-
-        messageSendingTracker.clear();
         unAcknowledgedMsgCount.set(0);
         MessagingEngine.getInstance().deleteMessages(messagesToRemove);
     }
