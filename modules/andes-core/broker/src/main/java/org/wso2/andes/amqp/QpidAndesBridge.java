@@ -25,7 +25,21 @@ import org.wso2.andes.AMQInternalException;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.abstraction.ContentChunk;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.Andes;
+import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesBinding;
+import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.AndesUtils;
+import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.DisablePubAckImpl;
+import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.QueueBrowserDeliveryWorker;
+import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
@@ -45,7 +59,11 @@ import org.wso2.andes.server.subscription.SubscriptionImpl;
 import org.wso2.andes.subscription.LocalSubscription;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -502,7 +520,9 @@ public class QpidAndesBridge {
 
                 AndesBinding andesBinding = AMQPUtils.createAndesBinding(b.getExchange(), b.getQueue(), new AMQShortString(b.getBindingKey()));
                 if (uniqueBindings.add(andesBinding)) {
-                    LocalSubscription localSubscription = AMQPUtils.createAMQPLocalSubscription(queue, subscription, b);
+                    UUID channelID = ((SubscriptionImpl.AckSubscription) subscription).getChannel().getId();
+                    LocalSubscription localSubscription = AndesContext.getInstance().getSubscriptionStore()
+                            .getLocalSubscriptionForChannelId(channelID);
                     InboundSubscriptionEvent subscriptionEvent = new InboundSubscriptionEvent(localSubscription);
                     Andes.getInstance().closeLocalSubscription(subscriptionEvent);
                 }
