@@ -21,14 +21,11 @@ package org.wso2.andes.subscription;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.configuration.AndesConfigurationManager;
-import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesContextStore;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.AndesSubscription.SubscriptionType;
-import org.wso2.andes.kernel.SubscriptionAlreadyExistsException;
 import org.wso2.andes.kernel.SubscriptionListener.SubscriptionChange;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
@@ -58,21 +55,21 @@ public class SubscriptionStore {
     /**
      * Keeps non-wildcard cluster topic subscriptions.
      */
-    private Map<String, Set<AndesSubscription>> clusterTopicSubscriptionMap = new ConcurrentHashMap<String, Set<AndesSubscription>>();
+    private Map<String, Set<AndesSubscription>> clusterTopicSubscriptionMap = new ConcurrentHashMap<>();
 
     /**
      * Keeps non-wildcard cluster queue subscriptions.
      */
-    private Map<String, Set<AndesSubscription>> clusterQueueSubscriptionMap = new ConcurrentHashMap<String, Set<AndesSubscription>>();
+    private Map<String, Set<AndesSubscription>> clusterQueueSubscriptionMap = new ConcurrentHashMap<>();
 
     //<destination, <subscriptionID,LocalSubscription>>
-    private Map<String, Set<LocalSubscription>> localTopicSubscriptionMap = new ConcurrentHashMap<String, Set<LocalSubscription>>();
-    private Map<String, Set<LocalSubscription>> localQueueSubscriptionMap = new ConcurrentHashMap<String, Set<LocalSubscription>>();
+    private Map<String, Set<LocalSubscription>> localTopicSubscriptionMap = new ConcurrentHashMap<>();
+    private Map<String, Set<LocalSubscription>> localQueueSubscriptionMap = new ConcurrentHashMap<>();
 
     /**
      * Channel wise indexing of local subscriptions for acknowledgement handling
      */
-    private Map<UUID, LocalSubscription> channelIdMap = new ConcurrentHashMap<UUID, LocalSubscription>();
+    private Map<UUID, LocalSubscription> channelIdMap = new ConcurrentHashMap<>();
 
     private AndesContextStore andesContextStore;
 
@@ -101,7 +98,7 @@ public class SubscriptionStore {
                                                                   AndesSubscription.SubscriptionType
                                                                           subscriptionType) throws AndesException {
         // Returning empty set if requested map is empty
-        Set<AndesSubscription> subscriptions = new HashSet<AndesSubscription>();
+        Set<AndesSubscription> subscriptions = new HashSet<>();
         if (isTopic) {
             Set<AndesSubscription> directSubscriptions = clusterTopicSubscriptionMap.get(destination);
 
@@ -129,7 +126,7 @@ public class SubscriptionStore {
      * @return Set of queues/topics
      */
     public Set<String> getAllDestinationsOfSubscriptions(boolean isTopic) {
-        Set<String> destinations = new HashSet<String>();
+        Set<String> destinations = new HashSet<>();
 
         if (isTopic) {
             destinations.addAll(clusterTopicSubscriptionMap.keySet());
@@ -152,7 +149,7 @@ public class SubscriptionStore {
     public Set<AndesSubscription> getClusterSubscribersForDestination(String destination, boolean isTopic,
                                                                       SubscriptionType subscriptionType) throws
             AndesException {
-        Set<AndesSubscription> subscriptions = new HashSet<AndesSubscription>();
+        Set<AndesSubscription> subscriptions = new HashSet<>();
 
         if (isTopic) {
             Set<AndesSubscription> clusterSubscriptions = clusterTopicSubscriptionMap.get(destination);
@@ -191,12 +188,12 @@ public class SubscriptionStore {
      */
     public Set<LocalSubscription> getActiveLocalSubscribers(String destination, boolean isTopic) throws AndesException {
         Set<LocalSubscription> localSubscriptionMap = getLocalSubscriptionMap(destination, isTopic);
-        Set<LocalSubscription> list = new HashSet<LocalSubscription>();
+        Set<LocalSubscription> list = new HashSet<>();
         if (localSubscriptionMap != null) {
             list = getLocalSubscriptionMap(destination, isTopic);
         }
 
-        Set<LocalSubscription> activeLocalSubscriptionList = new HashSet<LocalSubscription>();
+        Set<LocalSubscription> activeLocalSubscriptionList = new HashSet<>();
         for (LocalSubscription localSubscription : list) {
             if (localSubscription.hasExternalSubscriptions()) {
                 activeLocalSubscriptionList.add(localSubscription);
@@ -250,7 +247,7 @@ public class SubscriptionStore {
      * @return list of subscriptions
      */
     public Set<AndesSubscription> getActiveClusterSubscribersForNode(String nodeID, boolean isTopic) {
-        Set<AndesSubscription> activeQueueSubscriptions = new HashSet<AndesSubscription>();
+        Set<AndesSubscription> activeQueueSubscriptions = new HashSet<>();
         Map<String, Set<AndesSubscription>> clusterSubscriptionMap = isTopic ? clusterTopicSubscriptionMap :
                 clusterQueueSubscriptionMap;
         for (String destination : clusterSubscriptionMap.keySet()) {
@@ -277,7 +274,7 @@ public class SubscriptionStore {
      * @return list of Local subscriptions
      */
     public Set<LocalSubscription> getActiveLocalSubscribers(boolean isTopic) {
-        Set<LocalSubscription> activeQueueSubscriptions = new HashSet<LocalSubscription>();
+        Set<LocalSubscription> activeQueueSubscriptions = new HashSet<>();
         Map<String, Set<LocalSubscription>> localSubscriptionMap = isTopic ? localTopicSubscriptionMap :
                 localQueueSubscriptionMap;
         for (String destination : localSubscriptionMap.keySet()) {
@@ -379,7 +376,7 @@ public class SubscriptionStore {
     public Set<AndesSubscription> getActiveClusterSubscriptionList(String destination, boolean isTopic,
                                                                    SubscriptionType subscriptionType) throws
             AndesException {
-        Set<AndesSubscription> activeSubscriptions = new HashSet<AndesSubscription>();
+        Set<AndesSubscription> activeSubscriptions = new HashSet<>();
         Set<AndesSubscription> allSubscriptions = getClusterSubscriptionList(destination, isTopic, subscriptionType);
         if (null != allSubscriptions) {
             activeSubscriptions = allSubscriptions;
@@ -429,7 +426,7 @@ public class SubscriptionStore {
      * @throws AndesException
      */
     public Set<LocalSubscription> getListOfLocalSubscriptionsBoundToQueue(String queueName) throws AndesException {
-        Set<LocalSubscription> subscriptionsOfQueue = new HashSet<LocalSubscription>();
+        Set<LocalSubscription> subscriptionsOfQueue = new HashSet<>();
         Set<LocalSubscription> queueSubscriptionMap = localQueueSubscriptionMap.get(queueName);
         if (queueSubscriptionMap != null) {
             subscriptionsOfQueue.addAll(queueSubscriptionMap);
@@ -710,7 +707,7 @@ public class SubscriptionStore {
      * @return list of ACTIVE and INACTIVE topics in cluster
      */
     public List<String> getTopics() {
-        return new ArrayList<String>(clusterTopicSubscriptionMap.keySet());
+        return new ArrayList<>(clusterTopicSubscriptionMap.keySet());
     }
 
     /**
