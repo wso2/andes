@@ -214,4 +214,16 @@ public class InMemoryConnector implements MQTTConnector {
 
     }
 
+    /**
+     *
+     * Handles retain feature in in-memory mode
+     * @param topic topic name
+     * @param subscriptionID subscription id of the subscriber
+     * @param qos qos level of the subscriber
+     */
+    public void sendRetainedMessagesToSubscriber(String topic,String subscriptionID, QOSLevel qos,
+                                                 UUID subscriptionChannelID) {
+    // TODO : Need to implement retain feature for non-persistent MQTT model after inMemoryConnector updated with new delivery model.
+    }
+
 }

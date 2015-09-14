@@ -117,4 +117,14 @@ public interface MQTTConnector {
      * @return UUID of the publisher. Unique id for the publisher in the cluster
      */
     public UUID removePublisher(String mqttClientChannelID);
+
+    /**
+     * Send Retain message for local subscriber if exist.
+     *
+     * @param topic subscription topic name
+     * @param subscriptionID subscription id
+     * @param qos subscriber qos level
+     */
+    public void sendRetainedMessagesToSubscriber(String topic,String subscriptionID, QOSLevel qos, UUID subscriptionChannelID)
+            throws MQTTException;
 }

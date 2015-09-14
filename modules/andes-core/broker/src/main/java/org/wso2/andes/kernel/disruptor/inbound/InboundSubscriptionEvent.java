@@ -124,27 +124,6 @@ public class InboundSubscriptionEvent implements AndesInboundStateEvent {
             future.set(isComplete);
         }
 
-        // Send retained message if available
-        try {
-
-            if (localSubscription.getSubscriptionType().equals(AndesSubscription.SubscriptionType.MQTT)) {
-                // Before sending a retain message for given subscription event, have to
-                // verify if the given subscription bound to a topic and is not durable.
-                if (!localSubscription.isDurable() && localSubscription.isBoundToTopic()) {
-                    List<DeliverableAndesMetadata> metadataList = MessagingEngine.getInstance().getRetainedMessageByTopic(
-                            localSubscription.getSubscribedDestination());
-
-                    for (DeliverableAndesMetadata metadata : metadataList) {
-                        AndesContent content = MessagingEngine.getInstance().getRetainedMessageContent(metadata);
-                        metadata.setRetain(true);
-                        localSubscription.sendMessageToSubscriber(metadata, content);
-                    }
-                }
-            }
-        } catch (AndesException e) {
-            log.error("Error occurred while sending retained messages to new subscription.", e);
-        }
-
     }
 
     /**

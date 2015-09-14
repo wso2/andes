@@ -179,6 +179,9 @@ public class MQTTopicManager {
             topics.addSubscriber(mqttClientChannelID, qos, isCleanSession, subscriptionID, subscriptionChannelID,
                     topicName);
 
+            // Send retained message for the subscriber if retained message exist.
+            connector.sendRetainedMessagesToSubscriber(topicName,mqttClientChannelID,qos, subscriptionChannelID);
+
         } catch (SubscriptionAlreadyExistsException ignore) {
             //We do not throw this any further, the process should not stop due to this
             final String message = "Error while adding the subscriber to the cluster";
