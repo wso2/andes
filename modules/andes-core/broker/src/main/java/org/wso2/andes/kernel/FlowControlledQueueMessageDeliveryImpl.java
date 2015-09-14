@@ -92,7 +92,7 @@ public class FlowControlledQueueMessageDeliveryImpl implements MessageDeliverySt
                         // In a re-queue for delivery scenario we need the correct destination. Hence setting
                         // it back correctly in AndesMetadata for durable subscription for topics
                         if (localSubscription.isBoundToTopic()) {
-                            message.setDestination(localSubscription.getSubscribedDestination());
+                            message.setDestination(localSubscription.getTargetQueue());
                         }
 
                         message.markAsScheduledToDeliver(localSubscription);

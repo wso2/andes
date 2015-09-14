@@ -25,7 +25,6 @@ import org.wso2.andes.kernel.slot.OrphanedSlotHandler;
 import org.wso2.andes.kernel.slot.SlotDeliveryWorkerManager;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
-import org.wso2.andes.subscription.AMQPLocalSubscription;
 import org.wso2.andes.subscription.BasicSubscription;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
@@ -268,8 +267,15 @@ public class AndesSubscriptionManager {
      * @throws AndesException
      */
     public void closeLocalSubscription(LocalSubscription subscription) throws AndesException {
+
+        /*
+         * Make subscription inactive as existing local subscription reference is
+         * passed here
+         */
+        subscription.setHasExternalSubscriptions(false);
+
         SubscriptionListener.SubscriptionChange changeType;
-        /**
+        /*
          * For durable topic subscriptions, mark this as a offline subscription.
          * When a new one comes with same subID, same topic it will become online again
          * Queue subscription representing durable topic will anyway deleted.
@@ -278,7 +284,7 @@ public class AndesSubscriptionManager {
         if(subscription.isBoundToTopic() && subscription.isDurable()) {
             Boolean allowSharedSubscribers =  AndesConfigurationManager.readValue
                     (AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
-            /**
+            /*
              * Last subscriptions is allowed mark as disconnected if last local
              * subscriptions to underlying queue is gone. Even if we look at cluster
              * subscriptions last subscriber must have the subscription ID of the closing
