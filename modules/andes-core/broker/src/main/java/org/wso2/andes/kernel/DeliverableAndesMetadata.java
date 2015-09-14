@@ -368,7 +368,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
                 break;
             }
         }
-        if(channelDeliveryInfo.entrySet().isEmpty()) {
+        if(channelDeliveryInfo.isEmpty()) {
             isAcked = false;
         }
         return isAcked;
