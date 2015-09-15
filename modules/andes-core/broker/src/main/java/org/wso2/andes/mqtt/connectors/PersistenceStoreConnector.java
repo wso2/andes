@@ -224,8 +224,8 @@ public class PersistenceStoreConnector implements MQTTConnector {
                                                                             metadata.getQosLevel(), metadata.isRetain(),
                                                                             subscriptionID, qos.getValue(), metadata);
 
-                // keep retain metadata in a map to handle acks.
-                // After sending a retain message, metadata will stored until ack received from subscriber.
+                // keep retain message identification in a set to handle acks.
+                // After sending a retain message, this will stored until ack received from subscriber.
                 retainMessageIdSet.add(metadata.getMessageID() + subscriptionChannelID.toString());
             }
         } catch (AndesException e) {
