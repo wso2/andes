@@ -455,19 +455,28 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
         try {
             FileWriter information = new FileWriter(fileToWrite);
             for (Map.Entry<String, Map<String, Slot>> storageQueueToSlotEntry : storageQueueToSlotTracker.entrySet()) {
-                information.append(storageQueueToSlotEntry.getKey()).append(" : \n");
+                String storageQueue = storageQueueToSlotEntry.getKey();
                 Map<String, Slot> slotIdToSlotMap = storageQueueToSlotEntry.getValue();
                 for (Map.Entry<String, Slot> slotEntry : slotIdToSlotMap.entrySet()) {
-                    information.append("\t").append(slotEntry.getKey()).append(": \n");
+                    String slotID = slotEntry.getKey();
                     List<DeliverableAndesMetadata> messagesOfSlot = slotEntry.getValue().getAllMessagesOfSlot();
                     if(!messagesOfSlot.isEmpty()) {
 
+                        int writerFlushCounter = 0;
                         for(DeliverableAndesMetadata message : messagesOfSlot) {
-                            information.append("\t\t").append(message.dumpMessageStatus())
+                            information.append(storageQueue)
+                                    .append(",")
+                                    .append(slotID).append(",")
+                                    .append(message.dumpMessageStatus())
                                     .append("\n");
+                            writerFlushCounter = writerFlushCounter + 1;
+                            if(writerFlushCounter % 10 == 0) {
+                                information.flush();
+                            }
                         }
+
+                        information.flush();
                     }
-                    information.flush();
                 }
             }
 

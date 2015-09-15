@@ -33,7 +33,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This is the class that represents a subscription in andes kernel. It is responsible
@@ -56,11 +55,6 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      */
     private final ConcurrentHashMap<Long, DeliverableAndesMetadata> messageSendingTracker
             = new ConcurrentHashMap<>();
-
-    /**
-     * Count sent but not acknowledged message count for channel of the subscriber
-     */
-    private AtomicInteger unAcknowledgedMsgCount = new AtomicInteger(0);
 
     private Integer maxNumberOfUnAcknowledgedMessages = 100000;
 
@@ -123,14 +117,12 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
         //It is needed to add the message reference to the tracker and increase un-ack message count BEFORE
         // actual message send because if it is not done ack can come BEFORE executing those lines in parallel world
         addMessageToSendingTracker(messageMetadata);
-        unAcknowledgedMsgCount.incrementAndGet();
         boolean sendSuccess = subscription.sendMessageToSubscriber(messageMetadata, content);
         if(sendSuccess) {
             return true;
         } else {
             //Send failed. Rollback changes done that assumed send would be success
             messageMetadata.markDeliveryFailureOfASentMessage(getChannelID());
-            unAcknowledgedMsgCount.decrementAndGet();
             messageMetadata.removeScheduledDeliveryChannel(getChannelID());
             messageSendingTracker.remove(messageMetadata.getMessageID());
 
@@ -198,7 +190,7 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      * @return true if able to accept messages
      */
     public boolean hasRoomToAcceptMessages() {
-        int notAcknowledgedMsgCount = unAcknowledgedMsgCount.get();
+        int notAcknowledgedMsgCount = messageSendingTracker.size();
         if (notAcknowledgedMsgCount < maxNumberOfUnAcknowledgedMessages) {
             return true;
         } else {
@@ -222,7 +214,6 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
             log.debug("Ack. Removed message reference. Message Id = "
                     + messageID + " subscriptionID= " + subscriptionID);
         }
-        unAcknowledgedMsgCount.decrementAndGet();
     }
 
     /**
@@ -233,7 +224,6 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
             log.debug("Reject. Removed message reference. Message Id = "
                     + messageID + " subscriptionID= " + subscriptionID);
         }
-        unAcknowledgedMsgCount.decrementAndGet();
     }
 
     /**
@@ -253,7 +243,6 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
                 }
             }
         }
-        unAcknowledgedMsgCount.set(0);
         MessagingEngine.getInstance().deleteMessages(messagesToRemove);
     }
 

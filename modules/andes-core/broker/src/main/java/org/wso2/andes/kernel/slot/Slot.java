@@ -18,8 +18,6 @@
 
 package org.wso2.andes.kernel.slot;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -321,9 +319,16 @@ public class Slot implements Serializable, Comparable<Slot> {
 
     @Override
     public String toString() {
-
-        Gson gson = new GsonBuilder().create();
-        return gson.toJson(this);
+        StringBuilder slotInfo = new StringBuilder();
+        slotInfo.append(" Id : ")
+                .append(this.getId())
+                .append(" States : ")
+                .append(this.slotStates)
+                .append(" Is overlapping : ")
+                .append(isAnOverlappingSlot)
+                .append(" Destination : ")
+                .append(destinationOfMessagesInSlot);
+        return slotInfo.toString();
     }
 
     /**
