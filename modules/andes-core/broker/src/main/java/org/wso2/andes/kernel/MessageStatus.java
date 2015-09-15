@@ -155,7 +155,7 @@ public enum MessageStatus {
         SCHEDULED_TO_SEND.next = EnumSet.of(SENT_TO_ALL, SLOT_RETURNED);
         SCHEDULED_TO_SEND.previous = EnumSet.of(BUFFERED);
 
-        SENT_TO_ALL.next = EnumSet.of(SCHEDULED_TO_SEND, ACKED_BY_ALL, SLOT_RETURNED);
+        SENT_TO_ALL.next = EnumSet.of(SCHEDULED_TO_SEND, SENT_TO_ALL, ACKED_BY_ALL, SLOT_RETURNED);
         SENT_TO_ALL.previous = EnumSet.of(SCHEDULED_TO_SEND);
 
         ACKED_BY_ALL.next = EnumSet.of(DELETED, SLOT_RETURNED);
@@ -176,7 +176,10 @@ public enum MessageStatus {
         SLOT_REMOVED.next = EnumSet.complementOf(EnumSet.allOf(MessageStatus.class));
         SLOT_REMOVED.previous = EnumSet.of(DELETED);
 
-        SLOT_RETURNED.next = EnumSet.complementOf(EnumSet.allOf(MessageStatus.class));
+        /**
+         * next status of slot return status can be any state due to subscription could close at any given moment.
+         */
+        SLOT_RETURNED.next = EnumSet.allOf(MessageStatus.class);
         SLOT_RETURNED.previous = EnumSet.allOf(MessageStatus.class);
 
     }

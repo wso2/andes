@@ -42,12 +42,14 @@ public class MessageTracer {
     public static final String METADATA_BUFFERED_FOR_DELIVERY = "metadata buffered for delivery";
     public static final String CONTENT_READ = "content read from database";
     public static final String DISPATCHED_TO_PROTOCOL ="dispatched to protocol level for delivery";
-    public static final String MESSAGE_REJECTED = "rejected";
-    public static final String MESSAGE_REQUEUED = "re-queued";
-    public static final String MOVED_TO_DLC = "moved to DLC";
-    public static final String MESSAGE_DELETED = "deleted";
+    public static final String MESSAGE_REJECTED = "message rejected";
+    public static final String MESSAGE_REQUEUED_SUBSCRIBER = "message re-queued to subscriber";
+    public static final String MOVED_TO_DLC = "message moved to DLC";
+    public static final String MESSAGE_DELETED = "message deleted";
     public static final String ACK_RECEIVED_FROM_PROTOCOL = "ACK received from protocol";
     public static final String ACK_PUBLISHED_TO_DISRUPTOR = "ACK event submitted to disruptor";
+    public static final String MESSAGE_REQUEUED_BUFFER = "message re-queued to buffer";
+    public static final String DISCARD_STALE_MESSAGE = "discarding delivery as message is stale";
 
     /**
      * This method will print debug logs for message activities. This will accept parameters for

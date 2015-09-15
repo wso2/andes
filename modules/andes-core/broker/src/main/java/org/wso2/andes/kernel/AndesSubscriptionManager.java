@@ -268,12 +268,6 @@ public class AndesSubscriptionManager {
      */
     public void closeLocalSubscription(LocalSubscription subscription) throws AndesException {
 
-        /*
-         * Make subscription inactive as existing local subscription reference is
-         * passed here
-         */
-        subscription.setHasExternalSubscriptions(false);
-
         SubscriptionListener.SubscriptionChange changeType;
         /*
          * For durable topic subscriptions, mark this as a offline subscription.
