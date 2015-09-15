@@ -99,6 +99,11 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
         return history;
     }
 
+    /**
+     * Get message status this message went through as a list
+     *
+     * @return list of MessageStatus
+     */
     public List<MessageStatus> getStatusHistory() {
         return messageStatus;
     }
@@ -453,9 +458,9 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
         information.append("Message status ");
         information.append(getStatusHistoryAsString());
         information.append(',');
-        information.append("Slot Info ");
+        information.append("Slot Info {");
         information.append(slot.toString());
-        information.append(',');
+        information.append("},");
         information.append("Timestamp ");
         information.append(Long.toString(timeMessageIsRead));
         information.append(',');
@@ -465,8 +470,8 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
         information.append("Channels sent ");
         String deliveries = "";
         for (UUID channelID : getAllDeliveredChannels()) {
-            deliveries = deliveries + channelID + " >> " + channelDeliveryInfo.get(channelID)
-                    .getMessageStatusHistoryForChannel() + " : ";
+            deliveries = deliveries + channelID + " : " + channelDeliveryInfo.get(channelID)
+                    .getMessageStatusHistoryForChannelAsString() + " | ";
         }
         information.append(deliveries);
         information.append('\n');
@@ -537,8 +542,13 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
             }
         }
 
-        private List<ChannelMessageStatus> getMessageStatusHistoryForChannel() {
-            return messageStatusesForChannel;
+        private String getMessageStatusHistoryForChannelAsString() {
+            StringBuffer channelInfo = new StringBuffer();
+            for (ChannelMessageStatus channelMessageStatus : messageStatusesForChannel) {
+                channelInfo.append(channelMessageStatus)
+                        .append(">>");
+            }
+            return channelInfo.toString();
         }
 
     }
