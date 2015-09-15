@@ -261,7 +261,7 @@ public class MessagingEngine {
         if(!messageMetadata.isOKToDispose()) {
             MessageFlusher.getInstance().scheduleMessageForSubscription(subscription, messageMetadata);
             //Tracing message activity
-            MessageTracer.trace(messageMetadata, MessageTracer.MESSAGE_REQUEUED);
+            MessageTracer.trace(messageMetadata, MessageTracer.MESSAGE_REQUEUED_SUBSCRIBER);
         }
     }
 

@@ -418,8 +418,8 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
                 messageStatus.add(state);
             } else {
                 log.warn("Invalid message state transition from " + messageStatus.get
-                        (messageStatus.size() - 1) + " suggested: " + state + " Message ID: " + messageID + "Status " +
-                        "Message Status History >> " + messageStatus);
+                        (messageStatus.size() - 1) + " suggested: " + state + " Message ID: " + messageID
+                        + " Message Status History >> " + messageStatus);
             }
         }
 

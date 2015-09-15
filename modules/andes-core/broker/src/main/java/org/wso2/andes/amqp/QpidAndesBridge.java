@@ -523,6 +523,8 @@ public class QpidAndesBridge {
                     UUID channelID = ((SubscriptionImpl.AckSubscription) subscription).getChannel().getId();
                     LocalSubscription localSubscription = AndesContext.getInstance().getSubscriptionStore()
                             .getLocalSubscriptionForChannelId(channelID);
+                    localSubscription.setHasExternalSubscriptions(subscription.isActive());
+                    localSubscription.setExclusive(((SubscriptionImpl.AckSubscription) subscription).isExclusive());
                     InboundSubscriptionEvent subscriptionEvent = new InboundSubscriptionEvent(localSubscription);
                     Andes.getInstance().closeLocalSubscription(subscriptionEvent);
                 }

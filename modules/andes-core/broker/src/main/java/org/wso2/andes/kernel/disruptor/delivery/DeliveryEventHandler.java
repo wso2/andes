@@ -103,12 +103,21 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                         if(subscription.isDurable()) {
                             //re-queue message to andes core so that it can find other subscriber to deliver
                             MessagingEngine.getInstance().reQueueMessage(message);
+                            message.removeScheduledDeliveryChannel(subscription.getChannelID());
+                            //Tracing Message
+                            MessageTracer.trace(message.getMessageID(), message.getDestination(),
+                                    MessageTracer.MESSAGE_REQUEUED_BUFFER);
                         } else {
                             if(!message.isOKToDispose()) {
                                 log.warn("Cannot send message id= " + message.getMessageID() + " as subscriber is closed");
                             }
                         }
                     }
+                } else {
+                    message.removeScheduledDeliveryChannel(subscription.getChannelID());
+                    //Tracing Message
+                    MessageTracer.trace(message.getMessageID(), message.getDestination(),
+                            MessageTracer.DISCARD_STALE_MESSAGE);
                 }
             } catch (Throwable e) {
                 log.error("Error while delivering message. Message id " + message.getMessageID(), e);
