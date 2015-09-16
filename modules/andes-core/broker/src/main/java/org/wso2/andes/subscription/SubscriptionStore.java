@@ -576,7 +576,7 @@ public class SubscriptionStore {
                 andesContextStore.storeDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
                 log.info("Local subscription " + type + " " + subscription.toString());
             } else { // @DISCONNECT
-                andesContextStore.updateDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
+                updateLocalSubscriptionSubscription(subscription);
                 log.info("Local subscription " + type + " " + subscription.toString());
             }
 
@@ -613,7 +613,7 @@ public class SubscriptionStore {
         // Update channel id map
         if (type == SubscriptionChange.ADDED) {
             channelIdMap.put(subscription.getChannelID(), subscription);
-        } else {
+        } else { //@DISCONNECT or REMOVE
             UUID channelIDOfSubscription = subscription.getChannelID();
             //when we delete the mock durable topic subscription it has no underlying channel
             if(null != channelIDOfSubscription) {
@@ -621,6 +621,50 @@ public class SubscriptionStore {
             }
         }
 
+    }
+
+    /**
+     * Update local subscription in database
+     *
+     * @param subscription  updated subscription
+     * @throws AndesException
+     */
+    public void updateLocalSubscriptionSubscription(LocalSubscription subscription) throws AndesException {
+        String destinationQueue = getDestination(subscription);
+        String destinationTopic = subscription.getSubscribedDestination();
+        //Update the subscription
+        String destinationIdentifier = (subscription.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destinationTopic;
+        String subscriptionID = subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID();
+
+        andesContextStore.updateDurableSubscription(destinationIdentifier, subscriptionID, subscription.encodeAsStr());
+
+        //update local subscription map
+        if (subscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.DIRECT_EXCHANGE_NAME)) {
+            Set<LocalSubscription> localSubscriptions = localQueueSubscriptionMap.get(destinationQueue);
+            if (null == localSubscriptions) {
+                localSubscriptions = Collections.newSetFromMap(new ConcurrentHashMap<LocalSubscription, Boolean>());
+            }
+
+            // Remove the old subscription object if available before inserting the new object since
+            // the properties that are not used for equals and hash_code method might have been changed
+            // which can lead to leave the saved object unchanged
+            localSubscriptions.remove(subscription);
+            localSubscriptions.add(subscription);
+            localQueueSubscriptionMap.put(destinationQueue, localSubscriptions);
+
+        } else if (subscription.getTargetQueueBoundExchangeName().equals(AMQPUtils.TOPIC_EXCHANGE_NAME)) {
+            Set<LocalSubscription> localSubscriptions = localTopicSubscriptionMap.get(destinationTopic);
+            if (null == localSubscriptions) {
+                // A concurrent hash map has been used since since subscriptions can be added and removed while
+                // iterating
+                localSubscriptions = Collections.newSetFromMap(new ConcurrentHashMap<LocalSubscription, Boolean>());
+            }
+            localSubscriptions.add(subscription);
+            localTopicSubscriptionMap.put(destinationTopic, localSubscriptions);
+        }
+
+        UUID channelIDOfSubscription = subscription.getChannelID();
+        channelIdMap.put(channelIDOfSubscription, subscription);
     }
 
     /**
