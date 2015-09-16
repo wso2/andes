@@ -84,7 +84,7 @@ public class AndesSubscriptionManager {
      * @throws AndesException
      */
     public void addSubscription(LocalSubscription localSubscription) throws AndesException, SubscriptionAlreadyExistsException {
-
+        boolean durableTopicSubFoundAndUpdated = false;
         if(localSubscription.isDurable() && localSubscription.isBoundToTopic()) {
 
             Boolean allowSharedSubscribers = AndesConfigurationManager.readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
@@ -108,8 +108,9 @@ public class AndesSubscriptionManager {
                 AndesSubscription matchingSubscription = matchingSubscriptions.get(0);
                 if(!matchingSubscription.hasExternalSubscriptions()) {
                     //delete the above subscription (only if subscription is activated from a different node -
-                    // decided looking at subscription ID)
-                    if(!matchingSubscription.getSubscriptionID().equals(localSubscription.getSubscriptionID())) {
+                    // decided looking at subscription ID and the subscribed node)
+                    if(!matchingSubscription.getSubscriptionID().equals(localSubscription.getSubscriptionID())
+                             || !matchingSubscription.getSubscribedNode().equals(localSubscription.getSubscribedNode())) {
                         LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription
                                 (matchingSubscription);
                         mockSubscription.close();
@@ -121,6 +122,9 @@ public class AndesSubscriptionManager {
                             subscriptionStore.removeSubscriptionDirectly(mockSubscription);
                         }
                         notifyLocalSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange.DELETED);
+                    } else {
+                        subscriptionStore.updateLocalSubscriptionSubscription(localSubscription);
+                        durableTopicSubFoundAndUpdated = true;
                     }
 
                 } else {
@@ -138,8 +142,10 @@ public class AndesSubscriptionManager {
         }
 
         //store subscription in context store.
-        subscriptionStore.createDisconnectOrRemoveLocalSubscription(localSubscription,
-                SubscriptionListener.SubscriptionChange.ADDED);
+        if (!durableTopicSubFoundAndUpdated) {
+            subscriptionStore.createDisconnectOrRemoveLocalSubscription(localSubscription,
+                    SubscriptionListener.SubscriptionChange.ADDED);
+        }
 
         //start a slot delivery worker on the destination (or topicQueue) subscription refers
         SlotDeliveryWorkerManager slotDeliveryWorkerManager = SlotDeliveryWorkerManager.getInstance();
