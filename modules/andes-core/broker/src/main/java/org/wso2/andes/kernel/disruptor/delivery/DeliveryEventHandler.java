@@ -24,15 +24,15 @@ import org.wso2.andes.kernel.Andes;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
+import org.wso2.andes.kernel.ProtocolDeliveryRulesFailureException;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.Meter;
 import org.wso2.carbon.metrics.manager.MetricManager;
-
-import java.util.ArrayList;
-import java.util.List;
+import java.util.UUID;
 
 
 /**
@@ -72,8 +72,6 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
      */
     @Override
     public void onEvent(DeliveryEventData deliveryEventData, long sequence, boolean endOfBatch) throws Exception {
-
-        //TODO - Asanka - revisit and do "stale message" change
         LocalSubscription subscription = deliveryEventData.getLocalSubscription();
         
         // Taking the absolute value since hashCode can be a negative value
@@ -85,13 +83,12 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
 
             try {
                 if (deliveryEventData.isErrorOccurred()) {
-                    handleSendError(message);
+                    onSendError(message, subscription);
+                    routeMessageToDLC(message);
                     return;
                 }
                 if (!message.isStale()) {
                     if (subscription.isActive()) {
-                        subscription.sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
-
                         //Tracing Message
                         MessageTracer.trace(message, MessageTracer.DISPATCHED_TO_PROTOCOL);
 
@@ -99,14 +96,13 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                         Meter messageMeter = MetricManager.meter(Level.INFO, MetricsConstants.MSG_SENT_RATE);
                         messageMeter.mark();
 
+                        subscription.sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
+
                     } else {
+                        onSendError(message, subscription);
                         if(subscription.isDurable()) {
                             //re-queue message to andes core so that it can find other subscriber to deliver
                             MessagingEngine.getInstance().reQueueMessage(message);
-                            message.removeScheduledDeliveryChannel(subscription.getChannelID());
-                            //Tracing Message
-                            MessageTracer.trace(message.getMessageID(), message.getDestination(),
-                                    MessageTracer.MESSAGE_REQUEUED_BUFFER);
                         } else {
                             if(!message.isOKToDispose()) {
                                 log.warn("Cannot send message id= " + message.getMessageID() + " as subscriber is closed");
@@ -114,14 +110,29 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                         }
                     }
                 } else {
-                    message.removeScheduledDeliveryChannel(subscription.getChannelID());
+                    onSendError(message, subscription);
                     //Tracing Message
                     MessageTracer.trace(message.getMessageID(), message.getDestination(),
                             MessageTracer.DISCARD_STALE_MESSAGE);
                 }
-            } catch (Throwable e) {
+            } catch (ProtocolDeliveryRulesFailureException e) {
                 log.error("Error while delivering message. Message id " + message.getMessageID(), e);
-                handleSendError(message);
+                onSendError(message, subscription);
+                routeMessageToDLC(message);
+            } catch (ProtocolDeliveryFailureException ex) {
+                onSendError(message, subscription);
+                if(subscription.isDurable()) {
+                    //re-queue message to andes core so that it can find other subscriber to deliver
+                    MessagingEngine.getInstance().reQueueMessage(message);
+                } else {
+                    if(!message.isOKToDispose()) {
+                        log.warn("Cannot send message id= " + message.getMessageID() + " as subscriber is closed");
+                    }
+                }
+
+            }
+            catch (Throwable e) {
+                log.error("Unexpected error while delivering message. Message id " + message.getMessageID(), e);
             } finally {
                 deliveryEventData.clearData();
             }
@@ -129,21 +140,34 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
     }
 
     /**
+     * This should be called whenever a delivery failure happens.
+     * This will clear message status and subscriber status so that it will not
+     * affect future message schedules
+     *
+     * @param messageMetadata message failed to be delivered
+     * @param localSubscription subscription failed to deliver message
+     */
+    private void onSendError(DeliverableAndesMetadata messageMetadata, LocalSubscription localSubscription) {
+        //Send failed. Rollback changes done that assumed send would be success
+        UUID channelID = localSubscription.getChannelID();
+        messageMetadata.markDeliveryFailureOfASentMessage(channelID);
+        messageMetadata.removeScheduledDeliveryChannel(channelID);
+        localSubscription.removeSentMessageFromTracker(messageMetadata.getMessageID());
+        //TODO: try to delete
+    }
+
+    /**
      * When an error is occurred in message delivery, this method will move the message to dead letter channel.
      *
-     * @param message
-     *         Meta data for the message
+     * @param message Meta data for the message
      */
-    private void handleSendError(DeliverableAndesMetadata message) {
+    private void routeMessageToDLC(DeliverableAndesMetadata message) {
         // If message is a queue message we move the message to the Dead Letter Channel
         // since topics doesn't have a Dead Letter Channel
         if (!message.isTopic()) {
             log.info("Moving message to Dead Letter Channel Due to Send Error. Message ID " + message.getMessageID());
-            List<DeliverableAndesMetadata> messageToMoveToDLC = new ArrayList<>();
-            messageToMoveToDLC.add(message);
-
             try {
-                Andes.getInstance().deleteMessages(messageToMoveToDLC, true);
+                Andes.getInstance().moveMessageToDeadLetterChannel(message, message.getDestination());
             } catch (AndesException dlcException) {
                 // If an exception occur in this level, it means that there is a message store level error.
                 // There's a possibility that we might lose this message
@@ -153,6 +177,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
             }
         } else {
             //TODO: do we need to reschedule message for topic?
+            log.warn("Discarding topic message id = " + message.getMessageID() + " as delivery failed");
         }
     }
 }

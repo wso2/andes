@@ -276,6 +276,9 @@ public class MessagingEngine {
     public void reQueueMessage(DeliverableAndesMetadata messageMetadata) throws AndesException {
         if(!messageMetadata.isOKToDispose()) {
             MessageFlusher.getInstance().reQueueMessage(messageMetadata);
+            //Tracing Message
+            MessageTracer.trace(messageMetadata.getMessageID(), messageMetadata.getDestination(),
+                    MessageTracer.MESSAGE_REQUEUED_BUFFER);
         }
     }
 

@@ -138,9 +138,6 @@ public class MQTTLocalSubscription implements OutboundSubscription {
         if (null != mqqtServerChannel) {
             try {
 
-                //Mark the message as sent to the subscriber
-                messageMetadata.markAsDeliveredToChannel(getChannelID());
-
                 //TODO:review - instead of getSubscribedDestination() used message destination
                 mqqtServerChannel.distributeMessageToSubscriber(wildcardDestination, message,
                         messageMetadata.getMessageID(), messageMetadata.getQosLevel(),

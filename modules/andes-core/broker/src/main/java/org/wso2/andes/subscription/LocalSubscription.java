@@ -111,34 +111,10 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
     public boolean sendMessageToSubscriber(DeliverableAndesMetadata messageMetadata, AndesContent content) throws
             AndesException {
 
-        //mark message as came into the subscription for deliver
-        messageMetadata.markAsDispatchedToDeliver(getChannelID());
-
         //It is needed to add the message reference to the tracker and increase un-ack message count BEFORE
         // actual message send because if it is not done ack can come BEFORE executing those lines in parallel world
         addMessageToSendingTracker(messageMetadata);
-        boolean sendSuccess = subscription.sendMessageToSubscriber(messageMetadata, content);
-        if(sendSuccess) {
-            return true;
-        } else {
-            //Send failed. Rollback changes done that assumed send would be success
-            messageMetadata.markDeliveryFailureOfASentMessage(getChannelID());
-            messageMetadata.removeScheduledDeliveryChannel(getChannelID());
-            messageSendingTracker.remove(messageMetadata.getMessageID());
-
-            //TODO: this is wrong
-            // All the Queues and Durable Topics related messages are adding to DLC
-            if ((!isBoundToTopic) || isDurable){
-                String destinationQueue = messageMetadata.getDestination();
-                MessagingEngine.getInstance().moveMessageToDeadLetterChannel(messageMetadata, destinationQueue);
-            } else { //for topic messages we forget that the message is sent to that subscriber
-                log.warn("Delivery rule evaluation failed. Forgetting message id= " + messageMetadata.getMessageID()
-                        + " for subscriber " + subscriptionID);
-                messageMetadata.removeScheduledDeliveryChannel(getChannelID());
-                //TODO: try to delete
-            }
-            return false;
-        }
+        return subscription.sendMessageToSubscriber(messageMetadata, content);
     }
 
 
@@ -149,6 +125,16 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      */
     public List<DeliverableAndesMetadata> getUnackedMessages() {
        return new ArrayList<>(messageSendingTracker.values());
+    }
+
+    /**
+     * Remove message from sending tracker. This is called when a send
+     * error happens at the Outbound subscriber protocol level. ACK or
+     * REJECT can never be received for that message
+     * @param messageID Id of the message
+     */
+    public void removeSentMessageFromTracker(long messageID) {
+        messageSendingTracker.remove(messageID);
     }
 
     /**

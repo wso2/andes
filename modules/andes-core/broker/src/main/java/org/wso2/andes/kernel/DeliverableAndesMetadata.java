@@ -127,16 +127,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
      * @return if message is a redelivery
      */
     public boolean isRedelivered(UUID channelID) {
-        ChannelInformation channelInformation = channelDeliveryInfo.get(channelID);
-        /*
-         subscriber could close at any given moment. So when it close we remove ChannelInformation of subscriber in
-         channelDeliveryInfo. Therefore this could cause to NullPointerException. We did below check to avoid
-         NullPointerException.
-         */
-        if(null == channelInformation) {
-            return false;
-        }
-        Integer numOfDeliveries = channelInformation.getDeliveryCount();
+        Integer numOfDeliveries = channelDeliveryInfo.get(channelID).getDeliveryCount();
         return numOfDeliveries > 0;
     }
 
@@ -178,43 +169,9 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     public void markAsDispatchedToDeliver(UUID channelID) {
         ChannelInformation channelInformation = channelDeliveryInfo.get(channelID);
         channelInformation.addChannelStatus(ChannelMessageStatus.DISPATCHED);
+        channelInformation.incrementDeliveryCount();
     }
 
-    /**
-     * Record message delivery to channel
-     * @param channelID ID of the channel
-     * @return current number of times message is delivered to given channel
-     */
-    public int markAsDeliveredToChannel(UUID channelID) {
-        ChannelInformation channelInformation = channelDeliveryInfo.get(channelID);
-        /*
-         subscriber could close at any given moment. So when it close we remove ChannelInformation of subscriber in
-         channelDeliveryInfo. Therefore this could cause to NullPointerException. We did below check to avoid
-         NullPointerException.
-         */
-        if (null == channelInformation) {
-            return 0;
-        }
-        int deliveryCount = channelInformation.incrementDeliveryCount();
-        if(deliveryCount == 1) {
-            channelInformation.addChannelStatus(ChannelMessageStatus.SENT);
-        } else if(deliveryCount > 1) {
-            channelInformation.addChannelStatus(ChannelMessageStatus.RESENT);
-        }
-        channelDeliveryInfo.put(channelID, channelInformation);
-
-        //we evaluate sent to all only when its state is "SCHEDULED"
-        if(getLatestState().equals(MessageStatus.SCHEDULED_TO_SEND)) {
-            boolean isDeliveredToAllChannels = isMarkAsDelivered();
-
-            if(isDeliveredToAllChannels) {
-                addMessageStatus(MessageStatus.SENT_TO_ALL);
-            }
-            return deliveryCount;
-        } else {
-            return 0;
-        }
-    }
 
     /**
      * Record acknowledge by channel
@@ -341,9 +298,6 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
      */
     public void removeScheduledDeliveryChannel(UUID channelID) {
         channelDeliveryInfo.remove(channelID);
-        if(isMarkAsDelivered()) {
-            addMessageStatus(MessageStatus.SENT_TO_ALL);
-        }
         if(isMarkAsAcked()) {
             addMessageStatus(MessageStatus.ACKED_BY_ALL);
         }
@@ -356,25 +310,6 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
      */
     public Set<UUID> getAllDeliveredChannels() {
         return channelDeliveryInfo.keySet();
-    }
-
-    /**
-     * Check if this message delivered to all the scheduled channels
-     * @return true if delivered to all the channels
-     */
-    public boolean isMarkAsDelivered() {
-        boolean isDelivered = true;
-        for (Map.Entry<UUID, ChannelInformation> channelInfoEntry : channelDeliveryInfo.entrySet()) {
-            ChannelMessageStatus channelMessageStatus = channelInfoEntry.getValue().getLatestMessageStatus();
-            if(null == channelMessageStatus
-                    || !(channelMessageStatus.equals(ChannelMessageStatus.SENT)
-                    || channelMessageStatus.equals(ChannelMessageStatus.RESENT)
-                    || channelMessageStatus.equals(ChannelMessageStatus.ACKED))) {
-                isDelivered = false;
-                break;
-            }
-        }
-        return isDelivered;
     }
 
     /**

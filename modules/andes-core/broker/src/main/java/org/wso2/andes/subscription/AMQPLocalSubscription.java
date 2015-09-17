@@ -60,7 +60,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
     private  boolean isBoundToTopic;
 
     //List of Delivery Rules to evaluate
-    private List<DeliveryRule> deliveryRulesList = new ArrayList<>();
+    private List<AMQPDeliveryRule> AMQPDeliveryRulesList = new ArrayList<>();
 
 
     public AMQPLocalSubscription(AMQQueue amqQueue, Subscription amqpSubscription, boolean isDurable, boolean
@@ -84,20 +84,13 @@ public class AMQPLocalSubscription implements OutboundSubscription {
     private void initializeDeliveryRules() {
 
         //checking counting delivery rule
-        
         if (  (! isBoundToTopic) || isDurable){ //evaluate this only for queues and durable subscriptions
-            deliveryRulesList.add(new MaximumNumOfDeliveryRule(channel));
+            AMQPDeliveryRulesList.add(new MaximumNumOfDeliveryRuleAMQP(channel));
         }
-        // NOTE: Feature Message Expiration moved to a future release
-//        //checking message expiration deliver rule
-//        deliveryRulesList.add(new MessageExpiredRule());
-
-        //checking message purged delivery rule
-        deliveryRulesList.add(new MessagePurgeRule());
         //checking has interest delivery rule
-        deliveryRulesList.add(new HasInterestRule(amqpSubscription));
+        AMQPDeliveryRulesList.add(new HasInterestRuleAMQP(amqpSubscription));
         //checking no local delivery rule
-        deliveryRulesList.add(new NoLocalRule(amqpSubscription, channel));
+        AMQPDeliveryRulesList.add(new NoLocalRuleAMQP(amqpSubscription, channel));
     }
 
     public boolean isActive() {
@@ -116,8 +109,6 @@ public class AMQPLocalSubscription implements OutboundSubscription {
     public boolean sendMessageToSubscriber(DeliverableAndesMetadata messageMetadata, AndesContent content)
             throws AndesException {
 
-        boolean sendSuccess;
-
         AMQMessage message = AMQPUtils.getAMQMessageForDelivery(messageMetadata, content);
         QueueEntry messageToSend = AMQPUtils.convertAMQMessageToQueueEntry(message, amqQueue);
 
@@ -126,18 +117,13 @@ public class AMQPLocalSubscription implements OutboundSubscription {
             if(messageMetadata.isRedelivered(getChannelID())) {
                 messageToSend.setRedelivered();
             }
-
-            //Mark the message as sent to the subscriber
-            messageMetadata.markAsDeliveredToChannel(getChannelID());
-
             sendMessage(messageToSend);
-            sendSuccess =  true;
 
         } else {
-            sendSuccess =  false;
+            throw new ProtocolDeliveryRulesFailureException("AMQP delivery rule evaluation failed");
         }
 
-        return sendSuccess;
+        return true;
     }
 
     /**
@@ -150,7 +136,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
     private boolean evaluateDeliveryRules(QueueEntry message) throws AndesException {
         boolean isOKToDelivery = true;
 
-        for (DeliveryRule element : deliveryRulesList) {
+        for (AMQPDeliveryRule element : AMQPDeliveryRulesList) {
             if (!element.evaluate(message)) {
                 isOKToDelivery = false;
                 break;
@@ -189,7 +175,8 @@ public class AMQPLocalSubscription implements OutboundSubscription {
             // The error is not logged here since this will be caught safely higher up in the execution plan :
             // MessageFlusher.deliverAsynchronously. If we have more context, its better to log here too,
             // but since this is a general explanation of many possible errors, no point in logging at this state.
-            throw new AndesException("Error occurred while delivering message with ID : " + msgHeaderStringID, e);
+            throw new ProtocolDeliveryFailureException("Error occurred while delivering message with ID : "
+                    + msgHeaderStringID, e);
         }
     }
 

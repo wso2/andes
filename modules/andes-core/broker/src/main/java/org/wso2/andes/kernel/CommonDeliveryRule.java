@@ -15,14 +15,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.wso2.andes.kernel;
 
-
-import org.wso2.andes.server.queue.QueueEntry;
-
 /**
- * This interface have methods to implement to evaluate Deliver Rule
+ * This interface have methods to implement to evaluate common
+ * Deliver Rule
  */
-public interface DeliveryRule {
-    boolean evaluate(QueueEntry message) throws AndesException;
+public interface CommonDeliveryRule {
+
+    /**
+     * Evaluate delivery rule. This returns true if the rule is passed. Should be called in kernel
+     * before message is dispatched to the protocol. If failed message should not be sent and
+     * necessary actions should be taken
+     *
+     * @param message message to evaluate rules
+     * @return true if rule is passed
+     * @throws AndesException
+     */
+    boolean evaluate(DeliverableAndesMetadata message) throws AndesException;
 }

@@ -29,6 +29,7 @@ import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.SubscriptionStore;
 import org.wso2.andes.tools.utils.MessageTracer;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -57,8 +58,7 @@ public class MessageFlusher {
      * Subscribed destination wise information
      * the key here is the original destination of message. NOT storage queue name.
      */
-    private Map<String, MessageDeliveryInfo> subscriptionCursar4QueueMap = new HashMap<String,
-            MessageDeliveryInfo>();
+    private Map<String, MessageDeliveryInfo> subscriptionCursar4QueueMap = new HashMap<>();
 
     private SubscriptionStore subscriptionStore;
 
@@ -73,6 +73,13 @@ public class MessageFlusher {
      * conditions to push messages to subscribers vary.
      */
     private MessageDeliveryStrategy topicMessageFlusher;
+
+
+    /**
+     * List of delivery rules to evaluate. Before scheduling message to protocol for
+     * delivery we evaluate these and if failed we take necessary actions
+     */
+    private List<CommonDeliveryRule> DeliveryRulesList = new ArrayList<>();
 
 
 
@@ -99,6 +106,42 @@ public class MessageFlusher {
             this.topicMessageFlusher = new SlowestSubscriberTopicMessageDeliveryImpl(subscriptionStore);
         }
 
+        initializeDeliveryRules();
+
+    }
+
+
+    /**
+     * Initialize common delivery rules. These delivery rules apply
+     * irrespective of the protocol
+     */
+    private void initializeDeliveryRules() {
+
+/*        // NOTE: Feature Message Expiration moved to a future release
+        //checking message expiration deliver rule
+        deliveryRulesList.add(new MessageExpiredRule());*/
+
+        //checking message purged delivery rule
+        DeliveryRulesList.add(new MessagePurgeRule());
+    }
+
+    /**
+     * Evaluating Delivery rules before sending the messages
+     *
+     * @param message AMQ Message
+     * @return IsOKToDelivery
+     * @throws AndesException
+     */
+    private boolean evaluateDeliveryRules(DeliverableAndesMetadata message) throws AndesException {
+        boolean isOKToDelivery = true;
+
+        for (CommonDeliveryRule rule : DeliveryRulesList) {
+            if (!rule.evaluate(message)) {
+                isOKToDelivery = false;
+                break;
+            }
+        }
+        return isOKToDelivery;
     }
 
     /**
@@ -409,11 +452,12 @@ public class MessageFlusher {
 
     /**
      * Schedule to deliver message for the subscription
+     *
      * @param subscription subscription to send
      * @param message message to send
      */
     public void scheduleMessageForSubscription(LocalSubscription subscription,
-                                               final DeliverableAndesMetadata message) {
+                                               final DeliverableAndesMetadata message) throws AndesException {
         deliverMessageAsynchronously(subscription, message);
     }
 
@@ -423,17 +467,24 @@ public class MessageFlusher {
      * @param subscription local subscription
      * @param message      metadata of the message
      */
-    public void deliverMessageAsynchronously(LocalSubscription subscription, DeliverableAndesMetadata message) {
-        if(log.isDebugEnabled()) {
-            log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
+    public void deliverMessageAsynchronously(LocalSubscription subscription, DeliverableAndesMetadata message)
+            throws AndesException {
+
+        if(evaluateDeliveryRules(message)) {
+            if(log.isDebugEnabled()) {
+                log.debug("Scheduled message id= " + message.getMessageID() + " to be sent to subscription= " + subscription);
+            }
+            //mark message as came into the subscription for deliver
+            message.markAsDispatchedToDeliver(subscription.getChannelID());
+            flusherExecutor.submit(subscription, message);
         }
-        flusherExecutor.submit(subscription, message);
     }
 
     /**
      * Re-queue message to andes core. This message will be delivered to
      * any eligible subscriber to receive later. in multiple subscription case this
      * can cause message duplication.
+     *
      * @param message message to reschedule
      */
     public void reQueueMessage(DeliverableAndesMetadata message) {

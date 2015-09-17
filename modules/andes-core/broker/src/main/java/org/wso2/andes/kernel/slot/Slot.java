@@ -23,8 +23,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
-import org.wso2.andes.kernel.MessageStatus;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -189,7 +187,7 @@ public class Slot implements Serializable, Comparable<Slot> {
     public void markMessagesOfSlotAsReturned() {
         for (DeliverableAndesMetadata andesMetadata : messagesOfSlot.values()) {
             andesMetadata.markAsStale();
-            andesMetadata.addMessageStatus(MessageStatus.SLOT_RETURNED);
+            andesMetadata.markAsSlotReturned();
         }
         messagesOfSlot.clear();
     }
