@@ -23,9 +23,9 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.StoreConfiguration;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
+import org.wso2.andes.kernel.slot.SlotCreator;
 import org.wso2.andes.kernel.slot.SlotDeletionExecutor;
 import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
-import org.wso2.andes.kernel.slot.SlotManagerStandalone;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
@@ -43,12 +43,8 @@ import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.user.api.UserStoreException;
 
 import javax.management.JMException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -65,22 +61,6 @@ public class AndesKernelBoot {
     private static MessageStore messageStore;
 
     /**
-     * slot remapping database read counter keep against storage queue name
-     */
-    private static Map<String, Integer> databaseReadsCounterMap;
-
-    /**
-     * slot remapping message counter keep against storage queue name
-     */
-    private static Map<String, Integer> restoreMessagesCounterMap;
-
-    /**
-     * Number of remaining messages retrieves and used to display useful log message while
-     * slot recovery task running
-     */
-    private static Map<String, Long> totalRemainingMessagesInQueue;
-
-    /**
      * Scheduled thread pool executor to run periodic andes recovery task
      */
     private static ScheduledExecutorService andesRecoveryTaskScheduler;
@@ -94,12 +74,6 @@ public class AndesKernelBoot {
      * This is used by independent worker threads to identify if the kernel is performing shutdown operations.
      */
     private static boolean isKernelShuttingDown = false;
-
-    /**
-     * Keep track of first message id read from database in recovery mode to
-     * use in queue browse as soon as server startup
-     */
-    private static Map<String, Long> firstRecoveredMessageIdMap;
 
     /**
      * This will boot up all the components in Andes kernel and bring the server to working state
@@ -144,11 +118,6 @@ public class AndesKernelBoot {
      * @throws AndesException
      */
     public static void recoverDistributedSlotMap() throws AndesException {
-        // Slot recreation
-        databaseReadsCounterMap = new HashMap<String, Integer>();
-        restoreMessagesCounterMap = new HashMap<String, Integer>();
-        firstRecoveredMessageIdMap = new HashMap<String, Long>();
-        totalRemainingMessagesInQueue = new HashMap<String, Long>();
         if (AndesContext.getInstance().isClusteringEnabled()) {
             HazelcastAgent hazelcastAgent = HazelcastAgent.getInstance();
             try {
@@ -182,18 +151,7 @@ public class AndesKernelBoot {
             if (DLCQueueUtils.isDeadLetterQueue(queueName)) {
                 continue;
             }
-            Future submit = executorService.submit(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        log.info("Slot restoring start in " + queueName);
-                        initializeSlotMapForQueue(queueName);
-                        log.info("Slot restoring end in " + queueName);
-                    } catch (AndesException e) {
-                        log.error("Error occurred in slot recovery.", e);
-                    }
-                }
-            });
+            Future submit = executorService.submit(new SlotCreator(messageStore, queueName));
             futureSlotRecoveryExecutorList.add(submit);
         }
         for (Future slotRecoveryExecutor : futureSlotRecoveryExecutorList) {
@@ -205,104 +163,6 @@ public class AndesKernelBoot {
             } catch (ExecutionException e) {
                 log.error("Error occurred in slot recovery.", e);
             }
-        }
-    }
-
-    /**
-     * Create slots for the given queue name. This is done by reading all the messages from the
-     * message store and creating slots according to the slot window size.
-     *
-     * @param queueName
-     *         Name of the queue
-     * @throws AndesException
-     */
-    private static void initializeSlotMapForQueue(String queueName)
-            throws AndesException {
-        int databaseReadsCounter = 0;
-        int restoreMessagesCounter = 0;
-        // Read slot window size from cluster configuration
-        Integer slotSize = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
-        List<AndesMessageMetadata> messageList = messageStore
-                .getNextNMessageMetadataFromQueue(queueName, 0, slotSize);
-        int numberOfMessages = messageList.size();
-
-        //setting up timer to print restoring message count and database read count
-        databaseReadsCounter++;
-        restoreMessagesCounter = restoreMessagesCounter + messageList.size();
-        databaseReadsCounterMap.put(queueName, databaseReadsCounter);
-        restoreMessagesCounterMap.put(queueName, restoreMessagesCounter);
-        long messageCountOfQueue = MessagingEngine.getInstance().getMessageCountOfQueue(queueName);
-        totalRemainingMessagesInQueue.put(queueName, messageCountOfQueue);
-        ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
-        scheduleTimerToPrintCounter(scheduledExecutorService, queueName);
-
-        if (restoreMessagesCounter > 0) {
-           firstRecoveredMessageIdMap.put(queueName, messageList.get(0).getMessageID());
-        }
-
-        long lastMessageID;
-        long firstMessageID;
-
-        while (numberOfMessages > 0) {
-            lastMessageID = messageList.get(messageList.size() - 1).getMessageID();
-            firstMessageID = messageList.get(0).getMessageID();
-
-            if (log.isDebugEnabled()) {
-                log.debug("Created a slot with " + messageList.size() + " messages for queue (" + queueName + ")");
-            }
-            if (AndesContext.getInstance().isClusteringEnabled()) {
-                SlotManagerClusterMode.getInstance().updateMessageID(queueName,
-                                                                     AndesContext.getInstance().getClusterAgent()
-                                                                                 .getLocalNodeIdentifier(),
-                                                                     firstMessageID, lastMessageID);
-            } else {
-                SlotManagerStandalone.getInstance().updateMessageID(queueName,lastMessageID);
-            }
-            // We need to increment lastMessageID since the getNextNMessageMetadataFromQueue returns message list
-            // including the given starting ID.
-            messageList = messageStore
-                    .getNextNMessageMetadataFromQueue(queueName, lastMessageID + 1, slotSize);
-            numberOfMessages = messageList.size();
-            //increase value of counters
-            databaseReadsCounter++;
-            restoreMessagesCounter = restoreMessagesCounter + messageList.size();
-            databaseReadsCounterMap.put(queueName, databaseReadsCounter);
-            restoreMessagesCounterMap.put(queueName, restoreMessagesCounter);
-        }
-        printCounter(queueName);
-        scheduledExecutorService.shutdownNow();
-    }
-
-    /**
-     * Message count and database read count prints in each 30 seconds until slot mapping restoration completes
-     *
-     * @param scheduledExecutorService ScheduledExecutorService object
-     */
-    private static void scheduleTimerToPrintCounter(ScheduledExecutorService scheduledExecutorService,
-                                                    final String queueName) {
-        long printDelay = 30L;
-        scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                printCounter(queueName);
-            }
-        }, 0, printDelay, TimeUnit.SECONDS);
-    }
-
-    /**
-     * Print INFO log with slot mapping restore details
-     *
-     */
-    private static void printCounter(String queueName) {
-        if (restoreMessagesCounterMap.get(queueName) > 0) {
-            double restoreMessageCount = restoreMessagesCounterMap.get(queueName);
-            double totalRemainingCount = totalRemainingMessagesInQueue.get(queueName);
-            double percentage = restoreMessageCount / totalRemainingCount * 100;
-            log.info("Message recovery daemon " + restoreMessagesCounterMap.get(queueName)
-                    + "/" + totalRemainingMessagesInQueue.get(queueName)
-                    + " (" + new BigDecimal(percentage).setScale(0, RoundingMode.CEILING) + "%)"
-                    + " - ["+queueName+"] number of database calls ["+databaseReadsCounterMap.get(queueName)+"].");
         }
     }
 
@@ -589,20 +449,6 @@ public class AndesKernelBoot {
 
     public static boolean isKernelShuttingDown() {
         return isKernelShuttingDown;
-    }
-
-    /**
-     * Return first recovered message id by queue name
-     * @param queueName name of the queue
-     * @return first recovered message id
-     */
-    public static long getFirstRecoveredMessageId(String queueName) {
-        long firstMessageId = 0L;
-        Long messageId = firstRecoveredMessageIdMap.get(queueName);
-        if (messageId != null) {
-            firstMessageId = messageId;
-        }
-        return firstMessageId;
     }
 
     /**
