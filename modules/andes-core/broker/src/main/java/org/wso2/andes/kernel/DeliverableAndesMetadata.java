@@ -127,7 +127,16 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
      * @return if message is a redelivery
      */
     public boolean isRedelivered(UUID channelID) {
-        Integer numOfDeliveries = channelDeliveryInfo.get(channelID).getDeliveryCount();
+        ChannelInformation channelInformation = channelDeliveryInfo.get(channelID);
+        /*
+         subscriber could close at any given moment. So when it close we remove ChannelInformation of subscriber in
+         channelDeliveryInfo. Therefore this could cause to NullPointerException. We did below check to avoid
+         NullPointerException.
+         */
+        if(null == channelInformation) {
+            return false;
+        }
+        Integer numOfDeliveries = channelInformation.getDeliveryCount();
         return numOfDeliveries > 0;
     }
 
@@ -178,6 +187,14 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
      */
     public int markAsDeliveredToChannel(UUID channelID) {
         ChannelInformation channelInformation = channelDeliveryInfo.get(channelID);
+        /*
+         subscriber could close at any given moment. So when it close we remove ChannelInformation of subscriber in
+         channelDeliveryInfo. Therefore this could cause to NullPointerException. We did below check to avoid
+         NullPointerException.
+         */
+        if (null == channelInformation) {
+            return 0;
+        }
         int deliveryCount = channelInformation.incrementDeliveryCount();
         if(deliveryCount == 1) {
             channelInformation.addChannelStatus(ChannelMessageStatus.SENT);
