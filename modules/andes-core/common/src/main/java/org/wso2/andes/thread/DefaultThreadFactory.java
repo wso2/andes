@@ -22,16 +22,25 @@
 package org.wso2.andes.thread;
 
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 
 public class DefaultThreadFactory implements ThreadFactory
 {
 
     private final LoggingUncaughtExceptionHandler _loggingUncaughtExceptionHandler = new LoggingUncaughtExceptionHandler();
 
-    public Thread createThread(Runnable r)
+    public Thread createThread(final Runnable r)
     {
-        Thread t = new Thread(r);
-        t.setUncaughtExceptionHandler(_loggingUncaughtExceptionHandler);
+        // Requires permission java.lang.RuntimePermission "modifyThreadGroup"
+        Thread t = AccessController.doPrivileged(new PrivilegedAction<Thread>() {
+            public Thread run() {
+                Thread t =  new Thread(r);
+                t.setUncaughtExceptionHandler(_loggingUncaughtExceptionHandler);
+                return t;
+            }
+        });
+
         return t;
     }
 

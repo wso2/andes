@@ -20,6 +20,14 @@
  */
 package org.wso2.andes.transport.network.security.ssl;
 
+import org.wso2.andes.ssl.SSLContextFactory;
+import org.wso2.andes.transport.ConnectionSettings;
+import org.wso2.andes.transport.TransportException;
+import org.wso2.andes.transport.util.Logger;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLPeerUnverifiedException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -29,15 +37,6 @@ import java.security.KeyStore;
 import java.security.Principal;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLPeerUnverifiedException;
-
-import org.wso2.andes.ssl.SSLContextFactory;
-import org.wso2.andes.transport.ConnectionSettings;
-import org.wso2.andes.transport.TransportException;
-import org.wso2.andes.transport.util.Logger;
 
 public class SSLUtil
 {
@@ -139,6 +138,7 @@ public class SSLUtil
                                       settings.getKeyStorePassword(),
                                       settings.getKeyStoreCertType());
 
+
         } else
         {
             sslContextFactory = 
@@ -163,19 +163,19 @@ public class SSLUtil
         InputStream in = null;
         try
         {
-            File f = new File(storePath);
-            if (f.exists())
-            {
-                in = new FileInputStream(f);
+
+            in = Thread.currentThread().getContextClassLoader().getResourceAsStream(storePath);
+
+            if (null == in) { // Resource was not found in the classpath. Try to load it from the file system.
+                File f = new File(storePath);
+                if (f.exists())
+                {
+                    in = new FileInputStream(f);
+                } else {
+                    throw new IOException("Unable to load keystore resource: " + storePath);
+                }
             }
-            else 
-            {
-                in = Thread.currentThread().getContextClassLoader().getResourceAsStream(storePath);
-            }
-            if (in == null)
-            {
-                throw new IOException("Unable to load keystore resource: " + storePath);
-            }
+
             ks.load(in, storePassword.toCharArray());
         }
         finally
