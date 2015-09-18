@@ -168,7 +168,8 @@ public class AndesSubscriptionManager {
 
         clusterSubscriptionModifyLock.writeLock().lock();
         try {
-            Set<AndesSubscription> activeSubscriptions = subscriptionStore.getActiveClusterSubscribersForNode(nodeID, true);
+            Set<AndesSubscription> activeSubscriptions =
+                    subscriptionStore.getActiveClusterSubscribersForNode(nodeID, true);
             activeSubscriptions.addAll(subscriptionStore.getActiveClusterSubscribersForNode(nodeID, false));
 
             if (!activeSubscriptions.isEmpty()) {
@@ -182,12 +183,14 @@ public class AndesSubscriptionManager {
                          * Close and notify. This is like closing local subscribers of that node thus we need to notify
                          * to cluster.
                          */
-                        LocalSubscription removedSubscription = subscriptionStore.removeLocalSubscription(mockSubscription);
+                        LocalSubscription removedSubscription =
+                                subscriptionStore.removeLocalSubscription(mockSubscription);
 
                         if(null == removedSubscription) {
                             subscriptionStore.removeSubscriptionDirectly(sub);
                         }
-                        notifyLocalSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange.DELETED);
+                        notifyLocalSubscriptionHasChanged(mockSubscription,
+                                                          SubscriptionListener.SubscriptionChange.DELETED);
                     }
                 }
             }
@@ -492,6 +495,22 @@ public class AndesSubscriptionManager {
         clusterSubscriptionModifyLock.writeLock().lock();
         try {
             subscriptionStore.deactivateClusterDurableSubscriptionsForNodeID(isCoordinator, nodeID);
+        } finally {
+            clusterSubscriptionModifyLock.writeLock().unlock();
+        }
+    }
+
+    /**
+     * This will set the status of all the active subscribers to inactive. Required when all the nodes of a cluster
+     * go down with active subscribers. If the subscriptions were not set to inactive, the nodes that are coming
+     * back will read the statuses of the subscribers as active and therefore, will not let the subscribers reconnect.
+     */
+    public void deactivateAllActiveSubscriptions() throws AndesException {
+
+        clusterSubscriptionModifyLock.writeLock().lock();
+        try {
+            log.info("Deactivating all active durable subscriptions");
+            subscriptionStore.deactivateAllActiveSubscriptions();
         } finally {
             clusterSubscriptionModifyLock.writeLock().unlock();
         }

@@ -83,13 +83,24 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     public Map<String, List<String>> getAllStoredDurableSubscriptions() throws AndesException {
 
         try {
-
             return wrappedAndesContextStoreInstance.getAllStoredDurableSubscriptions();
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;
         }
+    }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, String> getAllDurableSubscriptionsByID() throws AndesException {
+        try {
+            return wrappedAndesContextStoreInstance.getAllDurableSubscriptionsByID();
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
     }
 
     /**
@@ -116,6 +127,19 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
         try {
             wrappedAndesContextStoreInstance.updateDurableSubscription(destinationIdentifier, subscriptionID,
                                                                        subscriptionEncodeAsStr);
+        } catch (AndesStoreUnavailableException exception) {
+            notifyFailures(exception);
+            throw exception;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateDurableSubscriptions(Map<String, String> subscriptions) throws AndesException {
+        try {
+            wrappedAndesContextStoreInstance.updateDurableSubscriptions(subscriptions);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

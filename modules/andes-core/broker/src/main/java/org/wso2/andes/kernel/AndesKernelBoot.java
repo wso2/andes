@@ -29,6 +29,7 @@ import org.wso2.andes.kernel.slot.SlotManagerClusterMode;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.ClusterManagementInformationMBean;
 import org.wso2.andes.server.cluster.ClusterManager;
+import org.wso2.andes.server.cluster.HazelcastClusterAgent;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.information.management.MessageStatusInformationMBean;
 import org.wso2.andes.server.information.management.SubscriptionManagementInformationMBean;
@@ -289,15 +290,29 @@ public class AndesKernelBoot {
 
 
     /**
-     * bring the node to the state of the cluster
+     * Bring the node to the state of the cluster. If this is the coordinator, disconnect all active durable
+     * subscriptions.
      *
-     * @throws Exception
+     * @throws AndesException
      */
     public static void syncNodeWithClusterState() throws AndesException {
+
+        // Mark all the existing durable subscriptions as inactive when starting a standalone node or the coordinator
+        // node since there can be no active durable subscribers when starting the first node of the cluster.
+        // Having existing active durable subscribers causes them to not be able to reconnect to the broker
+        // The deactivation should not be performed by just any node but the first node to start
+        if (AndesContext.getInstance().isClusteringEnabled()) {
+            if (AndesContext.getInstance().getClusterAgent().isCoordinator()) {
+                ClusterResourceHolder.getInstance().getSubscriptionManager().deactivateAllActiveSubscriptions();
+            }
+        } else {
+            ClusterResourceHolder.getInstance().getSubscriptionManager().deactivateAllActiveSubscriptions();
+        }
+
         //at the startup reload exchanges/queues/bindings and subscriptions
         log.info("Syncing exchanges, queues, bindings and subscriptions");
         ClusterResourceHolder.getInstance().getAndesRecoveryTask()
-                             .recoverExchangesQueuesBindingsSubscriptions();
+                .recoverExchangesQueuesBindingsSubscriptions();
 
         // All non-durable subscriptions subscribed from this node will be deleted since, there
         // can't be any non-durable subscriptions as node just started.
@@ -305,7 +320,7 @@ public class AndesKernelBoot {
         // recoverExchangesQueuesBindingsSubscriptions() executed.
         String myNodeId = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
         ClusterResourceHolder.getInstance().getSubscriptionManager()
-                             .closeAllLocalSubscriptionsOfNode(myNodeId);
+                .closeAllLocalSubscriptionsOfNode(myNodeId);
     }
 
     /**

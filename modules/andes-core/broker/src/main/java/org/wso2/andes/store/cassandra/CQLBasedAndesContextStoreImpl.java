@@ -36,6 +36,7 @@ import org.wso2.andes.kernel.AndesQueue;
 import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -195,6 +196,14 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
+    public Map<String, String> getAllDurableSubscriptionsByID() throws AndesException {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void storeDurableSubscription(String destinationIdentifier, String subscriptionID, String subscriptionEncodeAsStr)
             throws AndesException {
 
@@ -221,6 +230,14 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
 
         execute(statement, "Updating durable subscription for sub id " + subscriptionID + " and destination "
                 + "identifier " + destinationIdentifier);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateDurableSubscriptions(Map<String, String> subscriptions) throws AndesException {
+        throw new NotImplementedException();
     }
 
     /**

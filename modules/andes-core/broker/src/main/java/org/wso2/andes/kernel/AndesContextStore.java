@@ -51,6 +51,11 @@ public interface AndesContextStore extends HealthAwareStore{
     Map<String, List<String>> getAllStoredDurableSubscriptions() throws AndesException;
 
     /**
+     * Get all stored durable subscriptions as a map with the subscription Ids as the the key
+     */
+    public Map<String, String> getAllDurableSubscriptionsByID() throws AndesException;
+
+    /**
      * Store subscription to the durable store.
      *
      * @param destinationIdentifier   Identifier of the destination (queue/topic) of the queue this subscription is bound to
@@ -72,6 +77,14 @@ public interface AndesContextStore extends HealthAwareStore{
      */
     void updateDurableSubscription(String destinationIdentifier, String subscriptionID, String subscriptionEncodeAsStr)
 		    throws AndesException;
+
+    /**
+     * Updates a List of subscriptions with a given subscriptionId and given subscription information.
+     *
+     * @param subscriptions a map which contains the subscription ids and the modified subscription details
+     * @throws AndesException
+     */
+    void updateDurableSubscriptions(Map<String, String> subscriptions) throws AndesException;
 
     /**
      * Remove stored subscription from durable store.
