@@ -24,6 +24,7 @@ import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.cluster.coordination.ClusterCoordinationHandler;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
@@ -116,28 +117,15 @@ public class DLCQueueUtils {
         // Try to retrieve queue to check if it is already available
         AMQQueue queue = queueRegistry.getQueue(new AMQShortString(dlcQueueName));
 
-        if (queue == null) { // Skip creating if already available
-            AndesQueue andesQueue = new AndesQueue(dlcQueueName, tenantOwner, false, true);
+        // Skip creating if already available
+        if (null == queue) {
 
-            AndesContext.getInstance().getAMQPConstructStore().addQueue(andesQueue, true);
+            //store a queue for DLC and notify the Hazelcast instance about the change
+            Andes.getInstance().createQueue(new InboundQueueEvent(dlcQueueName, tenantOwner, false, true));
+            
+            //add the queue into internal qpid
             ClusterResourceHolder.getInstance().getVirtualHostConfigSynchronizer().queue(dlcQueueName, tenantOwner,
                     false, null);
-
-            QueueListener queueListener = new ClusterCoordinationHandler(HazelcastAgent
-                    .getInstance());
-            queueListener.handleLocalQueuesChanged(andesQueue, QueueListener.QueueEvent.ADDED);
-            String nodeID = ClusterResourceHolder.getInstance().getClusterManager().getMyNodeID();
-            OutboundSubscription protocolSub = new AMQPLocalSubscription(queueRegistry.getQueue(new AMQShortString
-                    (dlcQueueName)), null, true, false);
-
-            LocalSubscription mockSubscription = new LocalSubscription(protocolSub, "0", dlcQueueName, false, false,
-                    true, nodeID, System.currentTimeMillis(), dlcQueueName, tenantOwner,
-                    ExchangeDefaults.DIRECT_EXCHANGE_NAME.toString(), "DIRECT", null, false);
-
-            //TODO: review why we need a subscription for DLC at startup
-            AndesContext.getInstance().getSubscriptionStore().createDisconnectOrRemoveClusterSubscription
-                    (mockSubscription, SubscriptionListener.SubscriptionChange.ADDED);
-
             log.info(dlcQueueName + " Queue Created as Dead Letter Channel");
         }
     }
