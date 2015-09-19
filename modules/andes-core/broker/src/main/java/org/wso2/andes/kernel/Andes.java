@@ -474,6 +474,16 @@ public class Andes {
     }
 
     /**
+     * Get a map of queue names and the message count in the database for each queue in the database
+     *
+     * @param queueNames list of queue names of which the message count should be retrieved
+     * @return Map of queue names and the message count for each queue
+     */
+    public Map<String, Integer> getMessageCountForAllQueues(List<String> queueNames) throws AndesException {
+        return MessagingEngine.getInstance().getMessageCountForAllQueues(queueNames);
+    }
+
+    /**
      * Get message count for queue
      *
      * @param queueName name of the queue

@@ -219,9 +219,21 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
 
     }
 
-    /***
+    /**
      * {@inheritDoc}
-     * @return
+     */
+    @Override
+    public Map<String, Integer> getAllQueueCounts() {
+        try {
+            return Andes.getInstance().getMessageCountForAllQueues(AndesContext.getInstance()
+                    .getAMQPConstructStore().getQueueNames());
+        } catch (AndesException exception) {
+            throw new RuntimeException("Error retrieving message count for all queues", exception);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
      */
     public boolean isQueueExists(String queueName) {
         try {

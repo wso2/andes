@@ -489,6 +489,16 @@ public class MessagingEngine {
     }
 
     /**
+     * Get a map of queue names and the message count for each queue from the message store
+     *
+     * @param queueNames list of queue names of which the message count should be retrieved
+     * @return Map of queue names and the message count for each queue
+     */
+    public Map<String, Integer> getMessageCountForAllQueues(List<String> queueNames) throws AndesException {
+        return messageStore.getMessageCountForAllQueues(queueNames);
+    }
+
+    /**
      * Get message count for queue
      *
      * @param queueName name of the queue
