@@ -289,17 +289,6 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
             }
         });
 
-//        AccessController.doPrivileged(new PrivilegedAction() {
-//            public Object run() {
-//                if(!removeVersion91.get()) {
-//                    System.setProperty(ClientProperties.AMQP_VERSION, "0-91");
-//                } else {
-//                    System.clearProperty(ClientProperties.AMQP_VERSION);
-//                }
-//                return null; // nothing to return
-//            }
-//        });
-
         if(removeBURL == null) {
             removeBURL = new ThreadLocal<Boolean>();
             removeBURL.set(new Boolean(false));
@@ -322,17 +311,6 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
                 return null; // nothing to return
             }
         });
-
-//        AccessController.doPrivileged(new PrivilegedAction() {
-//            public Object run() {
-//                if(!removeBURL.get()) {
-//                    System.setProperty("qpid.dest_syntax" , "BURL");
-//                } else {
-//                    System.clearProperty("qpid.dest_syntax");
-//                }
-//                return null; // nothing to return
-//            }
-//        });
 
         /**
          * In AMQP it is not possible to change the client ID. If one is not specified upon connection

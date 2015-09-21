@@ -665,32 +665,6 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
     }
 
 
-
-
-//    public <T, E extends Exception> T executeRetrySupport(final FailoverProtectedOperation<T,E> operation) throws E
-//    {
-//        // Requires permission java.lang.RuntimePermission "modifyThreadGroup"
-//        Object returnObject = AccessController.doPrivileged(new PrivilegedAction() {
-//            public Object run() {
-//                try {
-//                    return _delegate.executeRetrySupport(operation);
-//                } catch (Exception e) {
-//                    return e;
-//                }
-//
-//
-//            }
-//        });
-//
-//        if (returnObject instanceof Exception) {
-//            // Assuming all exception in above method are caught
-//            throw (E) returnObject;
-//        } else {
-//            return (T) returnObject;
-//        }
-//
-//    }
-
     /**
      * Get the details of the currently active broker
      *
@@ -959,15 +933,6 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
                                 return null;
                             }
                         });
-
-//                        AccessController.doPrivileged(new PrivilegedAction() {
-//                            public Object run() {
-//                                //This MUST occur after we have successfully closed all Channels/Sessions
-//                                _taskPool.shutdown();
-//                                return null; // nothing to return
-//                            }
-//                        });
-
 
                         if (!_taskPool.isTerminated())
                         {
