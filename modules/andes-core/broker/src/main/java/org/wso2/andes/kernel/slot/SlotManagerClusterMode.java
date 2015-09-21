@@ -188,11 +188,10 @@ public class SlotManagerClusterMode {
 			slotToBeAssigned.setStorageQueueName(queueName);
 
 			//modify last assigned ID by queue to database
-			slotAgent.setQueueToLastAssignedId(queueName, slotToBeAssigned.getEndMessageId());
-
-			//Create new slot entry in database table and get the slot id
 			slotAgent.createSlot(slotToBeAssigned.getStartMessageId(), slotToBeAssigned.getEndMessageId(),
-			                     slotToBeAssigned.getStorageQueueName(), nodeId);
+					slotToBeAssigned.getStorageQueueName(), nodeId);
+
+			slotAgent.setQueueToLastAssignedId(queueName, slotToBeAssigned.getEndMessageId());
 
 			if (log.isDebugEnabled()) {
 				log.debug("Giving a slot from fresh pool. Slot: " + slotToBeAssigned.getId());
