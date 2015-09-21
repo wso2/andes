@@ -31,6 +31,8 @@ import javax.naming.*;
 import javax.naming.spi.ObjectFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Hashtable;
 import java.util.UUID;
 
@@ -274,11 +276,19 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
             }
 
         }
-        if(!removeVersion91.get()) {
-            System.setProperty(ClientProperties.AMQP_VERSION, "0-91");
-        } else {
-            System.getProperties().remove(ClientProperties.AMQP_VERSION);
-        }
+
+        // Requires permission java.util.PropertyPermission "qpid.amqp.version", "write"
+        AccessController.doPrivileged(new PrivilegedAction<Void>() {
+            public Void run() {
+                if(!removeVersion91.get()) {
+                    System.setProperty(ClientProperties.AMQP_VERSION, "0-91");
+                } else {
+                    System.clearProperty(ClientProperties.AMQP_VERSION);
+                }
+                return null; // nothing to return
+            }
+        });
+
         if(removeBURL == null) {
             removeBURL = new ThreadLocal<Boolean>();
             removeBURL.set(new Boolean(false));
@@ -289,11 +299,18 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
             }
 
         }
-        if(!removeBURL.get()) {
-            System.setProperty("qpid.dest_syntax" , "BURL");
-        } else {
-            System.getProperties().remove("qpid.dest_syntax");
-        }
+
+        // Requires permission java.util.PropertyPermission "qpid.dest_syntax", "write"
+        AccessController.doPrivileged(new PrivilegedAction<Void>() {
+            public Void run() {
+                if (!removeBURL.get()) {
+                    System.setProperty("qpid.dest_syntax", "BURL");
+                } else {
+                    System.clearProperty("qpid.dest_syntax");
+                }
+                return null; // nothing to return
+            }
+        });
 
         /**
          * In AMQP it is not possible to change the client ID. If one is not specified upon connection
@@ -302,7 +319,14 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
          * We can bypass this illegal state exception by setting the following system property. So we
          * are setting it up here to fix the issue https://wso2.org/jira/browse/MB-162.
          * */
-        System.setProperty(ClientProperties.IGNORE_SET_CLIENTID_PROP_NAME, "true");
+
+        // Requires permission java.util.PropertyPermission "ignore_setclientID", "write";
+        AccessController.doPrivileged(new PrivilegedAction<Void>() {
+            public Void run() {
+                System.setProperty(ClientProperties.IGNORE_SET_CLIENTID_PROP_NAME, "true");
+                return null; // nothing to return
+            }
+        });
 
         try
         {
@@ -363,11 +387,18 @@ public class AMQConnectionFactory implements ConnectionFactory, QueueConnectionF
                 removeVersion91.set(new Boolean(false));
             }
         }
-        if(!removeVersion91.get()) {
-            System.setProperty(ClientProperties.AMQP_VERSION, "0-91");
-        } else {
-            System.getProperties().remove(ClientProperties.AMQP_VERSION);
-        }
+
+        // Requires permission java.util.PropertyPermission "qpid.amqp.version", "write"
+        AccessController.doPrivileged(new PrivilegedAction<Void>() {
+            public Void run() {
+                if (!removeVersion91.get()) {
+                    System.setProperty(ClientProperties.AMQP_VERSION, "0-91");
+                } else {
+                    System.clearProperty(ClientProperties.AMQP_VERSION);
+                }
+                return null; // nothing to return
+            }
+        });
 
         if (removeBURL == null) {
             removeBURL = new ThreadLocal<Boolean>();

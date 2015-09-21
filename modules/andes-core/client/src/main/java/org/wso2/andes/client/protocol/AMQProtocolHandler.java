@@ -52,6 +52,8 @@ import org.wso2.andes.transport.network.NetworkTransport;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Set;
@@ -715,7 +717,14 @@ public class AMQProtocolHandler implements ProtocolEngine
                 _logger.debug("FailoverException interrupted connection close, ignoring as connection   close anyway.");
             }
         }
-        _poolReference.releaseExecutorService();
+
+        // Requires permission java.lang.RuntimePermission "modifyThread"
+        AccessController.doPrivileged(new PrivilegedAction<Void>() {
+            public Void run() {
+                _poolReference.releaseExecutorService();
+                return null; // nothing to return
+            }
+        });
     }
 
     /** @return the number of bytes read from this protocol session */

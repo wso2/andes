@@ -45,26 +45,27 @@ public class ConnectionSettings
     int readBufferSize = 65535;
     int writeBufferSize = 65535;
     long transportTimeout = 60000;
-    
+
     // SSL props
     boolean useSSL;
-    String keyStorePath = System.getProperty("javax.net.ssl.keyStore");
-    String keyStorePassword = System.getProperty("javax.net.ssl.keyStorePassword");
-    String keyStoreCertType = System.getProperty("qpid.ssl.keyStoreCertType","SunX509");;
-    String trustStoreCertType = System.getProperty("qpid.ssl.trustStoreCertType","SunX509");;
-    String trustStorePath = System.getProperty("javax.net.ssl.trustStore");;
-    String trustStorePassword = System.getProperty("javax.net.ssl.trustStorePassword");;
+    String keyStorePath;
+    String keyStorePassword;
+    String keyStoreCertType;
+    String trustStoreCertType;
+    String trustStorePath;
+    String trustStorePassword;
+
     String certAlias;
     boolean verifyHostname;
-    
+
     // SASL props
     String saslMechs = System.getProperty("qpid.sasl_mechs", "PLAIN");
     String saslProtocol = System.getProperty("qpid.sasl_protocol", "AMQP");
     String saslServerName = System.getProperty("qpid.sasl_server_name", "localhost");
     boolean useSASLEncryption;
-   
+
     private Map<String, Object> _clientProperties;
-    
+
     public boolean isTcpNodelay()
     {
         return tcpNodelay;
@@ -155,6 +156,19 @@ public class ConnectionSettings
         this.useSSL = useSSL;
     }
 
+    /**
+     * When keystore and truststore is not provided in the classpath,load the keystore and
+     * truststore paths from system properties
+     */
+    public void loadSSLConfigFromSysConfig() {
+        keyStorePath = System.getProperty("javax.net.ssl.keyStore");
+        keyStorePassword = System.getProperty("javax.net.ssl.keyStorePassword");
+        keyStoreCertType = System.getProperty("qpid.ssl.keyStoreCertType", "SunX509");
+        trustStoreCertType = System.getProperty("qpid.ssl.trustStoreCertType", "SunX509");
+        trustStorePath = System.getProperty("javax.net.ssl.trustStore");
+        trustStorePassword = System.getProperty("javax.net.ssl.trustStorePassword");
+    }
+
     public boolean isUseSASLEncryption()
     {
         return useSASLEncryption;
@@ -224,7 +238,7 @@ public class ConnectionSettings
     {
         return _clientProperties;
     }
-    
+
     public String getKeyStorePath()
     {
         return keyStorePath;
@@ -284,7 +298,7 @@ public class ConnectionSettings
     {
         this.verifyHostname = verifyHostname;
     }
-    
+
     public String getKeyStoreCertType()
     {
         return keyStoreCertType;
@@ -324,7 +338,7 @@ public class ConnectionSettings
     {
         this.writeBufferSize = writeBufferSize;
     }
-    
+
     public long getTransportTimeout()
     {
         return transportTimeout;
