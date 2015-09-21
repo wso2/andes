@@ -22,6 +22,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
+import com.lmax.disruptor.TimeoutException;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.apache.commons.logging.Log;
@@ -35,9 +36,11 @@ import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Gauge;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
+
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Disruptor based message flusher. This use a ring buffer to deliver message to subscribers
@@ -45,6 +48,11 @@ import java.util.concurrent.ThreadFactory;
 public class DisruptorBasedFlusher {
 
     private static Log log = LogFactory.getLog(DisruptorBasedFlusher.class);
+
+    /**
+     * Maximum time waited to shut down the outbound disruptor. This is specified in seconds.
+     */
+    public static final int OUTBOUND_DISRUPTOR_SHUTDOWN_WAIT_TIME = 30;
 
     /**
      * Disruptor instance used in the flusher
@@ -140,7 +148,11 @@ public class DisruptorBasedFlusher {
      * before calling this method, otherwise it may never return.
      */
     public void stop() {
-        disruptor.shutdown();
+        try {
+            disruptor.shutdown(OUTBOUND_DISRUPTOR_SHUTDOWN_WAIT_TIME, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            log.error("Outbound disruptor did not shut down properly.");
+        }
     }
 
     /**
