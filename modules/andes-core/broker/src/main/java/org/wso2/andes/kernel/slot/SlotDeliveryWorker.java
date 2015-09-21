@@ -401,8 +401,9 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
      *
      * @param storageQueueName queue name of the newly added queue
      */
-    public void addQueueToThread(String storageQueueName, String destination) {
+    public void addQueueToThread(String storageQueueName, String destination) throws AndesException {
         getStorageQueueNameToDestinationMap().put(storageQueueName, destination);
+        messageFlusher.prepareForDelivery(destination);
     }
 
     /**
