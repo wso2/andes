@@ -119,12 +119,48 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException("Error occurred while " + RDBMSConstants
-                    .TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION, e);
+                    .TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTIONS, e);
         } finally {
             contextRead.stop();
-            close(resultSet, RDBMSConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
-            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
-            close(connection, RDBMSConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION);
+            close(resultSet, RDBMSConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTIONS);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTIONS);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTIONS);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Map<String, String> getAllDurableSubscriptionsByID() throws AndesException {
+
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        Map<String, String> subscriberMap = new HashMap<>();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants
+                    .PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS_WITH_SUB_ID);
+            resultSet = preparedStatement.executeQuery();
+
+            // create the subscriber Map
+            while (resultSet.next()) {
+                String subId = resultSet.getString(RDBMSConstants.DURABLE_SUB_ID);
+                String subscriber = resultSet.getString(RDBMSConstants.DURABLE_SUB_DATA);
+                subscriberMap.put(subId, subscriber);
+            }
+            return subscriberMap;
+
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while "
+                                                      + RDBMSConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTIONS, e);
+        } finally {
+            contextRead.stop();
+            close(resultSet, RDBMSConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTIONS);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTIONS);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTIONS);
         }
     }
 
@@ -195,6 +231,37 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             contextWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_UPDATING_DURABLE_SUBSCRIPTION);
             close(connection, RDBMSConstants.TASK_UPDATING_DURABLE_SUBSCRIPTION);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateDurableSubscriptions(Map<String, String> subscriptions) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_UPDATE_DURABLE_SUBSCRIPTION_BY_ID);
+
+            for (Map.Entry<String, String> entry : subscriptions.entrySet()) {
+                preparedStatement.setString(1, entry.getValue());
+                preparedStatement.setString(2, entry.getKey());
+                preparedStatement.addBatch();
+            }
+            preparedStatement.executeBatch();
+            connection.commit();
+
+        } catch (SQLException e) {
+            rollback(connection, RDBMSConstants.TASK_UPDATING_DURABLE_SUBSCRIPTIONS);
+            throw rdbmsStoreUtils.convertSQLException("Error occurred while updating durable subscriptions.", e);
+        } finally {
+            contextWrite.stop();
+            close(preparedStatement, RDBMSConstants.TASK_UPDATING_DURABLE_SUBSCRIPTIONS);
+            close(connection, RDBMSConstants.TASK_UPDATING_DURABLE_SUBSCRIPTIONS);
         }
     }
 

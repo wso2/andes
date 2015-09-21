@@ -44,6 +44,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
 
 public class SubscriptionStore {
     private static final String TOPIC_PREFIX = "topic.";
@@ -318,8 +319,7 @@ public class SubscriptionStore {
      * @param isTopic     TRUE if checking topics
      * @return a set of <subscription>
      */
-    private Set<LocalSubscription> getLocalSubscriptionMap(String destination,
-                                                           boolean isTopic) {
+    private Set<LocalSubscription> getLocalSubscriptionMap(String destination, boolean isTopic) {
         Map<String, Set<LocalSubscription>> subscriptionMap = isTopic ? localTopicSubscriptionMap :
                 localQueueSubscriptionMap;
         return subscriptionMap.get(destination);
@@ -678,8 +678,8 @@ public class SubscriptionStore {
         andesContextStore.removeDurableSubscription(destinationIdentifier, subscriptionToRemove.getSubscribedNode() +
                 "_" + subscriptionToRemove.getSubscriptionID());
         if(log.isDebugEnabled()) {
-            log.debug("Directly removed cluster subscription subscription identifier = " + destinationIdentifier + " " +
-                    "destination = " + destination);
+            log.debug("Directly removed cluster subscription subscription identifier = " + destinationIdentifier + " "
+                      + "destination = " + destination);
         }
     }
 
@@ -811,6 +811,37 @@ public class SubscriptionStore {
                 }
             }
         }
+    }
+
+    /**
+     * Marks all the durable subscriptions as inactive
+     *
+     * @throws AndesException Throw when updating the context store.
+     */
+    public void deactivateAllActiveSubscriptions() throws AndesException {
+
+        Map<String, String> subscriptions = andesContextStore.getAllDurableSubscriptionsByID();
+        Map<String, String> modifiedSubscriptions = new HashMap<>();
+
+        boolean subscriptionExists = false;
+
+        for (Map.Entry<String, String> entry : subscriptions.entrySet()) {
+
+            if (log.isDebugEnabled()) {
+                log.debug("Deactivating subscription with id: " + entry.getKey());
+            }
+            BasicSubscription subscription = new BasicSubscription(entry.getValue());
+
+            //The HasExternalSubscriptions attribute of a subscription indicates whether the the subscription is active
+            //Therefore, setting it to false makes the subscriptions inactive
+            subscription.setHasExternalSubscriptions(subscriptionExists);
+
+            modifiedSubscriptions.put(entry.getKey(), subscription.encodeAsStr());
+
+        }
+
+        //update all the stored durable subscriptions to be inactive
+        andesContextStore.updateDurableSubscriptions(modifiedSubscriptions);
     }
 
     /**

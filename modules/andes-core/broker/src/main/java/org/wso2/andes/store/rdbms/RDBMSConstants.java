@@ -312,9 +312,18 @@ public class RDBMSConstants {
                     " WHERE " + DESTINATION_IDENTIFIER + "=? AND " +
                     DURABLE_SUB_ID + "=?";
 
+    protected static final String PS_UPDATE_DURABLE_SUBSCRIPTION_BY_ID =
+            "UPDATE " + DURABLE_SUB_TABLE +
+            " SET " + DURABLE_SUB_DATA + "=? " +
+            " WHERE " + DURABLE_SUB_ID + "=?";
+
     protected static final String PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS =
             "SELECT " + DESTINATION_IDENTIFIER + "," + DURABLE_SUB_DATA +
                     " FROM " + DURABLE_SUB_TABLE;
+
+    protected static final String PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS_WITH_SUB_ID =
+            "SELECT " + DURABLE_SUB_ID + "," + DURABLE_SUB_DATA +
+            " FROM " + DURABLE_SUB_TABLE;
 
     protected static final String PS_DELETE_DURABLE_SUBSCRIPTION =
             "DELETE FROM " + DURABLE_SUB_TABLE +
@@ -835,8 +844,8 @@ public class RDBMSConstants {
     // Andes Context Store related jdbc tasks executed
     protected static final String TASK_STORING_DURABLE_SUBSCRIPTION = "storing durable subscription";
     protected static final String TASK_UPDATING_DURABLE_SUBSCRIPTION = "updating durable subscription";
-    protected static final String TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTION = "retrieving " +
-            "all durable subscriptions. ";
+    protected static final String TASK_UPDATING_DURABLE_SUBSCRIPTIONS = "updating durable subscriptions";
+    protected static final String TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTIONS = "retrieving all durable subscriptions. ";
 
     protected static final String TASK_REMOVING_DURABLE_SUBSCRIPTION = "removing durable " +
             "subscription. ";
