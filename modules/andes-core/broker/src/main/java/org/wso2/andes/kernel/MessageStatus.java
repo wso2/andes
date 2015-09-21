@@ -147,7 +147,7 @@ public enum MessageStatus {
         BUFFERED.next = EnumSet.of(SCHEDULED_TO_SEND, SLOT_RETURNED);
         BUFFERED.previous = EnumSet.of(READ);
 
-        SCHEDULED_TO_SEND.next = EnumSet.of(ACKED_BY_ALL, SLOT_RETURNED);
+        SCHEDULED_TO_SEND.next = EnumSet.of(ACKED_BY_ALL, BUFFERED, DLC_MESSAGE, SLOT_RETURNED);
         SCHEDULED_TO_SEND.previous = EnumSet.of(BUFFERED);
 
         ACKED_BY_ALL.next = EnumSet.of(DELETED, SLOT_RETURNED);
@@ -156,7 +156,7 @@ public enum MessageStatus {
         EXPIRED.next = EnumSet.of(DELETED, SLOT_RETURNED);
         EXPIRED.previous = EnumSet.allOf(MessageStatus.class);
 
-        DLC_MESSAGE.next = EnumSet.of(BUFFERED, DELETED, SLOT_RETURNED);
+        DLC_MESSAGE.next = EnumSet.of(BUFFERED, SLOT_REMOVED, SLOT_RETURNED);
         DLC_MESSAGE.previous = EnumSet.of(SCHEDULED_TO_SEND);
 
         PURGED.next = EnumSet.of(DELETED, SLOT_RETURNED);

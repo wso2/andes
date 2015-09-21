@@ -118,7 +118,6 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                             MessageTracer.DISCARD_STALE_MESSAGE);
                 }
             } catch (ProtocolDeliveryRulesFailureException e) {
-                log.error("Error while delivering message. Message id " + message.getMessageID(), e);
                 onSendError(message, subscription);
                 routeMessageToDLC(message);
             } catch (ProtocolDeliveryFailureException ex) {
@@ -131,9 +130,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                         log.warn("Cannot send message id= " + message.getMessageID() + " as subscriber is closed");
                     }
                 }
-
-            }
-            catch (Throwable e) {
+            } catch (Throwable e) {
                 log.error("Unexpected error while delivering message. Message id " + message.getMessageID(), e);
             } finally {
                 deliveryEventData.clearData();
@@ -167,7 +164,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
         // If message is a queue message we move the message to the Dead Letter Channel
         // since topics doesn't have a Dead Letter Channel
         if (!message.isTopic()) {
-            log.info("Moving message to Dead Letter Channel Due to Send Error. Message ID " + message.getMessageID());
+            log.warn("Moving message to Dead Letter Channel Due to Send Error. Message ID " + message.getMessageID());
             try {
                 Andes.getInstance().moveMessageToDeadLetterChannel(message, message.getDestination());
             } catch (AndesException dlcException) {
