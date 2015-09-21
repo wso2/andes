@@ -646,29 +646,50 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
 
     }
 
-    public <T, E extends Exception> T executeRetrySupport(final FailoverProtectedOperation<T,E> operation) throws E
-    {
+    public <T, E extends Exception> T executeRetrySupport(final FailoverProtectedOperation<T, E> operation) throws E {
         // Requires permission java.lang.RuntimePermission "modifyThreadGroup"
-        Object returnObject = AccessController.doPrivileged(new PrivilegedAction() {
-            public Object run() {
-                try {
+        Object returnObject = null;
+        try {
+            returnObject = AccessController.doPrivileged(new PrivilegedExceptionAction<Object>() {
+                public Object run() throws E {
+
                     return _delegate.executeRetrySupport(operation);
-                } catch (Exception e) {
-                    return e;
+
                 }
-
-
-            }
-        });
-
-        if (returnObject instanceof Exception) {
-            // Assuming all exception in above method are caught
-            throw (E) returnObject;
-        } else {
+            });
+        } catch (PrivilegedActionException e) {
+            throw (E) e.getException();
+        } finally {
             return (T) returnObject;
         }
-
     }
+
+
+
+
+//    public <T, E extends Exception> T executeRetrySupport(final FailoverProtectedOperation<T,E> operation) throws E
+//    {
+//        // Requires permission java.lang.RuntimePermission "modifyThreadGroup"
+//        Object returnObject = AccessController.doPrivileged(new PrivilegedAction() {
+//            public Object run() {
+//                try {
+//                    return _delegate.executeRetrySupport(operation);
+//                } catch (Exception e) {
+//                    return e;
+//                }
+//
+//
+//            }
+//        });
+//
+//        if (returnObject instanceof Exception) {
+//            // Assuming all exception in above method are caught
+//            throw (E) returnObject;
+//        } else {
+//            return (T) returnObject;
+//        }
+//
+//    }
 
     /**
      * Get the details of the currently active broker
@@ -931,13 +952,22 @@ public class AMQConnection extends Closeable implements Connection, QueueConnect
 	                    closeAllSessions(null, timeout, startCloseTime);
 
                         // Requires permission java.lang.RuntimePermission "modifyThread"
-                        AccessController.doPrivileged(new PrivilegedAction() {
-                            public Object run() {
-                                //This MUST occur after we have successfully closed all Channels/Sessions
-                                _taskPool.shutdown();
-                                return null; // nothing to return
+                        AccessController.doPrivileged(new PrivilegedAction<Void>( ){
+                            @Override
+                            public Void run() {
+                                 _taskPool.shutdown();
+                                return null;
                             }
                         });
+
+//                        AccessController.doPrivileged(new PrivilegedAction() {
+//                            public Object run() {
+//                                //This MUST occur after we have successfully closed all Channels/Sessions
+//                                _taskPool.shutdown();
+//                                return null; // nothing to return
+//                            }
+//                        });
+
 
                         if (!_taskPool.isTerminated())
                         {

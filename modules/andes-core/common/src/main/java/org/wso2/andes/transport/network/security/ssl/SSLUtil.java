@@ -168,7 +168,7 @@ public class SSLUtil
 
             if (null == in) { // Resource was not found in the classpath. Try to load it from the file system.
                 File f = new File(storePath);
-                if (f.exists())
+                if (f.exists() && f.canRead())
                 {
                     in = new FileInputStream(f);
                 } else {

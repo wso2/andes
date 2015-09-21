@@ -719,8 +719,8 @@ public class AMQProtocolHandler implements ProtocolEngine
         }
 
         // Requires permission java.lang.RuntimePermission "modifyThread"
-        AccessController.doPrivileged(new PrivilegedAction() {
-            public Object run() {
+        AccessController.doPrivileged(new PrivilegedAction<Void>() {
+            public Void run() {
                 _poolReference.releaseExecutorService();
                 return null; // nothing to return
             }

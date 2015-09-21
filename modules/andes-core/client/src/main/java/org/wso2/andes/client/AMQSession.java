@@ -623,8 +623,8 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
     public void close() throws JMSException
     {
         // Requires permission java.lang.RuntimePermission "modifyThread"
-        AccessController.doPrivileged(new PrivilegedAction() {
-            public Object run() {
+        AccessController.doPrivileged(new PrivilegedAction<Void>() {
+            public Void run() {
                 scheduler.shutdown();
                 return null; // nothing to return
             }
@@ -2386,8 +2386,8 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                 throw new Error("Error creating Dispatcher thread",e);
             }
             // Requires permission java.lang.RuntimePermission "modifyThreadGroup"
-            AccessController.doPrivileged(new PrivilegedAction() {
-                public Object run() {
+            AccessController.doPrivileged(new PrivilegedAction<Void>() {
+                public Void run() {
                     _dispatcherThread.setName("Dispatcher-Channel-" + _channelId);
                     _dispatcherThread.setDaemon(true);
                     _dispatcher.setConnectionStopped(initiallyStopped);
@@ -3220,8 +3220,8 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
             _closed.set(true);
 
             // Requires permission java.lang.RuntimePermission "modifyThreadGroup"
-            AccessController.doPrivileged(new PrivilegedAction() {
-                public Object run() {
+            AccessController.doPrivileged(new PrivilegedAction<Void>() {
+                public Void run() {
                     _dispatcherThread.interrupt();
                     return null; // nothing to return
                 }

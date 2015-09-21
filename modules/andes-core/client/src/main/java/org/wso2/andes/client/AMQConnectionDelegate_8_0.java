@@ -118,6 +118,10 @@ public class AMQConnectionDelegate_8_0 implements AMQConnectionDelegate
 
         if(settings.getKeyStorePath() == null && settings.getKeyStorePassword() ==null && settings
                 .getTrustStorePath() == null && settings.getTrustStorePassword() == null){
+            if (_logger.isDebugEnabled())
+            {
+                _logger.debug("Loading keystore and truststore from system properties");
+            }
               settings.loadSSLConfigFromSysConfig();
         }
 
