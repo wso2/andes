@@ -116,6 +116,14 @@ public class AMQConnectionDelegate_8_0 implements AMQConnectionDelegate
             settings.setTrustStoreCertType(sslConfig.getCertType());
         }
 
+        if(settings.getKeyStorePath() == null && settings.getKeyStorePassword() ==null && settings
+                .getTrustStorePath() == null && settings.getTrustStorePassword() == null){
+
+            _logger.warn("Loading keystore and truststore from system properties");
+
+            settings.loadSSLConfigFromSysConfig();
+        }
+
         OutgoingNetworkTransport transport = Transport.getOutgoingTransportInstance(getProtocolVersion());
         NetworkConnection network = transport.connect(settings,_conn._protocolHandler, null);
         _conn._protocolHandler.setNetworkConnection(network);

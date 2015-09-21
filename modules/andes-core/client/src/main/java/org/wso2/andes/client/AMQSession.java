@@ -22,6 +22,8 @@ package org.wso2.andes.client;
 
 import java.io.Serializable;
 import java.net.URISyntaxException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.*;
@@ -447,12 +449,12 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                MessageFactoryRegistry messageFactoryRegistry, int defaultPrefetchHighMark, int defaultPrefetchLowMark)
     {
         USE_AMQP_ENCODED_MAP_MESSAGE = con == null ? true : !con.isUseLegacyMapMessageFormat();
-        _strictAMQP = Boolean.parseBoolean(System.getProperties().getProperty(STRICT_AMQP, STRICT_AMQP_DEFAULT));
+        _strictAMQP = Boolean.parseBoolean(System.getProperty(STRICT_AMQP, STRICT_AMQP_DEFAULT));
         _strictAMQPFATAL =
-                Boolean.parseBoolean(System.getProperties().getProperty(STRICT_AMQP_FATAL, STRICT_AMQP_FATAL_DEFAULT));
+                Boolean.parseBoolean(System.getProperty(STRICT_AMQP_FATAL, STRICT_AMQP_FATAL_DEFAULT));
         _immediatePrefetch =
                 _strictAMQP
-                || Boolean.parseBoolean(System.getProperties().getProperty(IMMEDIATE_PREFETCH, IMMEDIATE_PREFETCH_DEFAULT));
+                || Boolean.parseBoolean(System.getProperty(IMMEDIATE_PREFETCH, IMMEDIATE_PREFETCH_DEFAULT));
 
         _connection = con;
         _transacted = transacted;
@@ -620,7 +622,13 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
      */
     public void close() throws JMSException
     {
-        scheduler.shutdown();
+        // Requires permission java.lang.RuntimePermission "modifyThread"
+        AccessController.doPrivileged(new PrivilegedAction<Void>() {
+            public Void run() {
+                scheduler.shutdown();
+                return null; // nothing to return
+            }
+        });
         close(-1);
     }
 
@@ -2363,7 +2371,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
         startDispatcherIfNecessary(false);
     }
 
-    synchronized void startDispatcherIfNecessary(boolean initiallyStopped)
+    synchronized void startDispatcherIfNecessary(final boolean initiallyStopped)
     {
         if (_dispatcher == null)
         {
@@ -2377,10 +2385,16 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
             {
                 throw new Error("Error creating Dispatcher thread",e);
             }
-            _dispatcherThread.setName("Dispatcher-Channel-" + _channelId);
-            _dispatcherThread.setDaemon(true);
-            _dispatcher.setConnectionStopped(initiallyStopped);
-            _dispatcherThread.start();
+            // Requires permission java.lang.RuntimePermission "modifyThreadGroup"
+            AccessController.doPrivileged(new PrivilegedAction<Void>() {
+                public Void run() {
+                    _dispatcherThread.setName("Dispatcher-Channel-" + _channelId);
+                    _dispatcherThread.setDaemon(true);
+                    _dispatcher.setConnectionStopped(initiallyStopped);
+                    _dispatcherThread.start();
+                    return null; // nothing to return
+                }
+            });
             if (_dispatcherLogger.isDebugEnabled())
             {
                 _dispatcherLogger.debug(_dispatcherThread.getName() + " created");
@@ -3204,7 +3218,14 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
         public void close()
         {
             _closed.set(true);
-            _dispatcherThread.interrupt();
+
+            // Requires permission java.lang.RuntimePermission "modifyThreadGroup"
+            AccessController.doPrivileged(new PrivilegedAction<Void>() {
+                public Void run() {
+                    _dispatcherThread.interrupt();
+                    return null; // nothing to return
+                }
+            });
 
             // fixme awaitTermination
 
