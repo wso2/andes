@@ -476,7 +476,8 @@ public class MessageFlusher {
             }
             //mark message as came into the subscription for deliver
             message.markAsDispatchedToDeliver(subscription.getChannelID());
-            flusherExecutor.submit(subscription, message);
+            ProtocolMessage protocolMessage = message.generateProtocolDeliverableMessage(subscription.getChannelID());
+            flusherExecutor.submit(subscription, protocolMessage);
         }
     }
 

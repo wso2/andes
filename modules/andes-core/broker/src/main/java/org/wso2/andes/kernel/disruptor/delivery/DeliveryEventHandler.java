@@ -26,6 +26,7 @@ import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
 import org.wso2.andes.kernel.ProtocolDeliveryRulesFailureException;
+import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -79,7 +80,8 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
 
         // Filter tasks assigned to this handler
         if (channelModulus == ordinal) {
-            DeliverableAndesMetadata message = deliveryEventData.getMetadata();
+            ProtocolMessage protocolMessage = deliveryEventData.getMetadata();
+            DeliverableAndesMetadata message = protocolMessage.getMessage();
 
             try {
                 if (deliveryEventData.isErrorOccurred()) {
@@ -96,7 +98,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                         Meter messageMeter = MetricManager.meter(Level.INFO, MetricsConstants.MSG_SENT_RATE);
                         messageMeter.mark();
 
-                        subscription.sendMessageToSubscriber(message, deliveryEventData.getAndesContent());
+                        subscription.sendMessageToSubscriber(protocolMessage, deliveryEventData.getAndesContent());
 
                     } else {
                         onSendError(message, subscription);

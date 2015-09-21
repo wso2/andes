@@ -27,6 +27,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessageStatus;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.mqtt.MQTTLocalSubscription;
 
 import java.util.ArrayList;
@@ -51,7 +52,8 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
     private OutboundSubscription subscription;
 
     /**
-     * Map to track messages being sent <message id, MsgData reference>
+     * Map to track messages being sent <message id, MsgData reference>. This map bares message
+     * reference at kernel side
      */
     private final ConcurrentHashMap<Long, DeliverableAndesMetadata> messageSendingTracker
             = new ConcurrentHashMap<>();
@@ -108,7 +110,7 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      * @return true if the send is a success
      * @throws AndesException
      */
-    public boolean sendMessageToSubscriber(DeliverableAndesMetadata messageMetadata, AndesContent content) throws
+    public boolean sendMessageToSubscriber(ProtocolMessage messageMetadata, AndesContent content) throws
             AndesException {
 
         //It is needed to add the message reference to the tracker and increase un-ack message count BEFORE
@@ -236,7 +238,7 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      * Add message to sending tracker which keeps messages delivered to this channel
      * @param messageData message to add
      */
-    private void addMessageToSendingTracker(DeliverableAndesMetadata messageData) {
+    private void addMessageToSendingTracker(ProtocolMessage messageData) {
 
         if (log.isDebugEnabled()) {
             log.debug("Adding message to sending tracker channel id = " + getChannelID() + " message id = "
@@ -246,7 +248,8 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
         DeliverableAndesMetadata messageDataToAdd = messageSendingTracker.get(messageData.getMessageID());
 
         if (null == messageDataToAdd) {
-            messageSendingTracker.put(messageData.getMessageID(), messageData);
+            //we need to put message reference to the sending tracker
+            messageSendingTracker.put(messageData.getMessageID(), messageData.getMessage());
             if(log.isDebugEnabled()) {
                 log.debug("Added message reference. Message Id = "
                         + messageData.getMessageID() + " subscriptionID= " + subscriptionID);

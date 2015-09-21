@@ -123,10 +123,12 @@ public class MQTTLocalSubscription implements OutboundSubscription {
      * {@inheritDoc}
      */
     @Override
-    public boolean sendMessageToSubscriber(DeliverableAndesMetadata messageMetadata, AndesContent content)
+    public boolean sendMessageToSubscriber(ProtocolMessage protocolMessage, AndesContent content)
             throws AndesException {
 
         boolean sendSuccess;
+
+        DeliverableAndesMetadata messageMetadata = protocolMessage.getMessage();
 
         if(messageMetadata.isRetain()) {
             recordRetainedMessage(messageMetadata.getMessageID());

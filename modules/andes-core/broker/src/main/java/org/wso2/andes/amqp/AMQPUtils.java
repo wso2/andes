@@ -26,8 +26,6 @@ import org.wso2.andes.kernel.*;
 import org.wso2.andes.kernel.disruptor.inbound.InboundBindingEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundExchangeEvent;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
-import org.wso2.andes.kernel.disruptor.inbound.InboundSubscriptionEvent;
-import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.server.ClusterResourceHolder;
 import org.wso2.andes.server.binding.Binding;
 import org.wso2.andes.server.exchange.DirectExchange;
@@ -45,7 +43,6 @@ import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.subscription.AMQPLocalSubscription;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.subscription.OutboundSubscription;
-import org.wso2.andes.subscription.SubscriptionStore;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -136,10 +133,10 @@ public class AMQPUtils {
      *         Content object which has access to the message content
      * @return AMQMessage
      */
-    public static AMQMessage getAMQMessageForDelivery(DeliverableAndesMetadata metadata, AndesContent content) {
+    public static AMQMessage getAMQMessageForDelivery(ProtocolMessage metadata, AndesContent content) {
         long messageId = metadata.getMessageID();
         //create message with meta data. This has access to message content
-        StorableMessageMetaData metaData = convertAndesMetadataToAMQMetadata(metadata);
+        StorableMessageMetaData metaData = convertAndesMetadataToAMQMetadata(metadata.getMessage());
         QpidStoredMessage<MessageMetaData> message = new QpidStoredMessage<MessageMetaData>(
                 new StoredAMQPMessage(messageId, metaData), content);
         AMQMessage amqMessage = new AMQMessage(message);

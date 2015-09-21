@@ -66,6 +66,16 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     }
 
     /**
+     * Generate a new protocol deliverable message. This will include a reference of this message
+     * plus snapshot of channel information message is delivered to
+     * @param channelID ID of the channel message is to be delivered
+     * @return new ProtocolMessage object
+     */
+    public ProtocolMessage generateProtocolDeliverableMessage(UUID channelID) {
+        return new ProtocolMessage(this, channelID);
+    }
+
+    /**
      * Check if message is expired
      * @return check expire result
      */

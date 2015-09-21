@@ -83,7 +83,7 @@ public class ContentCacheCreator {
         List<DeliveryEventData> messagesWithoutContent = new ArrayList<>();
 
         for (DeliveryEventData deliveryEventData: eventDataList) {
-            DeliverableAndesMetadata metadata = deliveryEventData.getMetadata();
+            ProtocolMessage metadata = deliveryEventData.getMetadata();
             long messageID =  metadata.getMessageID();
 
             DisruptorCachedContent content = contentCache.getIfPresent(messageID);
@@ -106,7 +106,7 @@ public class ContentCacheCreator {
 
         for (DeliveryEventData deliveryEventData : messagesWithoutContent) {
 
-            DeliverableAndesMetadata metadata = deliveryEventData.getMetadata();
+            ProtocolMessage metadata = deliveryEventData.getMetadata();
             long messageID =  metadata.getMessageID();
 
             // We check again for content put in cache in the previous iteration
@@ -122,7 +122,7 @@ public class ContentCacheCreator {
                 continue;
             }
 
-            int contentSize = metadata.getMessageContentLength();
+            int contentSize = metadata.getMessage().getMessageContentLength();
             List<AndesMessagePart> contentList = contentListMap.get(messageID);
 
             if (null != contentList) {
@@ -145,7 +145,7 @@ public class ContentCacheCreator {
             }
 
             //Tracing message
-            MessageTracer.trace(metadata, MessageTracer.CONTENT_READ);
+            MessageTracer.trace(metadata.getMessage(), MessageTracer.CONTENT_READ);
         }
     }
 }

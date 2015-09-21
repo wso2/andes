@@ -106,7 +106,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
      * {@inheritDoc}
      */
     @Override
-    public boolean sendMessageToSubscriber(DeliverableAndesMetadata messageMetadata, AndesContent content)
+    public boolean sendMessageToSubscriber(ProtocolMessage messageMetadata, AndesContent content)
             throws AndesException {
 
         AMQMessage message = AMQPUtils.getAMQMessageForDelivery(messageMetadata, content);
@@ -114,7 +114,7 @@ public class AMQPLocalSubscription implements OutboundSubscription {
 
         if (evaluateDeliveryRules(messageToSend)) {
             //check if redelivered. If so, set the JMS header
-            if(messageMetadata.isRedelivered(getChannelID())) {
+            if(messageMetadata.isRedelivered()) {
                 messageToSend.setRedelivered();
             }
             sendMessage(messageToSend);

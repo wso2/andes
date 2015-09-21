@@ -29,8 +29,7 @@ import com.lmax.disruptor.SequenceReportingEventHandler;
 import com.lmax.disruptor.Sequencer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.kernel.AndesMessageMetadata;
-import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.ProtocolMessage;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -134,7 +133,7 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
         notifyStart();
         DeliveryEventData event = null;
         int totalContentLength = 0;
-        List<DeliveryEventData> eventList = new ArrayList<DeliveryEventData>(this.batchSize);
+        List<DeliveryEventData> eventList = new ArrayList<>(this.batchSize);
         Set<Long> messageIDSet = new HashSet<>();
         long currentTurn;
         long nextSequence = sequence.get() + 1L;
@@ -145,12 +144,12 @@ public class ConcurrentContentReadTaskBatchProcessor implements EventProcessor {
                 while (nextSequence <= availableSequence) {
                     event = ringBuffer.get(nextSequence);
 
-                    DeliverableAndesMetadata metadata = event.getMetadata();
+                    ProtocolMessage metadata = event.getMetadata();
                     long currentMessageID = metadata.getMessageID();
                     currentTurn = currentMessageID % groupCount;
                     if (turn == currentTurn) {
                         eventList.add(event);
-                        totalContentLength = totalContentLength + metadata.getMessageContentLength();
+                        totalContentLength = totalContentLength + metadata.getMessage().getMessageContentLength();
                         messageIDSet.add(currentMessageID);
                     }
                     if (log.isDebugEnabled()) {
