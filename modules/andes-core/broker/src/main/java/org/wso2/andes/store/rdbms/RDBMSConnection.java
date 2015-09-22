@@ -23,12 +23,10 @@ import org.apache.log4j.Logger;
 import org.wso2.andes.configuration.util.ConfigurationProperties;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DurableStoreConnection;
-import org.wso2.andes.store.StoreHealthListener;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
-
 import java.sql.Connection;
 import java.sql.SQLException;
 
@@ -112,16 +110,5 @@ public class RDBMSConnection extends DurableStoreConnection {
                 logger.error("Failed to close connection after " + task, e);
             }
         }
-    }
-
-    /**
-     * Returns a ConfigurationProperties to create a in-memory JDBC connection
-     * @return ConfigurationProperties
-     */
-    public static ConfigurationProperties getInMemoryConnectionProperties() {
-        ConfigurationProperties connectionProperties = new ConfigurationProperties();
-        connectionProperties.addProperty(RDBMSConstants.PROP_JNDI_LOOKUP_NAME,
-                                         RDBMSConstants.H2_MEM_JNDI_LOOKUP_NAME);
-        return connectionProperties;
     }
 }
