@@ -28,9 +28,6 @@ import java.sql.SQLDataException;
  */
 public class RDBMSConstants {
 
-    // jndi lookup
-    protected static final String H2_MEM_JNDI_LOOKUP_NAME = "WSO2MBInMemoryStoreDB";
-
     // Configuration properties
     protected static final String PROP_JNDI_LOOKUP_NAME = "dataSource";
 
