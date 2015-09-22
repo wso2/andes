@@ -218,10 +218,12 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      * {@inheritDoc}
      */
     public void close() throws AndesException {
+
         List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>();
 
         for (DeliverableAndesMetadata andesMetadata : messageSendingTracker.values()) {
-            andesMetadata.removeScheduledDeliveryChannel(getChannelID());
+            andesMetadata.markDeliveredChannelAsClosed(getChannelID());
+            andesMetadata.evaluateMessageAcknowledgement();
 
             //TODO: decide if we need to do this only for topics
             //for topic messages see if we can delete the message
@@ -231,6 +233,7 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
                 }
             }
         }
+
         MessagingEngine.getInstance().deleteMessages(messagesToRemove);
     }
 

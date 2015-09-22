@@ -102,6 +102,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
 
                     } else {
                         onSendError(message, subscription);
+                        message.markDeliveredChannelAsClosed(subscription.getChannelID());
                         if(subscription.isDurable()) {
                             //re-queue message to andes core so that it can find other subscriber to deliver
                             MessagingEngine.getInstance().reQueueMessage(message);
@@ -112,6 +113,8 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                         }
                     }
                 } else {
+                    //stale only happens when subscription is closed
+                    message.markDeliveredChannelAsClosed(subscription.getChannelID());
                     onSendError(message, subscription);
                     //Tracing Message
                     MessageTracer.trace(message.getMessageID(), message.getDestination(),
@@ -121,7 +124,12 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                 onSendError(message, subscription);
                 routeMessageToDLC(message);
             } catch (ProtocolDeliveryFailureException ex) {
+                //there can be a actual send error or subscriber is already closed. Mark as closed only if
+                //subscriber is closed
                 onSendError(message, subscription);
+                if(!subscription.isActive()) {
+                    message.markDeliveredChannelAsClosed(subscription.getChannelID());
+                }
                 if(subscription.isDurable()) {
                     //re-queue message to andes core so that it can find other subscriber to deliver
                     MessagingEngine.getInstance().reQueueMessage(message);
@@ -150,7 +158,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
         //Send failed. Rollback changes done that assumed send would be success
         UUID channelID = localSubscription.getChannelID();
         messageMetadata.markDeliveryFailureOfASentMessage(channelID);
-        messageMetadata.removeScheduledDeliveryChannel(channelID);
+        messageMetadata.evaluateMessageAcknowledgement();
         localSubscription.removeSentMessageFromTracker(messageMetadata.getMessageID());
         //TODO: try to delete
     }

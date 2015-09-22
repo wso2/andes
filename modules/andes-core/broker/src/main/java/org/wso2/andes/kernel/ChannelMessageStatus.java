@@ -47,7 +47,12 @@ public enum  ChannelMessageStatus {
      * Consumer has rejected the message ad it has been buffered again for delivery (possibly to another waiting
      * consumer)
      */
-    CLIENT_REJECTED(4);
+    CLIENT_REJECTED(4),
+
+    /**
+     * Consumer is closed
+     */
+    CLOSED(5);
 
 
     private int code;
@@ -110,19 +115,23 @@ public enum  ChannelMessageStatus {
     static {
 
         //Channel wise message status begins at DISPATCHED state.
-        //If message ACKED there is no next state for message.
+        //If message CLOSED there is no next state for message.
 
-        DISPATCHED.next = EnumSet.of(SEND_FAILED, ACKED, CLIENT_REJECTED);
+        DISPATCHED.next = EnumSet.of(SEND_FAILED, ACKED, CLIENT_REJECTED, CLOSED);
         DISPATCHED.previous = EnumSet.complementOf(EnumSet.allOf(ChannelMessageStatus.class));
 
-        SEND_FAILED.next = EnumSet.of(DISPATCHED);
+        SEND_FAILED.next = EnumSet.of(DISPATCHED, CLOSED);
         SEND_FAILED.previous = EnumSet.of(DISPATCHED);
 
-        ACKED.next = EnumSet.complementOf(EnumSet.allOf(ChannelMessageStatus.class));
+        ACKED.next = EnumSet.of(CLOSED);
         ACKED.previous = EnumSet.of(DISPATCHED);
 
-        CLIENT_REJECTED.next = EnumSet.of(DISPATCHED);
+        CLIENT_REJECTED.next = EnumSet.of(DISPATCHED, CLOSED);
         CLIENT_REJECTED.previous = EnumSet.of(DISPATCHED);
+
+        //this is because we directly mark close on channel close
+        CLOSED.next = EnumSet.of(SEND_FAILED, CLOSED);
+        CLOSED.previous = EnumSet.allOf(ChannelMessageStatus.class);
     }
 
 }

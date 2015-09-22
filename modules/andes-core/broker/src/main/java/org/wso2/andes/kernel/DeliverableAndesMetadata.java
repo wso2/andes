@@ -302,15 +302,25 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     }
 
     /**
-     * Remove a channel that this message is scheduled to deliver. If the subscriber has closed
-     * during the message schedule and actual sent this should be called
-     * @param channelID Id of the channel to remove
+     * Evaluate message acknowledgement. Whenever relevant message status are updated
+     * this evaluation should be performed and subsequently try to delete the message
+     * if ACKED_BY_ALL evaluation returned success
+     *
      */
-    public void removeScheduledDeliveryChannel(UUID channelID) {
-        channelDeliveryInfo.remove(channelID);
+    public void evaluateMessageAcknowledgement() {
         if(isMarkAsAcked()) {
             addMessageStatus(MessageStatus.ACKED_BY_ALL);
         }
+    }
+
+    /**
+     * Mark the scheduled channel as closed. When the subscriber closes, if the message
+     * is already scheduled mark it as closed.
+     * @param channelID ID of the channel
+     */
+    public void markDeliveredChannelAsClosed(UUID channelID) {
+        channelDeliveryInfo.get(channelID).
+                addChannelStatus(ChannelMessageStatus.CLOSED);
     }
 
 
@@ -326,10 +336,15 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
      * Check if this message is acknowledged by all the channels it is delivered to
      * @return true if message is acknowledged by all the channels
      */
-    public boolean isMarkAsAcked() {
+    private boolean isMarkAsAcked() {
         boolean isAcked = true;
         for (Map.Entry<UUID, ChannelInformation> channelInfoEntry : channelDeliveryInfo.entrySet()) {
             ChannelMessageStatus messageStatus = channelInfoEntry.getValue().getLatestMessageStatus();
+
+            //if channel is closed ignore it from considering
+            if(null != messageStatus && messageStatus.equals(ChannelMessageStatus.CLOSED)) {
+                continue;
+            }
             if(null == messageStatus || !messageStatus.equals(ChannelMessageStatus.ACKED)) {
                 isAcked = false;
                 break;
