@@ -146,316 +146,300 @@ public class RDBMSConstants {
 
     // prepared statements for Message Store
     protected static final String PS_INSERT_MESSAGE_PART =
-            "INSERT INTO " + CONTENT_TABLE + "(" +
-                    MESSAGE_ID + "," +
-                    MSG_OFFSET + "," +
-                    MESSAGE_CONTENT + ") " +
-                    "VALUES (?, ?, ?)";
-
-    protected static final String PS_DELETE_MESSAGE_PARTS =
-            "DELETE " +
-                    " FROM " + CONTENT_TABLE +
-                    " WHERE " + MESSAGE_ID + "=?";
+            "INSERT INTO " + CONTENT_TABLE + "("
+            + MESSAGE_ID + ","
+            + MSG_OFFSET + ","
+            + MESSAGE_CONTENT + ") VALUES (?, ?, ?)";
 
     protected static final String PS_RETRIEVE_MESSAGE_PART =
-            "SELECT " + MESSAGE_CONTENT +
-                    " FROM " + CONTENT_TABLE +
-                    " WHERE " + MESSAGE_ID + "=?" +
-                    " AND " + MSG_OFFSET + "=?";
+            "SELECT " + MESSAGE_CONTENT
+            + " FROM " + CONTENT_TABLE
+            + " WHERE " + MESSAGE_ID + "=?"
+            + " AND " + MSG_OFFSET + "=?";
 
     protected static final String PS_INSERT_METADATA =
-            "INSERT INTO " + METADATA_TABLE + " (" +
-                    MESSAGE_ID + "," +
-                    QUEUE_ID + "," +
-                    DLC_QUEUE_ID + "," +
-                    METADATA + ") " +
-                    "VALUES ( ?,?,-1,? )";
+            "INSERT INTO " + METADATA_TABLE + " ("
+            + MESSAGE_ID + ","
+            + QUEUE_ID + ","
+            + DLC_QUEUE_ID + ","
+            + METADATA + ")"
+            + " VALUES ( ?,?,-1,? )";
 
     protected static final String PS_INSERT_EXPIRY_DATA =
-            "INSERT INTO " + EXPIRATION_TABLE + " (" +
-                    MESSAGE_ID + "," +
-                    EXPIRATION_TIME + "," +
-                    DESTINATION_QUEUE + ")" +
-                    " VALUES ( ?,?,? )";
+            "INSERT INTO " + EXPIRATION_TABLE + " ("
+            + MESSAGE_ID + ","
+            + EXPIRATION_TIME + ","
+            + DESTINATION_QUEUE + ")"
+            + " VALUES ( ?,?,? )";
 
     protected static final String PS_INSERT_QUEUE =
-            "INSERT INTO " + RDBMSConstants.QUEUES_TABLE + " (" +
-                    RDBMSConstants.QUEUE_NAME + ") " +
-                    " VALUES (?)";
+            "INSERT INTO " + RDBMSConstants.QUEUES_TABLE + " ("
+            + RDBMSConstants.QUEUE_NAME + ")"
+            + "  VALUES (?)";
 
     protected static final String PS_ALIAS_FOR_COUNT = "count";
 
     protected static final String PS_SELECT_QUEUE_MESSAGE_COUNT =
-            "SELECT COUNT(" + QUEUE_ID + ") AS " + PS_ALIAS_FOR_COUNT +
-                    " FROM " + METADATA_TABLE +
-                    " WHERE " + QUEUE_ID + "=?" +
-                    " AND " + DLC_QUEUE_ID + "=-1";
+            "SELECT COUNT(" + QUEUE_ID + ") AS " + PS_ALIAS_FOR_COUNT
+            + " FROM " + METADATA_TABLE
+            + " WHERE " + QUEUE_ID + "=?"
+            + " AND " + DLC_QUEUE_ID + "=-1";
 
     protected static final String PS_SELECT_QUEUE_MESSAGE_COUNT_FROM_DLC =
-            "SELECT COUNT(" + MESSAGE_ID + ") AS " + PS_ALIAS_FOR_COUNT +
-                    " FROM " + METADATA_TABLE +
-                    " WHERE " + QUEUE_ID + "=?" +
-                    " AND " + DLC_QUEUE_ID + "=?";
+            "SELECT COUNT(" + MESSAGE_ID + ")"
+            + " AS " + PS_ALIAS_FOR_COUNT
+            + " FROM " + METADATA_TABLE
+            + " WHERE " + QUEUE_ID + "=?"
+            + " AND " + DLC_QUEUE_ID + "=?";
 
     protected static final String PS_SELECT_MESSAGE_COUNT_IN_DLC =
-            "SELECT COUNT(" + MESSAGE_ID + ") AS " + PS_ALIAS_FOR_COUNT +
-                    " FROM " + METADATA_TABLE +
-                    " WHERE " + DLC_QUEUE_ID + "=?";
+            "SELECT COUNT(" + MESSAGE_ID + ")"
+            + " AS " + PS_ALIAS_FOR_COUNT
+            + " FROM " + METADATA_TABLE
+            + " WHERE " + DLC_QUEUE_ID + "=?";
 
     protected static final String PS_SELECT_METADATA =
-            "SELECT " + METADATA +
-                    " FROM " + METADATA_TABLE +
-                    " WHERE " + MESSAGE_ID + "=?";
+            "SELECT " + METADATA
+            + " FROM " + METADATA_TABLE
+            + " WHERE " + MESSAGE_ID + "=?";
 
     protected static final String PS_SELECT_METADATA_RANGE_FROM_QUEUE =
-            "SELECT " + MESSAGE_ID + "," + METADATA +
-                    " FROM " + METADATA_TABLE +
-                    " WHERE " + QUEUE_ID + "=?" +
-                    " AND " + DLC_QUEUE_ID + "=-1" +
-                    " AND " + MESSAGE_ID +
-                    " BETWEEN ?" +
-                    " AND ?" +
-                    " ORDER BY " + MESSAGE_ID;
+            "SELECT " + MESSAGE_ID + "," + METADATA
+            + " FROM " + METADATA_TABLE
+            + " WHERE " + QUEUE_ID + "=?"
+            + " AND " + DLC_QUEUE_ID + "=-1"
+            + " AND " + MESSAGE_ID + " BETWEEN ? AND ?"
+            + " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_SELECT_METADATA_RANGE_FROM_QUEUE_IN_DLC =
-            "SELECT " + MESSAGE_ID + "," + METADATA +
-                    " FROM " + METADATA_TABLE +
-                    " WHERE " + QUEUE_ID + "=?" +
-                    " AND " + DLC_QUEUE_ID + "=?" +
-                    " AND " + MESSAGE_ID +
-                    " BETWEEN ?" +
-                    " AND ?" +
-                    " ORDER BY " + MESSAGE_ID;
-
-    protected static final String PS_SELECT_METADATA_RANGE_FROM_DLC =
-            "SELECT " + MESSAGE_ID + "," + METADATA +
-                    " FROM " + METADATA_TABLE +
-                    " WHERE " + DLC_QUEUE_ID + "=?" +
-                    " AND " + MESSAGE_ID +
-                    " BETWEEN ?" +
-                    " AND ?" +
-                    " ORDER BY " + MESSAGE_ID;
+            "SELECT " + MESSAGE_ID + "," + METADATA
+            + " FROM " + METADATA_TABLE
+            + " WHERE " + QUEUE_ID + "=?"
+            + " AND " + DLC_QUEUE_ID + "=?"
+            + " AND " + MESSAGE_ID + " BETWEEN ? AND ?"
+            + " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_SELECT_METADATA_FROM_QUEUE =
-            "SELECT " + MESSAGE_ID + "," + METADATA +
-                    " FROM " + METADATA_TABLE +
-                    " WHERE " + MESSAGE_ID + ">?" +
-                    " AND " + QUEUE_ID + "=?" +
-                    " AND " + DLC_QUEUE_ID + "=-1" +
-                    " ORDER BY " + MESSAGE_ID;
+            "SELECT " + MESSAGE_ID + "," + METADATA
+            + " FROM " + METADATA_TABLE
+            + " WHERE " + MESSAGE_ID + ">?"
+            + " AND " + QUEUE_ID + "=?"
+            + " AND " + DLC_QUEUE_ID + "=-1"
+            + " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_SELECT_METADATA_IN_DLC_FOR_QUEUE =
-            "SELECT " + MESSAGE_ID + "," + METADATA +
-                    " FROM " + METADATA_TABLE +
-                    " WHERE " + MESSAGE_ID + ">?" +
-                    " AND " + QUEUE_ID + "=?" +
-                    " AND " + DLC_QUEUE_ID + "=?" +
-                    " ORDER BY " + MESSAGE_ID;
+            "SELECT " + MESSAGE_ID + "," + METADATA
+            + " FROM " + METADATA_TABLE
+            + " WHERE " + MESSAGE_ID + ">?"
+            + " AND " + QUEUE_ID + "=?"
+            + " AND " + DLC_QUEUE_ID + "=?"
+            + " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_SELECT_METADATA_IN_DLC =
-            "SELECT " + MESSAGE_ID + "," + METADATA +
-                    " FROM " + METADATA_TABLE +
-                    " WHERE " + MESSAGE_ID + ">?" +
-                    " AND " + DLC_QUEUE_ID + "=?" +
-                    " ORDER BY " + MESSAGE_ID;
+            "SELECT " + MESSAGE_ID + "," + METADATA
+            + " FROM " + METADATA_TABLE
+            + " WHERE " + MESSAGE_ID + ">?"
+            + " AND " + DLC_QUEUE_ID + "=?"
+            + " ORDER BY " + MESSAGE_ID;
 
     protected static final String PS_SELECT_MESSAGE_IDS_FROM_METADATA_FOR_QUEUE =
-            "SELECT " + MESSAGE_ID +
-                    " FROM " + METADATA_TABLE +
-                    " WHERE " + QUEUE_ID + "=?" +
-                    " ORDER BY " + MESSAGE_ID ;
+            "SELECT " + MESSAGE_ID
+            + " FROM " + METADATA_TABLE
+            + " WHERE " + QUEUE_ID + "=?"
+            + " ORDER BY " + MESSAGE_ID ;
 
-    protected static final String PS_DELETE_EXPIRY_DATA = "DELETE " +
-            " FROM " + EXPIRATION_TABLE +
-            " WHERE " + MESSAGE_ID + "=?";
+    protected static final String PS_DELETE_EXPIRY_DATA =
+            "DELETE  FROM " + EXPIRATION_TABLE
+            + " WHERE " + MESSAGE_ID + "=?";
 
     protected static final String PS_DELETE_METADATA_FROM_QUEUE =
-            "DELETE " +
-                    " FROM " + METADATA_TABLE +
-                    " WHERE " + QUEUE_ID + "=?" +
-                    " AND " + MESSAGE_ID + "=?";
+            "DELETE  FROM " + METADATA_TABLE
+            + " WHERE " + QUEUE_ID + "=?"
+            + " AND " + MESSAGE_ID + "=?";
 
     protected static final String PS_DELETE_METADATA =
-            "DELETE " +
-                    " FROM " + METADATA_TABLE +
-                    " WHERE " + MESSAGE_ID + "=?";
+            "DELETE  FROM " + METADATA_TABLE
+            + " WHERE " + MESSAGE_ID + "=?";
 
-    protected static final String PS_CLEAR_QUEUE_FROM_METADATA = "DELETE " +
-            " FROM " + METADATA_TABLE +
-            " WHERE " + QUEUE_ID + "=?";
+    protected static final String PS_CLEAR_QUEUE_FROM_METADATA =
+            "DELETE  FROM " + METADATA_TABLE
+            + " WHERE " + QUEUE_ID + "=?";
 
-    protected static final String PS_CLEAR_DLC_QUEUE = "DELETE " +
-            " FROM " + METADATA_TABLE +
-            " WHERE " + DLC_QUEUE_ID + "=?";
+    protected static final String PS_CLEAR_DLC_QUEUE =
+            "DELETE  FROM " + METADATA_TABLE
+            + " WHERE " + DLC_QUEUE_ID + "=?";
 
     protected static final String PS_SELECT_EXPIRED_MESSAGES =
-            "SELECT " + MESSAGE_ID + "," + DESTINATION_QUEUE +
-                    " FROM " + EXPIRATION_TABLE +
-                    " WHERE " + EXPIRATION_TIME + "<" + System.currentTimeMillis();
+            "SELECT " + MESSAGE_ID + "," + DESTINATION_QUEUE
+            + " FROM " + EXPIRATION_TABLE
+            + " WHERE " + EXPIRATION_TIME + "<" + System.currentTimeMillis();
 
     protected static final String PS_SELECT_QUEUE_ID =
-            "SELECT " + QUEUE_ID +
-                    " FROM " + QUEUES_TABLE +
-                    " WHERE " + QUEUE_NAME + "=?";
+            "SELECT " + QUEUE_ID
+            + " FROM " + QUEUES_TABLE
+            + " WHERE " + QUEUE_NAME + "=?";
 
     // prepared statements for Andes Context Store
     protected static final String PS_INSERT_DURABLE_SUBSCRIPTION =
-            "INSERT INTO " + DURABLE_SUB_TABLE + " (" +
-                    DESTINATION_IDENTIFIER + ", " +
-                    DURABLE_SUB_ID + ", " +
-                    DURABLE_SUB_DATA + ") " +
-                    " VALUES (?,?,?)";
+            "INSERT INTO " + DURABLE_SUB_TABLE + " ("
+            + DESTINATION_IDENTIFIER + ", "
+            + DURABLE_SUB_ID + ", "
+            + DURABLE_SUB_DATA + ")"
+            + "  VALUES (?,?,?)";
 
     protected static final String PS_UPDATE_DURABLE_SUBSCRIPTION =
-            "UPDATE " + DURABLE_SUB_TABLE +
-                    " SET " + DURABLE_SUB_DATA + "=? " +
-                    " WHERE " + DESTINATION_IDENTIFIER + "=? AND " +
-                    DURABLE_SUB_ID + "=?";
+            "UPDATE " + DURABLE_SUB_TABLE
+            + " SET " + DURABLE_SUB_DATA + "=?"
+            + " WHERE " + DESTINATION_IDENTIFIER + "=?"
+            + " AND " + DURABLE_SUB_ID + "=?";
 
     protected static final String PS_UPDATE_DURABLE_SUBSCRIPTION_BY_ID =
-            "UPDATE " + DURABLE_SUB_TABLE +
-            " SET " + DURABLE_SUB_DATA + "=? " +
-            " WHERE " + DURABLE_SUB_ID + "=?";
+            "UPDATE " + DURABLE_SUB_TABLE
+            + " SET " + DURABLE_SUB_DATA + "=?"
+            + " WHERE " + DURABLE_SUB_ID + "=?";
 
     protected static final String PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS =
-            "SELECT " + DESTINATION_IDENTIFIER + "," + DURABLE_SUB_DATA +
-                    " FROM " + DURABLE_SUB_TABLE;
+            "SELECT " + DESTINATION_IDENTIFIER + "," + DURABLE_SUB_DATA
+            + " FROM " + DURABLE_SUB_TABLE;
 
     protected static final String PS_SELECT_ALL_DURABLE_SUBSCRIPTIONS_WITH_SUB_ID =
-            "SELECT " + DURABLE_SUB_ID + "," + DURABLE_SUB_DATA +
-            " FROM " + DURABLE_SUB_TABLE;
+            "SELECT " + DURABLE_SUB_ID + "," + DURABLE_SUB_DATA
+            + " FROM " + DURABLE_SUB_TABLE;
 
     protected static final String PS_DELETE_DURABLE_SUBSCRIPTION =
-            "DELETE FROM " + DURABLE_SUB_TABLE +
-                    " WHERE " + DESTINATION_IDENTIFIER + "=? " +
-                    " AND " + DURABLE_SUB_ID + "=?";
+            "DELETE FROM " + DURABLE_SUB_TABLE
+            + " WHERE " + DESTINATION_IDENTIFIER + "=?"
+            + " AND " + DURABLE_SUB_ID + "=?";
 
     protected static final String PS_INSERT_NODE_INFO =
-            "INSERT INTO " + NODE_INFO_TABLE + " ( " +
-                    NODE_ID + "," +
-                    NODE_INFO + ") " +
-                    " VALUES (?,?)";
+            "INSERT INTO " + NODE_INFO_TABLE + " ( "
+            + NODE_ID + ","
+            + NODE_INFO + ")"
+            + " VALUES (?,?)";
 
     protected static final String PS_SELECT_ALL_NODE_INFO =
-            "SELECT " + NODE_ID + "," + NODE_INFO +
-                    " FROM " + NODE_INFO_TABLE;
+            "SELECT " + NODE_ID + "," + NODE_INFO
+            + " FROM " + NODE_INFO_TABLE;
 
     protected static final String PS_DELETE_NODE_INFO =
-            "DELETE FROM " + NODE_INFO_TABLE +
-                    " WHERE " + NODE_ID + "=?";
+            "DELETE FROM " + NODE_INFO_TABLE
+            + " WHERE " + NODE_ID + "=?";
 
     protected static final String PS_STORE_EXCHANGE_INFO =
-            "INSERT INTO " + EXCHANGES_TABLE + " (" +
-                    EXCHANGE_NAME + "," +
-                    EXCHANGE_DATA + ") " +
-                    " VALUES (?,?)";
+            "INSERT INTO " + EXCHANGES_TABLE + " ("
+            + EXCHANGE_NAME + ","
+            + EXCHANGE_DATA + ")"
+            + " VALUES (?,?)";
 
     protected static final String PS_SELECT_ALL_EXCHANGE_INFO =
-            "SELECT " + EXCHANGE_DATA +
-                    " FROM " + EXCHANGES_TABLE;
+            "SELECT " + EXCHANGE_DATA
+            + " FROM " + EXCHANGES_TABLE;
 
     protected static final String PS_SELECT_EXCHANGE =
-            "SELECT " + EXCHANGE_DATA +
-                    " FROM " + EXCHANGES_TABLE +
-                    " WHERE " + EXCHANGE_NAME + "=?";
+            "SELECT " + EXCHANGE_DATA
+            + " FROM " + EXCHANGES_TABLE
+            + " WHERE " + EXCHANGE_NAME + "=?";
 
     protected static final String PS_DELETE_EXCHANGE =
-            "DELETE FROM " + EXCHANGES_TABLE +
-                    " WHERE " + EXCHANGE_NAME + "=?";
+            "DELETE FROM " + EXCHANGES_TABLE
+            + " WHERE " + EXCHANGE_NAME + "=?";
 
     protected static final String PS_INSERT_QUEUE_INFO =
-            "INSERT INTO " + QUEUE_INFO_TABLE + " (" +
-                    QUEUE_NAME + "," + QUEUE_DATA + ") " +
-                    " VALUES (?,?)";
+            "INSERT INTO " + QUEUE_INFO_TABLE + " ("
+            + QUEUE_NAME + ","
+            + QUEUE_DATA + ")"
+            + " VALUES (?,?)";
 
     protected static final String PS_SELECT_ALL_QUEUE_INFO =
-            "SELECT " + QUEUE_DATA +
-                    " FROM " + QUEUE_INFO_TABLE;
+            "SELECT " + QUEUE_DATA
+            + " FROM " + QUEUE_INFO_TABLE;
 
     protected static final String PS_DELETE_QUEUE_INFO =
-            "DELETE FROM " + QUEUE_INFO_TABLE +
-                    " WHERE " + QUEUE_NAME + "=?";
+            "DELETE FROM " + QUEUE_INFO_TABLE
+            + " WHERE " + QUEUE_NAME + "=?";
 
     protected static final String PS_INSERT_BINDING =
-            "INSERT INTO " + BINDINGS_TABLE + " ( " +
-                    BINDING_EXCHANGE_NAME + "," +
-                    BINDING_QUEUE_NAME + "," +
-                    BINDING_INFO + " ) " +
-                    " VALUES (?,?,?)";
+            "INSERT INTO " + BINDINGS_TABLE + " ( "
+            + BINDING_EXCHANGE_NAME + ","
+            + BINDING_QUEUE_NAME + ","
+            + BINDING_INFO + " )"
+            + " VALUES (?,?,?)";
 
     protected static final String PS_SELECT_BINDINGS_FOR_EXCHANGE =
-            "SELECT " + BINDING_INFO +
-                    " FROM " + BINDINGS_TABLE +
-                    " WHERE " + BINDING_EXCHANGE_NAME + "=?";
+            "SELECT " + BINDING_INFO
+            + " FROM " + BINDINGS_TABLE
+            + " WHERE " + BINDING_EXCHANGE_NAME + "=?";
 
     protected static final String PS_DELETE_BINDING =
-            "DELETE FROM " + BINDINGS_TABLE +
-                    " WHERE " + BINDING_EXCHANGE_NAME + "=? " +
-                    " AND " + BINDING_QUEUE_NAME + "=?";
+            "DELETE FROM " + BINDINGS_TABLE
+            + " WHERE " + BINDING_EXCHANGE_NAME + "=?"
+            + " AND " + BINDING_QUEUE_NAME + "=?";
 
     protected static final String PS_UPDATE_METADATA_QUEUE =
-            "UPDATE " + METADATA_TABLE +
-                    " SET " + QUEUE_ID + " = ? " +
-                    "WHERE " + MESSAGE_ID + " = ? " +
-                    "AND " + QUEUE_ID + " = ?";
+            "UPDATE " + METADATA_TABLE
+            + " SET " + QUEUE_ID + " = ?"
+            + " WHERE " + MESSAGE_ID + " = ?"
+            + " AND " + QUEUE_ID + " = ?";
 
     protected static final String PS_UPDATE_METADATA =
-            "UPDATE " + METADATA_TABLE +
-                    " SET " + QUEUE_ID + " = ?," + METADATA + " = ?" +
-                    " WHERE " + MESSAGE_ID + " = ?" +
-                    " AND " + QUEUE_ID + " = ?";
+            "UPDATE " + METADATA_TABLE
+            + " SET " + QUEUE_ID + " = ?," + METADATA + " = ?"
+            + " WHERE " + MESSAGE_ID + " = ?"
+            + " AND " + QUEUE_ID + " = ?";
     /**
      * Prepared Statement to insert a new queue counter.
      */
     protected static final String PS_INSERT_QUEUE_COUNTER =
-            "INSERT INTO " + QUEUE_COUNTER_TABLE + " (" +
-                    QUEUE_NAME + "," + MESSAGE_COUNT + " ) " +
-                    " VALUES ( ?,? )";
+            "INSERT INTO " + QUEUE_COUNTER_TABLE + " ("
+            + QUEUE_NAME + ","
+            + MESSAGE_COUNT + " )"
+            + " VALUES ( ?,? )";
 
     /**
      * Prepared Statement to select count for a queue prepared statement
      */
     protected static final String PS_SELECT_QUEUE_COUNT =
-            "SELECT " + MESSAGE_COUNT +
-                    " FROM " + QUEUE_COUNTER_TABLE +
-                    " WHERE " + QUEUE_NAME + "=?";
+            "SELECT " + MESSAGE_COUNT
+            + " FROM " + QUEUE_COUNTER_TABLE
+            + " WHERE " + QUEUE_NAME + "=?";
 
     /**
      * Prepared Statement to delete queue counter with a given queue name
      */
     protected static final String PS_DELETE_QUEUE_COUNTER =
-            "DELETE FROM " + QUEUE_COUNTER_TABLE +
-                    " WHERE " + QUEUE_NAME + "=?";
+            "DELETE FROM " + QUEUE_COUNTER_TABLE
+            + " WHERE " + QUEUE_NAME + "=?";
 
     /**
      * Increments the queue count by a given value in a atomic db update
      */
     protected static final String PS_INCREMENT_QUEUE_COUNT =
-            "UPDATE " + QUEUE_COUNTER_TABLE +
-                    " SET " + MESSAGE_COUNT + "=" + MESSAGE_COUNT + "+? " +
-                    " WHERE " + QUEUE_NAME + "=?";
+            "UPDATE " + QUEUE_COUNTER_TABLE
+            + " SET " + MESSAGE_COUNT + "="
+            + MESSAGE_COUNT + "+?"
+            + " WHERE " + QUEUE_NAME + "=?";
 
     /**
      * Decrement the queue count by a given value in a atomic db update
      */
     protected static final String PS_DECREMENT_QUEUE_COUNT =
-            "UPDATE " + QUEUE_COUNTER_TABLE +
-                    " SET " + MESSAGE_COUNT + "=" + MESSAGE_COUNT + "-? " +
-                    " WHERE " + QUEUE_NAME + "=?";
+            "UPDATE " + QUEUE_COUNTER_TABLE
+            + " SET " + MESSAGE_COUNT + "=" + MESSAGE_COUNT + "-?"
+            + " WHERE " + QUEUE_NAME + "=?";
 
     protected static final String PS_RESET_QUEUE_COUNT =
-            "UPDATE " + QUEUE_COUNTER_TABLE +
-                    " SET " + MESSAGE_COUNT + "= 0" +
-                    " WHERE " + QUEUE_NAME + "=?";
-    
-    
+            "UPDATE " + QUEUE_COUNTER_TABLE
+            + " SET " + MESSAGE_COUNT + "= 0"
+            + " WHERE " + QUEUE_NAME + "=?";
+
     /**
      * Prepared Statement to test inserts are working for message store
      */
     protected static final String PS_TEST_MSG_STORE_INSERT =
-            "INSERT INTO " + MSG_STORE_STATUS_TABLE + " (" +
-                    NODE_ID + "," + TIME_STAMP + " ) " +
-                    " VALUES ( ?,? )";
+            "INSERT INTO " + MSG_STORE_STATUS_TABLE + " ("
+            + NODE_ID + ","
+            + TIME_STAMP + " )"
+            + " VALUES ( ?,? )";
 
     /**
      * Prepared statements to clear slot storage tables
@@ -477,311 +461,308 @@ public class RDBMSConstants {
      * Prepared statement to create a new slot in database
      */
     protected static final String PS_INSERT_SLOT =
-            "INSERT INTO " + SLOT_TABLE + " (" +
-                    START_MESSAGE_ID + "," +
-                    END_MESSAGE_ID + "," +
-                    STORAGE_QUEUE_NAME + "," +
-                    SLOT_STATE + "," +
-                    ASSIGNED_NODE_ID + ")" +
-                    " VALUES (?,?,?," + SlotState.ASSIGNED.getCode() + ",?)";
+            "INSERT INTO " + SLOT_TABLE + " ("
+            + START_MESSAGE_ID + ","
+            + END_MESSAGE_ID + ","
+            + STORAGE_QUEUE_NAME + ","
+            + SLOT_STATE + ","
+            + ASSIGNED_NODE_ID + ")"
+            + " VALUES (?,?,?," + SlotState.ASSIGNED.getCode() + ",?)";
 
     /**
      * Prepared statement to delete a slot from database
      */
     protected static final String PS_DELETE_SLOT =
-            "DELETE FROM " + SLOT_TABLE +
-                    " WHERE " + START_MESSAGE_ID + "=?" +
-                    " AND " + END_MESSAGE_ID + "=?";
+            "DELETE FROM " + SLOT_TABLE
+            + " WHERE " + START_MESSAGE_ID + "=?"
+            + " AND " + END_MESSAGE_ID + "=?";
 
     /**
      * Prepared statement to delete a slot by queue name
      */
     protected static final String PS_DELETE_SLOTS_BY_QUEUE_NAME =
-            "DELETE FROM " + SLOT_TABLE +
-                    " WHERE " + STORAGE_QUEUE_NAME + "=?";
+            "DELETE FROM " + SLOT_TABLE
+            + " WHERE " + STORAGE_QUEUE_NAME + "=?";
 
     /**
      * Prepared statement to assign a slot to node
      */
     protected static final String PS_INSERT_SLOT_ASSIGNMENT =
-            "UPDATE " + SLOT_TABLE +
-                    " SET " +
-                    ASSIGNED_NODE_ID + "=?, " +
-                    ASSIGNED_QUEUE_NAME + "=?," +
-                    SLOT_STATE + "=" + SlotState.ASSIGNED.getCode() +
-                    " WHERE " + START_MESSAGE_ID + "=?" +
-                    " AND " + END_MESSAGE_ID + "=?";
+            "UPDATE " + SLOT_TABLE
+            + " SET " + ASSIGNED_NODE_ID + "=?, "
+            + ASSIGNED_QUEUE_NAME + "=?,"
+            + SLOT_STATE + "=" + SlotState.ASSIGNED.getCode()
+            + " WHERE " + START_MESSAGE_ID + "=?"
+            + " AND " + END_MESSAGE_ID + "=?";
 
     /**
      * Prepared statement to un-assign a slot from node
      */
     protected static final String PS_DELETE_SLOT_ASSIGNMENT =
-            "UPDATE " + SLOT_TABLE +
-                    " SET " +
-                    ASSIGNED_NODE_ID + "=NULL, " +
-                    ASSIGNED_QUEUE_NAME + "=NULL, " +
-                    SLOT_STATE + "=" + SlotState.RETURNED.getCode() +
-                    " WHERE " + START_MESSAGE_ID + "=?" +
-                    " AND " + END_MESSAGE_ID + "=?";
+            "UPDATE " + SLOT_TABLE
+            + " SET " + ASSIGNED_NODE_ID + "=NULL, "
+            + ASSIGNED_QUEUE_NAME + "=NULL, "
+            + SLOT_STATE + "=" + SlotState.RETURNED.getCode()
+            + " WHERE " + START_MESSAGE_ID + "=?"
+            + " AND " + END_MESSAGE_ID + "=?";
 
     /**
      * Prepared statement to un-assign slots assigned to a given queue
      */
     protected static final String PS_DELETE_SLOT_ASSIGNMENT_BY_QUEUE_NAME =
-            "UPDATE " + SLOT_TABLE +
-                    " SET " +
-                    ASSIGNED_NODE_ID + " = NULL, " +
-                    ASSIGNED_QUEUE_NAME + " = NULL, " +
-                    SLOT_STATE + "=" + SlotState.RETURNED.getCode() +
-                    " WHERE " + ASSIGNED_NODE_ID + "= ?" +
-                    " AND " + ASSIGNED_QUEUE_NAME + "= ?";
+            "UPDATE " + SLOT_TABLE
+            + " SET " + ASSIGNED_NODE_ID + " = NULL, "
+            + ASSIGNED_QUEUE_NAME + " = NULL, "
+            + SLOT_STATE + "=" + SlotState.RETURNED.getCode()
+            + " WHERE " + ASSIGNED_NODE_ID + "= ?"
+            + " AND " + ASSIGNED_QUEUE_NAME + "= ?";
 
     /**
      * Prepared statement to get slots assigned to a give node
      */
     protected static final String PS_GET_ASSIGNED_SLOTS_BY_NODE_ID =
-            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME +
-                    " FROM " + SLOT_TABLE +
-                    " WHERE " + ASSIGNED_NODE_ID + "=?" +
-                    " AND " + SLOT_STATE + "=" + SlotState.ASSIGNED.getCode() +
-                    " ORDER BY " + SLOT_ID;
+            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME
+            + " FROM " + SLOT_TABLE
+            + " WHERE " + ASSIGNED_NODE_ID + "=?"
+            + " AND " + SLOT_STATE + "=" + SlotState.ASSIGNED.getCode()
+            + " ORDER BY " + SLOT_ID;
 
     /**
      * Prepared statements for setting slot states
      */
     protected static final String PS_SET_SLOT_STATE =
-            "UPDATE " + SLOT_TABLE +
-                    " SET " + SLOT_STATE + " = ?" +
-                    " WHERE " + START_MESSAGE_ID + " = ?" +
-                    " AND " + END_MESSAGE_ID + " = ?";
+            "UPDATE " + SLOT_TABLE
+            + " SET " + SLOT_STATE + " = ?"
+            + " WHERE " + START_MESSAGE_ID + " = ?"
+            + " AND " + END_MESSAGE_ID + " = ?";
 
     /**
      * Prepared statement for selecting unassigned slot
      */
 
     protected static final String PS_SELECT_ALL_SLOTS_BY_QUEUE_NAME =
-            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME +
-                    " FROM " + SLOT_TABLE +
-                    " WHERE " + STORAGE_QUEUE_NAME + " =? " +
-                    " AND " + SLOT_STATE + " = " + SlotState.ASSIGNED.getCode() +
-                    " ORDER BY " + SLOT_ID;
+            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME
+            + " FROM " + SLOT_TABLE
+            + " WHERE " + STORAGE_QUEUE_NAME + " =?"
+            + " AND " + SLOT_STATE + " = " + SlotState.ASSIGNED.getCode()
+            + " ORDER BY " + SLOT_ID;
 
     protected static final String PS_SELECT_UNASSIGNED_SLOT =
-            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME +
-                    " FROM " + SLOT_TABLE +
-                    " WHERE " + STORAGE_QUEUE_NAME + " =? " +
-                    " AND " + SLOT_STATE + " = " + SlotState.RETURNED.getCode() +
-                    " ORDER BY " + SLOT_ID;
+            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME
+            + " FROM " + SLOT_TABLE
+            + " WHERE " + STORAGE_QUEUE_NAME + " =?"
+            + " AND " + SLOT_STATE + " = " + SlotState.RETURNED.getCode()
+            + " ORDER BY " + SLOT_ID;
 
     /**
      * Prepared statement for selecting oldest overlapped slot
      */
     protected static final String PS_SELECT_OVERLAPPED_SLOT =
-            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME +
-                    " FROM " + SLOT_TABLE +
-                    " WHERE " + STORAGE_QUEUE_NAME + "=?"  +
-                    " AND " + SLOT_STATE + "=" + SlotState.OVERLAPPED.getCode() +
-                    " ORDER BY " + SLOT_ID;
+            "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME
+            + " FROM " + SLOT_TABLE
+            + " WHERE " + STORAGE_QUEUE_NAME + "=?"
+            + " AND " + SLOT_STATE + "=" + SlotState.OVERLAPPED.getCode()
+            + " ORDER BY " + SLOT_ID;
 
     /**
      * Prepared statement for getting last assigned id for queue
      */
     protected static final String PS_SELECT_QUEUE_TO_LAST_ASSIGNED_ID =
-            "SELECT " + MESSAGE_ID +
-                    " FROM " + QUEUE_TO_LAST_ASSIGNED_ID +
-                    " WHERE " + QUEUE_NAME + "=?";
+            "SELECT " + MESSAGE_ID
+            + " FROM " + QUEUE_TO_LAST_ASSIGNED_ID
+            + " WHERE " + QUEUE_NAME + "=?";
 
     /**
      * Prepared statement to insert last assigned id of queue
      */
     protected static final String PS_INSERT_QUEUE_TO_LAST_ASSIGNED_ID =
-            "INSERT INTO " + QUEUE_TO_LAST_ASSIGNED_ID + "(" +
-                    QUEUE_NAME + "," +
-                    MESSAGE_ID + ")" +
-                    " VALUES (?,?)";
+            "INSERT INTO " + QUEUE_TO_LAST_ASSIGNED_ID + "("
+            + QUEUE_NAME + ","
+            + MESSAGE_ID + ")"
+            + " VALUES (?,?)";
 
     /**
      * Prepared statement to update last assigned id of queue
      */
     protected static final String PS_UPDATE_QUEUE_TO_LAST_ASSIGNED_ID =
-            "UPDATE " + QUEUE_TO_LAST_ASSIGNED_ID +
-                    " SET " + MESSAGE_ID + "=? " +
-                    " WHERE " + QUEUE_NAME + "=?";
+            "UPDATE " + QUEUE_TO_LAST_ASSIGNED_ID
+            + " SET " + MESSAGE_ID + "=?"
+            + " WHERE " + QUEUE_NAME + "=?";
 
     /**
      * Prepared statement to get last published id of node
      */
     protected static final String PS_SELECT_NODE_TO_LAST_PUBLISHED_ID =
-            "SELECT " + MESSAGE_ID +
-                    " FROM " + NODE_TO_LAST_PUBLISHED_ID +
-                    " WHERE " + NODE_ID + "=?";
+            "SELECT " + MESSAGE_ID
+            + " FROM " + NODE_TO_LAST_PUBLISHED_ID
+            + " WHERE " + NODE_ID + "=?";
 
     /**
      * Prepared statement to insert last published id of a node
      */
     protected static final String PS_INSERT_NODE_TO_LAST_PUBLISHED_ID =
-            "INSERT INTO " + NODE_TO_LAST_PUBLISHED_ID + "(" +
-                    NODE_ID + "," +
-                    MESSAGE_ID + ") " +
-                    " VALUES (?,?)";
+            "INSERT INTO " + NODE_TO_LAST_PUBLISHED_ID + "("
+            + NODE_ID + ","
+            + MESSAGE_ID + ")"
+            + " VALUES (?,?)";
 
     protected static final String PS_DELETE_PUBLISHER_ID =
-            "DELETE FROM " + NODE_TO_LAST_PUBLISHED_ID +
-            " WHERE " + NODE_ID + "=?";
+            "DELETE FROM " + NODE_TO_LAST_PUBLISHED_ID
+            + " WHERE " + NODE_ID + "=?";
 
     /**
      * Prepared statement to update last published id of a node
      */
     protected static final String PS_UPDATE_NODE_TO_LAST_PUBLISHED_ID =
-            "UPDATE " + NODE_TO_LAST_PUBLISHED_ID +
-                    " SET " + MESSAGE_ID + "=? " +
-                    " WHERE " + NODE_ID + "=?";
+            "UPDATE " + NODE_TO_LAST_PUBLISHED_ID
+            + " SET " + MESSAGE_ID + "=?"
+            + " WHERE " + NODE_ID + "=?";
 
     /**
      * Prepared statement to get list of message published nodes
      */
     protected static final String PS_SELECT_MESSAGE_PUBLISHED_NODES =
-            "SELECT " + NODE_ID +
-                    " FROM " + NODE_TO_LAST_PUBLISHED_ID;
+            "SELECT " + NODE_ID
+            + " FROM " + NODE_TO_LAST_PUBLISHED_ID;
 
     /**
      * Prepared statement to insert slot message ids
      */
     protected static final String PS_INSERT_SLOT_MESSAGE_ID =
-            "INSERT INTO " + SLOT_MESSAGE_ID_TABLE + "(" +
-                    QUEUE_NAME + "," +
-                    MESSAGE_ID + ") " +
-                    " VALUES (?,?)";
+            "INSERT INTO " + SLOT_MESSAGE_ID_TABLE
+            + "(" + QUEUE_NAME + ","
+            + MESSAGE_ID + ")"
+            + " VALUES (?,?)";
 
     /**
      * Prepared statement to get slot message ids
      */
     protected static final String PS_GET_MESSAGE_IDS =
-            "SELECT " + MESSAGE_ID +
-                    " FROM " + SLOT_MESSAGE_ID_TABLE +
-                    " WHERE " + QUEUE_NAME + "=?" +
-                    " ORDER BY " + MESSAGE_ID;
+            "SELECT " + MESSAGE_ID
+            + " FROM " + SLOT_MESSAGE_ID_TABLE
+            + " WHERE " + QUEUE_NAME + "=?"
+            + " ORDER BY " + MESSAGE_ID;
 
     /**
      * Prepared statement to delete slot message ids
      */
     protected static final String PS_DELETE_MESSAGE_ID =
-            "DELETE FROM " + SLOT_MESSAGE_ID_TABLE +
-                    " WHERE " + MESSAGE_ID + "=?";
+            "DELETE FROM " + SLOT_MESSAGE_ID_TABLE
+            + " WHERE " + MESSAGE_ID + "=?";
 
     /**
      * Prepared statement to delete message ids by queue name
      */
     protected static final String PS_DELETE_MESSAGE_IDS_BY_QUEUE_NAME =
-            "DELETE FROM " + SLOT_MESSAGE_ID_TABLE +
-                    " WHERE " + QUEUE_NAME + "=?";
+            "DELETE FROM " + SLOT_MESSAGE_ID_TABLE
+            + " WHERE " + QUEUE_NAME + "=?";
 
     /**
      * Prepared statement to get all queues
      */
     protected static final String PS_GET_ALL_QUEUES =
-            "SELECT DISTINCT " + STORAGE_QUEUE_NAME +
-                " FROM " + SLOT_TABLE;
-
+            "SELECT DISTINCT " + STORAGE_QUEUE_NAME
+            + " FROM " + SLOT_TABLE;
 
     /**
      * Prepared Statement to test deletes are working for message store
      */
     protected static final String PS_TEST_MSG_STORE_SELECT =
-            "SELECT " + NODE_ID + ", " + TIME_STAMP + " FROM " + MSG_STORE_STATUS_TABLE + 
-            " WHERE "+ NODE_ID +"=? AND " + TIME_STAMP+ "=?";
+            "SELECT " + NODE_ID + ", " + TIME_STAMP
+            + " FROM " + MSG_STORE_STATUS_TABLE
+            + " WHERE " + NODE_ID +"=?"
+            + " AND " + TIME_STAMP+ "=?";
     
     /**
      * Prepared Statement to test deletes are working for message store
      */
     protected static final String PS_TEST_MSG_STORE_DELETE =
-    "DELETE FROM " + MSG_STORE_STATUS_TABLE + " WHERE " + NODE_ID + " = ?" + " AND " 
-            + TIME_STAMP +" = ?";
+            "DELETE FROM " + MSG_STORE_STATUS_TABLE
+            + " WHERE " + NODE_ID + " = ?"
+            + " AND " + TIME_STAMP +" = ?";
 
 
     /**
      * Prepared statement to update retained metadata
      */
     protected static final String PS_UPDATE_RETAINED_METADATA =
-            "UPDATE " + RETAINED_METADATA_TABLE +
-            " SET " + MESSAGE_ID + " = ?, " + METADATA + " = ?" +
-            " WHERE " + TOPIC_ID + " = ?";
+            "UPDATE " + RETAINED_METADATA_TABLE
+            + " SET " + MESSAGE_ID + " = ?, " + METADATA + " = ?"
+            + " WHERE " + TOPIC_ID + " = ?";
 
     /**
      * Prepared statement to delete messages from retained content
      */
     protected static final String PS_DELETE_RETAIN_MESSAGE_PARTS =
-            "DELETE" +
-            " FROM " + RETAINED_CONTENT_TABLE +
-            " WHERE " + MESSAGE_ID + "=?";
+            "DELETE FROM " + RETAINED_CONTENT_TABLE
+            + " WHERE " + MESSAGE_ID + "=?";
 
     /**
      * Prepared statement to delete messages from retained metadata
      */
     protected static final String PS_DELETE_RETAIN_MESSAGE_METADATA =
-            "DELETE" +
-            " FROM " + RETAINED_METADATA_TABLE +
-            " WHERE " + MESSAGE_ID + "=?";
+            "DELETE FROM " + RETAINED_METADATA_TABLE
+            + " WHERE " + MESSAGE_ID + "=?";
 
     /**
      * Prepared statement to insert messages to retained content
      */
     protected static final String PS_INSERT_RETAIN_MESSAGE_PART =
-            "INSERT INTO " + RETAINED_CONTENT_TABLE + "(" +
-            MESSAGE_ID + "," +
-            MSG_OFFSET + "," +
-            MESSAGE_CONTENT + ") " +
-            "VALUES (?, ?, ?)";
+            "INSERT INTO " + RETAINED_CONTENT_TABLE + "("
+            + MESSAGE_ID + ","
+            + MSG_OFFSET + ","
+            + MESSAGE_CONTENT + ")"
+            + " VALUES (?, ?, ?)";
 
     /**
      * Prepared statement to select all retained topics from retained metadata
      */
     protected static final String PS_SELECT_ALL_RETAINED_TOPICS =
-            "SELECT " + TOPIC_NAME +
-            " FROM " + RETAINED_METADATA_TABLE;
+            "SELECT " + TOPIC_NAME
+            + " FROM " + RETAINED_METADATA_TABLE;
 
     /**
      * Prepared statement to select retained message metadata for a given topic id
      */
     protected static final String PS_SELECT_RETAINED_METADATA =
-            "SELECT " + MESSAGE_ID + ", " + METADATA +
-            " FROM " + RETAINED_METADATA_TABLE +
-            " WHERE " + TOPIC_ID + "=?";
+            "SELECT " + MESSAGE_ID + ", " + METADATA
+            + " FROM " + RETAINED_METADATA_TABLE
+            + " WHERE " + TOPIC_ID + "=?";
 
     /**
      * Prepared statement to select retained message content for given message id
      */
     protected static final String PS_RETRIEVE_RETAIN_MESSAGE_PART =
-            "SELECT " + MSG_OFFSET + ", " + MESSAGE_CONTENT +
-            " FROM " + RETAINED_CONTENT_TABLE +
-            " WHERE " + MESSAGE_ID + "=?";
+            "SELECT " + MSG_OFFSET + ", " + MESSAGE_CONTENT
+            + " FROM " + RETAINED_CONTENT_TABLE
+            + " WHERE " + MESSAGE_ID + "=?";
 
     /**
      * Prepared statement to select retained metadata for given topic name
      */
     protected static final String PS_SELECT_RETAINED_MESSAGE_ID =
-            "SELECT " + TOPIC_ID + ", " + MESSAGE_ID +
-            " FROM " + RETAINED_METADATA_TABLE +
-            " WHERE " + TOPIC_NAME + "=?";
+            "SELECT " + TOPIC_ID + ", " + MESSAGE_ID
+            + " FROM " + RETAINED_METADATA_TABLE
+            + " WHERE " + TOPIC_NAME + "=?";
 
     /**
      * Prepared statement to insert retained metadata
      */
     protected static final String PS_INSERT_RETAINED_METADATA =
-            "INSERT INTO " + RETAINED_METADATA_TABLE + " (" +
-            TOPIC_ID + "," +
-            TOPIC_NAME + "," +
-            MESSAGE_ID + "," +
-            METADATA + ")" +
-            " VALUES ( ?,?,?,? )";
+            "INSERT INTO " + RETAINED_METADATA_TABLE + " ("
+            + TOPIC_ID + ","
+            + TOPIC_NAME + ","
+            + MESSAGE_ID + ","
+            + METADATA + ")"
+            + " VALUES ( ?,?,?,? )";
 
     /**
      * Prepared statement to move messages to DLC
      */
     protected static final String PS_MOVE_METADATA_TO_DLC =
-            "UPDATE " + METADATA_TABLE +
-            " SET " + DLC_QUEUE_ID + "=?" +
-            " WHERE " + MESSAGE_ID + "=?";
+            "UPDATE " + METADATA_TABLE
+            + " SET " + DLC_QUEUE_ID + "=?"
+            + " WHERE " + MESSAGE_ID + "=?";
 
 
     
@@ -901,9 +882,12 @@ public class RDBMSConstants {
     /**
      * Messages related to checking message store is operational.
      */
-    protected static final String TASK_TEST_MESSAGE_STORE_OPERATIONAL_READ = "testing data can be read from message store.";
-    protected static final String TASK_TEST_MESSAGE_STORE_OPERATIONAL_INSERT = "testing data can be inserted to message store.";
-    protected static final String TASK_TEST_MESSAGE_STORE_OPERATIONAL_DELETE = "testing data can be deleted from message store.";
+    protected static final String TASK_TEST_MESSAGE_STORE_OPERATIONAL_READ = "testing data can be read from message"
+                                                                             + " store.";
+    protected static final String TASK_TEST_MESSAGE_STORE_OPERATIONAL_INSERT = "testing data can be inserted to message"
+                                                                               + " store.";
+    protected static final String TASK_TEST_MESSAGE_STORE_OPERATIONAL_DELETE = "testing data can be deleted from"
+                                                                               + " message store.";
     /**
      * Only public static constants are in this class. No need to instantiate.
      */
