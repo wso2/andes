@@ -233,6 +233,23 @@ public class MessageFlusher {
         return messageDeliveryInfo;
     }
 
+    /**
+     * Initialize message flusher for delivering messages for the given destination. This is the destination consumers
+     * subscribe.
+     *
+     * @param destination
+     *         Delivery Destination
+     * @throws AndesException
+     */
+    public void prepareForDelivery(String destination) throws AndesException {
+        MessageDeliveryInfo messageDeliveryInfo = new MessageDeliveryInfo();
+        messageDeliveryInfo.destination = destination;
+        Collection<LocalSubscription> localSubscribersForQueue = subscriptionStore
+                .getActiveLocalSubscribersForQueuesAndTopics(destination);
+
+        messageDeliveryInfo.iterator = localSubscribersForQueue.iterator();
+        subscriptionCursar4QueueMap.put(destination, messageDeliveryInfo);
+    }
 
     /**
      * Validates if the the buffer is empty, the messages will be read through this buffer and will be delivered to the
@@ -388,7 +405,6 @@ public class MessageFlusher {
      */
     public void clearUpAllBufferedMessagesForDelivery(String destination) {
         subscriptionCursar4QueueMap.get(destination).clearReadButUndeliveredMessages();
-
     }
 
     /**

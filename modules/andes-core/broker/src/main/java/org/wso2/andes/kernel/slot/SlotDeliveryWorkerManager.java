@@ -91,7 +91,7 @@ public class SlotDeliveryWorkerManager {
      *
      * @param storageQueueName  name of the queue to start slot delivery worker for
      */
-    public synchronized void startSlotDeliveryWorker(String storageQueueName, String destinaton) {
+    public synchronized void startSlotDeliveryWorker(String storageQueueName, String destinaton) throws AndesException {
         int slotDeliveryWorkerId = getIdForSlotDeliveryWorker(storageQueueName);
         if (getSlotDeliveryWorkerMap().containsKey(slotDeliveryWorkerId)) {
             //if this queue is not already in the queue
