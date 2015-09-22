@@ -27,6 +27,7 @@ import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessageStatus;
 import org.wso2.andes.kernel.MessagingEngine;
+import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.mqtt.MQTTLocalSubscription;
 
 import java.util.ArrayList;
@@ -51,7 +52,8 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
     private OutboundSubscription subscription;
 
     /**
-     * Map to track messages being sent <message id, MsgData reference>
+     * Map to track messages being sent <message id, MsgData reference>. This map bares message
+     * reference at kernel side
      */
     private final ConcurrentHashMap<Long, DeliverableAndesMetadata> messageSendingTracker
             = new ConcurrentHashMap<>();
@@ -108,37 +110,13 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      * @return true if the send is a success
      * @throws AndesException
      */
-    public boolean sendMessageToSubscriber(DeliverableAndesMetadata messageMetadata, AndesContent content) throws
+    public boolean sendMessageToSubscriber(ProtocolMessage messageMetadata, AndesContent content) throws
             AndesException {
-
-        //mark message as came into the subscription for deliver
-        messageMetadata.markAsDispatchedToDeliver(getChannelID());
 
         //It is needed to add the message reference to the tracker and increase un-ack message count BEFORE
         // actual message send because if it is not done ack can come BEFORE executing those lines in parallel world
         addMessageToSendingTracker(messageMetadata);
-        boolean sendSuccess = subscription.sendMessageToSubscriber(messageMetadata, content);
-        if(sendSuccess) {
-            return true;
-        } else {
-            //Send failed. Rollback changes done that assumed send would be success
-            messageMetadata.markDeliveryFailureOfASentMessage(getChannelID());
-            messageMetadata.removeScheduledDeliveryChannel(getChannelID());
-            messageSendingTracker.remove(messageMetadata.getMessageID());
-
-            //TODO: this is wrong
-            // All the Queues and Durable Topics related messages are adding to DLC
-            if ((!isBoundToTopic) || isDurable){
-                String destinationQueue = messageMetadata.getDestination();
-                MessagingEngine.getInstance().moveMessageToDeadLetterChannel(messageMetadata, destinationQueue);
-            } else { //for topic messages we forget that the message is sent to that subscriber
-                log.warn("Delivery rule evaluation failed. Forgetting message id= " + messageMetadata.getMessageID()
-                        + " for subscriber " + subscriptionID);
-                messageMetadata.removeScheduledDeliveryChannel(getChannelID());
-                //TODO: try to delete
-            }
-            return false;
-        }
+        return subscription.sendMessageToSubscriber(messageMetadata, content);
     }
 
 
@@ -149,6 +127,16 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      */
     public List<DeliverableAndesMetadata> getUnackedMessages() {
        return new ArrayList<>(messageSendingTracker.values());
+    }
+
+    /**
+     * Remove message from sending tracker. This is called when a send
+     * error happens at the Outbound subscriber protocol level. ACK or
+     * REJECT can never be received for that message
+     * @param messageID Id of the message
+     */
+    public void removeSentMessageFromTracker(long messageID) {
+        messageSendingTracker.remove(messageID);
     }
 
     /**
@@ -230,10 +218,12 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      * {@inheritDoc}
      */
     public void close() throws AndesException {
+
         List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>();
 
         for (DeliverableAndesMetadata andesMetadata : messageSendingTracker.values()) {
-            andesMetadata.removeScheduledDeliveryChannel(getChannelID());
+            andesMetadata.markDeliveredChannelAsClosed(getChannelID());
+            andesMetadata.evaluateMessageAcknowledgement();
 
             //TODO: decide if we need to do this only for topics
             //for topic messages see if we can delete the message
@@ -243,6 +233,7 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
                 }
             }
         }
+
         MessagingEngine.getInstance().deleteMessages(messagesToRemove);
     }
 
@@ -250,7 +241,7 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      * Add message to sending tracker which keeps messages delivered to this channel
      * @param messageData message to add
      */
-    private void addMessageToSendingTracker(DeliverableAndesMetadata messageData) {
+    private void addMessageToSendingTracker(ProtocolMessage messageData) {
 
         if (log.isDebugEnabled()) {
             log.debug("Adding message to sending tracker channel id = " + getChannelID() + " message id = "
@@ -260,7 +251,8 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
         DeliverableAndesMetadata messageDataToAdd = messageSendingTracker.get(messageData.getMessageID());
 
         if (null == messageDataToAdd) {
-            messageSendingTracker.put(messageData.getMessageID(), messageData);
+            //we need to put message reference to the sending tracker
+            messageSendingTracker.put(messageData.getMessageID(), messageData.getMessage());
             if(log.isDebugEnabled()) {
                 log.debug("Added message reference. Message Id = "
                         + messageData.getMessageID() + " subscriptionID= " + subscriptionID);

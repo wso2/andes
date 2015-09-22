@@ -31,12 +31,12 @@ import org.wso2.andes.server.subscription.Subscription;
  * No Local option is clearly described in jms spec,
  * It allows us to control sending messages to subscribers whose using the same connection that the publisher used.
  */
-public class NoLocalRule implements DeliveryRule {
-    private static Log log = LogFactory.getLog(NoLocalRule.class);
+public class NoLocalRuleAMQP implements AMQPDeliveryRule {
+    private static Log log = LogFactory.getLog(NoLocalRuleAMQP.class);
     private Subscription amqpSubscription;
     private AMQChannel amqChannel;
 
-    public NoLocalRule(Subscription amqpSubscription, AMQChannel channel) {
+    public NoLocalRuleAMQP(Subscription amqpSubscription, AMQChannel channel) {
         this.amqpSubscription = amqpSubscription;
         this.amqChannel = channel;
     }

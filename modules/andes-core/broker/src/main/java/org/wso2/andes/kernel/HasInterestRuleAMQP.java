@@ -26,14 +26,14 @@ import org.wso2.andes.server.subscription.Subscription;
  * This class represents has Interest Delivery Rule
  * This class has info and methods to evaluate whether there is some subscriber's interests like jms Selectors
  */
-public class HasInterestRule implements DeliveryRule {
-    private static Log log = LogFactory.getLog(HasInterestRule.class);
+public class HasInterestRuleAMQP implements AMQPDeliveryRule {
+    private static Log log = LogFactory.getLog(HasInterestRuleAMQP.class);
     /**
      * This Subscription used to check whether subscription is interest in the message
      */
     private Subscription amqpSubscription;
 
-    public HasInterestRule(Subscription amqpSubscription) {
+    public HasInterestRuleAMQP(Subscription amqpSubscription) {
         this.amqpSubscription = amqpSubscription;
     }
 

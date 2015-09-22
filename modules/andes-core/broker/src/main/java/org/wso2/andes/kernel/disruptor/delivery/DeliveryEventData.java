@@ -21,6 +21,7 @@ package org.wso2.andes.kernel.disruptor.delivery;
 import com.lmax.disruptor.EventFactory;
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.subscription.LocalSubscription;
 
 /**
@@ -35,7 +36,7 @@ public class DeliveryEventData {
     /**
      * Metadata of the message
      */
-    private DeliverableAndesMetadata metadata;
+    private ProtocolMessage metadata;
 
     /**
      * Indicate if any error occurred during processing handlers
@@ -111,7 +112,7 @@ public class DeliveryEventData {
      *
      * @return Metadata
      */
-    public DeliverableAndesMetadata getMetadata() {
+    public ProtocolMessage getMetadata() {
         return metadata;
     }
 
@@ -121,7 +122,7 @@ public class DeliveryEventData {
      * @param metadata
      *         Metadata
      */
-    public void setMetadata(DeliverableAndesMetadata metadata) {
+    public void setMetadata(ProtocolMessage metadata) {
         this.metadata = metadata;
     }
 
@@ -134,7 +135,7 @@ public class DeliveryEventData {
 
     @Override
     public String toString() {
-        return "Message ID: " + metadata.getMessageID() + ", Error occurred : " + isErrorOccurred();
+        return "Message ID: " + metadata.getMessage().getMessageID() + ", Error occurred : " + isErrorOccurred();
     }
 
     /**

@@ -66,6 +66,16 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     }
 
     /**
+     * Generate a new protocol deliverable message. This will include a reference of this message
+     * plus snapshot of channel information message is delivered to
+     * @param channelID ID of the channel message is to be delivered
+     * @return new ProtocolMessage object
+     */
+    public ProtocolMessage generateProtocolDeliverableMessage(UUID channelID) {
+        return new ProtocolMessage(this, channelID);
+    }
+
+    /**
      * Check if message is expired
      * @return check expire result
      */
@@ -127,16 +137,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
      * @return if message is a redelivery
      */
     public boolean isRedelivered(UUID channelID) {
-        ChannelInformation channelInformation = channelDeliveryInfo.get(channelID);
-        /*
-         subscriber could close at any given moment. So when it close we remove ChannelInformation of subscriber in
-         channelDeliveryInfo. Therefore this could cause to NullPointerException. We did below check to avoid
-         NullPointerException.
-         */
-        if(null == channelInformation) {
-            return false;
-        }
-        Integer numOfDeliveries = channelInformation.getDeliveryCount();
+        Integer numOfDeliveries = channelDeliveryInfo.get(channelID).getDeliveryCount();
         return numOfDeliveries > 0;
     }
 
@@ -178,43 +179,9 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     public void markAsDispatchedToDeliver(UUID channelID) {
         ChannelInformation channelInformation = channelDeliveryInfo.get(channelID);
         channelInformation.addChannelStatus(ChannelMessageStatus.DISPATCHED);
+        channelInformation.incrementDeliveryCount();
     }
 
-    /**
-     * Record message delivery to channel
-     * @param channelID ID of the channel
-     * @return current number of times message is delivered to given channel
-     */
-    public int markAsDeliveredToChannel(UUID channelID) {
-        ChannelInformation channelInformation = channelDeliveryInfo.get(channelID);
-        /*
-         subscriber could close at any given moment. So when it close we remove ChannelInformation of subscriber in
-         channelDeliveryInfo. Therefore this could cause to NullPointerException. We did below check to avoid
-         NullPointerException.
-         */
-        if (null == channelInformation) {
-            return 0;
-        }
-        int deliveryCount = channelInformation.incrementDeliveryCount();
-        if(deliveryCount == 1) {
-            channelInformation.addChannelStatus(ChannelMessageStatus.SENT);
-        } else if(deliveryCount > 1) {
-            channelInformation.addChannelStatus(ChannelMessageStatus.RESENT);
-        }
-        channelDeliveryInfo.put(channelID, channelInformation);
-
-        //we evaluate sent to all only when its state is "SCHEDULED"
-        if(getLatestState().equals(MessageStatus.SCHEDULED_TO_SEND)) {
-            boolean isDeliveredToAllChannels = isMarkAsDelivered();
-
-            if(isDeliveredToAllChannels) {
-                addMessageStatus(MessageStatus.SENT_TO_ALL);
-            }
-            return deliveryCount;
-        } else {
-            return 0;
-        }
-    }
 
     /**
      * Record acknowledge by channel
@@ -335,18 +302,25 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     }
 
     /**
-     * Remove a channel that this message is scheduled to deliver. If the subscriber has closed
-     * during the message schedule and actual sent this should be called
-     * @param channelID Id of the channel to remove
+     * Evaluate message acknowledgement. Whenever relevant message status are updated
+     * this evaluation should be performed and subsequently try to delete the message
+     * if ACKED_BY_ALL evaluation returned success
+     *
      */
-    public void removeScheduledDeliveryChannel(UUID channelID) {
-        channelDeliveryInfo.remove(channelID);
-        if(isMarkAsDelivered()) {
-            addMessageStatus(MessageStatus.SENT_TO_ALL);
-        }
+    public void evaluateMessageAcknowledgement() {
         if(isMarkAsAcked()) {
             addMessageStatus(MessageStatus.ACKED_BY_ALL);
         }
+    }
+
+    /**
+     * Mark the scheduled channel as closed. When the subscriber closes, if the message
+     * is already scheduled mark it as closed.
+     * @param channelID ID of the channel
+     */
+    public void markDeliveredChannelAsClosed(UUID channelID) {
+        channelDeliveryInfo.get(channelID).
+                addChannelStatus(ChannelMessageStatus.CLOSED);
     }
 
 
@@ -359,32 +333,18 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     }
 
     /**
-     * Check if this message delivered to all the scheduled channels
-     * @return true if delivered to all the channels
-     */
-    public boolean isMarkAsDelivered() {
-        boolean isDelivered = true;
-        for (Map.Entry<UUID, ChannelInformation> channelInfoEntry : channelDeliveryInfo.entrySet()) {
-            ChannelMessageStatus channelMessageStatus = channelInfoEntry.getValue().getLatestMessageStatus();
-            if(null == channelMessageStatus
-                    || !(channelMessageStatus.equals(ChannelMessageStatus.SENT)
-                    || channelMessageStatus.equals(ChannelMessageStatus.RESENT)
-                    || channelMessageStatus.equals(ChannelMessageStatus.ACKED))) {
-                isDelivered = false;
-                break;
-            }
-        }
-        return isDelivered;
-    }
-
-    /**
      * Check if this message is acknowledged by all the channels it is delivered to
      * @return true if message is acknowledged by all the channels
      */
-    public boolean isMarkAsAcked() {
+    private boolean isMarkAsAcked() {
         boolean isAcked = true;
         for (Map.Entry<UUID, ChannelInformation> channelInfoEntry : channelDeliveryInfo.entrySet()) {
             ChannelMessageStatus messageStatus = channelInfoEntry.getValue().getLatestMessageStatus();
+
+            //if channel is closed ignore it from considering
+            if(null != messageStatus && messageStatus.equals(ChannelMessageStatus.CLOSED)) {
+                continue;
+            }
             if(null == messageStatus || !messageStatus.equals(ChannelMessageStatus.ACKED)) {
                 isAcked = false;
                 break;

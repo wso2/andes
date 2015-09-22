@@ -19,13 +19,11 @@ package org.wso2.andes.kernel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.andes.server.message.AMQMessage;
-import org.wso2.andes.server.queue.QueueEntry;
 
 /**
  * This class represents message purging Delivery Rule
  */
-public class MessagePurgeRule implements DeliveryRule {
+public class MessagePurgeRule implements CommonDeliveryRule{
 
     private static Log log = LogFactory.getLog(MessagePurgeRule.class);
 
@@ -36,22 +34,21 @@ public class MessagePurgeRule implements DeliveryRule {
      * @throws AndesException
      */
     @Override
-    public boolean evaluate(QueueEntry message) throws AndesException {
-        long messageID = message.getMessage().getMessageNumber();
-        DeliverableAndesMetadata andesMetadata = ((AMQMessage)message.getMessage()).getAndesMetadataReference();
+    public boolean evaluate(DeliverableAndesMetadata message) throws AndesException {
+        long messageID = message.getMessageID();
         // Get last purged timestamp of the destination queue.
         long lastPurgedTimestampOfQueue =
-                MessageFlusher.getInstance().getMessageDeliveryInfo(andesMetadata.getDestination())
+                MessageFlusher.getInstance().getMessageDeliveryInfo(message.getDestination())
                         .getLastPurgedTimestamp();
 
-        if (andesMetadata.getArrivalTime() <= lastPurgedTimestampOfQueue) {
+        if (message.getArrivalTime() <= lastPurgedTimestampOfQueue) {
 
-            log.warn("Message was sent at " + andesMetadata.getArrivalTime()
+            log.warn("Message was sent at " + message.getArrivalTime()
                     + " before last purge event at " + lastPurgedTimestampOfQueue
                     + ". Therefore, it will not be sent. id= "
                     + messageID);
-            if(!andesMetadata.isPurgedOrDeletedOrExpired()) {
-                andesMetadata.markAsPurgedMessage();
+            if(!message.isPurgedOrDeletedOrExpired()) {
+                message.markAsPurgedMessage();
             }
             return false;
         } else {

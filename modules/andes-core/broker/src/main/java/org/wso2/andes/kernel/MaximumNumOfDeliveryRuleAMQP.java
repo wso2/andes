@@ -31,8 +31,8 @@ import java.util.UUID;
  * This class represents Counting Delivery Rule
  * This class has info and methods to evaluate counting delivery rule
  */
-public class MaximumNumOfDeliveryRule implements DeliveryRule {
-    private static Log log = LogFactory.getLog(MaximumNumOfDeliveryRule.class);
+public class MaximumNumOfDeliveryRuleAMQP implements AMQPDeliveryRule {
+    private static Log log = LogFactory.getLog(MaximumNumOfDeliveryRuleAMQP.class);
     private UUID amqChannelID;
     /**
      * Maximum number of times a message is tried to deliver
@@ -40,7 +40,7 @@ public class MaximumNumOfDeliveryRule implements DeliveryRule {
     private int maximumRedeliveryTimes = (Integer) AndesConfigurationManager
             .readValue(AndesConfiguration.TRANSPORTS_AMQP_MAXIMUM_REDELIVERY_ATTEMPTS);
 
-    public MaximumNumOfDeliveryRule(AMQChannel channel) {
+    public MaximumNumOfDeliveryRuleAMQP(AMQChannel channel) {
         this.amqChannelID = channel.getId();
     }
 
@@ -54,8 +54,8 @@ public class MaximumNumOfDeliveryRule implements DeliveryRule {
     public boolean evaluate(QueueEntry message) throws AndesException {
         long messageID = message.getMessage().getMessageNumber();
         //Check if number of redelivery tries has breached.
-        DeliverableAndesMetadata andesMetadata = ((AMQMessage)message.getMessage()).getAndesMetadataReference();
-        int numOfDeliveriesOfCurrentMsg = andesMetadata.getNumOfDeliveries4Channel(amqChannelID);
+        ProtocolMessage protocolMessage = ((AMQMessage)message.getMessage()).getAndesMetadataReference();
+        int numOfDeliveriesOfCurrentMsg = protocolMessage.getNumberOfDeliveriesForProtocolChannel();
 
         if (numOfDeliveriesOfCurrentMsg > maximumRedeliveryTimes) {
             log.warn("Number of Maximum Redelivery Tries Has Breached. Routing Message to DLC : id= " + messageID);

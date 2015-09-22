@@ -20,7 +20,7 @@ package org.wso2.andes.subscription;
 
 import org.wso2.andes.kernel.AndesContent;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.DeliverableAndesMetadata;
+import org.wso2.andes.kernel.ProtocolMessage;
 
 import java.util.UUID;
 
@@ -36,7 +36,7 @@ public interface OutboundSubscription {
      * @return delivery is success. If delivery rule evaluations are failed delivery will not be a success
      * @throws org.wso2.andes.kernel.AndesException
      */
-    public boolean sendMessageToSubscriber(DeliverableAndesMetadata messageMetadata, AndesContent content)throws
+    public boolean sendMessageToSubscriber(ProtocolMessage messageMetadata, AndesContent content)throws
             AndesException;
 
     /**

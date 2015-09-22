@@ -34,30 +34,25 @@ public enum  ChannelMessageStatus {
     DISPATCHED(1),
 
     /**
-     * Message has been sent to its routed consumer
-     */
-    SENT(2),
-
-    /**
      * Message has been failed to send to its routed consumer
      */
-    SEND_FAILED(3),
-
-    /**
-     * Message has been sent more than once.
-     */
-    RESENT(4),
+    SEND_FAILED(2),
 
     /**
      * The consumer has acknowledged receipt of the message
      */
-    ACKED(5),
+    ACKED(3),
 
     /**
      * Consumer has rejected the message ad it has been buffered again for delivery (possibly to another waiting
      * consumer)
      */
-    CLIENT_REJECTED(6);
+    CLIENT_REJECTED(4),
+
+    /**
+     * Consumer is closed
+     */
+    CLOSED(5);
 
 
     private int code;
@@ -120,25 +115,23 @@ public enum  ChannelMessageStatus {
     static {
 
         //Channel wise message status begins at DISPATCHED state.
-        // If message SEND_FAILED or ACKED there is no next state for message.
+        //If message CLOSED there is no next state for message.
 
-        DISPATCHED.next = EnumSet.of(SENT, RESENT, SEND_FAILED);
+        DISPATCHED.next = EnumSet.of(SEND_FAILED, ACKED, CLIENT_REJECTED, CLOSED);
         DISPATCHED.previous = EnumSet.complementOf(EnumSet.allOf(ChannelMessageStatus.class));
 
-        SEND_FAILED.next = EnumSet.complementOf(EnumSet.allOf(ChannelMessageStatus.class));
+        SEND_FAILED.next = EnumSet.of(DISPATCHED, CLOSED);
         SEND_FAILED.previous = EnumSet.of(DISPATCHED);
 
-        SENT.next = EnumSet.of(ACKED, CLIENT_REJECTED);
-        SENT.previous = EnumSet.of(DISPATCHED);
+        ACKED.next = EnumSet.of(CLOSED);
+        ACKED.previous = EnumSet.of(DISPATCHED);
 
-        RESENT.next = EnumSet.of(ACKED, CLIENT_REJECTED);
-        RESENT.previous = EnumSet.of(DISPATCHED);
+        CLIENT_REJECTED.next = EnumSet.of(DISPATCHED, CLOSED);
+        CLIENT_REJECTED.previous = EnumSet.of(DISPATCHED);
 
-        ACKED.next = EnumSet.complementOf(EnumSet.allOf(ChannelMessageStatus.class));
-        ACKED.previous = EnumSet.of(SENT, RESENT);
-
-        CLIENT_REJECTED.next = EnumSet.of(DISPATCHED);
-        CLIENT_REJECTED.previous = EnumSet.of(SENT, RESENT);
+        //this is because we directly mark close on channel close
+        CLOSED.next = EnumSet.of(SEND_FAILED, CLOSED);
+        CLOSED.previous = EnumSet.allOf(ChannelMessageStatus.class);
     }
 
 }

@@ -232,16 +232,16 @@ public class MessagingEngine {
      * @throws AndesException
      */
     public void messageRejected(DeliverableAndesMetadata andesMetadata, UUID channelID) throws AndesException {
-
+        andesMetadata.markAsRejectedByClient(channelID);
         LocalSubscription subToResend = subscriptionStore.getLocalSubscriptionForChannelId(channelID);
         if (subToResend != null) {
-            andesMetadata.markAsRejectedByClient(channelID);
             subToResend.msgRejectReceived(andesMetadata.messageID);
             reQueueMessageToSubscriber(andesMetadata, subToResend);
         } else {
             log.warn("Cannot handle reject. Subscription not found for channel " + channelID
                     + "Dropping message id= " + andesMetadata.getMessageID());
-            andesMetadata.removeScheduledDeliveryChannel(channelID);
+            andesMetadata.markDeliveredChannelAsClosed(channelID);
+            andesMetadata.evaluateMessageAcknowledgement();
         }
         //Tracing message activity
         MessageTracer.trace(andesMetadata, MessageTracer.MESSAGE_REJECTED);
@@ -276,6 +276,9 @@ public class MessagingEngine {
     public void reQueueMessage(DeliverableAndesMetadata messageMetadata) throws AndesException {
         if(!messageMetadata.isOKToDispose()) {
             MessageFlusher.getInstance().reQueueMessage(messageMetadata);
+            //Tracing Message
+            MessageTracer.trace(messageMetadata.getMessageID(), messageMetadata.getDestination(),
+                    MessageTracer.MESSAGE_REQUEUED_BUFFER);
         }
     }
 
