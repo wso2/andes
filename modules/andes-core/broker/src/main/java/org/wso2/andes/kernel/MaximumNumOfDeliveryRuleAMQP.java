@@ -54,10 +54,12 @@ public class MaximumNumOfDeliveryRuleAMQP implements AMQPDeliveryRule {
     public boolean evaluate(QueueEntry message) throws AndesException {
         long messageID = message.getMessage().getMessageNumber();
         //Check if number of redelivery tries has breached.
+        //we should allow a number of delivery attempts that is equal to the maximumRedeliveryTries + 1
+        //since we set the limit on maxRedeliveryTries rather than maxDeliveryTries
         ProtocolMessage protocolMessage = ((AMQMessage)message.getMessage()).getAndesMetadataReference();
         int numOfDeliveriesOfCurrentMsg = protocolMessage.getNumberOfDeliveriesForProtocolChannel();
 
-        if (numOfDeliveriesOfCurrentMsg > maximumRedeliveryTimes) {
+        if (numOfDeliveriesOfCurrentMsg > maximumRedeliveryTimes + 1) {
             log.warn("Number of Maximum Redelivery Tries Has Breached. Routing Message to DLC : id= " + messageID);
             return false;
         } else {
