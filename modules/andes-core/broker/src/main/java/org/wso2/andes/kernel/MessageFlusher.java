@@ -282,6 +282,17 @@ public class MessageFlusher {
             localSubscription = it.next();
             if (subscriptions4Queue.contains(localSubscription)) {
                 isValidLocalSubscription = true;
+
+                // We have to iterate through the collection to find the matching the local subscription since
+                // the Collection does not have a get method
+                for (LocalSubscription subscription : subscriptions4Queue) {
+                    // Assign the matching object reference from subscriptions4Queue collection
+                    // to local subscription variable
+                    if (subscription.equals(localSubscription)) {
+                        localSubscription = subscription;
+                        break;
+                    }
+                }
                 break;
             }
         }
