@@ -29,6 +29,11 @@ public class MQTTAuthorizationSubject {
     private String clientID;
 
     /**
+     * Carbon username of MQTT client.
+     */
+    private String username;
+
+    /**
      * User flag (true/false) of the connecting client.
      */
     private boolean userFlag;
@@ -67,5 +72,13 @@ public class MQTTAuthorizationSubject {
 
     public void setTenantDomain(String tenantDomain) {
         this.tenantDomain = tenantDomain;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 }

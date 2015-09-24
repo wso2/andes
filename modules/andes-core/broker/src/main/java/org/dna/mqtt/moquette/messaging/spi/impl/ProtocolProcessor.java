@@ -231,7 +231,9 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
             // Keep the authorization details in memory to be used while publishing and subscribing
             // to validate the client
-            authSubject.setTenantDomain(MultitenantUtils.getTenantDomain(username.replace('!', '@')));
+            String carbonUsername = username.replace('!', '@');
+            authSubject.setTenantDomain(MultitenantUtils.getTenantDomain(carbonUsername));
+            authSubject.setUsername(MultitenantUtils.getTenantAwareUsername(carbonUsername));
         }
 
         // Checking whether a client already exists with the same client ID. If so, do not allow.
@@ -674,6 +676,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
     void processDisconnect(ServerChannel session, String clientID, boolean cleanSession) throws InterruptedException {
 
+        String username = authSubjects.get(clientID).getUsername();
         removeAuthorizationSubject(clientID);
 
         if (cleanSession) {
@@ -689,7 +692,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
         try {
             AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID,null,
-                    AndesMQTTBridge.SubscriptionEvent.DISCONNECT);
+                    username, AndesMQTTBridge.SubscriptionEvent.DISCONNECT);
             log.info("Disconnected client " + clientID + " with clean session " + cleanSession);
         } catch (MQTTException e) {
             log.error("Error occurred when attempting to disconnect subscriber", e);
@@ -702,15 +705,21 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
         //If already removed a disconnect message was already processed for this clientID
         if (m_clientIDs.remove(clientID) != null) {
-
             //de-activate the subscriptions for this ClientID
             subscriptions.deactivate(clientID);
             log.info("Lost connection with client " + clientID);
             //Andes change
             //Need to handle disconnection
             try {
+
+            // We need to disconnect subscription only if client id exists in authSubjects.
+            // If it's not existing in authSubjects Subscription has already removed or
+            // subscription has never created due to invalid credentials.
+            if(authSubjects.containsKey(clientID)) {
+                String username = authSubjects.get(clientID).getUsername();
                 AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID,null,
-                        AndesMQTTBridge.SubscriptionEvent.DISCONNECT);
+                                      username, AndesMQTTBridge.SubscriptionEvent.DISCONNECT);
+            }
             } catch (MQTTException e) {
                 final String message = "Error occured when attempting to diconnect subscriber ";
                 log.error(message + e.getMessage(), e);
@@ -741,10 +750,11 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
 
         for (String topic : topics) {
             subscriptions.removeSubscription(topic, clientID);
-            //also will unsubscribe from the kernal
+            //also will unsubscribe from the kernel
             try {
                 AndesMQTTBridge.getBridgeInstance().onSubscriberDisconnection(clientID,topic,
-                        AndesMQTTBridge.SubscriptionEvent.UNSUBSCRIBE);
+                                                                authSubjects.get(clientID).getUsername(),
+                                                                AndesMQTTBridge.SubscriptionEvent.UNSUBSCRIBE);
             } catch (Exception e) {
                 final String message = "Error occurred when disconnecting the subscriber ";
                 log.error(message + e.getMessage());
@@ -797,7 +807,9 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             //Will connect with the bridge to notify on the topic
             //Andes Specific
             try {
-                AndesMQTTBridge.getBridgeInstance().onTopicSubscription(req.getTopicFilter(), clientID, qos, cleanSession);
+                AndesMQTTBridge.getBridgeInstance().onTopicSubscription(req.getTopicFilter(), clientID,
+                                                                        authSubject.getUsername(),
+                                                                        qos, cleanSession);
             } catch (Exception e) {
                 final String message = "Error when registering the subscriber ";
                 log.error(message + e.getMessage(), e);

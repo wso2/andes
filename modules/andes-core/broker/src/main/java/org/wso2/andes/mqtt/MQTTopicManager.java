@@ -143,12 +143,13 @@ public class MQTTopicManager {
      *
      * @param topicName           the name of the topic the subscription is being registered for
      * @param mqttClientChannelID the channel identity of the subscriber maintained by the protocol reference
+     * @param username            carbon username of logged user
      * @param qos                 the level of QOS the message subscription was created the value can be wither 0,1 or 2
      * @param isCleanSession      indicates whether the subscription should be durable or not
      * @throws MQTTException if the subscriber addition was not successful
      * @see org.dna.mqtt.wso2.QOSLevel
      */
-    public void addTopicSubscription(String topicName, String mqttClientChannelID, QOSLevel qos,
+    public void addTopicSubscription(String topicName, String mqttClientChannelID, String username, QOSLevel qos,
                                      boolean isCleanSession) throws MQTTException {
 
         UUID subscriptionChannelID = null;
@@ -174,7 +175,7 @@ public class MQTTopicManager {
                 }
             }
             //First the topic should be registered in the cluster
-            subscriptionID = registerTopicSubscriptionInCluster(topicName, mqttClientChannelID, isCleanSession,
+            subscriptionID = registerTopicSubscriptionInCluster(topicName, mqttClientChannelID, username, isCleanSession,
                     qos, subscriptionChannelID);
             topics.addSubscriber(mqttClientChannelID, qos, isCleanSession, subscriptionID, subscriptionChannelID,
                     topicName);
@@ -188,7 +189,7 @@ public class MQTTopicManager {
             log.error(message, ignore);
         } catch (MQTTException ex) {
             //In case if an error occurs we need to rollback the subscription created cluster wide
-            connector.removeSubscriber(this, topicName, subscriptionID, subscriptionChannelID,
+            connector.removeSubscriber(this, topicName, subscriptionID, username, subscriptionChannelID,
                     isCleanSession, mqttClientChannelID);
             final String message = "Error while adding the subscriber to the cluster";
             log.error(message, ex);
@@ -201,10 +202,11 @@ public class MQTTopicManager {
      *
      * @param mqttClientChannelID the id of the channel which the subscriber is bound to
      * @param unSubscribedTopic   the name of the topic un-subscribed
+     * @param username            carbon username of logged user
      * @param action              describes whether its a disconnection or an un-subscription
      * @throws MQTTException occurs if the subscriber was not disconnected properly
      */
-    public void removeOrDisconnectTopicSubscription(String mqttClientChannelID, String unSubscribedTopic,
+    public void removeOrDisconnectTopicSubscription(String mqttClientChannelID, String unSubscribedTopic,String username,
                                                     SubscriptionEvent action) throws MQTTException {
 
 
@@ -236,11 +238,11 @@ public class MQTTopicManager {
                     //Will indicate the disconnection of the topic
                     if (action == SubscriptionEvent.DISCONNECT && !(subscription.getQOSLevel() == QOSLevel.AT_MOST_ONCE
                             && !subscription.isCleanSession())) {
-                        connector.disconnectSubscriber(this, topic, subscriberChannelID, subscriberChannel,
+                        connector.disconnectSubscriber(this, topic, username, subscriberChannelID, subscriberChannel,
                                 isCleanSession, mqttClientChannelID);
                     } else {
                         //If un-subscribed we need to remove the subscription off
-                        connector.removeSubscriber(this, topic, subscriberChannelID, subscriberChannel,
+                        connector.removeSubscriber(this, topic, username, subscriberChannelID, subscriberChannel,
                                 isCleanSession, mqttClientChannelID);
                     }
                     if (log.isDebugEnabled()) {
@@ -389,13 +391,14 @@ public class MQTTopicManager {
      *
      * @param topicName             the name of the topic which should be registered in the cluster
      * @param mqttClientID          the subscriber id which is local to the node
+     * @param username              carbon username of logged user
      * @param isCleanSession        should the subscription be identified as durable
      * @param qos                   the subscriber level qos
      * @param subscriptionChannelID the unique identifier of the subscription channel
      * @return topic subscription id which will represent the topic in the cluster
      */
-    private String registerTopicSubscriptionInCluster(String topicName, String mqttClientID, boolean isCleanSession,
-                                                      QOSLevel qos, UUID subscriptionChannelID)
+    private String registerTopicSubscriptionInCluster(String topicName, String mqttClientID, String username,
+                                                      boolean isCleanSession, QOSLevel qos, UUID subscriptionChannelID)
             throws MQTTException, SubscriptionAlreadyExistsException {
         //Will generate a unique id for the client
         //Per topic only one subscription will be created across the cluster
@@ -406,7 +409,7 @@ public class MQTTopicManager {
         }
 
         //Will register the topic cluster wide
-        connector.addSubscriber(this, topicName, topicSpecificClientID, mqttClientID, isCleanSession,
+        connector.addSubscriber(this, topicName, topicSpecificClientID, username, mqttClientID, isCleanSession,
                 qos, subscriptionChannelID);
 
         return topicSpecificClientID;

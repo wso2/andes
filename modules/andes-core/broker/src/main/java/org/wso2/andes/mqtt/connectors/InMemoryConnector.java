@@ -83,7 +83,7 @@ public class InMemoryConnector implements MQTTConnector {
      * {@inheritDoc}
      */
     @Override
-    public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
+    public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String username, String mqttClientID,
                               boolean isCleanSession, QOSLevel qos, UUID subscriptionChannelID)
             throws MQTTException, SubscriptionAlreadyExistsException {
 
@@ -103,8 +103,9 @@ public class InMemoryConnector implements MQTTConnector {
      * {@inheritDoc}
      */
     @Override
-    public void removeSubscriber(MQTTopicManager channel, String subscribedTopic, String subscriptionChannelID,
-                                 UUID subscriberChannel, boolean isCleanSession, String mqttClientID)
+    public void removeSubscriber(MQTTopicManager channel, String subscribedTopic,String username,
+                                 String subscriptionChannelID, UUID subscriberChannel,
+                                 boolean isCleanSession, String mqttClientID)
             throws MQTTException {
 
         handleSubscriptionRemoval(subscribedTopic, mqttClientID);
@@ -116,7 +117,7 @@ public class InMemoryConnector implements MQTTConnector {
      * {@inheritDoc}
      */
     @Override
-    public void disconnectSubscriber(MQTTopicManager channel, String subscribedTopic, String subscriptionChannelID,
+    public void disconnectSubscriber(MQTTopicManager channel, String subscribedTopic,String username, String subscriptionChannelID,
                                      UUID subscriberChannel, boolean isCleanSession, String mqttClientID)
             throws MQTTException {
 
