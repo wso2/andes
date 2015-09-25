@@ -145,7 +145,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
     /**
      * {@inheritDoc}
      */
-    public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
+    public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String username, String mqttClientID,
                               boolean isCleanSession, QOSLevel qos, UUID subscriptionChannelID)
             throws MQTTException, SubscriptionAlreadyExistsException {
 
@@ -159,8 +159,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
             if (!isCleanSession) {
                 subscriptionID = clientID;
                 //We need to create a queue in-order to preserve messages relevant for the durable subscription
-                String queueUser = "admin";
-                InboundQueueEvent createQueueEvent = new InboundQueueEvent(clientID, queueUser, false, true);
+                InboundQueueEvent createQueueEvent = new InboundQueueEvent( clientID, username, false, true);
                 Andes.getInstance().createQueue(createQueueEvent);
             }
 
@@ -242,14 +241,13 @@ public class PersistenceStoreConnector implements MQTTConnector {
     /**
      * {@inheritDoc}
      */
-    public void removeSubscriber(MQTTopicManager channel, String subscribedTopic, String subscriptionChannelID,
+    public void removeSubscriber(MQTTopicManager channel, String subscribedTopic, String username, String subscriptionChannelID,
                                  UUID subscriberChannel, boolean isCleanSession, String mqttClientID)
             throws MQTTException {
         try {
 
 
             String queueIdentifier = MQTTUtils.generateTopicSpecficClientID(mqttClientID);
-            String queueUser = "admin";
 
             //Here we hard code the QoS level since for subscription removal that doesn't matter
             MQTTLocalSubscription mqttTopicSubscriber = createSubscription(subscribedTopic,channel,
@@ -258,7 +256,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
             //This will be similar to a durable subscription of AMQP
             //There could be two types of events one is the disconnection due to the lost of the connection
             //The other is un-subscription, if is the case of un-subscription the subscription should be removed
-            InboundQueueEvent queueChange = new InboundQueueEvent(queueIdentifier, queueUser, false, true);
+            InboundQueueEvent queueChange = new InboundQueueEvent(queueIdentifier, username, false, true);
             Andes.getInstance().deleteQueue(queueChange);
 
             //create a close subscription event
@@ -284,12 +282,12 @@ public class PersistenceStoreConnector implements MQTTConnector {
     /**
      * @{inheritDoc}
      */
-    public void disconnectSubscriber(MQTTopicManager channel, String subscribedTopic, String subscriptionChannelID,
-                                     UUID subscriberChannel, boolean isCleanSession, String mqttClientID)
+    public void disconnectSubscriber(MQTTopicManager channel, String subscribedTopic, String username,
+                                     String subscriptionChannelID, UUID subscriberChannel,
+                                     boolean isCleanSession, String mqttClientID)
             throws MQTTException {
         try {
 
-            String queueUser = "admin";
             String subscriptionID = mqttClientID;
 
             if (!isCleanSession) {
@@ -299,7 +297,7 @@ public class PersistenceStoreConnector implements MQTTConnector {
                 //Will need to delete the relevant queue mapping out
                 String queueIdentifier = MQTTUtils.generateTopicSpecficClientID(mqttClientID);
                 subscriptionID = queueIdentifier;
-                InboundQueueEvent queueChange = new InboundQueueEvent(queueIdentifier, queueUser, false, true);
+                InboundQueueEvent queueChange = new InboundQueueEvent(queueIdentifier, username, false, true);
                 Andes.getInstance().deleteQueue(queueChange);
             }
 

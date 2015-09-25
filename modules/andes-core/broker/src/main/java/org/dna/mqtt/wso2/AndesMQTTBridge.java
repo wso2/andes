@@ -107,12 +107,13 @@ public final class AndesMQTTBridge {
      *
      * @param mqttClientChannelID the id of the client(subscriber) who requires disconnection
      * @param topic               the name of the topic unsubscribed
+     * @param username            carbon username of logged user
      * @param event               whether the subscription is initiated or disconnected unexpectedly
      *                            {@link org.dna.mqtt.wso2.AndesMQTTBridge.SubscriptionEvent}
      */
-    public void onSubscriberDisconnection(String mqttClientChannelID, String topic, SubscriptionEvent event) {
+    public void onSubscriberDisconnection(String mqttClientChannelID, String topic, String username, SubscriptionEvent event) {
         try {
-            MQTTopicManager.getInstance().removeOrDisconnectTopicSubscription(mqttClientChannelID, topic, event);
+            MQTTopicManager.getInstance().removeOrDisconnectTopicSubscription(mqttClientChannelID, topic, username, event);
         } catch (MQTTException e) {
             //Will capture the exception here and will not throw it any further
             final String message = "Error while disconnecting the subscription with the id " + mqttClientChannelID;
@@ -158,15 +159,16 @@ public final class AndesMQTTBridge {
      *
      * @param topic               the name of the topic the subscribed to
      * @param mqttClientChannelID the client identification maintained by the MQTT protocol lib
+     * @param username            carbon username of logged user
      * @param qos                 the type of qos the subscription is connected to this can be either MOST_ONE,LEAST_ONE,
      *                            EXACTLY_ONE
      * @param isCleanSession      whether the subscription is durable
      */
-    public void onTopicSubscription(String topic, String mqttClientChannelID, AbstractMessage.QOSType qos,
+    public void onTopicSubscription(String topic, String mqttClientChannelID, String username, AbstractMessage.QOSType qos,
                                     boolean isCleanSession) {
         try {
-            MQTTopicManager.getInstance().addTopicSubscription(topic,
-                    mqttClientChannelID, QOSLevel.getQoSFromValue(qos.getValue()), isCleanSession);
+            MQTTopicManager.getInstance().addTopicSubscription(topic, mqttClientChannelID, username,
+                                                               QOSLevel.getQoSFromValue(qos.getValue()), isCleanSession);
         } catch (MQTTException e) {
             //Will not throw the exception further since the bridge will handle the exceptions in both the realm
             final String message = "Error occurred while subscription is initiated for topic : " + topic +

@@ -69,13 +69,14 @@ public interface MQTTConnector {
      * @param channel               the bridge connection as the channel
      * @param topic                 the name of the topic which has subscriber/s
      * @param clientID              the id which will distinguish the topic channel (prefixed for cleanSession=false)
+     * @param username              carbon username of logged user
      * @param mqttClientID          the subscription id which is local to the subscriber
      * @param isCleanSession        should the connection be durable
      * @param qos                   the subscriber specific qos this can be either 0,1 or 2
      * @param subscriptionChannelID will hold the unique identifier of the subscription channel (for Andes)
      * @throws MQTTException
      */
-    public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String mqttClientID,
+    public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String username, String mqttClientID,
                               boolean isCleanSession, QOSLevel qos, UUID subscriptionChannelID)
             throws MQTTException, SubscriptionAlreadyExistsException;
 
@@ -85,13 +86,14 @@ public interface MQTTConnector {
      *
      * @param channel               the connection reference to the bridge
      * @param subscribedTopic       the topic the subscription disconnection should be made
+     * @param username              carbon username of logged in user
      * @param subscriptionChannelID the channel id of the disconnected client
      * @param subscriberChannel     the cluster wide unique identification of the subscription
      * @param isCleanSession        durability of the subscription
      * @param mqttClientID          the id of the client who subscribed to the topic
      * @throws MQTTException
      */
-    public void removeSubscriber(MQTTopicManager channel, String subscribedTopic, String subscriptionChannelID,
+    public void removeSubscriber(MQTTopicManager channel, String subscribedTopic, String username, String subscriptionChannelID,
                                  UUID subscriberChannel, boolean isCleanSession, String mqttClientID)
             throws MQTTException;
 
@@ -100,14 +102,16 @@ public interface MQTTConnector {
      *
      * @param channel               the connection reference to the bridge
      * @param subscribedTopic       the topic the subscription disconnection should be made
+     * @param username              carbon username of logged in user
      * @param subscriptionChannelID the channel id of the disconnected client
      * @param subscriberChannel     the cluster wide unique identification of the subscription
      * @param isCleanSession        durability of the subscription
      * @param mqttClientID          the id of the client who subscribed to the topic
      * @throws MQTTException
      */
-    public void disconnectSubscriber(MQTTopicManager channel, String subscribedTopic, String subscriptionChannelID,
-                                     UUID subscriberChannel, boolean isCleanSession, String mqttClientID)
+    public void disconnectSubscriber(MQTTopicManager channel, String subscribedTopic, String username,
+                                     String subscriptionChannelID, UUID subscriberChannel,
+                                     boolean isCleanSession, String mqttClientID)
             throws MQTTException;
 
     /**
