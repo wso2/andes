@@ -127,7 +127,9 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
      * Stop message delivery threads in Andes
      */
     public void stopMessageDelivery() {
-        messagingEngine.stopMessageDelivery();
+        if(messagingEngine != null){
+            messagingEngine.stopMessageDelivery();
+        }
     }
 
     /**
@@ -157,7 +159,8 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
 
     public void completePendingMessageStoringOperations() {
         try {
-            messagingEngine.completePendingStoreOperations();
+            if(messagingEngine != null){
+                messagingEngine.completePendingStoreOperations();}
         } catch (InterruptedException e) {
             log.error("Interrupted while trying to complete pending message storing operations.", e);
         }
@@ -229,10 +232,14 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
             ApplicationRegistry.remove();
 
             // Shutdown inbound disruptor
-            inboundEventManager.stop();
+            if(inboundEventManager != null){
+                inboundEventManager.stop();
+            }
 
             // Notify cluster this MB node is shutting down. For other nodes to do recovery tasks
-            ClusterResourceHolder.getInstance().getClusterManager().prepareLocalNodeForShutDown();
+            if(ClusterResourceHolder.getInstance().getClusterManager() != null){
+                ClusterResourceHolder.getInstance().getClusterManager().prepareLocalNodeForShutDown();
+            }
 
             //Stop Recovery threads
             AndesKernelBoot.stopHouseKeepingThreads();
@@ -245,12 +252,15 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
             SlotDeletionExecutor.getInstance().stopSlotDeletionExecutor();
 
             //Stop Slot manager in coordinator
-            if (AndesContext.getInstance().isClusteringEnabled() && (AndesContext.getInstance().getClusterAgent().isCoordinator())) {
+            if (AndesContext.getInstance().isClusteringEnabled()
+                    && (AndesContext.getInstance().getClusterAgent().isCoordinator())) {
                 SlotManagerClusterMode.getInstance().shutDownSlotManager();
             }
 
             // We need this until ApplicationRegistry is done.
-            AndesContext.getInstance().getAndesContextStore().close();
+            if(AndesContext.getInstance().getAndesContextStore() != null){
+                AndesContext.getInstance().getAndesContextStore().close();
+            }
 
             taskComplete = true;
 
