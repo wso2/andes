@@ -345,9 +345,11 @@ public class AndesKernelBoot {
         log.info("Stop syncing exchanges, queues, bindings and subscriptions...");
         int threadTerminationTimePerod = 20; // seconds
         try {
-            andesRecoveryTaskScheduler.shutdown();
-            andesRecoveryTaskScheduler
-                    .awaitTermination(threadTerminationTimePerod, TimeUnit.SECONDS);
+            if(andesRecoveryTaskScheduler != null){
+                andesRecoveryTaskScheduler.shutdown();
+                andesRecoveryTaskScheduler
+                        .awaitTermination(threadTerminationTimePerod, TimeUnit.SECONDS);
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             andesRecoveryTaskScheduler.shutdownNow();
@@ -404,7 +406,7 @@ public class AndesKernelBoot {
         AndesContextStore andesContextStore = AndesContext.getInstance().getAndesContextStore();
         andesContextStore.init(virtualHostsConfiguration.getContextStoreProperties());
         messageStore.initializeMessageStore(andesContextStore,
-                                            virtualHostsConfiguration.getMessageStoreProperties());
+                virtualHostsConfiguration.getMessageStoreProperties());
     }
 
     /**
