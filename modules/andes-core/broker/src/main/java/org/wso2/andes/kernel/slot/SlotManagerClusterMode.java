@@ -30,9 +30,7 @@ import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.cluster.coordination.rdbms.DatabaseSlotAgent;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,12 +51,6 @@ public class SlotManagerClusterMode {
 	private static final SlotManagerClusterMode slotManager = new SlotManagerClusterMode();
 
 	private static final int SAFE_ZONE_EVALUATION_INTERVAL = 5 * 1000;
-
-	/**
-	 * Keeps slot deletion safe zones for each node, as they are informed by nodes via thrift
-	 * communication. Used for safe zone calculation for cluster by Slot Manager
-	 */
-	private final Map<String, Long> nodeInformedSlotDeletionSafeZones;
 
 	//safe zone calculator
 	private final SlotDeleteSafeZoneCalc slotDeleteSafeZoneCalc;
@@ -82,8 +74,6 @@ public class SlotManagerClusterMode {
 	private SlotAgent slotAgent;
 
 	private SlotManagerClusterMode() {
-
-		nodeInformedSlotDeletionSafeZones = new HashMap<>();
 
 		//start a thread to calculate slot delete safe zone
 		slotDeleteSafeZoneCalc = new SlotDeleteSafeZoneCalc(SAFE_ZONE_EVALUATION_INTERVAL);
@@ -425,10 +415,6 @@ public class SlotManagerClusterMode {
 		}
 	}
 
-	protected Map<String, Long> getNodeInformedSlotDeletionSafeZones() {
-		return nodeInformedSlotDeletionSafeZones;
-	}
-
 	protected Long getLastPublishedIDByNode(String nodeID) throws AndesException {
 		Long lastPublishId;
 		lastPublishId = slotAgent.getNodeToLastPublishedId(nodeID);
@@ -458,7 +444,11 @@ public class SlotManagerClusterMode {
 	 * @return current calculated safe zone
 	 */
 	public long updateAndReturnSlotDeleteSafeZone(String nodeID, long safeZoneOfNode) {
-		nodeInformedSlotDeletionSafeZones.put(nodeID, safeZoneOfNode);
+		try {
+			slotAgent.setNodeToLastPublishedId(nodeID, safeZoneOfNode);
+		} catch (AndesException e) {
+			log.error("Error occurred while updating safezone value " + safeZoneOfNode + " for node " + nodeID, e);
+		}
 		return slotDeleteSafeZoneCalc.getSlotDeleteSafeZone();
 	}
 
