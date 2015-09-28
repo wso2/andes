@@ -18,6 +18,7 @@
 
 package org.wso2.andes.kernel.slot;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -30,9 +31,11 @@ import org.wso2.andes.kernel.MessagingEngine;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This class is responsible of counting messages in a slot for each queue
@@ -46,15 +49,20 @@ public class SlotMessageCounter {
      * submitted to the coordinator
      */
     private Long timeOutForMessagesInQueue;
-    private Timer submitSlotToCoordinatorTimer = new Timer();
+
+    /**
+     * Executor used for Timeout slot submit task
+     */
+    private final ScheduledExecutorService submitSlotToCoordinatorExecutor;
+
+
     private Log log = LogFactory.getLog(SlotMessageCounter.class);
     private static SlotMessageCounter slotMessageCounter = new SlotMessageCounter();
-    private Integer slotWindowSize;
+    private final int slotWindowSize;
     private long currentSlotDeleteSafeZone;
 
     /**
-     * Keep track of how many update loops
-     * are skipped without messages.
+     * Keep track of how many update loops are skipped without messages.
      */
     private int slotSubmitLoopSkipCount;
 
@@ -76,8 +84,8 @@ public class SlotMessageCounter {
         SLOT_SUBMIT_TIMEOUT = AndesConfigurationManager.readValue(
                 AndesConfiguration.PERFORMANCE_TUNING_SUBMIT_SLOT_TIMEOUT);
 
-        slotWindowSize = AndesConfigurationManager.readValue
-                (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
+        slotWindowSize = AndesConfigurationManager
+                .readValue(AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_WINDOW_SIZE);
 
         timeOutForMessagesInQueue = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_SLOTS_SLOT_RETAIN_TIME_IN_MEMORY);
@@ -85,6 +93,9 @@ public class SlotMessageCounter {
         slotSubmitLoopSkipCount = 0;
         slotCoordinator = MessagingEngine.getInstance().getSlotCoordinator();
 
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+                .setNameFormat("SlotMessageCounterTimeoutTask").build();
+        submitSlotToCoordinatorExecutor = Executors.newScheduledThreadPool(2, namedThreadFactory);
         scheduleSubmitSlotToCoordinatorTimer();
     }
 
@@ -92,36 +103,9 @@ public class SlotMessageCounter {
      * This thread is to record message IDs in slot manager when a timeout is passed
      */
     private void scheduleSubmitSlotToCoordinatorTimer() {
-        submitSlotToCoordinatorTimer.scheduleAtFixedRate(new TimerTask() {
-            public void run() {
-                Set<Map.Entry<String, Long>> slotTimeoutEntries = slotTimeOutMap.entrySet();
-                for (Map.Entry<String, Long> entry : slotTimeoutEntries) {
-                    if ((System.currentTimeMillis() - entry
-                            .getValue()) > timeOutForMessagesInQueue) {
-                        try {
-                            submitSlot(entry.getKey());
-                        } catch (AndesException e) {
-                            // We do not do anything here since this thread will be run every 3
-                            // seconds
-                            log.error("Error occurred while connecting to the thrift coordinator " +
-                                    e.getMessage(), e);
-                        }
-                    }
-                }
-                if (slotTimeoutEntries.isEmpty()) {
-                    slotSubmitLoopSkipCount += 1;
-                    if (slotSubmitLoopSkipCount == SLOT_SUBMIT_LOOP_SKIP_COUNT_THRESHOLD) {
-                        //update current slot Deletion Safe Zone
-                        try {
-                            submitCurrentSafeZone(currentSlotDeleteSafeZone);
-                            slotSubmitLoopSkipCount = 0;
-                        } catch (ConnectionException e) {
-                            log.error("Error while sending slot deletion safe zone update", e);
-                        }
-                    }
-                }
-            }
-        }, SLOT_SUBMIT_TIMEOUT, SLOT_SUBMIT_TIMEOUT);
+        submitSlotToCoordinatorExecutor
+                .scheduleWithFixedDelay(new SlotTimeoutTask(), SLOT_SUBMIT_TIMEOUT, SLOT_SUBMIT_TIMEOUT,
+                                        TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -140,12 +124,11 @@ public class SlotMessageCounter {
      *
      * @param metadata AndesMessageMetadata
      */
-    public void recordMetadataCountInSlot(AndesMessageMetadata metadata) {
+    private void recordMetadataCountInSlot(AndesMessageMetadata metadata) {
         String storageQueueName = metadata.getStorageQueueName();
-        //If this is the first message to that queue
-        Slot currentSlot;
-        currentSlot = updateQueueToSlotMap(metadata);
-        if (currentSlot.getMessageCount() >= slotWindowSize) {
+        Slot currentSlot = updateQueueToSlotMap(metadata);
+
+        if (checkMessageLimitReached(currentSlot)) {
             try {
                 submitSlot(storageQueueName);
             } catch (AndesException e) {
@@ -198,12 +181,11 @@ public class SlotMessageCounter {
     public synchronized void submitSlot(String storageQueueName) throws AndesException {
         Slot slot = queueToSlotMap.get(storageQueueName);
         if (null != slot) {
-            Long slotStartTime = slotTimeOutMap.get(storageQueueName);
+            Long lastSlotUpdateTime = slotTimeOutMap.get(storageQueueName);
 
             // Check if the number of messages in slot is greater than or equal to slot window size or slot timeout
             // has reached. This is to avoid timer task or disruptor creating smaller/overlapping slots.
-            if (slot.getMessageCount() >= slotWindowSize
-                || System.currentTimeMillis() - slotStartTime >= timeOutForMessagesInQueue) {
+            if (checkMessageLimitReached(slot) || checkTimeOutReached(lastSlotUpdateTime)) {
                 try {
                     slotTimeOutMap.remove(storageQueueName);
                     queueToSlotMap.remove(storageQueueName);
@@ -215,7 +197,6 @@ public class SlotMessageCounter {
             }
         }
     }
-
 
     public void updateSafeZoneForNode(long currentSafeZoneVal) {
         currentSlotDeleteSafeZone = currentSafeZoneVal;
@@ -237,11 +218,99 @@ public class SlotMessageCounter {
     }
 
     /**
-     * Shut down worker threads, submitSlotToCoordinatorTimer so that server can shut down properly without unexpected behaviour.
+     * Check if the slot window size has exceeded
+     *
+     * @param slot
+     *         Slot
+     * @return true if slot window size has exceeded
      */
-    public void stop() {
-        log.info("Stopping slot message counter.");
-        submitSlotToCoordinatorTimer.cancel();
+    private boolean checkMessageLimitReached(Slot slot) {
+        return slot.getMessageCount() >= slotWindowSize;
     }
 
+    /**
+     * Check if we slot is timed out
+     *
+     * @param lastSlotUpdateTime
+     *         Last update time of the Slot
+     * @return true if slot is timed-out
+     */
+    private boolean checkTimeOutReached(Long lastSlotUpdateTime) {
+        return (System.currentTimeMillis() - lastSlotUpdateTime) >= timeOutForMessagesInQueue;
+    }
+
+    /**
+     * Shut down worker threads, submitSlotToCoordinatorExecutor so that server can shut down properly without
+     * unexpected behaviour.
+     */
+    public void stop() {
+        log.info("Stopping slot timeout task executor");
+        submitSlotToCoordinatorExecutor.shutdown();
+    }
+
+    /**
+     * Message counter periodic task used to update the coordinator with timed-out slots and new safezone values
+     */
+    private class SlotTimeoutTask implements Runnable {
+
+        @Override
+        public void run() {
+            try {
+                Set<Map.Entry<String, Long>> slotTimeoutEntries = slotTimeOutMap.entrySet();
+
+                if (!slotTimeoutEntries.isEmpty()) {
+                    updateCoordinatorWithTimedOutSlots(slotTimeoutEntries);
+                } else {
+                    updateCoordinatorWithCurrentSafezone();
+                }
+                // This is to avoid subsequent executions being suppressed
+            } catch (Throwable exception) {
+                log.error("Error occurred while executing SlotTimeoutTask", exception);
+            }
+        }
+
+        /**
+         * Find and submit timed out slots to slot coordinator
+         *
+         * @param slotTimeoutEntries
+         *         Set of slot last update time entries
+         */
+        private void updateCoordinatorWithTimedOutSlots(Set<Map.Entry<String, Long>> slotTimeoutEntries) {
+            for (Map.Entry<String, Long> entry : slotTimeoutEntries) {
+
+                Long lastSlotUpdateTime = entry.getValue();
+                String storageQueueName = entry.getKey();
+
+                if (checkTimeOutReached(lastSlotUpdateTime)) {
+                    try {
+                        submitSlot(storageQueueName);
+                    } catch (AndesException exception) {
+                        // We do not do anything here since this thread will be run periodically
+                        log.error("Error occurred while connecting to the thrift coordinator ", exception);
+                    }
+                }
+            }
+        }
+
+        /**
+         * Local nodes safe-zone is sent to the coordinator. This is done to keep the safezone moving forward when
+         * there are no publishers in the local node.
+         */
+        private void updateCoordinatorWithCurrentSafezone() {
+            slotSubmitLoopSkipCount++;
+            if (slotSubmitLoopSkipCount == SLOT_SUBMIT_LOOP_SKIP_COUNT_THRESHOLD) {
+                //update current slot Deletion Safe Zone
+                try {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Updating coordinator with local safe zone " + currentSlotDeleteSafeZone);
+                    }
+
+                    submitCurrentSafeZone(currentSlotDeleteSafeZone);
+                    slotSubmitLoopSkipCount = 0;
+                } catch (ConnectionException e) {
+                    log.error("Error while sending slot deletion safe zone update", e);
+                }
+            }
+        }
+    }
 }

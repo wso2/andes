@@ -28,13 +28,14 @@ import org.wso2.andes.thrift.MBThriftClient;
  */
 public class SlotCoordinatorCluster implements SlotCoordinator {
 
-    private static Log log = LogFactory.getLog(SlotDeliveryWorker.class);
+    private static Log log = LogFactory.getLog(SlotCoordinatorCluster.class);
     String nodeId;
 
 
     public SlotCoordinatorCluster(){
         nodeId = AndesContext.getInstance().getClusterAgent().getLocalNodeIdentifier();
     }
+
 
     /**
      * {@inheritDoc}
@@ -60,7 +61,7 @@ public class SlotCoordinatorCluster implements SlotCoordinator {
     public void updateSlotDeletionSafeZone(long currentSlotDeleteSafeZone) throws ConnectionException {
         MBThriftClient.updateSlotDeletionSafeZone(currentSlotDeleteSafeZone, nodeId);
         if(log.isDebugEnabled()) {
-            log.info("Submitted safe zone from node : " + nodeId + " | safe zone : " +
+            log.debug("Submitted safe zone from node : " + nodeId + " | safe zone : " +
                     currentSlotDeleteSafeZone);
         }
     }

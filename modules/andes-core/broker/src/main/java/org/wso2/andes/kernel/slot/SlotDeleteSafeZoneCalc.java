@@ -65,7 +65,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
             log.debug("Slot deletion safe zone calculation started.");
         }
         while (running) {
-            if (isLive) {
+            if (isLive()) {
                 Set<String> nodesWithPublishedMessages;
                 try {
                     nodesWithPublishedMessages = SlotManagerClusterMode.getInstance().getMessagePublishedNodes();
@@ -74,8 +74,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                            + "Retrying after 15 seconds" ,e);
                     try {
                         Thread.sleep(TIME_TO_SLEEP_ON_ERROR);
-                    } catch (InterruptedException e1) {
-                        setLive(false);
+                    } catch (InterruptedException ignore) {
                     }
                     continue;
                 }
@@ -100,8 +99,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                                 nodeID + ". Retrying after 15 seconds", e);
                         try {
                             Thread.sleep(TIME_TO_SLEEP_ON_ERROR);
-                        } catch (InterruptedException e1) {
-                            setLive(false);
+                        } catch (InterruptedException ignore) {
                         }
                         continue;
                     }
@@ -122,17 +120,13 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                      */
                     if (null != nodeInformedSafeZone) {
                         if (Long.MAX_VALUE != safeZoneValue) {
-                            if (safeZoneValue < nodeInformedSafeZone) {
-                                safeZoneValue = nodeInformedSafeZone;
-                            }
+                            safeZoneValue = Math.max(safeZoneValue, nodeInformedSafeZone);
                         } else {
                             safeZoneValue = nodeInformedSafeZone;
                         }
                     }
 
-                    if (globalSafeZoneVal > safeZoneValue) {
-                        globalSafeZoneVal = safeZoneValue;
-                    }
+                    globalSafeZoneVal = Math.min(globalSafeZoneVal,safeZoneValue);
                 }
 
                 slotDeleteSafeZone.set(globalSafeZoneVal);
@@ -143,14 +137,12 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
 
                 try {
                     Thread.sleep(seekInterval);
-                } catch (InterruptedException e) {
-                    setLive(false);
+                } catch (InterruptedException ignore) {
                 }
             } else {
                 try {
                     Thread.sleep(TIME_TO_SLEEP_ON_ERROR);
-                } catch (InterruptedException e) {
-                    setLive(false);
+                } catch (InterruptedException ignore) {
                 }
             }
         }
