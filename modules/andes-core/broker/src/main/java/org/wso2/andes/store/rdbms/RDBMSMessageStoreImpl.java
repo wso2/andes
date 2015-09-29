@@ -30,6 +30,7 @@ import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.metrics.MetricsConstants;
+import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import org.wso2.andes.store.cache.AndesMessageCache;
 import org.wso2.andes.store.cache.MessageCacheFactory;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -1392,9 +1393,20 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatement.close();
 
         } catch (SQLException e) {
-            log.error("Error occurred while inserting destination queue [" + destinationQueueName +
-                    "] to database ");
-            throw e;
+            AndesException andesException =
+                    rdbmsStoreUtils.convertSQLException("Error occurred while creating queue", e);
+
+            if(andesException instanceof AndesDataIntegrityViolationException) {
+                // This exception occurred because some other node has created the queue in parallel.
+                // Therefore no need to create the queue. It's already created.
+                // Nothing need to be done if this exception occur.
+                log.warn("Queue already created. Skipping insert destination queue ["+ destinationQueueName +
+                         "] to database ");
+            } else {
+                log.error("Error occurred while inserting destination queue [" + destinationQueueName +
+                          "] to database ");
+                throw e;
+            }
         } finally {
             contextWrite.stop();
             String task = RDBMSConstants.TASK_CREATING_QUEUE + destinationQueueName;
