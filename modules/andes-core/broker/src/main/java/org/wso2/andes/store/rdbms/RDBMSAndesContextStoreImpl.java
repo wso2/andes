@@ -1570,7 +1570,6 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                 overlappedSlot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
                 overlappedSlot.setStorageQueueName(
                         resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
-                overlappedSlot.setAnOverlappingSlot(true);
             }
             return overlappedSlot;
         } catch (SQLException e) {
