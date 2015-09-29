@@ -453,6 +453,12 @@ public class AMQProtocolSession implements AMQVersionAwareProtocolSession
     public void setFlowControl(final int channelId, final boolean active)
     {
         final AMQSession session = getSession(channelId);
+
+        // session can be null if a flow control message is received to a already closed session
+        if (null == session) {
+            _logger.warn("Unable to find the session (channelID : " + channelId + " ) to set flow control. ");
+            return;
+        }
         session.setFlowControl(active);
     }
 
