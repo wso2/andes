@@ -330,7 +330,9 @@ public class SlotManagerClusterMode {
 						}
 						slotAgent.setNodeToLastPublishedId(nodeId, lastMessageIdInTheSlot);
 					}
-				}
+				} else {
+                    slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
+                }
 			} else {
 				//Update the store only if the last assigned message ID is less than the new start message ID
 				slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
