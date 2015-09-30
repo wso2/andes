@@ -354,7 +354,7 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
 
             waitUntilStoresBecomeAvailable(task);
             try {
-                overlappedSlot = andesContextStore.getOverlappedSlot(queueName);
+                overlappedSlot = andesContextStore.getOverlappedSlot(nodeId, queueName);
                 break;
             } catch (AndesStoreUnavailableException e) {
                 handleFailure(attemptCount, task, e);

@@ -370,11 +370,13 @@ public interface AndesContextStore extends HealthAwareStore{
 
     /**
      * Get overlapped slots for a given queue.
+     *
+     * @param nodeId ID of the node requesting overlapped slots
      * @param queueName name of queue
      * @return overlapped slot object
      * @throws AndesException
      */
-    Slot getOverlappedSlot(String queueName) throws AndesException;
+    Slot getOverlappedSlot(String nodeId, String queueName) throws AndesException;
 
     /**
      * Add message ids to store.

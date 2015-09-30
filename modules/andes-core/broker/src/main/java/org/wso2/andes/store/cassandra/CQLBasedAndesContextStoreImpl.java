@@ -685,7 +685,7 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
      * {@inheritDoc}
      */
     @Override
-    public Slot getOverlappedSlot(String queueName) throws AndesException {
+    public Slot getOverlappedSlot(String nodeId, String queueName) throws AndesException {
         throw new UnsupportedOperationException();
     }
 

@@ -124,14 +124,22 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                 onSendError(message, subscription);
                 routeMessageToDLC(message);
             } catch (ProtocolDeliveryFailureException ex) {
-                //there can be a actual send error or subscriber is already closed. Mark as closed only if
-                //subscriber is closed
-                onSendError(message, subscription);
+                //we do not log the error as subscriber is closing this is an expected exception. On an actual send
+                // error by protocol, we log it earlier.
+                /*
+                 * there can be a actual send error or subscriber is already closed. Mark as closed only if
+                 * subscriber is closed
+                 */
                 if(!subscription.isActive()) {
+                    onSendError(message, subscription);
                     message.markDeliveredChannelAsClosed(subscription.getChannelID());
+                } else {
+                    //this is on an actual send error. We increase delivery count so max send count delivery rule
+                    //is evaluated and message is sent to DLC if failure is consistent
+                    onDeliveryException(message, subscription);
                 }
                 if(subscription.isDurable()) {
-                    //re-queue message to andes core so that it can find other subscriber to deliver
+                    //re-queue message to andes core so that it can find other subscriber to deliver.
                     MessagingEngine.getInstance().reQueueMessage(message);
                 } else {
                     if(!message.isOKToDispose()) {
@@ -139,6 +147,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
                     }
                 }
             } catch (Throwable e) {
+                onDeliveryException(message, subscription);
                 log.error("Unexpected error while delivering message. Message id " + message.getMessageID(), e);
             } finally {
                 deliveryEventData.clearData();
@@ -158,6 +167,23 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
         //Send failed. Rollback changes done that assumed send would be success
         UUID channelID = localSubscription.getChannelID();
         messageMetadata.markDeliveryFailureOfASentMessage(channelID);
+        messageMetadata.evaluateMessageAcknowledgement();
+        localSubscription.removeSentMessageFromTracker(messageMetadata.getMessageID());
+        //TODO: try to delete
+    }
+
+    /**
+     * This should be called whenever a delivery failure happens.
+     * This will clear message status and subscriber status so that it will not
+     * affect future message schedules. Also this will not decrement message delivery count
+     * so that message delivery will not failure infinitely (will get caught by max delivery count rule).
+     *
+     * @param messageMetadata message failed to be delivered by protocol
+     * @param localSubscription subscription failed to deliver message
+     */
+    private void onDeliveryException(DeliverableAndesMetadata messageMetadata, LocalSubscription localSubscription) {
+        UUID channelID = localSubscription.getChannelID();
+        messageMetadata.markDeliveryFailureByProtocol(channelID);
         messageMetadata.evaluateMessageAcknowledgement();
         localSubscription.removeSentMessageFromTracker(messageMetadata.getMessageID());
         //TODO: try to delete

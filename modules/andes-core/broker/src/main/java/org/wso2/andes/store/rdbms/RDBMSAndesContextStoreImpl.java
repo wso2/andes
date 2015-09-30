@@ -1549,7 +1549,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     /**
      * {@inheritDoc}
      */
-    public Slot getOverlappedSlot(String queueName) throws AndesException {
+    public Slot getOverlappedSlot(String nodeId, String queueName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
@@ -1561,6 +1561,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_SELECT_OVERLAPPED_SLOT);
             preparedStatement.setString(1, queueName);
+            preparedStatement.setString(2, nodeId);
             resultSet = preparedStatement.executeQuery();
 
             if(resultSet.next()) {

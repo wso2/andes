@@ -558,6 +558,7 @@ public class RDBMSConstants {
             "SELECT " + START_MESSAGE_ID + "," + END_MESSAGE_ID + "," + STORAGE_QUEUE_NAME
             + " FROM " + SLOT_TABLE
             + " WHERE " + STORAGE_QUEUE_NAME + "=?"
+            + " AND " +  ASSIGNED_NODE_ID + "=?"
             + " AND " + SLOT_STATE + "=" + SlotState.OVERLAPPED.getCode()
             + " ORDER BY " + SLOT_ID;
 
