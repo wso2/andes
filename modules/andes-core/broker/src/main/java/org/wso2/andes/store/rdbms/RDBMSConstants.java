@@ -170,9 +170,13 @@ public class RDBMSConstants {
             + " VALUES ( ?,?,? )";
 
     protected static final String PS_INSERT_QUEUE =
-            "INSERT INTO " + RDBMSConstants.QUEUES_TABLE + " ("
+            "INSERT INTO " + QUEUES_TABLE + " ("
             + RDBMSConstants.QUEUE_NAME + ")"
             + "  VALUES (?)";
+
+    protected static final String PS_DELETE_QUEUE =
+            "DELETE FROM " + QUEUES_TABLE
+            + " WHERE " + QUEUE_NAME + "=?";
 
     protected static final String PS_ALIAS_FOR_COUNT = "count";
 
@@ -841,6 +845,7 @@ public class RDBMSConstants {
     protected static final String TASK_RETRIEVING_ALL_QUEUE_INFO = "retrieving all queue " +
             "information. ";
     protected static final String TASK_DELETING_QUEUE_INFO = "deleting queue information. ";
+    protected static final String TASK_DELETE_QUEUE_MAPPING = "deleting queue mapping";
     protected static final String TASK_STORING_BINDING = "storing binding information. ";
     protected static final String TASK_RETRIEVING_BINDING_INFO = "retrieving binding information.";
     protected static final String TASK_DELETING_BINDING = "deleting binding information. ";
