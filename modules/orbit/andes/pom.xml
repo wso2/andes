@@ -113,10 +113,6 @@
             <artifactId>hawtbuf</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.datastax.cassandra</groupId>
-            <artifactId>cassandra-driver-core</artifactId>
-        </dependency>
-        <dependency>
             <groupId>commons-jxpath</groupId>
             <artifactId>commons-jxpath</artifactId>
         </dependency>
@@ -158,12 +154,10 @@
                             org.apache.commons.cli.*;version="1.2",
                             org.apache.commons.lang.*;version="2.3",
                             org.apache.commons.logging.*,
-                            com.datastax.driver.core.*;version="2.1.5",
                             com.google.common.base;version="18.0.0",
                             com.google.common.util.concurrent;version="18.0.0",
                             com.google.common.cache;version="18.0.0",
                             org.wso2.carbon.andes.authentication.andes,
-                            me.prettyprint.hector.api.*;version="2.0-0",
                             *;resolution:=optional
                         </Import-Package>
                         <Include-Resource>src/main/resources</Include-Resource>

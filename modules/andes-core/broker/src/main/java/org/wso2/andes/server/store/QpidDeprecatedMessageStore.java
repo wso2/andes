@@ -35,8 +35,7 @@ import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.subscription.SubscriptionStore;
 
 /**
- * Class <code>CassandraMessageStore</code> is the Message Store implemented for cassandra
- * Working with andes as an alternative to Derby Message Store
+ * Implementations of {#{@link org.wso2.andes.kernel.MessageStore} replaces the functionality provided by this class
  */
 @Deprecated
 public class QpidDeprecatedMessageStore implements MessageStore {

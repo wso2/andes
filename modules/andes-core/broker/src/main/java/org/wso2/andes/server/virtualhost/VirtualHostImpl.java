@@ -369,8 +369,6 @@ public class VirtualHostImpl implements VirtualHost {
         this.messageStore = messageStore;
         durableConfigurationStore = messageStore;
 
-        //cassandraMessageStore = CassandraMessageStore.getInstance();
-        //cassandraMessageStore.configureMessageStore(this.getName(),recoveryHandler,hostConfig.getStoreConfiguration(),storeLogSubject);
     }
 
     private void initialiseModel(VirtualHostConfiguration config) throws ConfigurationException, AMQException {
