@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2005-2015, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -42,7 +42,7 @@ public class StoredAMQPMessage implements StoredMessage {
 
 
     /**
-     * Create a stored cassandra message combining metadata and message ID
+     * Create a stored message combining metadata and message ID
      * @param messageId message ID
      * @param metaData  metadata of message
      */
@@ -82,17 +82,6 @@ public class StoredAMQPMessage implements StoredMessage {
     public void duplicateMessageContent(long messageId, long messageIdOfClone) throws AndesException {
 
     }
-
-//    /**
-//     * write the message content to cassandra (we submit this task to AndesExecutor pool)
-//     *
-//     * @param offsetInMessage Int message content offset
-//     * @param src             ByteBuffer message content
-//     */
-//    private void addContentInPersistentMode(final int offsetInMessage, ByteBuffer src) {
-//
-//        QpidAndesBridge.getInstance().messageContentChunkReceived(_messageId,offsetInMessage,src);
-//    }
 
     @Override
     /**

@@ -135,11 +135,6 @@ public class Main {
                         .withDescription("MQTT port. Overrides any value in the config file")
                         .withLongOpt("mqttport").create(BrokerOptions.MQTT_PORT);
 
-        Option cassandraPort =
-                OptionBuilder.withArgName("cassandraPort").hasArg()
-                        .withDescription("Cassandra port. Overrides any value in the config file")
-                        .withLongOpt("cassandraPort").create(BrokerOptions.CASSANDRA_PORT);
-
         options.addOption(help);
         options.addOption(version);
         options.addOption(configFile);
@@ -154,7 +149,6 @@ public class Main {
         options.addOption(bind);
         options.addOption(sslport);
         options.addOption(mqttPort);
-        options.addOption(cassandraPort);
     }
 
     protected void execute() throws Exception {

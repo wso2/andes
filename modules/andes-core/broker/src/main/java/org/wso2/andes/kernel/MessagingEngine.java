@@ -326,7 +326,7 @@ public class MessagingEngine {
     /**
      * This is the andes-specific purge method and can be called from AMQPBridge,
      * MQTTBridge or UI MBeans (QueueManagementInformationMBean)
-     * Remove messages of the queue matching to given destination queue (cassandra / h2 / mysql etc. )
+     * Remove messages of the queue matching to given destination queue (h2 / mysql etc. )
      *
      * @param destination queue or topic name (subscribed routing key) whose messages should be removed
      * @param ownerName The user who initiated the purge request

@@ -41,7 +41,6 @@ public class BrokerOptions
     public static final String LOG_CONFIG = "l";
     public static final String WATCH = "w";
     public static final String CONFIG = "c";
-    public static final String CASSANDRA_PORT = "o";
 
     private final Set<Integer> _ports = new HashSet<Integer>();
     private final Set<Integer> _sslPorts = new HashSet<Integer>();
