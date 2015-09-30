@@ -838,16 +838,16 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     public void updateExclusiveConsumerForQueue(String queueName, boolean isExclusiveConsumer) throws AndesException {
 
         Connection connection = null;
-        PreparedStatement preparedStatement1 = null;
-        PreparedStatement preparedStatement2 = null;
+        PreparedStatement queueDataGetQuery = null;
+        PreparedStatement queueDataUpdateQuery = null;
 
         ResultSet resultSet = null;
         try {
             connection = getConnection();
             //retrieving the existing queue data from the database
-            preparedStatement1 = connection.prepareStatement(RDBMSConstants.PS_GET_QUEUE_DATA);
-            preparedStatement1.setString(1, queueName);
-            resultSet = preparedStatement1.executeQuery();
+            queueDataGetQuery = connection.prepareStatement(RDBMSConstants.PS_GET_QUEUE_DATA);
+            queueDataGetQuery.setString(1, queueName);
+            resultSet = queueDataGetQuery.executeQuery();
 
             String queueData =    resultSet.getString(RDBMSConstants.QUEUE_DATA);
 
@@ -862,10 +862,10 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             }
 
             //updating the queue data with new value of exclusiveConsumer
-            preparedStatement2 = connection.prepareStatement(RDBMSConstants.PS_UPDATE_EXCLUSIVE_CONSUMER);
-            preparedStatement2.setString(1, builder.toString());
-            preparedStatement2.setString(2, queueName);
-            preparedStatement2.executeUpdate();
+            queueDataUpdateQuery = connection.prepareStatement(RDBMSConstants.PS_UPDATE_EXCLUSIVE_CONSUMER);
+            queueDataUpdateQuery.setString(1, builder.toString());
+            queueDataUpdateQuery.setString(2, queueName);
+            queueDataUpdateQuery.executeUpdate();
 
             connection.commit();
 
@@ -875,8 +875,8 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
         } finally {
             close(resultSet, RDBMSConstants.TASK_RETRIEVING_AND_UPDATING_QUEUE_DATA );
-            close(preparedStatement1, RDBMSConstants.TASK_RETRIEVING_AND_UPDATING_QUEUE_DATA );
-            close(preparedStatement2, RDBMSConstants.TASK_RETRIEVING_AND_UPDATING_QUEUE_DATA );
+            close(queueDataGetQuery, RDBMSConstants.TASK_RETRIEVING_AND_UPDATING_QUEUE_DATA );
+            close(queueDataUpdateQuery, RDBMSConstants.TASK_RETRIEVING_AND_UPDATING_QUEUE_DATA );
             close(connection, RDBMSConstants.TASK_RETRIEVING_AND_UPDATING_QUEUE_DATA );
         }
     }

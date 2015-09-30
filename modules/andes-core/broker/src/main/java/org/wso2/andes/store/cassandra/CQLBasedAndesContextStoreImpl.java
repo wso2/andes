@@ -540,13 +540,13 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
     public void updateExclusiveConsumerForQueue(String queueName, boolean isExclusiveConsumer) throws AndesException {
 
         //Retrieving queue information
-        Statement statement1 = QueryBuilder.select().
+        Statement queueDataGetQuery = QueryBuilder.select().
                 column(QUEUE_EXCHANGE_NODE_DETAIL).
                 from(config.getKeyspace(), QUEUE_EXCHANGE_NODE_TABLE).
                 where(eq(QUEUE_NAME, queueName)).
                 setConsistencyLevel(config.getReadConsistencyLevel());
 
-        ResultSet resultSet = execute(statement1, "retrieve data of the queue :"+queueName);
+        ResultSet resultSet = execute(queueDataGetQuery, "retrieve data of the queue :" + queueName);
 
         String queueData = resultSet.toString();
         String[] detailsOfQueue = queueData.split("=");
@@ -560,13 +560,13 @@ public class CQLBasedAndesContextStoreImpl implements AndesContextStore {
         }
         queueData = builder.toString();
 
-        Statement statement2 = QueryBuilder.update(config.getKeyspace(), QUEUE_EXCHANGE_NODE_TABLE).
+        Statement queueDataUpdateQuery = QueryBuilder.update(config.getKeyspace(), QUEUE_EXCHANGE_NODE_TABLE).
                 with(set(QUEUE_EXCHANGE_NODE_DETAIL, queueData)).
                 where(eq(QUEUE_NAME, queueName)).
                 setConsistencyLevel(config.getWriteConsistencyLevel());
 
-        execute(statement2, "Updating details of queue : " + queueName + " by Changing exclusiveConsumer value as "
-                + isExclusiveConsumer);
+        execute(queueDataUpdateQuery, "Updating details of queue : " + queueName +
+                " by Changing exclusiveConsumer value as " + isExclusiveConsumer);
     }
 
 }
