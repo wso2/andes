@@ -3358,7 +3358,7 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
             try
             {
                 Dispatchable disp;
-                while (((disp = (Dispatchable) _queue.take()) != null) && !_closed.get())
+                while (((disp = (Dispatchable) (_queue.take())) != null) && (!_closed.get()))
                 {
                     disp.dispatch(AMQSession.this);
                 }
