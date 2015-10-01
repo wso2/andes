@@ -856,6 +856,10 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                 int position = 0;
                 while (position < bodySize) {
                     position += amqMessage.getContent(buffer, position);
+                    //if position did not proceed, there is an error receiving content
+                    if((bodySize!= 0) && (position == 0)) {
+                        break;
+                    }
                     buffer.flip();
                     for (int i = 0; i < buffer.limit(); i++) {
                         messageContent.add(buffer.get(i));
@@ -863,55 +867,66 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
                     buffer.clear();
                 }
 
-                //create message content to readable text from ByteBuffer
-                Byte[] msgContent = messageContent.toArray(new Byte[messageContent.size()]);
-                byte[] byteMsgContent = ArrayUtils.toPrimitive(msgContent);
-                ByteBuffer wrapMsgContent = ByteBuffer.wrap(byteMsgContent);
-                String content[] = new String[2];
-                String summaryMsg = "";
-                String wholeMsg = "";
+                //if position did not proceed, there is an error receiving content. If not, decode content
+                if(!((bodySize!= 0) && (position == 0))) {
+                    //create message content to readable text from ByteBuffer
+                    Byte[] msgContent = messageContent.toArray(new Byte[messageContent.size()]);
+                    byte[] byteMsgContent = ArrayUtils.toPrimitive(msgContent);
+                    ByteBuffer wrapMsgContent = ByteBuffer.wrap(byteMsgContent);
+                    String content[] = new String[2];
+                    String summaryMsg = "";
+                    String wholeMsg = "";
 
-                //get TextMessage content to display
-                if (mimeType.equals(MIME_TYPE_TEXT_PLAIN) || mimeType.equals(MIMI_TYPE_TEXT_XML)) {
-                    wholeMsg = extractTextMessageContent(wrapMsgContent, encoding);
-                    //get ByteMessage content to display
-                } else if (mimeType.equals(MIME_TYPE_APPLICATION_OCTET_STREAM)) {
-                    wholeMsg = extractByteMessageContent(wrapMsgContent, byteMsgContent);
-                    //get ObjectMessage content to display
-                } else if (mimeType.equals(MIME_TYPE_APPLICATION_JAVA_OBJECT_STREAM)) {
-                    wholeMsg = "This Operation is Not Supported!";
-                    summaryMsg = "Not Supported";
-                    //get StreamMessage content to display
-                } else if (mimeType.equals(MIME_TYPE_JMS_STREAM_MESSAGE)) {
-                    wholeMsg = extractStreamMessageContent(wrapMsgContent, encoding);
-                    //get MapMessage content to display
-                } else if (mimeType.equals(MIME_TYPE_AMQP_MAP) || mimeType.equals(MIME_TYPE_JMS_MAP_MESSAGE)) {
-                    wholeMsg = extractMapMessageContent(wrapMsgContent);
+                    //get TextMessage content to display
+                    if (mimeType.equals(MIME_TYPE_TEXT_PLAIN) || mimeType.equals(MIMI_TYPE_TEXT_XML)) {
+                        wholeMsg = extractTextMessageContent(wrapMsgContent, encoding);
+                        //get ByteMessage content to display
+                    } else if (mimeType.equals(MIME_TYPE_APPLICATION_OCTET_STREAM)) {
+                        wholeMsg = extractByteMessageContent(wrapMsgContent, byteMsgContent);
+                        //get ObjectMessage content to display
+                    } else if (mimeType.equals(MIME_TYPE_APPLICATION_JAVA_OBJECT_STREAM)) {
+                        wholeMsg = "This Operation is Not Supported!";
+                        summaryMsg = "Not Supported";
+                        //get StreamMessage content to display
+                    } else if (mimeType.equals(MIME_TYPE_JMS_STREAM_MESSAGE)) {
+                        wholeMsg = extractStreamMessageContent(wrapMsgContent, encoding);
+                        //get MapMessage content to display
+                    } else if (mimeType.equals(MIME_TYPE_AMQP_MAP) || mimeType.equals(MIME_TYPE_JMS_MAP_MESSAGE)) {
+                        wholeMsg = extractMapMessageContent(wrapMsgContent);
+                    }
+                    //trim content to summary and whole message
+                    if (wholeMsg.length() >= CHARACTERS_TO_SHOW) {
+                        summaryMsg = wholeMsg.substring(0, CHARACTERS_TO_SHOW);
+                    } else {
+                        summaryMsg = wholeMsg;
+                    }
+                    if (wholeMsg.length() > MESSAGE_DISPLAY_LENGTH_MAX) {
+                        wholeMsg = wholeMsg.substring(0, MESSAGE_DISPLAY_LENGTH_MAX - 3) +
+                                DISPLAY_CONTINUATION + DISPLAY_LENGTH_EXCEEDED;
+                    }
+
+                    content[0] = summaryMsg;
+                    content[1] = wholeMsg;
+
+                    //set content type of message to readable name
+                    contentType = getReadableNameForMessageContentType(contentType);
+
+                    //set CompositeData of message
+                    Object[] itemValues = {msgProperties, contentType, content, messageId, redelivered,
+                            deliveredMode, timeStamp, destination, andesMessageMetadataId};
+                    CompositeDataSupport support = new CompositeDataSupport(_msgContentType,
+                            VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.toArray(
+                                    new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]), itemValues);
+                    compositeDataList.add(support);
+
+                } else if(bodySize == 0) { //empty message
+                    Object[] itemValues = {msgProperties, contentType, "", messageId, redelivered,
+                            deliveredMode, timeStamp, destination, andesMessageMetadataId};
+                    CompositeDataSupport support = new CompositeDataSupport(_msgContentType,
+                            VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.toArray(
+                                    new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]), itemValues);
+                    compositeDataList.add(support);
                 }
-                //trim content to summary and whole message
-                if (wholeMsg.length() >= CHARACTERS_TO_SHOW) {
-                    summaryMsg = wholeMsg.substring(0, CHARACTERS_TO_SHOW);
-                } else {
-                    summaryMsg = wholeMsg;
-                }
-                if (wholeMsg.length() > MESSAGE_DISPLAY_LENGTH_MAX) {
-                    wholeMsg = wholeMsg.substring(0, MESSAGE_DISPLAY_LENGTH_MAX - 3) +
-                            DISPLAY_CONTINUATION + DISPLAY_LENGTH_EXCEEDED;
-                }
-
-                content[0] = summaryMsg;
-                content[1] = wholeMsg;
-
-                //set content type of message to readable name
-                contentType = getReadableNameForMessageContentType(contentType);
-
-                //set CompositeData of message
-                Object[] itemValues = {msgProperties, contentType, content, messageId, redelivered,
-                        deliveredMode, timeStamp, destination, andesMessageMetadataId};
-                CompositeDataSupport support = new CompositeDataSupport(_msgContentType,
-                        VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.toArray(
-                                new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]), itemValues);
-                compositeDataList.add(support);
             }
         } catch (OpenDataException e) {
             throw new MBeanException(e, "Error occurred in browse queue.");
