@@ -567,6 +567,11 @@ public class ServerConfiguration extends ConfigurationPlugin implements SignalHa
                 !(Boolean)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_AMQP_DEFAULT_CONNECTION_ENABLED);
     }
 
+    public boolean getMQTTSSLOnly() {
+        return (Boolean) AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_ENABLED) &&
+               !(Boolean)AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_DEFAULT_CONNECTION_ENABLED);
+    }
+
     /**
      * Retrieve SSL Port from Andes configurations(broker.xml).
      *

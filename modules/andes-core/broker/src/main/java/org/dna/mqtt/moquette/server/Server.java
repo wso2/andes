@@ -2,6 +2,7 @@ package org.dna.mqtt.moquette.server;
 
 import org.dna.mqtt.moquette.messaging.spi.impl.SimpleMessaging;
 import org.dna.mqtt.moquette.server.netty.NettyAcceptor;
+import org.dna.mqtt.commons.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -52,11 +53,20 @@ public class Server {
 
         Properties mqttProperties = new Properties();
 
-        mqttProperties.put("port",AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_DEFAULT_CONNECTION_PORT));
+        mqttProperties.put(Constants.SSL_PORT_PROPERTY_NAME,AndesConfigurationManager.
+                                          readValue(AndesConfiguration.TRANSPORTS_MQTT_DEFAULT_CONNECTION_PORT));
 
-        mqttProperties.put("sslPort",AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_PORT));
+        mqttProperties.put(Constants.SSL_PORT_PROPERTY_NAME,AndesConfigurationManager.
+                                          readValue(AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_PORT));
 
-        mqttProperties.put("host",AndesConfigurationManager.readValue(AndesConfiguration.TRANSPORTS_MQTT_BIND_ADDRESS));
+        mqttProperties.put(Constants.SSL_CONNECTION_ENABLED,AndesConfigurationManager.
+                                          readValue(AndesConfiguration.TRANSPORTS_MQTT_SSL_CONNECTION_ENABLED));
+
+        mqttProperties.put(Constants.DEFAULT_CONNECTION_ENABLED,AndesConfigurationManager.
+                                          readValue(AndesConfiguration.TRANSPORTS_MQTT_DEFAULT_CONNECTION_ENABLED));
+
+        mqttProperties.put(Constants.HOST_PROPERTY_NAME,AndesConfigurationManager.
+                                          readValue(AndesConfiguration.TRANSPORTS_MQTT_BIND_ADDRESS));
         
         return mqttProperties;
     }
