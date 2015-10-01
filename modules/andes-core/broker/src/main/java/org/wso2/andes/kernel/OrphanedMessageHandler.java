@@ -102,6 +102,6 @@ public class OrphanedMessageHandler implements SubscriptionListener {
     private void removeMessagesOfDestinationForNode(String destination,
                                                     String ownerName, boolean isTopic) throws AndesException {
 
-        MessagingEngine.getInstance().purgeMessages(destination, ownerName, isTopic, 0l);
+        MessagingEngine.getInstance().purgeMessages(destination, ownerName, isTopic);
     }
 }
