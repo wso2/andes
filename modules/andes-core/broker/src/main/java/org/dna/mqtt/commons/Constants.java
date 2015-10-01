@@ -13,6 +13,8 @@ public class Constants {
     public static final String WEB_SOCKET_PORT_PROPERTY_NAME = "websocket_port";
     public static final String WSS_PORT_PROPERTY_NAME = "secure_websocket_port";
     public static final String SSL_PORT_PROPERTY_NAME = "sslPort";
+    public static final String SSL_CONNECTION_ENABLED = "sslEnabled";
+    public static final String DEFAULT_CONNECTION_ENABLED = "portEnabled";
     public static final String JKS_PATH_PROPERTY_NAME = "jks_path";
     public static final String KEY_STORE_PASSWORD_PROPERTY_NAME = "key_store_password";
     public static final String KEY_MANAGER_PASSWORD_PROPERTY_NAME = "key_manager_password";
