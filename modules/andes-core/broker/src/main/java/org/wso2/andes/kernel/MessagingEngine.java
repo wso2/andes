@@ -18,7 +18,6 @@
 
 package org.wso2.andes.kernel;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.log4j.Logger;
 import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.configuration.AndesConfigurationManager;
@@ -49,10 +48,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
 
 /**
  * This class will handle all message related functions of WSO2 Message Broker
@@ -73,16 +68,6 @@ public class MessagingEngine {
      * Cluster wide unique message id generator
      */
     private MessageIdGenerator messageIdGenerator;
-
-    /**
-     * Updates the message counts in batches if batch size exceeds or the scheduled time elapses
-     */
-    private MessageCountFlusher messageCountFlusher;
-
-    /**
-     * Executor service thread pool to execute content remover task
-     */
-    private ScheduledExecutorService asyncStoreTasksScheduler;
 
     /**
      * reference to subscription store
@@ -144,15 +129,6 @@ public class MessagingEngine {
 
         //register listeners for queue changes
         queueListener = new ClusterCoordinationHandler(HazelcastAgent.getInstance());
-
-        // Only two scheduled tasks running (content removal task and message count update task).
-        // And each scheduled tasks run with fixed delay. Hence at a given time
-        // maximum needed threads would be 2.
-        int threadPoolCount = 2;
-        ThreadFactory namedThreadFactory =
-                new ThreadFactoryBuilder().setNameFormat("MessagingEngine-AsyncStoreTasksSchedulerPool")
-                                          .build();
-        asyncStoreTasksScheduler = Executors.newScheduledThreadPool(threadPoolCount , namedThreadFactory);
 
         /*
         Initialize the SlotCoordinator
@@ -281,8 +257,6 @@ public class MessagingEngine {
         messageStore.moveMetadataToDLC(messageToRemove.getMessageID(), deadLetterQueueName);
 
         // Increment count by 1 in DLC and decrement by 1 in original queue
-        incrementQueueCount(deadLetterQueueName, 1);
-        decrementQueueCount(destinationQueueName, 1);
 
         messageToRemove.markAsDLCMessage();
         messageToRemove.getSlot().decrementPendingMessageCount();
@@ -315,12 +289,11 @@ public class MessagingEngine {
      * @param destination queue or topic name (subscribed routing key) whose messages should be removed
      * @param ownerName The user who initiated the purge request
      * @param isTopic weather purging happens for a topic
-     * @param startMessageID starting message id for the purge operation, optional parameter
      * @return number of messages removed (in memory message count may not be 100% accurate
      * since we cannot guarantee that we caught all messages in delivery threads.)
      * @throws AndesException
      */
-    public int purgeMessages(String destination, String ownerName, boolean isTopic,Long startMessageID) throws AndesException {
+    public int purgeMessages(String destination, String ownerName, boolean isTopic) throws AndesException {
 
         // The timestamp is recorded to track messages that came before the purge event.
         Long purgedTimestamp = System.currentTimeMillis();
@@ -356,7 +329,7 @@ public class MessagingEngine {
         // in memory within all nodes at the time of purging. (Adding that could unnecessarily
         // block critical pub sub flows.)
         // queues destination = storage queue. But for topics it is different
-        int purgedNumOfMessages =  purgeQueueFromStore(storageQueueName,startMessageID,isTopic);
+        int purgedNumOfMessages =  purgeQueueFromStore(storageQueueName);
         log.info("Purged messages of destination " + destination);
         return purgedNumOfMessages;
     }
@@ -365,14 +338,12 @@ public class MessagingEngine {
      * Clear all references to all message metadata / content addressed to a specific queue. Used when purging.
      *
      * @param storageQueueName name of the queue, could be a storage queue or a dlc queue
-     * @param startMessageID   id of the message the query should start from
      * @throws AndesException
      */
-    public int purgeQueueFromStore(String storageQueueName, Long startMessageID, boolean isTopic) throws
-            AndesException {
+    public int purgeQueueFromStore(String storageQueueName) throws AndesException {
 
         try {
-            int deletedMessageCount = 0;
+            int deletedMessageCount;
             if (!DLCQueueUtils.isDeadLetterQueue(storageQueueName)) {
                 // delete all messages for the queue
                 deletedMessageCount = messageStore.deleteAllMessageMetadata(storageQueueName);
@@ -414,7 +385,6 @@ public class MessagingEngine {
         for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages
                 .entrySet()) {
             messageStore.deleteMessages(entry.getKey(), entry.getValue());
-            decrementQueueCount(entry.getKey(), entry.getValue().size());
         }
 
         //TODO:message can be in delivery path. If so we need to decrement slot message count
@@ -448,7 +418,6 @@ public class MessagingEngine {
         for (Map.Entry<String, List<AndesMessageMetadata>> entry : storageSeparatedMessages
                 .entrySet()) {
             messageStore.deleteMessages(entry.getKey(), entry.getValue());
-            decrementQueueCount(entry.getKey(), entry.getValue().size());
         }
         for (DeliverableAndesMetadata message : messagesToRemove) {
             //mark messages as deleted
@@ -474,10 +443,6 @@ public class MessagingEngine {
             //move messages to dead letter channel
             String dlcQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(entry.getKey());
             messageStore.moveMetadataToDLC(entry.getValue(), dlcQueueName);
-
-            int messageCount = entry.getValue().size();
-            decrementQueueCount(entry.getKey(), messageCount);
-            incrementQueueCount(dlcQueueName, messageCount);
         }
 
         //mark the messages as DLC messages
@@ -506,31 +471,9 @@ public class MessagingEngine {
             //move messages to dead letter channel
             String dlcQueueName = DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(entry.getKey());
             messageStore.moveMetadataToDLC(entry.getValue(), dlcQueueName);
-
-            int messageCount = entry.getValue().size();
-            decrementQueueCount(entry.getKey(), messageCount);
-            incrementQueueCount(dlcQueueName, messageCount);
         }
 
         //TODO:message can be in delivery path. If so we need to decrement slot message count
-    }
-
-    /**
-     * Decrement queue count. Flush to store in batches. Count update will take time to reflect
-     * @param queueName name of the queue to decrement count
-     * @param decrementBy decrement count by this value, This should be a positive value
-     */
-    public void decrementQueueCount(String queueName, int decrementBy) {
-        messageCountFlusher.decrementQueueCount(queueName, decrementBy);
-    }
-
-    /**
-     * Increment message count of queue. Flush to store in batches. Count update will take time to reflect
-     * @param queueName name of the queue to increment count
-     * @param incrementBy increment count by this value
-     */
-    public void incrementQueueCount(String queueName, int incrementBy) {
-        messageCountFlusher.incrementQueueCount(queueName, incrementBy);
     }
 
     /**
@@ -627,7 +570,6 @@ public class MessagingEngine {
     /**
      * Get message metadata from queue starting from given id up a given message count
      *
-     * @param dlcQueueName name of the queue
      * @param dlcQueueName name of the dead letter channel queue name
      * @param firstMsgId   id of the starting id
      * @param count        maximum num of messages to return
@@ -740,17 +682,8 @@ public class MessagingEngine {
         completePendingStoreOperations();
     }
 
-    public void completePendingStoreOperations() throws InterruptedException {
-        try {
-            asyncStoreTasksScheduler.shutdown();
-            asyncStoreTasksScheduler.awaitTermination(5, TimeUnit.SECONDS);
-            messageStore.close();
-        } catch (InterruptedException e) {
-            asyncStoreTasksScheduler.shutdownNow();
-            messageStore.close();
-            log.warn("Content remover task forcefully shutdown.");
-            throw e;
-        }
+    public void completePendingStoreOperations() {
+        messageStore.close();
     }
 
     /**

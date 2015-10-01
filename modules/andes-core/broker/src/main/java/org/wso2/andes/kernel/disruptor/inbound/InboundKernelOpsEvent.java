@@ -156,11 +156,7 @@ public class InboundKernelOpsEvent implements AndesInboundStateEvent {
     }
 
     public void completePendingMessageStoringOperations() {
-        try {
-            messagingEngine.completePendingStoreOperations();
-        } catch (InterruptedException e) {
-            log.error("Interrupted while trying to complete pending message storing operations.", e);
-        }
+        messagingEngine.completePendingStoreOperations();
     }
 
     /**
