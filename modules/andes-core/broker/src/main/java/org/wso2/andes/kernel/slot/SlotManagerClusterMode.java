@@ -264,11 +264,13 @@ public class SlotManagerClusterMode {
 	 * @param startMessageIdInTheSlot start message ID of the slot
 	 * @param nodeId                  Node ID of the node that is sending the request.
 	 */
-	public void updateMessageID(String queueName, String nodeId, long startMessageIdInTheSlot,
-	                            long lastMessageIdInTheSlot) throws AndesException {
+	public void updateMessageID(final String queueName,
+	                            final String nodeId,
+	                            final long startMessageIdInTheSlot,
+	                            final long lastMessageIdInTheSlot) throws AndesException {
 
 		//setting up first message id of the slot
-		if (firstMessageId > startMessageIdInTheSlot || firstMessageId == -1) {
+		if (firstMessageId > startMessageIdInTheSlot || firstMessageId == INITIAL_MESSAGE_ID) {
 			firstMessageId = startMessageIdInTheSlot;
 		}
 
@@ -330,6 +332,16 @@ public class SlotManagerClusterMode {
 						}
 						slotAgent.setNodeToLastPublishedId(nodeId, lastMessageIdInTheSlot);
 					}
+				} else {
+					slotAgent.addMessageId(queueName, lastMessageIdInTheSlot);
+
+					if (log.isDebugEnabled()) {
+						log.debug("No overlapping slots found " + startMessageIdInTheSlot + " to : "
+						          + lastMessageIdInTheSlot + ". Added msgID " + lastMessageIdInTheSlot + " to store");
+					}
+
+					//record last published message ID
+					slotAgent.setNodeToLastPublishedId(nodeId, lastMessageIdInTheSlot);
 				}
 			} else {
 				//Update the store only if the last assigned message ID is less than the new start message ID
