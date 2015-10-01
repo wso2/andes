@@ -24,7 +24,7 @@ public class AndesMessagePart {
     private byte[] data;
     private int dataLength;
 
-    public int getOffSet() {
+    public int getOffset() {
         return offSet;
     }
 

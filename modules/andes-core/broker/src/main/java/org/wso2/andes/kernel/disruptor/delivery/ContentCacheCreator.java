@@ -129,7 +129,7 @@ public class ContentCacheCreator {
                 Map<Integer, AndesMessagePart> messagePartMap = new HashMap<>(contentList.size());
 
                 for (AndesMessagePart messagePart : contentList) {
-                    messagePartMap.put(messagePart.getOffSet(), messagePart);
+                    messagePartMap.put(messagePart.getOffset(), messagePart);
                 }
 
                 content = new DisruptorCachedContent(messagePartMap, contentSize, maxChunkSize);

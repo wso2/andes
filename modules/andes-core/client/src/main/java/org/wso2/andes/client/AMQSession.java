@@ -565,10 +565,10 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
             @Override
             public void run() {
                 synchronized (this) {
-                    try{
-                        Iterator<Map.Entry<Long,Long>> iterator = ackWaitTimeOutTrackingMap.entrySet().iterator();
-                        while(iterator.hasNext()){
-                            Map.Entry<Long,Long> entry = iterator.next();
+                    try {
+                        Iterator<Map.Entry<Long, Long>> iterator = ackWaitTimeOutTrackingMap.entrySet().iterator();
+                        while (iterator.hasNext()) {
+                            Map.Entry<Long, Long> entry = iterator.next();
                             Long deliveryTag = entry.getKey();
                             Long deliveredTimeStamp = entry.getValue();
                             // The delivered timestamp read here is updated when dispatching and updating messages
@@ -579,9 +579,9 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                             // and will result in an additional iteration
                             // To avoid this situation, we make it deliberately run 1 iteration before the planned
                             // execution
-                            if((System.currentTimeMillis() - deliveredTimeStamp) > (effectiveAckWaitTimeOut)){
+                            if ((System.currentTimeMillis() - deliveredTimeStamp) > (effectiveAckWaitTimeOut)) {
                                 //reject the message
-                                rejectMessage(deliveryTag,true);
+                                rejectMessage(deliveryTag, true);
                                 iterator.remove();
                                 log.info("Reject message sent for deliveryTag = " + deliveryTag);
                             } else {

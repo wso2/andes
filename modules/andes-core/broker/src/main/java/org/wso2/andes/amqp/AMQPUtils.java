@@ -330,7 +330,7 @@ public class AMQPUtils {
 
         AndesMessagePart cachedMessagePart =  messagePartCache.get(messageId);
 
-        if (cachedMessagePart != null && cachedMessagePart.getOffSet() == index) {
+        if (cachedMessagePart != null && cachedMessagePart.getOffset() == index) {
                 messagePart = cachedMessagePart;
                 needToCache = false;
         } else {

@@ -273,7 +273,7 @@ public interface MessageStore extends HealthAwareStore{
      * @param dlcQueueName name of the queue being purged
      * @throws AndesException
      */
-    int clearDlcQueue(String dlcQueueName) throws AndesException;
+    int clearDLCQueue(String dlcQueueName) throws AndesException;
 
     /***
      * Get Message ID list addressed to a specific queue.

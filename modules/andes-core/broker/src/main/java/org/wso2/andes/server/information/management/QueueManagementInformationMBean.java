@@ -30,7 +30,17 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.BasicContentHeaderProperties;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.DisablePubAckImpl;
+import org.wso2.andes.kernel.Andes;
+import org.wso2.andes.kernel.AndesChannel;
+import org.wso2.andes.kernel.FlowControlListener;
+import org.wso2.andes.kernel.AndesContext;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesMessageMetadata;
+import org.wso2.andes.kernel.AndesMessagePart;
+import org.wso2.andes.kernel.AndesMessage;
+import org.wso2.andes.kernel.AndesUtils;
+import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.disruptor.inbound.InboundQueueEvent;
 import org.wso2.andes.management.common.mbeans.QueueManagementInformation;
 import org.wso2.andes.management.common.mbeans.annotations.MBeanOperationParameter;
@@ -61,10 +71,11 @@ import javax.management.openmbean.SimpleType;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
+
 
 public class QueueManagementInformationMBean extends AMQManagedObject implements QueueManagementInformation {
 
@@ -326,7 +337,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
 
         if (null != andesMetadataIDs) {
-            List<Long> andesMessageIdList = Arrays.asList(ArrayUtils.toObject(andesMetadataIDs));
+            List<Long> andesMessageIdList = new ArrayList<>(andesMetadataIDs.length);
+            Collections.addAll(andesMessageIdList, ArrayUtils.toObject(andesMetadataIDs));
             List<AndesMessageMetadata> messagesToRemove = new ArrayList<>(andesMessageIdList.size());
 
             try {
@@ -393,7 +405,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             description = "The Dead Letter Queue Name for the selected tenant") String destinationQueueName) {
         if (null != andesMetadataIDs) {
 
-            List<Long> andesMessageIdList = Arrays.asList(ArrayUtils.toObject(andesMetadataIDs));
+            List<Long> andesMessageIdList = new ArrayList<>(andesMetadataIDs.length);
+            Collections.addAll(andesMessageIdList, ArrayUtils.toObject(andesMetadataIDs));
             List<AndesMessageMetadata> messagesToRemove = new ArrayList<>(andesMessageIdList.size());
 
             try {
@@ -480,7 +493,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
      * {@inheritDoc}
      */
     @Override
-    public long getNumberMessagesInDLCForQueue(String queueName) throws MBeanException{
+    public long getNumberOfMessagesInDLCForQueue(String queueName) throws MBeanException{
         try {
             return Andes.getInstance().getMessageCountInDLCForQueue(queueName,
                     DLCQueueUtils.identifyTenantInformationAndGenerateDLCString(queueName));
@@ -787,7 +800,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
         long messageCount = 0;
         try {
             if (!DLCQueueUtils.isDeadLetterQueue(queueName)) {
-                if (msgPattern.equals("queue")) {
+                if ("queue".equals(msgPattern)) {
                     messageCount = Andes.getInstance().getMessageCountOfQueue(queueName);
                 }
             } else {

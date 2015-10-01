@@ -92,8 +92,8 @@ public class MetricsConstants {
     /**
      * Get next message meta data in dead letter channel for queue
      */
-    public static final String GET_NEXT_MESSAGE_METADATA_IN_DLC_FOR_QUEUE = PREFIX + "store"
-            + ".nextMessageMetadataInDLCForQueue.get";
+    public static final String GET_NEXT_MESSAGE_METADATA_IN_DLC_FOR_QUEUE = PREFIX
+            + "store.nextMessageMetadataInDLCForQueue.get";
     /**
      * Get next message meta data in dead letter channel
      */

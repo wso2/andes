@@ -101,6 +101,13 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
     private SettableFuture<Boolean> isEventComplete;
 
     /**
+     * Declares the maximum number of milliseconds the event could take to complete.
+     * This is used by the thread that is waiting on the future object so that it is blocked until the event is
+     * complete. The waiting time is set to 5 seconds since it could take somewhat a long time in a loaded environment
+     */
+    private final int MAX_COMPLETION_TIME = 5000;
+
+    /**
      * create an instance of andes queue
      *
      * @param queueName   name of the queue
@@ -249,7 +256,7 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
      */
     public boolean IsQueueDeletable() throws AndesException {
         try {
-            return isEventComplete.get(1000, TimeUnit.MILLISECONDS);
+            return isEventComplete.get(MAX_COMPLETION_TIME, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (ExecutionException e) {
@@ -266,7 +273,7 @@ public class InboundQueueEvent extends AndesQueue implements AndesInboundStateEv
     public void waitForCompletion() throws AndesException {
         try {
             //stay blocked until the queue addition is complete
-            isEventComplete.get(1000, TimeUnit.MILLISECONDS);
+            isEventComplete.get(MAX_COMPLETION_TIME, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (ExecutionException e) {
