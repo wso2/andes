@@ -21,7 +21,6 @@ package org.wso2.andes.kernel.slot;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.DeliverableAndesMetadata;
 import org.wso2.andes.kernel.MessagingEngine;
 
@@ -36,6 +35,7 @@ public class SlotUtils {
 
 
     /**
+     * TODO: We don't have to read whole metadata list for this
      * Check whether there  are any messages left in the slot after all the acks are received.
      * Returns false  if there are any.
      * @param slot {@link org.wso2.andes.kernel.slot.Slot} to be checked

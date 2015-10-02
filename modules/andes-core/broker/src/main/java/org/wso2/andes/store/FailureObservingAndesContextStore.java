@@ -706,16 +706,12 @@ public class FailureObservingAndesContextStore implements AndesContextStore {
     }
 
     /**
-     * Get overlapped slots for a given queue
-     *
-     * @param queueName name of queue
-     * @return overlapped slot object
-     * @throws AndesException
+     * {@inheritDoc}
      */
     @Override
-    public Slot getOverlappedSlot(String queueName) throws AndesException {
+    public Slot getOverlappedSlot(String nodeId, String queueName) throws AndesException {
         try {
-            return wrappedAndesContextStoreInstance.getOverlappedSlot(queueName);
+            return wrappedAndesContextStoreInstance.getOverlappedSlot(nodeId, queueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

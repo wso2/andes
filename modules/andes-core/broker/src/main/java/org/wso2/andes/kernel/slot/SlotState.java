@@ -18,6 +18,9 @@
 
 package org.wso2.andes.kernel.slot;
 
+
+import org.apache.commons.lang.NotImplementedException;
+
 import java.util.EnumSet;
 
 /**
@@ -55,6 +58,30 @@ public enum SlotState {
      */
     public int getCode() {
         return code;
+    }
+
+    /**
+     * Get Slot state from id
+     *
+     * @param id
+     *         of the Slot state
+     * @return Slot state
+     */
+    public static SlotState getById(int id) {
+        switch (id) {
+            case 1:
+                return CREATED;
+            case 2:
+                return ASSIGNED;
+            case 3:
+                return OVERLAPPED;
+            case 4:
+                return RETURNED;
+            case 5:
+                return DELETED;
+            default:
+                throw new NotImplementedException();
+        }
     }
 
     /**

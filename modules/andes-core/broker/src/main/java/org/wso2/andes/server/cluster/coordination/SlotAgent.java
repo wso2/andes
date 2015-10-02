@@ -206,21 +206,19 @@ public interface SlotAgent {
 	/**
 	 * Get all slots for a given queue
 	 *
-	 * @param nodeId id of node
 	 * @param queueName name of queue
 	 * @return set of slot objects
 	 * @throws org.wso2.andes.kernel.AndesException
 	 */
-	TreeSet<Slot> getAllSlotsByQueueName(String nodeId, String queueName) throws AndesException;
+	TreeSet<Slot> getAllSlotsByQueueName(String queueName) throws AndesException;
 
 	/**
 	 * Update slots to overlapped state
-	 * @param nodeId id of node
 	 * @param queueName queue name
 	 * @param overlappedSlots overlapped slot
 	 * @throws AndesException
 	 */
-	void updateOverlappedSlots(String nodeId, String queueName, TreeSet<Slot> overlappedSlots) throws AndesException;
+	void updateOverlappedSlots(String queueName, TreeSet<Slot> overlappedSlots) throws AndesException;
 
     /**
      * Get list of all queues

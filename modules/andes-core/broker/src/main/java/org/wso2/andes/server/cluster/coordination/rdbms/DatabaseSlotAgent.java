@@ -354,7 +354,7 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
 
             waitUntilStoresBecomeAvailable(task);
             try {
-                overlappedSlot = andesContextStore.getOverlappedSlot(queueName);
+                overlappedSlot = andesContextStore.getOverlappedSlot(nodeId, queueName);
                 break;
             } catch (AndesStoreUnavailableException e) {
                 handleFailure(attemptCount, task, e);
@@ -500,9 +500,9 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
      * {@inheritDoc}
      */
     @Override
-    public TreeSet<Slot> getAllSlotsByQueueName(String nodeId, String queueName) throws AndesException {
+    public TreeSet<Slot> getAllSlotsByQueueName(String queueName) throws AndesException {
 
-        String task = "retrieve all slots for queue: " + queueName + " and node: " + nodeId;
+        String task = "retrieve all slots for queue: " + queueName;
 
         TreeSet<Slot> allSlotsForQueue = null;
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
@@ -552,7 +552,7 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
      * {@inheritDoc}
      */
     @Override
-    public void updateOverlappedSlots(String nodeId, String queueName, TreeSet<Slot> overlappedSlots)
+    public void updateOverlappedSlots(String queueName, TreeSet<Slot> overlappedSlots)
             throws AndesException {
 
         //We don't need to check whether the store is available here since it is handled in the lower level method
