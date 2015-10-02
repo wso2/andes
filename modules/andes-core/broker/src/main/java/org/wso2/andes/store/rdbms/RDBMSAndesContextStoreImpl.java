@@ -1549,7 +1549,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
     /**
      * {@inheritDoc}
      */
-    public Slot getOverlappedSlot(String queueName) throws AndesException {
+    public Slot getOverlappedSlot(String nodeId, String queueName) throws AndesException {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
@@ -1561,6 +1561,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             preparedStatement =
                     connection.prepareStatement(RDBMSConstants.PS_SELECT_OVERLAPPED_SLOT);
             preparedStatement.setString(1, queueName);
+            preparedStatement.setString(2, nodeId);
             resultSet = preparedStatement.executeQuery();
 
             if(resultSet.next()) {
@@ -1569,6 +1570,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                 overlappedSlot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
                 overlappedSlot.setStorageQueueName(
                         resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
+                overlappedSlot.setAnOverlappingSlot(true);
             }
             return overlappedSlot;
         } catch (SQLException e) {
@@ -1731,7 +1733,8 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
                 slot.setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
                 slot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
                 slot.setStorageQueueName(resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
-                slot.addState(SlotState.ASSIGNED);
+                slot.addState(SlotState.getById(resultSet.getInt(RDBMSConstants.SLOT_STATE)));
+                slot.setSlotInActive();
                 slotSet.add(slot);
             }
             return slotSet;

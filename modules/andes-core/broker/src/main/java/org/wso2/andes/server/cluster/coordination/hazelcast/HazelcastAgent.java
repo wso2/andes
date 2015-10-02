@@ -17,9 +17,9 @@
  */
 package org.wso2.andes.server.cluster.coordination.hazelcast;
 
+import com.hazelcast.config.Config;
 import com.hazelcast.config.ReliableTopicConfig;
 import com.hazelcast.config.RingbufferConfig;
-import com.hazelcast.config.Config;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.HazelcastInstanceNotActiveException;
 import com.hazelcast.core.IAtomicLong;
@@ -838,32 +838,51 @@ public class HazelcastAgent implements SlotAgent {
      * {@inheritDoc}
      */
     @Override
-    public TreeSet<Slot> getAllSlotsByQueueName(String nodeId, String queueName) throws AndesException {
-        // Sweep all assigned slots to find overlaps using slotAssignmentMap,
-        // cos its optimized for node,queue-wise iteration.
-        // The requirement here is to clear slot associations for the queue on all nodes.
-
+    public TreeSet<Slot> getAllSlotsByQueueName(String queueName) throws AndesException {
         TreeSet<Slot> resultSet = new TreeSet<>();
-        HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
-        if (!(overlappedSlotMap.containsKey(nodeId))) {
-            overlappedSlotMap.put(nodeId, new HashmapStringTreeSetWrapper());
-        }
-        HashmapStringTreeSetWrapper olWrapper = overlappedSlotMap.get(nodeId);
-        HashMap<String, TreeSet<Slot>> olSlotMap = olWrapper.getStringListHashMap();
-        if (!(olSlotMap.containsKey(queueName))) {
-            olSlotMap.put(queueName, new TreeSet<Slot>());
-            olWrapper.setStringListHashMap(olSlotMap);
-            overlappedSlotMap.set(nodeId, olWrapper);
-        }
-        if (null != wrapper) {
-            HashMap<String, TreeSet<Slot>> queueToSlotMap = wrapper.getStringListHashMap();
-            if (queueToSlotMap != null) {
-                TreeSet<Slot> slotListForQueueOnNode = queueToSlotMap.get(queueName);
-                if (null != slotListForQueueOnNode) {
-                    resultSet.addAll(slotListForQueueOnNode);
+        TreeSet<String> messagePublishedNodes = getMessagePublishedNodes();
+
+        for (String nodeId : messagePublishedNodes) {
+            if (!(overlappedSlotMap.containsKey(nodeId))) {
+                overlappedSlotMap.put(nodeId, new HashmapStringTreeSetWrapper());
+            }
+            HashmapStringTreeSetWrapper olWrapper = overlappedSlotMap.get(nodeId);
+            if (null != olWrapper) {
+                HashMap<String, TreeSet<Slot>> olSlotMap = olWrapper.getStringListHashMap();
+                if (null != olSlotMap) {
+                    if (!(olSlotMap.containsKey(queueName))) {
+                        olSlotMap.put(queueName, new TreeSet<Slot>());
+                        olWrapper.setStringListHashMap(olSlotMap);
+                        overlappedSlotMap.set(nodeId, olWrapper);
+                    } else {
+                        resultSet.addAll(olSlotMap.get(queueName));
+                    }
+                }
+            }
+
+
+            HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
+            if (null != wrapper) {
+                HashMap<String, TreeSet<Slot>> queueToSlotMap = wrapper.getStringListHashMap();
+                if (queueToSlotMap != null) {
+                    TreeSet<Slot> slotListForQueueOnNode = queueToSlotMap.get(queueName);
+                    if (null != slotListForQueueOnNode) {
+                        resultSet.addAll(slotListForQueueOnNode);
+                    }
                 }
             }
         }
+
+        TreeSetSlotWrapper treeSetStringWrapper = unAssignedSlotMap.get(queueName);
+        TreeSet<Slot> unAssignedSlotSet;
+        if (null != treeSetStringWrapper) {
+            unAssignedSlotSet = treeSetStringWrapper.getSlotTreeSet();
+
+            if (null != unAssignedSlotSet) {
+                resultSet.addAll(unAssignedSlotSet);
+            }
+        }
+
         return resultSet;
     }
 
@@ -902,30 +921,41 @@ public class HazelcastAgent implements SlotAgent {
     }
 
     /**
+     * TODO Fix with new changes
      * {@inheritDoc}
      */
     @Override
-    public void updateOverlappedSlots(String nodeId, String queueName, TreeSet<Slot> overlappedSlots)
+    public void updateOverlappedSlots( String queueName, TreeSet<Slot> overlappedSlots)
             throws AndesException {
-        HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
-        HashMap<String, TreeSet<Slot>> queueToSlotMap = new HashMap<>();
-        if (null == wrapper) {
-            wrapper = new HashmapStringTreeSetWrapper();
-        } else {
-            queueToSlotMap = wrapper.getStringListHashMap();
+        TreeSet<String> messagePublishedNodes = getMessagePublishedNodes();
+
+        for (String nodeId : messagePublishedNodes) {
+            HashmapStringTreeSetWrapper wrapper = slotAssignmentMap.get(nodeId);
+            HashMap<String, TreeSet<Slot>> queueToSlotMap = new HashMap<>();
+            if (null == wrapper) {
+                wrapper = new HashmapStringTreeSetWrapper();
+            } else {
+                queueToSlotMap = wrapper.getStringListHashMap();
+            }
+
+            HashmapStringTreeSetWrapper olWrapper = overlappedSlotMap.get(nodeId);
+            HashMap<String, TreeSet<Slot>> olSlotMap = olWrapper.getStringListHashMap();
+            for (Slot slot : overlappedSlots) {
+                TreeSet<Slot> slotsForNode = queueToSlotMap.get(queueName);
+                if (slotsForNode.contains(slot)) {
+                    //Add to global overlappedSlotMap
+                    olSlotMap.get(queueName).remove(slot);
+                    olSlotMap.get(queueName).add(slot);
+
+                    slotsForNode.remove(slot);
+                }
+            }
+            wrapper.setStringListHashMap(queueToSlotMap);
+            slotAssignmentMap.set(nodeId, wrapper);
+            // Add all marked slots collected into the olSlot to global overlappedSlotsMap.
+            olWrapper.setStringListHashMap(olSlotMap);
+            overlappedSlotMap.set(nodeId, olWrapper);
         }
-        HashmapStringTreeSetWrapper olWrapper = overlappedSlotMap.get(nodeId);
-        HashMap<String, TreeSet<Slot>> olSlotMap = olWrapper.getStringListHashMap();
-        for (Slot slot : overlappedSlots) {
-            //Add to global overlappedSlotMap
-            olSlotMap.get(queueName).remove(slot);
-            olSlotMap.get(queueName).add(slot);
-        }
-        wrapper.setStringListHashMap(queueToSlotMap);
-        slotAssignmentMap.set(nodeId, wrapper);
-        // Add all marked slots collected into the olSlot to global overlappedSlotsMap.
-        olWrapper.setStringListHashMap(olSlotMap);
-        overlappedSlotMap.set(nodeId, olWrapper);
     }
 
     /**

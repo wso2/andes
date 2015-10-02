@@ -22,7 +22,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.kernel.AndesException;
 
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -65,7 +64,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
             log.debug("Slot deletion safe zone calculation started.");
         }
         while (running) {
-            if (isLive) {
+            if (isLive()) {
                 Set<String> nodesWithPublishedMessages;
                 try {
                     nodesWithPublishedMessages = SlotManagerClusterMode.getInstance().getMessagePublishedNodes();
@@ -74,13 +73,10 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                            + "Retrying after 15 seconds" ,e);
                     try {
                         Thread.sleep(TIME_TO_SLEEP_ON_ERROR);
-                    } catch (InterruptedException e1) {
-                        setLive(false);
+                    } catch (InterruptedException ignore) {
                     }
                     continue;
                 }
-                Map<String, Long> nodeInformedSafeZones =
-                        SlotManagerClusterMode.getInstance().getNodeInformedSlotDeletionSafeZones();
 
                 /** calculate safe zone (minimum value of messageIDs published so far to the
                  * cluster by each node)
@@ -100,8 +96,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                                 nodeID + ". Retrying after 15 seconds", e);
                         try {
                             Thread.sleep(TIME_TO_SLEEP_ON_ERROR);
-                        } catch (InterruptedException e1) {
-                            setLive(false);
+                        } catch (InterruptedException ignore) {
                         }
                         continue;
                     }
@@ -110,29 +105,7 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
                         safeZoneValue = safeZoneByPublishedMessages;
                     }
 
-                    //If messages are not published, each node will send a messageID giving
-                    // assurance that next message id it would generate will be beyond a certain
-                    // number
-                    Long nodeInformedSafeZone = nodeInformedSafeZones.get(nodeID);
-
-                    /**
-                     * if no new messages are published and no new slot assignment happened
-                     * node informed value can be bigger. We need to accept that to keep the
-                     * safe zone moving
-                     */
-                    if (null != nodeInformedSafeZone) {
-                        if (Long.MAX_VALUE != safeZoneValue) {
-                            if (safeZoneValue < nodeInformedSafeZone) {
-                                safeZoneValue = nodeInformedSafeZone;
-                            }
-                        } else {
-                            safeZoneValue = nodeInformedSafeZone;
-                        }
-                    }
-
-                    if (globalSafeZoneVal > safeZoneValue) {
-                        globalSafeZoneVal = safeZoneValue;
-                    }
+                    globalSafeZoneVal = Math.min(globalSafeZoneVal,safeZoneValue);
                 }
 
                 slotDeleteSafeZone.set(globalSafeZoneVal);
@@ -143,14 +116,12 @@ public class SlotDeleteSafeZoneCalc implements Runnable {
 
                 try {
                     Thread.sleep(seekInterval);
-                } catch (InterruptedException e) {
-                    setLive(false);
+                } catch (InterruptedException ignore) {
                 }
             } else {
                 try {
                     Thread.sleep(TIME_TO_SLEEP_ON_ERROR);
-                } catch (InterruptedException e) {
-                    setLive(false);
+                } catch (InterruptedException ignore) {
                 }
             }
         }

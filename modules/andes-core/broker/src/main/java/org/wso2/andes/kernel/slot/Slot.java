@@ -265,6 +265,15 @@ public class Slot implements Serializable, Comparable<Slot> {
     }
 
     /**
+     * Return last state of the Slot
+     *
+     * @return current state of the slot
+     */
+    public SlotState getCurrentState() {
+        return slotStates.get(slotStates.size() - 1);
+    }
+
+    /**
      * Convert Slot state list to a string
      * @return Encoded string
      */

@@ -21,11 +21,8 @@
 package org.wso2.andes.client;
 
 
-import java.util.Map;
-
-import javax.jms.Destination;
-import javax.jms.JMSException;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQUndeliveredException;
 import org.wso2.andes.client.failover.FailoverException;
@@ -76,8 +73,10 @@ import org.wso2.andes.framing.amqp_0_91.MethodRegistry_0_91;
 import org.wso2.andes.jms.Session;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.protocol.AMQMethodEvent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import javax.jms.Destination;
+import javax.jms.JMSException;
+import java.util.Map;
 
 public final class AMQSession_0_8 extends AMQSession<BasicMessageConsumer_0_8, BasicMessageProducer_0_8>
 {

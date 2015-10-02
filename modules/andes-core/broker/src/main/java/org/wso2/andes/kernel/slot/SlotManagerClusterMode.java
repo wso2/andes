@@ -23,16 +23,12 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
-import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.server.cluster.coordination.SlotAgent;
 import org.wso2.andes.server.cluster.coordination.hazelcast.HazelcastAgent;
 import org.wso2.andes.server.cluster.coordination.rdbms.DatabaseSlotAgent;
 
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,12 +49,6 @@ public class SlotManagerClusterMode {
 	private static final SlotManagerClusterMode slotManager = new SlotManagerClusterMode();
 
 	private static final int SAFE_ZONE_EVALUATION_INTERVAL = 5 * 1000;
-
-	/**
-	 * Keeps slot deletion safe zones for each node, as they are informed by nodes via thrift
-	 * communication. Used for safe zone calculation for cluster by Slot Manager
-	 */
-	private final Map<String, Long> nodeInformedSlotDeletionSafeZones;
 
 	//safe zone calculator
 	private final SlotDeleteSafeZoneCalc slotDeleteSafeZoneCalc;
@@ -82,8 +72,6 @@ public class SlotManagerClusterMode {
 	private SlotAgent slotAgent;
 
 	private SlotManagerClusterMode() {
-
-		nodeInformedSlotDeletionSafeZones = new HashMap<>();
 
 		//start a thread to calculate slot delete safe zone
 		slotDeleteSafeZoneCalc = new SlotDeleteSafeZoneCalc(SAFE_ZONE_EVALUATION_INTERVAL);
@@ -427,10 +415,6 @@ public class SlotManagerClusterMode {
 		}
 	}
 
-	protected Map<String, Long> getNodeInformedSlotDeletionSafeZones() {
-		return nodeInformedSlotDeletionSafeZones;
-	}
-
 	protected Long getLastPublishedIDByNode(String nodeID) throws AndesException {
 		Long lastPublishId;
 		lastPublishId = slotAgent.getNodeToLastPublishedId(nodeID);
@@ -460,7 +444,11 @@ public class SlotManagerClusterMode {
 	 * @return current calculated safe zone
 	 */
 	public long updateAndReturnSlotDeleteSafeZone(String nodeID, long safeZoneOfNode) {
-		nodeInformedSlotDeletionSafeZones.put(nodeID, safeZoneOfNode);
+		try {
+			slotAgent.setNodeToLastPublishedId(nodeID, safeZoneOfNode);
+		} catch (AndesException e) {
+			log.error("Error occurred while updating safezone value " + safeZoneOfNode + " for node " + nodeID, e);
+		}
 		return slotDeleteSafeZoneCalc.getSlotDeleteSafeZone();
 	}
 
@@ -489,56 +477,54 @@ public class SlotManagerClusterMode {
 	/**
 	 * Get an ordered set of existing, assigned slots that overlap with the input slot range.
 	 *
-	 * @param queueName  name of destination queue
-	 * @param startMsgID start message ID of input slot
-	 * @param endMsgID   end message ID of input slot
+	 * @param queueName
+	 *         name of destination queue
+	 * @param startMsgID
+	 *         start message ID of input slot
+	 * @param endMsgID
+	 *         end message ID of input slot
 	 * @return TreeSet<Slot>c
 	 */
 	private TreeSet<Slot> getOverlappedAssignedSlots(String queueName, long startMsgID, long endMsgID)
 			throws AndesException {
 
-		// Sweep all assigned slots to find overlaps using slotAssignmentMap, cos its optimized for node,queue-wise iteration.
-		// The requirement here is to clear slot associations for the queue on all nodes.
-		List<String> nodeIDs = AndesContext.getInstance().getClusterAgent().getAllNodeIdentifiers();
-		TreeSet<Slot> slotListForQueueOnNode;
 		TreeSet<Slot> overlappedSlots = new TreeSet<>();
+		TreeSet<Slot> assignedOverlappingSlots = new TreeSet<>();
 
-		for (String nodeID : nodeIDs) {
-			String lockKey = nodeID + SlotManagerClusterMode.class;
-			TreeSet<Slot> overlappingSlotsOnNode = new TreeSet<>();
+		String lockKey = queueName + SlotManagerClusterMode.class;
 
-			synchronized (lockKey.intern()) {
-				// Get all slots assigned to given node id and queue name
-				slotListForQueueOnNode = slotAgent.getAllSlotsByQueueName(nodeID, queueName);
+		synchronized (lockKey.intern()) {
+			// Get all slots created for given queue name
+			TreeSet<Slot> slotListForQueue = slotAgent.getAllSlotsByQueueName(queueName);
 
-				// Check each slot for overlapped slots
-				if (null != slotListForQueueOnNode) {
-					for (Slot slot : slotListForQueueOnNode) {
-						if (endMsgID < slot.getStartMessageId()) {
-							continue; // skip this one, its below our range
-						}
-						if (startMsgID > slot.getEndMessageId()) {
-							continue; // skip this one, its above our range
-						}
-						// Set slot as overlapped if not skipped
-						slot.setAnOverlappingSlot(true);
-						if (log.isDebugEnabled()) {
-							log.debug("Marked already assigned slot as an overlapping" +
-							          " slot. Slot= " + slot);
-						}
-
-						//Add to overlapped slots on node map
-						overlappingSlotsOnNode.add(slot);
-
-						if (log.isDebugEnabled()) {
-							log.debug("Found an overlapping slot : " + slot);
-						}
-					}
+			// Check each slot for overlapped slots
+			for (Slot slot : slotListForQueue) {
+				log.error("getOverlappedAssignedSlots: Slot read " + slot.toString());
+				if (endMsgID < slot.getStartMessageId()) {
+					continue; // skip this one, its below our range
 				}
-				slotAgent.updateOverlappedSlots(nodeID, queueName, overlappingSlotsOnNode);
-				// Add to return collection
-				overlappedSlots.addAll(overlappingSlotsOnNode);
+				if (startMsgID > slot.getEndMessageId()) {
+					continue; // skip this one, its above our range
+				}
+
+				if (SlotState.ASSIGNED == slot.getCurrentState()) {
+					assignedOverlappingSlots.add(slot);
+				}
+
+				// Set slot as overlapped if not skipped
+				slot.setAnOverlappingSlot(true);
+
+				if (log.isDebugEnabled()) {
+					log.debug("Marked already assigned slot as an overlapping slot. Slot= " + slot);
+				}
+
+				overlappedSlots.add(slot);
+
+				if (log.isDebugEnabled()) {
+					log.debug("Found an overlapping slot : " + slot);
+				}
 			}
+			slotAgent.updateOverlappedSlots(queueName, assignedOverlappingSlots);
 		}
 		return overlappedSlots;
 	}
