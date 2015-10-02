@@ -1827,9 +1827,14 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     retainedItemData.messageID = metadata.getMessageID();
 
                 } else {
-
-                    createRetainedEntry(connection, message);
-
+                    // Retain message shouldn't create a retain entry if it receives an empty payload.
+                    if(!message.getContentChunkList().isEmpty()) {
+                        // if first chunk doesn't contain any data that payload is empty. Therefore
+                        // no need to store the retain message.
+                        if (message.getContentChunkList().get(0).getDataLength() != 0) {
+                            createRetainedEntry(connection, message);
+                        }
+                    }
                 }
 
             }
@@ -1906,7 +1911,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         // If retain topic message received with empty payload that particular retain topic will be
         // deleted from broker instead of updating.
         if(!message.getContentChunkList().isEmpty()) {
-            if (message.getContentChunkList().get(0).getData().length == 0) {
+            // if first chunk doesn't contain any data that payload is empty and therefore
+            // retain message(metadata + content) should remove.
+            if (message.getContentChunkList().get(0).getDataLength() == 0) {
 
                 isRetainTopicSetToDelete = true;
 
