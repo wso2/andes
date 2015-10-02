@@ -18,13 +18,13 @@
 
 package org.wso2.andes.configuration.enums;
 
-import java.util.List;
-
 import org.wso2.andes.configuration.modules.JKSStore;
 import org.wso2.andes.configuration.util.ConfigurationProperty;
 import org.wso2.andes.configuration.util.ImmutableMetaProperties;
 import org.wso2.andes.configuration.util.MetaProperties;
 import org.wso2.andes.configuration.util.TopicMessageDeliveryStrategy;
+
+import java.util.List;
 
 /**
  * All Andes specific config properties directly defined in broker.xml (plus any linked configuration files) are
@@ -536,9 +536,7 @@ public enum AndesConfiguration implements ConfigurationProperty {
     /**
      * Enable RDBMS slot information store
      */
-    SLOT_MANAGEMENT_STORAGE("slotManagement/storage", "RDBMS",
-                                                  String.class);
-
+    SLOT_MANAGEMENT_STORAGE("slotManagement/storage", "RDBMS", String.class);
 
     private final MetaProperties metaProperties;
 
