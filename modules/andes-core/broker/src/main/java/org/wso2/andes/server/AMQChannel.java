@@ -20,7 +20,6 @@ package org.wso2.andes.server;
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.AMQSecurityException;
-import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.amqp.QpidAndesBridge;
 import org.wso2.andes.configuration.qpid.ConfigStore;
 import org.wso2.andes.configuration.qpid.ConfiguredObject;
@@ -42,12 +41,6 @@ import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
 import org.wso2.andes.kernel.FlowControlListener;
 import org.wso2.andes.kernel.disruptor.inbound.InboundTransactionEvent;
-import org.wso2.andes.server.queue.AMQQueue;
-import org.wso2.andes.server.queue.BaseQueue;
-import org.wso2.andes.server.queue.DLCQueueUtils;
-import org.wso2.andes.server.queue.IncomingMessage;
-import org.wso2.andes.server.queue.QueueEntry;
-import org.wso2.andes.store.StoredAMQPMessage;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMap;
 import org.wso2.andes.server.ack.UnacknowledgedMessageMapImpl;
@@ -69,6 +62,11 @@ import org.wso2.andes.server.protocol.AMQConnectionModel;
 import org.wso2.andes.server.protocol.AMQProtocolEngine;
 import org.wso2.andes.server.protocol.AMQProtocolSession;
 import org.wso2.andes.server.protocol.AMQSessionModel;
+import org.wso2.andes.server.queue.AMQQueue;
+import org.wso2.andes.server.queue.BaseQueue;
+import org.wso2.andes.server.queue.DLCQueueUtils;
+import org.wso2.andes.server.queue.IncomingMessage;
+import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.registry.ApplicationRegistry;
 import org.wso2.andes.server.store.MessageStore;
 import org.wso2.andes.server.store.StorableMessageMetaData;
@@ -82,6 +80,7 @@ import org.wso2.andes.server.txn.LocalTransaction;
 import org.wso2.andes.server.txn.ServerTransaction;
 import org.wso2.andes.server.virtualhost.AMQChannelMBean;
 import org.wso2.andes.server.virtualhost.VirtualHost;
+import org.wso2.andes.store.StoredAMQPMessage;
 
 import javax.management.JMException;
 import java.util.ArrayList;
@@ -1501,9 +1500,8 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     }
 
     public void blockChannel() {
-        if(_blocking.compareAndSet(Boolean.FALSE, Boolean.TRUE))
+        if(!isClosing() || _blocking.compareAndSet(Boolean.FALSE, Boolean.TRUE))
         {
-            //_actor.message(_logSubject, ChannelMessages.FLOW_ENFORCED(_defaultQueue.getNameShortString().asString()));
             flow(false);
         }
     }
@@ -1521,9 +1519,8 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
     }
 
     public void unblockChannel() {
-        if(_blocking.compareAndSet(Boolean.TRUE, Boolean.FALSE))
+        if(!isClosing() || _blocking.compareAndSet(Boolean.TRUE, Boolean.FALSE))
         {
-            _actor.message(_logSubject, ChannelMessages.FLOW_REMOVED());
             flow(true);
         }
     }
