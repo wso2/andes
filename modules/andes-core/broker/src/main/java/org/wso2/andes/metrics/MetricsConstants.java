@@ -85,6 +85,12 @@ public class MetricsConstants {
      * Get message content
      */
     public static final String GET_CONTENT = PREFIX + "store.content.get";
+    
+    /**
+     * Get next message meta data from queue
+     */
+    public static final String GET_NEXT_MESSAGE_IDS_FROM_QUEUE = PREFIX + "store.nextMessageIDsFromQueue.get";
+    
     /**
      * Get next message meta data from queue
      */

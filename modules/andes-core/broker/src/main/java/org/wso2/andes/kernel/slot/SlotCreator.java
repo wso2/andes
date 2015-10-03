@@ -24,7 +24,6 @@ import org.wso2.andes.configuration.AndesConfigurationManager;
 import org.wso2.andes.configuration.enums.AndesConfiguration;
 import org.wso2.andes.kernel.AndesContext;
 import org.wso2.andes.kernel.AndesException;
-import org.wso2.andes.kernel.AndesMessageMetadata;
 import org.wso2.andes.kernel.MessageStore;
 
 import java.util.List;
@@ -89,11 +88,11 @@ public class SlotCreator implements Runnable {
         long messageCountOfQueue = messageStore.getMessageCountForQueue(queueName);
 
 
-        List<AndesMessageMetadata> messageList = messageStore.getNextNMessageMetadataFromQueue(queueName, 0, slotSize);
-        int numberOfMessages = messageList.size();
+        List<Long> messageIdList = messageStore.getNextNMessageIdsFromQueue(queueName, 0, slotSize);
+        int numberOfMessages = messageIdList.size();
 
         databaseReadsCounter++;
-        restoreMessagesCounter = restoreMessagesCounter + messageList.size();
+        restoreMessagesCounter = restoreMessagesCounter + messageIdList.size();
 
         long lastMessageID;
         long firstMessageID;
@@ -101,11 +100,11 @@ public class SlotCreator implements Runnable {
 
         while (numberOfMessages > 0) {
             int lastMessageArrayIndex = numberOfMessages - 1;
-            lastMessageID = messageList.get(lastMessageArrayIndex).getMessageID();
-            firstMessageID = messageList.get(0).getMessageID();
+            lastMessageID = messageIdList.get(lastMessageArrayIndex);
+            firstMessageID = messageIdList.get(0);
 
             if (log.isDebugEnabled()) {
-                log.debug("Created a slot with " + messageList.size() + " messages for queue (" + queueName + ")");
+                log.debug("Created a slot with " + messageIdList.size() + " messages for queue (" + queueName + ")");
             }
 
             if (AndesContext.getInstance().isClusteringEnabled()) {
@@ -128,11 +127,11 @@ public class SlotCreator implements Runnable {
 
             // We need to increment lastMessageID since the getNextNMessageMetadataFromQueue returns message list
             // including the given starting ID.
-            messageList = messageStore.getNextNMessageMetadataFromQueue(queueName, lastMessageID + 1, slotSize);
-            numberOfMessages = messageList.size();
+            messageIdList = messageStore.getNextNMessageIdsFromQueue(queueName, lastMessageID + 1, slotSize);
+            numberOfMessages = messageIdList.size();
             //increase value of counters
             databaseReadsCounter++;
-            restoreMessagesCounter = restoreMessagesCounter + messageList.size();
+            restoreMessagesCounter = restoreMessagesCounter + messageIdList.size();
         }
 
         log.info("Recovered " + restoreMessagesCounter + " messages for queue \"" + queueName + "\" using "

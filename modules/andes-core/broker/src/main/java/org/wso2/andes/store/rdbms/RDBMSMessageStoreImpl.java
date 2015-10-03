@@ -32,6 +32,7 @@ import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import org.wso2.andes.server.queue.DLCQueueUtils;
+import org.wso2.andes.store.AndesStoreUnavailableException;
 import org.wso2.andes.store.cache.AndesMessageCache;
 import org.wso2.andes.store.cache.MessageCacheFactory;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -920,6 +921,56 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         return metadataList;
     }
 
+    
+    /**
+     * {@inheritDoc}
+     */
+    public List<Long> getNextNMessageIdsFromQueue(final String storageQueueName,
+                                                  long firstMsgId, int count)
+                                                                              throws AndesException {
+        List<Long> mdList = new ArrayList<Long>(count);
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet results = null;
+
+        Context nextMessageIdsRetrievalContext = MetricManager.timer(Level.INFO,
+                                                                     MetricsConstants.GET_NEXT_MESSAGE_IDS_FROM_QUEUE)
+                                                                                                               .start();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
+
+        try {
+            connection = getConnection();
+            preparedStatement = connection
+                                          .prepareStatement(RDBMSConstants.PS_SELECT_MESSAGE_IDS_FROM_QUEUE);
+            preparedStatement.setLong(1, firstMsgId - 1);
+            preparedStatement.setInt(2, getCachedQueueID(storageQueueName));
+
+            results = preparedStatement.executeQuery();
+            int resultCount = 0;
+            while (results.next()) {
+
+                if (resultCount == count) {
+                    break;
+                }
+
+                Long messageId = results.getLong(RDBMSConstants.MESSAGE_ID);
+
+                mdList.add(messageId);
+                resultCount++;
+            }
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving message ids from queue ", e);
+        } finally {
+            nextMessageIdsRetrievalContext.stop();
+            contextRead.stop();
+            close(results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_IDS_FROM_QUEUE);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_NEXT_N_IDS_FROM_QUEUE);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_NEXT_N_IDS_FROM_QUEUE);
+        }
+        return mdList;
+    }
+    
+    
     /**
      * {@inheritDoc}
      */

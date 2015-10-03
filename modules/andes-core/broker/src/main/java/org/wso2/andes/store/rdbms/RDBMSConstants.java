@@ -247,6 +247,14 @@ public class RDBMSConstants {
             + " AND " + DLC_QUEUE_ID + "=-1"
             + " ORDER BY " + MESSAGE_ID;
 
+    protected static final String PS_SELECT_MESSAGE_IDS_FROM_QUEUE =
+            "SELECT " + MESSAGE_ID 
+            + " FROM " + METADATA_TABLE
+            + " WHERE " + MESSAGE_ID + ">?"
+            + " AND " + QUEUE_ID + "=?"
+            + " AND " + DLC_QUEUE_ID + "=-1"
+            + " ORDER BY " + MESSAGE_ID;
+    
     protected static final String PS_SELECT_METADATA_IN_DLC_FOR_QUEUE =
             "SELECT " + MESSAGE_ID + "," + METADATA
             + " FROM " + METADATA_TABLE
@@ -813,6 +821,7 @@ public class RDBMSConstants {
                                                                                      + "within a range from queue. ";
     protected static final String TASK_RETRIEVING_METADATA_RANGE_IN_DLC = "retrieving metadata in dlc within a range. ";
     protected static final String TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE = "retrieving metadata list from queue. ";
+    protected static final String TASK_RETRIEVING_NEXT_N_IDS_FROM_QUEUE = "retrieving message id list from queue. ";
     protected static final String TASK_RETRIEVING_NEXT_N_METADATA_IN_DLC_FOR_QUEUE = "retrieving metadata list in DLC "
                                                                                      + "for queue. ";
     protected static final String TASK_RETRIEVING_NEXT_N_METADATA_FROM_DLC = "retrieving metadata list from DLC ";

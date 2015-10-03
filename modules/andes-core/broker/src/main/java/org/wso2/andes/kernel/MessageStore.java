@@ -180,6 +180,24 @@ public interface MessageStore extends HealthAwareStore{
                                                                 long firstMsgId, int count) throws AndesException;
 
     /**
+     * Read a list of message ids from store specifying a starting message id
+     * and a count
+     *
+     * @param storageQueueName
+     *            name of the queue
+     * @param firstMsgId
+     *            first id
+     * @param count
+     *            how many messages to read
+     * @return list of messageIds
+     * @throws AndesException
+     */
+    public List<Long> getNextNMessageIdsFromQueue(final String storageQueueName,
+                                                  long firstMsgId, int count)
+                                                                              throws AndesException;
+    
+    
+    /**
      * Retrieve a metadata list from dead letter channel for a specific queue specifying a starting message id and a
      * count
      *
