@@ -46,6 +46,8 @@ public class SlotManagerClusterMode {
 
 	private static final int INITIAL_MESSAGE_ID = -1;
 
+	private static final Log log = LogFactory.getLog(SlotManagerClusterMode.class);
+
 	private static final SlotManagerClusterMode slotManager = new SlotManagerClusterMode();
 
 	private static final int SAFE_ZONE_EVALUATION_INTERVAL = 5 * 1000;
@@ -53,7 +55,6 @@ public class SlotManagerClusterMode {
 	//safe zone calculator
 	private final SlotDeleteSafeZoneCalc slotDeleteSafeZoneCalc;
 
-	private static final Log log = LogFactory.getLog(SlotManagerClusterMode.class);
 
 	//first message id of fresh slot
 	private long firstMessageId;
