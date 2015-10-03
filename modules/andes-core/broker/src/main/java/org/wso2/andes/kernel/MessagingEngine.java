@@ -349,7 +349,7 @@ public class MessagingEngine {
                 deletedMessageCount = messageStore.deleteAllMessageMetadata(storageQueueName);
             } else {
                 //delete all the messages in dlc
-                deletedMessageCount = messageStore.clearDlcQueue(storageQueueName);
+                deletedMessageCount = messageStore.clearDLCQueue(storageQueueName);
             }
 
             return deletedMessageCount;

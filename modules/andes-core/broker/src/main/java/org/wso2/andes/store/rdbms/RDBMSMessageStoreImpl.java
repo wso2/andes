@@ -164,7 +164,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     private void addContentToBatch(PreparedStatement preparedStatement, AndesMessagePart messagePart) throws SQLException {
         preparedStatement.setLong(1, messagePart.getMessageID());
-        preparedStatement.setInt(2, messagePart.getOffSet());
+        preparedStatement.setInt(2, messagePart.getOffset());
         preparedStatement.setBytes(3, messagePart.getData());
         preparedStatement.addBatch();
     }
@@ -611,11 +611,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         Context moveMetadataToDLCContext = MetricManager.timer(Level.INFO, MetricsConstants.MOVE_METADATA_TO_DLC)
                 .start();
-        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         //Remove the message from cache
         removeFromCache(messageId);
 
+        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         try {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_MOVE_METADATA_TO_DLC);
@@ -1550,7 +1550,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public int clearDlcQueue(String dlcQueueName) throws AndesException {
+    public int clearDLCQueue(String dlcQueueName) throws AndesException {
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -1998,7 +1998,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             deleteContentPreparedStatement.addBatch();
             for (AndesMessagePart messagePart : message.getContentChunkList()) {
                 insertContentPreparedStatement.setLong(1, metadata.getMessageID());
-                insertContentPreparedStatement.setInt(2, messagePart.getOffSet());
+                insertContentPreparedStatement.setInt(2, messagePart.getOffset());
                 insertContentPreparedStatement.setBytes(3, messagePart.getData());
                 insertContentPreparedStatement.addBatch();
             }
@@ -2069,7 +2069,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     RDBMSConstants.PS_INSERT_RETAIN_MESSAGE_PART);
             for (AndesMessagePart messagePart : message.getContentChunkList()) {
                 preparedStatementForContent.setLong(1, messageID);
-                preparedStatementForContent.setInt(2, messagePart.getOffSet());
+                preparedStatementForContent.setInt(2, messagePart.getOffset());
                 preparedStatementForContent.setBytes(3, messagePart.getData());
                 preparedStatementForContent.addBatch();
             }

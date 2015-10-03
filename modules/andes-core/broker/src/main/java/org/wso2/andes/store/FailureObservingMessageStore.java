@@ -398,9 +398,9 @@ public class FailureObservingMessageStore implements MessageStore {
      * {@inheritDoc}
      */
     @Override
-    public int clearDlcQueue(String dlcQueueName) throws AndesException {
+    public int clearDLCQueue(String dlcQueueName) throws AndesException {
         try {
-            return wrappedInstance.clearDlcQueue(dlcQueueName);
+            return wrappedInstance.clearDLCQueue(dlcQueueName);
         } catch (AndesStoreUnavailableException exception) {
             notifyFailures(exception);
             throw exception;

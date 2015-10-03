@@ -154,6 +154,10 @@ public class RDBMSConstants {
             + " WHERE " + MESSAGE_ID + "=?"
             + " AND " + MSG_OFFSET + "=?";
 
+    /**
+     * We need to select rows that have the DLC_QUEUE_ID = -1 indicating that the message is not moved
+     * into the dead letter channel
+     */
     protected static final String PS_INSERT_METADATA =
             "INSERT INTO " + METADATA_TABLE + " ("
             + MESSAGE_ID + ","

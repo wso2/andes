@@ -176,9 +176,10 @@ public interface QueueManagementInformation {
      */
     @MBeanAttribute(name = "NumberMessagesInDLCForQueue", description = "Message count in the DLC" +
                                                                         " for a specific queue")
-    long getNumberMessagesInDLCForQueue(
+    long getNumberOfMessagesInDLCForQueue(
             @MBeanOperationParameter(name = "queueName", description = "Name of queue to browse" +
-                                                               " DLC messages") String queueName) throws MBeanException;
+                                                                       " DLC messages") String queueName)
+            throws MBeanException;
 
     /**
      * Retrieve messages in DLC for a specific queue for given id starting from last message id
