@@ -186,6 +186,21 @@ public class RDBMSConstants {
             + " WHERE " + QUEUE_ID + "=?"
             + " AND " + DLC_QUEUE_ID + "=-1";
 
+    protected static final String ALIAS_FOR_QUEUES = "QUEUE_COUNT";
+
+    /**
+     * Prepared statement to select all the queue names with the number of messages remaining in the database
+     * by joining the tables MB_QUEUE_MAPPING and MB_METADATA.
+     */
+    protected static final String PS_SELECT_ALL_QUEUE_MESSAGE_COUNT =
+            "SELECT " + QUEUE_NAME + ", " + PS_ALIAS_FOR_COUNT
+            + " FROM " + QUEUES_TABLE + " LEFT OUTER JOIN "
+                + "(SELECT " + QUEUE_ID + ", COUNT(" + QUEUE_ID + ") AS " + PS_ALIAS_FOR_COUNT
+                + " FROM " + METADATA_TABLE
+                + " WHERE " + DLC_QUEUE_ID + "=-1"
+                + " GROUP BY " + QUEUE_ID + " ) " + ALIAS_FOR_QUEUES
+            + " ON " + QUEUES_TABLE + "." + QUEUE_ID + "=" + ALIAS_FOR_QUEUES + "." + QUEUE_ID;
+
     protected static final String PS_SELECT_QUEUE_MESSAGE_COUNT_FROM_DLC =
             "SELECT COUNT(" + MESSAGE_ID + ")"
             + " AS " + PS_ALIAS_FOR_COUNT
@@ -781,32 +796,26 @@ public class RDBMSConstants {
     protected static final String TASK_DELETING_MESSAGES = "deleting messages";
     protected static final String TASK_MOVING_METADATA_TO_DLC = "moving message metadata to dlc.";
 
-    protected static final String TASK_ADDING_METADATA_TO_QUEUE = "adding metadata to " +
-            "destination. ";
-    protected static final String TASK_ADDING_METADATA_LIST_TO_QUEUE = "adding metadata list to " +
-            "destination. ";
-    protected static final String TASK_RETRIEVING_QUEUE_MSG_COUNT = "retrieving message count for" +
-            " queue. ";
-    protected static final String TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC = "retrieving message count in DLC for" +
-            " queue. ";
+    protected static final String TASK_ADDING_METADATA_TO_QUEUE = "adding metadata to destination. ";
+    protected static final String TASK_ADDING_METADATA_LIST_TO_QUEUE = "adding metadata list to destination. ";
+    protected static final String TASK_RETRIEVING_ALL_QUEUE_MSG_COUNT = "retrieving message counts for all queues. ";
+    protected static final String TASK_RETRIEVING_QUEUE_MSG_COUNT = "retrieving message count for queue. ";
+    protected static final String TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC = "retrieving message count in DLC for"
+                                                                           + " queue. ";
     protected static final String TASK_RETRIEVING_METADATA = "retrieving metadata for message id. ";
-    protected static final String TASK_RETRIEVING_METADATA_RANGE_FROM_QUEUE = "retrieving " +
-            "metadata within a range from queue. ";
-    protected static final String TASK_RETRIEVING_METADATA_RANGE_IN_DLC_FROM_QUEUE = "retrieving " +
-            "metadata in dlc within a range from queue. ";
-    protected static final String TASK_RETRIEVING_METADATA_RANGE_IN_DLC = "retrieving " +
-            "metadata in dlc within a range. ";
-    protected static final String TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE = "retrieving " +
-            "metadata list from queue. ";
-    protected static final String TASK_RETRIEVING_NEXT_N_METADATA_IN_DLC_FOR_QUEUE = "retrieving " +
-            "metadata list in DLC for queue. ";
-    protected static final String TASK_RETRIEVING_NEXT_N_METADATA_FROM_DLC = "retrieving " +
-            "metadata list from DLC ";
-    protected static final String TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE = "retrieving " +
-            "message ID list from queue. ";
+    protected static final String TASK_RETRIEVING_METADATA_RANGE_FROM_QUEUE = "retrieving metadata within a range "
+                                                                              + "from queue. ";
+    protected static final String TASK_RETRIEVING_METADATA_RANGE_IN_DLC_FROM_QUEUE = "retrieving metadata in dlc "
+                                                                                     + "within a range from queue. ";
+    protected static final String TASK_RETRIEVING_METADATA_RANGE_IN_DLC = "retrieving metadata in dlc within a range. ";
+    protected static final String TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE = "retrieving metadata list from queue. ";
+    protected static final String TASK_RETRIEVING_NEXT_N_METADATA_IN_DLC_FOR_QUEUE = "retrieving metadata list in DLC "
+                                                                                     + "for queue. ";
+    protected static final String TASK_RETRIEVING_NEXT_N_METADATA_FROM_DLC = "retrieving metadata list from DLC ";
+    protected static final String TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE = "retrieving message ID list from "
+                                                                                + "queue. ";
     protected static final String TASK_DELETING_FROM_EXPIRY_TABLE = "deleting from expiry table.";
-    protected static final String TASK_DELETING_METADATA_FROM_QUEUE = "deleting metadata from " +
-            "queue. ";
+    protected static final String TASK_DELETING_METADATA_FROM_QUEUE = "deleting metadata from queue. ";
     protected static final String TASK_CLEARING_DLC_QUEUE = "clearing dlc queue. " ;
     protected static final String TASK_RESETTING_MESSAGE_COUNTER = "Resetting message counter for queue";
     protected static final String TASK_RETRIEVING_EXPIRED_MESSAGES = "retrieving expired messages.";
@@ -815,13 +824,10 @@ public class RDBMSConstants {
 
     // Message Store related retained message jdbc tasks executed
     protected static final String TASK_STORING_RETAINED_MESSAGE = "storing retained messages.";
-    protected static final String TASK_RETRIEVING_RETAINED_MESSAGE_PARTS = "retrieving retained " +
-            "message parts.";
+    protected static final String TASK_RETRIEVING_RETAINED_MESSAGE_PARTS = "retrieving retained message parts.";
     protected static final String TASK_RETRIEVING_RETAINED_TOPICS = "retrieving all retained topics";
-    protected static final String TASK_RETRIEVING_RETAINED_TOPIC_ID = "retrieving retained " +
-            " message id and topic id for given destination.";
-
-
+    protected static final String TASK_RETRIEVING_RETAINED_TOPIC_ID = "retrieving retained  message id and topic id "
+                                                                      + "for given destination.";
 
     // Andes Context Store related jdbc tasks executed
     protected static final String TASK_STORING_DURABLE_SUBSCRIPTION = "storing durable subscription";
@@ -829,21 +835,16 @@ public class RDBMSConstants {
     protected static final String TASK_UPDATING_DURABLE_SUBSCRIPTIONS = "updating durable subscriptions";
     protected static final String TASK_RETRIEVING_ALL_DURABLE_SUBSCRIPTIONS = "retrieving all durable subscriptions. ";
 
-    protected static final String TASK_REMOVING_DURABLE_SUBSCRIPTION = "removing durable " +
-            "subscription. ";
+    protected static final String TASK_REMOVING_DURABLE_SUBSCRIPTION = "removing durable subscription. ";
     protected static final String TASK_STORING_NODE_INFORMATION = "storing node information";
-    protected static final String TASK_RETRIEVING_ALL_NODE_DETAILS = "retrieving all node " +
-            "information. ";
+    protected static final String TASK_RETRIEVING_ALL_NODE_DETAILS = "retrieving all node information. ";
     protected static final String TASK_REMOVING_NODE_INFORMATION = "removing node information";
     protected static final String TASK_STORING_EXCHANGE_INFORMATION = "storing exchange information";
-    protected static final String TASK_RETRIEVING_ALL_EXCHANGE_INFO = "retrieving all exchange " +
-            "information. ";
-    protected static final String TASK_IS_EXCHANGE_EXIST = "checking whether an exchange " +
-            "exist. ";
+    protected static final String TASK_RETRIEVING_ALL_EXCHANGE_INFO = "retrieving all exchange information. ";
+    protected static final String TASK_IS_EXCHANGE_EXIST = "checking whether an exchange exist. ";
     protected static final String TASK_DELETING_EXCHANGE = "deleting an exchange ";
     protected static final String TASK_STORING_QUEUE_INFO = "storing queue information ";
-    protected static final String TASK_RETRIEVING_ALL_QUEUE_INFO = "retrieving all queue " +
-            "information. ";
+    protected static final String TASK_RETRIEVING_ALL_QUEUE_INFO = "retrieving all queue information. ";
     protected static final String TASK_DELETING_QUEUE_INFO = "deleting queue information. ";
     protected static final String TASK_DELETE_QUEUE_MAPPING = "deleting queue mapping";
     protected static final String TASK_STORING_BINDING = "storing binding information. ";

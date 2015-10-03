@@ -31,6 +31,7 @@ import org.wso2.andes.kernel.MessageStore;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.store.AndesDataIntegrityViolationException;
+import org.wso2.andes.server.queue.DLCQueueUtils;
 import org.wso2.andes.store.cache.AndesMessageCache;
 import org.wso2.andes.store.cache.MessageCacheFactory;
 import org.wso2.andes.tools.utils.MessageTracer;
@@ -1385,12 +1386,20 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
 
         try {
+
+            //Add the queue to the database
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_QUEUE);
             preparedStatement.setString(1, destinationQueueName);
             preparedStatement.executeUpdate();
 
             connection.commit();
             preparedStatement.close();
+
+            //Add the queue to the internal map as well
+            int queueId = getQueueID(destinationQueueName);
+            if (-1 != queueId) {
+                queueMap.put(destinationQueueName, queueId);
+            }
 
         } catch (SQLException e) {
             AndesException andesException =
@@ -1622,7 +1631,53 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public void addQueue(String destinationQueueName) throws AndesException {
-        // Message count is taken from DB itself. No need to implement this
+        Connection connection = null;
+        try {
+            connection = getConnection();
+            getCachedQueueID(destinationQueueName);
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("Error while creating queue: " + destinationQueueName, e);
+        } finally {
+            close(connection, RDBMSConstants.TASK_CREATING_QUEUE + destinationQueueName);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, Integer> getMessageCountForAllQueues(List<String> queueNames) throws AndesException {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet results = null;
+        Map<String, Integer> queueMessageCountForName = new HashMap<>();
+        Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
+        try {
+            connection = getConnection();
+            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_ALL_QUEUE_MESSAGE_COUNT);
+            results = preparedStatement.executeQuery();
+
+            // Each row in the result gives the queue name and the number of messages remaining. All these rows are
+            // added to a map
+            // Dead letter channel queues are not retrieved by the operation. Therefore we need to skip it
+            // Also if the number of messages in the result set is null it means that there are no messages left in the
+            // db for that queue. Hence we add the value 0 for those queue
+            while (results.next()) {
+                String queueName = results.getString(RDBMSConstants.QUEUE_NAME);
+                if (!(DLCQueueUtils.isDeadLetterQueue(queueName)) && queueNames.contains(queueName)){
+                    queueMessageCountForName.put(queueName,results.getInt(RDBMSConstants.PS_ALIAS_FOR_COUNT));
+                }
+            }
+
+        } catch (SQLException e) {
+            throw rdbmsStoreUtils.convertSQLException("Error while getting message count for all queues", e);
+        } finally {
+            contextRead.stop();
+            close(results, RDBMSConstants.TASK_RETRIEVING_ALL_QUEUE_MSG_COUNT);
+            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT);
+            close(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT);
+        }
+        return queueMessageCountForName;
     }
 
     /**

@@ -28,6 +28,7 @@ import javax.management.openmbean.CompositeData;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This interface contains all operations invoked by the UI console with relation to queues. (addition, deletion, purging, etc.)
@@ -62,7 +63,15 @@ public interface QueueManagementInformation {
     @MBeanAttribute(name="Queues",description = "All queue names")
     String[] getAllQueueNames();
 
-    /***
+    /**
+     * Retrieve all queues with message counts
+     *
+     * @return List of all queues with the messageCounts
+     */
+    @MBeanAttribute(name = "AllQueueCounts", description = "Message counts of all queues")
+    Map<String, Integer> getAllQueueCounts();
+
+    /**
      * Retrieve current message count of a queue. This may be only a rough estimate in a fast pub/sub scenario.
      * @param queueName name of queue
      * @param msgPattern The exchange type used to transfer messages with the given queueName. e.g. "queue" or "topic"

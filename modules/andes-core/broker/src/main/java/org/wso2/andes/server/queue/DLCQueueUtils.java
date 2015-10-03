@@ -72,6 +72,27 @@ public class DLCQueueUtils {
     }
 
     /**
+     * Derive the Dead Letter Queue name of the tenant with respect to a given queue of the same
+     * tenant.
+     * <p/>
+     * The dead letter of the super domain is named as 'DeadLetterChannel' and the DLC of a tenant takes the
+     * format 'tenantDomain/DeadLetterChannel'
+     * Therefore, The DLC queue name return by this method takes either of the above formats.
+     *
+     * @param tenantDomain the domain name of the tenant
+     * @return The Dead Letter Queue name for the tenant.
+     */
+    public static String generateDLCQueueNameFromTenant(String tenantDomain) {
+        //If the tenantDomain is either null of if it is "carbon.super", the DLC of the super domain will be returned
+        //Else, the dlc for the respective tenant will be returned
+        if (null != tenantDomain && !("carbon.super".equals(tenantDomain))) {
+            return tenantDomain + AndesConstants.TENANT_SEPARATOR + AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
+        } else {
+            return AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
+        }
+    }
+
+    /**
      * Decides on whether a given queue name is a Dead Letter Queue or not.
      *
      * @param queueName The Queue name to test.
