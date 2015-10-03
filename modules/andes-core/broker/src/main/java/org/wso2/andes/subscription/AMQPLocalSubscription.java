@@ -175,6 +175,10 @@ public class AMQPLocalSubscription implements OutboundSubscription {
             // The error is not logged here since this will be caught safely higher up in the execution plan :
             // MessageFlusher.deliverAsynchronously. If we have more context, its better to log here too,
             // but since this is a general explanation of many possible errors, no point in logging at this state.
+            ProtocolMessage protocolMessage = ((AMQMessage) queueEntry.getMessage()).getAndesMetadataReference();
+            log.error("AMQP Protocol Error while delivering message to the subscriber subID= "
+                    + amqpSubscription.getSubscriptionID() + " message id= " + messageNumber + " slot= "
+                    + protocolMessage.getMessage().getSlot().toString(), e);
             throw new ProtocolDeliveryFailureException("Error occurred while delivering message with ID : "
                     + msgHeaderStringID, e);
         }
