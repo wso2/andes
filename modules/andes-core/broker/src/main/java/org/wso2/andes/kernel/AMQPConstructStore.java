@@ -163,7 +163,8 @@ public class AMQPConstructStore {
      */
     public void addBinding(AndesBinding binding, boolean isLocal) throws AndesException {
         if (isLocal) {
-            andesContextStore.storeBindingInformation(binding.boundExchangeName, binding.boundQueue.queueName, binding.encodeAsString());
+            andesContextStore.storeBindingInformation(binding.boundExchangeName, binding.boundQueue.queueName,
+                    binding.encodeAsString());
         }
         if (andesBindings.get(binding.boundExchangeName) != null) {
             (andesBindings.get(binding.boundExchangeName)).put(binding.boundQueue.queueName, binding);

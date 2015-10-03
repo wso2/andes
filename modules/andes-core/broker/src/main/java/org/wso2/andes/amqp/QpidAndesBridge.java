@@ -106,8 +106,8 @@ public class QpidAndesBridge {
      * @param transactionEvent not null if this is a message in a transaction, null otherwise
      * @throws AMQException
      */
-    public static void messageReceived(IncomingMessage incomingMessage, UUID channelID,
-                                AndesChannel andesChannel, InboundTransactionEvent transactionEvent) throws AMQException {
+    public static void messageReceived(IncomingMessage incomingMessage, UUID channelID, AndesChannel andesChannel,
+                                       InboundTransactionEvent transactionEvent) throws AMQException {
 
         long receivedTime = System.currentTimeMillis();
         try {
@@ -223,7 +223,8 @@ public class QpidAndesBridge {
             contentLenWritten = AMQPUtils.fillBufferFromContent(messageID, offsetInMessage, dst);
         } catch (AndesException e) {
             log.error("Error in getting message content", e);
-            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error in getting message content chunk messageID " + messageID + " offset=" + offsetInMessage, e);
+            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error in getting message content chunk messageID "
+                    + messageID + " offset=" + offsetInMessage, e);
         }
         return contentLenWritten;
     }
@@ -300,6 +301,8 @@ public class QpidAndesBridge {
         } catch (SubscriptionAlreadyExistsException e) {
             log.error("Error occurred while adding an already existing subscription", e);
             throw new AMQQueue.ExistingExclusiveSubscription();
+        } catch (AMQInternalException e) {
+            throw new AMQException(AMQConstant.INTERNAL_ERROR, "Error while adding the subscription", e);
         }
     }
 
@@ -369,8 +372,18 @@ public class QpidAndesBridge {
         if (log.isDebugEnabled()) {
             log.debug("AMQP BRIDGE: create queue: " + queue.getName());
         }
+
         try {
-            Andes.getInstance().createQueue(AMQPUtils.createAndesQueue(queue));
+            if (!AMQPUtils.isValidQueueName(queue.getName())) {
+                // Prevent creating queue, when queue name is invalid
+                throw new AMQException(AMQConstant.NOT_ALLOWED,
+                        "Queue name: " + queue.getName()
+                                + " cannot contain any of following symbols ~!@#;%^*()+={}|<>\"', and space \n");
+            }else {
+                // Create queue, if queue name is valid.
+                Andes.getInstance().createQueue(AMQPUtils.createAndesQueue(queue));
+                log.info("Queue " + queue.getName() + " created successfully.");
+            }
         } catch (AndesException e) {
             log.error("error while creating queue", e);
             throw new AMQException(AMQConstant.INTERNAL_ERROR, "error while creating queue", e);
@@ -417,7 +430,8 @@ public class QpidAndesBridge {
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("AMQP BRIDGE: addBinding exchange=" + exchange.getName() + " routingKey=" + routingKey + " queue=" + queue.getName());
+            log.debug("AMQP BRIDGE: addBinding exchange=" + exchange.getName() + " routing key=" + routingKey
+                    + " , queue=" + queue.getName());
         }
         try {
             /**
@@ -451,11 +465,16 @@ public class QpidAndesBridge {
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("AMQP BRIDGE: removeBinding binding key: " + binding.getBindingKey() + " exchange: "
-                    + binding.getExchange().getName() + " queue: " + binding.getQueue().getName());
+            log.debug("AMQP BRIDGE: removeBinding binding key : " + binding.getBindingKey() + " exchange : "
+                    + binding.getExchange().getName() + " queue : " + binding.getQueue().getName());
         }
-        InboundBindingEvent inboundBindingEvent = AMQPUtils.createAndesBinding(binding.getExchange(),
-                binding.getQueue(), new AMQShortString(binding.getBindingKey()));
+        InboundBindingEvent inboundBindingEvent = null;
+        try {
+            inboundBindingEvent = AMQPUtils.createAndesBinding(binding.getExchange(),
+                    binding.getQueue(), new AMQShortString(binding.getBindingKey()));
+        } catch (AMQInternalException e) {
+            throw new AndesException(e);
+        }
         Andes.getInstance().removeBinding(inboundBindingEvent);
     }
 
@@ -466,7 +485,8 @@ public class QpidAndesBridge {
      * @param subscription subscription
      * @throws AndesException
      */
-    private static void addLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) throws AndesException, SubscriptionAlreadyExistsException {
+    private static void addLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription)
+            throws AndesException, SubscriptionAlreadyExistsException, AMQInternalException {
 
         List<Binding> bindingList = queue.getBindings();
         if (bindingList != null && !bindingList.isEmpty()) {
@@ -506,7 +526,8 @@ public class QpidAndesBridge {
      * @param subscription subscription to remove
      * @throws AndesException
      */
-    private static void closeLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription) throws AndesException {
+    private static void closeLocalSubscriptionsForAllBindingsOfQueue(AMQQueue queue, Subscription subscription)
+            throws AndesException {
         List<Binding> bindingList = queue.getBindings();
         if (bindingList != null && !bindingList.isEmpty()) {
             Set<AndesBinding> uniqueBindings = new HashSet<AndesBinding>();
@@ -518,7 +539,12 @@ public class QpidAndesBridge {
                     continue;
                 }
 
-                AndesBinding andesBinding = AMQPUtils.createAndesBinding(b.getExchange(), b.getQueue(), new AMQShortString(b.getBindingKey()));
+                AndesBinding andesBinding = null;
+                try {
+                    andesBinding = AMQPUtils.createAndesBinding(b.getExchange(), b.getQueue(), new AMQShortString(b.getBindingKey()));
+                } catch (AMQInternalException e) {
+                    throw new AndesException(e);
+                }
                 if (uniqueBindings.add(andesBinding)) {
                     UUID channelID = ((SubscriptionImpl) subscription).getChannel().getId();
                     LocalSubscription localSubscription = AndesContext.getInstance().getSubscriptionStore()

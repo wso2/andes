@@ -221,4 +221,21 @@ public class AndesUtils {
         return destinations;
     }
 
+    /**
+     * Get topic name, without the tenant domain
+     * @param routingKey routing key for topic creation
+     * @return String routing key without tenant domain
+     */
+    public static String getTopicNameWithoutTenantDomain(String routingKey){
+        String routingKeyWithoutTenantDomain = routingKey;
+
+        /* If the topic is creating by a tenant, get the topic name, without tenant domain.*/
+        if(routingKey.contains(AndesConstants.TENANT_SEPARATOR)){
+            routingKeyWithoutTenantDomain =
+                    routingKey.substring(routingKey.indexOf(AndesConstants.TENANT_SEPARATOR) + 1);
+        }
+
+        return routingKeyWithoutTenantDomain;
+    }
+
 }

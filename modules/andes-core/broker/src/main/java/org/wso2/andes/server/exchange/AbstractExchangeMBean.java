@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.Map;
 
 import org.wso2.andes.AMQException;
-import org.wso2.andes.AMQSecurityException;
 import org.wso2.andes.server.management.AMQManagedObject;
 import org.wso2.andes.server.management.ManagedObject;
 import org.wso2.andes.server.management.ManagedObjectRegistry;
@@ -53,7 +52,6 @@ public abstract class AbstractExchangeMBean<T extends AbstractExchange> extends 
     protected CompositeType _bindingDataType;
     protected TabularType _bindinglistDataType;
 
-
     private T _exchange;
 
     public AbstractExchangeMBean(final T abstractExchange) throws NotCompliantMBeanException
@@ -71,7 +69,7 @@ public abstract class AbstractExchangeMBean<T extends AbstractExchange> extends 
                 COMPOSITE_ITEM_NAMES.toArray(new String[COMPOSITE_ITEM_NAMES.size()]),
                 COMPOSITE_ITEM_DESCRIPTIONS.toArray(new String[COMPOSITE_ITEM_DESCRIPTIONS.size()]), _bindingItemTypes);
         _bindinglistDataType = new TabularType("Exchange Bindings", "Exchange Bindings for " + getName(),
-                                               _bindingDataType, TABULAR_UNIQUE_INDEX.toArray(new String[TABULAR_UNIQUE_INDEX.size()]));
+                _bindingDataType, TABULAR_UNIQUE_INDEX.toArray(new String[TABULAR_UNIQUE_INDEX.size()]));
     }
 
     public ManagedObject getParentObject()
@@ -141,7 +139,7 @@ public abstract class AbstractExchangeMBean<T extends AbstractExchange> extends 
         try
         {
             vhost.getBindingFactory().addBinding(binding,queue,getExchange(),null);
-            //this is similiar to adding a subscription
+            //this is similar to adding a subscription
         }
         catch (AMQException ex)
         {
