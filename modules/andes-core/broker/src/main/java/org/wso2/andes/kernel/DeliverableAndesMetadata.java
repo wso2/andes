@@ -302,6 +302,20 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     }
 
     /**
+     * Cancel message delivery for channel. This is called when a
+     * message delivery is failed from broker side. By the time message MUST be maked
+     * as DISPATCHED to this channel. Here we do not decrement delivery count so that
+     * if delivery failure is consistent it is checked by max delivery count rule and
+     * ultimately sent to DLC.
+     *
+     * @param channelID id of the channel message is sent
+     */
+    public void markDeliveryFailureByProtocol(UUID channelID) {
+        channelDeliveryInfo.get(channelID).
+                addChannelStatus(ChannelMessageStatus.SEND_FAILED);
+    }
+
+    /**
      * Evaluate message acknowledgement. Whenever relevant message status are updated
      * this evaluation should be performed and subsequently try to delete the message
      * if ACKED_BY_ALL evaluation returned success
