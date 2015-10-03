@@ -71,24 +71,28 @@ public class SlotManagerClusterMode {
 
 	private SlotAgent slotAgent;
 
-	private SlotManagerClusterMode() {
+    private SlotManagerClusterMode() {
 
-		//start a thread to calculate slot delete safe zone
-		slotDeleteSafeZoneCalc = new SlotDeleteSafeZoneCalc(SAFE_ZONE_EVALUATION_INTERVAL);
-		new Thread(slotDeleteSafeZoneCalc).start();
+        //start a thread to calculate slot delete safe zone
+        slotDeleteSafeZoneCalc = new SlotDeleteSafeZoneCalc(SAFE_ZONE_EVALUATION_INTERVAL);
+        new Thread(slotDeleteSafeZoneCalc).start();
 
-		if ("RDBMS".equals(AndesConfigurationManager.readValue(AndesConfiguration.SLOT_MANAGEMENT_STORAGE))) {
-			//Use RDBMS slot information storing
-			slotAgent = new DatabaseSlotAgent();
-		} else {
-			//Use Hazelcast slot information storing
-			slotAgent = HazelcastAgent.getInstance();
-		}
+        String slotMgtMode = AndesConfigurationManager.readValue(AndesConfiguration.SLOT_MANAGEMENT_STORAGE);
+        if ("RDBMS".equalsIgnoreCase(slotMgtMode)) {
+            // Use RDBMS slot information storing
+            slotAgent = new DatabaseSlotAgent();
+        } else if ("HAZELCAST".equalsIgnoreCase(slotMgtMode)) {
+            // Use Hazelcast slot information storing
+            slotAgent = HazelcastAgent.getInstance();
+        } else {
+            throw new RuntimeException("Unknown slot management storage mode \"" + slotMgtMode + "\"");
+        }
+        log.info("Using " + slotMgtMode + " based slot management mode");
+        firstMessageId = INITIAL_MESSAGE_ID;
+        slotRecoveryScheduled = new AtomicBoolean(false);
 
-		firstMessageId = INITIAL_MESSAGE_ID;
-		slotRecoveryScheduled = new AtomicBoolean(false);
+    }
 
-	}
 
 	/**
 	 * @return SlotManagerClusterMode instance
