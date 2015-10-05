@@ -1846,26 +1846,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public void removeQueue(String storageQueueName) throws AndesException {
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-        Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
-
-        try {
-            connection = getConnection();
-            preparedStatement = connection.prepareStatement(RDBMSConstants.PS_DELETE_QUEUE);
-            preparedStatement.setString(1, storageQueueName);
-            preparedStatement.execute();
-            connection.commit();
-        } catch (SQLException e) {
-            rollback(connection, RDBMSConstants.TASK_DELETE_QUEUE_MAPPING);
-            throw rdbmsStoreUtils.convertSQLException("error occurred while deleting message metadata " +
-                                                      "from expiration table ", e);
-        } finally {
-            contextWrite.stop();
-            queueMap.remove(storageQueueName);
-            close(preparedStatement, RDBMSConstants.TASK_DELETE_QUEUE_MAPPING);
-            close(connection, RDBMSConstants.TASK_DELETE_QUEUE_MAPPING);
-        }
+        queueMap.remove(storageQueueName);
     }
 
     /**
