@@ -174,7 +174,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
             AndesException {
         message.markDeliveredChannelAsClosed(subscription.getChannelID());
         //re-evaluate ACK if a topic subscriber has closed
-        if (subscription.isDurable()) {
+        if (!subscription.isDurable()) {
             message.evaluateMessageAcknowledgement();
             if (message.isAknowledgedByAll()) {
                 //try to delete message
