@@ -216,7 +216,7 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
             while (itr.hasNext()) {
                 String destinationQueueName = (String) itr.next();
                 if(destinationQueueName.startsWith("tmp_") || destinationQueueName.contains
-                        ("carbon:") || destinationQueueName.startsWith("TempQueue")) {
+                        (":") || destinationQueueName.startsWith("TempQueue")) {
                     itr.remove();
                 }
             }
@@ -236,12 +236,22 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     @Override
     public Map<String, Integer> getAllQueueCounts() {
         try {
-            return Andes.getInstance().getMessageCountForAllQueues(AndesContext.getInstance()
-                    .getAMQPConstructStore().getQueueNames());
+            List<String> queuesList = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
+            Iterator itr = queuesList.iterator();
+            //remove topic specific queues
+            while (itr.hasNext()) {
+                String destinationQueueName = (String) itr.next();
+                if(destinationQueueName.startsWith("tmp_") || destinationQueueName.contains
+                        (":") || destinationQueueName.startsWith("TempQueue")) {
+                    itr.remove();
+                }
+            }
+            return Andes.getInstance().getMessageCountForAllQueues(queuesList);
         } catch (AndesException exception) {
             throw new RuntimeException("Error retrieving message count for all queues", exception);
         }
     }
+
 
     /**
      * {@inheritDoc}
