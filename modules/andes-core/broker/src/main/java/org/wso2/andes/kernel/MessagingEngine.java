@@ -201,7 +201,6 @@ public class MessagingEngine {
             log.warn("Cannot handle reject. Subscription not found for channel " + channelID
                     + "Dropping message id= " + andesMetadata.getMessageID());
             andesMetadata.markDeliveredChannelAsClosed(channelID);
-            andesMetadata.evaluateMessageAcknowledgement();
         }
         //Tracing message activity
         MessageTracer.trace(andesMetadata, MessageTracer.MESSAGE_REJECTED);

@@ -218,23 +218,25 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      * {@inheritDoc}
      */
     public void close() throws AndesException {
+        //re-evaluate ACK if a topic subscriber has closed
+        if(!isDurable()) {
+            List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>();
 
-        List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>();
+            for (DeliverableAndesMetadata andesMetadata : messageSendingTracker.values()) {
+                andesMetadata.markDeliveredChannelAsClosed(getChannelID());
+                andesMetadata.evaluateMessageAcknowledgement();
 
-        for (DeliverableAndesMetadata andesMetadata : messageSendingTracker.values()) {
-            andesMetadata.markDeliveredChannelAsClosed(getChannelID());
-            andesMetadata.evaluateMessageAcknowledgement();
-
-            //TODO: decide if we need to do this only for topics
-            //for topic messages see if we can delete the message
-            if((!andesMetadata.isOKToDispose()) && (andesMetadata.isTopic())) {
-                if(andesMetadata.getLatestState().equals(MessageStatus.ACKED_BY_ALL)) {
-                     messagesToRemove.add(andesMetadata);
+                //TODO: decide if we need to do this only for topics
+                //for topic messages see if we can delete the message
+                if((!andesMetadata.isOKToDispose()) && (andesMetadata.isTopic())) {
+                    if(andesMetadata.getLatestState().equals(MessageStatus.ACKED_BY_ALL)) {
+                        messagesToRemove.add(andesMetadata);
+                    }
                 }
             }
-        }
 
-        MessagingEngine.getInstance().deleteMessages(messagesToRemove);
+            MessagingEngine.getInstance().deleteMessages(messagesToRemove);
+        }
     }
 
     /**
