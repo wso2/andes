@@ -220,15 +220,25 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
 
     /**
      * Check if message is sent to DLC
-     * @return
+     *
+     * @return true if conditions met
      */
     public boolean isDLCMessage() {
         return getLatestState().equals(MessageStatus.DLC_MESSAGE);
     }
 
     /**
+     * Check if message is acknowledged by all channels message is scheduled
+     *
+     * @return true if message is acknowledged
+     */
+    public boolean isAknowledgedByAll() {
+        return getLatestState().equals(MessageStatus.ACKED_BY_ALL);
+    }
+
+    /**
      * Check if message is deleted or purged
-     * @return
+     * @return true if conditions met
      */
     public boolean isPurgedOrDeletedOrExpired() {
         MessageStatus currentStatus = getLatestState();
@@ -534,7 +544,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
         }
 
         private String getMessageStatusHistoryForChannelAsString() {
-            StringBuffer channelInfo = new StringBuffer();
+            StringBuilder channelInfo = new StringBuilder();
             for (ChannelMessageStatus channelMessageStatus : messageStatusesForChannel) {
                 channelInfo.append(channelMessageStatus)
                         .append(">>");
