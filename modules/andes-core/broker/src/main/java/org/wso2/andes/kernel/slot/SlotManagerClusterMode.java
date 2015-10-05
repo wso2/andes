@@ -504,7 +504,6 @@ public class SlotManagerClusterMode {
 
 			// Check each slot for overlapped slots
 			for (Slot slot : slotListForQueue) {
-				log.error("getOverlappedAssignedSlots: Slot read " + slot.toString());
 				if (endMsgID < slot.getStartMessageId()) {
 					continue; // skip this one, its below our range
 				}
