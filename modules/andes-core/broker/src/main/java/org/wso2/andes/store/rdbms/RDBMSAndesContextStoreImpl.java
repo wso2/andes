@@ -29,6 +29,7 @@ import org.wso2.andes.kernel.DurableStoreConnection;
 import org.wso2.andes.kernel.slot.Slot;
 import org.wso2.andes.kernel.slot.SlotState;
 import org.wso2.andes.metrics.MetricsConstants;
+import org.wso2.andes.store.AndesDataIntegrityViolationException;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.MetricManager;
 import org.wso2.carbon.metrics.manager.Timer.Context;
@@ -778,9 +779,19 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
 
             connection.commit();
         } catch (SQLException e) {
+            AndesException andesException =
+                    rdbmsStoreUtils.convertSQLException("Error occurred while storing queue", e);
             String errMsg = RDBMSConstants.TASK_STORING_QUEUE_INFO + " queue name:" + queueName;
             rollback(connection, errMsg);
-            throw rdbmsStoreUtils.convertSQLException("Error occurred while " + errMsg, e);
+            if(andesException instanceof AndesDataIntegrityViolationException) {
+                // This exception occurred because some other node has created the queue in parallel.
+                // Therefore no need to create the queue. It's already created.
+                // Nothing need to be done if this exception occur.
+                logger.warn("Queue already created. Skipping queue insert ["+ queueName + "] to database ");
+            } else {
+                logger.error("Error occurred while storing queue [" + queueName + "] to database ");
+                throw new AndesException(andesException);
+            }
         } finally {
             contextWrite.stop();
             close(preparedStatement, RDBMSConstants.TASK_STORING_QUEUE_INFO);
