@@ -173,12 +173,14 @@ public class MQTTUtils {
      * For each topic there will only be one subscriber connection cluster wide locally there can be multiple channels
      * bound. This method will generate a unique id for the subscription created per topic
      *
+     * TopicSpecificClientID = carbon:clientId:topic
+     *
      * @param clientId The MQTT client Id
+     * @param topic The topic subscribed to
      * @return the unique identifier
      */
-    public static String generateTopicSpecficClientID(String clientId) {
-        final String mqttSubscriptionID = "carbon:";
-        return mqttSubscriptionID + clientId;
+    public static String generateTopicSpecficClientID(String clientId, String topic) {
+        return "carbon:" + clientId + ":" + topic;
     }
 
     /**
