@@ -402,7 +402,7 @@ public class MQTTopicManager {
             throws MQTTException, SubscriptionAlreadyExistsException {
         //Will generate a unique id for the client
         //Per topic only one subscription will be created across the cluster
-        String topicSpecificClientID = MQTTUtils.generateTopicSpecficClientID(mqttClientID);
+        String topicSpecificClientID = MQTTUtils.generateTopicSpecficClientID(mqttClientID, topicName);
         if (log.isDebugEnabled()) {
             log.debug("Cluster wide topic connection was created with id " + topicSpecificClientID + " for topic " +
                     topicName + " with clean session " + isCleanSession);
