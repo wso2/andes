@@ -41,14 +41,21 @@ public class UnacknowledgedMessageMapImpl implements UnacknowledgedMessageMap
 
     private final int _prefetchLimit;
 
-    public UnacknowledgedMessageMapImpl(int prefetchLimit, AMQChannel amqChannel)
+    /**
+     * Data structure to keep track of messages which are sent but not yet acknowledged.
+     *
+     * @param prefetchLimit Initial size of the data structure
+     * @param amqChannel The channel which this data structure belongs to
+     * @param isTopic Is this structure for created to keep topic messages
+     */
+    public UnacknowledgedMessageMapImpl(int prefetchLimit, AMQChannel amqChannel, boolean isTopic)
     {
         _prefetchLimit = prefetchLimit;
 
         TopicMessageDeliveryStrategy messageDeliveryStrategy = AndesConfigurationManager.readValue
                 (AndesConfiguration.PERFORMANCE_TUNING_TOPIC_MESSAGE_DELIVERY_STRATEGY);
 
-        if(messageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_ALLOWED)) {
+        if(isTopic && messageDeliveryStrategy.equals(TopicMessageDeliveryStrategy.DISCARD_ALLOWED)) {
             int growLimit = AndesConfigurationManager.readValue
                     (AndesConfiguration.PERFORMANCE_TUNING_ACK_HANDLING_MAX_UNACKED_MESSAGES);
             _map = new LimitedSizeQueueEntryHolder(_prefetchLimit, growLimit, amqChannel);

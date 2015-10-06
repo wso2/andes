@@ -142,8 +142,10 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
 
     private final MessageStore _messageStore;
 
+    // Default map to store unacked messages. This will replaced according to the delivery strategy when a subscriber
+    // is registered to this channel
     private UnacknowledgedMessageMap _unacknowledgedMessageMap = new UnacknowledgedMessageMapImpl(DEFAULT_PREFETCH,
-            this);
+            this, false);
 
     // Set of messages being acknoweledged in the current transaction
     private SortedSet<QueueEntry> _acknowledgedMessages = new TreeSet<QueueEntry>();
@@ -533,10 +535,15 @@ public class AMQChannel implements SessionConfig, AMQSessionModel
             tag = new AMQShortString("sgen_" + getNextConsumerTag());
         }
 
-        if (_tag2SubscriptionMap.containsKey(tag))
+        if (_tag2SubscriptionMap.size() > 0)
         {
-            throw new AMQException("Consumer already exists with same tag: " + tag);
+            // According to Andes architecture, a channel can contain only one consumer, hence restricting it here
+            throw new AMQException("Creating multiple consumers per channel is not allowed by Andes");
         }
+
+        // Inside Andes, it is considered as there's only one subscriber per channel. Hence this will run only once.
+        _unacknowledgedMessageMap = new UnacknowledgedMessageMapImpl(DEFAULT_PREFETCH, this, queue
+                .checkIfBoundToTopicExchange());
 
         Subscription subscription =
                 SubscriptionFactoryImpl.INSTANCE.createSubscription(_channelId, _session, tag, acks, filters, noLocal, _creditManager);
