@@ -141,7 +141,8 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
      * This method returns the formatted subscription string to be compatible with the UI processor.
      * <p/>
      * Format of the string : "subscriptionInfo =  subscriptionIdentifier |
-     * subscribedQueueOrTopicName | subscriberQueueBoundExchange | subscriberQueueName |
+     * subscribedQueueOrTopicName (tenant domain appended destination) | subscriberQueueBoundExchange |
+     * subscriberQueueName |
      * isDurable | isActive | numberOfMessagesRemainingForSubscriber | subscriberNodeAddress"
      *
      * @param subscription        AndesSubscription object that is to be translated to UI view
@@ -155,11 +156,14 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
 
         //in case of topic whats in v2 is : topicSubscriber.getDestination() + "@" +
         // topicSubscriber.boundTopicName; --
-        return subscriptionIdentifier + "|" + subscription.getTargetQueue() + "|" + subscription
-                .getTargetQueueBoundExchangeName() +
-               "|" + subscription.getTargetQueue() + "|" + subscription.isDurable() + "|" +
-               subscription.hasExternalSubscriptions() +
-               "|" + pendingMessageCount + "|" + subscription.getSubscribedNode() + "|" +
-               subscription.getSubscribedDestination();
+        return subscriptionIdentifier
+                + "|" + subscription.getSubscribedDestination()
+                + "|" + subscription.getTargetQueueBoundExchangeName()
+                + "|" + subscription.getTargetQueue()
+                + "|" + subscription.isDurable()
+                + "|" + subscription.hasExternalSubscriptions()
+                + "|" + pendingMessageCount
+                + "|" + subscription.getSubscribedNode()
+                + "|" + subscription.getSubscribedDestination();
     }
 }
