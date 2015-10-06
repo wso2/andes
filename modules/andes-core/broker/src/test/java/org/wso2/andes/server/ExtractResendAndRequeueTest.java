@@ -68,7 +68,7 @@ public class ExtractResendAndRequeueTest extends TestCase
     @Override
     public void setUp() throws AMQException
     {
-        _unacknowledgedMessageMap = new UnacknowledgedMessageMapImpl(100, null);
+        _unacknowledgedMessageMap = new UnacknowledgedMessageMapImpl(100, null, false);
 
         long id = 0;
         SimpleQueueEntryList list = new SimpleQueueEntryList(_queue);
