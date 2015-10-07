@@ -53,6 +53,9 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * This class defines AMQP related miscellaneous util methods.
+ */
 public class AMQPUtils {
 
     public static final String TOPIC_AND_CHILDREN_WILDCARD = ".#";

@@ -18,6 +18,9 @@
 
 package org.wso2.andes.kernel;
 
+/**
+ * This class defines the content of an Andes message.
+ */
 public class AndesMessagePart {
     long messageID;
     int offSet = 0;

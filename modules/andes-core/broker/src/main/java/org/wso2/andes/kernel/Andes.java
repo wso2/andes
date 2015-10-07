@@ -62,12 +62,12 @@ public class Andes {
     private static Andes instance = new Andes();
 
     /**
-     * Max purge timeout to return the value of purge message count 
+     * Max purge timeout to return the value of purge message count.
      */
     private final int PURGE_TIMEOUT_SECONDS;
 
     /**
-     * Use to manage channel according to flow control rules
+     * Use to manage channel according to flow control rules.
      */
     private final FlowControlManager flowControlManager;
 
@@ -78,7 +78,7 @@ public class Andes {
     private InboundEventManager inboundEventManager;
 
     /**
-     *  Andes context related information manager. Exchanges, Queues and Bindings
+     *  Andes context related information manager. Exchanges, Queues and Bindings.
      */
     private AndesContextInformationManager contextInformationManager;
     /**
@@ -87,13 +87,13 @@ public class Andes {
     private MessagingEngine messagingEngine;
 
     /**
-     * Manages all subscription related events 
+     * Manages all subscription related events.
      */
     private AndesSubscriptionManager subscriptionManager;
 
     /**
      * Scheduler for periodically trigger Slot Deletion Safe Zone
-     * update events
+     * update events.
      */
     private final ScheduledExecutorService safeZoneUpdateScheduler = Executors.newScheduledThreadPool(1);
 
@@ -109,7 +109,7 @@ public class Andes {
     private final int MAX_TX_BATCH_SIZE;
 
     /**
-     * Instance of AndesAPI returned
+     * Instance of AndesAPI returned.
      *
      * @return AndesAPI
      */
@@ -178,7 +178,7 @@ public class Andes {
     }
 
     /**
-     * Acknowledgement received from clients for sent messages should be notified to Andes using this method
+     * Acknowledgement received from clients for sent messages should be notified to Andes using this method.
      * @param ackData AndesAckData
      * @throws AndesException
      */
@@ -208,7 +208,7 @@ public class Andes {
     }
 
     /**
-     * notify client connection is opened. This is for message tracking purposes on Andes side
+     * Notify client connection is opened. This is for message tracking purposes on Andes side.
      *
      * @param channelID channelID of the client connection
      */
@@ -246,8 +246,8 @@ public class Andes {
     }
 
     /**
-     * Notify client connection is closed from protocol level
-     * State related to connection will be updated within Andes
+     * Notify client connection is closed from protocol level.
+     * State related to connection will be updated within Andes.
      */
     public void startMessageDelivery() {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
@@ -256,7 +256,7 @@ public class Andes {
     }
 
     /**
-     * Stop message delivery
+     * Stop message delivery.
      */
     public void stopMessageDelivery() {
         InboundKernelOpsEvent kernelOpsEvent = new InboundKernelOpsEvent();
@@ -285,7 +285,7 @@ public class Andes {
     }
 
     /**
-     * Stop message expiration task
+     * Stop message expiration task.
      * NOTE: This is package specific. We don't need outside kernel access for this task
      */
     void stopMessageExpirationWorker() {
@@ -297,7 +297,7 @@ public class Andes {
     /**
      * This is the andes-specific purge method and can be called from AMQPBridge,
      * MQTTBridge or UI MBeans (QueueManagementInformationMBean)
-     * Remove messages of the queue matching to given destination queue ( h2 / mysql etc. )
+     * Remove messages of the queue matching to given destination queue ( h2 / mysql etc. ).
      *
      * @param queueEvent queue event related to purge 
      * @param isTopic weather purging happens for a topic
@@ -317,7 +317,7 @@ public class Andes {
     }
 
     /**
-     * Schedule to delete messages from store. Optionally move to dead letter channel
+     * Schedule to delete messages from store. Optionally move to dead letter channel.
      *
      * @param messagesToRemove        List of messages to remove
      * @param moveToDeadLetterChannel if to move to DLC
@@ -346,7 +346,7 @@ public class Andes {
     }
 
     /**
-     * Create queue in Andes kernel
+     * Create queue in Andes kernel.
      *
      * @param queueEvent queue event to create
      * @throws AndesException
@@ -380,7 +380,7 @@ public class Andes {
     }
 
     /**
-     * Get a single metadata object
+     * Get a single metadata object.
      *
      * @param messageID id of the message
      * @return AndesMessageMetadata
@@ -391,7 +391,7 @@ public class Andes {
     }
 
     /**
-     * Message is rejected
+     * Message is rejected.
      *
      * @param metadata message that is rejected.
      * @param channelID ID of the connection channel reject is received
@@ -415,7 +415,7 @@ public class Andes {
     }
 
     /**
-     * Schedule message for subscription
+     * Schedule message for subscription.
      *
      * @param messageMetadata message to be scheduled
      * @param subscription    subscription to send
@@ -451,7 +451,7 @@ public class Andes {
     }
 
     /**
-     * Get content chunk from store
+     * Get content chunk from store.
      *
      * @param messageId   id of the message
      * @param offsetValue chunk id
@@ -463,7 +463,7 @@ public class Andes {
     }
 
     /**
-     * Get content chunks for a list of message ids from store
+     * Get content chunks for a list of message ids from store.
      *
      * @param messageIdList list of messageIds
      * @return map of message id:content chunk list
@@ -474,7 +474,7 @@ public class Andes {
     }
 
     /**
-     * Get a map of queue names and the message count in the database for each queue in the database
+     * Get a map of queue names and the message count in the database for each queue in the database.
      *
      * @param queueNames list of queue names of which the message count should be retrieved
      * @return Map of queue names and the message count for each queue
@@ -484,7 +484,7 @@ public class Andes {
     }
 
     /**
-     * Get message count for queue
+     * Get message count for queue.
      *
      * @param queueName name of the queue
      * @return message count of the queue
@@ -495,7 +495,7 @@ public class Andes {
     }
 
     /**
-     * Get message count in a dead letter channel queue
+     * Get message count in a dead letter channel queue.
      *
      * @param dlcQueueName name of the dlc queue
      * @return message count of the queue
@@ -506,7 +506,7 @@ public class Andes {
     }
 
     /**
-     * Get message count in DLC for a specific queue
+     * Get message count in DLC for a specific queue.
      *
      * @param queueName    name of the queue
      * @param dlcQueueName name of the dlc queue
@@ -518,7 +518,7 @@ public class Andes {
     }
 
     /**
-     * Get message metadata from queue between two message id values
+     * Get message metadata from queue between two message id values.
      *
      * @param queueName  queue name
      * @param firstMsgId id of the starting id
@@ -534,7 +534,7 @@ public class Andes {
 
     /**
      * Get message metadata from queue starting from given id up a given
-     * message count
+     * message count.
      *
      * @param queueName  name of the queue
      * @param firstMsgId id of the starting id
@@ -548,7 +548,7 @@ public class Andes {
     }
 
     /**
-     * Get message metadata in dlc for a queue for a given number of messages starting from a specified id
+     * Get message metadata in dlc for a queue for a given number of messages starting from a specified id.
      *
      * @param queueName    name of the queue
      * @param dlcQueueName name of the dead letter channel queue
@@ -564,7 +564,7 @@ public class Andes {
     }
 
     /**
-     * Get message metadata in dlc for a given number of messages starting from a specified id
+     * Get message metadata in dlc for a given number of messages starting from a specified id.
      *
      * @param dlcQueueName name of the dead letter channel queue
      * @param firstMsgId   id of the starting id
@@ -578,7 +578,7 @@ public class Andes {
     }
 
     /**
-     * Get expired but not yet deleted messages from message store
+     * Get expired but not yet deleted messages from message store.
      * @param limit upper bound for number of messages to be returned
      * @return AndesRemovableMetadata
      * @throws AndesException
@@ -588,7 +588,7 @@ public class Andes {
     }
 
     /**
-     * Return last assigned message id of slot for given queue
+     * Return last assigned message id of slot for given queue.
      *
      * @param queueName name of destination queue
      * @return last assign message id
@@ -619,17 +619,16 @@ public class Andes {
     }
 
     /**
-     * Remove Andes channel from tracking
+     * Remove Andes channel from tracking.
      *
-     * @param channel
-     *         Andes channel
+     * @param channel Andes channel
      */
     public void deleteChannel(AndesChannel channel) {
         flowControlManager.deleteChannel(channel);
     }
 
     /**
-     * Create andes binding in Andes kernel
+     * Create andes binding in Andes kernel.
      * @param bindingsEvent InboundBindingEvent binding to be created
      * @throws AndesException
      */
@@ -639,7 +638,8 @@ public class Andes {
     }
 
     /**
-     * Remove andes binding from andes kernel
+     * Remove andes binding from andes kernel.
+     *
      * @param bindingEvent binding to be removed
      * @throws AndesException
      */
@@ -649,7 +649,7 @@ public class Andes {
     }
 
     /**
-     * Create an exchange in Andes kernel
+     * Create an exchange in Andes kernel.
      *
      * @param exchangeEvent InboundExchangeEvent for AMQP exchange
      * @throws AndesException
@@ -660,7 +660,7 @@ public class Andes {
     }
 
     /**
-     * Delete exchange from andes kernel
+     * Delete exchange from andes kernel.
      *
      * @param exchangeEvent  exchange to delete
      * @throws AndesException
@@ -690,7 +690,7 @@ public class Andes {
     }
 
     /**
-     * Get deliverable metadata if exist for the given topic
+     * Get deliverable metadata if exist for the given topic.
      *
      * @param topicName topic name
      * @return List of retain deliverable metadata
@@ -702,7 +702,7 @@ public class Andes {
 
 
     /**
-     * Get andes content for given message metadata
+     * Get andes content for given message metadata.
      *
      * @param metadata message metadata
      * @return Andes content of given metadata

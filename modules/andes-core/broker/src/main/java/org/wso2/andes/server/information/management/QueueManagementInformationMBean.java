@@ -76,7 +76,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Collections;
 
-
+/**
+ * This class contains all operations such as addition, deletion, purging, browsing, etc. that are invoked by the UI
+ * console with relation to queues.
+ */
 public class QueueManagementInformationMBean extends AMQManagedObject implements QueueManagementInformation {
 
     public static final String MIME_TYPE_TEXT_PLAIN = "text/plain";
@@ -210,16 +213,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     public synchronized String[] getAllQueueNames() {
 
         try {
-            List<String> queuesList = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
-            Iterator itr = queuesList.iterator();
-            //remove topic specific queues
-            while (itr.hasNext()) {
-                String destinationQueueName = (String) itr.next();
-                if(destinationQueueName.startsWith("tmp_") || destinationQueueName.contains
-                        (":") || destinationQueueName.startsWith("TempQueue")) {
-                    itr.remove();
-                }
-            }
+            List<String> queuesList = AndesUtils.filterQueueDestinations(AndesContext.getInstance()
+                    .getAMQPConstructStore().getQueueNames());
             String[] queues= new String[queuesList.size()];
             queuesList.toArray(queues);
             return queues;
@@ -236,16 +231,8 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     @Override
     public Map<String, Integer> getAllQueueCounts() {
         try {
-            List<String> queuesList = AndesContext.getInstance().getAMQPConstructStore().getQueueNames();
-            Iterator itr = queuesList.iterator();
-            //remove topic specific queues
-            while (itr.hasNext()) {
-                String destinationQueueName = (String) itr.next();
-                if(destinationQueueName.startsWith("tmp_") || destinationQueueName.contains
-                        (":") || destinationQueueName.startsWith("TempQueue")) {
-                    itr.remove();
-                }
-            }
+            List<String> queuesList = AndesUtils.filterQueueDestinations(AndesContext.getInstance()
+                    .getAMQPConstructStore().getQueueNames());
             return Andes.getInstance().getMessageCountForAllQueues(queuesList);
         } catch (AndesException exception) {
             throw new RuntimeException("Error retrieving message count for all queues", exception);
@@ -837,138 +824,172 @@ public class QueueManagementInformationMBean extends AMQManagedObject implements
     }
 
     /**
-     * Method to display a list of messages when browsed
+     * Method to display a list of messages when browsed.
+     *
+     * @param metadataList the list of message metadata
+     * @return Composite data array of properties of all messages
+     * @throws MBeanException
      */
-    private CompositeData[] getDisplayableMetaData(List<AndesMessageMetadata> metadataList) throws MBeanException{
+    private CompositeData[] getDisplayableMetaData(List<AndesMessageMetadata> metadataList) throws MBeanException {
         List<CompositeData> compositeDataList = new ArrayList<>();
         try {
             for (AndesMessageMetadata andesMessageMetadata : metadataList) {
-                //get AMQMessage from AndesMessageMetadata
-                AMQMessage amqMessage = AMQPUtils.getAMQMessageFromAndesMetaData(andesMessageMetadata);
-                //header properties from AMQMessage
-                BasicContentHeaderProperties properties = (BasicContentHeaderProperties) amqMessage
-                        .getContentHeaderBody().getProperties();
-                //get custom header properties of AMQMessage
-                StringBuilder stringBuilder = new StringBuilder();
-                for (String headerKey : properties.getHeaders().keys()) {
-                    stringBuilder.append(headerKey).append(" = ").append(properties.getHeaders().get(headerKey));
-                    stringBuilder.append(", ");
-                }
-                String msgProperties = stringBuilder.toString();
-                //get content type
-                String contentType = properties.getContentTypeAsString();
-                //get message id
-                String messageId = properties.getMessageIdAsString();
-                //get redelivered
-                Boolean redelivered = false;
-                //get delivery mode
-                Integer deliveredMode = (int) properties.getDeliveryMode();
-                //get timestamp
-                Long timeStamp = properties.getTimestamp();
-                //get destination
-                String destination = andesMessageMetadata.getDestination();
-                //get AndesMessageMetadata id
-                Long andesMessageMetadataId = andesMessageMetadata.getMessageID();
-                //get encoding
-                String encoding = amqMessage.getMessageHeader().getEncoding();
-                if (encoding == null) {
-                    encoding = "UTF-8";
-                }
-                //get mime type of message
-                String mimeType = amqMessage.getMessageHeader().getMimeType();
-                // setting default mime type
-                if (StringUtils.isBlank(mimeType)) {
-                    mimeType = MIME_TYPE_TEXT_PLAIN;
-                }
-
-                //content is constructing
-                final int bodySize = (int) amqMessage.getSize();
-                List<Byte> messageContent = new ArrayList<Byte>();
-                java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(bodySize);
-                int position = 0;
-                while (position < bodySize) {
-                    position += amqMessage.getContent(buffer, position);
-                    //if position did not proceed, there is an error receiving content
-                    if((bodySize!= 0) && (position == 0)) {
-                        break;
-                    }
-                    buffer.flip();
-                    for (int i = 0; i < buffer.limit(); i++) {
-                        messageContent.add(buffer.get(i));
-                    }
-                    buffer.clear();
-                }
-
-                //if position did not proceed, there is an error receiving content. If not, decode content
-                if(!((bodySize!= 0) && (position == 0))) {
-                    //create message content to readable text from ByteBuffer
-                    Byte[] msgContent = messageContent.toArray(new Byte[messageContent.size()]);
-                    byte[] byteMsgContent = ArrayUtils.toPrimitive(msgContent);
-                    ByteBuffer wrapMsgContent = ByteBuffer.wrap(byteMsgContent);
-                    String content[] = new String[2];
-                    String summaryMsg = "";
-                    String wholeMsg = "";
-
-                    //get TextMessage content to display
-                    if (mimeType.equals(MIME_TYPE_TEXT_PLAIN) || mimeType.equals(MIMI_TYPE_TEXT_XML)) {
-                        wholeMsg = extractTextMessageContent(wrapMsgContent, encoding);
-                        //get ByteMessage content to display
-                    } else if (mimeType.equals(MIME_TYPE_APPLICATION_OCTET_STREAM)) {
-                        wholeMsg = extractByteMessageContent(wrapMsgContent, byteMsgContent);
-                        //get ObjectMessage content to display
-                    } else if (mimeType.equals(MIME_TYPE_APPLICATION_JAVA_OBJECT_STREAM)) {
-                        wholeMsg = "This Operation is Not Supported!";
-                        summaryMsg = "Not Supported";
-                        //get StreamMessage content to display
-                    } else if (mimeType.equals(MIME_TYPE_JMS_STREAM_MESSAGE)) {
-                        wholeMsg = extractStreamMessageContent(wrapMsgContent, encoding);
-                        //get MapMessage content to display
-                    } else if (mimeType.equals(MIME_TYPE_AMQP_MAP) || mimeType.equals(MIME_TYPE_JMS_MAP_MESSAGE)) {
-                        wholeMsg = extractMapMessageContent(wrapMsgContent);
-                    }
-                    //trim content to summary and whole message
-                    if (wholeMsg.length() >= CHARACTERS_TO_SHOW) {
-                        summaryMsg = wholeMsg.substring(0, CHARACTERS_TO_SHOW);
-                    } else {
-                        summaryMsg = wholeMsg;
-                    }
-                    if (wholeMsg.length() > MESSAGE_DISPLAY_LENGTH_MAX) {
-                        wholeMsg = wholeMsg.substring(0, MESSAGE_DISPLAY_LENGTH_MAX - 3) +
-                                DISPLAY_CONTINUATION + DISPLAY_LENGTH_EXCEEDED;
-                    }
-
-                    content[0] = summaryMsg;
-                    content[1] = wholeMsg;
-
-                    //set content type of message to readable name
-                    contentType = getReadableNameForMessageContentType(contentType);
-
-                    //set CompositeData of message
-                    Object[] itemValues = {msgProperties, contentType, content, messageId, redelivered,
-                            deliveredMode, timeStamp, destination, andesMessageMetadataId};
-                    CompositeDataSupport support = new CompositeDataSupport(_msgContentType,
-                            VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.toArray(
-                                    new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]), itemValues);
-                    compositeDataList.add(support);
-
-                } else if(bodySize == 0) { //empty message
-                    Object[] itemValues = {msgProperties, contentType, "", messageId, redelivered,
-                            deliveredMode, timeStamp, destination, andesMessageMetadataId};
+                Object[] itemValues = getItemValues(andesMessageMetadata);
+                if (null != itemValues) {
                     CompositeDataSupport support = new CompositeDataSupport(_msgContentType,
                             VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.toArray(
                                     new String[VIEW_MSG_CONTENT_COMPOSITE_ITEM_NAMES_DESC.size()]), itemValues);
                     compositeDataList.add(support);
                 }
             }
-        } catch (OpenDataException e) {
-            throw new MBeanException(e, "Error occurred in browse queue.");
-        } catch (AMQException e) {
-            throw new MBeanException(e, "Error occurred in browse queue.");
-        } catch (CharacterCodingException e) {
-            throw new MBeanException(e, "Error occurred in browse queue.");
+        } catch (OpenDataException exception) {
+            throw new MBeanException(exception, "Error occurred in browse queue.");
         }
         return compositeDataList.toArray(new CompositeData[compositeDataList.size()]);
+    }
 
+    /**
+     * Method to get an array of properties of a single message.
+     *
+     * @param andesMessageMetadata andes message metadata to be parsed
+     * @return an array of properties of the message
+     * @throws MBeanException
+     */
+    private Object[] getItemValues(AndesMessageMetadata andesMessageMetadata) throws MBeanException {
+        try {
+
+            Object[] itemValues = null;
+            //get AMQMessage from AndesMessageMetadata
+            AMQMessage amqMessage = AMQPUtils.getAMQMessageFromAndesMetaData(andesMessageMetadata);
+            //header properties from AMQMessage
+            BasicContentHeaderProperties properties = (BasicContentHeaderProperties) amqMessage
+                    .getContentHeaderBody().getProperties();
+            //get custom header properties of AMQMessage
+            StringBuilder stringBuilder = new StringBuilder();
+            for (String headerKey : properties.getHeaders().keys()) {
+                stringBuilder.append(headerKey).append(" = ").append(properties.getHeaders().get(headerKey));
+                stringBuilder.append(", ");
+            }
+            String msgProperties = stringBuilder.toString();
+            //get content type
+            String contentType = properties.getContentTypeAsString();
+            //get message id
+            String messageId = properties.getMessageIdAsString();
+            //get redelivered
+            Boolean redelivered = false;
+            //get delivery mode
+            Integer deliveredMode = (int) properties.getDeliveryMode();
+            //get timestamp
+            Long timeStamp = properties.getTimestamp();
+            //get destination
+            String destination = andesMessageMetadata.getDestination();
+            //get AndesMessageMetadata id
+            Long andesMessageMetadataId = andesMessageMetadata.getMessageID();
+
+            //content is constructing
+            final int bodySize = (int) amqMessage.getSize();
+            List<Byte> messageContent = new ArrayList<Byte>();
+            java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(bodySize);
+            int position = 0;
+            while (position < bodySize) {
+                position += amqMessage.getContent(buffer, position);
+                //if position did not proceed, there is an error receiving content
+                if ((bodySize != 0) && (position == 0)) {
+                    break;
+                }
+                buffer.flip();
+                for (int i = 0; i < buffer.limit(); i++) {
+                    messageContent.add(buffer.get(i));
+                }
+                buffer.clear();
+            }
+
+            //if position did not proceed, there is an error receiving content. If not, decode content
+            if (!((bodySize != 0) && (position == 0))) {
+
+                String[] content = decodeContent(amqMessage, messageContent);
+
+                //set content type of message to readable name
+                contentType = getReadableNameForMessageContentType(contentType);
+
+                //set CompositeData of message
+                itemValues = new Object[]{msgProperties, contentType, content, messageId, redelivered,
+                        deliveredMode, timeStamp, destination, andesMessageMetadataId};
+
+            } else if (bodySize == 0) { //empty message
+                itemValues = new Object[]{msgProperties, contentType, "", messageId, redelivered,
+                        deliveredMode, timeStamp, destination, andesMessageMetadataId};
+
+            }
+            return itemValues;
+        } catch (AMQException exception) {
+            throw new MBeanException(exception, "Error occurred in browse queue.");
+        }
+    }
+
+    /**
+     * Method to decode content of a single message into text
+     *
+     * @param amqMessage     the message of which content need to be decoded
+     * @param messageContent the byte list of message content to be decoded
+     * @return A string array representing the decoded message content
+     * @throws MBeanException
+     */
+    private String[] decodeContent(AMQMessage amqMessage, List<Byte> messageContent) throws MBeanException {
+
+        try {
+            //get encoding
+            String encoding = amqMessage.getMessageHeader().getEncoding();
+            if (encoding == null) {
+                encoding = "UTF-8";
+            }
+            //get mime type of message
+            String mimeType = amqMessage.getMessageHeader().getMimeType();
+            // setting default mime type
+            if (StringUtils.isBlank(mimeType)) {
+                mimeType = MIME_TYPE_TEXT_PLAIN;
+            }
+            //create message content to readable text from ByteBuffer
+            Byte[] msgContent = messageContent.toArray(new Byte[messageContent.size()]);
+            byte[] byteMsgContent = ArrayUtils.toPrimitive(msgContent);
+            ByteBuffer wrapMsgContent = ByteBuffer.wrap(byteMsgContent);
+            String content[] = new String[2];
+            String summaryMsg = "";
+            String wholeMsg = "";
+
+            //get TextMessage content to display
+            if (mimeType.equals(MIME_TYPE_TEXT_PLAIN) || mimeType.equals(MIMI_TYPE_TEXT_XML)) {
+                wholeMsg = extractTextMessageContent(wrapMsgContent, encoding);
+                //get ByteMessage content to display
+            } else if (mimeType.equals(MIME_TYPE_APPLICATION_OCTET_STREAM)) {
+                wholeMsg = extractByteMessageContent(wrapMsgContent, byteMsgContent);
+                //get ObjectMessage content to display
+            } else if (mimeType.equals(MIME_TYPE_APPLICATION_JAVA_OBJECT_STREAM)) {
+                wholeMsg = "This Operation is Not Supported!";
+                summaryMsg = "Not Supported";
+                //get StreamMessage content to display
+            } else if (mimeType.equals(MIME_TYPE_JMS_STREAM_MESSAGE)) {
+                wholeMsg = extractStreamMessageContent(wrapMsgContent, encoding);
+                //get MapMessage content to display
+            } else if (mimeType.equals(MIME_TYPE_AMQP_MAP) || mimeType.equals(MIME_TYPE_JMS_MAP_MESSAGE)) {
+                wholeMsg = extractMapMessageContent(wrapMsgContent);
+            }
+            //trim content to summary and whole message
+            if (wholeMsg.length() >= CHARACTERS_TO_SHOW) {
+                summaryMsg = wholeMsg.substring(0, CHARACTERS_TO_SHOW);
+            } else {
+                summaryMsg = wholeMsg;
+            }
+            if (wholeMsg.length() > MESSAGE_DISPLAY_LENGTH_MAX) {
+                wholeMsg = wholeMsg.substring(0, MESSAGE_DISPLAY_LENGTH_MAX - 3) +
+                           DISPLAY_CONTINUATION + DISPLAY_LENGTH_EXCEEDED;
+            }
+            content[0] = summaryMsg;
+            content[1] = wholeMsg;
+            return content;
+        } catch (CharacterCodingException exception) {
+            throw new MBeanException(exception, "Error occurred in browse queue.");
+        }
     }
 }
 

@@ -30,6 +30,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.ByteBuffer;
+import java.util.Iterator;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -184,6 +186,39 @@ public class AndesUtils {
         LocalSubscription localSubscription = AndesContext.getInstance().getSubscriptionStore()
                 .getLocalSubscriptionForChannelId(channelID);
         return localSubscription.getMessageByMessageID(messageID);
+    }
+
+    /**
+     * Method to determine if a given destination represents a queue rather than a durable topic or a temporary topic
+     * subscription.
+     *
+     * @param destination the name of the destination
+     * @return true if the given destination is associated with a queue, false if it is a temporary topic or a
+     * durable topic subscription
+     */
+    private static boolean isPersistentQueue(String destination) {
+        if (destination.startsWith("tmp_") || destination.contains(":") || destination.startsWith("TempQueue")) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Method to filter queue names from a given list of destinations
+     *
+     * @param destinations the list of destinations
+     * @return the filtered list of destinations which only include queue names
+     */
+    public static List<String> filterQueueDestinations(List<String> destinations) {
+        Iterator itr = destinations.iterator();
+        //remove topic specific queues
+        while (itr.hasNext()) {
+            String destinationQueueName = (String) itr.next();
+            if (!(isPersistentQueue(destinationQueueName))) {
+                itr.remove();
+            }
+        }
+        return destinations;
     }
 
 }

@@ -344,14 +344,13 @@ public class MessagingEngine {
 
         try {
             int deletedMessageCount;
-            if (!DLCQueueUtils.isDeadLetterQueue(storageQueueName)) {
+            if (!(DLCQueueUtils.isDeadLetterQueue(storageQueueName))) {
                 // delete all messages for the queue
                 deletedMessageCount = messageStore.deleteAllMessageMetadata(storageQueueName);
             } else {
                 //delete all the messages in dlc
                 deletedMessageCount = messageStore.clearDLCQueue(storageQueueName);
             }
-
             return deletedMessageCount;
 
         } catch (AndesException e) {
@@ -489,7 +488,7 @@ public class MessagingEngine {
     }
 
     /**
-     * Get a map of queue names and the message count for each queue from the message store
+     * Get a map of queue names and the message count for each queue from the message store.
      *
      * @param queueNames list of queue names of which the message count should be retrieved
      * @return Map of queue names and the message count for each queue
@@ -510,7 +509,7 @@ public class MessagingEngine {
     }
 
     /**
-     * Get message count in DLC for a specific queue
+     * Get message count in DLC for a specific queue.
      *
      * @param queueName    name of the storage queue
      * @param dlcQueueName name of the dlc queue
@@ -522,7 +521,7 @@ public class MessagingEngine {
     }
 
     /**
-     * Get message count in DLC
+     * Get message count in DLC.
      *
      * @param dlcQueueName name of the dlc queue
      * @return message count of the queue
@@ -562,7 +561,7 @@ public class MessagingEngine {
     }
 
     /**
-     * Get message metadata from queue starting from given id up a given message count
+     * Get message metadata from queue starting from given id up a given message count.
      *
      * @param queueName    name of the queue
      * @param dlcQueueName name of the dead letter channel queue
