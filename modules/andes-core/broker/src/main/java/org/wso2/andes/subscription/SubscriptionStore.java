@@ -397,7 +397,7 @@ public class SubscriptionStore {
         String destination = subscription.getSubscribedDestination();
         if (subscription.isBoundToTopic()) {
             SubscriptionType subscriptionType = subscription.getSubscriptionType();
-            if ((SubscriptionType.AMQP == subscriptionType && AMQPUtils.isWildCardSubscription(destination))
+            if ((SubscriptionType.AMQP == subscriptionType && AMQPUtils.isWildCardDestination(destination))
                     || (SubscriptionType.MQTT == subscriptionType && MQTTUtils.isWildCardSubscription(destination))) {
                 subscriptionFound = clusterSubscriptionProcessor.isSubscriptionAvailable(subscription);
             } else {
@@ -467,7 +467,7 @@ public class SubscriptionStore {
         if (topicSubscriptionMap) {
             // Check if this is a wildcard subscription
             if (AndesSubscription.SubscriptionType.AMQP == subscription.getSubscriptionType()) {
-                wildCardSubscription = AMQPUtils.isWildCardSubscription(destination);
+                wildCardSubscription = AMQPUtils.isWildCardDestination(destination);
             } else if (AndesSubscription.SubscriptionType.MQTT == subscription.getSubscriptionType()) {
                 wildCardSubscription = MQTTUtils.isWildCardSubscription(destination);
             }

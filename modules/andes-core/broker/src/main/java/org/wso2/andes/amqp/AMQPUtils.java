@@ -427,13 +427,13 @@ public class AMQPUtils {
     /**
      * Checks whether a given subscription is a wildcard subscription.
      *
-     * @param subscribedDestination The destination string subscriber subscribed to
+     * @param destination The destination string subscriber subscribed to
      * @return is this a wild card subscription
      */
-    public static boolean isWildCardSubscription(String subscribedDestination) {
+    public static boolean isWildCardDestination(String destination) {
         boolean isWildCard = false;
 
-        if (subscribedDestination.contains(TOPIC_AND_CHILDREN_WILDCARD) || subscribedDestination.contains(IMMEDIATE_CHILDREN_WILDCARD)) {
+        if (destination.contains(TOPIC_AND_CHILDREN_WILDCARD) || destination.contains(IMMEDIATE_CHILDREN_WILDCARD)) {
             isWildCard = true;
         }
 
