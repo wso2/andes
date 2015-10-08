@@ -700,9 +700,6 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
     }
 
     void proccessConnectionLost(String clientID) {
-
-        removeAuthorizationSubject(clientID);
-
         //If already removed a disconnect message was already processed for this clientID
         if (m_clientIDs.remove(clientID) != null) {
             //de-activate the subscriptions for this ClientID
@@ -726,6 +723,8 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             }
             // bridge.onSubscriberDisconnection(clientID);
         }
+
+        removeAuthorizationSubject(clientID);
     }
 
     /**
@@ -736,7 +735,12 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
      * @param clientID The client ID to remove data for.
      */
     private void removeAuthorizationSubject(String clientID) {
-        authSubjects.remove(clientID);
+        MQTTAuthorizationSubject removedAuthorizationSubject = authSubjects.remove(clientID);
+
+        if (null == removedAuthorizationSubject) {
+            log.warn("MQTTAuthorizationSubject for client ID " + clientID
+                     + " is not removed since the entry does not exist");
+        }
     }
 
     /**
