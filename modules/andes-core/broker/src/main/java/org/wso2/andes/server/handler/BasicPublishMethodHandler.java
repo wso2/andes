@@ -19,6 +19,7 @@ package org.wso2.andes.server.handler;
 
 import org.apache.log4j.Logger;
 import org.wso2.andes.AMQException;
+import org.wso2.andes.amqp.AMQPUtils;
 import org.wso2.andes.exchange.ExchangeDefaults;
 import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.BasicPublishBody;
@@ -82,6 +83,14 @@ public class BasicPublishMethodHandler implements StateAwareMethodListener<Basic
             }
 
             MessagePublishInfo info = session.getMethodRegistry().getProtocolVersionMethodConverter().convertToInfo(body);
+
+
+            if (ExchangeDefaults.TOPIC_EXCHANGE_NAME.equals(exchangeName)
+                    && AMQPUtils.isWildCardDestination(info.getRoutingKey().toString())) {
+                throw body.getChannelException(AMQConstant.INVALID_ROUTING_KEY, "Publishing messages to a wildcard "
+                        + "destination is not allowed");
+            }
+
             info.setExchange(exchangeName);
             channel.setPublishFrame(info, exch);
         }
