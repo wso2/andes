@@ -110,6 +110,23 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     }
 
     /**
+     * Get complete message status history together with all channel status
+     * @return above information as a string
+     */
+    public String getMessageStatusWithAllChannelStatus() {
+        String messageStatusHistory = getStatusHistoryAsString();
+        String deliveries = "";
+        for (UUID channelID : getAllDeliveredChannels()) {
+            deliveries = deliveries + channelID + " : " + channelDeliveryInfo.get(channelID)
+                    .getMessageStatusHistoryForChannelAsString() + " | ";
+        }
+
+        String completeInfo = "[" + messageStatusHistory + "]" + deliveries;
+        return completeInfo;
+
+    }
+
+    /**
      * Get message status this message went through as a list
      *
      * @return list of MessageStatus
