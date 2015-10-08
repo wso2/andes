@@ -24,6 +24,11 @@ import java.util.List;
  */
 public class SubAckMessage extends MessageIDMessage {
 
+    private byte m_returnCode;
+
+    // MQTT spec 3.1.1 specific return codes
+    public static final byte FORBIDDEN_SUBSCRIPTION = 0x08;
+
     List<QOSType> m_types = new ArrayList<QOSType>();
     
     public SubAckMessage() {
@@ -36,5 +41,13 @@ public class SubAckMessage extends MessageIDMessage {
 
     public void addType(QOSType type) {
         m_types.add(type);
+    }
+
+    public byte getreturnCode() {
+        return m_returnCode;
+    }
+
+    public void setreturnCode(byte returnCode) {
+        this.m_returnCode = returnCode;
     }
 }

@@ -44,6 +44,11 @@ public class MQTTAuthorizationSubject {
     private String tenantDomain;
 
     /**
+     * Protocol version of the MQTT client.
+     */
+    private byte protocolVersion;
+
+    /**
      * Initialize Authorization Subject with the clientID and userFlag which is required.
      *
      * @param clientID The MQTT ClientID
@@ -81,4 +86,8 @@ public class MQTTAuthorizationSubject {
     public void setUsername(String username) {
         this.username = username;
     }
+
+    public byte getProtocolVersion() { return protocolVersion; }
+
+    public void setProtocolVersion(byte protocolVersion) { this.protocolVersion = protocolVersion; }
 }

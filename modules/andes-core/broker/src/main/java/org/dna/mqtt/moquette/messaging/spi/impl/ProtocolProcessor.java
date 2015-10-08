@@ -234,6 +234,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             String carbonUsername = username.replace('!', '@');
             authSubject.setTenantDomain(MultitenantUtils.getTenantDomain(carbonUsername));
             authSubject.setUsername(MultitenantUtils.getTenantAwareUsername(carbonUsername));
+            authSubject.setProtocolVersion(msg.getProcotolVersion());
         }
 
         // Checking whether a client already exists with the same client ID. If so, do not allow.
@@ -794,11 +795,20 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                 authenticatedForOneOrMore = true;
             } else {
                 // User flag has to be set at this point, else not authenticated
-                // Log and continue since there is no method to inform the client about permission failure
+                // Log and return since no need to proceed with subscribing due to permissions.
                 log.error("Client " + clientID + " does not have permission to subscribe to topic : " +
                           req.getTopicFilter());
 
-                continue;
+                // As per mqtt spec 3.1.1 sub ack should send to client if broker don't allow client
+                // to subscribe a topic.
+                if(authSubject.getProtocolVersion() == Utils.VERSION_3_1_1) {
+                    // 'forbidden subscription' return code has sent to client since client don't have
+                    // permission to subscribe the topic.
+                    SubAckMessage response = new SubAckMessage();
+                    response.setreturnCode(SubAckMessage.FORBIDDEN_SUBSCRIPTION);
+                    session.write(response);
+                    return;
+                }
             }
 
             AbstractMessage.QOSType qos = AbstractMessage.QOSType.values()[req.getQos()];
