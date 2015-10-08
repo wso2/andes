@@ -86,10 +86,7 @@ public class TopicParserUtil {
                     // Therefore skip a step forward
                 }
             }
-            //if last token was a SINGLE then treat it as an empty
-            if (subToken == Token.SINGLE && (token - msgTokens.size() == 1)) {
-                token--;
-            }
+
             return token == msgTokens.size();
         } catch (ParseException ex) {
             log.error("Topic format is incorrect", ex);
@@ -110,6 +107,14 @@ public class TopicParserUtil {
 
         if (tokens.length == 0) {
             resultArray.add(Token.EMPTY);
+        }
+
+        if (topic.endsWith("/")) {
+            //Add a fictitious space
+            String[] newSplit = new String[tokens.length + 1];
+            System.arraycopy(tokens, 0, newSplit, 0, tokens.length);
+            newSplit[tokens.length] = "";
+            tokens = newSplit;
         }
 
         for (int i = 0; i < tokens.length; i++) {
