@@ -85,6 +85,7 @@ public class AndesSubscriptionManager {
      */
     public void addSubscription(LocalSubscription localSubscription) throws AndesException, SubscriptionAlreadyExistsException {
         boolean durableTopicSubFoundAndUpdated = false;
+        LocalSubscription mockSubscription = null;
         if(localSubscription.isDurable() && localSubscription.isBoundToTopic()) {
 
             Boolean allowSharedSubscribers = AndesConfigurationManager.readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
@@ -111,17 +112,9 @@ public class AndesSubscriptionManager {
                     // decided looking at subscription ID and the subscribed node)
                     if(!matchingSubscription.getSubscriptionID().equals(localSubscription.getSubscriptionID())
                              || !matchingSubscription.getSubscribedNode().equals(localSubscription.getSubscribedNode())) {
-                        LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription
+                        mockSubscription = convertClusterSubscriptionToMockLocalSubscription
                                 (matchingSubscription);
                         mockSubscription.close();
-                        LocalSubscription removedSubscription = subscriptionStore.removeLocalSubscription
-                                (mockSubscription);
-                        /** removed subscription is returned. If removed subscription is null this is not a actual local
-                         subscription. We need to directly remove it. */
-                        if(null == removedSubscription) {
-                            subscriptionStore.removeSubscriptionDirectly(mockSubscription);
-                        }
-                        notifyLocalSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange.DELETED);
                     } else {
                         subscriptionStore.updateLocalSubscriptionSubscription(localSubscription);
                         durableTopicSubFoundAndUpdated = true;
@@ -156,6 +149,19 @@ public class AndesSubscriptionManager {
         // existing inactive one if it matches
         notifyLocalSubscriptionHasChanged(localSubscription, SubscriptionListener.SubscriptionChange.ADDED);
 
+        // Now remove the mock subscription. Removing should do after adding the new subscription
+        // . Otherwise subscription list will be null at some point.
+
+        if (null != mockSubscription) {
+            LocalSubscription removedSubscription = subscriptionStore.removeLocalSubscription
+                    (mockSubscription);
+            /** removed subscription is returned. If removed subscription is null this is not a actual local
+             subscription. We need to directly remove it. */
+            if (null == removedSubscription) {
+                subscriptionStore.removeSubscriptionDirectly(mockSubscription);
+            }
+            notifyLocalSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange.DELETED);
+        }
     }
 
     /**
