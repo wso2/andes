@@ -164,6 +164,11 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
         return new ReadOnlyContext(environment, data);
     }
 
+    /**
+     * Create connection factory using given environment variables
+     * @param data connection factory information to the relevant jndiname
+     * @param environment property values which need to construct the InitialContext
+     */
     protected void createConnectionFactories(Map data, Hashtable environment) throws ConfigurationException
     {
         resolveEncryptedProperties(environment);
@@ -189,22 +194,16 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
      * @param environment property values which need to construct the InitialContext
      */
     private static void resolveEncryptedProperties(Hashtable environment) {
-
         if (environment != null) {
-
             Properties properties = convertToProperties(environment);
             SecretResolver secretResolver = SecretResolverFactory.create(properties);
-
             for (Object key : environment.keySet()) {
-
                 if (secretResolver != null && secretResolver.isInitialized()) {
                     if (secretResolver.isTokenProtected(key.toString())) {
                         environment.put(key.toString(), secretResolver.resolve(key.toString()));
                     }
                 }
-
             }
-
         }
     }
 
@@ -213,13 +212,10 @@ public class PropertiesFileInitialContextFactory implements InitialContextFactor
      * @param map key value pair details
      */
     private static Properties convertToProperties(Map<String, String> map) {
-
         Properties prop = new Properties();
-
         for (Map.Entry entry : map.entrySet()) {
             prop.setProperty(entry.getKey().toString(), entry.getValue().toString());
         }
-
         return prop;
     }
 
