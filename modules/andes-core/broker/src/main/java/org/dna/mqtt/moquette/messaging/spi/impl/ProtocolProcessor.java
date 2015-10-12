@@ -408,9 +408,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
             //TODO check whether the QOS 0 messages should be retained
             if (qos == AbstractMessage.QOSType.MOST_ONE && subscription.isActive()) {
                 //QoS 0
-                //We keep the retain flag false always
-                //Retain messages are handled by the andes kernal
-                sendPublish(subscription.getClientId(), topic, qos, message, false);
+                sendPublish(subscription.getClientId(), topic, qos, message, retain);
             } else {
                 //QoS 1 or 2
                 //if the target subscription is not clean session and is not connected => store it
@@ -430,7 +428,7 @@ public class ProtocolProcessor implements EventHandler<ValueEvent>, PubAckHandle
                     //publish
                     if (subscription.isActive()) {
                         //Change done by WSO2 will be overloading the method
-                        sendPublish(subscription.getClientId(), topic, qos, message, false, messageID);
+                        sendPublish(subscription.getClientId(), topic, qos, message, retain, messageID);
                     }
                 }
             }
