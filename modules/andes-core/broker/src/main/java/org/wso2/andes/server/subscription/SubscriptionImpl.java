@@ -32,6 +32,7 @@ import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.FieldTable;
 import org.wso2.andes.kernel.AndesUtils;
 import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
+import org.wso2.andes.kernel.SubscriptionAlreadyClosedException;
 import org.wso2.andes.protocol.AMQConstant;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.filter.FilterManager;
@@ -267,7 +268,7 @@ public abstract class SubscriptionImpl implements Subscription, FlowCreditManage
                                 + entry.getMessage().getMessageNumber()  );
                         
                     }
-                    throw new ProtocolDeliveryFailureException("Channel " + getChannel().getClientID() + " is already"
+                    throw new SubscriptionAlreadyClosedException("Channel " + getChannel().getClientID() + " is already"
                             + " closed. Delivery failed message id = " + entry.getMessage().getMessageNumber());
                 }
 

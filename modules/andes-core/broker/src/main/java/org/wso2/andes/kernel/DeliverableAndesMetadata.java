@@ -110,6 +110,23 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
     }
 
     /**
+     * Get complete message status history together with all channel status
+     * @return above information as a string
+     */
+    public String getMessageStatusWithAllChannelStatus() {
+        String messageStatusHistory = getStatusHistoryAsString();
+        String deliveries = "";
+        for (UUID channelID : getAllDeliveredChannels()) {
+            deliveries = deliveries + channelID + " : " + channelDeliveryInfo.get(channelID)
+                    .getMessageStatusHistoryForChannelAsString() + " | ";
+        }
+
+        String completeInfo = "[" + messageStatusHistory + "]" + deliveries;
+        return completeInfo;
+
+    }
+
+    /**
      * Get message status this message went through as a list
      *
      * @return list of MessageStatus
@@ -220,15 +237,25 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
 
     /**
      * Check if message is sent to DLC
-     * @return
+     *
+     * @return true if conditions met
      */
     public boolean isDLCMessage() {
         return getLatestState().equals(MessageStatus.DLC_MESSAGE);
     }
 
     /**
+     * Check if message is acknowledged by all channels message is scheduled
+     *
+     * @return true if message is acknowledged
+     */
+    public boolean isAknowledgedByAll() {
+        return getLatestState().equals(MessageStatus.ACKED_BY_ALL);
+    }
+
+    /**
      * Check if message is deleted or purged
-     * @return
+     * @return true if conditions met
      */
     public boolean isPurgedOrDeletedOrExpired() {
         MessageStatus currentStatus = getLatestState();
@@ -534,7 +561,7 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
         }
 
         private String getMessageStatusHistoryForChannelAsString() {
-            StringBuffer channelInfo = new StringBuffer();
+            StringBuilder channelInfo = new StringBuilder();
             for (ChannelMessageStatus channelMessageStatus : messageStatusesForChannel) {
                 channelInfo.append(channelMessageStatus)
                         .append(">>");

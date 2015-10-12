@@ -219,23 +219,23 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
      */
     public void close() throws AndesException {
 
-        List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>();
-
         for (DeliverableAndesMetadata andesMetadata : messageSendingTracker.values()) {
             andesMetadata.markDeliveredChannelAsClosed(getChannelID());
-            andesMetadata.evaluateMessageAcknowledgement();
-
-            //TODO: decide if we need to do this only for topics
-            //for topic messages see if we can delete the message
-            if((!andesMetadata.isOKToDispose()) && (andesMetadata.isTopic())) {
-                if(andesMetadata.getLatestState().equals(MessageStatus.ACKED_BY_ALL)) {
-                     messagesToRemove.add(andesMetadata);
+            //re-evaluate ACK if a topic subscriber has closed
+            if (!isDurable()) {
+                List<DeliverableAndesMetadata> messagesToRemove = new ArrayList<>();
+                andesMetadata.evaluateMessageAcknowledgement();
+                //for topic messages see if we can delete the message
+                if ((!andesMetadata.isOKToDispose()) && (andesMetadata.isTopic())) {
+                    if (andesMetadata.getLatestState().equals(MessageStatus.ACKED_BY_ALL)) {
+                        messagesToRemove.add(andesMetadata);
+                    }
                 }
+                MessagingEngine.getInstance().deleteMessages(messagesToRemove);
             }
         }
-
-        MessagingEngine.getInstance().deleteMessages(messagesToRemove);
     }
+
 
     /**
      * Add message to sending tracker which keeps messages delivered to this channel

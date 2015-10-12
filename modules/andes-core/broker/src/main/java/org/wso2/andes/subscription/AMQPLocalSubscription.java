@@ -29,6 +29,7 @@ import org.wso2.andes.server.queue.AMQQueue;
 import org.wso2.andes.server.queue.QueueEntry;
 import org.wso2.andes.server.subscription.Subscription;
 import org.wso2.andes.server.subscription.SubscriptionImpl;
+import org.wso2.andes.tools.utils.MessageTracer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -160,12 +161,12 @@ public class AMQPLocalSubscription implements OutboundSubscription {
         try {
 
             if (amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
-                if (log.isDebugEnabled()) {
-                    log.debug("TRACING>> QDW- sent queue/durable topic message "
-                            + msgHeaderStringID + " messageID-"
-                            + messageNumber + "-to "
-                            + "subscription " + amqpSubscription);
-                }
+
+                MessageTracer.trace(messageNumber, "", "Sending message "
+                        + msgHeaderStringID + " messageID-"
+                        + messageNumber + "-to "
+                        + "channel " + getChannelID());
+
                 amqpSubscription.send(queueEntry);
             } else {
                 throw new AndesException("Error occurred while delivering message. Unexpected Subscription type for "

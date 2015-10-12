@@ -27,12 +27,16 @@ import org.wso2.andes.kernel.MessagingEngine;
 import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
 import org.wso2.andes.kernel.ProtocolDeliveryRulesFailureException;
 import org.wso2.andes.kernel.ProtocolMessage;
+import org.wso2.andes.kernel.SubscriptionAlreadyClosedException;
 import org.wso2.andes.metrics.MetricsConstants;
 import org.wso2.andes.subscription.LocalSubscription;
 import org.wso2.andes.tools.utils.MessageTracer;
 import org.wso2.carbon.metrics.manager.Level;
 import org.wso2.carbon.metrics.manager.Meter;
 import org.wso2.carbon.metrics.manager.MetricManager;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 
@@ -99,55 +103,84 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
 
                     } else {
                         onSendError(message, subscription);
-                        message.markDeliveredChannelAsClosed(subscription.getChannelID());
-                        if (subscription.isDurable()) {
-                            //re-queue message to andes core so that it can find other subscriber to deliver
-                            MessagingEngine.getInstance().reQueueMessage(message);
-                        } else {
-                            if (!message.isOKToDispose()) {
-                                log.warn("Cannot send message id= " + message.getMessageID() + " as subscriber is closed");
-                            }
-                        }
+                        onSubscriptionAlreadyClosed(message, subscription);
+                        reQueueMessageIfDurable(message, subscription);
                     }
                 } else {
-                    //stale only happens when subscription is closed
-                    message.markDeliveredChannelAsClosed(subscription.getChannelID());
+                    // Stale only happens when last subscription is closed and slot is returned. No need to re-queue
+                    // here. Messages will be read again when slot is re-acquired and messages are read as new messages.
                     onSendError(message, subscription);
-                    //Tracing Message
+                    onSubscriptionAlreadyClosed(message, subscription);
+                    // Tracing Message
                     MessageTracer.trace(message.getMessageID(), message.getDestination(),
                             MessageTracer.DISCARD_STALE_MESSAGE);
+
                 }
             } catch (ProtocolDeliveryRulesFailureException e) {
                 onSendError(message, subscription);
                 routeMessageToDLC(message);
+
+            } catch (SubscriptionAlreadyClosedException ex) {
+                //we do not log the error as subscriber is closing this is an expected exception.
+                //subscriber is already closed while try to deliver
+                onSendError(message, subscription);
+                onSubscriptionAlreadyClosed(message, subscription);
+
             } catch (ProtocolDeliveryFailureException ex) {
-                //we do not log the error as subscriber is closing this is an expected exception. On an actual send
-                // error by protocol, we log it earlier.
-                /*
-                 * there can be a actual send error or subscriber is already closed. Mark as closed only if
-                 * subscriber is closed
-                 */
-                if (!subscription.isActive()) {
-                    onSendError(message, subscription);
-                    message.markDeliveredChannelAsClosed(subscription.getChannelID());
-                } else {
-                    //this is on an actual send error. We increase delivery count so max send count delivery rule
-                    //is evaluated and message is sent to DLC if failure is consistent
-                    onDeliveryException(message, subscription);
-                }
-                if (subscription.isDurable()) {
-                    //re-queue message to andes core so that it can find other subscriber to deliver
-                    MessagingEngine.getInstance().reQueueMessage(message);
-                } else {
-                    if (!message.isOKToDispose()) {
-                        log.warn("Cannot send message id= " + message.getMessageID() + " as subscriber is closed");
-                    }
-                }
+                // we log the exception earlier. Hence logging is not required here. We increase delivery count so max
+                // send count delivery rule is evaluated and message is sent to DLC if failure is consistent
+                onDeliveryException(message, subscription);
+                reQueueMessageIfDurable(message, subscription);
+
             } catch (Throwable e) {
                 log.error("Unexpected error while delivering message. Message id " + message.getMessageID(), e);
                 onDeliveryException(message, subscription);
+                reQueueMessageIfDurable(message, subscription);
+
             } finally {
                 deliveryEventData.clearData();
+
+            }
+        }
+    }
+
+    /**
+     * Re-queue message for a durable subscriber.
+     *
+     * @param message      message metadata to re-queue
+     * @param subscription subscription to check on
+     * @throws AndesException on re-queue error
+     */
+    private void reQueueMessageIfDurable(DeliverableAndesMetadata message, LocalSubscription subscription)
+            throws AndesException {
+        if (subscription.isDurable()) {
+            //re-queue message to andes core so that it can find other subscriber to deliver
+            MessagingEngine.getInstance().reQueueMessage(message);
+        } else {
+            if (!message.isOKToDispose()) {
+                log.warn("Cannot send message id= " + message.getMessageID() + " as subscriber is closed");
+            }
+        }
+    }
+
+    /**
+     * Called when a delivery failure happened due to channel is already closed
+     *
+     * @param message      message failed to deliver
+     * @param subscription subscription already closed
+     * @throws AndesException
+     */
+    private void onSubscriptionAlreadyClosed(DeliverableAndesMetadata message, LocalSubscription subscription) throws
+            AndesException {
+        message.markDeliveredChannelAsClosed(subscription.getChannelID());
+        //re-evaluate ACK if a topic subscriber has closed
+        if (!subscription.isDurable()) {
+            message.evaluateMessageAcknowledgement();
+            if (message.isAknowledgedByAll()) {
+                //try to delete message
+                List<DeliverableAndesMetadata> messageToDelete = new ArrayList<>();
+                messageToDelete.add(message);
+                MessagingEngine.getInstance().deleteMessages(messageToDelete);
             }
         }
     }
@@ -164,9 +197,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
         //Send failed. Rollback changes done that assumed send would be success
         UUID channelID = localSubscription.getChannelID();
         messageMetadata.markDeliveryFailureOfASentMessage(channelID);
-        messageMetadata.evaluateMessageAcknowledgement();
         localSubscription.removeSentMessageFromTracker(messageMetadata.getMessageID());
-        //TODO: try to delete
     }
 
     /**
@@ -181,9 +212,7 @@ public class DeliveryEventHandler implements EventHandler<DeliveryEventData> {
     private void onDeliveryException(DeliverableAndesMetadata messageMetadata, LocalSubscription localSubscription) {
         UUID channelID = localSubscription.getChannelID();
         messageMetadata.markDeliveryFailureByProtocol(channelID);
-        messageMetadata.evaluateMessageAcknowledgement();
         localSubscription.removeSentMessageFromTracker(messageMetadata.getMessageID());
-        //TODO: try to delete
     }
 
     /**
