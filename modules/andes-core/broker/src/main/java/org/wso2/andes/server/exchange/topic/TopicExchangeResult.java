@@ -53,13 +53,15 @@ public final class TopicExchangeResult implements TopicMatcherResult
     public void removeUnfilteredQueue(AMQQueue queue)
     {
         Integer instances = _unfilteredQueues.get(queue);
-        if(instances == 1)
-        {
-            _unfilteredQueues.remove(queue);
-        }
-        else
-        {
-            _unfilteredQueues.put(queue,instances - 1);
+
+        // if instances comes up null, that means there was anyway no unfiltered queue instance for the input AMQQueue.
+        // Therefore, only remove if not null.
+        if (null != instances) {
+            if (instances == 1) {
+                _unfilteredQueues.remove(queue);
+            } else {
+                _unfilteredQueues.put(queue, instances - 1);
+            }
         }
 
     }
@@ -134,7 +136,9 @@ public final class TopicExchangeResult implements TopicMatcherResult
                                    MessageFilter oldFilter,
                                    MessageFilter newFilter)
     {
+
         Map<MessageFilter,Integer> filters = _filteredQueues.get(queue);
+
         Map<MessageFilter,Integer> newFilters = new ConcurrentHashMap<MessageFilter,Integer>(filters);
         Integer oldFilterInstances = filters.get(oldFilter);
         if(oldFilterInstances == 1)
@@ -154,6 +158,7 @@ public final class TopicExchangeResult implements TopicMatcherResult
         {
             newFilters.put(newFilter, newFilterInstances+1);
         }
+
         _filteredQueues.put(queue,newFilters);
     }
 

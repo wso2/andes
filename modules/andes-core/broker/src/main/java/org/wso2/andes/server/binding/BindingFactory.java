@@ -155,11 +155,6 @@ public class BindingFactory {
                 throw new AMQInternalException("An Exclusive Bindings already exists for different topic. Not permitted.");
             }
         }
-        //Perform ACLs
-        if (!getVirtualHost().getSecurityManager().authoriseBind(exchange, queue, new AMQShortString(bindingKey))) {
-            throw new AMQSecurityException("Permission denied: binding " + bindingKey);
-        }
-
 
         BindingImpl binding = new BindingImpl(bindingKey, queue, exchange, arguments);
         BindingImpl existingMapping = _bindings.putIfAbsent(binding, binding);
@@ -167,6 +162,11 @@ public class BindingFactory {
             if (existingMapping != null) {
                 //TODO - we should not remove the existing binding
                 removeBinding(existingMapping);
+            }
+
+            //Perform ACLs ONLY after removing/updating any existing bindings.
+            if (!getVirtualHost().getSecurityManager().authoriseBind(exchange, queue, new AMQShortString(bindingKey))) {
+                throw new AMQSecurityException("Permission denied: binding " + bindingKey);
             }
 
             //save only durable bindings
