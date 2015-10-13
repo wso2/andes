@@ -400,19 +400,16 @@ public class MQTTopicManager {
     private String registerTopicSubscriptionInCluster(String topicName, String mqttClientID, String username,
                                                       boolean isCleanSession, QOSLevel qos, UUID subscriptionChannelID)
             throws MQTTException, SubscriptionAlreadyExistsException {
-        //Will generate a unique id for the client
-        //Per topic only one subscription will be created across the cluster
-        String topicSpecificClientID = MQTTUtils.generateTopicSpecficClientID(mqttClientID, topicName);
         if (log.isDebugEnabled()) {
-            log.debug("Cluster wide topic connection was created with id " + topicSpecificClientID + " for topic " +
+            log.debug("Cluster wide topic connection was created with id " + mqttClientID + " for topic " +
                     topicName + " with clean session " + isCleanSession);
         }
 
         //Will register the topic cluster wide
-        connector.addSubscriber(this, topicName, topicSpecificClientID, username, mqttClientID, isCleanSession,
+        connector.addSubscriber(this, topicName, mqttClientID, username, isCleanSession,
                 qos, subscriptionChannelID);
 
-        return topicSpecificClientID;
+        return mqttClientID;
     }
 
     /**

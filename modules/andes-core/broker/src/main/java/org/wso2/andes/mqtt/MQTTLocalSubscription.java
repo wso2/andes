@@ -192,4 +192,13 @@ public class MQTTLocalSubscription implements OutboundSubscription {
         // Remove if received acknowledgment message id contains in retained message list.
         retainedMessageList.remove(messageID);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getStorageQueueName(String destination, String subscribedNode) {
+        // Inside Andes, MQTT subscription ID consists of client ID and topic details, hence using the same
+        return mqttSubscriptionID;
+    }
 }

@@ -52,4 +52,13 @@ public interface OutboundSubscription {
      */
     public UUID getChannelID();
 
+    /**
+     * Get the storage queue name for this subscription.
+     *
+     * @param destination The destination this subscriber subscribed to
+     * @param subscribedNode The node this subscriber subscribed to
+     * @return The storage queue name
+     */
+    public String getStorageQueueName(String destination, String subscribedNode);
+
 }

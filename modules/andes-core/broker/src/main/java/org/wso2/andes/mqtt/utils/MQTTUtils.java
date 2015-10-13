@@ -170,20 +170,6 @@ public class MQTTUtils {
     }
 
     /**
-     * For each topic there will only be one subscriber connection cluster wide locally there can be multiple channels
-     * bound. This method will generate a unique id for the subscription created per topic
-     *
-     * TopicSpecificClientID = carbon:clientId:topic
-     *
-     * @param clientId The MQTT client Id
-     * @param topic The topic subscribed to
-     * @return the unique identifier
-     */
-    public static String generateTopicSpecficClientID(String clientId, String topic) {
-        return "carbon:" + clientId + ":" + topic;
-    }
-
-    /**
      * Will convert between the types of the QOS to adhere to the conversion of both andes and mqtt protocol
      *
      * @param qos the quality of service level the message should be published/subscribed
@@ -282,6 +268,10 @@ public class MQTTUtils {
         }
 
         return tenant;
+    }
+
+    public static String getTopicSpecificQueueName(String clientId, String topic) {
+        return "carbon:" + clientId + ":" + topic;
     }
 
 }

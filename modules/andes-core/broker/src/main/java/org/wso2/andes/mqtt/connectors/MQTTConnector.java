@@ -70,13 +70,12 @@ public interface MQTTConnector {
      * @param topic                 the name of the topic which has subscriber/s
      * @param clientID              the id which will distinguish the topic channel (prefixed for cleanSession=false)
      * @param username              carbon username of logged user
-     * @param mqttClientID          the subscription id which is local to the subscriber
      * @param isCleanSession        should the connection be durable
      * @param qos                   the subscriber specific qos this can be either 0,1 or 2
      * @param subscriptionChannelID will hold the unique identifier of the subscription channel (for Andes)
      * @throws MQTTException
      */
-    public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String username, String mqttClientID,
+    public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String username,
                               boolean isCleanSession, QOSLevel qos, UUID subscriptionChannelID)
             throws MQTTException, SubscriptionAlreadyExistsException;
 
