@@ -411,7 +411,7 @@ public class AMQProtocolEngine implements ProtocolEngine, Managable, AMQProtocol
 
 //                    writeFrame(e.getCloseFrame(channelId));
 //                    closeChannel(channelId);
-                    AMQConnectionException ce = evt.getMethod().getConnectionException(AMQConstant.ACCESS_REFUSED, e.getMessage());
+                    AMQConnectionException ce = evt.getMethod().getConnectionException(e.getErrorCode(), e.getMessage());
                     _logger.info(e.getMessage() + " whilst processing:" + methodBody);
                     closeConnection(channelId, ce, false);
                 }
