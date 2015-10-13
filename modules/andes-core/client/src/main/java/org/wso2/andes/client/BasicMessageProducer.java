@@ -38,6 +38,7 @@ import org.wso2.andes.AMQException;
 import org.wso2.andes.client.message.AbstractJMSMessage;
 import org.wso2.andes.client.message.MessageConverter;
 import org.wso2.andes.client.protocol.AMQProtocolHandler;
+import org.wso2.andes.framing.AMQShortString;
 import org.wso2.andes.framing.ContentBody;
 import org.wso2.andes.util.UUIDGen;
 import org.wso2.andes.util.UUIDs;
@@ -103,6 +104,11 @@ public abstract class BasicMessageProducer extends Closeable implements org.wso2
      * a client that happens to hold onto a producer reference will get an error if he tries to use it subsequently).
      */
     private long _producerId;
+
+    /**
+     * Used to store the queue name
+     */
+    private AMQShortString _queuename;
 
     /**
      * The session used to create this producer
@@ -173,6 +179,10 @@ public abstract class BasicMessageProducer extends Closeable implements org.wso2
         {
             declareDestination(_destination);
         }
+    }
+
+    public void setQueuename(AMQShortString queuename) {
+        this._queuename = queuename;
     }
 
     abstract void declareDestination(AMQDestination destination) throws AMQException;
@@ -259,10 +269,9 @@ public abstract class BasicMessageProducer extends Closeable implements org.wso2
         return _timeToLive;
     }
 
-    public Destination getDestination() throws JMSException
+    public AMQDestination getDestination() throws JMSException
     {
         checkNotClosed();
-
         return _destination;
     }
 
