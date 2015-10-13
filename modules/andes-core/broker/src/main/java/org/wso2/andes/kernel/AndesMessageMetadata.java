@@ -322,8 +322,6 @@ public class AndesMessageMetadata implements Comparable<AndesMessageMetadata> {
         //TODO need to implement factory pattern here
         if (type.equals(MessageMetaDataType.META_DATA_MQTT)) {
             underlying = MQTTMetaDataHandler.constructMetadata(routingKey, buf, original_mdt, exchangeName);
-            //This needs to be set to the latest queue name
-            setStorageQueueName(routingKey);
         } else {
             underlying = AMQPMetaDataHandler.constructMetadata(routingKey, buf, original_mdt, exchangeName);
         }

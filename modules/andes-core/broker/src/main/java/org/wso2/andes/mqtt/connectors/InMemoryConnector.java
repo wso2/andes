@@ -83,7 +83,7 @@ public class InMemoryConnector implements MQTTConnector {
      * {@inheritDoc}
      */
     @Override
-    public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String username, String mqttClientID,
+    public void addSubscriber(MQTTopicManager channel, String topic, String clientID, String username,
                               boolean isCleanSession, QOSLevel qos, UUID subscriptionChannelID)
             throws MQTTException, SubscriptionAlreadyExistsException {
 
@@ -92,7 +92,7 @@ public class InMemoryConnector implements MQTTConnector {
         if (null == subscribers) {
             subscribers = new ArrayList<String>();
         }
-        subscribers.add(mqttClientID);
+        subscribers.add(clientID);
         //Will add the final list to the subscription
         messageSubscription.put(topic, subscribers);
 

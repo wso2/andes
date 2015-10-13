@@ -242,7 +242,7 @@ public class MQTTopics {
             //Each subscription holds the cluster id <-> messages id in order to co-relate when ack is received
             subscription.markSent(clusterMessageID, messageID, metadata);
         } else {
-            String error = "Error occurred while dispatching the message to the subscriber for channel id " +
+            String error = "A subscriber has been disconnected while dispatching the message for channel id " +
                     channelId + " for topic " + topic;
             throw new MQTTException(error);
         }

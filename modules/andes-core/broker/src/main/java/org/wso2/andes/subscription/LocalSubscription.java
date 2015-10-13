@@ -90,11 +90,16 @@ public class LocalSubscription  extends BasicSubscription implements InboundSubs
 
         this.subscription = subscription;
 
-        //We need to keep the subscriptionType in basic subscription for notification
-        if(subscription instanceof AMQPLocalSubscription) {
-            setSubscriptionType(SubscriptionType.AMQP);
-        } else if(subscription instanceof MQTTLocalSubscription) {
-            setSubscriptionType(SubscriptionType.MQTT);
+        // In case of mock subscriptions, this becomes null
+        if (null != subscription) {
+            //We need to keep the subscriptionType in basic subscription for notification
+            if(subscription instanceof AMQPLocalSubscription) {
+                setSubscriptionType(SubscriptionType.AMQP);
+            } else if(subscription instanceof MQTTLocalSubscription) {
+                setSubscriptionType(SubscriptionType.MQTT);
+            }
+
+            setStorageQueueName(subscription.getStorageQueueName(destination, subscribedNode));
         }
 
         this.maxNumberOfUnAcknowledgedMessages = AndesConfigurationManager.readValue

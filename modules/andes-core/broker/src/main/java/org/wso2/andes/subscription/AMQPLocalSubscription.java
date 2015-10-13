@@ -185,4 +185,24 @@ public class AMQPLocalSubscription implements OutboundSubscription {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getStorageQueueName(String destination, String subscribedNode) {
+
+        String storageQueueName;
+
+        String targetQueue = amqQueue.getName();
+
+        if (isBoundToTopic && !isDurable) {  // for normal topic subscriptions
+            storageQueueName = AndesUtils.getStorageQueueForDestination(destination, subscribedNode, true);
+        } else if (isBoundToTopic) {  //for durable topic subscriptions
+            storageQueueName = AndesUtils.getStorageQueueForDestination(targetQueue, subscribedNode, false);
+        } else { //For queue subscriptions. This is a must. Otherwise queue will not be shared among nodes
+            storageQueueName = AndesUtils.getStorageQueueForDestination(targetQueue, subscribedNode, false);
+        }
+
+        return storageQueueName;
+    }
 }

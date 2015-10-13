@@ -107,14 +107,14 @@ public class BasicSubscription implements AndesSubscription {
                 this.subscriptionType = SubscriptionType.valueOf(tokens[1]);
                 // Will automatically throw an IllegalArgumentException if the value does not match to any
                 // SubscriptionType
+            } else if (tokens[0].equals("storageQueueName")) {
+                this.storageQueueName = tokens[1];
             } else {
                 if (tokens[0].trim().length() > 0) {
                     throw new UnsupportedOperationException("Unexpected token " + tokens[0]);
                 }
             }
         }
-
-        setStorageQueueName();
     }
 
     /**
@@ -158,7 +158,6 @@ public class BasicSubscription implements AndesSubscription {
         this.targetQueueBoundExchangeType = targetQueueBoundExchangeType;
         this.isTargetQueueBoundExchangeAutoDeletable = isTargetQueueBoundExchangeAutoDeletable;
         this.hasExternalSubscriptions = hasExternalSubscriptions;
-        setStorageQueueName();
     }
 
     /**
@@ -342,7 +341,8 @@ public class BasicSubscription implements AndesSubscription {
                 .append(isTargetQueueBoundExchangeAutoDeletable == null ? "null" : isTargetQueueBoundExchangeAutoDeletable)
                 .append(",subscribedNode=").append(subscribedNode)
                 .append(",subscribedTime=").append(subscribeTime)
-                .append(",hasExternalSubscriptions=").append(hasExternalSubscriptions);
+                .append(",hasExternalSubscriptions=").append(hasExternalSubscriptions)
+                .append(",storageQueueName=").append(storageQueueName);
 
         if (subscriptionType != null) {
             builder.append(",subscriptionType=").append(subscriptionType);
@@ -381,14 +381,10 @@ public class BasicSubscription implements AndesSubscription {
 
     /**
      * Set storage queue name. Slot delivery worker will refer this name
+     *
+     * @param storageQueueName The storage queue name to set
      */
-    private void setStorageQueueName() {
-        if (isBoundToTopic && !isDurable) {  // for normal topic subscriptions
-            storageQueueName = AndesUtils.getStorageQueueForDestination(destination, subscribedNode, true);
-        } else if (isBoundToTopic) {  //for durable topic subscriptions
-            storageQueueName = AndesUtils.getStorageQueueForDestination(targetQueue, subscribedNode, false);
-        } else { //For queue subscriptions. This is a must. Otherwise queue will not be shared among nodes
-            storageQueueName = AndesUtils.getStorageQueueForDestination(targetQueue, subscribedNode, false);
-        }
+    protected void setStorageQueueName(String storageQueueName) {
+        this.storageQueueName = storageQueueName;
     }
 }
