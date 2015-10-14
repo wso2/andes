@@ -27,13 +27,7 @@ import org.wso2.andes.kernel.AndesSubscription;
 import org.wso2.andes.kernel.AndesSubscription.SubscriptionType;
 import org.wso2.andes.mqtt.utils.MQTTUtils;
 
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 
 /**
@@ -154,6 +148,25 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
 
         } else {
             throw new AndesException("Error adding a new subscription. Subscribed destination is empty.");
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateWildCardSubscription(AndesSubscription subscription) throws AndesException {
+        if (isSubscriptionAvailable(subscription)) {
+            // Need to add the new entry to the same index since bitmap logic is dependent on this index
+            int index = wildCardSubscriptionList.indexOf(subscription);
+
+            // Should not allow to modify this list until the update is complete
+            // Otherwise the subscription indexes will be invalid
+            synchronized (wildCardSubscriptionList) {
+                wildCardSubscriptionList.remove(index);
+                wildCardSubscriptionList.add(index, subscription);
+            }
         }
     }
 

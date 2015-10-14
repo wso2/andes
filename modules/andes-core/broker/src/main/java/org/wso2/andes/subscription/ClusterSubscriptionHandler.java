@@ -38,6 +38,13 @@ public interface ClusterSubscriptionHandler {
     public void addWildCardSubscription(AndesSubscription subscription) throws AndesException;
 
     /**
+     * Update a wildcard subscription to the underlying data structure
+     * @param subscription The subscription to be updated
+     * @throws AndesException
+     */
+    public void updateWildCardSubscription(AndesSubscription subscription) throws AndesException;
+
+    /**
      * Check if a subscription is already available.
      *
      * @param subscription The subscription to check for existence
