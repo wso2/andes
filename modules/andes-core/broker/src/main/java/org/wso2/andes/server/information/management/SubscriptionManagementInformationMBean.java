@@ -26,6 +26,7 @@ import org.wso2.andes.server.management.AMQManagedObject;
 
 import javax.management.NotCompliantMBeanException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -102,6 +103,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
                 subscriptions = AndesContext.getInstance().getSubscriptionStore().getAllSubscribersForDestination
                         (topic, true, AndesSubscription.SubscriptionType.AMQP);
 
+                Set<String> uniqueueSubscriptionIDs = new HashSet<String>();
                 for (AndesSubscription s : subscriptions) {
 
                     Long pendingMessageCount = MessagingEngine.getInstance().getMessageCountOfQueue(s.getTargetQueue());
@@ -112,6 +114,15 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
                         continue;
                     } if(!s.isBoundToTopic()){
                         continue;
+                    }
+                    //Filter multiple shared subscriptions in disconnected mode. Because in UI
+                    // only one inactive shared subscription should be shown.
+                    if (true == s.isDurable()) {
+                        if (uniqueueSubscriptionIDs.contains(s.getTargetQueue()) && !(s.hasExternalSubscriptions())) {
+                            continue;
+                        } else {
+                            uniqueueSubscriptionIDs.add(s.getTargetQueue());
+                        }
                     }
 
                     allSubscriptionsForTopics.add(renderSubscriptionForUI(s,pendingMessageCount.intValue()));
