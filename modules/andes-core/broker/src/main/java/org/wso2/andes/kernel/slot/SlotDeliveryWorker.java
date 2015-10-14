@@ -253,8 +253,10 @@ public class SlotDeliveryWorker extends Thread implements StoreHealthListener{
         while (readMessageIterator.hasNext()) {
             DeliverableAndesMetadata currentMessage = readMessageIterator.next();
             if (slot.checkIfMessageIsAlreadyAdded(currentMessage.getMessageID())) {
-                log.warn("Tracker rejected message id= " + currentMessage.getMessageID() + " from buffering " +
-                         "to deliver. This is an already buffered message");
+                if(log.isDebugEnabled()) {
+                    log.debug("Tracker rejected message id= " + currentMessage.getMessageID()
+                            + " from buffering " + "to deliver. This is an already buffered message");
+                }
                 readMessageIterator.remove();
             } else {
                 slot.addMessageToSlotIfAbsent(currentMessage);

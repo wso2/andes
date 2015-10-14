@@ -1297,11 +1297,10 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             resultSet = preparedStatement.executeQuery();
 
             if(resultSet.next()) {
-                unAssignedSlot = new Slot();
+                unAssignedSlot = new Slot(SlotState.RETURNED);
                 unAssignedSlot.setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
                 unAssignedSlot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
-                unAssignedSlot.setStorageQueueName(
-                        resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
+                unAssignedSlot.setStorageQueueName(resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
             }
 
             return unAssignedSlot;
@@ -1576,7 +1575,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             resultSet = preparedStatement.executeQuery();
 
             if(resultSet.next()) {
-                overlappedSlot = new Slot();
+                overlappedSlot = new Slot(SlotState.OVERLAPPED);
                 overlappedSlot.setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
                 overlappedSlot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
                 overlappedSlot.setStorageQueueName(
@@ -1702,7 +1701,7 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             resultSet = preparedStatement.executeQuery();
 
             while (resultSet.next()) {
-                Slot assignedSlot = new Slot();
+                Slot assignedSlot = new Slot(SlotState.ASSIGNED);
                 assignedSlot.setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
                 assignedSlot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
                 assignedSlot.setStorageQueueName(
@@ -1740,11 +1739,10 @@ public class RDBMSAndesContextStoreImpl implements AndesContextStore {
             resultSet = preparedStatement.executeQuery();
 
             while (resultSet.next()) {
-                Slot slot = new Slot();
+                Slot slot = new Slot(SlotState.getById(resultSet.getInt(RDBMSConstants.SLOT_STATE)));
                 slot.setStartMessageId(resultSet.getLong(RDBMSConstants.START_MESSAGE_ID));
                 slot.setEndMessageId(resultSet.getLong(RDBMSConstants.END_MESSAGE_ID));
                 slot.setStorageQueueName(resultSet.getString(RDBMSConstants.STORAGE_QUEUE_NAME));
-                slot.addState(SlotState.getById(resultSet.getInt(RDBMSConstants.SLOT_STATE)));
                 slot.setSlotInActive();
                 slotSet.add(slot);
             }
