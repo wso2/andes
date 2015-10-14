@@ -85,7 +85,8 @@ public class AndesSubscriptionManager {
      */
     public void addSubscription(LocalSubscription localSubscription) throws AndesException, SubscriptionAlreadyExistsException {
         boolean durableTopicSubFoundAndUpdated = false;
-        LocalSubscription mockSubscription = null;
+        boolean hasActiveSubscriptions= false;
+        List<LocalSubscription> mockSubscriptionList = new ArrayList<LocalSubscription>();
         if(localSubscription.isDurable() && localSubscription.isBoundToTopic()) {
 
             Boolean allowSharedSubscribers = AndesConfigurationManager.readValue(AndesConfiguration.ALLOW_SHARED_SHARED_SUBSCRIBERS);
@@ -100,38 +101,43 @@ public class AndesSubscriptionManager {
             for (AndesSubscription existingSubscription : existingSubscriptions) {
                 if(existingSubscription.isDurable()
                         && existingSubscription.getTargetQueue().equals(localSubscription.getTargetQueue())) {
-                    matchingSubscriptions.add(existingSubscription);
-                }
-            }
 
-            //there is one inactive subscription (to represent inactive subscription). We need delete it
-            if(matchingSubscriptions.size() == 1) {
-                AndesSubscription matchingSubscription = matchingSubscriptions.get(0);
-                if(!matchingSubscription.hasExternalSubscriptions()) {
-                    //delete the above subscription (only if subscription is activated from a different node -
-                    // decided looking at subscription ID and the subscribed node)
-                    if(!matchingSubscription.getSubscriptionID().equals(localSubscription.getSubscriptionID())
-                             || !matchingSubscription.getSubscribedNode().equals(localSubscription.getSubscribedNode())) {
-                        mockSubscription = convertClusterSubscriptionToMockLocalSubscription
-                                (matchingSubscription);
-                        mockSubscription.close();
-                    } else {
-                        subscriptionStore.updateLocalSubscriptionSubscription(localSubscription);
-                        durableTopicSubFoundAndUpdated = true;
+                    if (existingSubscription.hasExternalSubscriptions()) {
+                        hasActiveSubscriptions = true;
+                        //An active subscription already exists
+                        if (!allowSharedSubscribers) {
+                            //not permitted
+                            throw new SubscriptionAlreadyExistsException("A subscription already exists for Durable subscriptions on " +
+                                    existingSubscription.getSubscribedDestination() + " with the queue " + existingSubscription.getTargetQueue());
+                        }//else add the new subscription
+                    } else{
+                        matchingSubscriptions.add(existingSubscription);
                     }
-
-                } else {
-                    //An active subscription already exists
-                    if (!allowSharedSubscribers) {
-                        //not permitted
-                        throw new SubscriptionAlreadyExistsException("A subscription already exists for Durable subscriptions on " +
-                                matchingSubscription.getSubscribedDestination() + " with the queue " + matchingSubscription.getTargetQueue());
-                    }//else add the new subscription
-
                 }
             }
-            // else if(matchingSubscriptions.size() > 1) there are active subscriptions. just create a new one
-            // else this is the very first subscription for the cluster. Just create one
+
+            // If there are no matching active subscriptions
+            if (!hasActiveSubscriptions) {
+                LocalSubscription mockSubscription = null;
+                for (AndesSubscription matchingSubscription : matchingSubscriptions) {
+                    if (!matchingSubscription.hasExternalSubscriptions()) {
+                        //delete the above subscription (only if subscription is activated from a different node -
+                        // decided looking at subscription ID and the subscribed node)
+                        if (!matchingSubscription.getSubscriptionID().equals(localSubscription.getSubscriptionID())
+                                || !matchingSubscription.getSubscribedNode().equals(localSubscription.getSubscribedNode())) {
+                            mockSubscription = convertClusterSubscriptionToMockLocalSubscription
+                                    (matchingSubscription);
+                            mockSubscription.close();
+                            mockSubscriptionList.add(mockSubscription);
+                        } else {
+                            subscriptionStore.updateLocalSubscriptionSubscription(localSubscription);
+                            durableTopicSubFoundAndUpdated = true;
+                        }
+
+                    }
+                }
+            }
+
         }
 
         //store subscription in context store.
@@ -149,18 +155,20 @@ public class AndesSubscriptionManager {
         // existing inactive one if it matches
         notifyLocalSubscriptionHasChanged(localSubscription, SubscriptionListener.SubscriptionChange.ADDED);
 
-        // Now remove the mock subscription. Removing should do after adding the new subscription
+        // Now remove the mock subscriptions. Removing should do after adding the new subscription
         // . Otherwise subscription list will be null at some point.
 
-        if (null != mockSubscription) {
-            LocalSubscription removedSubscription = subscriptionStore.removeLocalSubscription
-                    (mockSubscription);
-            /** removed subscription is returned. If removed subscription is null this is not a actual local
-             subscription. We need to directly remove it. */
-            if (null == removedSubscription) {
-                subscriptionStore.removeSubscriptionDirectly(mockSubscription);
+        if (0 != mockSubscriptionList.size()) {
+            for (LocalSubscription mockSubscription : mockSubscriptionList) {
+                LocalSubscription removedSubscription = subscriptionStore.removeLocalSubscription
+                        (mockSubscription);
+                /** removed subscription is returned. If removed subscription is null this is not a actual local
+                 subscription. We need to directly remove it. */
+                if (null == removedSubscription) {
+                    subscriptionStore.removeSubscriptionDirectly(mockSubscription);
+                }
+                notifyLocalSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange.DELETED);
             }
-            notifyLocalSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange.DELETED);
         }
     }
 
@@ -313,15 +321,8 @@ public class AndesSubscriptionManager {
                 }
             }
 
-            if (allowSharedSubscribers) {
-                if (matchingSubscriptions.size() == 1) {
-                    changeType = SubscriptionListener.SubscriptionChange.DISCONNECTED;
-                } else {
-                    changeType = SubscriptionListener.SubscriptionChange.DELETED;
-                }
-            } else {
-                changeType = SubscriptionListener.SubscriptionChange.DISCONNECTED;
-            }
+            changeType = SubscriptionListener.SubscriptionChange.DISCONNECTED;
+
         } else {
             changeType = SubscriptionListener.SubscriptionChange.DELETED;
         }
