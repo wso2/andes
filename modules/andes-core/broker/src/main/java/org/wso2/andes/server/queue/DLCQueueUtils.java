@@ -85,7 +85,8 @@ public class DLCQueueUtils {
     public static String generateDLCQueueNameFromTenant(String tenantDomain) {
         //If the tenantDomain is either null of if it is "carbon.super", the DLC of the super domain will be returned
         //Else, the dlc for the respective tenant will be returned
-        if (null != tenantDomain && !("carbon.super".equals(tenantDomain))) {
+        if (null != tenantDomain && !(org.wso2.carbon.base.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME
+                .equals(tenantDomain))) {
             return tenantDomain + AndesConstants.TENANT_SEPARATOR + AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
         } else {
             return AndesConstants.DEAD_LETTER_QUEUE_SUFFIX;
@@ -154,8 +155,7 @@ public class DLCQueueUtils {
     /**
      * Add message to DLC
      *
-     * @param message
-     *         Message to be moved to DLC
+     * @param message Message to be moved to DLC
      */
     public static void addToDeadLetterChannel(QueueEntry message) {
         try {
@@ -180,7 +180,8 @@ public class DLCQueueUtils {
             // There's a possibility that we might lose this message
             // If the message is not removed the slot will not get removed which will lead to an
             // inconsistency
-            log.error("Error moving message " + message.getMessage().getMessageNumber() + " to dead letter channel.", dlcException);
+            log.error("Error moving message " + message.getMessage().getMessageNumber() + " to dead letter channel.",
+                      dlcException);
         }
     }
 }

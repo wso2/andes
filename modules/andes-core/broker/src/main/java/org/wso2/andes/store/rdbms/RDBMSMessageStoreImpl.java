@@ -94,8 +94,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     " FROM " + CONTENT_TABLE +
                     " WHERE " + MESSAGE_ID + " IN (";
 
-   
-    
     public RDBMSMessageStoreImpl() {
         queueMap = new ConcurrentHashMap<String, Integer>();
         
@@ -130,9 +128,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
         
         try {
-
             connection = getConnection();
-
             preparedStatement = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
 
             for (AndesMessagePart messagePart : partList) {
@@ -151,13 +147,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } finally {
             messageContentAdditionContext.stop();
             contextWrite.stop();
-            close(preparedStatement, RDBMSConstants.TASK_STORING_MESSAGE_PARTS);
-            close(connection, RDBMSConstants.TASK_STORING_MESSAGE_PARTS);
+            close(connection, preparedStatement, RDBMSConstants.TASK_STORING_MESSAGE_PARTS);
         }
     }
 
     /**
-     * Adds message content to provided prepared statements batch
+     * Adds message content to provided prepared statements batch.
      *
      * @param preparedStatement Prepared statement for storing message content
      * @param messagePart       message content to be stored
@@ -177,7 +172,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     public AndesMessagePart getContent(long messageId, int offsetValue) throws AndesException {
 
         AndesMessagePart messagePart = null;
-
         Context messageContentRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants.GET_CONTENT).start();
         try {
             messagePart = getContentFromCache(messageId, offsetValue);
@@ -223,9 +217,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                                                       " [msg_id= " + messageId + " ]", e);
         } finally {
             contextRead.stop();
-            close(results, RDBMSConstants.TASK_RETRIEVING_MESSAGE_PARTS);
-            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_MESSAGE_PARTS);
-            close(connection, RDBMSConstants.TASK_RETRIEVING_MESSAGE_PARTS);
+            close(connection, preparedStatement, results, RDBMSConstants.TASK_RETRIEVING_MESSAGE_PARTS);
         }
         return messagePart;
     }
@@ -238,9 +230,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     public Map<Long, List<AndesMessagePart>> getContent(List<Long> messageIDList) throws AndesException {
 
         Map<Long, List<AndesMessagePart>> contentList = new HashMap<>(messageIDList.size());
-
         Context messageContentRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants.GET_CONTENT_BATCH).start();
-
         try {
             if (messageIDList.isEmpty()) {
                 return contentList;
@@ -251,7 +241,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             if (! messageIDList.isEmpty()) {
                 fillContentFromStorage(messageIDList, contentList);
             }
-
             
         } finally {
             messageContentRetrievalContext.stop();
@@ -273,7 +262,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
-        
         Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
         
          try {
@@ -301,9 +289,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     messageIDList.size() + " messages ", e);
         } finally {
             contextRead.stop();
-            close(connection, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
-            close(preparedStatement, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
-            close(resultSet, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
+            close(connection, preparedStatement, resultSet, TASK_RETRIEVING_CONTENT_FOR_MESSAGES);
         }
     }
 
@@ -376,8 +362,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } finally {
             metaDataAdditionContext.stop();
             contextWrite.stop();
-            close(preparedStatement, RDBMSConstants.TASK_ADDING_METADATA_LIST);
-            close(connection, RDBMSConstants.TASK_ADDING_METADATA_LIST);
+            close(connection, preparedStatement, RDBMSConstants.TASK_ADDING_METADATA_LIST);
         }
     }
 
@@ -426,8 +411,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } finally {
             metaDataAdditionContext.stop();
             contextWrite.stop();
-            close(preparedStatement, RDBMSConstants.TASK_ADDING_METADATA);
-            close(connection, RDBMSConstants.TASK_ADDING_METADATA);
+            close(connection, preparedStatement, RDBMSConstants.TASK_ADDING_METADATA);
         }
     }
 
@@ -443,14 +427,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         try {
 
             connection = getConnection();
-
             storeMetadataPS = connection.prepareStatement(PS_INSERT_METADATA);
             storeContentPS = connection.prepareStatement(PS_INSERT_MESSAGE_PART);
 
             for (AndesMessage message : messageList) {
                 
                 addToCache(message);
-                
                 addMetadataToBatch(storeMetadataPS,
                         message.getMetadata(),
                         message.getMetadata().getStorageQueueName());
@@ -520,8 +502,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } finally {
             metaAdditionToQueueContext.stop();
             contextWrite.stop();
-            close(preparedStatement, RDBMSConstants.TASK_ADDING_METADATA_TO_QUEUE + queueName);
-            close(connection, RDBMSConstants.TASK_ADDING_METADATA_TO_QUEUE + queueName);
+            close(connection, preparedStatement, RDBMSConstants.TASK_ADDING_METADATA_TO_QUEUE + queueName);
         }
     }
 
@@ -549,14 +530,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatement.executeBatch();
             preparedStatement.close();
             addListToExpiryTable(connection, metadataList);
-
             connection.commit();
 
         } catch (BatchUpdateException bue) {
-
             rdbmsStoreUtils.raiseBatchUpdateException(metadataList, connection, bue,
                     RDBMSConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
-
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
             throw rdbmsStoreUtils.convertSQLException(
@@ -564,8 +542,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } finally {
             metaAddditionToQueuecontext.stop();
             contextWrite.stop();
-            close(preparedStatement, RDBMSConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
-            close(connection, RDBMSConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
+            close(connection, preparedStatement, RDBMSConstants.TASK_ADDING_METADATA_LIST_TO_QUEUE + queueName);
         }
     }
 
@@ -586,7 +563,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatement.setInt(1, getCachedQueueID(targetQueueName));
             preparedStatement.setLong(2, messageId);
             preparedStatement.setInt(3, getCachedQueueID(currentQueueName));
-
             preparedStatement.execute();
             preparedStatement.close();
 
@@ -597,8 +573,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     + targetQueueName, e);
         } finally {
             contextWrite.stop();
-            close(preparedStatement, RDBMSConstants.TASK_UPDATING_META_DATA_QUEUE + targetQueueName);
-            close(connection, RDBMSConstants.TASK_UPDATING_META_DATA_QUEUE + targetQueueName);
+            close(connection, preparedStatement, RDBMSConstants.TASK_UPDATING_META_DATA_QUEUE + targetQueueName);
         }
     }
 
@@ -620,13 +595,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         try {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_MOVE_METADATA_TO_DLC);
-
             preparedStatement.setInt(1, getCachedQueueID(dlcQueueName));
             preparedStatement.setLong(2, messageId);
-
             preparedStatement.execute();
             connection.commit();
-
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
             throw rdbmsStoreUtils.convertSQLException("Error occurred while moving message metadata to dead letter " +
@@ -634,8 +606,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } finally {
             contextWrite.stop();
             moveMetadataToDLCContext.stop();
-            close(preparedStatement, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
-            close(connection, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
+            close(connection, preparedStatement, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
         }
     }
 
@@ -650,9 +621,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         Context moveMetadataToDLCContext = MetricManager.timer(Level.INFO, MetricsConstants.MOVE_METADATA_TO_DLC)
                 .start();
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
-
         List<Long> messageIDsToRemoveFromCache = new ArrayList<>(messages.size());
-
 
         try {
             connection = getConnection();
@@ -677,8 +646,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } finally {
             contextWrite.stop();
             moveMetadataToDLCContext.stop();
-            close(preparedStatement, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
-            close(connection, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
+            close(connection, preparedStatement, RDBMSConstants.TASK_MOVING_METADATA_TO_DLC);
         }
     }
 
@@ -721,13 +689,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } finally {
             metaUpdateContext.stop();
             contextWrite.stop();
-            close(preparedStatement, RDBMSConstants.TASK_UPDATING_META_DATA);
-            close(connection, RDBMSConstants.TASK_UPDATING_META_DATA);
+            close(connection, preparedStatement, RDBMSConstants.TASK_UPDATING_META_DATA);
         }
     }
 
     /**
-     * Adds a single metadata to a batch insert of metadata
+     * Adds a single metadata to a batch insert of metadata.
      *
      * @param preparedStatement prepared statement to add messages to metadata table
      * @param metadata          AndesMessageMetadata
@@ -737,7 +704,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     private void addMetadataToBatch(PreparedStatement preparedStatement,
                                     AndesMessageMetadata metadata,
                                     final String queueName) throws SQLException {
-
 
         Context metaAdditionToBatchContext = MetricManager.timer(Level.INFO, MetricsConstants.ADD_META_DATA_TO_BATCH).start();
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
@@ -755,7 +721,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
     /**
-     * Add metadata entry to expiry table
+     * Add metadata entry to expiry table.
      *
      * @param connection SQLConnection. Connection resource is not closed within the method
      * @param metadata   AndesMessageMetadata
@@ -857,15 +823,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } finally {
             metaRetrievalContext.stop();
             contextRead.stop();
-            String task = RDBMSConstants.TASK_RETRIEVING_METADATA + messageId;
-            close(results, task);
-            close(preparedStatement, task);
-            close(connection, task);
+            close(connection, preparedStatement, results, RDBMSConstants.TASK_RETRIEVING_METADATA + messageId);
         }
         return md;
     }
-
-
 
     /**
      * {@inheritDoc}
@@ -913,14 +874,11 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } finally {
             metaListRetrievalContext.stop();
             contextRead.stop();
-            String task = RDBMSConstants.TASK_RETRIEVING_METADATA_RANGE_FROM_QUEUE + storageQueueName;
-            close(resultSet, task);
-            close(preparedStatement, task);
-            close(connection, task);
+            close(connection, preparedStatement, resultSet,
+                  RDBMSConstants.TASK_RETRIEVING_METADATA_RANGE_FROM_QUEUE + storageQueueName);
         }
         return metadataList;
     }
-
     
     /**
      * {@inheritDoc}
@@ -963,13 +921,10 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } finally {
             nextMessageIdsRetrievalContext.stop();
             contextRead.stop();
-            close(results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_IDS_FROM_QUEUE);
-            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_NEXT_N_IDS_FROM_QUEUE);
-            close(connection, RDBMSConstants.TASK_RETRIEVING_NEXT_N_IDS_FROM_QUEUE);
+            close(connection, preparedStatement, results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_IDS_FROM_QUEUE);
         }
         return mdList;
     }
-    
     
     /**
      * {@inheritDoc}
@@ -987,7 +942,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
 
         Context nextMetaRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants.GET_NEXT_MESSAGE_METADATA_FROM_QUEUE).start();
         Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
-
 
         try {
             connection = getConnection();
@@ -1018,9 +972,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } finally {
             nextMetaRetrievalContext.stop();
             contextRead.stop();
-            close(results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
-            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
-            close(connection, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
+            close(connection, preparedStatement, results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_QUEUE);
         }
         return mdList;
     }
@@ -1038,7 +990,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         PreparedStatement preparedStatement = null;
         ResultSet results = null;
 
-
         Context nextMetaRetrievalContext = MetricManager.timer(Level.INFO, MetricsConstants
                 .GET_NEXT_MESSAGE_METADATA_IN_DLC_FOR_QUEUE).start();
         Context contextRead = MetricManager.timer(Level.INFO, MetricsConstants.DB_READ).start();
@@ -1050,7 +1001,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatement.setLong(1, firstMsgId - 1);
             preparedStatement.setInt(2, getCachedQueueID(storageQueueName));
             preparedStatement.setInt(3, getCachedQueueID(dlcQueueName));
-
             results = preparedStatement.executeQuery();
             int resultCount = 0;
             while (results.next()) {
@@ -1074,9 +1024,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } finally {
             nextMetaRetrievalContext.stop();
             contextRead.stop();
-            close(results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_IN_DLC_FOR_QUEUE);
-            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_IN_DLC_FOR_QUEUE);
-            close(connection, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_IN_DLC_FOR_QUEUE);
+            close(connection, preparedStatement, results,
+                  RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_IN_DLC_FOR_QUEUE);
         }
         return mdList;
     }
@@ -1102,7 +1051,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     .prepareStatement(RDBMSConstants.PS_SELECT_METADATA_IN_DLC);
             preparedStatement.setLong(1, firstMsgId - 1);
             preparedStatement.setInt(2, getCachedQueueID(dlcQueueName));
-
             results = preparedStatement.executeQuery();
             int resultCount = 0;
             while (results.next()) {
@@ -1125,9 +1073,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } finally {
             nextMetaRetrievalContext.stop();
             contextRead.stop();
-            close(results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_DLC);
-            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_DLC);
-            close(connection, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_DLC);
+            close(connection, preparedStatement, results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_METADATA_FROM_DLC);
         }
         return mdList;
     }
@@ -1171,9 +1117,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } finally {
             metaDeletionContext.stop();
             contextWrite.stop();
-            String task = RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName;
-            close(preparedStatement, task);
-            close(connection, task);
+            close(connection, preparedStatement, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
         }
     }
 
@@ -1194,7 +1138,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         try {
 
             List<Long> messageIDsToRemoveFromCache = new ArrayList<>(messagesToRemove.size());
-
             connection = getConnection();
 
             //Since referential integrity is imposed on the two tables: message content and metadata,
@@ -1206,17 +1149,15 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     messageIDsToRemoveFromCache.add(message.getMessageID());
                     metadataRemovalPreparedStatement.setLong(1, message.getMessageID());
                     metadataRemovalPreparedStatement.addBatch();
-
             }
 
             removeFromCache(messageIDsToRemoveFromCache);
             metadataRemovalPreparedStatement.executeBatch();
-
             connection.commit();
 
             if (log.isDebugEnabled()) {
-                log.debug("Metadata and content removed. " + messagesToRemove.size()
-                          + " for destination queue" + storageQueueName);
+                log.debug("Metadata and content removed: " + messagesToRemove.size()
+                          + " for destination queue:" + storageQueueName);
             }
         } catch (SQLException e) {
             rollback(connection, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName
@@ -1224,17 +1165,12 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             throw rdbmsStoreUtils.convertSQLException("error occurred while deleting message metadata and content for "
                                                       + "queue ", e);
         } finally {
-
             messageDeletionContext.stop();
             contextWrite.stop();
-            String task = RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName;
-            String messageContentRemovalTask = RDBMSConstants.TASK_DELETING_MESSAGE_PARTS;
-            close(metadataRemovalPreparedStatement, task);
-            close(connection, task + " and " + messageContentRemovalTask);
+            close(connection, metadataRemovalPreparedStatement, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE
+                  + storageQueueName + " and " + RDBMSConstants.TASK_DELETING_MESSAGE_PARTS);
         }
     }
-
-
 
     /**
      * {@inheritDoc}
@@ -1276,9 +1212,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             throw rdbmsStoreUtils.convertSQLException("error occurred while retrieving expired messages.", e);
         } finally {
             contextRead.stop();
-            close(resultSet, RDBMSConstants.TASK_RETRIEVING_EXPIRED_MESSAGES);
-            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_EXPIRED_MESSAGES);
-            close(connection, RDBMSConstants.TASK_RETRIEVING_EXPIRED_MESSAGES);
+            close(connection, preparedStatement, resultSet, RDBMSConstants.TASK_RETRIEVING_EXPIRED_MESSAGES);
         }
     }
 
@@ -1340,8 +1274,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     "from expiration table ", e);
         } finally {
             contextWrite.stop();
-            close(preparedStatement, RDBMSConstants.TASK_DELETING_FROM_EXPIRY_TABLE);
-            close(connection, RDBMSConstants.TASK_DELETING_FROM_EXPIRY_TABLE);
+            close(connection, preparedStatement, RDBMSConstants.TASK_DELETING_FROM_EXPIRY_TABLE);
         }
     }
 
@@ -1416,10 +1349,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             throw e;
         } finally {
             contextRead.stop();
-            String task = RDBMSConstants.TASK_RETRIEVING_QUEUE_ID + destinationQueueName;
-            close(resultSet, task);
-            close(preparedStatement, task);
-            close(connection, task);
+            close(connection, preparedStatement, resultSet,
+                  RDBMSConstants.TASK_RETRIEVING_QUEUE_ID + destinationQueueName);
         }
         return queueID;
     }
@@ -1442,7 +1373,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_INSERT_QUEUE);
             preparedStatement.setString(1, destinationQueueName);
             preparedStatement.executeUpdate();
-
             connection.commit();
             preparedStatement.close();
 
@@ -1518,7 +1448,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
     /**
-     * close the prepared statement resource
+     * Close the prepared statement resource.
      *
      * @param preparedStatement PreparedStatement
      * @param task              task that was done by the closed prepared statement.
@@ -1531,6 +1461,32 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                 log.error("Closing prepared statement failed after " + task, e);
             }
         }
+    }
+
+    /**
+     * close the connection and the prepared statement.
+     *
+     * @param connection        connection to be closed
+     * @param preparedStatement PreparedStatement
+     * @param task              task that was done by the closed prepared statement.
+     */
+    private void close(Connection connection, PreparedStatement preparedStatement, String task) {
+        close(connection, task);
+        close(preparedStatement, task);
+    }
+
+    /**
+     * close the connection, prepared statement and the result set.
+     *
+     * @param connection        connection to be closed
+     * @param preparedStatement PreparedStatement
+     * @param resultSet         result set to be closed
+     * @param task              task that was done by the closed prepared statement.
+     */
+    private void close(Connection connection, PreparedStatement preparedStatement, ResultSet resultSet, String task) {
+        close(connection, task);
+        close(preparedStatement, task);
+        close(resultSet, task);
     }
 
     /**
@@ -1564,7 +1520,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public int deleteAllMessageMetadata(String storageQueueName) throws AndesException {
-
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
@@ -1573,11 +1528,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             int queueID = getCachedQueueID(storageQueueName);
 
             connection = getConnection();
-
             preparedStatement = connection
                     .prepareStatement(RDBMSConstants.PS_CLEAR_QUEUE_FROM_METADATA);
             preparedStatement.setInt(1, queueID);
-
             deletedMessagecount = preparedStatement.executeUpdate();
             connection.commit();
             if (log.isDebugEnabled()) {
@@ -1590,9 +1543,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     storageQueueName, e);
         } finally {
             contextWrite.stop();
-            String task = RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName;
-            close(preparedStatement, task);
-            close(connection, task);
+            close(connection, preparedStatement, RDBMSConstants.TASK_DELETING_METADATA_FROM_QUEUE + storageQueueName);
         }
         return deletedMessagecount;
     }
@@ -1602,7 +1553,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
      */
     @Override
     public int clearDLCQueue(String dlcQueueName) throws AndesException {
-
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         Context contextWrite = MetricManager.timer(Level.INFO, MetricsConstants.DB_WRITE).start();
@@ -1628,9 +1578,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     dlcQueueName, e);
         } finally {
             contextWrite.stop();
-            String task = RDBMSConstants.TASK_CLEARING_DLC_QUEUE + dlcQueueName;
-            close(preparedStatement, task);
-            close(connection, task);
+            close(connection, preparedStatement, RDBMSConstants.TASK_CLEARING_DLC_QUEUE + dlcQueueName);
         }
         return deletedMessagecount;
     }
@@ -1668,9 +1616,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     storageQueueName, e);
         } finally {
             contextRead.stop();
-            close(results, RDBMSConstants.TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE + storageQueueName);
-            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE + storageQueueName);
-            close(connection, RDBMSConstants.TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE + storageQueueName);
+            close(connection, preparedStatement, results,
+                  RDBMSConstants.TASK_RETRIEVING_NEXT_N_MESSAGE_IDS_OF_QUEUE + storageQueueName);
         }
 
         return messageIDs;
@@ -1724,9 +1671,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             throw rdbmsStoreUtils.convertSQLException("Error while getting message count for all queues", e);
         } finally {
             contextRead.stop();
-            close(results, RDBMSConstants.TASK_RETRIEVING_ALL_QUEUE_MSG_COUNT);
-            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT);
-            close(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT);
+            close(connection, preparedStatement, results, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT);
         }
         return queueMessageCountForName;
     }
@@ -1757,9 +1702,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     storageQueueName, e);
         } finally {
             contextRead.stop();
-            close(results, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT + storageQueueName);
-            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT + storageQueueName);
-            close(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT + storageQueueName);
+            close(connection, preparedStatement, results,
+                  RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT + storageQueueName);
         }
 
         return messageCount;
@@ -1780,7 +1724,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_QUEUE_MESSAGE_COUNT_FROM_DLC);
             preparedStatement.setInt(1, getCachedQueueID(storageQueueName));
             preparedStatement.setInt(2, getCachedQueueID(dlcQueueName));
-
             results = preparedStatement.executeQuery();
 
             while (results.next()) {
@@ -1792,11 +1735,9 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     storageQueueName, e);
         } finally {
             contextRead.stop();
-            close(results, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC + storageQueueName);
-            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC + storageQueueName);
-            close(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC + storageQueueName);
+            close(connection, preparedStatement, results,
+                  RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC + storageQueueName);
         }
-
         return messageCount;
     }
 
@@ -1814,7 +1755,6 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             connection = getConnection();
             preparedStatement = connection.prepareStatement(RDBMSConstants.PS_SELECT_MESSAGE_COUNT_IN_DLC);
             preparedStatement.setInt(1, getCachedQueueID(dlcQueueName));
-
             results = preparedStatement.executeQuery();
 
             while (results.next()) {
@@ -1825,11 +1765,8 @@ public class RDBMSMessageStoreImpl implements MessageStore {
             throw rdbmsStoreUtils.convertSQLException("Error while getting message count in DLC from queue ", e);
         } finally {
             contextRead.stop();
-            close(results, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC);
-            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC);
-            close(connection, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC);
+            close(connection, preparedStatement, results, RDBMSConstants.TASK_RETRIEVING_QUEUE_MSG_COUNT_IN_DLC);
         }
-
         return messageCount;
     }
 
@@ -1970,7 +1907,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
     /**
-     * Update batching prepared statements with current message
+     * Update batching prepared statements with current message.
      *
      * @param updateMetadataPreparedStatement update prepared statement
      * @param deleteContentPreparedStatement  delete content prepared statement
@@ -2038,7 +1975,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
     /**
-     * Get retained topic ID for destination
+     * Get retained topic ID for destination.
      *
      * @param connection  database connection to used
      * @param destination destination name
@@ -2070,7 +2007,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
     /**
-     * Create a new entry for retained message
+     * Create a new entry for retained message.
      *
      * @param connection database connection
      * @param message    retained message
@@ -2141,9 +2078,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
         } catch (SQLException e) {
             throw rdbmsStoreUtils.convertSQLException("Error occurred while reading retained topics ", e);
         } finally {
-            close(results, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPICS);
-            close(preparedStatementForTopicSelect, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPICS);
-            close(connection, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPICS);
+            close(connection, preparedStatementForTopicSelect, results, RDBMSConstants.TASK_RETRIEVING_RETAINED_TOPICS);
             contextRead.stop();
         }
 
@@ -2183,10 +2118,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     "for destination:" + destination, e);
         } finally {
             contextRead.stop();
-            String task = "Retrieve retained message for destination";
-            close(results, task);
-            close(preparedStatement, task);
-            close(connection, task);
+            close(connection, preparedStatement, results, "Retrieve retained message for destination");
         }
         return metadata;
     }
@@ -2230,9 +2162,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
                     " [msg_id=" + messageID + "]", e);
         } finally {
             contextRead.stop();
-            close(results, RDBMSConstants.TASK_RETRIEVING_RETAINED_MESSAGE_PARTS);
-            close(preparedStatement, RDBMSConstants.TASK_RETRIEVING_RETAINED_MESSAGE_PARTS);
-            close(connection, RDBMSConstants.TASK_RETRIEVING_RETAINED_MESSAGE_PARTS);
+            close(connection, preparedStatement, results, RDBMSConstants.TASK_RETRIEVING_RETAINED_MESSAGE_PARTS);
         }
         return contentParts;
     }
@@ -2275,7 +2205,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
     /**
-     * Removes a message with a given Id from the cache
+     * Removes a message with a given Id from the cache.
      *
      * @param messageToRemove message Id of the message to be removed
      */
@@ -2284,7 +2214,7 @@ public class RDBMSMessageStoreImpl implements MessageStore {
     }
 
     /**
-     * Returns a message if found in cache
+     * Returns a message if found in cache.
      * 
      * @param messageId
      *            message id to look up

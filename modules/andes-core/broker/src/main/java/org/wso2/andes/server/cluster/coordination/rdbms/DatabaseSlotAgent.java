@@ -34,6 +34,7 @@ import org.wso2.andes.store.HealthAwareStore;
 import org.wso2.andes.store.StoreHealthListener;
 import org.wso2.andes.store.FailureObservingStoreManager;
 
+import java.util.HashSet;
 import java.util.TreeSet;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -87,7 +88,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
                       + " for queue: " + storageQueueName + " and node: " + assignedNodeId;
 
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 andesContextStore.createSlot(startMessageId, endMessageId, storageQueueName, assignedNodeId);
@@ -109,7 +109,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
                       + " for queue: " + queueName + " and node: " + nodeId;
         
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 andesContextStore.deleteSlot(startMessageId, endMessageId);
@@ -131,7 +130,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
         String task = "delete slots for queue: " + queueName + " and node: " + nodeId;
 
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 andesContextStore.deleteSlotAssignmentByQueueName(nodeId, queueName);
@@ -152,7 +150,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
         String task = "retrieve unassigned slot for queue: " + queueName;
         Slot unassignedSlot = null;
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 unassignedSlot = andesContextStore.selectUnAssignedSlot(queueName);
@@ -176,7 +173,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
                       + " for queue: " + queueName + " and node: " + nodeId;
 
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 andesContextStore.createSlotAssignment(nodeId, queueName, allocatedSlot.getStartMessageId(),
@@ -199,7 +195,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
 
         long lastAssignedId = 0;
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 lastAssignedId = andesContextStore.getQueueToLastAssignedId(queueName);
@@ -220,7 +215,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
 
         String task = "set last assigned message id: " + lastAssignedId + " for queue: " + queueName;
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 andesContextStore.setQueueToLastAssignedId(queueName, lastAssignedId);
@@ -242,7 +236,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
 
         long lastPublishedId = 0;
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 lastPublishedId = andesContextStore.getNodeToLastPublishedId(nodeId);
@@ -264,7 +257,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
         String task = "set last published message id: " + lastPublishedId + " for node: " + nodeId;
 
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 andesContextStore.setNodeToLastPublishedId(nodeId, lastPublishedId);
@@ -284,7 +276,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
         String task = "remove publisher node: " + nodeId;
 
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 andesContextStore.removePublisherNodeId(nodeId);
@@ -304,9 +295,8 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
 
         String task = "retrieve publisher nodes";
 
-        TreeSet<String> publishedNodes = null;
+        TreeSet<String> publishedNodes = new TreeSet<>();
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 publishedNodes = andesContextStore.getMessagePublishedNodes();
@@ -329,7 +319,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
                       + " and end message id: " + endMessageId;
 
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 andesContextStore.setSlotState(startMessageId, endMessageId, slotState);
@@ -351,7 +340,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
 
         Slot overlappedSlot = null;
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 overlappedSlot = andesContextStore.getOverlappedSlot(nodeId, queueName);
@@ -373,7 +361,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
         String task = "add message id: " + messageId + " for queue: " + queueName;
 
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 andesContextStore.addMessageId(queueName, messageId);
@@ -397,9 +384,8 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
 
         String task = "get message ids for queue: " + queueName;
 
-        TreeSet<Long> messageIds = null;
+        TreeSet<Long> messageIds = new TreeSet<>();
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 messageIds = andesContextStore.getMessageIds(queueName);
@@ -420,7 +406,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
 
         String task = "delete slot with start message id: " + messageId + " for queue: " + queueName;
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 andesContextStore.deleteMessageId(messageId);
@@ -440,7 +425,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
 
         String task = "delete slot assignments for queue: " + queueName;
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 andesContextStore.deleteSlotsByQueueName(queueName);
@@ -461,7 +445,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
         String task = "delete slots for queue: " + queueName;
 
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 andesContextStore.deleteMessageIdsByQueueName(queueName);
@@ -481,9 +464,8 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
 
         String task = "retrieve assigned slots for node: " + nodeId;
 
-        TreeSet<Slot> assignedSlots = null;
+        TreeSet<Slot> assignedSlots = new TreeSet<>();
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 assignedSlots = andesContextStore.getAssignedSlotsByNodeId(nodeId);
@@ -504,9 +486,8 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
 
         String task = "retrieve all slots for queue: " + queueName;
 
-        TreeSet<Slot> allSlotsForQueue = null;
+        TreeSet<Slot> allSlotsForQueue = new TreeSet<>();
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 allSlotsForQueue = andesContextStore.getAllSlotsByQueueName(queueName);
@@ -528,7 +509,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
                       + " and end message id: " + slotToBeReassigned.getEndMessageId();
 
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 andesContextStore.deleteSlotAssignment(slotToBeReassigned.getStartMessageId(),
@@ -569,9 +549,8 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
 
         String task = "retrieve all queue";
 
-        Set<String> allQueues = null;
+        Set<String> allQueues = new HashSet<>();
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 allQueues = andesContextStore.getAllQueues();
@@ -591,7 +570,6 @@ public class DatabaseSlotAgent implements SlotAgent, StoreHealthListener {
 
         String task = "clear slot storage";
         for (int attemptCount = 1; attemptCount <= MAX_STORE_FAILURE_TOLERANCE_COUNT; attemptCount++) {
-
             waitUntilStoresBecomeAvailable(task);
             try {
                 andesContextStore.clearSlotStorage();

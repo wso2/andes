@@ -515,8 +515,8 @@ public class AndesSubscriptionManager {
 
         clusterSubscriptionModifyLock.writeLock().lock();
         try {
-            log.info("Deactivating all active durable subscriptions");
             subscriptionStore.deactivateAllActiveSubscriptions();
+            log.info("Deactivated all active durable subscriptions");
         } finally {
             clusterSubscriptionModifyLock.writeLock().unlock();
         }
