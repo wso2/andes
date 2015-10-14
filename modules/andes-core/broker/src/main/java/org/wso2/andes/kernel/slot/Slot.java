@@ -88,10 +88,14 @@ public class Slot implements Serializable, Comparable<Slot> {
     private AtomicInteger pendingMessageCount;
 
     public Slot() {
+        this(SlotState.CREATED);
+    }
+
+    public Slot(SlotState slotState) {
         isSlotActive = true;
         isAnOverlappingSlot = false;
         this.slotStates = new ArrayList<>();
-        addState(SlotState.CREATED);
+        slotStates.add(slotState);
         pendingMessageCount = new AtomicInteger();
         messagesOfSlot = new ConcurrentHashMap<>();
     }
@@ -236,7 +240,9 @@ public class Slot implements Serializable, Comparable<Slot> {
     /**
      * Check if state going to be added is valid considering it as the next
      * transition compared to current latest state.
+     *
      * @param state state to be transferred
+     * @return true if the transition is valid according to slot model
      */
     public boolean addState(SlotState state) {
 
@@ -257,7 +263,6 @@ public class Slot implements Serializable, Comparable<Slot> {
                 log.warn("Invalid State transition from " + slotStates.get
                         (slotStates.size() - 1) + " suggested: " + state + " Slot ID: " + this
                         .getId());
-
             }
         }
 
