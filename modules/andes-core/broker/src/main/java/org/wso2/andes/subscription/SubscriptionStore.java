@@ -104,7 +104,7 @@ public class SubscriptionStore {
             Set<AndesSubscription> directSubscriptions = clusterTopicSubscriptionMap.get(destination);
 
             if (null != directSubscriptions) {
-                subscriptions = directSubscriptions;
+                subscriptions.addAll(directSubscriptions);
             }
             // Get wildcard subscriptions from bitmap
             subscriptions.addAll(clusterSubscriptionProcessor.getMatchingSubscriptions(destination, subscriptionType));
@@ -112,7 +112,7 @@ public class SubscriptionStore {
             Set<AndesSubscription> queueSubscriptions = clusterQueueSubscriptionMap.get(destination);
 
             if (null != queueSubscriptions) {
-                subscriptions = queueSubscriptions;
+                subscriptions.addAll(queueSubscriptions);
             }
         }
 
@@ -466,14 +466,8 @@ public class SubscriptionStore {
 
         if (topicSubscriptionMap) {
             // Check if this is a wildcard subscription
-            if (AndesSubscription.SubscriptionType.AMQP == subscription.getSubscriptionType()) {
-                wildCardSubscription = AMQPUtils.isWildCardDestination(destination);
-            } else if (AndesSubscription.SubscriptionType.MQTT == subscription.getSubscriptionType()) {
-                wildCardSubscription = MQTTUtils.isWildCardSubscription(destination);
-            }
+            wildCardSubscription = isWildCardSubscription(subscription);
 
-            //TODO: do not delete and add subscriptions during an update. Have we considered wildcard durable topic
-            // subs?
             if (wildCardSubscription) {
                 if (SubscriptionChange.ADDED == type) {
                     clusterSubscriptionProcessor.addWildCardSubscription(subscription);
@@ -536,6 +530,33 @@ public class SubscriptionStore {
             this.printSubscriptionMap(clusterQueueSubscriptionMap);
             this.printSubscriptionMap(clusterTopicSubscriptionMap);
             log.debug("\n");
+        }
+    }
+
+    /**
+     * Update a subscription object with the given object.
+     * Use to update subscription properties of already available subscriptions.
+     *
+     * @param subscription The subscription with updated properties
+     * @throws AndesException
+     */
+    public void updateClusterSubscription(AndesSubscription subscription) throws AndesException {
+        if (subscription.isBoundToTopic()) {
+            if (isWildCardSubscription(subscription)) {
+                clusterSubscriptionProcessor.updateWildCardSubscription(subscription);
+            } else {
+                Set<AndesSubscription> subscriptions = clusterTopicSubscriptionMap.get(subscription
+                        .getSubscribedDestination());
+
+                subscriptions.remove(subscription);
+                subscriptions.add(subscription);
+            }
+        } else {
+            Set<AndesSubscription> subscriptions = clusterQueueSubscriptionMap.get(subscription
+                    .getSubscribedDestination());
+
+            subscriptions.remove(subscription);
+            subscriptions.add(subscription);
         }
     }
 
@@ -873,5 +894,24 @@ public class SubscriptionStore {
             }
             return count;
         }
+    }
+
+    /**
+     * Check if the given subscriber is subscribed with a wildcard subscription
+     *
+     * @param subscription The subscriber to check for wildcard subscription
+     * @return True if subscribed ot a wildcard destination
+     */
+    private boolean isWildCardSubscription(AndesSubscription subscription) {
+        boolean wildCardSubscription = false;
+        String destination = subscription.getSubscribedDestination();
+
+        if (AndesSubscription.SubscriptionType.AMQP == subscription.getSubscriptionType()) {
+            wildCardSubscription = AMQPUtils.isWildCardDestination(destination);
+        } else if (AndesSubscription.SubscriptionType.MQTT == subscription.getSubscriptionType()) {
+            wildCardSubscription = MQTTUtils.isWildCardSubscription(destination);
+        }
+
+        return wildCardSubscription;
     }
 }

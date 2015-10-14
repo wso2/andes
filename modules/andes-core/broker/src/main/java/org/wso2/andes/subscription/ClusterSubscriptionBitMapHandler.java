@@ -116,35 +116,39 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
         String destination = subscription.getSubscribedDestination();
 
         if (StringUtils.isNotEmpty(destination)) {
-            int newSubscriptionIndex = wildCardSubscriptionList.size();
+            if (!isSubscriptionAvailable(subscription)) {
+                int newSubscriptionIndex = wildCardSubscriptionList.size();
 
-            // The index is added to make it clear to which index this is being inserted
-            wildCardSubscriptionList.add(newSubscriptionIndex, subscription);
+                // The index is added to make it clear to which index this is being inserted
+                wildCardSubscriptionList.add(newSubscriptionIndex, subscription);
 
-            String constituents[] = destination.split(Pattern.quote(constituentsDelimiter));
+                String constituents[] = destination.split(Pattern.quote(constituentsDelimiter));
 
-            subscriptionConstituents.put(newSubscriptionIndex, constituents);
+                subscriptionConstituents.put(newSubscriptionIndex, constituents);
 
 
-            for (int constituentIndex = 0; constituentIndex < constituents.length; constituentIndex++) {
-                String constituent = constituents[constituentIndex];
+                for (int constituentIndex = 0; constituentIndex < constituents.length; constituentIndex++) {
+                    String constituent = constituents[constituentIndex];
 
-                Map<String, BitSet> constituentTable;
+                    Map<String, BitSet> constituentTable;
 
-                if (constituentIndex + 1 > constituentTables.size()) {
-                    // No tables exist for this constituent index need to create
-                    constituentTable = addConstituentTable(constituentIndex);
-                } else {
-                    constituentTable = constituentTables.get(constituentIndex);
+                    if ((constituentIndex + 1) > constituentTables.size()) {
+                        // No tables exist for this constituent index need to create
+                        constituentTable = addConstituentTable(constituentIndex);
+                    } else {
+                        constituentTable = constituentTables.get(constituentIndex);
+                    }
+
+                    if (!constituentTable.keySet().contains(constituent)) {
+                        // This constituent is not available in this table. Need to add a new row
+                        addConstituentRow(constituent, constituentIndex);
+                    }
                 }
 
-                if (!constituentTable.keySet().contains(constituent)) {
-                    // This constituent is not available in this table. Need to add a new row
-                    addConstituentRow(constituent, constituentIndex);
-                }
+                addSubscriptionColumn(destination, newSubscriptionIndex);
+            } else {
+                updateWildCardSubscription(subscription);
             }
-
-            addSubscriptionColumn(destination, newSubscriptionIndex);
 
         } else {
             throw new AndesException("Error adding a new subscription. Subscribed destination is empty.");
@@ -156,7 +160,7 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
      * {@inheritDoc}
      */
     @Override
-    public void updateWildCardSubscription(AndesSubscription subscription) throws AndesException {
+    public void updateWildCardSubscription(AndesSubscription subscription) {
         if (isSubscriptionAvailable(subscription)) {
             // Need to add the new entry to the same index since bitmap logic is dependent on this index
             int index = wildCardSubscriptionList.indexOf(subscription);
@@ -450,7 +454,7 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
      * {@inheritDoc}
      */
     @Override
-    public boolean isSubscriptionAvailable(AndesSubscription subscription) throws AndesException {
+    public boolean isSubscriptionAvailable(AndesSubscription subscription) {
         return wildCardSubscriptionList.contains(subscription);
     }
 
