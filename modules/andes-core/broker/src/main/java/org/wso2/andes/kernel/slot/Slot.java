@@ -88,12 +88,7 @@ public class Slot implements Serializable, Comparable<Slot> {
     private AtomicInteger pendingMessageCount;
 
     public Slot() {
-        isSlotActive = true;
-        isAnOverlappingSlot = false;
-        this.slotStates = new ArrayList<>();
-        addState(SlotState.CREATED);
-        pendingMessageCount = new AtomicInteger();
-        messagesOfSlot = new ConcurrentHashMap<>();
+        this(SlotState.CREATED);
     }
 
     public Slot(SlotState slotState) {
