@@ -48,8 +48,8 @@ public class AndesAckData {
      * @param acknowledgedMessage message being acknowledged
      */
     public AndesAckData(UUID channelID, DeliverableAndesMetadata acknowledgedMessage) {
-        this.acknowledgedMessage = acknowledgedMessage;
         this.channelID = channelID;
+        this.acknowledgedMessage = acknowledgedMessage;
     }
 
     /**

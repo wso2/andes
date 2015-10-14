@@ -520,11 +520,11 @@ public class QpidAndesBridge {
 
                 AndesBinding andesBinding = AMQPUtils.createAndesBinding(b.getExchange(), b.getQueue(), new AMQShortString(b.getBindingKey()));
                 if (uniqueBindings.add(andesBinding)) {
-                    UUID channelID = ((SubscriptionImpl.AckSubscription) subscription).getChannel().getId();
+                    UUID channelID = ((SubscriptionImpl) subscription).getChannel().getId();
                     LocalSubscription localSubscription = AndesContext.getInstance().getSubscriptionStore()
                             .getLocalSubscriptionForChannelId(channelID);
                     localSubscription.setHasExternalSubscriptions(subscription.isActive());
-                    localSubscription.setExclusive(((SubscriptionImpl.AckSubscription) subscription).isExclusive());
+                    localSubscription.setExclusive(((SubscriptionImpl) subscription).isExclusive());
                     InboundSubscriptionEvent subscriptionEvent = new InboundSubscriptionEvent(localSubscription);
                     Andes.getInstance().closeLocalSubscription(subscriptionEvent);
                 }
