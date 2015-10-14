@@ -479,6 +479,8 @@ public class SubscriptionStore {
                     clusterSubscriptionProcessor.addWildCardSubscription(subscription);
                 } else if (SubscriptionChange.DELETED == type) {
                     clusterSubscriptionProcessor.removeWildCardSubscription(subscription);
+                }else if (SubscriptionChange.DISCONNECTED == type) {
+                    clusterSubscriptionProcessor.updateWildCardSubscription(subscription);
                 }
             } else {
                 clusterSubscriptionMap = clusterTopicSubscriptionMap;

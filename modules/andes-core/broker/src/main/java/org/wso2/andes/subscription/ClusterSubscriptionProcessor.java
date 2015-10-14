@@ -92,6 +92,16 @@ public class ClusterSubscriptionProcessor {
     }
 
     /**
+     * Update a wildcard subscription to it's specific subscription handler.
+     * @param subscription he subscription to be updated
+     * @throws AndesException
+     */
+    public void updateWildCardSubscription(AndesSubscription subscription) throws AndesException {
+        ClusterSubscriptionHandler bitMapHandler = getClusterSubscriptionHandler(subscription.getSubscriptionType());
+        bitMapHandler.updateWildCardSubscription(subscription);
+    }
+
+    /**
      * Check if a subscription is already available.
      *
      * @param subscription The subscription to be checked
