@@ -204,7 +204,7 @@ public class AndesSubscriptionManager {
                             subscriptionStore.removeSubscriptionDirectly(sub);
                         }
                         notifyLocalSubscriptionHasChanged(mockSubscription,
-                                                          SubscriptionListener.SubscriptionChange.DELETED);
+                                SubscriptionListener.SubscriptionChange.DELETED);
                     }
                 }
             }
@@ -233,7 +233,8 @@ public class AndesSubscriptionManager {
                         LocalSubscription mockSubscription = convertClusterSubscriptionToMockLocalSubscription(sub);
                         mockSubscription.close();
                         subscriptionStore.removeSubscriptionDirectly(sub);
-                        notifyClusterSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange.DELETED);
+                        notifyClusterSubscriptionHasChanged(mockSubscription, SubscriptionListener.SubscriptionChange
+                                .DELETED);
                     }
                 }
             }
@@ -344,6 +345,29 @@ public class AndesSubscriptionManager {
             subscription.close();
             subscriptionStore.createDisconnectOrRemoveLocalSubscription(subscription, SubscriptionListener.SubscriptionChange.DELETED);
             notifyLocalSubscriptionHasChanged(subscription, SubscriptionListener.SubscriptionChange.DELETED);
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("Removed " + subscriptionsOfQueue.size() + " local subscriptions bound to queue: "
+                      + boundQueueName);
+        }
+    }
+
+    /**
+     * Delete all cluster subscription entries bound for queue
+     * @param boundQueueName queue name to delete subscriptions
+     * @throws AndesException
+     */
+    public synchronized void deleteAllClusterSubscriptionsOfBoundQueue(String boundQueueName) throws AndesException{
+        Set<AndesSubscription> subscriptionsOfQueue = subscriptionStore.getListOfClusterSubscriptionsBoundToQueue(
+                boundQueueName);
+        for(AndesSubscription subscription : subscriptionsOfQueue) {
+            subscriptionStore.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
+                    .SubscriptionChange.DELETED);
+        }
+        subscriptionStore.removeClusterSubscriptions(subscriptionsOfQueue);
+        if (log.isDebugEnabled()) {
+            log.debug("Removed " + subscriptionsOfQueue.size() + " cluster subscriptions bound to queue: "
+                      + boundQueueName);
         }
     }
 

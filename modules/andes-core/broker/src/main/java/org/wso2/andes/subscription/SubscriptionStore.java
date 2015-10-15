@@ -447,6 +447,44 @@ public class SubscriptionStore {
     }
 
     /**
+     * Get ALL (ACTIVE + INACTIVE) local subscriptions whose bound queue is given
+     *
+     * @param queueName Queue name to search
+     * @return List if matching subscriptions
+     * @throws AndesException
+     */
+    public Set<AndesSubscription> getListOfClusterSubscriptionsBoundToQueue(String queueName) throws AndesException {
+        Set<AndesSubscription> subscriptionsOfQueue = new HashSet<>();
+        Set<AndesSubscription> queueSubscriptionMap = clusterQueueSubscriptionMap.get(queueName);
+
+        // Add queue subscriptions
+        if (null != queueSubscriptionMap) {
+            subscriptionsOfQueue.addAll(queueSubscriptionMap);
+        }
+        //Add topic subscriptions bound to queue name
+        for (String destination : getTopics()) {
+
+            // Get all AMQP subscriptions
+            Set<AndesSubscription> topicSubsOfDest = getAllSubscribersForDestination(destination, true,
+                    SubscriptionType.AMQP);
+            for (AndesSubscription sub : topicSubsOfDest) {
+                if (sub.getTargetQueue().equals(queueName)) {
+                    subscriptionsOfQueue.add(sub);
+                }
+            }
+
+            //Get all MQTT subscriptions
+            topicSubsOfDest = getAllSubscribersForDestination(destination, true, SubscriptionType.MQTT);
+            for (AndesSubscription sub : topicSubsOfDest) {
+                if (sub.getTargetQueue().equals(queueName)) {
+                    subscriptionsOfQueue.add(sub);
+                }
+            }
+        }
+        return subscriptionsOfQueue;
+    }
+
+    /**
      * create disconnect or remove a cluster subscription entry.
      *
      * @param subscription subscription to add disconnect or remove
@@ -698,8 +736,8 @@ public class SubscriptionStore {
     public void removeSubscriptionDirectly(AndesSubscription subscriptionToRemove) throws AndesException {
         String destination = subscriptionToRemove.getSubscribedDestination();
         String destinationIdentifier = (subscriptionToRemove.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destination;
-        andesContextStore.removeDurableSubscription(destinationIdentifier, subscriptionToRemove.getSubscribedNode() +
-                "_" + subscriptionToRemove.getSubscriptionID());
+        andesContextStore.removeDurableSubscription(destinationIdentifier,
+                subscriptionToRemove.getSubscribedNode() + "_" + subscriptionToRemove.getSubscriptionID());
         if(log.isDebugEnabled()) {
             log.debug("Directly removed cluster subscription subscription identifier = " + destinationIdentifier + " "
                       + "destination = " + destination);
@@ -758,14 +796,46 @@ public class SubscriptionStore {
                 destination = subscriptionToRemove.getSubscribedDestination();
             }
             String destinationIdentifier = (subscriptionToRemove.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destination;
-            andesContextStore.removeDurableSubscription(destinationIdentifier, subscription.getSubscribedNode() + "_" + subscriptionID);
+            andesContextStore.removeDurableSubscription(destinationIdentifier,
+                    subscription.getSubscribedNode() + "_" + subscriptionID);
             if (log.isDebugEnabled()) {
-                log.debug("Subscription Removed Locally for  " + destination + "@" + subscriptionID + " " + subscriptionToRemove);
+                log.debug("Subscription Removed Locally for  " + destination + "@" + subscriptionID + " "
+                          + subscriptionToRemove);
             }
         } else {
-            log.warn("Could not find an subscription ID " + subscriptionID + " under destination " + destination);
+            log.warn("Could not find a local subscription ID " + subscriptionID + " under destination " + destination);
         }
         return subscriptionToRemove;
+    }
+
+    /**
+     * Remove cluster subscriptions from database
+     *
+     * @param subscriptionToRemove The the set of andes subscriptions to be removed
+     */
+    public void removeClusterSubscriptions(Set<AndesSubscription> subscriptionToRemove) throws AndesException {
+        Iterator<AndesSubscription> iterator = subscriptionToRemove.iterator();
+        while (iterator.hasNext()) {
+            AndesSubscription subscription = iterator.next();
+            String destination = getDestination(subscription);
+            if (!subscriptionToRemove.isEmpty()) {
+                //if a topic subscription destination identifier for DB must be topic
+                if (subscription.isBoundToTopic()) {
+                    destination = subscription.getSubscribedDestination();
+                }
+                String destinationIdentifier =
+                        (subscription.isBoundToTopic() ? TOPIC_PREFIX : QUEUE_PREFIX) + destination;
+                andesContextStore.removeDurableSubscription(destinationIdentifier,
+                        subscription.getSubscribedNode() + "_" + subscription.getSubscriptionID());
+                if (log.isDebugEnabled()) {
+                    log.debug("Subscription Removed for  " + destination + "@"
+                              + subscription.getSubscriptionID() + " " + subscriptionToRemove);
+                }
+            } else {
+                log.warn("Could not find a cluster subscription ID " + subscription.getSubscriptionID()
+                         + " under destination " + destination);
+            }
+        }
     }
 
     /**
