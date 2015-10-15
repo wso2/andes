@@ -157,4 +157,19 @@ public class ClusterSubscriptionProcessor {
 
         return subscriptions;
     }
+
+    /**
+     * Get all topics that these subscribers have subscribed to
+     *
+     * @return Set of all topics
+     */
+    public Set<String> getAllTopics() {
+        Set<String> topics = new HashSet<>();
+
+        for (Map.Entry<SubscriptionType, ClusterSubscriptionHandler> entry : subscriptionHandlers.entrySet()) {
+            topics.addAll(entry.getValue().getAllTopics());
+        }
+
+        return topics;
+    }
 }

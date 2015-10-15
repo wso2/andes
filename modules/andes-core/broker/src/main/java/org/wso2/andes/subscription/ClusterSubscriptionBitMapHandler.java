@@ -536,5 +536,39 @@ public class ClusterSubscriptionBitMapHandler implements ClusterSubscriptionHand
         return wildCardSubscriptionList;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    public Set<String> getAllTopics() {
+        Set<String> topics = new HashSet<>();
+
+
+        for (Map.Entry<Integer, String[]> subcriberConstituent : subscriptionConstituents.entrySet()) {
+
+            StringBuilder topic = new StringBuilder();
+            String[] constituents =  subcriberConstituent.getValue();
+
+            for (int i = 0; i < constituents.length; i++) {
+                String constituent = constituents[i];
+                // if this is a wildcard constituent, we provide it as 'ANY' in it's place for readability
+                if (multiLevelWildCard.equals(constituent) || singleLevelWildCard.equals(constituent)) {
+                    topic.append("ANY");
+                } else {
+                    topic.append(constituent);
+                }
+
+                // append the delimiter if there are more constituents to come
+                if ((constituents.length - 1) > i) {
+                    topic.append(constituentsDelimiter);
+                }
+
+            }
+
+            topics.add(topic.toString());
+        }
+
+        return topics;
+    }
+
 
 }
