@@ -167,24 +167,32 @@ public class DeliverableAndesMetadata extends AndesMessageMetadata{
 
     /**
      * Mark message as scheduled to deliver to given subscribers
+     *
      * @param localSubscriptions local subscriptions to deliver. AMQP/MQTT subscribers have individual
-     *                         delivery channels
+     *                           delivery channels
      */
     public void markAsScheduledToDeliver(Collection<LocalSubscription> localSubscriptions) {
         for (LocalSubscription subscription : localSubscriptions) {
-            ChannelInformation channelInformation = new ChannelInformation();
-            channelDeliveryInfo.put(subscription.getChannelID(), channelInformation);
+            ChannelInformation channelInformation = channelDeliveryInfo.get(subscription.getChannelID());
+            if (null == channelInformation) {
+                channelInformation = new ChannelInformation();
+                channelDeliveryInfo.put(subscription.getChannelID(), channelInformation);
+            }
         }
         addMessageStatus(MessageStatus.SCHEDULED_TO_SEND);
     }
 
     /**
      * Mark message as scheduled to deliver to given subscriber
+     *
      * @param subscription subscription to deliver message
      */
     public void markAsScheduledToDeliver(LocalSubscription subscription) {
-        ChannelInformation channelInformation = new ChannelInformation();
-        channelDeliveryInfo.put(subscription.getChannelID(), channelInformation);
+        ChannelInformation channelInformation = channelDeliveryInfo.get(subscription.getChannelID());
+        if (null == channelInformation) {
+            channelInformation = new ChannelInformation();
+            channelDeliveryInfo.put(subscription.getChannelID(), channelInformation);
+        }
         addMessageStatus(MessageStatus.SCHEDULED_TO_SEND);
     }
 
