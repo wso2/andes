@@ -96,7 +96,7 @@ public class SubscriptionManagementInformationMBean extends AMQManagedObject imp
         try {
             List<String> allSubscriptionsForTopics = new ArrayList<>();
 
-            List<String> allTopics = AndesContext.getInstance().getSubscriptionStore().getTopics();
+            Set<String> allTopics = AndesContext.getInstance().getSubscriptionStore().getTopics();
 
             for (String topic : allTopics) {
                 Set<AndesSubscription> subscriptions;

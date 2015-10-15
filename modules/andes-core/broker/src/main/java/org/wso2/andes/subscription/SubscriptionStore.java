@@ -769,12 +769,21 @@ public class SubscriptionStore {
     }
 
     /**
-     * Gets a list of ACTIVE and INACTIVE topics in cluster
+     * Gets a set of ACTIVE and INACTIVE topics in cluster
      *
-     * @return list of ACTIVE and INACTIVE topics in cluster
+     * @return set of ACTIVE and INACTIVE topics in cluster
      */
-    public List<String> getTopics() {
-        return new ArrayList<>(clusterTopicSubscriptionMap.keySet());
+    public Set<String> getTopics() {
+        Set<String> topics = new HashSet<>();
+
+        // Add all destinations from direct subscriptions
+        topics.addAll(clusterTopicSubscriptionMap.keySet());
+
+        // Add all destination from wildcard subscriptions
+        topics.addAll(clusterSubscriptionProcessor.getAllTopics());
+
+
+        return topics;
     }
 
     /**

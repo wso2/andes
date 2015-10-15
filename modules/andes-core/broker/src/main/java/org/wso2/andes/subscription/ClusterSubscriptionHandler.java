@@ -72,4 +72,11 @@ public interface ClusterSubscriptionHandler {
      * @return A set of all the subscriptions saved
      */
     public List<AndesSubscription> getAllWildCardSubscriptions();
+
+    /**
+     * Get all topics that these subscribers have subscribed to
+     *
+     * @return Set of all topics
+     */
+    public Set<String> getAllTopics();
 }
