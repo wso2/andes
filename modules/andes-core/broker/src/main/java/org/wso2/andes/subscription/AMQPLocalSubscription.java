@@ -22,7 +22,18 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.andes.AMQException;
 import org.wso2.andes.amqp.AMQPUtils;
-import org.wso2.andes.kernel.*;
+import org.wso2.andes.kernel.AMQPDeliveryRule;
+import org.wso2.andes.kernel.Andes;
+import org.wso2.andes.kernel.AndesAckData;
+import org.wso2.andes.kernel.AndesContent;
+import org.wso2.andes.kernel.AndesException;
+import org.wso2.andes.kernel.AndesUtils;
+import org.wso2.andes.kernel.HasInterestRuleAMQP;
+import org.wso2.andes.kernel.MaximumNumOfDeliveryRuleAMQP;
+import org.wso2.andes.kernel.NoLocalRuleAMQP;
+import org.wso2.andes.kernel.ProtocolDeliveryFailureException;
+import org.wso2.andes.kernel.ProtocolDeliveryRulesFailureException;
+import org.wso2.andes.kernel.ProtocolMessage;
 import org.wso2.andes.server.AMQChannel;
 import org.wso2.andes.server.message.AMQMessage;
 import org.wso2.andes.server.queue.AMQQueue;
@@ -70,8 +81,8 @@ public class AMQPLocalSubscription implements OutboundSubscription {
         this.amqQueue = amqQueue;
         this.amqpSubscription = amqpSubscription;
 
-        if (amqpSubscription != null && amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
-            channel = ((SubscriptionImpl.AckSubscription) amqpSubscription).getChannel();
+        if (amqpSubscription != null && amqpSubscription instanceof SubscriptionImpl) {
+            channel = ((SubscriptionImpl) amqpSubscription).getChannel();
             initializeDeliveryRules();
         }
 
@@ -156,18 +167,29 @@ public class AMQPLocalSubscription implements OutboundSubscription {
     private void sendMessage(QueueEntry queueEntry) throws AndesException {
 
         String msgHeaderStringID = (String) queueEntry.getMessageHeader().getHeader("msgID");
-        Long messageNumber = queueEntry.getMessage().getMessageNumber();
+        Long messageID = queueEntry.getMessage().getMessageNumber();
 
         try {
 
             if (amqpSubscription instanceof SubscriptionImpl.AckSubscription) {
 
-                MessageTracer.trace(messageNumber, "", "Sending message "
-                        + msgHeaderStringID + " messageID-"
-                        + messageNumber + "-to "
-                        + "channel " + getChannelID());
+                MessageTracer.trace(messageID, "",
+                                    "Sending message " + msgHeaderStringID + " messageID-" + messageID + "-to channel "
+                                    + getChannelID());
 
                 amqpSubscription.send(queueEntry);
+            } else if (amqpSubscription instanceof SubscriptionImpl.NoAckSubscription) {
+                MessageTracer.trace(messageID, "",
+                                    "Sending message " + msgHeaderStringID + " messageID-" + messageID + "-to channel "
+                                    + getChannelID());
+
+                amqpSubscription.send(queueEntry);
+
+                // After sending message we simulate acknowledgment for NoAckSubscription
+                UUID channelID = ((SubscriptionImpl.NoAckSubscription) amqpSubscription).getChannel().getId();
+                AndesAckData andesAckData = AndesUtils.generateAndesAckMessage(channelID, messageID);
+
+                Andes.getInstance().ackReceived(andesAckData);
             } else {
                 throw new AndesException("Error occurred while delivering message. Unexpected Subscription type for "
                         + "message with ID : " + msgHeaderStringID);
@@ -178,10 +200,10 @@ public class AMQPLocalSubscription implements OutboundSubscription {
             // but since this is a general explanation of many possible errors, no point in logging at this state.
             ProtocolMessage protocolMessage = ((AMQMessage) queueEntry.getMessage()).getAndesMetadataReference();
             log.error("AMQP Protocol Error while delivering message to the subscriber subID= "
-                    + amqpSubscription.getSubscriptionID() + " message id= " + messageNumber + " slot= "
-                    + protocolMessage.getMessage().getSlot().toString(), e);
-            throw new ProtocolDeliveryFailureException("Error occurred while delivering message with ID : "
-                    + msgHeaderStringID, e);
+                      + amqpSubscription.getSubscriptionID() + " message id= " + messageID + " slot= "
+                      + protocolMessage.getMessage().getSlot().toString(), e);
+            throw new ProtocolDeliveryFailureException(
+                    "Error occurred while delivering message with ID : " + msgHeaderStringID, e);
         }
     }
 
