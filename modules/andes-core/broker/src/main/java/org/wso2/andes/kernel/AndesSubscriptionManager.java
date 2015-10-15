@@ -368,50 +368,26 @@ public class AndesSubscriptionManager {
             Map<String, List<String>> results = AndesContext.getInstance().getAndesContextStore()
                     .getAllStoredDurableSubscriptions();
 
+            Set<AndesSubscription> dbSubscriptions = new HashSet<>();
+
             for (Map.Entry<String, List<String>> entry : results.entrySet()) {
 
                 // Check for db subscriptions that are not available in memory and add them
                 for (String subscriptionAsStr : entry.getValue()) {
                     BasicSubscription subscription = new BasicSubscription(subscriptionAsStr);
+                    dbSubscriptions.add(subscription);
+                    boolean subscriptionAvailable = subscriptionStore.isSubscriptionAvailable(subscription);
 
-                    //for durable topic subscriptions we need to delete and put whatever in DB. This is
-                    //done because hasExternalSubscription field might have been updated in DB
-                    if(subscription.isDurable() && subscription.isBoundToTopic()) {
-                        boolean subscriptionExists = false;
-                        Set<AndesSubscription> memorySubscriptions = subscriptionStore
-                        .getAllClusterSubscriptionsWithoutWildcards(subscription.getSubscribedDestination(), true);
+                    if (!subscriptionAvailable) {
+                        // Subscription not available in subscription store, need to add
+                        log.warn("Cluster Subscriptions are not in sync. Subscription not available in subscription "
+                                + "store but exists in DB. Thus adding " + subscription);
+                        subscriptionStore.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
+                                .SubscriptionChange.ADDED);
+                    } else if (subscription.isDurable() && subscription.isBoundToTopic()){
+                        //for durable topic subscriptions we need to update anyway since active state could have changed
+                        subscriptionStore.updateClusterSubscription(subscription);
 
-                        if(null != memorySubscriptions) {
-                            //if subscription exists update it, otherwise add
-                            for (AndesSubscription memorySubscription : memorySubscriptions) {
-                                if(memorySubscription.equals(subscription)) {
-                                    subscriptionExists = true;
-                                    if(memorySubscription.hasExternalSubscriptions
-                                            () != subscription.hasExternalSubscriptions()) {
-                                        memorySubscription.setHasExternalSubscriptions(subscription.hasExternalSubscriptions());
-                                        log.warn("Cluster Subscriptions are not in sync. Updating durable topic "
-                                                + "subscriptions" + subscription);
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                        if(!subscriptionExists) {
-                            subscriptionStore.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
-                                    .SubscriptionChange.ADDED);
-                            log.warn("Cluster Subscriptions are not in sync. Subscription not available in subscription store"
-                                    + " but exists in DB. Thus adding " + subscription);
-                        }
-                    } else {
-                        boolean subscriptionAvailable = subscriptionStore.isSubscriptionAvailable(subscription);
-
-                        if (!subscriptionAvailable) {
-                            // Subscription not available in subscription store, need to add
-                            log.warn("Cluster Subscriptions are not in sync. Subscription not available in subscription store"
-                                    + " but exists in DB. Thus adding " + subscription);
-                            subscriptionStore.createDisconnectOrRemoveClusterSubscription(subscription, SubscriptionListener
-                                    .SubscriptionChange.ADDED);
-                        }
                     }
                 }
             }
@@ -423,20 +399,10 @@ public class AndesSubscriptionManager {
             for (String queue : queues) {
                 Set<AndesSubscription> memorySubscriptions = subscriptionStore.getAllClusterSubscriptionsWithoutWildcards
                         (queue, false);
-                Set<AndesSubscription> dbSubscriptions = new HashSet<>();
-                List<String> encodedDBSubscriptions = results.get(QUEUE_PREFIX + queue);
-                if(encodedDBSubscriptions != null) {
-                    for (String subscriptionAsStr : encodedDBSubscriptions) {
-                        BasicSubscription subscription = new BasicSubscription(subscriptionAsStr);
-                        dbSubscriptions.add(subscription);
-                    }
-                }
                 //check if each memory subscription is in DB. If not remove from memory
                 if(null != memorySubscriptions) {
                     for (AndesSubscription memorySubscription : memorySubscriptions) {
                         if (!dbSubscriptions.contains(memorySubscription)) {
-                            log.warn("Cluster Subscriptions are not in sync. Subscriptions exist in memory that are not " +
-                                    "available in db. Thus removing from memory " + memorySubscription);
                             subscriptionsToRemove.add(memorySubscription);
                         }
                     }
@@ -447,20 +413,10 @@ public class AndesSubscriptionManager {
             for (String topic : topics) {
                 Set<AndesSubscription> memorySubscriptions = subscriptionStore.getAllClusterSubscriptionsWithoutWildcards
                         (topic, true);
-                Set<AndesSubscription> dbSubscriptions = new HashSet<>();
-                List<String> encodedDBSubscriptions = results.get(TOPIC_PREFIX + topic);
-                if(encodedDBSubscriptions != null) {
-                    for (String subscriptionAsStr : encodedDBSubscriptions) {
-                        BasicSubscription subscription = new BasicSubscription(subscriptionAsStr);
-                        dbSubscriptions.add(subscription);
-                    }
-                }
                 //check if each memory subscription is in DB. If not remove from memory
                 if(null != memorySubscriptions) {
                     for (AndesSubscription memorySubscription : memorySubscriptions) {
                         if (!dbSubscriptions.contains(memorySubscription)) {
-                            log.warn("Cluster Subscriptions are not in sync. Subscriptions exist in memory that are not " +
-                                    "available in db. Thus removing from memory " + memorySubscription);
                             subscriptionsToRemove.add(memorySubscription);
                         }
                     }
@@ -469,6 +425,8 @@ public class AndesSubscriptionManager {
 
             //perform delete of marked subscriptions
             for (AndesSubscription andesSubscription : subscriptionsToRemove) {
+                log.warn("Cluster Subscriptions are not in sync. Subscriptions exist in memory that are not "
+                        + "available in db. Thus removing from memory " + andesSubscription);
                 subscriptionStore.createDisconnectOrRemoveClusterSubscription(andesSubscription, SubscriptionListener
                         .SubscriptionChange.DELETED);
             }

@@ -40,18 +40,16 @@ public interface ClusterSubscriptionHandler {
     /**
      * Update a wildcard subscription to the underlying data structure
      * @param subscription The subscription to be updated
-     * @throws AndesException
      */
-    public void updateWildCardSubscription(AndesSubscription subscription) throws AndesException;
+    public void updateWildCardSubscription(AndesSubscription subscription);
 
     /**
      * Check if a subscription is already available.
      *
      * @param subscription The subscription to check for existence
      * @return True if available
-     * @throws org.wso2.andes.kernel.AndesException
      */
-    public boolean isSubscriptionAvailable(AndesSubscription subscription) throws AndesException;
+    public boolean isSubscriptionAvailable(AndesSubscription subscription);
 
     /**
      * Remove a wildcard subscription from the underlying data structure.
