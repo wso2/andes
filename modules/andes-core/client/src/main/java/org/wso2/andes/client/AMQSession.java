@@ -2674,8 +2674,18 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
                         long producerId = getNextProducerId();
                         P producer = createMessageProducer(destination, mandatory,
                                                            immediate, waitUntilSent, producerId);
-                        registerProducer(producerId, producer);
+                        try {
+                            registerProducer(producerId, producer);
+                        } catch (AMQException e) {
+                            if (e instanceof AMQChannelClosedException) {
+                                close(-1, false);
+                            }
 
+                            JMSException ex = new JMSException("Error registering producer: " + e);
+                            ex.setLinkedException(e);
+                            ex.initCause(e);
+                            throw ex;
+                        }
                         return producer;
                     }
                 }, _connection).execute();
@@ -2971,10 +2981,31 @@ public abstract class AMQSession<C extends BasicMessageConsumer, P extends Basic
     public abstract void handleAddressBasedDestination(AMQDestination dest, 
                                                        boolean isConsumer,
                                                        boolean noWait) throws AMQException;
-    
-    private void registerProducer(long producerId, MessageProducer producer)
-    {
+
+    /**
+     * Creates a queue, adds binding for the producer. Also adds the given producer to the collection of producers
+     * created by this session.
+     *
+     * @param producerId unique id for the producer
+     * @param producer   the producer to be registered
+     * @throws AMQException
+     * @throws JMSException
+     */
+    private void registerProducer(long producerId, P producer) throws AMQException, JMSException {
+        AMQDestination amqDestination = producer.getDestination();
+        AMQProtocolHandler protocolHandler = getProtocolHandler();
+        boolean noWait = false;
+
+        if (DECLARE_EXCHANGES) {
+            declareExchange(amqDestination, protocolHandler, noWait);
+        }
+        if (DECLARE_QUEUES || amqDestination.isNameRequired()) {
+            declareQueue(amqDestination, protocolHandler, false, noWait);
+        }
+        bindQueue(amqDestination.getAMQQueueName(), amqDestination.getRoutingKey(), FieldTableFactory
+                .newFieldTable(), amqDestination.getExchangeName(), amqDestination, noWait);
         _producers.put(new Long(producerId), producer);
+
     }
 
     private void rejectAllMessages(boolean requeue)
