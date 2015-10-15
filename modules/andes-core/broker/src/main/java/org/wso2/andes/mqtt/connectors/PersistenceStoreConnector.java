@@ -290,17 +290,6 @@ public class PersistenceStoreConnector implements MQTTConnector {
                                      boolean isCleanSession, String mqttClientID)
             throws MQTTException {
         try {
-
-            if (isCleanSession) {
-                //This will be similar to a durable subscription of AMQP
-                //There could be two types of events one is the disconnection due to the lost of the connection
-                //The other is un-subscription, if is the case of un-subscription the subscription should be removed
-                //Will need to delete the relevant queue mapping out
-                String queueIdentifier = MQTTUtils.getTopicSpecificQueueName(mqttClientID, subscribedTopic);
-                InboundQueueEvent queueChange = new InboundQueueEvent(queueIdentifier, username, false, true);
-                Andes.getInstance().deleteQueue(queueChange);
-            }
-
             //Here we hard code the QoS level since for subscription removal that doesn't matter
             MQTTLocalSubscription mqttTopicSubscriber = createSubscription(subscribedTopic, channel,
                     subscriptionChannelID, 0, subscriberChannel, true);
